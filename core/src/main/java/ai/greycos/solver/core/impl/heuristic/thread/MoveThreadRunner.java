@@ -138,8 +138,7 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           if (evaluateDoable && !move.isMoveDoable(scoreDirector)) {
             resultQueue.addUndoableMove(moveThreadIndex, stepIndex, moveIndex, move);
           } else {
-            var score =
-                scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
+            var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
             // Note: assertExpectedUndoMoveScore is not applicable in move threads
             // as they don't have access to the proper lifecycle context
             resultQueue.addMove(moveThreadIndex, stepIndex, moveIndex, move, score.raw());
@@ -171,16 +170,16 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
   }
 
   protected void predictWorkingStepScore(Move<Solution_> step, InnerScore<Score_> score) {
-      scoreDirector.getSolutionDescriptor().setScore(scoreDirector.getWorkingSolution(), score.raw());
-      if (assertStepScoreFromScratch) {
-          scoreDirector.assertPredictedScoreFromScratch(score, step);
-      }
-      if (assertExpectedStepScore) {
-          scoreDirector.assertExpectedWorkingScore(score, step);
-      }
-      if (assertShadowVariablesAreNotStaleAfterStep) {
-          scoreDirector.assertShadowVariablesAreNotStale(score, step);
-      }
+    scoreDirector.getSolutionDescriptor().setScore(scoreDirector.getWorkingSolution(), score.raw());
+    if (assertStepScoreFromScratch) {
+      scoreDirector.assertPredictedScoreFromScratch(score, step);
+    }
+    if (assertExpectedStepScore) {
+      scoreDirector.assertExpectedWorkingScore(score, step);
+    }
+    if (assertShadowVariablesAreNotStaleAfterStep) {
+      scoreDirector.assertShadowVariablesAreNotStale(score, step);
+    }
   }
 
   public long getCalculationCount() {

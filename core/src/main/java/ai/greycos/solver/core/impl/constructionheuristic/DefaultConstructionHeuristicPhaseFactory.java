@@ -18,9 +18,9 @@ import ai.greycos.solver.core.config.heuristic.selector.move.composite.UnionMove
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
-import ai.greycos.solver.core.enterprise.GreycosSolverEnterpriseService;
 import ai.greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhase.DefaultConstructionHeuristicPhaseBuilder;
 import ai.greycos.solver.core.impl.constructionheuristic.decider.ConstructionHeuristicDecider;
+import ai.greycos.solver.core.impl.constructionheuristic.decider.MultiThreadedConstructionHeuristicDecider;
 import ai.greycos.solver.core.impl.constructionheuristic.decider.forager.ConstructionHeuristicForager;
 import ai.greycos.solver.core.impl.constructionheuristic.decider.forager.ConstructionHeuristicForagerFactory;
 import ai.greycos.solver.core.impl.constructionheuristic.placer.EntityPlacer;
@@ -35,6 +35,7 @@ import ai.greycos.solver.core.impl.phase.AbstractPhaseFactory;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.impl.solver.termination.SolverTermination;
+import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 
 public class DefaultConstructionHeuristicPhaseFactory<Solution_>
     extends AbstractPhaseFactory<Solution_, ConstructionHeuristicPhaseConfig> {
@@ -200,9 +201,16 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
         (moveThreadCount == null)
             ? new ConstructionHeuristicDecider<>(
                 configPolicy.getLogIndentation(), termination, forager)
-            : GreycosSolverEnterpriseService.loadOrFail(
-                    GreycosSolverEnterpriseService.Feature.MULTITHREADED_SOLVING)
-                .buildConstructionHeuristic(termination, forager, configPolicy);
+            : new MultiThreadedConstructionHeuristicDecider<>(
+                configPolicy.getLogIndentation(),
+                termination,
+                forager,
+                configPolicy.buildThreadFactory(ChildThreadType.MOVE_THREAD),
+                moveThreadCount,
+                moveThreadCount
+                    * (configPolicy.getMoveThreadBufferSize() != null
+                        ? configPolicy.getMoveThreadBufferSize()
+                        : 10));
     decider.enableAssertions(configPolicy.getEnvironmentMode());
     return decider;
   }

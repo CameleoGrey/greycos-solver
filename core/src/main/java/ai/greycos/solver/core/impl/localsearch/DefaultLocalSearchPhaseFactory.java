@@ -204,12 +204,17 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
             ? new LocalSearchDecider<>(
                 configPolicy.getLogIndentation(), termination, moveRepository, acceptor, forager)
             : new MultiThreadedLocalSearchDecider<>(
-                configPolicy.getLogIndentation(), termination, moveRepository, acceptor, forager,
+                configPolicy.getLogIndentation(),
+                termination,
+                moveRepository,
+                acceptor,
+                forager,
                 configPolicy.buildThreadFactory(ChildThreadType.MOVE_THREAD),
                 moveThreadCount,
-                moveThreadCount * (configPolicy.getMoveThreadBufferSize() != null
-                    ? configPolicy.getMoveThreadBufferSize()
-                    : 10));
+                moveThreadCount
+                    * (configPolicy.getMoveThreadBufferSize() != null
+                        ? configPolicy.getMoveThreadBufferSize()
+                        : 10));
     decider.enableAssertions(environmentMode);
     return decider;
   }

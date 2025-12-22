@@ -48,6 +48,16 @@ final class SolverBridgePhaseTermination<Solution_> extends AbstractPhaseTermina
   }
 
   @Override
+  public boolean isSolverTerminated(SolverScope<Solution_> solverScope) {
+    return solverTermination.isSolverTerminated(solverScope);
+  }
+
+  @Override
+  public double calculateSolverTimeGradient(SolverScope<Solution_> solverScope) {
+    return solverTermination.calculateSolverTimeGradient(solverScope);
+  }
+
+  @Override
   public Termination<Solution_> createChildThreadTermination(
       SolverScope<Solution_> scope, ChildThreadType childThreadType) {
     if (childThreadType == ChildThreadType.PART_THREAD) {

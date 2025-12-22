@@ -38,6 +38,16 @@ final class StepCountTermination<Solution_> extends AbstractPhaseTermination<Sol
   }
 
   @Override
+  public boolean isSolverTerminated(SolverScope<Solution_> solverScope) {
+    return false; // Phase termination doesn't terminate solver
+  }
+
+  @Override
+  public double calculateSolverTimeGradient(SolverScope<Solution_> solverScope) {
+    return 0.0; // Phase termination doesn't affect solver time gradient
+  }
+
+  @Override
   public Termination<Solution_> createChildThreadTermination(
       SolverScope<Solution_> solverScope, ChildThreadType childThreadType) {
     return new StepCountTermination<>(stepCountLimit);

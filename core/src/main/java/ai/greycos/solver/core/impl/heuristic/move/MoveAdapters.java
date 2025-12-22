@@ -16,7 +16,7 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 public final class MoveAdapters {
 
-  static <Solution_> ai.greycos.solver.core.impl.heuristic.move.Move<Solution_> toLegacyMove(
+  public static <Solution_> ai.greycos.solver.core.impl.heuristic.move.Move<Solution_> toLegacyMove(
       ai.greycos.solver.core.preview.api.move.Move<Solution_> newMove) {
     if (newMove instanceof Move<Solution_> legacyMove) {
       return legacyMove;
