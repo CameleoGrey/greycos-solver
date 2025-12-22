@@ -24,7 +24,6 @@ import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchFora
 import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchPickEarlyType;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.util.ConfigUtils;
-import ai.greycos.solver.core.enterprise.GreycosSolverEnterpriseService;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
@@ -32,6 +31,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.composite.UnionMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.composite.UnionMoveSelectorFactory;
 import ai.greycos.solver.core.impl.localsearch.decider.LocalSearchDecider;
+import ai.greycos.solver.core.impl.localsearch.decider.MultiThreadedLocalSearchDecider;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.Acceptor;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.AcceptorFactory;
 import ai.greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
@@ -47,6 +47,7 @@ import ai.greycos.solver.core.impl.phase.AbstractPhaseFactory;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.impl.solver.termination.SolverTermination;
+import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 import ai.greycos.solver.core.preview.api.neighborhood.NeighborhoodProvider;
 
 public class DefaultLocalSearchPhaseFactory<Solution_>
@@ -202,16 +203,13 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
         moveThreadCount == null
             ? new LocalSearchDecider<>(
                 configPolicy.getLogIndentation(), termination, moveRepository, acceptor, forager)
-            : GreycosSolverEnterpriseService.loadOrFail(
-                    GreycosSolverEnterpriseService.Feature.MULTITHREADED_SOLVING)
-                .buildLocalSearch(
-                    moveThreadCount,
-                    termination,
-                    moveRepository,
-                    acceptor,
-                    forager,
-                    environmentMode,
-                    configPolicy);
+            : new MultiThreadedLocalSearchDecider<>(
+                configPolicy.getLogIndentation(), termination, moveRepository, acceptor, forager,
+                configPolicy.buildThreadFactory(ChildThreadType.MOVE_THREAD),
+                moveThreadCount,
+                moveThreadCount * (configPolicy.getMoveThreadBufferSize() != null
+                    ? configPolicy.getMoveThreadBufferSize()
+                    : 10));
     decider.enableAssertions(environmentMode);
     return decider;
   }
