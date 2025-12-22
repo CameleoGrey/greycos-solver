@@ -9,6 +9,7 @@ local
 !.gitattributes
 !/.mvn
 /nbproject
+/optaplanner
 *.ipr
 *.iws
 *.iml
