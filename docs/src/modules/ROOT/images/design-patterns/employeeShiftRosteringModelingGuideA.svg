@@ -286,7 +286,7 @@
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <dc:language>en</dc:language>
         <cc:license
-           rdf:resource="https://timefold.ai/license" />
+           rdf:resource="https://greycos.ai/license" />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -706,7 +706,7 @@
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15px;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans, Normal';fill:#4e9a06"
          id="flowPara5443">What can</flowPara><flowPara
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15px;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans, Normal';fill:#4e9a06"
-         id="flowPara5451">Timefold change</flowPara><flowPara
+         id="flowPara5451">Greycos change</flowPara><flowPara
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15px;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans, Normal';fill:#4e9a06"
          id="flowPara5455">in the output solution?</flowPara></flowRoot>    <flowRoot
        transform="translate(-232.38167,92.576544)"

@@ -1,0 +1,66 @@
+package ai.greycos.solver.core.impl.solver;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Function;
+
+import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
+final class Assigner<Solution_, Score_ extends Score<Score_>, Recommendation_, In_, Out_>
+    implements Function<InnerScoreDirector<Solution_, Score_>, List<Recommendation_>> {
+
+  private final DefaultSolverFactory<Solution_> solverFactory;
+  private final Function<In_, Out_> propositionFunction;
+  private final RecommendationConstructor<Score_, Recommendation_, Out_> recommendationConstructor;
+  private final ScoreAnalysisFetchPolicy fetchPolicy;
+  private final Solution_ originalSolution;
+  private final In_ originalElement;
+
+  public Assigner(
+      DefaultSolverFactory<Solution_> solverFactory,
+      Function<In_, @Nullable Out_> propositionFunction,
+      RecommendationConstructor<Score_, Recommendation_, Out_> recommendationConstructor,
+      ScoreAnalysisFetchPolicy fetchPolicy,
+      Solution_ originalSolution,
+      In_ originalElement) {
+    this.solverFactory = Objects.requireNonNull(solverFactory);
+    this.propositionFunction = Objects.requireNonNull(propositionFunction);
+    this.recommendationConstructor = Objects.requireNonNull(recommendationConstructor);
+    this.fetchPolicy = Objects.requireNonNull(fetchPolicy);
+    this.originalSolution = Objects.requireNonNull(originalSolution);
+    this.originalElement = Objects.requireNonNull(originalElement);
+  }
+
+  @Override
+  public List<Recommendation_> apply(InnerScoreDirector<Solution_, Score_> scoreDirector) {
+    var initializationStatistics =
+        scoreDirector.getValueRangeManager().getInitializationStatistics();
+    var uninitializedCount =
+        initializationStatistics.uninitializedEntityCount()
+            + initializationStatistics.unassignedValueCount();
+    if (uninitializedCount > 1) {
+      throw new IllegalStateException(
+          """
+                    Solution (%s) has (%d) uninitialized elements.
+                    Assignment Recommendation API requires at most one uninitialized element in the solution."""
+              .formatted(originalSolution, uninitializedCount));
+    }
+    var originalScoreAnalysis = scoreDirector.buildScoreAnalysis(fetchPolicy);
+    var clonedElement = Objects.requireNonNull(scoreDirector.lookUpWorkingObject(originalElement));
+    var processor =
+        new AssignmentProcessor<>(
+            solverFactory,
+            propositionFunction,
+            recommendationConstructor,
+            fetchPolicy,
+            clonedElement,
+            originalScoreAnalysis);
+    return processor.apply(scoreDirector);
+  }
+}

@@ -4,34 +4,34 @@
 :sectnums:
 :icons: font
 
-Timefold Solver Enterprise Edition is a commercial product that offers additional features,
+Greycos Solver Enterprise Edition is a commercial product that offers additional features,
 such as <<nearbySelection,nearby selection>> and <<multithreadedSolving,multi-threaded solving>>.
 These features are essential to scale out to huge datasets.
 
-Unlike Timefold Solver Community Edition, the Enterprise Edition is not open-source.
-You are allowed to use Timefold Solver Enterprise Edition for evaluation and development.
-Please https://timefold.ai/contact[contact Timefold]
+Unlike Greycos Solver Community Edition, the Enterprise Edition is not open-source.
+You are allowed to use Greycos Solver Enterprise Edition for evaluation and development.
+Please https://greycos.ai/contact[contact Greycos]
 to obtain the credentials necessary to start your evaluation.
 
 TIP: Looking for quicker time-to-value?
-Timefold offers https://docs.timefold.ai/[pre-built, fully tuned optimization models], no constraint building required.
+Greycos offers https://docs.greycos.ai/[pre-built, fully tuned optimization models], no constraint building required.
 Just plug into our API and start optimizing immediately.
 
-For a high-level overview of the differences between Timefold offerings,
-see https://timefold.ai/pricing[Timefold Pricing].
+For a high-level overview of the differences between Greycos offerings,
+see https://greycos.ai/pricing[Greycos Pricing].
 
 [#switchToEnterpriseEdition]
 == Switch to Enterprise Edition
 
 // Uncomment the following when ready to enable the Enterprise license
 // =============================
-// To switch from Timefold Solver Community Edition to Enterprise Edition,
-// https://timefold.ai/contact[contact us first] to obtain an Enterprise License.
-// This license is represented by a file named `timefold-solver-enterprise-license.pem`,
+// To switch from Greycos Solver Community Edition to Enterprise Edition,
+// https://greycos.ai/contact[contact us first] to obtain an Enterprise License.
+// This license is represented by a file named `greycos-solver-enterprise-license.pem`,
 // which you can introduce to your project by one of the following methods:
 //
 // * Place the file in the user's home directory.
-// * Store the path to the file in `TIMEFOLD_ENTERPRISE_LICENSE` system property.
+// * Store the path to the file in `GREYCOS_ENTERPRISE_LICENSE` system property.
 // * Place the file in the root of your application classpath.
 //
 // Having done that, reference the Enterprise Edition Maven repository in your project:
@@ -53,9 +53,9 @@ Add the following repository to your `pom.xml`:
   ...
   <repositories>
     <repository>
-      <id>timefold-solver-enterprise</id>
-      <name>Timefold Solver Enterprise Edition</name>
-      <url>https://timefold.jfrog.io/artifactory/releases/</url>
+      <id>greycos-solver-enterprise</id>
+      <name>Greycos Solver Enterprise Edition</name>
+      <url>https://greycos.jfrog.io/artifactory/releases/</url>
     </repository>
   </repositories>
   ...
@@ -70,8 +70,8 @@ Then create `.m2/settings.xml` in your home directory with the following content
   ...
   <servers>
     <server>
-      <!-- Replace "my_username" and "my_password" with credentials obtained from a Timefold representative. -->
-      <id>timefold-solver-enterprise</id>
+      <!-- Replace "my_username" and "my_password" with credentials obtained from a Greycos representative. -->
+      <id>greycos-solver-enterprise</id>
       <username>my_username</username>
       <password>my_password</password>
     </server>
@@ -93,8 +93,8 @@ Add the following in your `build.gradle`:
 repositories {
   mavenCentral()
   maven {
-    url "https://timefold.jfrog.io/artifactory/releases/"
-    credentials { // Replace "my_username" and "my_password" with credentials obtained from a Timefold representative.
+    url "https://greycos.jfrog.io/artifactory/releases/"
+    credentials { // Replace "my_username" and "my_password" with credentials obtained from a Greycos representative.
         username "my_username"
         password "my_password"
     }
@@ -114,24 +114,24 @@ as shown in the following table:
 |===
 |Community Edition|Enterprise Edition
 
-|`ai.timefold.solver:timefold-solver-bom`
-|`ai.timefold.solver.enterprise:timefold-solver-enterprise-bom`
+|`ai.greycos.solver:greycos-solver-bom`
+|`ai.greycos.solver.enterprise:greycos-solver-enterprise-bom`
 
-|`ai.timefold.solver:timefold-solver-core`
-|`ai.timefold.solver.enterprise:timefold-solver-enterprise-core`
+|`ai.greycos.solver:greycos-solver-core`
+|`ai.greycos.solver.enterprise:greycos-solver-enterprise-core`
 
-|`ai.timefold.solver:timefold-solver-quarkus`
-|`ai.timefold.solver.enterprise:timefold-solver-enterprise-quarkus`
+|`ai.greycos.solver:greycos-solver-quarkus`
+|`ai.greycos.solver.enterprise:greycos-solver-enterprise-quarkus`
 
-|`ai.timefold.solver:timefold-solver-spring-boot-starter`
-|`ai.timefold.solver.enterprise:timefold-solver-enterprise-spring-boot-starter`
+|`ai.greycos.solver:greycos-solver-spring-boot-starter`
+|`ai.greycos.solver.enterprise:greycos-solver-enterprise-spring-boot-starter`
 |===
 
 
 [#enterpriseEditionFeatures]
 == Features of Enterprise Edition
 
-The following features are only available in Timefold Solver Enterprise Edition:
+The following features are only available in Greycos Solver Enterprise Edition:
 
 * <<nearbySelection,Nearby selection>>,
 * <<multithreadedIncrementalSolving,multi-threaded incremental solving>>,
@@ -145,7 +145,7 @@ The following features are only available in Timefold Solver Enterprise Edition:
 
 [NOTE]
 ====
-This feature is a commercial feature of Timefold Solver Enterprise Edition.
+This feature is a commercial feature of Greycos Solver Enterprise Edition.
 It is not available in the Community Edition.
 ====
 
@@ -221,7 +221,7 @@ for the local search:
 [source,xml,options="nowrap"]
 ----
 <?xml version="1.0" encoding="UTF-8"?>
-<solver xmlns="https://timefold.ai/xsd/solver">
+<solver xmlns="https://greycos.ai/xsd/solver">
     ...
     <nearbyDistanceMeterClass>org.acme.vehiclerouting.domain.solver.nearby.CustomerNearbyDistanceMeter</nearbyDistanceMeterClass>
     ...
@@ -296,7 +296,7 @@ for the local search:
 [source,xml,options="nowrap"]
 ----
 <?xml version="1.0" encoding="UTF-8"?>
-<solver xmlns="https://timefold.ai/xsd/solver">
+<solver xmlns="https://greycos.ai/xsd/solver">
     ...
     <nearbyDistanceMeterClass>org.acme.vehiclerouting.domain.solver.nearby.CustomerNearbyDistanceMeter</nearbyDistanceMeterClass>
     ...
@@ -359,7 +359,7 @@ or how likely are the nearest elements to be selected based on their distance fr
 [NOTE]
 ====
 Only tweak the default settings if you are prepared
-to back your choices by extensive xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[benchmarking].
+to back your choices by extensive xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[benchmarking].
 ====
 
 The following ``NearbySelectionDistributionType``s are supported:
@@ -415,19 +415,19 @@ only set the distribution type (so without a `distributionSizeMaximum` parameter
 === Multi-threaded solving
 
 Multi-threaded solving is a term
-which encapsulates several features that allow Timefold Solver to run on multi-core machines.
-Timefold Solver Enterprise Edition makes multi-threaded solving more powerful by introducing
+which encapsulates several features that allow Greycos Solver to run on multi-core machines.
+Greycos Solver Enterprise Edition makes multi-threaded solving more powerful by introducing
 <<multithreadedIncrementalSolving,multi-threaded incremental solving>> and
 <<partitionedSearch,partitioned search>>.
 
-For a primer on multi-threaded solving in general, see xref:using-timefold-solver/running-the-solver.adoc#multithreadedSolving[Multi-threaded solving].
+For a primer on multi-threaded solving in general, see xref:using-greycos-solver/running-the-solver.adoc#multithreadedSolving[Multi-threaded solving].
 
 [#multithreadedIncrementalSolving]
 ==== Multi-threaded incremental solving
 
 [NOTE]
 ====
-This feature is a commercial feature of Timefold Solver Enterprise Edition.
+This feature is a commercial feature of Greycos Solver Enterprise Edition.
 It is not available in the Community Edition.
 ====
 
@@ -463,7 +463,7 @@ to determine the optimal number of move threads for your problem.
 ===== Enabling multi-threaded incremental solving
 
 Enable multi-threaded incremental solving
-by xref:using-timefold-solver/modeling-planning-problems.adoc#planningId[adding a `@PlanningId` annotation]
+by xref:using-greycos-solver/modeling-planning-problems.adoc#planningId[adding a `@PlanningId` annotation]
 on every planning entity class and planning value class.
 Then configure a `moveThreadCount`:
 
@@ -476,7 +476,7 @@ Add the following to your `application.properties`:
 
 [source,properties]
 ----
-quarkus.timefold.solver.move-thread-count=AUTO
+quarkus.greycos.solver.move-thread-count=AUTO
 ----
 --
 Spring::
@@ -486,7 +486,7 @@ Add the following to your `application.properties`:
 
 [source,properties]
 ----
-timefold.solver.move-thread-count=AUTO
+greycos.solver.move-thread-count=AUTO
 ----
 --
 Java::
@@ -507,8 +507,8 @@ XML::
 Add the following to your `solverConfig.xml`:
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
 
     ...
     <moveThreadCount>AUTO</moveThreadCount>
@@ -519,7 +519,7 @@ xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solve
 --
 ====
 
-Setting `moveThreadCount` to `AUTO` allows Timefold Solver to decide how many move threads to run in parallel.
+Setting `moveThreadCount` to `AUTO` allows Greycos Solver to decide how many move threads to run in parallel.
 This formula is based on experience and does not hog all CPU cores on a multi-core machine.
 
 A `moveThreadCount` of `4` xref:integration/integration.adoc#sizingHardwareAndSoftware[saturates almost 5 CPU cores].
@@ -529,7 +529,7 @@ and the solver thread uses most of another CPU core.
 The following ``moveThreadCount``s are supported:
 
 * `NONE` (default): Don't run any move threads. Use the single threaded code.
-* ``AUTO``: Let Timefold Solver decide how many move threads to run in parallel.
+* ``AUTO``: Let Greycos Solver decide how many move threads to run in parallel.
 On machines or containers with little or no CPUs, this falls back to the single threaded code.
 * Static number: The number of move threads to run in parallel.
 
@@ -559,8 +559,8 @@ There are additional parameters you can supply to your `solverConfig.xml`:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
   <moveThreadCount>4</moveThreadCount>
   <threadFactoryClass>...MyAppServerThreadFactory</threadFactoryClass>
   ...
@@ -576,7 +576,7 @@ use `threadFactoryClass` to plug in a <<customThreadFactory,custom thread factor
 
 [NOTE]
 ====
-This feature is a commercial feature of Timefold Solver Enterprise Edition.
+This feature is a commercial feature of Greycos Solver Enterprise Edition.
 It is not available in the Community Edition.
 ====
 
@@ -618,7 +618,7 @@ Simplest configuration:
   </partitionedSearch>
 ----
 
-Also xref:using-timefold-solver/modeling-planning-problems.adoc#planningId[add a `@PlanningId` annotation]
+Also xref:using-greycos-solver/modeling-planning-problems.adoc#planningId[add a `@PlanningId` annotation]
 on every planning entity class and planning value class.
 There are several ways to <<partitioningASolution,partition a solution>>.
 
@@ -643,7 +643,7 @@ plug in a <<customThreadFactory,custom thread factory>>.
 
 [IMPORTANT]
 ====
-A xref:using-timefold-solver/running-the-solver.adoc#logging[logging level] of `debug` or `trace` causes congestion in multi-threaded Partitioned Search
+A xref:using-greycos-solver/running-the-solver.adoc#logging[logging level] of `debug` or `trace` causes congestion in multi-threaded Partitioned Search
 and slows down the xref:constraints-and-score/performance.adoc#moveEvaluationSpeed[move evaluation speed].
 ====
 
@@ -703,8 +703,8 @@ This can be decided dynamically, for example, based on the size of the non-parti
 The `partCount` is unrelated to the `runnablePartThreadLimit`.
 
 To configure values of a `SolutionPartitioner` dynamically in the solver configuration
-(so the xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `solutionPartitionerCustomProperties` element and use xref:using-timefold-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `solutionPartitionerCustomProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
 
 [source,xml,options="nowrap"]
 ----
@@ -723,7 +723,7 @@ add the `solutionPartitionerCustomProperties` element and use xref:using-timefol
 
 When running a multi-threaded solver, such as Partitioned Search, CPU power can quickly become a scarce resource,
 which can cause other processes or threads to hang or freeze.
-However, Timefold Solver has a system to prevent CPU starving of
+However, Greycos Solver has a system to prevent CPU starving of
 other processes (such as an SSH connection in production or your IDE in development)
 or other threads (such as the servlet threads that handle REST requests).
 
@@ -739,7 +739,7 @@ this will probably hang the system.
 
 The `runnablePartThreadLimit` parameter specifies how many part threads are runnable at the same time.
 The other part threads will temporarily block and therefore will not consume any CPU power.
-*This parameter basically specifies how many CPU cores are donated to Timefold Solver.*
+*This parameter basically specifies how many CPU cores are donated to Greycos Solver.*
 All part threads share the CPU cores in a round-robin manner
 to consume (more or less) the same number of CPU cycles:
 
@@ -747,9 +747,9 @@ image::enterprise-edition/partitionedSearchThreading.png[align="center"]
 
 The following `runnablePartThreadLimit` options are supported:
 
-* `UNLIMITED`: Allow Timefold Solver to occupy all CPU cores, do not avoid hogging.
+* `UNLIMITED`: Allow Greycos Solver to occupy all CPU cores, do not avoid hogging.
 Useful if a no hogging CPU policy is configured on the OS level.
-* `AUTO` (default): Let Timefold Solver decide how many CPU cores to occupy. This formula is based on experience.
+* `AUTO` (default): Let Greycos Solver decide how many CPU cores to occupy. This formula is based on experience.
 It does not hog all CPU cores on a multi-core machine.
 * Static number: The number of CPU cores to consume. For example:
 +
@@ -762,7 +762,7 @@ It does not hog all CPU cores on a multi-core machine.
 ====
 If the `runnablePartThreadLimit` is equal to or higher than the number of available processors,
 the host is likely to hang or freeze,
-unless there is an OS specific policy in place to avoid Timefold Solver from hogging all the CPU processors.
+unless there is an OS specific policy in place to avoid Greycos Solver from hogging all the CPU processors.
 ====
 
 
@@ -778,8 +778,8 @@ and the <<partitionedSearch,Partition Search threads>> with it:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
   <threadFactoryClass>...MyAppServerThreadFactory</threadFactoryClass>
   ...
 </solver>
@@ -791,7 +791,7 @@ and the <<partitionedSearch,Partition Search threads>> with it:
 
 [NOTE]
 ====
-This feature is a commercial feature of Timefold Solver Enterprise Edition.
+This feature is a commercial feature of Greycos Solver Enterprise Edition.
 It is not available in the Community Edition.
 ====
 
@@ -820,20 +820,20 @@ Plain Java::
 
 Spring Boot::
 
-Set the property `timefold.solver.constraint-stream-automatic-node-sharing` to `true` in `application.properties`:
+Set the property `greycos.solver.constraint-stream-automatic-node-sharing` to `true` in `application.properties`:
 +
 [source,properties,options="nowrap"]
 ----
-timefold.solver.constraint-stream-automatic-node-sharing=true
+greycos.solver.constraint-stream-automatic-node-sharing=true
 ----
 
 Quarkus::
 
-Set the property `quarkus.timefold.solver.constraint-stream-automatic-node-sharing` to `true` in `application.properties`:
+Set the property `quarkus.greycos.solver.constraint-stream-automatic-node-sharing` to `true` in `application.properties`:
 +
 [source,properties,options="nowrap"]
 ----
-quarkus.timefold.solver.constraint-stream-automatic-node-sharing=true
+quarkus.greycos.solver.constraint-stream-automatic-node-sharing=true
 ----
 ====
 
@@ -992,7 +992,7 @@ From the above, you can see how this feature allows building blocks to share fun
 
 [NOTE]
 ====
-This feature is a commercial feature of Timefold Solver Enterprise Edition.
+This feature is a commercial feature of Greycos Solver Enterprise Edition.
 It is not available in the Community Edition.
 ====
 
@@ -1004,7 +1004,7 @@ To enable event throttling, use `ThrottlingBestSolutionEventConsumer` when start
 [source,java,options="nowrap"]
 ----
 ...
-import ai.timefold.solver.enterprise.core.api.ThrottlingBestSolutionEventConsumer;
+import ai.greycos.solver.enterprise.core.api.ThrottlingBestSolutionEventConsumer;
 import java.time.Duration;
 ...
 
@@ -1053,7 +1053,7 @@ both these consumers will receive the final best solution.
 
 [NOTE]
 ====
-This feature is a commercial feature of Timefold Solver Enterprise Edition.
+This feature is a commercial feature of Greycos Solver Enterprise Edition.
 It is not available in the Community Edition.
 ====
 

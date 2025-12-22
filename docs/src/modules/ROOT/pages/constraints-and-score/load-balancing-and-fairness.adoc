@@ -4,7 +4,7 @@
 :sectnums:
 :icons: font
 
-Load balancing is a common constraint for many Timefold Solver use cases.
+Load balancing is a common constraint for many Greycos Solver use cases.
 Especially when scheduling employees, the workload needs to be spread out fairly;
 there may even be legal requirements to that effect.
 
@@ -133,7 +133,7 @@ This is the definition of fairness we use in the remainder of this section.
 [#fairnessConstraints]
 == Fairness constraints
 
-Timefold Solver supports fairness constraints out of the box
+Greycos Solver supports fairness constraints out of the box
 through the use of xref:constraints-and-score/score-calculation.adoc#constraintStreamsGroupingAndCollectors[grouping]
 and the xref:constraints-and-score/score-calculation.adoc#collectorsLoadBalance[load balancing constraint collector].
 In your `ConstraintProvider` implementation, a load-balancing constraint may look like this:

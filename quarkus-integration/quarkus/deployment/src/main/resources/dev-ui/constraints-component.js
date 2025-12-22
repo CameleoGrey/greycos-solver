@@ -9,7 +9,7 @@ import '@vaadin/grid/vaadin-grid-sort-column.js';
 
 export class ConstraintsComponent extends LitElement {
 
-    jsonRpc = new JsonRpc("Timefold Solver");
+    jsonRpc = new JsonRpc("Greycos Solver");
 
     // Component style
     static styles = css`

@@ -1,0 +1,23 @@
+package ai.greycos.solver.core.impl.neighborhood.stream;
+
+import java.util.List;
+import java.util.Objects;
+
+import ai.greycos.solver.core.preview.api.neighborhood.MoveDefinition;
+import ai.greycos.solver.core.preview.api.neighborhood.Neighborhood;
+
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
+public final class DefaultNeighborhood<Solution_> implements Neighborhood {
+
+  private final List<MoveDefinition<Solution_>> moveDefinitionList;
+
+  public DefaultNeighborhood(List<MoveDefinition<Solution_>> moveDefinitions) {
+    this.moveDefinitionList = Objects.requireNonNull(moveDefinitions);
+  }
+
+  public List<MoveDefinition<Solution_>> getMoveDefinitionList() {
+    return moveDefinitionList;
+  }
+}

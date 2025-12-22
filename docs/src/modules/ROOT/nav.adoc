@@ -6,12 +6,12 @@
 ** xref:quickstart/quarkus/quarkus-quickstart.adoc[leveloffset=+1]
 ** xref:quickstart/spring-boot/spring-boot-quickstart.adoc[leveloffset=+1]
 ** xref:quickstart/quarkus-vehicle-routing/quarkus-vehicle-routing-quickstart.adoc[leveloffset=+1]
-* Using Timefold Solver
-** xref:using-timefold-solver/overview.adoc[leveloffset=+1]
-** xref:using-timefold-solver/configuration.adoc[leveloffset=+1]
-** xref:using-timefold-solver/modeling-planning-problems.adoc[leveloffset=+1]
-** xref:using-timefold-solver/running-the-solver.adoc[leveloffset=+1]
-** xref:using-timefold-solver/benchmarking-and-tweaking.adoc[leveloffset=+1]
+* Using Greycos Solver
+** xref:using-greycos-solver/overview.adoc[leveloffset=+1]
+** xref:using-greycos-solver/configuration.adoc[leveloffset=+1]
+** xref:using-greycos-solver/modeling-planning-problems.adoc[leveloffset=+1]
+** xref:using-greycos-solver/running-the-solver.adoc[leveloffset=+1]
+** xref:using-greycos-solver/benchmarking-and-tweaking.adoc[leveloffset=+1]
 * Constraints and Score
 ** xref:constraints-and-score/overview.adoc[leveloffset=+1]
 ** xref:constraints-and-score/score-calculation.adoc[leveloffset=+1]
@@ -29,10 +29,10 @@
 * xref:integration/integration.adoc[leveloffset=+1]
 * xref:design-patterns/design-patterns.adoc[leveloffset=+1]
 * xref:frequently-asked-questions.adoc[leveloffset=+1]
-* https://github.com/TimefoldAI/timefold-solver/releases[New and noteworthy][leveloffset=+1]
-* Upgrading Timefold Solver
-** xref:upgrading-timefold-solver/overview.adoc[leveloffset=+1]
-** xref:upgrading-timefold-solver/upgrade-to-latest-version.adoc[leveloffset=+1]
-** xref:upgrading-timefold-solver/upgrade-from-optaplanner.adoc[leveloffset=+1]
-** xref:upgrading-timefold-solver/backwards-compatibility.adoc[leveloffset=+1]
+* https://github.com/CameleoGrey/greycos-solver/releases[New and noteworthy][leveloffset=+1]
+* Upgrading Greycos Solver
+** xref:upgrading-greycos-solver/overview.adoc[leveloffset=+1]
+** xref:upgrading-greycos-solver/upgrade-to-latest-version.adoc[leveloffset=+1]
+** xref:upgrading-greycos-solver/upgrade-from-optaplanner.adoc[leveloffset=+1]
+** xref:upgrading-greycos-solver/backwards-compatibility.adoc[leveloffset=+1]
 * xref:enterprise-edition/enterprise-edition.adoc[leveloffset=+1]

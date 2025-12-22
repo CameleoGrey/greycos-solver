@@ -23,7 +23,7 @@ Alternatively, provide clear and concise steps to reproduce the behavior.
 
 ## Environment
 
-**Timefold Solver Version or Git ref**: 
+**Greycos Solver Version or Git ref**: 
 
 **Output of `java -version`:**
 

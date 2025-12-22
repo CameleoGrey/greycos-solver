@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver>
+  <solutionClass>ai.greycos.solver.core.testdomain.TestdataSolution</solutionClass>
+  <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
+
+  <!-- Score configuration -->
+  <scoreDirectorFactory>
+    <incrementalScoreCalculatorClass>ai.greycos.solver.core.testdomain.TestdataIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+  </scoreDirectorFactory>
+</solver>

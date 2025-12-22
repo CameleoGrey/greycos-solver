@@ -92,10 +92,10 @@ data class Timeslot(
 
 
 Because no `Timeslot` instances change during solving, a `Timeslot` is called a _problem fact_.
-Such classes do not require any Timefold Solver specific annotations.
+Such classes do not require any Greycos Solver specific annotations.
 
 Notice the `toString()` method keeps the output short,
-so it is easier to read Timefold Solver's `DEBUG` or `TRACE` log, as shown later.
+so it is easier to read Greycos Solver's `DEBUG` or `TRACE` log, as shown later.
 
 == Room
 
@@ -170,18 +170,18 @@ If a subject is taught multiple times per week by the same teacher to the same s
 there are multiple `Lesson` instances that are only distinguishable by `id`.
 For example, the 9th grade has six math lessons a week.
 
-During solving, Timefold Solver changes the `timeslot` and `room` fields of the `Lesson` class,
+During solving, Greycos Solver changes the `timeslot` and `room` fields of the `Lesson` class,
 to assign each lesson to a time slot and a room.
-Because Timefold Solver changes these fields, `Lesson` is a _planning entity_:
+Because Greycos Solver changes these fields, `Lesson` is a _planning entity_:
 
 image::quickstart/school-timetabling/schoolTimetablingClassDiagramAnnotated.png[]
 
 Most of the fields in the previous diagram contain input data, except for the orange fields:
 A lesson's `timeslot` and `room` fields are unassigned (`null`) in the input data
 and assigned (not `null`) in the output data.
-Timefold Solver changes these fields during solving.
+Greycos Solver changes these fields during solving.
 Such fields are called planning variables.
-In order for Timefold Solver to recognize them,
+In order for Greycos Solver to recognize them,
 both the `timeslot` and `room` fields require an `@PlanningVariable` annotation.
 Their containing class, `Lesson`, requires an `@PlanningEntity` annotation.
 
@@ -196,9 +196,9 @@ Create the `src/main/java/org/acme/schooltimetabling/domain/Lesson.java` class:
 ----
 package org.acme.schooltimetabling.domain;
 
-import ai.timefold.solver.core.api.domain.entity.PlanningEntity;
-import ai.timefold.solver.core.api.domain.lookup.PlanningId;
-import ai.timefold.solver.core.api.domain.variable.PlanningVariable;
+import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
+import ai.greycos.solver.core.api.domain.lookup.PlanningId;
+import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
 
 @PlanningEntity
 public class Lesson {
@@ -282,9 +282,9 @@ Create the `src/main/kotlin/org/acme/schooltimetabling/domain/Lesson.kt` class:
 ----
 package org.acme.schooltimetabling.domain
 
-import ai.timefold.solver.core.api.domain.entity.PlanningEntity
-import ai.timefold.solver.core.api.domain.lookup.PlanningId
-import ai.timefold.solver.core.api.domain.variable.PlanningVariable
+import ai.greycos.solver.core.api.domain.entity.PlanningEntity
+import ai.greycos.solver.core.api.domain.lookup.PlanningId
+import ai.greycos.solver.core.api.domain.variable.PlanningVariable
 
 @PlanningEntity
 data class Lesson (
@@ -300,7 +300,7 @@ data class Lesson (
     @PlanningVariable
     var room: Room? = null
 
-    // No-arg constructor required for Timefold
+    // No-arg constructor required for Greycos
     constructor() : this("0", "", "", "")
 
     override fun toString(): String = "$subject($id)"
@@ -311,13 +311,13 @@ data class Lesson (
 ====
 
 The `Lesson` class has an `@PlanningEntity` annotation,
-so Timefold Solver knows that this class changes during solving
+so Greycos Solver knows that this class changes during solving
 because it contains one or more planning variables.
 
 The `timeslot` field has an `@PlanningVariable` annotation,
-so Timefold Solver knows that it can change its value.
+so Greycos Solver knows that it can change its value.
 In order to find potential `Timeslot` instances to assign to this field,
-Timefold Solver uses the variable type to connect to a xref:using-timefold-solver/modeling-planning-problems.adoc#planningValueRangeProvider[value range provider]
+Greycos Solver uses the variable type to connect to a xref:using-greycos-solver/modeling-planning-problems.adoc#planningValueRangeProvider[value range provider]
 that provides a `List<Timeslot>` to pick from.
 
 The `room` field also has an `@PlanningVariable` annotation, for the same reasons.

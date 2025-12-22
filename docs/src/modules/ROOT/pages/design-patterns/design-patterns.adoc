@@ -8,7 +8,7 @@
 [#designPatternsIntroduction]
 == Design patterns introduction
 
-Timefold Solver design patterns are generic reusable solutions to common challenges in the model or architecture of projects that perform constraint solving. The design patterns in this section list and solve common design challenges.
+Greycos Solver design patterns are generic reusable solutions to common challenges in the model or architecture of projects that perform constraint solving. The design patterns in this section list and solve common design challenges.
 
 [#domainModelingGuide]
 == Domain modeling guidelines
@@ -25,15 +25,15 @@ Follow the guidelines listed in this section to create a well thought-out model 
 One side of these relationships will become a planning variable later on.
 For example, in employee rostering, the `Shift` to `Employee` relationship changes during planning, so it is orange.
 However, other relationships, such as from `Employee` to `Skill`, are immutable during planning
-because Timefold Solver cannot assign an extra skill to an employee.
+because Greycos Solver cannot assign an extra skill to an employee.
 
-. *If there are multiple relationships (or fields), check for xref:using-timefold-solver/modeling-planning-problems.adoc#shadowVariable[shadow variables]*.
+. *If there are multiple relationships (or fields), check for xref:using-greycos-solver/modeling-planning-problems.adoc#shadowVariable[shadow variables]*.
 A shadow variable changes during planning, but its value can be calculated based on one or more genuine planning variables, without dispute. Color shadow relationships (or fields) purple.
 +
 [NOTE]
 ====
 Only one side of a bi-directional relationship can be a genuine planning variable.
-The other side will become an xref:using-timefold-solver/modeling-planning-problems.adoc#bidirectionalVariable[inverse relation shadow variable] later on.
+The other side will become an xref:using-greycos-solver/modeling-planning-problems.adoc#bidirectionalVariable[inverse relation shadow variable] later on.
 Keep bi-directional relationships orange.
 ====
 
@@ -52,8 +52,8 @@ image::design-patterns/employeeShiftRosteringModelingGuideA.png[align="center"]
 +
 [NOTE]
 ====
-Timefold Solver does not currently support a `@PlanningVariable` annotation on a collection.
-xref:using-timefold-solver/modeling-planning-problems.adoc#planningListVariable[Planning list variable] is not a means of achieving a many-to-one relationship;
+Greycos Solver does not currently support a `@PlanningVariable` annotation on a collection.
+xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[Planning list variable] is not a means of achieving a many-to-one relationship;
 it serves to indicate that these values happen in a sequence one after another.
 ====
 
@@ -77,7 +77,7 @@ as well as the problem property `indexInShift` which is an `int` class.
 
 . *Choose the model in which the number of planning entities is fixed during planning*.
 For example, in the employee rostering,
-it is impossible to know in advance how many shifts each employee will have before Timefold Solver solves the model
+it is impossible to know in advance how many shifts each employee will have before Greycos Solver solves the model
 and the results can differ for each solution found.
 On the other hand, the number of employees per shift is known in advance,
 so it is better to make the `Shift` relationship a problem property
@@ -188,24 +188,24 @@ a vehicle drives from customer to customer (thus it handles one customer at a ti
 The focus in this pattern is on deciding the order of a set of elements instead of assigning them to a specific date and time.
 However, the time coordinate of each element can be deduced from its position in the sequence.
 If the elements’ position on time axis affects the score,
-use a xref:using-timefold-solver/modeling-planning-problems.adoc#shadowVariable[shadow variable] to calculate the time.
+use a xref:using-greycos-solver/modeling-planning-problems.adoc#shadowVariable[shadow variable] to calculate the time.
 
-This pattern is implemented using either the xref:using-timefold-solver/modeling-planning-problems.adoc#chainedPlanningVariable[chained planning variable]
-or the xref:using-timefold-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable].
-The two modeling approaches are equivalent because they both allow Timefold Solver to order elements in sequences of variable lengths.
+This pattern is implemented using either the xref:using-greycos-solver/modeling-planning-problems.adoc#chainedPlanningVariable[chained planning variable]
+or the xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable].
+The two modeling approaches are equivalent because they both allow Greycos Solver to order elements in sequences of variable lengths.
 The planning list variable is easier to use than the chained planning variable,
 but it does not yet support all the advanced planning techniques.
 
 [#chainedThroughTimePatternChainedVariable]
 ==== Chained through time pattern using chained planning variable
 
-Using the xref:using-timefold-solver/modeling-planning-problems.adoc#chainedPlanningVariable[chained planning variable], planning entities are arranged in a recursive data structure, forming a chain, that ends with an anchor.
+Using the xref:using-greycos-solver/modeling-planning-problems.adoc#chainedPlanningVariable[chained planning variable], planning entities are arranged in a recursive data structure, forming a chain, that ends with an anchor.
 
 The anchor determines the starting time of its first planning entity.
 The second entity's starting time is calculated based on the starting time and duration of the first entity.
 For example, in task assignment, Beth (the anchor) starts working at 8:00, thus her first task starts at 8:00.
 It lasts 52 minutes, therefore her second task starts at 8:52.
-The starting time of an entity is usually a xref:using-timefold-solver/modeling-planning-problems.adoc#shadowVariable[shadow variable].
+The starting time of an entity is usually a xref:using-greycos-solver/modeling-planning-problems.adoc#shadowVariable[shadow variable].
 
 An anchor has only one chain.
 Although it is possible to split up the anchor into two separate anchors, for example split up Beth into Beth's left hand and Beth's right hand (because she can do two tasks at the same time), this model makes pooling resources difficult.
@@ -214,13 +214,13 @@ Consequently, using this model in the exam scheduling example to allow two or mo
 [#chainedThroughTimePatternListVariable]
 ==== Chained through time pattern using planning list variable
 
-Timefold Solver distributes planning values into planning entities’ xref:using-timefold-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable].
+Greycos Solver distributes planning values into planning entities’ xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable].
 
 The planning entity determines the starting time of the first element in its planning list variable.
 The second element's starting time is calculated based on the starting time and duration of the first element.
 For example, in task assignment, Beth (the entity) starts working at 8:00, thus her first task starts at 8:00.
 It lasts 52 minutes, therefore her second task starts at 8:52.
-The starting time of an element is usually a xref:using-timefold-solver/modeling-planning-problems.adoc#shadowVariable[shadow variable].
+The starting time of an element is usually a xref:using-greycos-solver/modeling-planning-problems.adoc#shadowVariable[shadow variable].
 
 [#chainedThroughTimePatternGaps]
 ==== Chained through time pattern: creating gaps
@@ -250,7 +250,7 @@ if those two customers ordered from the same restaurant around the same time and
 
 image::design-patterns/chainedThroughTimeAutomaticCollapse.png[align="center"]
 
-Implement the automatic collapse in the xref:using-timefold-solver/modeling-planning-problems.adoc#customVariableListener[custom variable listener]
+Implement the automatic collapse in the xref:using-greycos-solver/modeling-planning-problems.adoc#customVariableListener[custom variable listener]
 that calculates the start and end times of each task.
 
 
@@ -266,7 +266,7 @@ For example when assembling furniture, assembling a bed is a two-person job.
 
 image::design-patterns/chainedThroughTimeAutomaticDelayUntilLast.png[align="center"]
 
-Implement the automatic delay in the xref:using-timefold-solver/modeling-planning-problems.adoc#customVariableListener[custom variable listener]
+Implement the automatic delay in the xref:using-greycos-solver/modeling-planning-problems.adoc#customVariableListener[custom variable listener]
 that calculates the arrival, start and end times of each task.
 *Separate the arrival time from the start time.*
 Additionally, add loop detection to avoid an infinite loop:
@@ -291,7 +291,7 @@ such as minimize travel time between task locations.
 [#cloudArchitecturePatterns]
 == Cloud architecture patterns
 
-There are two common usage patterns of Timefold Solver in the cloud:
+There are two common usage patterns of Greycos Solver in the cloud:
 
 * *Batch planning*:
 Typically runs at night for hours to solve each tenant's dataset

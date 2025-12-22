@@ -4,17 +4,17 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>ai.timefold.solver</groupId>
-    <artifactId>timefold-solver-parent</artifactId>
+    <groupId>ai.greycos.solver</groupId>
+    <artifactId>greycos-solver-parent</artifactId>
     <version>999-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>timefold-solver-build-parent</artifactId>
+  <artifactId>greycos-solver-build-parent</artifactId>
   <packaging>pom</packaging>
 
-  <name>Timefold Solver build parent</name>
-  <url>https://solver.timefold.ai</url>
+  <name>Greycos Solver build parent</name>
+  <url>https://solver.greycos.ai</url>
 
   <properties>
     <!-- ************************************************************************ -->
@@ -68,7 +68,7 @@
     <jacoco.agent.argLine/>
     <enforcer.failOnDuplicatedClasses>true</enforcer.failOnDuplicatedClasses>
     <!-- Latest release to be used by api-compatibility-check to check backwards compatibility of the API. -->
-    <revapi.oldTimefoldVersion>0.9.38</revapi.oldTimefoldVersion>
+    <revapi.oldGreycosVersion>0.9.38</revapi.oldGreycosVersion>
     <!--suppress UnresolvedMavenProperty-->
     <project.root.dir>${maven.multiModuleProjectDirectory}</project.root.dir>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -82,8 +82,8 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>ai.timefold.solver</groupId>
-        <artifactId>timefold-solver-bom</artifactId>
+        <groupId>ai.greycos.solver</groupId>
+        <artifactId>greycos-solver-bom</artifactId>
         <version>${project.version}</version>
         <type>pom</type>
         <scope>import</scope>
@@ -332,7 +332,7 @@
           <configuration>
             <checkDependencies>false</checkDependencies>
             <oldArtifacts>
-              <artifact>${project.groupId}:${project.artifactId}:${revapi.oldTimefoldVersion}</artifact>
+              <artifact>${project.groupId}:${project.artifactId}:${revapi.oldGreycosVersion}</artifact>
             </oldArtifacts>
             <newArtifacts>
               <artifact>${project.groupId}:${project.artifactId}:${project.version}</artifact>
@@ -473,8 +473,8 @@
           <version>${version.spotless.plugin}</version>
           <dependencies>
             <dependency>
-              <groupId>ai.timefold.solver</groupId>
-              <artifactId>timefold-solver-ide-config</artifactId>
+              <groupId>ai.greycos.solver</groupId>
+              <artifactId>greycos-solver-ide-config</artifactId>
               <version>${project.version}</version>
             </dependency>
           </dependencies>
@@ -488,9 +488,8 @@
               <configuration>
                 <skip>${spotless.skip}</skip>
                 <java>
-                  <eclipse>
-                    <file>eclipse-format.xml</file>
-                  </eclipse>
+                  <googleJavaFormat>
+                  </googleJavaFormat>
                   <importOrder>
                     <file>eclipse.importorder</file>
                   </importOrder>
@@ -524,11 +523,11 @@
             <outputDirectory>${project.build.outputDirectory}</outputDirectory>
             <transformSchemas>
               <transformSchema>
-                <uri>https://timefold.ai/xsd/solver</uri>
+                <uri>https://greycos.ai/xsd/solver</uri>
                 <toFile>solver.xsd</toFile>
               </transformSchema>
               <transformSchema>
-                <uri>https://timefold.ai/xsd/benchmark</uri>
+                <uri>https://greycos.ai/xsd/benchmark</uri>
                 <toFile>${schema.filename.benchmark}</toFile>
               </transformSchema>
             </transformSchemas>

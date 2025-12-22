@@ -1,0 +1,267 @@
+package ai.greycos.solver.core.impl.score.director.stream;
+
+import java.util.ArrayList;
+import java.util.Map;
+
+import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
+import ai.greycos.solver.core.api.score.constraint.Indictment;
+import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.domain.variable.declarative.ConsistencyTracker;
+import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.domain.variable.descriptor.VariableDescriptor;
+import ai.greycos.solver.core.impl.score.director.AbstractScoreDirector;
+import ai.greycos.solver.core.impl.score.director.InnerScore;
+import ai.greycos.solver.core.impl.score.stream.bavet.BavetConstraintSession;
+
+import org.jspecify.annotations.NullMarked;
+
+/**
+ * FP streams implementation of {@link ScoreDirector}, which only recalculates the {@link Score} of
+ * the part of the {@link PlanningSolution working solution} that changed, instead of the going
+ * through the entire {@link PlanningSolution}. This is incremental calculation, which is fast.
+ *
+ * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
+ * @see ScoreDirector
+ */
+public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends Score<Score_>>
+    extends AbstractScoreDirector<
+        Solution_, Score_, BavetConstraintStreamScoreDirectorFactory<Solution_, Score_>> {
+
+  private final boolean derived;
+  private BavetConstraintSession<Score_> session;
+
+  private BavetConstraintStreamScoreDirector(Builder<Solution_, Score_> builder, boolean derived) {
+    super(builder);
+    this.derived = derived;
+  }
+
+  // ************************************************************************
+  // Complex methods
+  // ************************************************************************
+
+  /**
+   * The function is exclusively available for the Bavet score director, and its use must be
+   * approached with caution. The primary purpose of this method is to enable the {@code
+   * ConstraintVerifier} to ignore events related to shadow variables when testing constraints that
+   * do not rely on them.
+   *
+   * @see AbstractScoreDirector#clearVariableListenerEvents()
+   */
+  public void clearShadowVariablesListenerQueue() {
+    clearVariableListenerEvents();
+  }
+
+  /**
+   * The function is exclusively available for the Bavet score director, and its use must be
+   * approached with caution. The primary purpose of this method is to enable the {@code
+   * ConstraintVerifier} to update the consistency status of entities in the solution without
+   * updating shadows.
+   *
+   * <p>This must be done before setWorkingSolutionWithoutUpdatingShadows, which inserts the
+   * entities.
+   */
+  public void updateConsistencyFromSolution(Solution_ solution) {
+    var solutionDescriptor = getSolutionDescriptor();
+    var entityList = new ArrayList<>();
+    solutionDescriptor.visitAllEntities(solution, entityList::add);
+    variableListenerSupport.setConsistencyTracker(
+        ConsistencyTracker.frozen(getSolutionDescriptor(), entityList.toArray()));
+  }
+
+  @Override
+  public void setWorkingSolutionWithoutUpdatingShadows(Solution_ workingSolution) {
+    session =
+        scoreDirectorFactory.newSession(
+            workingSolution,
+            variableListenerSupport.getConsistencyTracker(),
+            constraintMatchPolicy,
+            derived);
+    super.setWorkingSolutionWithoutUpdatingShadows(workingSolution, session::insert);
+  }
+
+  @Override
+  protected void afterSetWorkingSolution() {
+    // Settle the node network to calculate precomputes
+    // This is required so precomputes are not considered by terminations
+    session.settle();
+  }
+
+  @Override
+  public InnerScore<Score_> calculateScore() {
+    variableListenerSupport.assertNotificationQueuesAreEmpty();
+    var score = session.calculateScore();
+    setCalculatedScore(score);
+    return new InnerScore<>(score, -getWorkingInitScore());
+  }
+
+  @Override
+  public Map<String, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap() {
+    if (!constraintMatchPolicy.isEnabled()) {
+      throw new IllegalStateException(
+          "When constraint matching is disabled, this method should not be called.");
+    } else if (workingSolution == null) {
+      throw new IllegalStateException(
+          "The method setWorkingSolution() must be called before the method getConstraintMatchTotalMap().");
+    }
+    return session.getConstraintMatchTotalMap();
+  }
+
+  @Override
+  public Map<Object, Indictment<Score_>> getIndictmentMap() {
+    if (!constraintMatchPolicy.isJustificationEnabled()) {
+      throw new IllegalStateException(
+          "When constraint matching with justifications is disabled, this method should not be called.");
+    } else if (workingSolution == null) {
+      throw new IllegalStateException(
+          "The method setWorkingSolution() must be called before the method getIndictmentMap().");
+    }
+    return session.getIndictmentMap();
+  }
+
+  @Override
+  public boolean requiresFlushing() {
+    return true; // Tuple refresh happens during score calculation.
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    if (session != null) {
+      session = null;
+    }
+  }
+
+  // ************************************************************************
+  // Entity/variable add/change/remove methods
+  // ************************************************************************
+
+  // public void beforeEntityAdded(EntityDescriptor entityDescriptor, Object entity) // Do nothing
+
+  @Override
+  public void afterEntityAdded(EntityDescriptor<Solution_> entityDescriptor, Object entity) {
+    if (entity == null) {
+      throw new IllegalArgumentException(
+          "The entity (%s) cannot be added to the ScoreDirector.".formatted(entity));
+    }
+    if (!getSolutionDescriptor().hasEntityDescriptor(entity.getClass())) {
+      throw new IllegalArgumentException(
+          "The entity (%s) of class (%s) is not a configured @%s."
+              .formatted(entity, entity.getClass(), PlanningEntity.class.getSimpleName()));
+    }
+    session.insert(entity);
+    super.afterEntityAdded(entityDescriptor, entity);
+  }
+
+  // public void beforeVariableChanged(VariableDescriptor variableDescriptor, Object entity) // Do
+  // nothing
+
+  @Override
+  public void afterVariableChanged(
+      VariableDescriptor<Solution_> variableDescriptor, Object entity) {
+    session.update(entity);
+    super.afterVariableChanged(variableDescriptor, entity);
+  }
+
+  @Override
+  public void afterListVariableChanged(
+      ListVariableDescriptor<Solution_> variableDescriptor,
+      Object entity,
+      int fromIndex,
+      int toIndex) {
+    session.update(entity);
+    super.afterListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
+  }
+
+  // public void beforeEntityRemoved(EntityDescriptor entityDescriptor, Object entity) // Do nothing
+
+  @Override
+  public void afterEntityRemoved(EntityDescriptor<Solution_> entityDescriptor, Object entity) {
+    session.retract(entity);
+    super.afterEntityRemoved(entityDescriptor, entity);
+  }
+
+  // ************************************************************************
+  // Problem fact add/change/remove methods
+  // ************************************************************************
+
+  // public void beforeProblemFactAdded(Object problemFact) // Do nothing
+
+  @Override
+  public void afterProblemFactAdded(Object problemFact) {
+    if (problemFact == null) {
+      throw new IllegalArgumentException(
+          "The problemFact (%s) cannot be added to the ScoreDirector.".formatted(problemFact));
+    }
+    session.insert(problemFact);
+    super.afterProblemFactAdded(problemFact);
+  }
+
+  @Override
+  public void beforeProblemPropertyChanged(Object problemFactOrEntity) {
+    // Since this is called when a fact (not a variable) changes,
+    // we need to retract and reinsert to update cached static data
+    super.beforeProblemPropertyChanged(problemFactOrEntity);
+    session.retract(problemFactOrEntity);
+  }
+
+  @Override
+  public void afterProblemPropertyChanged(Object problemFactOrEntity) {
+    session.insert(problemFactOrEntity);
+    super.afterProblemPropertyChanged(problemFactOrEntity);
+  }
+
+  // public void beforeProblemFactRemoved(Object problemFact) // Do nothing
+
+  @Override
+  public void afterProblemFactRemoved(Object problemFact) {
+    session.retract(problemFact);
+    super.afterProblemFactRemoved(problemFact);
+  }
+
+  /**
+   * Exposed for debugging purposes, so that we can hook into it from tests and while reproducing
+   * issues.
+   *
+   * @return null before first {@link #setWorkingSolutionWithoutUpdatingShadows(Object)} or after
+   *     {@link #close()}.
+   */
+  @SuppressWarnings("unused")
+  public BavetConstraintSession<Score_> getSession() {
+    return session;
+  }
+
+  @Override
+  public boolean isDerived() {
+    return derived;
+  }
+
+  @NullMarked
+  public static final class Builder<Solution_, Score_ extends Score<Score_>>
+      extends AbstractScoreDirectorBuilder<
+          Solution_,
+          Score_,
+          BavetConstraintStreamScoreDirectorFactory<Solution_, Score_>,
+          Builder<Solution_, Score_>> {
+
+    public Builder(
+        BavetConstraintStreamScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory) {
+      super(scoreDirectorFactory);
+    }
+
+    @Override
+    public BavetConstraintStreamScoreDirector<Solution_, Score_> build() {
+      return new BavetConstraintStreamScoreDirector<>(this, false);
+    }
+
+    @Override
+    public AbstractScoreDirector<
+            Solution_, Score_, BavetConstraintStreamScoreDirectorFactory<Solution_, Score_>>
+        buildDerived() {
+      return new BavetConstraintStreamScoreDirector<>(this, true);
+    }
+  }
+}

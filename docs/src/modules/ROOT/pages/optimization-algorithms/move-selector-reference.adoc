@@ -62,7 +62,7 @@ The following `MoveSelector` implementations are available out of the box:
 == Move selectors for basic variables
 
 These moves are applicable to planning variables that aren’t part of a list or a chain,
-also called xref:using-timefold-solver/modeling-planning-problems.adoc#planningVariable[basic variables].
+also called xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariable[basic variables].
 
 [#changeMoveSelector]
 === `ChangeMoveSelector`
@@ -109,7 +109,7 @@ Of course, normally it is unioned with other, more coarse grained move selectors
 ====
 
 This move selector only supports xref:optimization-algorithms/overview.adoc#cacheType[phase or solver caching] 
-if it doesn't apply on a xref:using-timefold-solver/modeling-planning-problems.adoc#chainedPlanningVariable[chained] variable.
+if it doesn't apply on a xref:using-greycos-solver/modeling-planning-problems.adoc#chainedPlanningVariable[chained] variable.
 
 
 [#swapMoveSelector]
@@ -161,7 +161,7 @@ The `secondaryEntitySelector` is rarely needed: if it is not specified, entities
 If one or more `variableNameInclude` properties are specified, not all planning variables will be swapped, but only those specified.
 
 This move selector only supports xref:optimization-algorithms/overview.adoc#cacheType[phase or solver caching]
-if it doesn't apply on any xref:using-timefold-solver/modeling-planning-problems.adoc#chainedPlanningVariable[chained] variables.
+if it doesn't apply on any xref:using-greycos-solver/modeling-planning-problems.adoc#chainedPlanningVariable[chained] variables.
 
 [#pillarMoveSelectors]
 === Pillar-based move selectors
@@ -334,7 +334,7 @@ Also, the size of the sub-pillars is limited in length of up to 1000 entities.
 The `RuinRecreateMove` selects a subset of entities and sets their values to null,
 effectively unassigning them.
 Then it runs a construction heuristic to assign them again.
-If xref:using-timefold-solver/modeling-planning-problems.adoc#planningVariableAllowingUnassigned[unassigned values] are allowed,
+If xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariableAllowingUnassigned[unassigned values] are allowed,
 it may leave them unassigned.
 
 This coarse-grained move is useful to help the solver to escape from a local optimum.
@@ -363,7 +363,7 @@ To enable it, add the following to the `localSearch` section of the solver confi
 ====
 The default values have been determined by extensive benchmarking.
 That said, the optimal values may vary depending on the problem, available solving time, and dataset at hand.
-We recommend that you xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[experiment with these values]
+We recommend that you xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[experiment with these values]
 to find the best fit for your problem.
 ====
 
@@ -430,7 +430,7 @@ As always, benchmarking is recommended to find the optimal value for your use ca
 
 [NOTE]
 ====
-This feature is a commercial feature of Timefold Solver Enterprise Edition.
+This feature is a commercial feature of Greycos Solver Enterprise Edition.
 It is not available in the Community Edition.
 ====
 
@@ -481,7 +481,7 @@ public class MyStageProvider implements BasicVariableStageProvider<Schedule, Shi
 [#listMoveSelectors]
 == Move selectors for list variables
 
-These moves are applicable to xref:using-timefold-solver/modeling-planning-problems.adoc#planningListVariable[list planning variables].
+These moves are applicable to xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[list planning variables].
 
 [#listChangeMoveSelector]
 === `ListChangeMoveSelector`
@@ -625,7 +625,7 @@ Advanced configuration:
 
 The `ListRuinRecreateMove` selects a subset of values, and removes them from their list variables.
 Then it runs a construction heuristic to assign them again.
-If xref:using-timefold-solver/modeling-planning-problems.adoc#planningListVariableAllowingUnassigned[unassigned values] are allowed,
+If xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariableAllowingUnassigned[unassigned values] are allowed,
 it may leave them unassigned.
 
 This coarse-grained move is useful to help the solver to escape from a local optimum.
@@ -654,7 +654,7 @@ To enable it, add the following to the `localSearch` section of the solver confi
 ====
 The default values have been determined by extensive benchmarking.
 That said, the optimal values may vary depending on the problem, available solving time, and dataset at hand.
-We recommend that you xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[experiment with these values]
+We recommend that you xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[experiment with these values]
 to find the best fit for your problem.
 ====
 
@@ -709,7 +709,7 @@ As always, benchmarking is recommended to find the optimal value for your use ca
 
 [NOTE]
 ====
-This feature is a commercial feature of Timefold Solver Enterprise Edition.
+This feature is a commercial feature of Greycos Solver Enterprise Edition.
 It is not available in the Community Edition.
 ====
 
@@ -758,7 +758,7 @@ public class MyStageProvider implements ListVariableStageProvider<RoutePlan, Veh
 [#chainMoveSelectors]
 == Move selectors for chained variables
 
-These moves are applicable to xref:using-timefold-solver/modeling-planning-problems.adoc#chainedPlanningVariable[chained planning variable].
+These moves are applicable to xref:using-greycos-solver/modeling-planning-problems.adoc#chainedPlanningVariable[chained planning variable].
 
 [#tailChainSwapMoveSelector]
 === `TailChainSwapMoveSelector` or 2-opt

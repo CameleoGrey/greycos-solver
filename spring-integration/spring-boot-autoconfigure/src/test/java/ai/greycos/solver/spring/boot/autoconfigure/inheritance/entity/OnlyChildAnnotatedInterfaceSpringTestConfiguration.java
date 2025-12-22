@@ -1,0 +1,15 @@
+package ai.greycos.solver.spring.boot.autoconfigure.inheritance.entity;
+
+import ai.greycos.solver.core.testconstraint.DummyConstraintProvider;
+import ai.greycos.solver.core.testdomain.inheritance.entity.single.basenot.interfaces.TestdataBaseNotAnnotatedInterfaceSolution;
+
+import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@AutoConfigurationPackage(
+    basePackageClasses = {
+      TestdataBaseNotAnnotatedInterfaceSolution.class,
+      DummyConstraintProvider.class
+    })
+public class OnlyChildAnnotatedInterfaceSpringTestConfiguration {}

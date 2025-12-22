@@ -1,0 +1,30 @@
+<plannerBenchmark>
+  <benchmarkDirectory>target/benchmarkTest</benchmarkDirectory>
+  <warmUpSecondsSpentLimit>0</warmUpSecondsSpentLimit>
+  <solverBenchmark>
+    <name>Entity Tabu Search</name>
+    <solver>
+      <solutionClass>ai.greycos.solver.core.testdomain.TestdataSolution</solutionClass>
+      <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
+      <scoreDirectorFactory>
+        <constraintProviderClass>ai.greycos.solver.core.testdomain.TestdataConstraintProvider</constraintProviderClass>
+      </scoreDirectorFactory>
+      <termination>
+        <secondsSpentLimit>0</secondsSpentLimit>
+      </termination>
+      <constructionHeuristic>
+        <constructionHeuristicType>FIRST_FIT_DECREASING</constructionHeuristicType>
+      </constructionHeuristic>
+      <localSearch>
+        <changeMoveSelector>
+          <selectionOrder>ORIGINAL</selectionOrder>
+        </changeMoveSelector>
+        <acceptor>
+          <entityTabuSize>5</entityTabuSize>
+        </acceptor>
+        <forager/>
+      </localSearch>
+    </solver>
+    <subSingleCount>2</subSingleCount>
+  </solverBenchmark>
+</plannerBenchmark>

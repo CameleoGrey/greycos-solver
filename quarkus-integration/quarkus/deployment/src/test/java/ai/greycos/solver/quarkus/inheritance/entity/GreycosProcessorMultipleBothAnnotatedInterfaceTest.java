@@ -1,0 +1,48 @@
+package ai.greycos.solver.quarkus.inheritance.entity;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.interfaces.childtoo.TestMultipleBothAnnotatedInterfaceConstraintProvider;
+import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.interfaces.childtoo.TestdataMultipleBothAnnotatedInterfaceChildEntity;
+import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.interfaces.childtoo.TestdataMultipleBothAnnotatedInterfaceSolution;
+
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.quarkus.test.QuarkusUnitTest;
+
+class GreycosProcessorMultipleBothAnnotatedInterfaceTest {
+
+  @RegisterExtension
+  static final QuarkusUnitTest config =
+      new QuarkusUnitTest()
+          .setArchiveProducer(
+              () ->
+                  ShrinkWrap.create(JavaArchive.class)
+                      .addClasses(
+                          TestMultipleBothAnnotatedInterfaceConstraintProvider.class,
+                          TestdataMultipleBothAnnotatedInterfaceSolution.class,
+                          TestdataMultipleBothAnnotatedInterfaceChildEntity.class))
+          .assertException(
+              exception -> {
+                assertEquals(IllegalStateException.class, exception.getClass());
+                assertTrue(
+                    exception
+                        .getMessage()
+                        .contains(
+                            "Remove either the entity classes or entity interfaces from the inheritance chain to create a single-level inheritance structure"));
+              });
+
+  /**
+   * This test validates the behavior of the solver when both classes are annotated with
+   * {@code @PlanningEntity}, multiple inheritance is used, and the base entity is an interface.
+   */
+  @Test
+  void testMultipleBothClassesAnnotatedBaseIsInterface() {
+    fail("The build should fail");
+  }
+}

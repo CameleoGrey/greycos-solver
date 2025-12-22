@@ -1,8 +1,8 @@
-= Timefold Solver User Guide
-The Timefold Team <https://timefold.ai/company/about/>
+= Greycos Solver User Guide
+The Greycos Team <https://greycos.ai/company/about/>
 :doctype: book
 :imagesdir: .
-:title-logo-image: image:shared/timefold-logo.png[align="center"]
+:title-logo-image: image:shared/greycos-logo.png[align="center"]
 :toc: left
 :toclevels: 3
 :sectnums:
@@ -18,18 +18,18 @@ The Timefold Team <https://timefold.ai/company/about/>
 
 // PDF uses :title-logo-image: on first page, no need to repeat image later on
 ifndef::backend-pdf[]
-image::shared/timefold-logo.png[align="center"]
+image::shared/greycos-logo.png[align="center"]
 endif::[]
 
 include::introduction.adoc[leveloffset=+1]
 include::quickstart/.quickstart.adoc[leveloffset=+1]
 include::planning-ai-concepts.adoc[leveloffset=+1]
-include::using-timefold-solver/.using-timefold-solver.adoc[leveloffset=+1]
+include::using-greycos-solver/.using-greycos-solver.adoc[leveloffset=+1]
 include::constraints-and-score/.constraints-and-score.adoc[leveloffset=+1]
 include::optimization-algorithms/.optimization-algorithms.adoc[leveloffset=+1]
 include::responding-to-change/responding-to-change.adoc[leveloffset=+1]
 include::integration/integration.adoc[leveloffset=+1]
 include::design-patterns/design-patterns.adoc[leveloffset=+1]
 include::frequently-asked-questions.adoc[leveloffset=+1]
-include::upgrading-timefold-solver/.upgrading-timefold-solver.adoc[leveloffset=+1]
+include::upgrading-greycos-solver/.upgrading-greycos-solver.adoc[leveloffset=+1]
 include::enterprise-edition/enterprise-edition.adoc[leveloffset=+1]

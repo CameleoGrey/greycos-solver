@@ -1,13 +1,13 @@
 # This file is a template that will be filled with real values.
 # During a release, Maven substitutes the properties and stores result into target/antora.yml.
 # That file is then copied to src/modules/antora.yml and committed to Git on the release branch.
-# The timefold.ai website can then be refreshed from the release branch and/or tag.
-name: timefold-solver
-title: Timefold Solver ${project.version}
+# The greycos.ai website can then be refreshed from the release branch and/or tag.
+name: greycos-solver
+title: Greycos Solver ${project.version}
 version: latest
 asciidoc:
   attributes:
-    timefold-solver-version: ${project.version}
+    greycos-solver-version: ${project.version}
     java-version: ${maven.compiler.release}
     maven-version: ${maven.min.version}
     quarkus-version: ${version.io.quarkus}

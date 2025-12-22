@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver>
+  <!-- Using these classnames doesn't work because the className still differs from class.getName()-->
+  <!--<solutionClass>divertThroughClassLoader.ai.greycos.solver.core.impl.testdata.testdomain.TestdataSolution</solutionClass>-->
+  <!--<entityClass>divertThroughClassLoader.ai.greycos.solver.core.impl.testdata.testdomain.TestdataEntity</entityClass>-->
+  <solutionClass>ai.greycos.solver.core.testdomain.TestdataSolution</solutionClass>
+  <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
+
+  <!-- Score configuration -->
+  <scoreDirectorFactory>
+    <easyScoreCalculatorClass>ai.greycos.solver.core.testdomain.TestdataEasyScoreCalculator</easyScoreCalculatorClass>
+  </scoreDirectorFactory>
+</solver>

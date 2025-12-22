@@ -1989,7 +1989,7 @@
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <dc:language>en</dc:language>
         <cc:license
-           rdf:resource="https://timefold.ai/license" />
+           rdf:resource="https://greycos.ai/license" />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -2563,7 +2563,7 @@
        id="Layer_1-2"
        transform="matrix(0.10344828,0,0,0.10344828,290,359.31034)"
        style="display:inline;stroke-width:9.66667"
-       inkscape:label="Timefold logomark">
+       inkscape:label="Greycos logomark">
       <path
          d="M 208,100 V 0 H 100 V 100 H 36.4 L 0,200 h 100 v 200 h 113.4 c 21.02,0 39.8,-13.15 46.98,-32.9 l 21.86,-60.06 c 0,0 2.58,-7.04 10.06,-7.04 H 450.8 L 487.2,200 H 356.21 c -21.02,0 -39.8,13.15 -46.98,32.9 l -21.86,60.05 c 0,0 -2.57,7.05 -10.06,7.05 H 208 V 200 h 78.2 c 21.02,0 39.8,-13.15 46.98,-32.9 l 21.86,-60.06 c 0,0 2.58,-7.04 10.06,-7.04 H 543.6 L 580,0 H 429.01 c -21.02,0 -39.8,13.15 -46.98,32.9 l -21.86,60.05 c 0,0 -2.57,7.05 -10.06,7.05 h -142.1 z"
          id="path2612"

@@ -536,7 +536,7 @@
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <dc:language>en</dc:language>
         <cc:license
-           rdf:resource="https://timefold.ai/license" />
+           rdf:resource="https://greycos.ai/license" />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -1755,7 +1755,7 @@
            width="720"
            id="rect4208" /></flowRegion><flowPara
          id="flowPara4210"
-         style="font-size:15px;line-height:1.25">Timefold versus traditional algorithm with domain knowledge</flowPara></flowRoot>
+         style="font-size:15px;line-height:1.25">Greycos versus traditional algorithm with domain knowledge</flowPara></flowRoot>
     <flowRoot
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0.01%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans, Normal';text-align:start;writing-mode:lr-tb;text-anchor:start;display:inline;fill:#ce5c00;fill-opacity:1;stroke:none"
        id="flowRoot4272"
@@ -1937,7 +1937,7 @@
            y="-54.35762"
            style="font-size:15px;text-align:start;text-anchor:start;fill:#888a85" /></flowRegion><flowPara
          id="flowPara4378"
-         style="font-size:15px;line-height:1.25">Timefold versus arbitrary feasible assignments</flowPara></flowRoot>
+         style="font-size:15px;line-height:1.25">Greycos versus arbitrary feasible assignments</flowPara></flowRoot>
     <flowRoot
        transform="translate(-32.626219,482.98023)"
        xml:space="preserve"
@@ -1979,6 +1979,6 @@
            width="740"
            id="rect3761" /></flowRegion><flowPara
          id="flowPara3763"
-         style="font-size:12.5px;line-height:1.25;text-align:center;text-anchor:middle;fill:#555753">Don't believe us? Run our open benchmarks yourself: https://timefold.ai/benchmarks</flowPara></flowRoot>
+         style="font-size:12.5px;line-height:1.25;text-align:center;text-anchor:middle;fill:#555753">Don't believe us? Run our open benchmarks yourself: https://greycos.ai/benchmarks</flowPara></flowRoot>
   </g>
 </svg>

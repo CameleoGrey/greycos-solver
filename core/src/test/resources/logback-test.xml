@@ -11,10 +11,10 @@
     <appender-ref ref="consoleAppender" />
   </appender>
 
-  <!-- To override the info log level from the command line, use the VM option "-Dlogback.level.ai.timefold.solver=trace" -->
-  <logger name="ai.timefold.solver" level="${logback.level.ai.timefold.solver:-debug}"/>
+  <!-- To override the info log level from the command line, use the VM option "-Dlogback.level.ai.greycos.solver=trace" -->
+  <logger name="ai.greycos.solver" level="${logback.level.ai.greycos.solver:-debug}"/>
   <!-- Don't pollute the test log with a stacktrace -->
-  <logger name="ai.timefold.solver.benchmark.impl.DefaultPlannerBenchmark.singleBenchmarkRunnerException" level="error"/>
+  <logger name="ai.greycos.solver.benchmark.impl.DefaultPlannerBenchmark.singleBenchmarkRunnerException" level="error"/>
 
   <root level="info">
     <appender-ref ref="asyncAppender" />

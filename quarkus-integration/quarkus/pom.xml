@@ -4,16 +4,16 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>ai.timefold.solver</groupId>
-    <artifactId>timefold-solver-quarkus-integration</artifactId>
+    <groupId>ai.greycos.solver</groupId>
+    <artifactId>greycos-solver-quarkus-integration</artifactId>
     <version>999-SNAPSHOT</version>
   </parent>
 
-  <artifactId>timefold-solver-quarkus-parent</artifactId>
+  <artifactId>greycos-solver-quarkus-parent</artifactId>
   <packaging>pom</packaging>
 
-  <name>Timefold Solver Quarkus</name>
-  <url>https://solver.timefold.ai</url>
+  <name>Greycos Solver Quarkus</name>
+  <url>https://solver.greycos.ai</url>
 
   <modules>
     <module>runtime</module>

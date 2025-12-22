@@ -94,13 +94,13 @@ class Location @JsonCreator constructor(val latitude: Double, val longitude: Dou
 Each vehicle has a specific departure time and starting location.
 It returns to its home location after completing the route and has a maximum capacity that must not be exceeded.
 
-During solving, Timefold Solver updates the `visits` field of the `Vehicle` class to assign a list of visits.
-Because Timefold Solver changes this field, `Vehicle` is a https://timefold.ai/docs/timefold-solver/latest/using-timefold-solver/modeling-planning-problems#planningEntity[_planning entity_]:
+During solving, Greycos Solver updates the `visits` field of the `Vehicle` class to assign a list of visits.
+Because Greycos Solver changes this field, `Vehicle` is a https://greycos.ai/docs/greycos-solver/latest/using-greycos-solver/modeling-planning-problems#planningEntity[_planning entity_]:
 
 image::quickstart/vehicle-routing/vehicleRoutingClassDiagramAnnotated.png[]
 
 Based on the diagram, the `visits` field is a genuine variable that changes during the solving process.
-To ensure that Timefold Solver recognizes it as a https://timefold.ai/docs/timefold-solver/latest/using-timefold-solver/modeling-planning-problems#planningListVariable[sequence of connected variables],
+To ensure that Greycos Solver recognizes it as a https://greycos.ai/docs/greycos-solver/latest/using-greycos-solver/modeling-planning-problems#planningListVariable[sequence of connected variables],
 the field must have an `@PlanningListVariable` annotation indicating that the solver can distribute a subset of the
 available visits to it.
 The objective is to create an ordered scheduled visit plan for each vehicle.
@@ -120,9 +120,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import ai.timefold.solver.core.api.domain.entity.PlanningEntity;
-import ai.timefold.solver.core.api.domain.lookup.PlanningId;
-import ai.timefold.solver.core.api.domain.variable.PlanningListVariable;
+import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
+import ai.greycos.solver.core.api.domain.lookup.PlanningId;
+import ai.greycos.solver.core.api.domain.variable.PlanningListVariable;
 
 @PlanningEntity
 public class Vehicle {
@@ -195,9 +195,9 @@ package org.acme.vehiclerouting.domain
 import java.time.LocalDateTime
 import java.util.ArrayList
 
-import ai.timefold.solver.core.api.domain.entity.PlanningEntity
-import ai.timefold.solver.core.api.domain.lookup.PlanningId
-import ai.timefold.solver.core.api.domain.variable.PlanningListVariable
+import ai.greycos.solver.core.api.domain.entity.PlanningEntity
+import ai.greycos.solver.core.api.domain.lookup.PlanningId
+import ai.greycos.solver.core.api.domain.variable.PlanningListVariable
 
 @PlanningEntity
 class Vehicle {
@@ -256,10 +256,10 @@ class Vehicle {
 ====
 
 The `Vehicle` class has an `@PlanningEntity` annotation,
-so Timefold Solver knows that this class changes during solving because it contains one or more planning variables.
+so Greycos Solver knows that this class changes during solving because it contains one or more planning variables.
 
 Notice the `toString()` method keeps the output short,
-so it is easier to read Timefold Solver's `DEBUG` or `TRACE` log, as shown later.
+so it is easier to read Greycos Solver's `DEBUG` or `TRACE` log, as shown later.
 
 [NOTE]
 ====
@@ -275,7 +275,7 @@ A visit includes a destination location, a delivery time window represented by `
 a demand that needs to be fulfilled by the vehicle, and a service duration time.
 
 The `Visit` class has an `@PlanningEntity` annotation
-but no genuine variables and is called a https://timefold.ai/docs/timefold-solver/latest/using-timefold-solver/modeling-planning-problems#shadowVariable[shadow entity].
+but no genuine variables and is called a https://greycos.ai/docs/greycos-solver/latest/using-greycos-solver/modeling-planning-problems#shadowVariable[shadow entity].
 
 [tabs]
 ====
@@ -291,12 +291,12 @@ package org.acme.vehiclerouting.domain;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-import ai.timefold.solver.core.api.domain.entity.PlanningEntity;
-import ai.timefold.solver.core.api.domain.lookup.PlanningId;
-import ai.timefold.solver.core.api.domain.variable.InverseRelationShadowVariable;
-import ai.timefold.solver.core.api.domain.variable.NextElementShadowVariable;
-import ai.timefold.solver.core.api.domain.variable.PreviousElementShadowVariable;
-import ai.timefold.solver.core.api.domain.variable.ShadowVariable;
+import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
+import ai.greycos.solver.core.api.domain.lookup.PlanningId;
+import ai.greycos.solver.core.api.domain.variable.InverseRelationShadowVariable;
+import ai.greycos.solver.core.api.domain.variable.NextElementShadowVariable;
+import ai.greycos.solver.core.api.domain.variable.PreviousElementShadowVariable;
+import ai.greycos.solver.core.api.domain.variable.ShadowVariable;
 
 import org.acme.vehiclerouting.solver.ArrivalTimeUpdatingVariableListener;
 
@@ -403,12 +403,12 @@ package org.acme.vehiclerouting.domain
 import java.time.Duration
 import java.time.LocalDateTime
 
-import ai.timefold.solver.core.api.domain.entity.PlanningEntity
-import ai.timefold.solver.core.api.domain.lookup.PlanningId
-import ai.timefold.solver.core.api.domain.variable.InverseRelationShadowVariable
-import ai.timefold.solver.core.api.domain.variable.NextElementShadowVariable
-import ai.timefold.solver.core.api.domain.variable.PreviousElementShadowVariable
-import ai.timefold.solver.core.api.domain.variable.ShadowVariable
+import ai.greycos.solver.core.api.domain.entity.PlanningEntity
+import ai.greycos.solver.core.api.domain.lookup.PlanningId
+import ai.greycos.solver.core.api.domain.variable.InverseRelationShadowVariable
+import ai.greycos.solver.core.api.domain.variable.NextElementShadowVariable
+import ai.greycos.solver.core.api.domain.variable.PreviousElementShadowVariable
+import ai.greycos.solver.core.api.domain.variable.ShadowVariable
 
 import org.acme.vehiclerouting.solver.ArrivalTimeUpdatingVariableListener
 
@@ -506,9 +506,9 @@ class Visit {
 ====
 
 Some methods are annotated with `@InverseRelationShadowVariable`, `@PreviousElementShadowVariable` and `@CascadingUpdateShadowVariable`.
-They are called https://timefold.ai/docs/timefold-solver/latest/using-timefold-solver/modeling-planning-problems#shadowVariable[shadow variables],
-and because Timefold Solver changes them,
-`Visit` is a https://timefold.ai/docs/timefold-solver/latest/using-timefold-solver/modeling-planning-problems#planningEntity[_planning entity_]:
+They are called https://greycos.ai/docs/greycos-solver/latest/using-greycos-solver/modeling-planning-problems#shadowVariable[shadow variables],
+and because Greycos Solver changes them,
+`Visit` is a https://greycos.ai/docs/greycos-solver/latest/using-greycos-solver/modeling-planning-problems#planningEntity[_planning entity_]:
 
 image::quickstart/vehicle-routing/vehicleRoutingCompleteClassDiagramAnnotated.png[]
 

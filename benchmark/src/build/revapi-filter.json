@@ -4,14 +4,14 @@
     "configuration": {
       "elements": {
         "include": [
-          "class ai\\.timefold\\.solver\\.benchmark\\.api.*",
-          "class ai\\.timefold\\.solver\\.benchmark\\.config.*"
+          "class ai\\.greycos\\.solver\\.benchmark\\.api.*",
+          "class ai\\.greycos\\.solver\\.benchmark\\.config.*"
         ],
         "exclude": [
-          "method .* ai\\.timefold\\.solver\\.benchmark\\.config.*::(?!(set|get)).*",
-          "parameter .* ai\\.timefold\\.solver\\.benchmark\\.config.*::(?!(set|get)).*",
-          "method .* ai\\.timefold\\.solver\\.core\\.config.*",
-          "parameter .* ai\\.timefold\\.solver\\.core\\.config.*"
+          "method .* ai\\.greycos\\.solver\\.benchmark\\.config.*::(?!(set|get)).*",
+          "parameter .* ai\\.greycos\\.solver\\.benchmark\\.config.*::(?!(set|get)).*",
+          "method .* ai\\.greycos\\.solver\\.core\\.config.*",
+          "parameter .* ai\\.greycos\\.solver\\.core\\.config.*"
         ]
       }
     }

@@ -4,7 +4,7 @@
     "configuration": {
       "elements": {
         "include": [
-          "class ai\\.timefold\\.solver\\.quarkus\\.deployment\\.api.*"
+          "class ai\\.greycos\\.solver\\.quarkus\\.deployment\\.api.*"
         ]
       }
     }

@@ -8,7 +8,7 @@
 [#integrationOverview]
 == Overview
 
-Timefold Solver's input and output data (the planning problem and the best solution) are plain old JavaBeans (POJOs), so integration with other Java technologies is straightforward.
+Greycos Solver's input and output data (the planning problem and the best solution) are plain old JavaBeans (POJOs), so integration with other Java technologies is straightforward.
 For example:
 
 * To read a planning problem from the database (and store the best solution in it), annotate the domain POJOs with JPA annotations.
@@ -31,12 +31,12 @@ to store them in a database by calling `EntityManager.persist()`.
 
 [NOTE]
 ====
-Do not confuse JPA's `@Entity` annotation with Timefold Solver's `@PlanningEntity` annotation.
+Do not confuse JPA's `@Entity` annotation with Greycos Solver's `@PlanningEntity` annotation.
 They can appear both on the same class:
 
 [source,java,options="nowrap"]
 ----
-@PlanningEntity // Timefold Solver annotation
+@PlanningEntity // Greycos Solver annotation
 @Entity // JPA annotation
 public class Talk {...}
 ----
@@ -45,7 +45,7 @@ public class Talk {...}
 [#jpaAndHibernatePersistingAScore]
 ==== JPA and Hibernate: persisting a `Score`
 
-The `timefold-solver-jpa` jar provides a JPA score converter for every built-in score type.
+The `greycos-solver-jpa` jar provides a JPA score converter for every built-in score type.
 
 [source,java,options="nowrap"]
 ----
@@ -71,12 +71,12 @@ To avoid this limitation, https://docs.jboss.org/hibernate/orm/current/userguide
 
 In JPA and Hibernate, there is usually a `@ManyToOne` relationship from most problem fact classes to the planning solution class.
 Therefore, the problem fact classes reference the planning solution class,
-which implies that when the solution is xref:using-timefold-solver/modeling-planning-problems.adoc#cloningASolution[planning cloned], they need to be cloned too.
+which implies that when the solution is xref:using-greycos-solver/modeling-planning-problems.adoc#cloningASolution[planning cloned], they need to be cloned too.
 Use an `@DeepPlanningClone` on each such problem fact class to enforce that:
 
 [source,java,options="nowrap"]
 ----
-@PlanningSolution // Timefold Solver annotation
+@PlanningSolution // Greycos Solver annotation
 @Entity // JPA annotation
 public class Conference {
 
@@ -89,7 +89,7 @@ public class Conference {
 
 [source,java,options="nowrap"]
 ----
-@DeepPlanningClone // Timefold Solver annotation: Force the default planning cloner to planning clone this class too
+@DeepPlanningClone // Greycos Solver annotation: Force the default planning cloner to planning clone this class too
 @Entity // JPA annotation
 public class Room {
 
@@ -107,7 +107,7 @@ Neglecting to do this can lead to persisting duplicate solutions, JPA exceptions
 
 Enrich domain POJOs (solution, entities and problem facts) with JAXB annotations to serialize them to/from XML or JSON.
 
-Add a dependency to the `timefold-solver-jaxb` jar to take advantage of these extra integration features:
+Add a dependency to the `greycos-solver-jaxb` jar to take advantage of these extra integration features:
 
 [#jaxbMarshallingAScore]
 ==== JAXB: marshalling a `Score`
@@ -173,12 +173,12 @@ The `hardLevelsSize` and `softLevelsSize` implied, when reading a bendable score
 
 Enrich domain POJOs (solution, entities and problem facts) with Jackson annotations to serialize them to/from JSON.
 
-Add a dependency to the `timefold-solver-jackson` jar and register `TimefoldJacksonModule`:
+Add a dependency to the `greycos-solver-jackson` jar and register `GreycosJacksonModule`:
 
 [source,java,options="nowrap"]
 ----
 ObjectMapper objectMapper = new ObjectMapper();
-objectMapper.registerModule(TimefoldJacksonModule.createModule());
+objectMapper.registerModule(GreycosJacksonModule.createModule());
 ----
 
 
@@ -186,7 +186,7 @@ objectMapper.registerModule(TimefoldJacksonModule.createModule());
 ==== Jackson: marshalling a `Score`
 
 When a `Score` is marshalled to/from JSON by the default Jackson configuration, it fails.
-The `TimefoldJacksonModule` fixes that, by using `HardSoftScoreJacksonSerializer`,
+The `GreycosJacksonModule` fixes that, by using `HardSoftScoreJacksonSerializer`,
 `HardSoftScoreJacksonDeserializer`, etc.
 
 [source,java,options="nowrap"]
@@ -270,9 +270,9 @@ For example, this generates:
 [#integrationWithQuarkus]
 == Quarkus
 
-To use Timefold Solver with Quarkus, read the xref:quickstart/quarkus/quarkus-quickstart.adoc#quarkusQuickStart[Quarkus Java quick start].
+To use Greycos Solver with Quarkus, read the xref:quickstart/quarkus/quarkus-quickstart.adoc#quarkusQuickStart[Quarkus Java quick start].
 If you are starting a new project, visit the https://code.quarkus.io/[code.quarkus.io] and select
-the _Timefold AI constraint solver_ extension before generating your application.
+the _Greycos AI constraint solver_ extension before generating your application.
 
 [#integrationWithQuarkusProperties]
 === Available configuration properties
@@ -367,7 +367,7 @@ class Resource {
 --
 ====
 
-Timefold provides all the necessary resources for problem-solving and analysis. However, it is still possible to manually create and override the default managed resources. To create a custom `SolverManager`, use the `SolverFactory` resource.
+Greycos provides all the necessary resources for problem-solving and analysis. However, it is still possible to manually create and override the default managed resources. To create a custom `SolverManager`, use the `SolverFactory` resource.
 
 [tabs]
 ====
@@ -382,9 +382,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Default;
 import jakarta.ws.rs.Produces;
 
-import ai.timefold.solver.core.api.solver.SolverFactory;
-import ai.timefold.solver.core.api.solver.SolverManager;
-import ai.timefold.solver.core.config.solver.SolverManagerConfig;
+import ai.greycos.solver.core.api.solver.SolverFactory;
+import ai.greycos.solver.core.api.solver.SolverManager;
+import ai.greycos.solver.core.config.solver.SolverManagerConfig;
 
 import org.acme.employeescheduling.domain.EmployeeSchedule;
 
@@ -407,9 +407,9 @@ Kotlin::
 ----
 package org.acme.employeescheduling.rest
 
-import ai.timefold.solver.core.api.solver.SolverFactory
-import ai.timefold.solver.core.api.solver.SolverManager
-import ai.timefold.solver.core.config.solver.SolverManagerConfig
+import ai.greycos.solver.core.api.solver.SolverFactory
+import ai.greycos.solver.core.api.solver.SolverManager
+import ai.greycos.solver.core.config.solver.SolverManagerConfig
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Default
 import jakarta.ws.rs.Produces
@@ -438,13 +438,13 @@ Consider using xref:#integrationWithQuarkusMultipleResources[multiple solver con
 === Injecting multiple instances of `SolverManager`
 
 Quarkus extension allows for defining different solver settings or even wholly distinct planning problems in the same
-application. Timefold identifies each setting and provides a specific managed resource, `SolverManager`.
+application. Greycos identifies each setting and provides a specific managed resource, `SolverManager`.
 
 ==== Solver configuration properties
 
-The configuration properties for multiple solvers are defined using the namespace `quarkus.timefold.solver.<solverName>`,
+The configuration properties for multiple solvers are defined using the namespace `quarkus.greycos.solver.<solverName>`,
 where `<solverName>` is the name of the related solver. The `<solverName>` property is only necessary when using multiple
-solvers. For defining a single solver, refer to the xref:#integrationWithQuarkusProperties[Timefold configuration properties section].
+solvers. For defining a single solver, refer to the xref:#integrationWithQuarkusProperties[Greycos configuration properties section].
 Following properties are supported:
 
 :property_prefix: quarkus.
@@ -459,8 +459,8 @@ settings for `spent-limit` are defined as follows:
 [source,properties,options="nowrap"]
 ----
 # The solver "fastSolver" runs only for 5 seconds, and "regularSolver" runs for 10s
-quarkus.timefold.solver."fastSolver".termination.spent-limit=5s // <1>
-quarkus.timefold.solver."regularSolver".termination.spent-limit=10s // <2>
+quarkus.greycos.solver."fastSolver".termination.spent-limit=5s // <1>
+quarkus.greycos.solver."regularSolver".termination.spent-limit=10s // <2>
 ----
 <1> Define a solver config named *fastSolver*.
 <2> Define a solver config named *regularSolver*.
@@ -526,8 +526,8 @@ teachersSolverConfig.xml::
 +
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
   <solutionClass>org.acme.schooltimetabling.domain.TeacherToLessonSchedule</solutionClass>
   <entityClass>org.acme.schooltimetabling.domain.Teacher</entityClass>
 </solver>
@@ -536,8 +536,8 @@ roomsSolverConfig.xml::
 +
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
   <solutionClass>org.acme.schooltimetabling.domain.Timetable</solutionClass>
   <entityClass>org.acme.schooltimetabling.domain.Lesson</entityClass>
 </solver>
@@ -548,8 +548,8 @@ Set the solvers with the specific XML files in the `application.properties` file
 
 [source,properties,options="nowrap"]
 ----
-quarkus.timefold.solver."teacherSolver".solver-config-xml=teachersSolverConfig.xml // <1>
-quarkus.timefold.solver."roomSolver".solver-config-xml=roomsSolverConfig.xml // <2>
+quarkus.greycos.solver."teacherSolver".solver-config-xml=teachersSolverConfig.xml // <1>
+quarkus.greycos.solver."roomSolver".solver-config-xml=roomsSolverConfig.xml // <2>
 ----
 <1> Define a solver config named *teacherSolver*.
 <2> Define a solver config named *roomSolver*.
@@ -630,12 +630,12 @@ class Resource {
 [#integrationWithSpringBoot]
 == Spring Boot
 
-To use Timefold Solver on Spring Boot, add the `timefold-solver-spring-boot-starter` dependency
+To use Greycos Solver on Spring Boot, add the `greycos-solver-spring-boot-starter` dependency
 and read the xref:quickstart/spring-boot/spring-boot-quickstart.adoc#springBootQuickStart[Spring Boot Java quick start].
 
 [NOTE]
 ====
-Timefold Solver Spring Boot Starter only supports Spring Boot version 3.2.x and up.
+Greycos Solver Spring Boot Starter only supports Spring Boot version 3.2.x and up.
 ====
 
 [#integrationWithSpringBootProperties]
@@ -733,7 +733,7 @@ class Resource {
 --
 ====
 
-Timefold provides all the necessary resources for problem-solving and analysis. However, it is still possible to manually create and override the default managed resources. To create a custom `SolverManager`, use the `SolverFactory` resource.
+Greycos provides all the necessary resources for problem-solving and analysis. However, it is still possible to manually create and override the default managed resources. To create a custom `SolverManager`, use the `SolverFactory` resource.
 
 [tabs]
 ====
@@ -744,10 +744,10 @@ Java::
 ----
 package org.acme.schooltimetabling.rest;
 
-import ai.timefold.solver.core.api.solver.SolverFactory;
-import ai.timefold.solver.core.api.solver.SolverManager;
-import ai.timefold.solver.core.config.solver.SolverManagerConfig;
-import ai.timefold.solver.spring.boot.autoconfigure.TimefoldAutoConfiguration;
+import ai.greycos.solver.core.api.solver.SolverFactory;
+import ai.greycos.solver.core.api.solver.SolverManager;
+import ai.greycos.solver.core.config.solver.SolverManagerConfig;
+import ai.greycos.solver.spring.boot.autoconfigure.GreycosAutoConfiguration;
 
 import org.acme.schooltimetabling.domain.Timetable;
 import org.springframework.context.annotation.Bean;
@@ -756,7 +756,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 
 @Configuration
-@Import(TimefoldAutoConfiguration.class)
+@Import(GreycosAutoConfiguration.class)
 public class BeanProducer {
 
     @Bean
@@ -775,10 +775,10 @@ Kotlin::
 ----
 package org.acme.schooltimetabling.rest
 
-import ai.timefold.solver.core.api.solver.SolverFactory
-import ai.timefold.solver.core.api.solver.SolverManager
-import ai.timefold.solver.core.config.solver.SolverManagerConfig
-import ai.timefold.solver.spring.boot.autoconfigure.TimefoldAutoConfiguration
+import ai.greycos.solver.core.api.solver.SolverFactory
+import ai.greycos.solver.core.api.solver.SolverManager
+import ai.greycos.solver.core.config.solver.SolverManagerConfig
+import ai.greycos.solver.spring.boot.autoconfigure.GreycosAutoConfiguration
 import org.acme.schooltimetabling.domain.Timetable
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -787,7 +787,7 @@ import org.springframework.context.annotation.Primary
 
 @Configuration
 @Import(
-    TimefoldAutoConfiguration::class
+    GreycosAutoConfiguration::class
 )
 class BeanProducer {
     @Bean
@@ -810,13 +810,13 @@ Consider using xref:#integrationWithSpringBootMultipleResources[multiple solver 
 === Injecting multiple instances of `SolverManager`
 
 Spring Boot auto-configuration module allows for defining different solver settings or even wholly distinct planning problems in the same
-application. Timefold identifies each setting and provides a specific managed resource, `SolverManager`.
+application. Greycos identifies each setting and provides a specific managed resource, `SolverManager`.
 
 ==== Solver configuration properties
 
-The configuration properties for multiple solvers are defined using the namespace `timefold.solver.<solverName>`,
+The configuration properties for multiple solvers are defined using the namespace `greycos.solver.<solverName>`,
 where `<solverName>` is the name of the related solver. The `<solverName>` property is only necessary when using multiple
-solvers. For defining a single solver, refer to the xref:#integrationWithSpringBootProperties[Timefold configuration properties section].
+solvers. For defining a single solver, refer to the xref:#integrationWithSpringBootProperties[Greycos configuration properties section].
 Following properties are supported:
 
 :property_prefix:
@@ -831,8 +831,8 @@ settings for `spent-limit` are defined as follows:
 [source,properties,options="nowrap"]
 ----
 # The solver "fastSolver" runs only for 5 seconds, and "regularSolver" runs for 10s
-timefold.solver.fastSolver.termination.spent-limit=5s // <1>
-timefold.solver.regularSolver.termination.spent-limit=10s // <2>
+greycos.solver.fastSolver.termination.spent-limit=5s // <1>
+greycos.solver.regularSolver.termination.spent-limit=10s // <2>
 ----
 <1> Define a solver config named *fastSolver*.
 <2> Define a solver config named *regularSolver*.
@@ -898,8 +898,8 @@ teachersSolverConfig.xml::
 +
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
   <solutionClass>org.acme.schooltimetabling.domain.TeacherToLessonSchedule</solutionClass>
   <entityClass>org.acme.schooltimetabling.domain.Teacher</entityClass>
 </solver>
@@ -908,8 +908,8 @@ roomsSolverConfig.xml::
 +
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
   <solutionClass>org.acme.schooltimetabling.domain.Timetable</solutionClass>
   <entityClass>org.acme.schooltimetabling.domain.Lesson</entityClass>
 </solver>
@@ -920,8 +920,8 @@ Set the solvers with the specific XML files in the `application.properties` file
 
 [source,properties,options="nowrap"]
 ----
-timefold.solver.teacherSolver.solver-config-xml=teachersSolverConfig.xml // <1>
-timefold.solver.roomSolver.solver-config-xml=roomsSolverConfig.xml // <2>
+greycos.solver.teacherSolver.solver-config-xml=teachersSolverConfig.xml // <1>
+greycos.solver.roomSolver.solver-config-xml=roomsSolverConfig.xml // <2>
 ----
 <1> Define a solver config named *teacherSolver*.
 <2> Define a solver config named *roomSolver*.
@@ -1005,14 +1005,14 @@ class Resource {
 [#integrationWithJPMS]
 === Java platform module system (Jigsaw)
 
-When using Timefold Solver from code on the modulepath (Java 9 and higher),
+When using Greycos Solver from code on the modulepath (Java 9 and higher),
 _open_ your packages that contain your domain objects, constraints and solver configuration
 _to all modules_ in your `module-info.java` file:
 
 [source,java,options="nowrap"]
 ----
 module org.acme.vehiclerouting {
-    requires ai.timefold.solver.core;
+    requires ai.greycos.solver.core;
     ...
 
     opens org.acme.vehiclerouting.domain; // Domain classes
@@ -1021,27 +1021,27 @@ module org.acme.vehiclerouting {
 }
 ----
 
-Otherwise Timefold Solver can't reach those classes or files, even if they are exported.
+Otherwise Greycos Solver can't reach those classes or files, even if they are exported.
 
 
 [#integrationWithHumanPlanners]
 == Integration with human planners (politics)
 
-A good Timefold Solver implementation beats any good human planner for non-trivial datasets.
+A good Greycos Solver implementation beats any good human planner for non-trivial datasets.
 Many human planners fail to accept this, often because they feel threatened by an automated system.
 
-But despite that, both can benefit if the human planner becomes the supervisor of Timefold Solver:
+But despite that, both can benefit if the human planner becomes the supervisor of Greycos Solver:
 
 * *The human planner defines, validates, and tweaks the score function.*
 ** The human planner tweaks the constraint weights of the xref:constraints-and-score/constraint-configuration.adoc[constraint configuration] in a UI,
 as the business priorities change over time.
 ** When the business changes, the score function often needs to change too.
 The human planner can notify the developers to add, change or remove score constraints.
-* *The human planner is always in control of Timefold Solver.*
+* *The human planner is always in control of Greycos Solver.*
 ** The human planner can pin down one or more planning variables to a specific planning value.
 Because they are xref:responding-to-change/responding-to-change.adoc#pinnedPlanningEntities[pinned],
-Timefold Solver does not change them: it optimizes the planning around the enforcements made by the human.
-If the human planner pins down all planning variables, he/she sidelines Timefold Solver completely.
+Greycos Solver does not change them: it optimizes the planning around the enforcements made by the human.
+If the human planner pins down all planning variables, he/she sidelines Greycos Solver completely.
 ** In a prototype implementation, the human planner occasionally uses pinning to intervene,
 but as the implementation matures, this should become obsolete.
 The feature should be kept available as a reassurance for the humans,
@@ -1054,16 +1054,16 @@ image::integration/keepTheUserInControl.png[align="center"]
 [#sizingHardwareAndSoftware]
 == Sizing hardware and software
 
-Before sizing a Timefold Solver service, first understand the typical behaviour of a `Solver.solve()` call:
+Before sizing a Greycos Solver service, first understand the typical behaviour of a `Solver.solve()` call:
 
 image::integration/sizingHardware.png[align="center"]
 
-Understand these guidelines to decide the hardware for a Timefold Solver service:
+Understand these guidelines to decide the hardware for a Greycos Solver service:
 
 * **RAM memory**: Provision plenty, but no need to provide more.
-** The problem dataset, loaded before Timefold Solver is called, often consumes the most memory. It depends on the problem scale.
-*** If this is a problem, review the domain class structure: remove classes or fields that Timefold Solver doesn't need during solving.
-*** Timefold Solver usually has up to three solution instances: the internal working solution, the best solution and the old best solution (when it's being replaced). However, these are all a xref:using-timefold-solver/modeling-planning-problems.adoc#cloningASolution[planning clone] of each other, so many problem fact instances are shared between those solution instances.
+** The problem dataset, loaded before Greycos Solver is called, often consumes the most memory. It depends on the problem scale.
+*** If this is a problem, review the domain class structure: remove classes or fields that Greycos Solver doesn't need during solving.
+*** Greycos Solver usually has up to three solution instances: the internal working solution, the best solution and the old best solution (when it's being replaced). However, these are all a xref:using-greycos-solver/modeling-planning-problems.adoc#cloningASolution[planning clone] of each other, so many problem fact instances are shared between those solution instances.
 ** During solving, the memory is very volatile, because solving creates many short-lived objects. The Garbage Collector deletes these in bulk and therefore needs some heap space as a buffer.
 ** The maximum size of the JVM heap space can be in three states:
 *** **Insufficient**: An `OutOfMemoryException` is thrown (often because the Garbage Collector is using more than 98% of the CPU time).
@@ -1091,22 +1091,22 @@ or if your xref:optimization-algorithms/overview.adoc#SolverEventListener[Solver
 *** Distribute the Solver runs across the day (or night). This is especially an opportunity in SaaS that's used across the globe, due to timezones: UK and India can use the same CPU core when scheduling at night.
 ** The SolverManager will take care of the orchestration, especially in those underfunded environments in which solvers (and partitions) are forced to share CPU cores or wait in line.
 * **I/O (network, disk, ...)**: Not used during solving.
-** Timefold Solver is not a web server: a solver thread does not block (unlike a servlet thread), each one fully drains a CPU.
+** Greycos Solver is not a web server: a solver thread does not block (unlike a servlet thread), each one fully drains a CPU.
 *** A web server can handle 24 active servlets threads with eight cores without performance loss, because most servlets threads are blocking on I/O.
 *** However, 24 active solver threads with eight cores will cause each solver's xref:constraints-and-score/performance.adoc#moveEvaluationSpeed[move evaluation speed] to be three times slower, causing a big performance loss.
 ** Note that calling any I/O during solving, for example a remote service in your score calculation, causes a huge performance loss because it's called thousands of times per second, so it should complete in microseconds. So no good implementation does that.
 
 Keep these guidelines in mind when selecting and configuring the software.
-See https://timefold.ai/blog/[our blog archive] for the details of our experiments, which use our diverse set of examples.
+See https://greycos.ai/blog/[our blog archive] for the details of our experiments, which use our diverse set of examples.
 Your mileage may vary.
 
 * Operating System
 ** No experimentally proven advice yet (but prefer Linux anyway).
 * JDK
-** Version: Our benchmarks have consistently shown improvements in performance when comparing new JDK releases with their predecessors. It is therefore recommended using the latest available JDK. If you're interested in the performance comparisons of Timefold Solver running of different JDK releases, you can find them in the form of blog posts in https://timefold.ai/blog/[our blog archive].
-** Garbage Collector: ParallelGC can be potentially between 5% and 35% faster than G1GC (the default). Unlike web servers, Timefold Solver needs a GC focused on throughput, not latency. Use `-XX:+UseParallelGC` to turn on ParallelGC.
+** Version: Our benchmarks have consistently shown improvements in performance when comparing new JDK releases with their predecessors. It is therefore recommended using the latest available JDK. If you're interested in the performance comparisons of Greycos Solver running of different JDK releases, you can find them in the form of blog posts in https://greycos.ai/blog/[our blog archive].
+** Garbage Collector: ParallelGC can be potentially between 5% and 35% faster than G1GC (the default). Unlike web servers, Greycos Solver needs a GC focused on throughput, not latency. Use `-XX:+UseParallelGC` to turn on ParallelGC.
 * Logging can have a severe impact on performance.
-** Debug logging `ai.timefold.solver` can be between 0% and 15% slower than info logging. Trace logging can be between 5% and 70% slower than info logging.
+** Debug logging `ai.greycos.solver` can be between 0% and 15% slower than info logging. Trace logging can be between 5% and 70% slower than info logging.
 ** Synchronous logging to a file has an additional significant impact for debug and trace logging (but not for info logging).
 * Avoid a cloud environment in which you share your CPU core(s) with other virtual machines or containers. Performance (and therefore solution quality) can be unreliable when the available CPU power varies greatly.
 

@@ -1,0 +1,47 @@
+package ai.greycos.solver.jpa.api.score.buildin.simplelong;
+
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+
+import ai.greycos.solver.core.api.score.buildin.simplelong.SimpleLongScore;
+import ai.greycos.solver.jpa.impl.AbstractScoreJpaTest;
+
+import org.junit.jupiter.api.Test;
+
+import io.quarkus.test.junit.QuarkusTest;
+
+@QuarkusTest
+class SimpleLongScoreConverterTest extends AbstractScoreJpaTest {
+
+  @Test
+  void persistAndMerge() {
+    persistAndMerge(
+        new SimpleLongScoreConverterTestJpaEntity(SimpleLongScore.ZERO),
+        null,
+        SimpleLongScore.of(-10L));
+  }
+
+  @Entity
+  static class SimpleLongScoreConverterTestJpaEntity
+      extends AbstractTestJpaEntity<SimpleLongScore> {
+
+    @Convert(converter = SimpleLongScoreConverter.class)
+    protected SimpleLongScore score;
+
+    SimpleLongScoreConverterTestJpaEntity() {}
+
+    public SimpleLongScoreConverterTestJpaEntity(SimpleLongScore score) {
+      this.score = score;
+    }
+
+    @Override
+    public SimpleLongScore getScore() {
+      return score;
+    }
+
+    @Override
+    public void setScore(SimpleLongScore score) {
+      this.score = score;
+    }
+  }
+}

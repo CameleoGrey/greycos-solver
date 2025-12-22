@@ -1,0 +1,51 @@
+package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list;
+
+import java.util.Iterator;
+
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
+import ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
+import ai.greycos.solver.core.preview.api.domain.metamodel.ElementPosition;
+
+/**
+ * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
+ */
+public class RandomListChangeIterator<Solution_>
+    extends UpcomingSelectionIterator<Move<Solution_>> {
+
+  private final ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
+  private final Iterator<Object> valueIterator;
+  private final Iterator<ElementPosition> destinationIterator;
+
+  public RandomListChangeIterator(
+      ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply,
+      IterableValueSelector<Solution_> valueSelector,
+      DestinationSelector<Solution_> destinationSelector) {
+    this.listVariableStateSupply = listVariableStateSupply;
+    this.valueIterator = valueSelector.iterator();
+    this.destinationIterator = destinationSelector.iterator();
+  }
+
+  @Override
+  protected Move<Solution_> createUpcomingSelection() {
+    if (!valueIterator.hasNext()) {
+      return noUpcomingSelection();
+    }
+    // The destination may depend on selecting the value before checking if it has a next value
+    var upcomingValue = valueIterator.next();
+    if (!destinationIterator.hasNext()) {
+      return noUpcomingSelection();
+    }
+    var move =
+        OriginalListChangeIterator.buildChangeMove(
+            listVariableStateSupply, upcomingValue, destinationIterator);
+    if (move == null) {
+      return noUpcomingSelection();
+    } else {
+      return move;
+    }
+  }
+}

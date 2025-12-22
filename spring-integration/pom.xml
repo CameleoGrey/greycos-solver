@@ -4,24 +4,24 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>ai.timefold.solver</groupId>
-    <artifactId>timefold-solver-build-parent</artifactId>
+    <groupId>ai.greycos.solver</groupId>
+    <artifactId>greycos-solver-build-parent</artifactId>
     <version>999-SNAPSHOT</version>
     <relativePath>../build/build-parent/pom.xml</relativePath>
   </parent>
 
-  <artifactId>timefold-solver-spring-integration</artifactId>
+  <artifactId>greycos-solver-spring-integration</artifactId>
   <packaging>pom</packaging>
 
-  <name>Timefold Solver Spring integration</name>
+  <name>Greycos Solver Spring integration</name>
   <description>
-    Timefold solves planning problems.
+    Greycos solves planning problems.
     This lightweight, embeddable planning engine implements powerful and scalable algorithms
     to optimize business resource scheduling and planning.
 
     This module contains the integration modules.
   </description>
-  <url>https://solver.timefold.ai</url>
+  <url>https://solver.greycos.ai</url>
 
   <modules>
     <module>spring-boot-autoconfigure</module>
@@ -34,7 +34,7 @@
       <dependency>
         <!--
           Import dependency management from Spring Boot, as recommended here:
-          https://github.com/TimefoldAI/timefold-solver/issues/395
+          https://github.com/CameleoGrey/greycos-solver/issues/395
          -->
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>

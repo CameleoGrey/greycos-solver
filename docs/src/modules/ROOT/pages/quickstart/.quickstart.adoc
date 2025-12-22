@@ -1,5 +1,5 @@
 [#quickStart]
-= Getting started with Timefold Solver
+= Getting started with Greycos Solver
 :doctype: book
 :sectnums:
 :icons: font

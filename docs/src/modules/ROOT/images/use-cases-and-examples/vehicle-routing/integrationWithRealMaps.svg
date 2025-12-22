@@ -1030,7 +1030,7 @@
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <dc:language>en</dc:language>
         <cc:license
-           rdf:resource="https://timefold.ai/license" />
+           rdf:resource="https://greycos.ai/license" />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -1067,7 +1067,7 @@
            y="150.00014"
            style="font-size:14px;text-align:center;text-anchor:middle" /></flowRegion><flowPara
          id="flowPara4308-6"
-         style="font-size:14px;line-height:1.25">The internal or external maps provider calculate distances, Timefold optimizes the trips.</flowPara></flowRoot>
+         style="font-size:14px;line-height:1.25">The internal or external maps provider calculate distances, Greycos optimizes the trips.</flowPara></flowRoot>
     <g
        id="g3709"
        transform="translate(0,19.999997)" />

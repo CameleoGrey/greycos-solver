@@ -56,9 +56,9 @@ Java::
 
 ====
 
-This constraint stream iterates over all instances of class `Shift` in the xref:using-timefold-solver/modeling-planning-problems.adoc#problemFacts[problem facts] and
-xref:using-timefold-solver/modeling-planning-problems.adoc#planningEntity[planning entities]
-in the xref:using-timefold-solver/modeling-planning-problems.adoc#planningProblemAndPlanningSolution[planning problem].
+This constraint stream iterates over all instances of class `Shift` in the xref:using-greycos-solver/modeling-planning-problems.adoc#problemFacts[problem facts] and
+xref:using-greycos-solver/modeling-planning-problems.adoc#planningEntity[planning entities]
+in the xref:using-greycos-solver/modeling-planning-problems.adoc#planningProblemAndPlanningSolution[planning problem].
 It finds every `Shift` which is assigned to employee `Ann` and for every such instance (also called a match), it adds a
 soft penalty of `1` to the overall xref:constraints-and-score/overview.adoc#calculateTheScore[score].
 The following figure illustrates this process on a problem with 4 different shifts:
@@ -118,8 +118,8 @@ Add the following code to your solver configuration:
 
 [source,xml,options="nowrap"]
 ----
-    <solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+    <solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
       <scoreDirectorFactory>
         <constraintProviderClass>org.acme.schooltimetabling.solver.TimetableConstraintProvider</constraintProviderClass>
       </scoreDirectorFactory>
@@ -203,7 +203,7 @@ The following constraint stream cardinalities are currently supported:
 [#constraintStreamsHigherCardinalities]
 === Achieving higher cardinalities
 
-Timefold Solver currently does not support constraint stream cardinalities higher than 4.
+Greycos Solver currently does not support constraint stream cardinalities higher than 4.
 However, with <<constraintStreamsMappingTuples,tuple mapping>> effectively infinite cardinality is possible:
 
 [tabs]
@@ -226,7 +226,7 @@ Java::
 
 [NOTE]
 ====
-Timefold Solver does not provide any tuple implementations out of the box.
+Greycos Solver does not provide any tuple implementations out of the box.
 It's recommended to use one of the freely available 3rd party implementations.
 Should a custom implementation be necessary, see <<constraintStreamsDesigningMappingFunction,guidelines for mapping functions>>.
 ====
@@ -261,14 +261,14 @@ This constraint stream penalizes each known and initialized instance of `Shift`.
 === ForEach
 
 The `.forEach(T)` building block selects every `T` instance that
-is in a xref:using-timefold-solver/modeling-planning-problems.adoc#problemFacts[problem fact collection]
-or a xref:using-timefold-solver/modeling-planning-problems.adoc#planningEntitiesOfASolution[planning entity collection]
-that is xref:using-timefold-solver/modeling-planning-problems.adoc#detectingInconsistencies[consistent]
+is in a xref:using-greycos-solver/modeling-planning-problems.adoc#problemFacts[problem fact collection]
+or a xref:using-greycos-solver/modeling-planning-problems.adoc#planningEntitiesOfASolution[planning entity collection]
+that is xref:using-greycos-solver/modeling-planning-problems.adoc#detectingInconsistencies[consistent]
 and has no `null` genuine planning variables.
 
-To include instances with a `null` xref:using-timefold-solver/modeling-planning-problems.adoc#planningVariable[genuine planning variable],
+To include instances with a `null` xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariable[genuine planning variable],
 or planning values
-not assigned to any xref:using-timefold-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable],
+not assigned to any xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable],
 replace the `forEach()` building block by `forEachIncludingUnassigned()`:
 
 [tabs]
@@ -301,9 +301,9 @@ Java::
 ----
 ====
 
-In cases utilizing the xref:using-timefold-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable],
+In cases utilizing the xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable],
 you may want
-to include an xref:using-timefold-solver/modeling-planning-problems.adoc#listVariableShadowVariablesInverseRelation[inverse relation shadow variable]
+to include an xref:using-greycos-solver/modeling-planning-problems.adoc#listVariableShadowVariablesInverseRelation[inverse relation shadow variable]
 to maximize performance of your constraints.
 
 [NOTE]
@@ -312,16 +312,16 @@ The `forEach()` building block has a legacy counterpart, `from()`.
 This alternative approach included instances based on the initialization status of their genuine planning variables.
 As an unwanted consequence,
 `from()`
-behaves unexpectedly for xref:using-timefold-solver/modeling-planning-problems.adoc#planningVariableAllowingUnassigned[variables with unassigned values].
+behaves unexpectedly for xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariableAllowingUnassigned[variables with unassigned values].
 These are considered initialized even when `null`,
 and therefore this legacy method could still return entities with `null` variables.
-`from()`, `fromUnfiltered()` and `fromUniquePair()` are now deprecated and will be removed in a future major version of Timefold Solver.
+`from()`, `fromUnfiltered()` and `fromUniquePair()` are now deprecated and will be removed in a future major version of Greycos Solver.
 ====
 
 [#constraintStreamsPenaltiesRewards]
 === Penalties and rewards
 
-The purpose of constraint streams is to build up a xref:constraints-and-score/overview.adoc#whatIsAScore[score] for a xref:using-timefold-solver/modeling-planning-problems.adoc#planningProblemAndPlanningSolution[solution].
+The purpose of constraint streams is to build up a xref:constraints-and-score/overview.adoc#whatIsAScore[score] for a xref:using-greycos-solver/modeling-planning-problems.adoc#planningProblemAndPlanningSolution[solution].
 To do this, every constraint stream must contain a call to either a `penalize()` or a `reward()`
 building block.
 The `penalize()` building block makes the score worse and the `reward()` building block improves the score.
@@ -373,9 +373,9 @@ affect score in the opposite direction.
 [#constraintStreamsCustomizingJustificationsAndIndictments]
 ==== Customizing justifications and indictments
 
-One of important Timefold Solver features is its ability to xref:constraints-and-score/understanding-the-score.adoc[explain the score] of solutions it produced
+One of important Greycos Solver features is its ability to xref:constraints-and-score/understanding-the-score.adoc[explain the score] of solutions it produced
 through the use of justifications and indictments.
-By default, each constraint is justified with `ai.timefold.solver.core.api.score.stream.DefaultConstraintJustification`,
+By default, each constraint is justified with `ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification`,
 and the final tuple makes up the indicted objects.
 For example, in the following constraint, the indicted objects will be of type `Vehicle` and an `Integer`:
 
@@ -452,7 +452,7 @@ Java::
 You have complete control over the type, its name or methods exposed.
 If you choose to decorate it with the proper annotations,
 you will be able to send it over HTTP or store it in a database.
-The only limitation is that it must implement the `ai.timefold.solver.core.api.score.stream.ConstraintJustification` marker interface.
+The only limitation is that it must implement the `ai.greycos.solver.core.api.score.stream.ConstraintJustification` marker interface.
 
 
 [#constraintStreamsFilter]
@@ -518,8 +518,8 @@ The following functions are required for filtering constraint streams of differe
 |Cardinality|Filtering Predicate
 |1          |`java.util.function.Predicate<A>`
 |2          |`java.util.function.BiPredicate<A, B>`
-|3          |`ai.timefold.solver.core.api.function.TriPredicate<A, B, C>`
-|4          |`ai.timefold.solver.core.api.function.QuadPredicate<A, B, C, D>`
+|3          |`ai.greycos.solver.core.api.function.TriPredicate<A, B, C>`
+|4          |`ai.greycos.solver.core.api.function.QuadPredicate<A, B, C, D>`
 |===
 
 
@@ -547,7 +547,7 @@ Java::
 +
 [source,java,options="nowrap"]
 ----
-    import static ai.timefold.solver.core.api.score.stream.Joiners.*;
+    import static ai.greycos.solver.core.api.score.stream.Joiners.*;
 
     ...
 
@@ -673,7 +673,7 @@ Java::
 +
 [source,java,options="nowrap"]
 ----
-import static ai.timefold.solver.core.api.score.stream.ConstraintCollectors.*;
+import static ai.greycos.solver.core.api.score.stream.ConstraintCollectors.*;
 
 ...
 
@@ -699,7 +699,7 @@ In the previous example,
 
 There are many collectors available out of the box.
 You can also provide your own collectors by implementing the
-`ai.timefold.solver.core.api.score.stream.uni.UniConstraintCollector` interface,
+`ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollector` interface,
 or its `Bi...`, `Tri...` and `Quad...` counterparts.
 
 
@@ -1160,7 +1160,7 @@ each of the sub collectors individually.
 
 [NOTE]
 ====
-Timefold Solver does not provide any `Pair`, `Triple` or `Quadruple` implementation out of the box.
+Greycos Solver does not provide any `Pair`, `Triple` or `Quadruple` implementation out of the box.
 ====
 
 
@@ -1731,7 +1731,7 @@ to determine if using it brings benefits for your use case.
 
 We recommend that you test your constraints to ensure that they behave as expected.
 Constraint streams include the Constraint Verifier unit testing harness.
-To use it, first add a test scoped dependency to the `timefold-solver-test` JAR.
+To use it, first add a test scoped dependency to the `greycos-solver-test` JAR.
 
 
 [#constraintStreamsTestingIsolatedConstraints]
@@ -1847,7 +1847,7 @@ In this case, the `given(...)` call takes the `vehicleA`, `visit1` and `visit2` 
 Alternatively, you can use a `givenSolution(...)` method here and provide a planning solution instead.
 
 It's important to understand
-that calling `givenSolution(...)` does not update any xref:using-timefold-solver/modeling-planning-problems.adoc#shadowVariable[shadow variables].
+that calling `givenSolution(...)` does not update any xref:using-greycos-solver/modeling-planning-problems.adoc#shadowVariable[shadow variables].
 This is the default behavior and can be modified by invoking `settingAllShadowVariables()`.
 
 [tabs]
@@ -1932,7 +1932,7 @@ remains consistent as your code base evolves.
 It is therefore necessary for the `given(...)` method to list all planning entities and problem facts,
 or provide the entire planning solution instead.
 
-To test all constraints while updating all xref:using-timefold-solver/modeling-planning-problems.adoc#shadowVariable[shadow variables],
+To test all constraints while updating all xref:using-greycos-solver/modeling-planning-problems.adoc#shadowVariable[shadow variables],
 call `giveSolution(...)` and `settingAllShadowVariables()`.
 This approach ensures that the shadow variable listeners are triggered,
 and the constraints that depend on the related variables are evaluated accordingly.
@@ -1961,7 +1961,7 @@ it is your responsibility to assign the correct values beforehand.
 [#constraintStreamsTestingQuarkus]
 === Testing in Quarkus
 
-If you are using the `timefold-solver-quarkus` extension, inject the `ConstraintVerifier` in your tests:
+If you are using the `greycos-solver-quarkus` extension, inject the `ConstraintVerifier` in your tests:
 
 [source,java,options="nowrap"]
 ----
@@ -1975,7 +1975,7 @@ public class MyConstraintProviderTest {
 [#constraintStreamsTestingSpringBoot]
 === Testing in Spring Boot
 
-If you are using the `timefold-solver-spring-boot-starter` module, autowire the `ConstraintVerifier` in your tests:
+If you are using the `greycos-solver-spring-boot-starter` module, autowire the `ConstraintVerifier` in your tests:
 
 [source,java,options="nowrap"]
 ----
@@ -1989,7 +1989,7 @@ public class MyConstraintProviderTest {
 [#otherTypesOfScoreCalculation]
 == Other types of score calculation
 
-Timefold Solver supports two other types of score calculation.
+Greycos Solver supports two other types of score calculation.
 
 [#easyScoreCalculation]
 === Easy score calculation
@@ -2033,8 +2033,8 @@ Configure it in the solver configuration:
 ----
 
 To configure values of an `EasyScoreCalculator` dynamically in the solver configuration
-(so the xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `easyScoreCalculatorCustomProperties` element and use xref:using-timefold-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `easyScoreCalculatorCustomProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
 
 [source,xml,options="nowrap"]
 ----
@@ -2112,8 +2112,8 @@ the assertions triggered by the ``environmentMode``.
 ====
 
 To configure values of an `IncrementalScoreCalculator` dynamically in the solver configuration
-(so the xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `incrementalScoreCalculatorCustomProperties` element and use xref:using-timefold-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `incrementalScoreCalculatorCustomProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
 
 [source,xml,options="nowrap"]
 ----

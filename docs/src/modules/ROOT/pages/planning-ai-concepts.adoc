@@ -41,7 +41,7 @@ As more employees and different work specializations are added, things become mu
 
 For a trivial field service routing problem with 4 vehicles and 8 visits, the number of possibilities that a brute algorithm considers is 19,958,418.
 
-What would take a team of planners many hours to schedule can be automatically scheduled by Timefold Solver in a fraction of the time.
+What would take a team of planners many hours to schedule can be automatically scheduled by Greycos Solver in a fraction of the time.
 
 [#operationsResearch]
 == Operations Research
@@ -76,7 +76,7 @@ Hard constraints also include rules that must be adhered to, for instance,  empl
 Breaking hard constraints would result in infeasible plans.
 
 Medium constraints help manage plans when resources are limited, (for instance, when there aren't enough technicians to complete all the customer visits or there aren't enough employees to work all the available shifts).
-Medium constraints incentivize Timefold Platform to assign as many entities (visits or shifts) as possible.
+Medium constraints incentivize Greycos Platform to assign as many entities (visits or shifts) as possible.
 
 Soft constraints help optimize plans based on the business goals, for instance, minimize travel time between customer visits or assign employees to their preferred shifts.
 

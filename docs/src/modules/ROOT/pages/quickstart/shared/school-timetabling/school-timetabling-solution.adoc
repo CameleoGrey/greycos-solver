@@ -24,12 +24,12 @@ package org.acme.schooltimetabling.domain;
 
 import java.util.List;
 
-import ai.timefold.solver.core.api.domain.solution.PlanningEntityCollectionProperty;
-import ai.timefold.solver.core.api.domain.solution.PlanningScore;
-import ai.timefold.solver.core.api.domain.solution.PlanningSolution;
-import ai.timefold.solver.core.api.domain.solution.ProblemFactCollectionProperty;
-import ai.timefold.solver.core.api.domain.valuerange.ValueRangeProvider;
-import ai.timefold.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.domain.solution.PlanningEntityCollectionProperty;
+import ai.greycos.solver.core.api.domain.solution.PlanningScore;
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.domain.solution.ProblemFactCollectionProperty;
+import ai.greycos.solver.core.api.domain.valuerange.ValueRangeProvider;
+import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
 
 @PlanningSolution
 public class Timetable {
@@ -84,13 +84,13 @@ Create the `src/main/kotlin/org/acme/schooltimetabling/TimetableApp.kt` class:
 ----
 package org.acme.schooltimetabling.domain
 
-import ai.timefold.solver.core.api.domain.solution.PlanningEntityCollectionProperty
-import ai.timefold.solver.core.api.domain.solution.PlanningScore
-import ai.timefold.solver.core.api.domain.solution.PlanningSolution
-import ai.timefold.solver.core.api.domain.solution.ProblemFactCollectionProperty
-import ai.timefold.solver.core.api.domain.valuerange.ValueRangeProvider
-import ai.timefold.solver.core.api.score.buildin.hardsoft.HardSoftScore
-import ai.timefold.solver.core.api.solver.SolverStatus
+import ai.greycos.solver.core.api.domain.solution.PlanningEntityCollectionProperty
+import ai.greycos.solver.core.api.domain.solution.PlanningScore
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution
+import ai.greycos.solver.core.api.domain.solution.ProblemFactCollectionProperty
+import ai.greycos.solver.core.api.domain.valuerange.ValueRangeProvider
+import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore
+import ai.greycos.solver.core.api.solver.SolverStatus
 
 @PlanningSolution
 data class Timetable (
@@ -105,7 +105,7 @@ data class Timetable (
     @PlanningScore
     var score: HardSoftScore? = null) {
 
-    // No-arg constructor required for Timefold
+    // No-arg constructor required for Greycos
     constructor() : this(emptyList(), emptyList(), emptyList())
 
 }
@@ -115,7 +115,7 @@ data class Timetable (
 
 
 The `Timetable` class has an `@PlanningSolution` annotation,
-so Timefold Solver knows that this class contains all of the input and output data.
+so Greycos Solver knows that this class contains all of the input and output data.
 
 Specifically, these classes are the input of the problem:
 
@@ -139,15 +139,15 @@ However, this class is also the output of the solution:
 == The value range providers
 
 The `timeslots` field is a value range provider.
-It holds the `Timeslot` instances which Timefold Solver can pick from to assign to the `timeslot` field of `Lesson` instances.
+It holds the `Timeslot` instances which Greycos Solver can pick from to assign to the `timeslot` field of `Lesson` instances.
 The `timeslots` field has an `@ValueRangeProvider` annotation to connect the `@PlanningVariable` with the `@ValueRangeProvider`,
-by matching the type of the planning variable with the type returned by the xref:using-timefold-solver/modeling-planning-problems.adoc#planningValueRangeProvider[value range provider].
+by matching the type of the planning variable with the type returned by the xref:using-greycos-solver/modeling-planning-problems.adoc#planningValueRangeProvider[value range provider].
 
 Following the same logic, the `rooms` field also has an `@ValueRangeProvider` annotation.
 
 == The problem fact and planning entity properties
 
-Furthermore, Timefold Solver needs to know which `Lesson` instances it can change
+Furthermore, Greycos Solver needs to know which `Lesson` instances it can change
 as well as how to retrieve the `Timeslot` and `Room` instances used for score calculation
 by your `TimetableConstraintProvider`.
 
@@ -155,5 +155,5 @@ The `timeslots` and `rooms` fields have an `@ProblemFactCollectionProperty` anno
 so your `TimetableConstraintProvider` can select _from_ those instances.
 
 The `lessons` has an `@PlanningEntityCollectionProperty` annotation,
-so Timefold Solver can change them during solving
+so Greycos Solver can change them during solving
 and your `TimetableConstraintProvider` can select _from_ those too.

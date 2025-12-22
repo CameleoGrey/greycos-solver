@@ -4,8 +4,8 @@
 # @triceo is required to review all changes before merge, but may delegate deeper review to secondary owners.
 #
 # Rationale for assignments:
-# - @triceo is the main code owner of Timefold Solver.
-# - @TomCools (Timefold DevRel) is the secondary code owner of user-facing documentation.
+# - @triceo is the main code owner of Greycos Solver.
+# - @TomCools (Greycos DevRel) is the secondary code owner of user-facing documentation.
 # - @zepfred and @Christopher-Chianelli are secondary code owners for specific parts of the codebase
 #   with which they interacted frequently, or wrote entirely.
 #
@@ -14,18 +14,18 @@
 # - If you want to exclude yourself from any particular review requests, give a reason and do it.
 **/* @triceo
 
-core/src/*/java/ai/timefold/solver/core/impl/domain/valuerange/** @triceo @zepfred
-core/src/*/java/ai/timefold/solver/core/impl/heuristic/selector/** @triceo @zepfred
-core/src/*/java/ai/timefold/solver/core/impl/constructionheuristic/** @triceo @zepfred
-core/src/*/java/ai/timefold/solver/core/impl/exhaustivesearch/** @triceo @zepfred
-core/src/*/java/ai/timefold/solver/core/impl/localsearch/** @triceo @zepfred
-core/src/*/java/ai/timefold/solver/core/impl/partitionedsearch/** @triceo @zepfred
-core/src/*/java/ai/timefold/solver/core/impl/solver/termination/** @triceo @zepfred
+core/src/*/java/ai/greycos/solver/core/impl/domain/valuerange/** @triceo @zepfred
+core/src/*/java/ai/greycos/solver/core/impl/heuristic/selector/** @triceo @zepfred
+core/src/*/java/ai/greycos/solver/core/impl/constructionheuristic/** @triceo @zepfred
+core/src/*/java/ai/greycos/solver/core/impl/exhaustivesearch/** @triceo @zepfred
+core/src/*/java/ai/greycos/solver/core/impl/localsearch/** @triceo @zepfred
+core/src/*/java/ai/greycos/solver/core/impl/partitionedsearch/** @triceo @zepfred
+core/src/*/java/ai/greycos/solver/core/impl/solver/termination/** @triceo @zepfred
 
-core/src/*/java/ai/timefold/solver/core/impl/domain/common/** @triceo @Christopher-Chianelli
-core/src/*/java/ai/timefold/solver/core/impl/domain/solution/cloner/** @triceo @Christopher-Chianelli
-core/src/*/java/ai/timefold/solver/core/impl/domain/variable/** @triceo @Christopher-Chianelli
-core/src/*/java/ai/timefold/solver/core/impl/solver/monitoring/** @triceo @Christopher-Chianelli
+core/src/*/java/ai/greycos/solver/core/impl/domain/common/** @triceo @Christopher-Chianelli
+core/src/*/java/ai/greycos/solver/core/impl/domain/solution/cloner/** @triceo @Christopher-Chianelli
+core/src/*/java/ai/greycos/solver/core/impl/domain/variable/** @triceo @Christopher-Chianelli
+core/src/*/java/ai/greycos/solver/core/impl/solver/monitoring/** @triceo @Christopher-Chianelli
 quarkus-integration/** @triceo @Christopher-Chianelli
 spring-integration/** @triceo @Christopher-Chianelli
 

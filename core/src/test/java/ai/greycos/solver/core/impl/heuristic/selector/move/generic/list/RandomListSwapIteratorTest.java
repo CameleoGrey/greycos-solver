@@ -1,0 +1,52 @@
+package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list;
+
+import static ai.greycos.solver.core.testdomain.list.TestdataListUtils.getListVariableDescriptor;
+import static ai.greycos.solver.core.testdomain.list.TestdataListUtils.mockIterableValueSelector;
+import static ai.greycos.solver.core.testutil.PlannerAssert.assertCodesOfIterator;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockScoreDirector;
+
+import java.util.List;
+
+import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
+import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
+import ai.greycos.solver.core.testdomain.list.TestdataListValue;
+
+import org.junit.jupiter.api.Test;
+
+class RandomListSwapIteratorTest {
+
+  @Test
+  void iterator() {
+    TestdataListValue v1 = new TestdataListValue("1");
+    TestdataListValue v2 = new TestdataListValue("2");
+    TestdataListValue v3 = new TestdataListValue("3");
+    var e1 = TestdataListEntity.createWithValues("A", v1, v2);
+    var e2 = TestdataListEntity.createWithValues("B");
+    var e3 = TestdataListEntity.createWithValues("C", v3);
+    var solution = new TestdataListSolution();
+    solution.setEntityList(List.of(e1, e2, e3));
+    solution.setValueList(List.of(v1, v2, v3));
+
+    InnerScoreDirector<TestdataListSolution, SimpleScore> scoreDirector =
+        mockScoreDirector(TestdataListSolution.buildSolutionDescriptor());
+    scoreDirector.setWorkingSolution(solution);
+
+    ListVariableDescriptor<TestdataListSolution> listVariableDescriptor =
+        getListVariableDescriptor(scoreDirector);
+    RandomListSwapIterator<TestdataListSolution> randomListSwapIterator =
+        new RandomListSwapIterator<>(
+            scoreDirector.getSupplyManager().demand(listVariableDescriptor.getStateDemand()),
+            mockIterableValueSelector(listVariableDescriptor, v1, v1, v1, v3),
+            mockIterableValueSelector(listVariableDescriptor, v1, v2, v3, v1));
+
+    assertCodesOfIterator(
+        randomListSwapIterator,
+        "No change",
+        "1 {A[0]} <-> 2 {A[1]}",
+        "1 {A[0]} <-> 3 {C[0]}",
+        "3 {C[0]} <-> 1 {A[0]}");
+  }
+}

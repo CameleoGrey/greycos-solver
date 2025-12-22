@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           # -g to allow actors such as dependabot[bot]
-          ORG_MEMBERSHIP=`curl -g -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/orgs/TimefoldAI/memberships/${{ github.actor }}" | jq -r '.state == "active"'`
+          ORG_MEMBERSHIP=`curl -g -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/orgs/CameleoGrey/memberships/${{ github.actor }}" | jq -r '.state == "active"'`
           echo "authorized=$ORG_MEMBERSHIP" >> "$GITHUB_OUTPUT"
       - id: validation
         shell: bash
@@ -66,12 +66,12 @@ jobs:
       group: pr-${{ github.event_name }}-${{ github.head_ref }}
       cancel-in-progress: true
     steps:
-      # Clone timefold-solver
+      # Clone greycos-solver
       # No need to check for stale repo, as Github merges the main repo into the fork automatically.
-      - name: Checkout timefold-solver
+      - name: Checkout greycos-solver
         uses: actions/checkout@v6
         with:
-          path: ./timefold-solver
+          path: ./greycos-solver
           ref: ${{ github.event.pull_request.head.sha }} # The GHA event will pull the main branch by default, and we must specify the PR reference version
 
       - name: Setup Temurin 25 and Maven
@@ -81,59 +81,59 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Quickly build timefold-solver
-        working-directory: ./timefold-solver
+      - name: Quickly build greycos-solver
+        working-directory: ./greycos-solver
         shell: bash
         run: ./mvnw -B -Dquickly clean install
 
-      # Clone timefold-solver-enterprise
-      - name: Checkout timefold-solver-enterprise (PR) # Checkout the PR branch first, if it exists
+      # Clone greycos-solver-enterprise
+      - name: Checkout greycos-solver-enterprise (PR) # Checkout the PR branch first, if it exists
         id: checkout-solver-enterprise
         uses: actions/checkout@v6
         continue-on-error: true
         with:
-          repository: TimefoldAI/timefold-solver-enterprise
+          repository: CameleoGrey/greycos-solver-enterprise
           ref: ${{ github.head_ref }}
           token: ${{ secrets.JRELEASER_GITHUB_TOKEN }} # Safe; only used to clone the repo and not stored in the fork.
-          path: ./timefold-solver-enterprise
+          path: ./greycos-solver-enterprise
           fetch-depth: 0 # Otherwise merge will fail on account of not having history.
-      - name: Checkout timefold-solver-enterprise (main) # Checkout the main branch if the PR branch does not exist
+      - name: Checkout greycos-solver-enterprise (main) # Checkout the main branch if the PR branch does not exist
         if: steps.checkout-solver-enterprise.outcome != 'success'
         uses: actions/checkout@v6
         with:
-          repository: TimefoldAI/timefold-solver-enterprise
+          repository: CameleoGrey/greycos-solver-enterprise
           ref: main
           token: ${{ secrets.JRELEASER_GITHUB_TOKEN }} # Safe; only used to clone the repo and not stored in the fork.
-          path: ./timefold-solver-enterprise
+          path: ./greycos-solver-enterprise
           fetch-depth: 0 # Otherwise merge will fail on account of not having history.
 
-      - name: Quickly build timefold-solver-enterprise
-        working-directory: ./timefold-solver-enterprise
+      - name: Quickly build greycos-solver-enterprise
+        working-directory: ./greycos-solver-enterprise
         shell: bash
         run: ./mvnw -B -Dquickly clean install
 
-      # Clone timefold-solver-benchmarks
-      - name: Checkout timefold-solver-benchmarks (PR) # Checkout the PR branch first, if it exists
+      # Clone greycos-solver-benchmarks
+      - name: Checkout greycos-solver-benchmarks (PR) # Checkout the PR branch first, if it exists
         if: github.head_ref # Only true if this is a PR.
         id: checkout-solver-benchmarks-pr
         uses: actions/checkout@v6
         continue-on-error: true
         with:
-          repository: TimefoldAI/timefold-solver-benchmarks
+          repository: CameleoGrey/greycos-solver-benchmarks
           ref: ${{ github.head_ref }}
-          path: ./timefold-solver-benchmarks
+          path: ./greycos-solver-benchmarks
           fetch-depth: 0 # Otherwise merge will fail on account of not having history.
-      - name: Checkout timefold-solver-benchmarks (main) # Checkout the main branch if the PR branch does not exist
+      - name: Checkout greycos-solver-benchmarks (main) # Checkout the main branch if the PR branch does not exist
         if: ${{ steps.checkout-solver-benchmarks-pr.outcome != 'success' }}
         uses: actions/checkout@v6
         with:
-          repository: TimefoldAI/timefold-solver-benchmarks
+          repository: CameleoGrey/greycos-solver-benchmarks
           ref: main
-          path: ./timefold-solver-benchmarks
+          path: ./greycos-solver-benchmarks
           fetch-depth: 0 # Otherwise merge will fail on account of not having history.
 
-      - name: Build and test timefold-solver-benchmarks
-        working-directory: ./timefold-solver-benchmarks
+      - name: Build and test greycos-solver-benchmarks
+        working-directory: ./greycos-solver-benchmarks
         shell: bash
         run: ./mvnw -B -DskipJMH clean verify
       - name: Test Summary
@@ -151,34 +151,34 @@ jobs:
       cancel-in-progress: true
     timeout-minutes: 120
     steps:
-      # Clone timefold-solver
+      # Clone greycos-solver
       # No need to check for stale repo, as Github merges the main repo into the fork automatically.
-      - name: Checkout timefold-solver
+      - name: Checkout greycos-solver
         uses: actions/checkout@v6
         with:
-          path: ./timefold-solver
+          path: ./greycos-solver
           ref: ${{ github.event.pull_request.head.sha }} # The GHA event will pull the main branch by default, and we must specify the PR reference version
 
-      # Clone timefold-solver-enterprise
+      # Clone greycos-solver-enterprise
       # Need to check for stale repo, since Github is not aware of the build chain and therefore doesn't automate it.
-      - name: Checkout timefold-solver-enterprise (PR) # Checkout the PR branch first, if it exists
+      - name: Checkout greycos-solver-enterprise (PR) # Checkout the PR branch first, if it exists
         id: checkout-solver-enterprise
         uses: actions/checkout@v6
         continue-on-error: true
         with:
-          repository: TimefoldAI/timefold-solver-enterprise
+          repository: CameleoGrey/greycos-solver-enterprise
           ref: ${{ github.head_ref }}
           token: ${{ secrets.JRELEASER_GITHUB_TOKEN }} # Safe; only used to clone the repo and not stored in the fork.
-          path: ./timefold-solver-enterprise
+          path: ./greycos-solver-enterprise
           fetch-depth: 0 # Otherwise merge will fail on account of not having history.
-      - name: Checkout timefold-solver-enterprise (main) # Checkout the main branch if the PR branch does not exist
+      - name: Checkout greycos-solver-enterprise (main) # Checkout the main branch if the PR branch does not exist
         if: steps.checkout-solver-enterprise.outcome != 'success'
         uses: actions/checkout@v6
         with:
-          repository: TimefoldAI/timefold-solver-enterprise
+          repository: CameleoGrey/greycos-solver-enterprise
           ref: main
           token: ${{ secrets.JRELEASER_GITHUB_TOKEN }} # Safe; only used to clone the repo and not stored in the fork.
-          path: ./timefold-solver-enterprise
+          path: ./greycos-solver-enterprise
           fetch-depth: 0 # Otherwise merge will fail on account of not having history.
 
       # Build and test
@@ -188,12 +188,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
-      - name: Quickly build timefold-solver
-        working-directory: ./timefold-solver
+      - name: Quickly build greycos-solver
+        working-directory: ./greycos-solver
         shell: bash
         run: ./mvnw -B -Dquickly clean install
-      - name: Build and test timefold-solver-enterprise
-        working-directory: ./timefold-solver-enterprise
+      - name: Build and test greycos-solver-enterprise
+        working-directory: ./greycos-solver-enterprise
         shell: bash
         run: ./mvnw -B clean verify
       - name: Test Summary
@@ -217,7 +217,7 @@ jobs:
         id: checkout-frontend
         uses: actions/checkout@v6
         with:
-          repository: TimefoldAI/frontend
+          repository: CameleoGrey/frontend
           token: ${{ secrets.JRELEASER_GITHUB_TOKEN }} # Safe; only used to clone the repo and not stored in the fork.
           fetch-depth: 0 # Otherwise merge will fail on account of not having history.
       - name: Install pnpm
@@ -231,12 +231,12 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Checkout timefold-solver
+      - name: Checkout greycos-solver
         uses: actions/checkout@v6
         with:
-          repository: "${{ github.event.pull_request.head.repo.owner.login || 'TimefoldAI' }}/timefold-solver"
+          repository: "${{ github.event.pull_request.head.repo.owner.login || 'CameleoGrey' }}/greycos-solver"
           ref: ${{ github.event.pull_request.head.sha || 'main' }} # The GHA event will pull the main branch by default, and we must specify the PR reference version
-          path: "./timefold-solver"
+          path: "./greycos-solver"
           fetch-depth: 0
 
       - name: Install yq
@@ -245,7 +245,7 @@ jobs:
           sudo chmod +x /usr/bin/yq          
 
       - name: Updating Antora configuration
-        working-directory: "./timefold-solver"
+        working-directory: "./greycos-solver"
         run: |
           echo "=== Updating antora.yml"
           sed -i "s/\${project\.version}b0/SNAPSHOT/g" docs/src/antora.yml
@@ -266,9 +266,9 @@ jobs:
         run: |
           yq -i e 'del(.content.sources)' apps/docs/antora-playbook.yml
           yq -i e 'del(.site.keys)' apps/docs/antora-playbook.yml
-          yq -i e '.content.sources += [{"url": "../../timefold-solver", "start_path": "docs/src"}]' apps/docs/antora-playbook.yml
+          yq -i e '.content.sources += [{"url": "../../greycos-solver", "start_path": "docs/src"}]' apps/docs/antora-playbook.yml
           aikido-pnpm install --frozen-lockfile
-          aikido-pnpm build --filter @timefoldai/docs
+          aikido-pnpm build --filter @greycosai/docs
 
       - name: Deploy Documentation (Preview Mode)
         if: ${{ env.BRANCH_NAME != 'main' }}
@@ -278,7 +278,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: ./apps/docs
-          command: pages deploy ./public-serve --project-name=timefold-docs --branch=${{ github.ref }}
+          command: pages deploy ./public-serve --project-name=greycos-docs --branch=${{ github.ref }}
           packageManager: pnpm
 
   sonarcloud:
@@ -312,4 +312,4 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
           PR_SHA: ${{ github.event.pull_request.head.sha }}
-        run: ./mvnw -B -Psonarcloud-analysis validate org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.organization=timefold -Dsonar.projectKey=ai.timefold:timefold-solver -Dsonar.host.url=https://sonarcloud.io -Dsonar.pullrequest.key="$PR_NUMBER" -Dsonar.pullrequest.branch="$PR_BRANCH" -Dsonar.scm.revision="$PR_SHA"
+        run: ./mvnw -B -Psonarcloud-analysis validate org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.organization=greycos -Dsonar.projectKey=ai.greycos:greycos-solver -Dsonar.host.url=https://sonarcloud.io -Dsonar.pullrequest.key="$PR_NUMBER" -Dsonar.pullrequest.branch="$PR_BRANCH" -Dsonar.scm.revision="$PR_SHA"

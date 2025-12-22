@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: Questions and ideas
-    url: https://github.com/TimefoldAI/timefold-solver/discussions/new?category=general
-    about: Open Community discussions related to Timefold Solver.
+    url: https://github.com/CameleoGrey/greycos-solver/discussions/new?category=general
+    about: Open Community discussions related to Greycos Solver.

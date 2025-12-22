@@ -41,7 +41,7 @@ Use <<realTimePlanning,_real-time planning_>>.
 
 More CPU time results in a better planning solution.
 
-Timefold Solver allows you to start planning earlier, despite unforeseen changes,
+Greycos Solver allows you to start planning earlier, despite unforeseen changes,
 as the optimization algorithms support planning a solution that has already been partially planned.
 This is known as repeated planning.
 
@@ -73,10 +73,10 @@ The construction heuristics fills in the newly created gaps (probably with the s
 When there is no feasible solution to assign all planning entities, it is preferable to assign as many entities as possible without breaking hard constraints.
 This is called overconstrained planning.
 
-By default, Timefold Solver assigns all planning entities, overloads the planning values, and therefore breaks hard constraints.
+By default, Greycos Solver assigns all planning entities, overloads the planning values, and therefore breaks hard constraints.
 There are two ways to avoid this:
 
-* Use xref:using-timefold-solver/modeling-planning-problems.adoc#planningVariableAllowingUnassigned[planning variables with unassigned values],
+* Use xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariableAllowingUnassigned[planning variables with unassigned values],
 so that some entities are unassigned.
 * Add virtual values to catch the unassigned entities.
 
@@ -91,9 +91,9 @@ image::responding-to-change/overconstrainedPlanning.png[align="center"]
 To implement this:
 
 . Add a score level (usually a medium level between the hard and soft level) by switching xref:constraints-and-score/overview.adoc#scoreType[`Score` type].
-. Make the planning variable xref:using-timefold-solver/modeling-planning-problems.adoc#planningVariableAllowingUnassigned[allow unassigned values].
+. Make the planning variable xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariableAllowingUnassigned[allow unassigned values].
 . Add a score constraint on the new level (usually a medium constraint) to penalize the number of unassigned entities (or a weighted sum of them).
-Use xref:constraints-and-score/score-calculation.adoc#constraintStreamsForEach[`forEachIncludingUnassigned`] and check if the xref:using-timefold-solver/modeling-planning-problems.adoc#planningVariable[planning variable] or xref:using-timefold-solver/modeling-planning-problems.adoc#bidirectionalVariable[inverse relation shadow variable] is `null`:
+Use xref:constraints-and-score/score-calculation.adoc#constraintStreamsForEach[`forEachIncludingUnassigned`] and check if the xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariable[planning variable] or xref:using-greycos-solver/modeling-planning-problems.adoc#bidirectionalVariable[inverse relation shadow variable] is `null`:
 
 [tabs]
 ====
@@ -208,7 +208,7 @@ image::responding-to-change/continuousPublishingWithRotation.png[align="center"]
 === Pinned planning entities
 
 A pinned planning entity doesn't change during solving.
-This is commonly used by users to pin down one or more specific assignments and force Timefold Solver to schedule around those fixed assignments.
+This is commonly used by users to pin down one or more specific assignments and force Greycos Solver to schedule around those fixed assignments.
 
 [#pinDownPlanningEntities]
 ==== Pin down planning entities with `@PlanningPin`
@@ -253,7 +253,7 @@ use xref:responding-to-change/responding-to-change.adoc#problemChange[ProblemCha
 [#partiallyPinnedPlanningListVariable]
 ==== Pinning a planning list variable
 
-There are cases where pinning only a part of xref:using-timefold-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable] is necessary.
+There are cases where pinning only a part of xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable] is necessary.
 For example, if some customer visits have already happened but are still in the list,
 it makes sense to pin them down.
 
@@ -306,7 +306,7 @@ use xref:responding-to-change/responding-to-change.adoc#problemChange[ProblemCha
 [#configureAPinningFilter]
 ==== Configure a `PinningFilter`
 
-WARNING: `PinningFilter` is deprecated for removal in a future version of Timefold Solver.
+WARNING: `PinningFilter` is deprecated for removal in a future version of Greycos Solver.
 Use `@PlanningPin` as described above.
 
 Alternatively, to pin some planning entities down,
@@ -415,7 +415,7 @@ image::responding-to-change/realTimePlanningVehicleRouting.png[align="center"]
 
 In the example above, three customers are added at different times (``07:56``, `08:02` and ``08:45``), after the original customer set finished solving at `07:55`, and in some cases, after the vehicles have already left.
 
-Timefold Solver can handle such scenarios with `ProblemChange` (in combination with <<pinnedPlanningEntities,pinned planning entities>>).
+Greycos Solver can handle such scenarios with `ProblemChange` (in combination with <<pinnedPlanningEntities,pinned planning entities>>).
 
 [#problemChange]
 === `ProblemChange`
@@ -518,7 +518,7 @@ The `ProblemChangeDirector` must be updated with any change on the problem facts
 ====
 
 To write a `ProblemChange` correctly,
-it is important to understand the behavior of xref:using-timefold-solver/modeling-planning-problems.adoc#cloningASolution[a planning clone].
+it is important to understand the behavior of xref:using-greycos-solver/modeling-planning-problems.adoc#cloningASolution[a planning clone].
 
 A planning clone of a solution must fulfill these requirements:
 
@@ -532,14 +532,14 @@ When implementing problem changes, consider the following:
 
 . Any change in a `ProblemChange` must be done on the `@PlanningSolution` instance of ``scoreDirector.getWorkingSolution()``.
 
-. The `workingSolution` is xref:using-timefold-solver/modeling-planning-problems.adoc#cloningASolution[a planning clone] of the ``BestSolutionChangedEvent``'s ``bestSolution``.
+. The `workingSolution` is xref:using-greycos-solver/modeling-planning-problems.adoc#cloningASolution[a planning clone] of the ``BestSolutionChangedEvent``'s ``bestSolution``.
 * The `workingSolution` in the `Solver` is never the same solution instance as in the rest of your application: it is a planning clone.
 * A planning clone also clones the planning entities and planning entity collections.
 +
 Thus, any change on the planning entities must happen on the `workingSolution` instance passed to the `ProblemChange.doChange(Solution_ workingSolution, ProblemChangeDirector problemChangeDirector)` method.
 
 . Use the method `ProblemChangeDirector.lookUpWorkingObject()` to translate and retrieve the working solution's instance of an object.
-This requires xref:using-timefold-solver/modeling-planning-problems.adoc#planningId[annotating a property of that class as the @PlanningId].
+This requires xref:using-greycos-solver/modeling-planning-problems.adoc#planningId[annotating a property of that class as the @PlanningId].
 
 . A planning clone does not clone the problem facts, nor the problem fact collections.
 _Therefore the ``__workingSolution__`` and the ``__bestSolution__`` share the same problem fact instances and the same problem fact list instances._
@@ -571,7 +571,7 @@ This is a _warm start_ because its initial solution is the adjusted best solutio
 +
 This implies the construction heuristic runs again,
 but because little or no planning variables are uninitialized
-(unless you have a xref:using-timefold-solver/modeling-planning-problems.adoc#planningVariableAllowingUnassigned[planning variable with unassigned values]),
+(unless you have a xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariableAllowingUnassigned[planning variable with unassigned values]),
 it finishes much quicker than in a cold start.
 
 . Each configured `Termination` resets (both in solver and phase configuration), but a previous call to `terminateEarly()` is not undone.
@@ -596,8 +596,8 @@ To use the `Solver` in daemon mode:
 +
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
   <daemon>true</daemon>
   ...
 </solver>
@@ -716,7 +716,7 @@ If required, <<continuousPlanning,continuous planning>> can be used to optimize 
 Assignment Recommendation API requires the `SolutionManager` to be configured
 with a xref:optimization-algorithms/optimization-algorithms.adoc#constructionHeuristics[construction heuristic] as the first phase,
 as it uses that construction heuristic to find the best fit.
-If there are multiple construction heuristics phases in the xref:using-timefold-solver/configuration.adoc#solverConfiguration[solver configuration],
+If there are multiple construction heuristics phases in the xref:using-greycos-solver/configuration.adoc#solverConfiguration[solver configuration],
 or if the first phase is not a construction heuristic
 (perhaps a xref:optimization-algorithms/optimization-algorithms.adoc#customSolverPhase[custom initializer]),
 the API will fail fast.

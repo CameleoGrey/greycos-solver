@@ -1,0 +1,51 @@
+package ai.greycos.solver.quarkus;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+
+import ai.greycos.solver.core.api.solver.SolverManager;
+import ai.greycos.solver.quarkus.rest.TestdataQuarkusSolutionConfigResource;
+import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity;
+import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
+
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.quarkus.test.QuarkusUnitTest;
+import io.restassured.RestAssured;
+
+class GreycosProcessorMultipleSolversPropertiesTest {
+
+  @RegisterExtension
+  static final QuarkusUnitTest config =
+      new QuarkusUnitTest()
+          .overrideConfigKey("quarkus.greycos.solver.\"solver1\".termination.spent-limit", "8s")
+          .overrideConfigKey("quarkus.greycos.solver.\"solver2\".termination.spent-limit", "4s")
+          .setArchiveProducer(
+              () ->
+                  ShrinkWrap.create(JavaArchive.class)
+                      .addClasses(
+                          TestdataQuarkusEntity.class,
+                          TestdataQuarkusSolution.class,
+                          TestdataQuarkusConstraintProvider.class,
+                          TestdataQuarkusSolutionConfigResource.class));
+
+  @Inject
+  @Named("solver1")
+  SolverManager<?, ?> solverManager1;
+
+  @Inject
+  @Named("solver2")
+  SolverManager<?, ?> solverManager2;
+
+  @Test
+  void solverProperties() {
+    String resp = RestAssured.get("/solver-config/seconds-spent-limit").asString();
+    assertEquals("secondsSpentLimit=0.06;secondsSpentLimit=0.12", resp);
+  }
+}

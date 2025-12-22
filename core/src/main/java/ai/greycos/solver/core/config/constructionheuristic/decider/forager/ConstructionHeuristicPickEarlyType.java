@@ -1,0 +1,11 @@
+package ai.greycos.solver.core.config.constructionheuristic.decider.forager;
+
+import jakarta.xml.bind.annotation.XmlEnum;
+
+@XmlEnum
+public enum ConstructionHeuristicPickEarlyType {
+  NEVER,
+  FIRST_NON_DETERIORATING_SCORE,
+  FIRST_FEASIBLE_SCORE,
+  FIRST_FEASIBLE_SCORE_OR_NON_DETERIORATING_HARD;
+}

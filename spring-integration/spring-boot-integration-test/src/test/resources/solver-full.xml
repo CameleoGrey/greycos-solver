@@ -1,4 +1,4 @@
-<solver xmlns="https://timefold.ai/xsd/solver">
+<solver xmlns="https://greycos.ai/xsd/solver">
   <environmentMode>TRACKED_FULL_ASSERT</environmentMode>
   <daemon>false</daemon>
   <randomType>WELL1024A</randomType>

@@ -1,0 +1,98 @@
+package ai.greycos.solver.benchmark.impl.statistic.memoryuse;
+
+import java.util.List;
+import java.util.function.Consumer;
+
+import ai.greycos.solver.benchmark.config.statistic.ProblemStatisticType;
+import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
+import ai.greycos.solver.benchmark.impl.statistic.ProblemBasedSubSingleStatistic;
+import ai.greycos.solver.benchmark.impl.statistic.StatisticPoint;
+import ai.greycos.solver.benchmark.impl.statistic.StatisticRegistry;
+import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
+import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
+import ai.greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
+
+import io.micrometer.core.instrument.Tags;
+
+public class MemoryUseSubSingleStatistic<Solution_>
+    extends ProblemBasedSubSingleStatistic<Solution_, MemoryUseStatisticPoint> {
+
+  private long timeMillisThresholdInterval;
+
+  private MemoryUseSubSingleStatistic() {
+    // For JAXB.
+  }
+
+  public MemoryUseSubSingleStatistic(SubSingleBenchmarkResult subSingleBenchmarkResult) {
+    this(subSingleBenchmarkResult, 1000L);
+  }
+
+  public MemoryUseSubSingleStatistic(
+      SubSingleBenchmarkResult subSingleBenchmarkResult, long timeMillisThresholdInterval) {
+    super(subSingleBenchmarkResult, ProblemStatisticType.MEMORY_USE);
+    if (timeMillisThresholdInterval <= 0L) {
+      throw new IllegalArgumentException(
+          "The timeMillisThresholdInterval ("
+              + timeMillisThresholdInterval
+              + ") must be bigger than 0.");
+    }
+    this.timeMillisThresholdInterval = timeMillisThresholdInterval;
+  }
+
+  // ************************************************************************
+  // Lifecycle methods
+  // ************************************************************************
+
+  @Override
+  public void open(StatisticRegistry<Solution_> registry, Tags runTag) {
+    registry.addListener(
+        SolverMetric.MEMORY_USE, new MemoryUseSubSingleStatisticListener(registry, runTag));
+  }
+
+  private class MemoryUseSubSingleStatisticListener implements Consumer<Long> {
+
+    private long nextTimeMillisThreshold = timeMillisThresholdInterval;
+    private final StatisticRegistry<?> registry;
+    private final Tags tags;
+
+    public MemoryUseSubSingleStatisticListener(StatisticRegistry<?> registry, Tags tags) {
+      this.registry = registry;
+      this.tags = tags;
+    }
+
+    @Override
+    public void accept(Long timeMillisSpent) {
+      if (timeMillisSpent >= nextTimeMillisThreshold) {
+        var memoryUse = SolverMetricUtil.getGaugeValue(registry, SolverMetric.MEMORY_USE, tags);
+        if (memoryUse != null) {
+          var max = SolverMetricUtil.getGaugeValue(registry, "jvm.memory.max", tags);
+          pointList.add(
+              new MemoryUseStatisticPoint(timeMillisSpent, memoryUse.longValue(), max.longValue()));
+        }
+
+        nextTimeMillisThreshold += timeMillisThresholdInterval;
+        if (nextTimeMillisThreshold < timeMillisSpent) {
+          nextTimeMillisThreshold = timeMillisSpent;
+        }
+      }
+    }
+  }
+
+  // ************************************************************************
+  // CSV methods
+  // ************************************************************************
+
+  @Override
+  protected String getCsvHeader() {
+    return StatisticPoint.buildCsvLine("timeMillisSpent", "usedMemory", "maxMemory");
+  }
+
+  @Override
+  protected MemoryUseStatisticPoint createPointFromCsvLine(
+      ScoreDefinition<?> scoreDefinition, List<String> csvLine) {
+    return new MemoryUseStatisticPoint(
+        Long.parseLong(csvLine.get(0)),
+        Long.parseLong(csvLine.get(1)),
+        Long.parseLong(csvLine.get(2)));
+  }
+}

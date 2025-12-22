@@ -4,18 +4,18 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>ai.timefold.solver</groupId>
-    <artifactId>timefold-solver-quarkus-jackson-parent</artifactId>
+    <groupId>ai.greycos.solver</groupId>
+    <artifactId>greycos-solver-quarkus-jackson-parent</artifactId>
     <version>999-SNAPSHOT</version>
   </parent>
 
-  <artifactId>timefold-solver-quarkus-jackson-deployment</artifactId>
-  <name>Timefold Solver Quarkus Jackson - Deployment</name>
-  <description>Quarkus deployment module for timefold-solver-quarkus-jackson.</description>
-  <url>https://solver.timefold.ai</url>
+  <artifactId>greycos-solver-quarkus-jackson-deployment</artifactId>
+  <name>Greycos Solver Quarkus Jackson - Deployment</name>
+  <description>Quarkus deployment module for greycos-solver-quarkus-jackson.</description>
+  <url>https://solver.greycos.ai</url>
 
   <properties>
-    <java.module.name>ai.timefold.solver.quarkus.jackson.deployment</java.module.name>
+    <java.module.name>ai.greycos.solver.quarkus.jackson.deployment</java.module.name>
   </properties>
 
   <dependencies>
@@ -33,12 +33,12 @@
       <artifactId>quarkus-jackson-spi</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-jackson</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-jackson</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-quarkus-jackson</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-quarkus-jackson</artifactId>
     </dependency>
   </dependencies>
 
@@ -60,7 +60,7 @@
         <artifactId>maven-dependency-plugin</artifactId>
         <configuration>
           <ignoredUnusedDeclaredDependencies>
-            <dependency>ai.timefold.solver:timefold-solver-quarkus-jackson:jar</dependency>
+            <dependency>ai.greycos.solver:greycos-solver-quarkus-jackson:jar</dependency>
           </ignoredUnusedDeclaredDependencies>
         </configuration>
       </plugin>

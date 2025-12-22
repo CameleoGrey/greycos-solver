@@ -1,0 +1,106 @@
+package ai.greycos.solver.core.testdomain.shadow.follower;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
+import ai.greycos.solver.core.api.solver.SolverFactory;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
+import ai.greycos.solver.core.config.solver.SolverConfig;
+import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
+import ai.greycos.solver.core.impl.solver.MoveAsserter;
+import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningVariableMetaModel;
+import ai.greycos.solver.core.preview.api.move.builtin.Moves;
+import ai.greycos.solver.core.testdomain.TestdataValue;
+
+import org.junit.jupiter.api.Test;
+
+class FollowerValuesShadowVariableTest {
+  @Test
+  void testSolve() {
+    var problem = TestdataFollowerSolution.generateSolution(3, 8, 2);
+
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataFollowerSolution.class)
+            .withEntityClasses(TestdataLeaderEntity.class, TestdataFollowerEntity.class)
+            .withConstraintProviderClass(TestdataFollowerConstraintProvider.class)
+            .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
+            .withTerminationConfig(new TerminationConfig().withMoveCountLimit(1_000L));
+
+    var solverFactory = SolverFactory.<TestdataFollowerSolution>create(solverConfig);
+    var solver = solverFactory.buildSolver();
+    var solution = solver.solve(problem);
+
+    for (var follower : solution.getFollowers()) {
+      assertThat(follower.getValue()).isEqualTo(follower.getLeader().getValue());
+    }
+  }
+
+  @Test
+  void testMove() {
+    var leaderA = new TestdataLeaderEntity("A");
+    var leaderB = new TestdataLeaderEntity("B");
+    var leaderC = new TestdataLeaderEntity("C");
+
+    var followerA1 = new TestdataFollowerEntity("A1", leaderA);
+    var followerA2 = new TestdataFollowerEntity("A2", leaderA);
+    var followerA3 = new TestdataFollowerEntity("A3", leaderA);
+
+    var followerB1 = new TestdataFollowerEntity("B1", leaderB);
+    var followerB2 = new TestdataFollowerEntity("B2", leaderB);
+
+    var value1 = new TestdataValue("1");
+    var value2 = new TestdataValue("2");
+
+    var solution =
+        new TestdataFollowerSolution(
+            "Solution",
+            List.of(leaderA, leaderB, leaderC),
+            List.of(followerA1, followerA2, followerA3, followerB1, followerB2),
+            List.of(value1, value2));
+
+    var solutionDescriptor = TestdataFollowerSolution.buildSolutionDescriptor();
+    var variableMetamodel =
+        (PlanningVariableMetaModel<
+                TestdataFollowerSolution, ? super TestdataLeaderEntity, ? super TestdataValue>)
+            solutionDescriptor.getMetaModel().entity(TestdataLeaderEntity.class).variable("value");
+    var moveAsserter = MoveAsserter.create(solutionDescriptor);
+
+    moveAsserter.assertMoveAndApply(
+        solution,
+        Moves.change(variableMetamodel, leaderA, value1),
+        newSolution -> {
+          assertThat(followerA1.getValue()).isEqualTo(value1);
+          assertThat(followerA2.getValue()).isEqualTo(value1);
+          assertThat(followerA3.getValue()).isEqualTo(value1);
+
+          assertThat(followerB1.getValue()).isNull();
+          assertThat(followerB2.getValue()).isNull();
+        });
+
+    moveAsserter.assertMoveAndApply(
+        solution,
+        Moves.change(variableMetamodel, leaderB, value2),
+        newSolution -> {
+          assertThat(followerA1.getValue()).isEqualTo(value1);
+          assertThat(followerA2.getValue()).isEqualTo(value1);
+          assertThat(followerA3.getValue()).isEqualTo(value1);
+
+          assertThat(followerB1.getValue()).isEqualTo(value2);
+          assertThat(followerB2.getValue()).isEqualTo(value2);
+        });
+
+    moveAsserter.assertMoveAndApply(
+        solution,
+        Moves.change(variableMetamodel, leaderC, value1),
+        newSolution -> {
+          assertThat(followerA1.getValue()).isEqualTo(value1);
+          assertThat(followerA2.getValue()).isEqualTo(value1);
+          assertThat(followerA3.getValue()).isEqualTo(value1);
+
+          assertThat(followerB1.getValue()).isEqualTo(value2);
+          assertThat(followerB2.getValue()).isEqualTo(value2);
+        });
+  }
+}

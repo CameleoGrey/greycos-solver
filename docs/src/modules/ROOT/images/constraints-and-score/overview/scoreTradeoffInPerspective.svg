@@ -13358,7 +13358,7 @@
         <dc:title />
         <dc:language>en</dc:language>
         <cc:license
-           rdf:resource="https://timefold.ai/license" />
+           rdf:resource="https://greycos.ai/license" />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -14924,7 +14924,7 @@
   <g
      inkscape:groupmode="layer"
      id="layer4"
-     inkscape:label="Uniform focus Timefold"
+     inkscape:label="Uniform focus Greycos"
      style="display:inline">
     <rect
        style="fill:#fce94f;stroke:#000000;stroke-width:0.99999982;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;display:inline"
@@ -15406,7 +15406,7 @@
          id="flowPara5743"
          style="font-size:16px;line-height:1.25">Uniform focus</flowPara><flowPara
          id="flowPara5745"
-         style="font-size:16px;line-height:1.25">with Timefold</flowPara></flowRoot>
+         style="font-size:16px;line-height:1.25">with Greycos</flowPara></flowRoot>
     <path
        style="color:#000000;fill:none;stroke:#4e9a06;stroke-width:1px;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
        d="m 420,290 c 0,0 -10,0 -10,10 l 0,50 c 0,10 -1.82703,15 -10,15 8.21516,0 10,5 10,15 l 0,50 c 0,10 10,10 10,10"
@@ -15431,7 +15431,7 @@
   <g
      inkscape:groupmode="layer"
      id="layer5"
-     inkscape:label="Profit focus Timefold"
+     inkscape:label="Profit focus Greycos"
      style="display:inline">
     <rect
        ry="5"
@@ -15915,7 +15915,7 @@
    style="fill:#c4a000"
    id="flowSpan9455">Profit</flowSpan> focus</flowPara><flowPara
          id="flowPara5733"
-         style="font-size:16px;line-height:1.25">with Timefold</flowPara></flowRoot>
+         style="font-size:16px;line-height:1.25">with Greycos</flowPara></flowRoot>
     <path
        style="color:#000000;fill:none;stroke:#4e9a06;stroke-width:1px;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
        d="m 610.00036,260 c 0,0 -5,0 -5,2 l 0,10 c 0,2 -0.91352,3 -5,3 4.10758,0 5,1 5,3 l 0,10 c 0,2 5,2 5,2"

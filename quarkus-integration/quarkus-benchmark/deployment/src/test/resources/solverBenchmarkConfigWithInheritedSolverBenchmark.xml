@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<plannerBenchmark xmlns="https://timefold.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                  xsi:schemaLocation="https://timefold.ai/xsd/benchmark https://timefold.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
     <inheritedSolverBenchmark>
         <solver>
-            <entityClass>ai.timefold.solver.benchmark.quarkus.testdomain.normal.domain.TestdataQuarkusEntity</entityClass>
+            <entityClass>ai.greycos.solver.benchmark.quarkus.testdomain.normal.domain.TestdataQuarkusEntity</entityClass>
             <termination>
                 <millisecondsSpentLimit>5</millisecondsSpentLimit>
             </termination>
@@ -24,7 +24,7 @@
         <name>Does Not Inherit Solution Class</name>
         <solver>
             <!-- Using a Constraint Provider class since if there was two planning solution class, autocomplete cannot be used -->
-            <solutionClass>ai.timefold.solver.benchmark.quarkus.testdomain.normal.constraints.TestdataQuarkusConstraintProvider</solutionClass>
+            <solutionClass>ai.greycos.solver.benchmark.quarkus.testdomain.normal.constraints.TestdataQuarkusConstraintProvider</solutionClass>
             <constructionHeuristic>
                 <constructionHeuristicType>FIRST_FIT</constructionHeuristicType>
             </constructionHeuristic>

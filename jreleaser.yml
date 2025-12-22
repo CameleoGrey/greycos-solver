@@ -1,6 +1,6 @@
 project:
   java:
-    groupId: "ai.timefold.solver"
+    groupId: "ai.greycos.solver"
 
 signing:
   active: ALWAYS
@@ -9,9 +9,9 @@ signing:
 release:
   github:
     commitAuthor:
-      name: "Timefold Release Bot"
-      email: "release@timefold.ai"
-    releaseName: "Timefold Solver {{projectVersion}}"
+      name: "Greycos Release Bot"
+      email: "release@greycos.ai"
+    releaseName: "Greycos Solver {{projectVersion}}"
     draft: true
     overwrite: false
     sign: true
@@ -29,12 +29,12 @@ release:
           - build
           - ci
         contributors:
-          - "Timefold Release Bot"
+          - "Greycos Release Bot"
 
 deploy:
   maven:
     mavenCentral:
-      timefold-solver:
+      greycos-solver:
         active: ALWAYS
         url: https://central.sonatype.com/api/v1/publisher
         authorization: BASIC
@@ -44,15 +44,15 @@ deploy:
         stagingRepositories:
           - "target/staging-deploy"
         artifactOverrides:
-          - groupId: ai.timefold.solver
-            artifactId: timefold-solver-spring-boot-starter
+          - groupId: ai.greycos.solver
+            artifactId: greycos-solver-spring-boot-starter
             sourceJar: false
             javadocJar: false
-          - groupId: ai.timefold.solver
-            artifactId: timefold-solver-ide-config
+          - groupId: ai.greycos.solver
+            artifactId: greycos-solver-ide-config
             sourceJar: true
             javadocJar: false
-          - groupId: ai.timefold.solver
-            artifactId: timefold-solver-webui
+          - groupId: ai.greycos.solver
+            artifactId: greycos-solver-webui
             sourceJar: true
             javadocJar: false

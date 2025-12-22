@@ -1,9 +1,9 @@
 # Axioms of the release pipeline:
-# - Each release starts from timefold-solver by running this Github Action.
+# - Each release starts from greycos-solver by running this Github Action.
 # - Each individual repository can only start its own release when its dependencies are fully released.
-#   timefold-solver-enterprise depends on timefold-solver
-#   timefold-quickstarts depends on timefold-solver
-#   timefold-website releases last
+#   greycos-solver-enterprise depends on greycos-solver
+#   greycos-quickstarts depends on greycos-solver
+#   greycos-website releases last
 # - Each individual repository uses 999-SNAPSHOT as its development version, even on micro branches.
 #
 # Should any of these axioms change, the release pipeline will need to be (significantly) refactored.
@@ -28,7 +28,7 @@ jobs:
   build:
     env:
       MAVEN_ARGS: "--no-transfer-progress --batch-mode"
-      RELEASE_BRANCH_NAME: "__timefold_release_branch__"
+      RELEASE_BRANCH_NAME: "__greycos_release_branch__"
     runs-on: self-hosted
     permissions:
       contents: write  # IMPORTANT: required for action to create release branch
@@ -36,7 +36,7 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
       attestations: write  # IMPORTANT: mandatory for attestations
     steps:
-      - name: Checkout timefold-solver
+      - name: Checkout greycos-solver
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -48,8 +48,8 @@ jobs:
 
       - name: Create release branch and switch to it
         run: |
-          git config user.name "Timefold Release Bot"
-          git config user.email "release@timefold.ai"
+          git config user.name "Greycos Release Bot"
+          git config user.email "release@greycos.ai"
           git checkout -b $RELEASE_BRANCH_NAME
 
       - uses: actions/setup-java@v5

@@ -1,0 +1,46 @@
+package ai.greycos.solver.quarkus;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import ai.greycos.solver.quarkus.testdomain.declarative.missing.TestdataQuarkusDeclarativeMissingSupplierEasyScoreCalculator;
+import ai.greycos.solver.quarkus.testdomain.declarative.missing.TestdataQuarkusDeclarativeMissingSupplierEntity;
+import ai.greycos.solver.quarkus.testdomain.declarative.missing.TestdataQuarkusDeclarativeMissingSupplierSolution;
+import ai.greycos.solver.quarkus.testdomain.declarative.missing.TestdataQuarkusDeclarativeMissingSupplierValue;
+
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.quarkus.test.QuarkusUnitTest;
+
+class GreycosProcessorMissingSupplierForDeclarativeVariableTest {
+
+  // Empty classes
+  @RegisterExtension
+  static final QuarkusUnitTest config1 =
+      new QuarkusUnitTest()
+          .setArchiveProducer(
+              () ->
+                  ShrinkWrap.create(JavaArchive.class)
+                      .addClasses(
+                          TestdataQuarkusDeclarativeMissingSupplierSolution.class,
+                          TestdataQuarkusDeclarativeMissingSupplierEntity.class,
+                          TestdataQuarkusDeclarativeMissingSupplierValue.class,
+                          TestdataQuarkusDeclarativeMissingSupplierEasyScoreCalculator.class))
+          .assertException(
+              t ->
+                  assertThat(t)
+                      .isInstanceOf(IllegalArgumentException.class)
+                      .hasMessageContainingAll(
+                          "@ShadowVariable (endTime)",
+                          "supplierMethod (calculateEndTime) that does not exist",
+                          "inside its declaring class (ai.greycos.solver.quarkus.testdomain.declarative.missing.TestdataQuarkusDeclarativeMissingSupplierValue).",
+                          "Maybe you misspelled the supplierMethod name?"));
+
+  @Test
+  void test() {
+    fail("Should not call this method.");
+  }
+}

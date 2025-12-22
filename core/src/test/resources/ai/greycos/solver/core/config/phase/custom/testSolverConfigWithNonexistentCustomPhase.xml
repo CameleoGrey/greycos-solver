@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver>
+    <solutionClass>ai.greycos.solver.core.testdomain.TestdataSolution</solutionClass>
+    <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
+    <scoreDirectorFactory>
+        <easyScoreCalculatorClass>ai.greycos.solver.core.impl.score.DummySimpleScoreEasyScoreCalculator</easyScoreCalculatorClass>
+        <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
+    </scoreDirectorFactory>
+    <customPhase>
+        <customPhaseCommandClass>nonExistentCustomPhase</customPhaseCommandClass>
+    </customPhase>
+</solver>

@@ -1,0 +1,77 @@
+package ai.greycos.solver.core.impl.heuristic.selector.value.decorator;
+
+import static ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.mockIterableValueSelector;
+import static ai.greycos.solver.core.testdomain.list.TestdataListUtils.getListVariableDescriptor;
+import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfIterator;
+import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfValueSelector;
+import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfValueSelectorForEntity;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockScoreDirector;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+
+import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
+import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
+import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
+import ai.greycos.solver.core.testdomain.list.TestdataListValue;
+
+import org.junit.jupiter.api.Test;
+
+class UnassignedListValueSelectorTest {
+
+  @Test
+  void filterOutAssignedValues() {
+    var v1 = new TestdataListValue("1");
+    var v2 = new TestdataListValue("2");
+    var v3 = new TestdataListValue("3");
+    var v4 = new TestdataListValue("4");
+    var v5 = new TestdataListValue("5");
+    // 1 and 3 are assigned, the rest (2, 4, 5) are unassigned.
+    var entity = TestdataListEntity.createWithValues("A", v1, v3);
+    var solution = new TestdataListSolution();
+    solution.setEntityList(List.of(entity));
+    solution.setValueList(List.of(v1, v2, v3, v4, v5));
+
+    var scoreDirector = mockScoreDirector(TestdataListSolution.buildSolutionDescriptor());
+    scoreDirector.setWorkingSolution(solution);
+
+    var childValueSelector =
+        mockIterableValueSelector(getListVariableDescriptor(scoreDirector), v1, v2, v3, v4, v5);
+    var valueSelector = new UnassignedListValueSelector<>(childValueSelector);
+
+    SolverScope<TestdataListSolution> solverScope = mock(SolverScope.class);
+    valueSelector.solvingStarted(solverScope);
+
+    AbstractPhaseScope<TestdataListSolution> phaseScope = mock(AbstractPhaseScope.class);
+    when(phaseScope.getSolverScope()).thenReturn(solverScope);
+    when(phaseScope.<SimpleScore>getScoreDirector()).thenReturn(scoreDirector);
+    valueSelector.phaseStarted(phaseScope);
+
+    AbstractStepScope<TestdataListSolution> stepScope = mock(AbstractStepScope.class);
+    when(stepScope.getPhaseScope()).thenReturn(phaseScope);
+    valueSelector.stepStarted(stepScope);
+
+    assertAllCodesOfValueSelector(valueSelector, "2", "4", "5");
+
+    // Although the entity dependent iterators are not used, they should behave correctly.
+    assertAllCodesOfValueSelectorForEntity(valueSelector, null, "2", "4", "5");
+    assertAllCodesOfIterator(valueSelector.endingIterator(null), "2", "4", "5");
+  }
+
+  @Test
+  void requireEndingChildValueSelector() {
+    IterableValueSelector<TestdataListSolution> childValueSelector =
+        mock(IterableValueSelector.class);
+
+    when(childValueSelector.isNeverEnding()).thenReturn(true);
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> new UnassignedListValueSelector<>(childValueSelector));
+  }
+}

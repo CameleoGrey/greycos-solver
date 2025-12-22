@@ -1,0 +1,28 @@
+package ai.greycos.solver.jpa.api.score.buildin.simplelong;
+
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
+
+import ai.greycos.solver.core.api.score.buildin.simplelong.SimpleLongScore;
+
+@Converter
+public class SimpleLongScoreConverter implements AttributeConverter<SimpleLongScore, String> {
+
+  @Override
+  public String convertToDatabaseColumn(SimpleLongScore score) {
+    if (score == null) {
+      return null;
+    }
+
+    return score.toString();
+  }
+
+  @Override
+  public SimpleLongScore convertToEntityAttribute(String scoreString) {
+    if (scoreString == null) {
+      return null;
+    }
+
+    return SimpleLongScore.parseScore(scoreString);
+  }
+}

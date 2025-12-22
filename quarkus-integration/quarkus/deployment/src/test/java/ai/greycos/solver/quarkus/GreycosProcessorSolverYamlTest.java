@@ -1,0 +1,65 @@
+package ai.greycos.solver.quarkus;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.Duration;
+
+import jakarta.inject.Inject;
+
+import ai.greycos.solver.core.api.domain.common.DomainAccessType;
+import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.solver.SolverFactory;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
+import ai.greycos.solver.core.config.solver.SolverConfig;
+import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity;
+import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
+
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.quarkus.test.QuarkusUnitTest;
+
+class GreycosProcessorSolverYamlTest {
+
+  @RegisterExtension
+  static final QuarkusUnitTest config =
+      new QuarkusUnitTest()
+          .setArchiveProducer(
+              () ->
+                  ShrinkWrap.create(JavaArchive.class)
+                      .addClasses(
+                          TestdataQuarkusEntity.class,
+                          TestdataQuarkusSolution.class,
+                          TestdataQuarkusConstraintProvider.class)
+                      .addAsResource(
+                          "ai/greycos/solver/quarkus/single-solver/application.yaml",
+                          "application.yaml"));
+
+  @Inject SolverConfig solverConfig;
+  @Inject SolverFactory<TestdataQuarkusSolution> solverFactory;
+
+  @Test
+  void solverProperties() {
+    assertEquals(EnvironmentMode.FULL_ASSERT, solverConfig.getEnvironmentMode());
+    assertTrue(solverConfig.getDaemon());
+    assertEquals("2", solverConfig.getMoveThreadCount());
+    assertEquals(DomainAccessType.REFLECTION, solverConfig.getDomainAccessType());
+    assertEquals(null, solverConfig.getScoreDirectorFactoryConfig().getConstraintStreamImplType());
+
+    assertNotNull(solverFactory);
+  }
+
+  @Test
+  void terminationProperties() {
+    assertEquals(Duration.ofHours(4), solverConfig.getTerminationConfig().getSpentLimit());
+    assertEquals(
+        Duration.ofHours(5), solverConfig.getTerminationConfig().getUnimprovedSpentLimit());
+    assertEquals(
+        SimpleScore.of(0).toString(), solverConfig.getTerminationConfig().getBestScoreLimit());
+  }
+}

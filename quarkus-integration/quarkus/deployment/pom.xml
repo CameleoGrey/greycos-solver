@@ -4,18 +4,18 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>ai.timefold.solver</groupId>
-    <artifactId>timefold-solver-quarkus-parent</artifactId>
+    <groupId>ai.greycos.solver</groupId>
+    <artifactId>greycos-solver-quarkus-parent</artifactId>
     <version>999-SNAPSHOT</version>
   </parent>
 
-  <artifactId>timefold-solver-quarkus-deployment</artifactId>
-  <name>Timefold Solver Quarkus - Deployment</name>
-  <description>Quarkus deployment module for timefold-solver-quarkus.</description>
-  <url>https://solver.timefold.ai</url>
+  <artifactId>greycos-solver-quarkus-deployment</artifactId>
+  <name>Greycos Solver Quarkus - Deployment</name>
+  <description>Quarkus deployment module for greycos-solver-quarkus.</description>
+  <url>https://solver.greycos.ai</url>
 
   <properties>
-    <java.module.name>ai.timefold.solver.quarkus.deployment</java.module.name>
+    <java.module.name>ai.greycos.solver.quarkus.deployment</java.module.name>
   </properties>
 
   <dependencies>
@@ -28,8 +28,8 @@
       <artifactId>quarkus-arc-deployment</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-quarkus</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-quarkus</artifactId>
     </dependency>
 
     <dependency>
@@ -53,14 +53,14 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-core</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-core</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-test</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-test</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -107,7 +107,7 @@
         <configuration>
           <!-- Introduction of API package to check -->
           <oldArtifacts>
-            <artifact>${project.groupId}:timefold-solver-quarkus-deployment:1.18.0</artifact>
+            <artifact>${project.groupId}:greycos-solver-quarkus-deployment:1.18.0</artifact>
           </oldArtifacts>
         </configuration>
       </plugin>

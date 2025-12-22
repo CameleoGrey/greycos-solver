@@ -9,23 +9,23 @@
 {{changelogChanges}}
 {{changelogContributors}}
 
-_Timefold Solver Community Edition_ is an open source project, and you are more than welcome to contribute as well! 
-For more, see [Contributing](https://github.com/TimefoldAI/timefold-solver/blob/main/CONTRIBUTING.adoc).
+_Greycos Solver Community Edition_ is an open source project, and you are more than welcome to contribute as well! 
+For more, see [Contributing](https://github.com/CameleoGrey/greycos-solver/blob/main/CONTRIBUTING.adoc).
 
 Should your business need to scale to truly massive data sets or require enterprise-grade support,
-check out [_Timefold Solver Enterprise Edition_](https://docs.timefold.ai/timefold-solver/latest/enterprise-edition/enterprise-edition). 
-Timefold Solver Enterprise Edition requires [a license](https://timefold.ai/pricing). 
+check out [_Greycos Solver Enterprise Edition_](https://docs.greycos.ai/greycos-solver/latest/enterprise-edition/enterprise-edition). 
+Greycos Solver Enterprise Edition requires [a license](https://greycos.ai/pricing). 
 
-# How to use Timefold Solver
+# How to use Greycos Solver
 
-To see Timefold Solver in action, check out [the quickstarts](https://github.com/TimefoldAI/timefold-quickstarts).
+To see Greycos Solver in action, check out [the quickstarts](https://github.com/CameleoGrey/greycos-quickstarts).
 
 [//]: # (Ideally we'd show the pom.xml snippet, but a JReleaser bug would remove all whitespace from it.)
 [//]: # (See https://github.com/jreleaser/jreleaser/issues/1142)
-With Maven or Gradle, add the `ai.timefold.solver : timefold-solver-core : {{projectVersion}}` dependency in your `pom.xml` to get started.
+With Maven or Gradle, add the `ai.greycos.solver : greycos-solver-core : {{projectVersion}}` dependency in your `pom.xml` to get started.
 
-You can also import the Timefold Solver Bom (`ai.timefold.solver : timefold-solver-bom : {{projectVersion}}`) 
-to avoid duplicating version numbers when adding other Timefold Solver dependencies later on.
+You can also import the Greycos Solver Bom (`ai.greycos.solver : greycos-solver-bom : {{projectVersion}}`) 
+to avoid duplicating version numbers when adding other Greycos Solver dependencies later on.
 
 # Additional notes
 

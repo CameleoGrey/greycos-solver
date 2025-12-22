@@ -1,0 +1,36 @@
+package ai.greycos.solver.core.impl.score.stream.bavet.common.bridge;
+
+import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.impl.score.stream.bavet.BavetConstraintFactory;
+import ai.greycos.solver.core.impl.score.stream.bavet.bi.BavetAbstractBiConstraintStream;
+import ai.greycos.solver.core.impl.score.stream.bavet.common.ConstraintNodeBuildHelper;
+
+public final class BavetForeBridgeBiConstraintStream<Solution_, A, B>
+    extends BavetAbstractBiConstraintStream<Solution_, A, B> {
+
+  public BavetForeBridgeBiConstraintStream(
+      BavetConstraintFactory<Solution_> constraintFactory,
+      BavetAbstractBiConstraintStream<Solution_, A, B> parent) {
+    super(constraintFactory, parent);
+  }
+
+  // ************************************************************************
+  // Node creation
+  // ************************************************************************
+
+  @Override
+  public <Score_ extends Score<Score_>> void buildNode(
+      ConstraintNodeBuildHelper<Solution_, Score_> buildHelper) {
+    // Do nothing. The child stream builds everything.
+  }
+
+  @Override
+  public String toString() {
+    return "Generic bridge";
+  }
+
+  // ************************************************************************
+  // Getters/setters
+  // ************************************************************************
+
+}

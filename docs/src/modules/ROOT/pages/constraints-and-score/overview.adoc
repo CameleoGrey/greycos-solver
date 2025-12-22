@@ -21,7 +21,7 @@ The `Solver` aims to find the solution with the highest `Score` of all possible 
 The _best solution_ is the solution with the highest `Score` that `Solver` has encountered during solving,
 which might be the __optimal solution__.
 
-Timefold Solver cannot automatically know which solution is best for your business,
+Greycos Solver cannot automatically know which solution is best for your business,
 so you need to tell it how to calculate the score of a given `@PlanningSolution` instance according to your business needs.
 If you forget or are unable to implement an important business constraint, the solution is probably useless:
 
@@ -32,7 +32,7 @@ image::constraints-and-score/overview/optimalWithIncompleteConstraints.png[align
 === Formalize the business constraints
 
 To implement a verbal business constraint, it needs to be formalized as a score constraint.
-Luckily, defining constraints in Timefold Solver is very flexible through the following score techniques:
+Luckily, defining constraints in Greycos Solver is very flexible through the following score techniques:
 
 * **Score signum (positive or negative)**: maximize or minimize a constraint type
 * **Score weight**: put a cost/profit on a constraint type
@@ -127,7 +127,7 @@ then a score is _feasible_ if no hard constraints are broken.
 
 [NOTE]
 ====
-By default, Timefold Solver will always assign all planning variables a planning value.
+By default, Greycos Solver will always assign all planning variables a planning value.
 If there is no feasible solution, this means the best solution will be infeasible.
 To instead leave some of the planning entities unassigned, apply xref:responding-to-change/responding-to-change.adoc#overconstrainedPlanning[overconstrained planning].
 ====
@@ -161,7 +161,7 @@ while both are outranked by the constraints of physical reality.
 ====
 To model xref:constraints-and-score/load-balancing-and-fairness.adoc#loadBalancingAndFairness[fairness or load balancing],
 there is no need to use lots of score levels,
-even though Timefold Solver can handle many score levels.
+even though Greycos Solver can handle many score levels.
 ====
 
 Most use cases use a `Score` with two or three weights,
@@ -187,11 +187,11 @@ Those are called pareto optimal.
 image::constraints-and-score/overview/paretoOptimizationScoring.png[align="center"]
 
 Scores are considered equal far more often.
-It is left up to a human to choose the better out of a set of best solutions (with equal scores) found by Timefold Solver.
+It is left up to a human to choose the better out of a set of best solutions (with equal scores) found by Greycos Solver.
 In the example above, the user must choose between solution A (three apples and one orange) and solution B (one apple and six oranges).
-It is guaranteed that Timefold Solver has not found another solution which has more apples or more oranges or even a better combination of both (such as two apples and three oranges).
+It is guaranteed that Greycos Solver has not found another solution which has more apples or more oranges or even a better combination of both (such as two apples and three oranges).
 
-Pareto scoring is currently not supported in Timefold Solver.
+Pareto scoring is currently not supported in Greycos Solver.
 
 [NOTE]
 ====
@@ -200,7 +200,7 @@ For example: having two apples is greater than one apple.
 One apple is equal to One orange.
 Yet, two apples are not greater than one orange (but actually equal).
 Pareto comparison violates the contract of the interface ``java.lang.Comparable``'s `compareTo` method,
-but Timefold Solver's systems are __pareto comparison safe__, unless explicitly stated otherwise in this documentation.
+but Greycos Solver's systems are __pareto comparison safe__, unless explicitly stated otherwise in this documentation.
 ====
 
 
@@ -231,7 +231,7 @@ public interface Score<...> extends Comparable<...> {
 
 The `Score` implementation to use depends on your use case.
 Your score might not efficiently fit in a single `long` value.
-Timefold Solver has several built-in `Score` implementations.
+Greycos Solver has several built-in `Score` implementations.
 Most use cases tend to use ``HardSoftScore``.
 
 image::constraints-and-score/overview/scoreClassDiagram.png[align="center"]
@@ -449,11 +449,11 @@ The score calculation must be read-only.
 It must not change the planning entities or the problem facts in any way.
 For example, it must not call a setter method on a planning entity in the score calculation.
 
-Timefold Solver does not recalculate the score of a solution if it can predict it (unless an xref:using-timefold-solver/running-the-solver.adoc#environmentMode[environmentMode assertion] is enabled).
+Greycos Solver does not recalculate the score of a solution if it can predict it (unless an xref:using-greycos-solver/running-the-solver.adoc#environmentMode[environmentMode assertion] is enabled).
 For example, after a winning step is done, there is no need to calculate the score because that move was done and undone earlier.
 As a result, there is no guarantee that changes applied during score calculation actually happen.
 
-To update planning entities when the planning variable change, use xref:using-timefold-solver/modeling-planning-problems.adoc#shadowVariable[shadow variables] instead.
+To update planning entities when the planning variable change, use xref:using-greycos-solver/modeling-planning-problems.adoc#shadowVariable[shadow variables] instead.
 ====
 
 
@@ -497,7 +497,7 @@ Alternatively, you can also specify the trend for each score level separately:
 [#invalidScoreDetection]
 === Invalid score detection
 
-When you put the xref:using-timefold-solver/running-the-solver.adoc#environmentMode[`environmentMode`] in `FULL_ASSERT` (or ``STEP_ASSERT``),
+When you put the xref:using-greycos-solver/running-the-solver.adoc#environmentMode[`environmentMode`] in `FULL_ASSERT` (or ``STEP_ASSERT``),
 it will detect score corruption in the xref:constraints-and-score/performance.adoc#incrementalScoreCalculationPerformance[incremental score calculation].
 However, that will not verify that your score calculator actually implements your score constraints as your business desires.
 For example, one constraint might consistently match the wrong pattern.

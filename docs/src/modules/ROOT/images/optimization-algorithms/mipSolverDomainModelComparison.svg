@@ -3310,7 +3310,7 @@
             rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <dc:language>en</dc:language>
         <cc:license
-            rdf:resource="https://timefold.ai/product/license/" />
+            rdf:resource="https://greycos.ai/product/license/" />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -3366,7 +3366,7 @@
            y="150.00014"
            style="font-size:16px;text-align:center;text-anchor:middle" /></flowRegion><flowPara
          id="flowPara4308-6"
-         style="font-size:16px;line-height:1.25">A MIP solver's model memory usage grows exponentially, unlike Timefold's.</flowPara></flowRoot>
+         style="font-size:16px;line-height:1.25">A MIP solver's model memory usage grows exponentially, unlike Greycos's.</flowPara></flowRoot>
     <flowRoot
        xml:space="preserve"
        id="flowRoot937"
@@ -3397,7 +3397,7 @@
          y="567.67491"
          id="tspan3410"><tspan
            style="font-weight:bold"
-           id="tspan3408">Timefold</tspan></tspan></text>
+           id="tspan3408">Greycos</tspan></tspan></text>
     <g
        id="g1771"
        transform="translate(100.18633,-249.842)">

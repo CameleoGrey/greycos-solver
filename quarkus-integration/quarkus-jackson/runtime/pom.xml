@@ -4,18 +4,18 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>ai.timefold.solver</groupId>
-    <artifactId>timefold-solver-quarkus-jackson-parent</artifactId>
+    <groupId>ai.greycos.solver</groupId>
+    <artifactId>greycos-solver-quarkus-jackson-parent</artifactId>
     <version>999-SNAPSHOT</version>
   </parent>
 
-  <artifactId>timefold-solver-quarkus-jackson</artifactId>
-  <name>Timefold Solver Quarkus Jackson - Runtime</name>
-  <description>Activate Jackson bindings for Timefold's Score classes</description>
-  <url>https://solver.timefold.ai</url>
+  <artifactId>greycos-solver-quarkus-jackson</artifactId>
+  <name>Greycos Solver Quarkus Jackson - Runtime</name>
+  <description>Activate Jackson bindings for Greycos's Score classes</description>
+  <url>https://solver.greycos.ai</url>
 
   <properties>
-    <java.module.name>ai.timefold.solver.quarkus.jackson</java.module.name>
+    <java.module.name>ai.greycos.solver.quarkus.jackson</java.module.name>
   </properties>
 
   <dependencies>
@@ -24,8 +24,8 @@
       <artifactId>quarkus-jackson</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-jackson</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-jackson</artifactId>
     </dependency>
   </dependencies>
   <build>
@@ -41,7 +41,7 @@
             <phase>compile</phase>
             <configuration>
               <capabilities>
-                <provides>ai.timefold.solver.timefold-quarkus-jackson</provides>
+                <provides>ai.greycos.solver.greycos-quarkus-jackson</provides>
               </capabilities>
             </configuration>
           </execution>
@@ -63,7 +63,7 @@
         <artifactId>maven-dependency-plugin</artifactId>
         <configuration>
           <ignoredUnusedDeclaredDependencies>
-            <dependency>ai.timefold.solver:timefold-solver-jackson</dependency>
+            <dependency>ai.greycos.solver:greycos-solver-jackson</dependency>
             <dependency>io.quarkus:quarkus-jackson</dependency>
           </ignoredUnusedDeclaredDependencies>
         </configuration>

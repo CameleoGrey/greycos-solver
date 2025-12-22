@@ -1,0 +1,51 @@
+package ai.greycos.solver.benchmark.quarkus;
+
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import jakarta.inject.Inject;
+
+import ai.greycos.solver.benchmark.api.PlannerBenchmarkFactory;
+import ai.greycos.solver.benchmark.quarkus.testdomain.normal.constraints.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.benchmark.quarkus.testdomain.normal.domain.TestdataQuarkusEntity;
+import ai.greycos.solver.benchmark.quarkus.testdomain.normal.domain.TestdataQuarkusSolution;
+
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.quarkus.test.QuarkusUnitTest;
+
+class GreycosBenchmarkProcessorBenchmarkEmptyTerminationConfigTest {
+
+  @RegisterExtension
+  static final QuarkusUnitTest config =
+      new QuarkusUnitTest()
+          .overrideConfigKey("quarkus.greycos.benchmark.solver.termination.spent-limit", "3s")
+          .overrideConfigKey(
+              "quarkus.greycos.benchmark.solver-benchmark-config-xml",
+              "emptySolverBenchmarkConfig.xml")
+          .setArchiveProducer(
+              () ->
+                  ShrinkWrap.create(JavaArchive.class)
+                      .addAsResource("emptySolverBenchmarkConfig.xml")
+                      .addClasses(
+                          TestdataQuarkusEntity.class,
+                          TestdataQuarkusSolution.class,
+                          TestdataQuarkusConstraintProvider.class));
+
+  @Inject PlannerBenchmarkFactory benchmarkFactory;
+
+  @Test
+  void benchmark() throws ExecutionException, InterruptedException {
+    TestdataQuarkusSolution problem = new TestdataQuarkusSolution();
+    problem.setValueList(IntStream.range(1, 3).mapToObj(i -> "v" + i).collect(Collectors.toList()));
+    problem.setEntityList(
+        IntStream.range(1, 3)
+            .mapToObj(i -> new TestdataQuarkusEntity())
+            .collect(Collectors.toList()));
+    benchmarkFactory.buildPlannerBenchmark(problem).benchmark();
+  }
+}

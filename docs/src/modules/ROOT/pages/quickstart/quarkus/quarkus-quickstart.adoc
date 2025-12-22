@@ -13,11 +13,11 @@ include::../../_attributes.adoc[]
 :framework-quickstart-url: {quarkus-quickstart-url}
 
 // Keep this in sync with the quarkus repo's copy
-// https://github.com/quarkusio/quarkus/blob/main/docs/src/main/asciidoc/timefold.adoc
+// https://github.com/quarkusio/quarkus/blob/main/docs/src/main/asciidoc/greycos.adoc
 // Keep this also in sync with spring-boot-quickstart.adoc where applicable
 
 This guide walks you through the process of creating a https://quarkus.io/[Quarkus] application
-with https://timefold.ai[Timefold]'s constraint solving Artificial Intelligence (AI).
+with https://greycos.ai[Greycos]'s constraint solving Artificial Intelligence (AI).
 
 include::../shared/whatyoubuild.adoc[]
 
@@ -31,7 +31,7 @@ include::../shared/java-prerequisites.adoc[]
 
 == The build file and the dependencies
 
-Use https://code.quarkus.io/?a=timefold-solver-quickstart&j=17&e=rest&e=rest-jackson&e=ai.timefold.solver%3Atimefold-solver-quarkus-jackson&e=ai.timefold.solver%3Atimefold-solver-quarkus[code.quarkus.io] to generate an application
+Use https://code.quarkus.io/?a=greycos-solver-quickstart&j=17&e=rest&e=rest-jackson&e=ai.greycos.solver%3Agreycos-solver-quarkus-jackson&e=ai.greycos.solver%3Agreycos-solver-quarkus[code.quarkus.io] to generate an application
 with the following extensions, for Maven or Gradle:
 
 [NOTE]
@@ -41,8 +41,8 @@ Clicking the link above will automatically select the dependencies for you on *c
 
 * Quarkus REST JAX-RS (`quarkus-rest`)
 * Quarkus REST Jackson (`quarkus-rest-jackson`)
-* Timefold Solver (`timefold-solver-quarkus`)
-* Timefold Solver Jackson (`timefold-solver-quarkus-jackson`)
+* Greycos Solver (`greycos-solver-quarkus`)
+* Greycos Solver Jackson (`greycos-solver-quarkus-jackson`)
 
 include::../shared/school-timetabling/school-timetabling-model.adoc[leveloffset=+1]
 include::../shared/school-timetabling/school-timetabling-constraints.adoc[leveloffset=+1]
@@ -74,8 +74,8 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
 import org.acme.schooltimetabling.domain.Timetable;
-import ai.timefold.solver.core.api.solver.SolverJob;
-import ai.timefold.solver.core.api.solver.SolverManager;
+import ai.greycos.solver.core.api.solver.SolverJob;
+import ai.greycos.solver.core.api.solver.SolverManager;
 
 @Path("/timetables")
 public class TimetableResource {
@@ -110,11 +110,11 @@ Create the `src/main/kotlin/org/acme/schooltimetabling/rest/TimetableResource.kt
 ----
 package org.acme.schooltimetabling.rest
 
-import ai.timefold.solver.core.api.score.analysis.ScoreAnalysis
-import ai.timefold.solver.core.api.score.buildin.hardsoft.HardSoftScore
-import ai.timefold.solver.core.api.solver.ScoreAnalysisFetchPolicy
-import ai.timefold.solver.core.api.solver.SolutionManager
-import ai.timefold.solver.core.api.solver.SolverManager
+import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis
+import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore
+import ai.greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy
+import ai.greycos.solver.core.api.solver.SolutionManager
+import ai.greycos.solver.core.api.solver.SolverManager
 import jakarta.inject.Inject
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.DELETE
@@ -177,11 +177,11 @@ Create the `src/main/resources/application.properties` file:
 ----
 # The solver runs only for 5 seconds to avoid a HTTP timeout in this simple implementation.
 # It's recommended to run for at least 5 minutes ("5m") otherwise.
-quarkus.timefold.solver.termination.spent-limit=5s
+quarkus.greycos.solver.termination.spent-limit=5s
 ----
 
-Timefold Solver returns _the best solution_ found in the available termination time.
-Due to xref:optimization-algorithms/overview.adoc#doesTimefoldFindTheOptimalSolution[the nature of NP-hard problems],
+Greycos Solver returns _the best solution_ found in the available termination time.
+Due to xref:optimization-algorithms/overview.adoc#doesGreycosFindTheOptimalSolution[the nature of NP-hard problems],
 the best solution might not be optimal, especially for larger datasets.
 Increase the termination time to potentially find a better solution.
 
@@ -231,7 +231,7 @@ First update your build tool configuration:
 Maven::
 +
 --
-Add a `timefold-solver-test` dependency in your `pom.xml`:
+Add a `greycos-solver-test` dependency in your `pom.xml`:
 [source,xml,subs=attributes+]
 ----
     <dependency>
@@ -245,9 +245,9 @@ Add a `timefold-solver-test` dependency in your `pom.xml`:
         <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-test</artifactId>
-      <version>{timefold-solver-version}</version>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-test</artifactId>
+      <version>{greycos-solver-version}</version>
       <scope>test</scope>
     </dependency>
 ----
@@ -259,7 +259,7 @@ Add the subsequent dependencies to your `build.gradle`:
 [source,groovy,subs=attributes+]
 ----
     testImplementation "io.quarkus:quarkus-junit5"
-    testImplementation "ai.timefold.solver:timefold-solver-test:{timefold-solver-version}"
+    testImplementation "ai.greycos.solver:greycos-solver-test:{greycos-solver-version}"
 ----
 --
 ====
@@ -289,12 +289,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.inject.Singleton;
 
-import ai.timefold.solver.core.api.score.analysis.ScoreAnalysis;
-import ai.timefold.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.timefold.solver.core.api.score.constraint.ConstraintRef;
-import ai.timefold.solver.core.api.score.stream.ConstraintJustification;
-import ai.timefold.solver.core.api.solver.SolverStatus;
-import ai.timefold.solver.jackson.api.score.analysis.AbstractScoreAnalysisJacksonDeserializer;
+import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
+import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
+import ai.greycos.solver.core.api.solver.SolverStatus;
+import ai.greycos.solver.jackson.api.score.analysis.AbstractScoreAnalysisJacksonDeserializer;
 
 import org.acme.schooltimetabling.domain.Timetable;
 import org.junit.jupiter.api.Test;
@@ -349,7 +349,7 @@ Create the `src/test/kotlin/org/acme/schooltimetabling/rest/TimetableResourceTes
 ----
 package org.acme.schooltimetabling.rest
 
-import ai.timefold.solver.core.api.solver.SolverStatus
+import ai.greycos.solver.core.api.solver.SolverStatus
 import io.quarkus.test.junit.QuarkusTest
 import io.restassured.RestAssured.get
 import io.restassured.RestAssured.given
@@ -400,11 +400,11 @@ Add test properties to the `src/main/resources/application.properties` file:
 
 [source,properties]
 ----
-quarkus.timefold.solver.termination.spent-limit=5s
+quarkus.greycos.solver.termination.spent-limit=5s
 
 # Effectively disable spent-time termination in favor of the best-score-limit
-%test.quarkus.timefold.solver.termination.spent-limit=1h
-%test.quarkus.timefold.solver.termination.best-score-limit=0hard/*soft
+%test.quarkus.greycos.solver.termination.spent-limit=1h
+%test.quarkus.greycos.solver.termination.best-score-limit=0hard/*soft
 ----
 
 Normally, the solver finds a feasible solution in less than 200 milliseconds.
@@ -425,12 +425,12 @@ after solving for the same amount of time, to assess the performance impact:
 ... Solving ended: ..., move evaluation speed (29455/sec), ...
 ----
 
-To understand how Timefold Solver is solving your problem internally,
+To understand how Greycos Solver is solving your problem internally,
 change the logging in the `application.properties` file or with a `-D` system property:
 
 [source,properties]
 ----
-quarkus.log.category."ai.timefold.solver".level=debug
+quarkus.log.category."ai.greycos.solver".level=debug
 ----
 
 Use `debug` logging to show every _step_:
@@ -448,9 +448,9 @@ Use `trace` logging to show every _step_ and every _move_ per step.
 == Summary
 
 Congratulations!
-You have just developed a Quarkus application with https://timefold.ai[Timefold]!
+You have just developed a Quarkus application with https://greycos.ai[Greycos]!
 
 Next Steps:
 
 - For a full implementation with a web UI and in-memory storage, check out {quarkus-quickstart-url}[the Quarkus quickstart source code].
-- Check out more information about Timefold's integration with Quarkus in our xref:../integration/integration.adoc#integrationWithQuarkus[Integration documentation].
+- Check out more information about Greycos's integration with Quarkus in our xref:../integration/integration.adoc#integrationWithQuarkus[Integration documentation].

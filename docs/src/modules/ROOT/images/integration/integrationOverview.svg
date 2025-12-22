@@ -557,7 +557,7 @@
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <dc:language>en</dc:language>
         <cc:license
-           rdf:resource="https://timefold.ai/license" />
+           rdf:resource="https://greycos.ai/license" />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -1136,7 +1136,7 @@
            y="150.00014"
            style="font-size:14.66666698px;text-align:center;text-anchor:middle" /></flowRegion><flowPara
          id="flowPara3157"
-         style="font-size:14.6667px;line-height:1.25">Timefold combines easily with other Java technologies.</flowPara></flowRoot>
+         style="font-size:14.6667px;line-height:1.25">Greycos combines easily with other Java technologies.</flowPara></flowRoot>
   </g>
   <g
      inkscape:groupmode="layer"

@@ -45,7 +45,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Build and test timefold-solver
+      - name: Build and test greycos-solver
         run: ./mvnw -B verify
 
       - name: Test Summary
@@ -70,7 +70,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Build timefold-solver using flag -Dfull
+      - name: Build greycos-solver using flag -Dfull
         run: ./mvnw -DskipTests -Dfull -B verify
 
   spring_boot:
@@ -115,7 +115,7 @@ jobs:
           echo "Using Spring Boot version $SPRING_VERSION"
           ./mvnw versions:set-property -Dproperty=version.org.springframework.boot -DnewVersion=$SPRING_VERSION
 
-      - name: Quickly build timefold-solver
+      - name: Quickly build greycos-solver
         run: ./mvnw -B -Dquickly clean install
       - name: Test Spring Boot
         run: |
@@ -157,10 +157,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: 'maven'
 
-      - name: Quickly build timefold-solver
+      - name: Quickly build greycos-solver
         run: ./mvnw -B -Dquickly clean install
 
-      - name: Test timefold-solver in Native mode
+      - name: Test greycos-solver in Native mode
         run: |
           cd ${{matrix.module}}
           ../mvnw -B -Dnative verify

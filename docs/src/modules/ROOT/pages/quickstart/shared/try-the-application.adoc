@@ -25,7 +25,7 @@ Notice that your application assigned all four lessons to one of the two time sl
 Also notice that it conforms to all hard constraints.
 For example, M. Curie's two lessons are in different time slots.
 
-On the server side, the `info` log shows what Timefold Solver did in those five seconds:
+On the server side, the `info` log shows what Greycos Solver did in those five seconds:
 
 [source,options="nowrap"]
 ----

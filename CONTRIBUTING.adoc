@@ -1,22 +1,22 @@
-== Contributing to Timefold Solver
+== Contributing to Greycos Solver
 
 This is an open source project, and you are more than welcome to contribute!
 
-* Found an issue? https://github.com/TimefoldAI/timefold-solver/issues[Submit an issue.]
-* Want to fix an issue or contribute an improvement? https://github.com/TimefoldAI/timefold-solver/discussions[Talk to us about your ideas] or just start coding:
+* Found an issue? https://github.com/CameleoGrey/greycos-solver/issues[Submit an issue.]
+* Want to fix an issue or contribute an improvement? https://github.com/CameleoGrey/greycos-solver/discussions[Talk to us about your ideas] or just start coding:
 
-. https://github.com/TimefoldAI/timefold-solver/fork[Fork it.]
+. https://github.com/CameleoGrey/greycos-solver/fork[Fork it.]
 . Create a feature branch: `git checkout -b feature`
 . Commit your changes with a comment: `git commit -m "feat: add shiny new feature"`
 (See xref:commit-messages[Commit messages] for details.)
 . Push to the branch to GitHub: `git push origin feature`
-. https://github.com/TimefoldAI/timefold-solver/compare[Create a new Pull Request.]
+. https://github.com/CameleoGrey/greycos-solver/compare[Create a new Pull Request.]
 
 The CI checks against your PR to ensure that it doesn't introduce errors.
 If the CI identifies a potential problem, our friendly PR maintainers will help you resolve it.
 
 
-=== Build the Timefold Solver project
+=== Build the Greycos Solver project
 
 Use one of the following ways to build this project:
 
@@ -35,11 +35,11 @@ Use one of the following ways to build this project:
 and configure a _Run/Debug configuration_ like this:
 +
 * Type: Application
-* Main class: `ai.timefold.solver.examples.app.TimefoldExamplesApp`
+* Main class: `ai.greycos.solver.examples.app.GreycosExamplesApp`
 * VM options: `-Xmx2G` (memory only needed when using the big datasets in the examples)
 * Program arguments: (none)
 * Working directory: `$MODULE_DIR$` (must resolve to `examples` directory)
-* Use classpath of module: `timefold-solver-examples`
+* Use classpath of module: `greycos-solver-examples`
 
 
 === Code style
@@ -48,7 +48,7 @@ Your code is automatically formatted according to the _Import and Code Style_ co
 ----
 ./mvnw clean install
 ----
-For information about how to set up code style checks, see https://github.com/TimefoldAI/timefold-solver/blob/main/build/ide-config/ide-configuration.adoc[IDE Setup Instructions].
+For information about how to set up code style checks, see https://github.com/CameleoGrey/greycos-solver/blob/main/build/ide-config/ide-configuration.adoc[IDE Setup Instructions].
 
 [#commit-messages]
 === Commit Messages
@@ -78,7 +78,7 @@ This convention is enforced by CI checks on pull requests.
 
 ==== Development philosophy
 
-Timefold Solver is developed in accordance with the following general principles:
+Greycos Solver is developed in accordance with the following general principles:
 
 * **Fail fast**: Invalid states are checked as early as possible.
 * **Understandable error message**: Errors describe what happened and if possible, suggest solutions.
@@ -89,14 +89,14 @@ Timefold Solver is developed in accordance with the following general principles
 
 ==== Package structure
 
-The codebase of Timefold Solver is structured into three conceptual parts:
+The codebase of Greycos Solver is structured into three conceptual parts:
 
 * Public API, typically in a package with *api* somewhere in its name.
 * Configuration, typically in a package with *config* somewhere in its name.
 * Implementation, which is everything else.
 
 The public API and configuration are the parts that we keep 100 % backwards compatible.
-Compatibility-breaking changes are only allowed in major versions of Timefold Solver, such as 2.0.0.
+Compatibility-breaking changes are only allowed in major versions of Greycos Solver, such as 2.0.0.
 
 The implementation is out of bounds for users and it can and does change all the time.
 If users choose to depend on the implementation classes, they do so at their own risk.
@@ -111,7 +111,7 @@ There are several levels of fail fast, from better to worse:
 . **Fail Fast at compile time**. For example: Don't accept an `Object` as a parameter if it needs to be a `String` or an ``Integer``.
 . **Fail Fast at startup time**. For example: if the configuration parameter needs to be a positive `int` and it's negative, fail fast
 . **Fail Fast at runtime**. For example: if the request needs to contain a double between `0.0` and `1.0` and it's bigger than ``1.0``, fail fast.
-. *Fail Fast at runtime in assertion mode* if the detection performance cost is high. For example: If, after every low level iteration, the variable A needs to be equal to the square root of B, check it if and only if an assert flag is set to true (usually controlled by the xref:using-timefold-solver/running-the-solver.adoc#environmentMode[EnvironmentMode]).
+. *Fail Fast at runtime in assertion mode* if the detection performance cost is high. For example: If, after every low level iteration, the variable A needs to be equal to the square root of B, check it if and only if an assert flag is set to true (usually controlled by the xref:using-greycos-solver/running-the-solver.adoc#environmentMode[EnvironmentMode]).
 
 ==== Exception messages
 
@@ -151,7 +151,7 @@ The word _maybe_ is to indicate that the advice is not guaranteed to be right in
 
 ==== Lifecycle
 
-One of the biggest challenges in multi-algorithm implementations (such as Timefold Solver)
+One of the biggest challenges in multi-algorithm implementations (such as Greycos Solver)
 is the lifecycle management of internal subsystems.
 These guidelines avoid lifecycle complexity:
 

@@ -4,12 +4,12 @@
     "configuration": {
       "elements": {
         "include": [
-          "class ai\\.timefold\\.solver\\.core\\.api.*",
-          "class ai\\.timefold\\.solver\\.core\\.config.*"
+          "class ai\\.greycos\\.solver\\.core\\.api.*",
+          "class ai\\.greycos\\.solver\\.core\\.config.*"
         ],
         "exclude": [
-          "method .* ai\\.timefold\\.solver\\.core\\.config.*::(?!(set|get)).*",
-          "parameter .* ai\\.timefold\\.solver\\.core\\.config.*::(?!(set|get)).*"
+          "method .* ai\\.greycos\\.solver\\.core\\.config.*::(?!(set|get)).*",
+          "parameter .* ai\\.greycos\\.solver\\.core\\.config.*::(?!(set|get)).*"
         ]
       }
     }

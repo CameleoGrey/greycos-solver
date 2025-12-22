@@ -3,7 +3,7 @@
 
 A _score_ represents the quality of a specific solution.
 The higher the better.
-Timefold Solver looks for the best solution, which is the solution with the highest score found in the available time.
+Greycos Solver looks for the best solution, which is the solution with the highest score found in the available time.
 It might be the _optimal_ solution.
 
 Because this use case has hard and soft constraints,
@@ -20,7 +20,7 @@ Soft constraints are weighted too, against other soft constraints.
 
 To calculate the score, create a `VehicleRoutingConstraintProvider` class
 to perform incremental score calculation.
-It uses Timefold Solver's xref:constraints-and-score/score-calculation.adoc[Constraint Streams API]
+It uses Greycos Solver's xref:constraints-and-score/score-calculation.adoc[Constraint Streams API]
 which is inspired by Java Streams and SQL:
 
 [tabs]
@@ -34,10 +34,10 @@ Create a `src/main/java/org/acme/vehiclerouting/solver/VehicleRoutingConstraintP
 ----
 package org.acme.vehiclerouting.solver;
 
-import ai.timefold.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore;
-import ai.timefold.solver.core.api.score.stream.Constraint;
-import ai.timefold.solver.core.api.score.stream.ConstraintFactory;
-import ai.timefold.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore;
+import ai.greycos.solver.core.api.score.stream.Constraint;
+import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
+import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 
 import org.acme.vehiclerouting.domain.Visit;
 import org.acme.vehiclerouting.domain.Vehicle;
@@ -93,10 +93,10 @@ Create a `src/main/kotlin/org/acme/vehiclerouting/solver/VehicleRoutingConstrain
 ----
 package org.acme.vehiclerouting.solver
 
-import ai.timefold.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore
-import ai.timefold.solver.core.api.score.stream.Constraint
-import ai.timefold.solver.core.api.score.stream.ConstraintFactory
-import ai.timefold.solver.core.api.score.stream.ConstraintProvider
+import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore
+import ai.greycos.solver.core.api.score.stream.Constraint
+import ai.greycos.solver.core.api.score.stream.ConstraintFactory
+import ai.greycos.solver.core.api.score.stream.ConstraintProvider
 
 import org.acme.vehiclerouting.domain.Visit
 import org.acme.vehiclerouting.domain.Vehicle

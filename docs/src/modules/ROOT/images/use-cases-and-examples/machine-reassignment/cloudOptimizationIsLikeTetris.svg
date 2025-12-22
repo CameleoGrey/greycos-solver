@@ -283,7 +283,7 @@
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <dc:language>en</dc:language>
         <cc:license
-           rdf:resource="https://timefold.ai/license" />
+           rdf:resource="https://greycos.ai/license" />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -2390,7 +2390,7 @@
   <g
      inkscape:groupmode="layer"
      id="layer2"
-     inkscape:label="Timefold"
+     inkscape:label="Greycos"
      style="display:inline">
     <g
        id="g4527"
@@ -3759,7 +3759,7 @@
            x="501.12888"
            y="69.167427"
            style="font-size:31.28866959px;text-align:center;text-anchor:middle" /></flowRegion><flowPara
-         id="flowPara6567">Timefold</flowPara><flowPara
+         id="flowPara6567">Greycos</flowPara><flowPara
          style="font-size:18.77320099px"
          id="flowPara6569">(Construction Heuristic + Local Search)</flowPara></flowRoot>  </g>
 </svg>

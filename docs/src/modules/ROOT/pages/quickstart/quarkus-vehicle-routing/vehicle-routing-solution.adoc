@@ -3,7 +3,7 @@
 
 A `VehicleRoutePlan` wraps all `Vehicle` and `Visit` instances of a single dataset.
 Furthermore, because it contains all vehicles and visits, each with a specific planning variable state,
-it is a https://timefold.ai/docs/timefold-solver/latest/using-timefold-solver/modeling-planning-problems#planningProblemAndPlanningSolution[_planning solution_]
+it is a https://greycos.ai/docs/greycos-solver/latest/using-greycos-solver/modeling-planning-problems#planningProblemAndPlanningSolution[_planning solution_]
 and it has a score:
 
 * If visits are still unassigned, then it is an _uninitialized_ solution.
@@ -27,12 +27,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Stream;
 
-import ai.timefold.solver.core.api.domain.solution.PlanningEntityCollectionProperty;
-import ai.timefold.solver.core.api.domain.solution.PlanningScore;
-import ai.timefold.solver.core.api.domain.solution.PlanningSolution;
-import ai.timefold.solver.core.api.domain.valuerange.ValueRangeProvider;
-import ai.timefold.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore;
-import ai.timefold.solver.core.api.solver.SolverStatus;
+import ai.greycos.solver.core.api.domain.solution.PlanningEntityCollectionProperty;
+import ai.greycos.solver.core.api.domain.solution.PlanningScore;
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.domain.valuerange.ValueRangeProvider;
+import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore;
+import ai.greycos.solver.core.api.solver.SolverStatus;
 
 import org.acme.vehiclerouting.domain.geo.DrivingTimeCalculator;
 import org.acme.vehiclerouting.domain.geo.HaversineDrivingTimeCalculator;
@@ -88,12 +88,12 @@ package org.acme.vehiclerouting.domain;
 import java.time.LocalDateTime
 import java.util.stream.Stream
 
-import ai.timefold.solver.core.api.domain.solution.PlanningEntityCollectionProperty
-import ai.timefold.solver.core.api.domain.solution.PlanningScore
-import ai.timefold.solver.core.api.domain.solution.PlanningSolution
-import ai.timefold.solver.core.api.domain.valuerange.ValueRangeProvider
-import ai.timefold.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore
-import ai.timefold.solver.core.api.solver.SolverStatus
+import ai.greycos.solver.core.api.domain.solution.PlanningEntityCollectionProperty
+import ai.greycos.solver.core.api.domain.solution.PlanningScore
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution
+import ai.greycos.solver.core.api.domain.valuerange.ValueRangeProvider
+import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore
+import ai.greycos.solver.core.api.solver.SolverStatus
 
 import org.acme.vehiclerouting.domain.geo.DrivingTimeCalculator
 import org.acme.vehiclerouting.domain.geo.HaversineDrivingTimeCalculator
@@ -143,7 +143,7 @@ class VehicleRoutePlan {
 
 
 The `VehicleRoutePlan` class has an `@PlanningSolution` annotation,
-so Timefold Solver knows that this class contains all of the input and output data.
+so Greycos Solver knows that this class contains all of the input and output data.
 
 Specifically, these classes are the input of the problem:
 
@@ -170,9 +170,9 @@ However, this class is also the output of the solution:
 == The value range providers
 
 The `visits` field is a value range provider.
-It holds the `Visit` instances which Timefold Solver can pick from to assign to the `visits` field of `Vehicle` instances.
+It holds the `Visit` instances which Greycos Solver can pick from to assign to the `visits` field of `Vehicle` instances.
 The `visits` field has an `@ValueRangeProvider` annotation to connect the `@PlanningListVariable` with the `@ValueRangeProvider`,
-by matching the type of the planning list variable with the type returned by the xref:using-timefold-solver/modeling-planning-problems.adoc#planningValueRangeProvider[value range provider].
+by matching the type of the planning list variable with the type returned by the xref:using-greycos-solver/modeling-planning-problems.adoc#planningValueRangeProvider[value range provider].
 
 == Distance calculation
 

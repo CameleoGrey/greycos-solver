@@ -2514,7 +2514,7 @@
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <dc:language>en</dc:language>
         <cc:license
-           rdf:resource="https://timefold.ai/license" />
+           rdf:resource="https://greycos.ai/license" />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -2556,7 +2556,7 @@
            width="740.00006"
            id="rect4306-3" /></flowRegion><flowPara
          style="font-size:16px;line-height:1.25"
-         id="flowPara4308-6">It's a REST service on top of Timefold Solver.</flowPara></flowRoot>
+         id="flowPara4308-6">It's a REST service on top of Greycos Solver.</flowPara></flowRoot>
     <flowRoot
        style="color:#000000;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:lr-tb;text-anchor:middle;display:inline;overflow:visible;visibility:visible;opacity:1;vector-effect:none;fill:#a40000;fill-opacity:1;fill-rule:nonzero;stroke:#8f5902;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate"
        id="flowRoot937"
@@ -3190,7 +3190,7 @@
   </g>
   <g
      style="display:inline"
-     inkscape:label="Timefold"
+     inkscape:label="Greycos"
      id="layer3"
      inkscape:groupmode="layer">
     <rect

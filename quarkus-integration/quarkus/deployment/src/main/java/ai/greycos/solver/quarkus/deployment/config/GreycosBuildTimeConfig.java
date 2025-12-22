@@ -1,0 +1,38 @@
+package ai.greycos.solver.quarkus.deployment.config;
+
+import java.util.Map;
+import java.util.Optional;
+
+import ai.greycos.solver.core.config.solver.SolverConfig;
+
+import io.quarkus.runtime.annotations.ConfigPhase;
+import io.quarkus.runtime.annotations.ConfigRoot;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithUnnamedKey;
+
+/** During build time, this is translated into Greycos's Config classes. */
+@ConfigMapping(prefix = "quarkus.greycos")
+@ConfigRoot(phase = ConfigPhase.BUILD_TIME)
+public interface GreycosBuildTimeConfig {
+
+  String DEFAULT_SOLVER_CONFIG_URL = "solverConfig.xml";
+  String DEFAULT_SOLVER_NAME = "default";
+
+  /**
+   * A classpath resource to read the solver configuration XML. Defaults to {@value
+   * DEFAULT_SOLVER_CONFIG_URL}. If this property isn't specified, that solverConfig.xml is
+   * optional.
+   */
+  Optional<String> solverConfigXml();
+
+  /**
+   * Configuration properties that overwrite {@link SolverConfig} per Solver. If a solver name is
+   * not explicitly specified, the solver name will default to {@link #DEFAULT_SOLVER_NAME}.
+   */
+  @WithUnnamedKey(DEFAULT_SOLVER_NAME)
+  Map<String, SolverBuildTimeConfig> solver();
+
+  default Optional<SolverBuildTimeConfig> getSolverConfig(String solverName) {
+    return Optional.ofNullable(solver().get(solverName));
+  }
+}

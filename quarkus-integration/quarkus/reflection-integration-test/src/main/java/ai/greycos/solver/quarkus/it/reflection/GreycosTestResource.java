@@ -1,0 +1,47 @@
+package ai.greycos.solver.quarkus.it.reflection;
+
+import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
+
+import jakarta.inject.Inject;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+
+import ai.greycos.solver.core.api.solver.SolverJob;
+import ai.greycos.solver.core.api.solver.SolverManager;
+import ai.greycos.solver.quarkus.it.reflection.domain.TestdataReflectionEntity;
+import ai.greycos.solver.quarkus.it.reflection.domain.TestdataReflectionSolution;
+
+@Path("/greycos/test")
+public class GreycosTestResource {
+
+  private final SolverManager<TestdataReflectionSolution, Long> solverManager;
+
+  @Inject
+  public GreycosTestResource(SolverManager<TestdataReflectionSolution, Long> solverManager) {
+    this.solverManager = solverManager;
+  }
+
+  @POST
+  @Path("/solver-factory")
+  @Produces(MediaType.TEXT_PLAIN)
+  public String solveWithSolverFactory() {
+    TestdataReflectionSolution planningProblem = new TestdataReflectionSolution();
+    planningProblem.setEntityList(
+        Arrays.asList(new TestdataReflectionEntity(), new TestdataReflectionEntity()));
+    planningProblem.setFieldValueList(Arrays.asList("a", "bb", "ccc"));
+    planningProblem.setMethodValueList(Arrays.asList("a", "bb", "ccc", "ddd"));
+    SolverJob<TestdataReflectionSolution, Long> solverJob =
+        solverManager.solve(1L, planningProblem);
+    try {
+      return solverJob.getFinalBestSolution().getScore().toString();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Solving was interrupted.", e);
+    } catch (ExecutionException e) {
+      throw new IllegalStateException("Solving failed.", e);
+    }
+  }
+}

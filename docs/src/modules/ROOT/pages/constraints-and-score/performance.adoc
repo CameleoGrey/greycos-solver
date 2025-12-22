@@ -72,7 +72,7 @@ The network latency will kill your move evaluation performance.
 Cache the results of those remote services if possible.
 
 If some parts of a constraint can be calculated once, when the `Solver` starts, and never change during solving,
-then turn them into xref:using-timefold-solver/modeling-planning-problems.adoc#cachedProblemFact[cached problem facts].
+then turn them into xref:using-greycos-solver/modeling-planning-problems.adoc#cachedProblemFact[cached problem facts].
 
 
 [#pointlessConstraints]
@@ -90,7 +90,7 @@ this will result in the constraint not being added to the node network and there
 Instead of implementing a hard constraint, it can sometimes be built in.
 For example, if `Lecture` A should never be assigned to `Room` X, but it uses `ValueRangeProvider` on Solution,
 so the `Solver` will often try to assign it to `Room` X too (only to find out that it breaks a hard constraint).
-Use xref:using-timefold-solver/modeling-planning-problems.adoc#valueRangeProviderOnPlanningEntity[a ValueRangeProvider on the planning entity]
+Use xref:using-greycos-solver/modeling-planning-problems.adoc#valueRangeProviderOnPlanningEntity[a ValueRangeProvider on the planning entity]
 or xref:optimization-algorithms/overview.adoc#filteredSelection[filtered selection]
 to define that Course A should only be assigned a `Room` different than X.
 
@@ -299,7 +299,7 @@ For that reason, it is generally recommended putting Joiners based on enum field
 == Indexing, Hashing, Looping
 The code on the hot path of your application needs to be as fast as possible.
 
-* When you use xref:using-timefold-solver/modeling-planning-problems.adoc#shadowVariable[Shadow Variables], you will provide a `supplier` method that computes the value of the shadow variable.
+* When you use xref:using-greycos-solver/modeling-planning-problems.adoc#shadowVariable[Shadow Variables], you will provide a `supplier` method that computes the value of the shadow variable.
 * This method will be called very often during score calculation, so it needs to be fast.
 * If you need to do a lookup in a collection to find an element, ideally you are indexing into an array.
 * The second best option is to use a `HashMap` or `HashSet`.
@@ -313,11 +313,11 @@ If you are using the xref:enterprise-edition/enterprise-edition.adoc[Enterprise 
 == Benchmark
 Whatever you do, benchmark on a large and diverse set of inputs.
 
-JVM performance may differ by as much as 20% between runs. To decide whether your changes helped or made things worse, make sure to always average the move evaluation speed from multiple runs on the same machine with the same solver configuration. We provide a xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] to help you with that.
+JVM performance may differ by as much as 20% between runs. To decide whether your changes helped or made things worse, make sure to always average the move evaluation speed from multiple runs on the same machine with the same solver configuration. We provide a xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] to help you with that.
 
 [#fullAssert]
 == Validate the implementation using FULL_ASSERT
-When you are done optimizing your score calculation, make sure to validate it using xref:using-timefold-solver/running-the-solver.adoc#environmentModeFullAssert[`FULL_ASSERT`] mode. Make sure not to run with this mode in production.
+When you are done optimizing your score calculation, make sure to validate it using xref:using-greycos-solver/running-the-solver.adoc#environmentModeFullAssert[`FULL_ASSERT`] mode. Make sure not to run with this mode in production.
 
 [#otherScoreCalculationPerformanceTricks]
 == Other score calculation performance tricks
@@ -390,6 +390,6 @@ For example, move multiple items from the same container to another container.
 
 Not all score constraints have the same performance cost.
 Sometimes one score constraint can ruin performance outright.
-Use the xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker]
+Use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker]
 to do a one minute run and check what happens to the move evaluation speed
 if you comment out all but one of the score constraints.

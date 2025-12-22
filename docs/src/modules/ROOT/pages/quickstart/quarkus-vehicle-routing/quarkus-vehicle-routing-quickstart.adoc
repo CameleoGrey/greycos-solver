@@ -7,15 +7,15 @@
 include::../../_attributes.adoc[]
 
 // Keep this in sync with the quarkus repo's copy
-// https://github.com/quarkusio/quarkus/blob/main/docs/src/main/asciidoc/timefold.adoc
+// https://github.com/quarkusio/quarkus/blob/main/docs/src/main/asciidoc/greycos.adoc
 // Keep this also in sync with spring-boot-quickstart.adoc where applicable
 
 This guide walks you through the process of creating a Vehicle Routing application
-with https://quarkus.io/[Quarkus] and https://timefold.ai[Timefold]'s constraint solving Artificial Intelligence (AI).
+with https://quarkus.io/[Quarkus] and https://greycos.ai[Greycos]'s constraint solving Artificial Intelligence (AI).
 
 [TIP]
 ====
-https://docs.timefold.ai/field-service-routing/latest/introduction[Check out our off-the-shelf model for Field Service Routing] (REST API)
+https://docs.greycos.ai/field-service-routing/latest/introduction[Check out our off-the-shelf model for Field Service Routing] (REST API)
 ====
 
 == What you will build
@@ -35,7 +35,7 @@ Mathematically speaking, VRP is an _NP-hard_ problem.
 This means it is difficult to scale.
 Simply brute force iterating through all possible combinations takes millions of years
 for a non-trivial dataset, even on a supercomputer.
-Luckily, AI constraint solvers such as Timefold Solver have advanced algorithms
+Luckily, AI constraint solvers such as Greycos Solver have advanced algorithms
 that deliver a near-optimal solution in a reasonable amount of time.
 
 == Solution source code
@@ -64,7 +64,7 @@ include::../shared/java-prerequisites.adoc[]
 
 == The build file and the dependencies
 
-Use https://code.quarkus.io/?a=timefold-solver-quickstart&j=17&e=rest&e=rest-jackson&e=ai.timefold.solver%3Atimefold-solver-quarkus-jackson&e=ai.timefold.solver%3Atimefold-solver-quarkus[code.quarkus.io] to generate an application
+Use https://code.quarkus.io/?a=greycos-solver-quickstart&j=17&e=rest&e=rest-jackson&e=ai.greycos.solver%3Agreycos-solver-quarkus-jackson&e=ai.greycos.solver%3Agreycos-solver-quarkus[code.quarkus.io] to generate an application
 with the following extensions, for Maven or Gradle:
 
 [NOTE]
@@ -74,8 +74,8 @@ Clicking the link above will automatically select the dependencies for you on *c
 
 * Quarkus REST JAX-RS (`quarkus-rest`)
 * Quarkus REST Jackson (`quarkus-rest-jackson`)
-* Timefold Solver (`timefold-solver-quarkus`)
-* Timefold Solver Jackson (`timefold-solver-quarkus-jackson`)
+* Greycos Solver (`greycos-solver-quarkus`)
+* Greycos Solver Jackson (`greycos-solver-quarkus-jackson`)
 
 Your `pom.xml` file has the following content:
 
@@ -100,7 +100,7 @@ Java::
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <version.io.quarkus>{quarkus-version}</version.io.quarkus>
-    <version.ai.timefold.solver>{timefold-solver-version}</version.ai.timefold.solver>
+    <version.ai.greycos.solver>{greycos-solver-version}</version.ai.greycos.solver>
   </properties>
 
   <dependencyManagement>
@@ -108,16 +108,16 @@ Java::
       <dependency>
         <groupId>io.quarkus</groupId>
         <!-- Alternatively, use <artifactId>quarkus-universe-bom</artifactId>
-         which includes both quarkus-bom and timefold-solver-bom. -->
+         which includes both quarkus-bom and greycos-solver-bom. -->
         <artifactId>quarkus-bom</artifactId>
         <version>${version.io.quarkus}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
       <dependency>
-        <groupId>ai.timefold.solver</groupId>
-        <artifactId>timefold-solver-bom</artifactId>
-        <version>${version.ai.timefold.solver}</version>
+        <groupId>ai.greycos.solver</groupId>
+        <artifactId>greycos-solver-bom</artifactId>
+        <version>${version.ai.greycos.solver}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -133,12 +133,12 @@ Java::
       <artifactId>quarkus-rest-jackson</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-quarkus</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-quarkus</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-quarkus-jackson</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-quarkus-jackson</artifactId>
     </dependency>
   </dependencies>
 
@@ -192,7 +192,7 @@ Kotlin::
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <version.io.quarkus>{quarkus-version}</version.io.quarkus>
-    <version.ai.timefold.solver>{timefold-solver-version}</version.ai.timefold.solver>
+    <version.ai.greycos.solver>{greycos-solver-version}</version.ai.greycos.solver>
   </properties>
 
   <dependencyManagement>
@@ -200,16 +200,16 @@ Kotlin::
       <dependency>
         <groupId>io.quarkus</groupId>
         <!-- Alternatively, use <artifactId>quarkus-universe-bom</artifactId>
-         which includes both quarkus-bom and timefold-solver-bom. -->
+         which includes both quarkus-bom and greycos-solver-bom. -->
         <artifactId>quarkus-bom</artifactId>
         <version>${version.io.quarkus}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
       <dependency>
-        <groupId>ai.timefold.solver</groupId>
-        <artifactId>timefold-solver-bom</artifactId>
-        <version>${version.ai.timefold.solver}</version>
+        <groupId>ai.greycos.solver</groupId>
+        <artifactId>greycos-solver-bom</artifactId>
+        <version>${version.ai.greycos.solver}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -225,12 +225,12 @@ Kotlin::
       <artifactId>quarkus-rest-jackson</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-quarkus</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-quarkus</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-quarkus-jackson</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-quarkus-jackson</artifactId>
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>
@@ -345,8 +345,8 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
-import ai.timefold.solver.core.api.solver.SolverJob;
-import ai.timefold.solver.core.api.solver.SolverManager;
+import ai.greycos.solver.core.api.solver.SolverJob;
+import ai.greycos.solver.core.api.solver.SolverManager;
 
 import org.acme.vehiclerouting.domain.VehicleRoutePlan;
 
@@ -404,7 +404,7 @@ import jakarta.ws.rs.Path
 import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
 
-import ai.timefold.solver.core.api.solver.SolverManager
+import ai.greycos.solver.core.api.solver.SolverManager
 
 import org.acme.vehiclerouting.domain.VehicleRoutePlan
 
@@ -462,11 +462,11 @@ Create the `src/main/resources/application.properties` file:
 ----
 # The solver runs only for 5 seconds to avoid a HTTP timeout in this simple implementation.
 # It's recommended to run for at least 5 minutes ("5m") otherwise.
-quarkus.timefold.solver.termination.spent-limit=5s
+quarkus.greycos.solver.termination.spent-limit=5s
 ----
 
-Timefold Solver returns _the best solution_ found in the available termination time.
-Due to xref:optimization-algorithms/overview.adoc#doesTimefoldFindTheOptimalSolution[the nature of NP-hard problems],
+Greycos Solver returns _the best solution_ found in the available termination time.
+Due to xref:optimization-algorithms/overview.adoc#doesGreycosFindTheOptimalSolution[the nature of NP-hard problems],
 the best solution might not be optimal, especially for larger datasets.
 Increase the termination time to potentially find a better solution.
 
@@ -506,7 +506,7 @@ Notice that your application assigned all five visits to one of the two vehicles
 Also notice that it conforms to all hard constraints.
 For example, visits `1`, `4`, and `5` were scheduled to the vehicle `1`.
 
-On the server side, the `info` log shows what Timefold Solver did in those five seconds:
+On the server side, the `info` log shows what Greycos Solver did in those five seconds:
 
 [source,options="nowrap"]
 ----
@@ -528,7 +528,7 @@ which lowers maintenance when adding a new constraint with proper test coverage.
 
 First update your build tool configuration:
 
-Add a `timefold-solver-test` dependency in your `pom.xml`:
+Add a `greycos-solver-test` dependency in your `pom.xml`:
 [source,xml]
 ----
     <dependency>
@@ -537,8 +537,8 @@ Add a `timefold-solver-test` dependency in your `pom.xml`:
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-test</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-test</artifactId>
       <scope>test</scope>
     </dependency>
 ----
@@ -564,7 +564,7 @@ import java.util.Arrays;
 
 import jakarta.inject.Inject;
 
-import ai.timefold.solver.test.api.score.stream.ConstraintVerifier;
+import ai.greycos.solver.test.api.score.stream.ConstraintVerifier;
 
 import org.acme.vehiclerouting.domain.Location;
 import org.acme.vehiclerouting.domain.Vehicle;
@@ -634,8 +634,8 @@ import java.util.Arrays
 
 import jakarta.inject.Inject
 
-import ai.timefold.solver.test.api.score.stream.ConstraintVerifier
-import ai.timefold.solver.core.api.score.stream.ConstraintFactory
+import ai.greycos.solver.test.api.score.stream.ConstraintVerifier
+import ai.greycos.solver.core.api.score.stream.ConstraintFactory
 
 import org.acme.vehiclerouting.domain.Location
 import org.acme.vehiclerouting.domain.Vehicle
@@ -749,7 +749,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 
-import ai.timefold.solver.core.api.solver.SolverStatus;
+import ai.greycos.solver.core.api.solver.SolverStatus;
 
 import org.acme.vehiclerouting.domain.VehicleRoutePlan;
 import org.junit.jupiter.api.Test;
@@ -808,7 +808,7 @@ package org.acme.vehiclerouting.rest
 
 import java.time.Duration
 
-import ai.timefold.solver.core.api.solver.SolverStatus
+import ai.greycos.solver.core.api.solver.SolverStatus
 
 import org.acme.vehiclerouting.domain.VehicleRoutePlan
 import org.junit.jupiter.api.Test
@@ -872,11 +872,11 @@ Add test properties to the `src/main/resources/application.properties` file:
 
 [source,properties]
 ----
-quarkus.timefold.solver.termination.spent-limit=5s
+quarkus.greycos.solver.termination.spent-limit=5s
 
 # Effectively disable spent-time termination in favor of the best-score-limit
-%test.quarkus.timefold.solver.termination.spent-limit=1h
-%test.quarkus.timefold.solver.termination.best-score-limit=0hard/*soft
+%test.quarkus.greycos.solver.termination.spent-limit=1h
+%test.quarkus.greycos.solver.termination.best-score-limit=0hard/*soft
 ----
 
 Normally, the solver finds a feasible solution in less than 200 milliseconds.
@@ -897,12 +897,12 @@ after solving for the same amount of time, to assess the performance impact:
 ... Solving ended: ..., move evaluation speed (29455/sec), ...
 ----
 
-To understand how Timefold Solver is solving your problem internally,
+To understand how Greycos Solver is solving your problem internally,
 change the logging in the `application.properties` file or with a `-D` system property:
 
 [source,properties]
 ----
-quarkus.log.category."ai.timefold.solver".level=debug
+quarkus.log.category."ai.greycos.solver".level=debug
 ----
 
 Use `debug` logging to show every _step_:
@@ -920,7 +920,7 @@ Use `trace` logging to show every _step_ and every _move_ per step.
 == Summary
 
 Congratulations!
-You have just developed a Quarkus application with https://timefold.ai[Timefold]!
+You have just developed a Quarkus application with https://greycos.ai[Greycos]!
 
 For a full implementation with a web UI and in-memory storage,
 check out {vrp-quickstart-url}[the Quarkus quickstart source code].

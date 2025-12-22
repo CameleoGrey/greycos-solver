@@ -3,7 +3,7 @@
 
 A _score_ represents the quality of a specific solution.
 The higher the better.
-Timefold Solver looks for the best solution, which is the solution with the highest score found in the available time.
+Greycos Solver looks for the best solution, which is the solution with the highest score found in the available time.
 It might be the _optimal_ solution.
 
 Because this use case has hard and soft constraints,
@@ -53,7 +53,7 @@ public class TimetableEasyScoreCalculator implements EasyScoreCalculator<Timetab
             }
         }
         int softScore = 0;
-        // Soft constraints are only implemented in the timefold-quickstarts code
+        // Soft constraints are only implemented in the greycos-quickstarts code
         return HardSoftScore.of(hardScore, softScore);
     }
 
@@ -89,7 +89,7 @@ class TimetableEasyScoreCalculator : EasyScoreCalculator<Timetable, HardSoftScor
             }
         }
         val softScore = 0
-        // Soft constraints are only implemented in the timefold-quickstarts code
+        // Soft constraints are only implemented in the greycos-quickstarts code
         return HardSoftScore.of(hardScore, softScore)
     }
 }
@@ -104,7 +104,7 @@ all lessons are re-evaluated to calculate the new score.
 
 Instead, create a `TimetableConstraintProvider` class
 to perform incremental score calculation.
-It uses Timefold Solver's xref:constraints-and-score/score-calculation.adoc[Constraint Streams API]
+It uses Greycos Solver's xref:constraints-and-score/score-calculation.adoc[Constraint Streams API]
 which is inspired by Java Streams and SQL:
 
 [tabs]
@@ -119,11 +119,11 @@ Create a `src/main/java/org/acme/schooltimetabling/solver/TimetableConstraintPro
 package org.acme.schooltimetabling.solver;
 
 import org.acme.schooltimetabling.domain.Lesson;
-import ai.timefold.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.timefold.solver.core.api.score.stream.Constraint;
-import ai.timefold.solver.core.api.score.stream.ConstraintFactory;
-import ai.timefold.solver.core.api.score.stream.ConstraintProvider;
-import ai.timefold.solver.core.api.score.stream.Joiners;
+import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.stream.Constraint;
+import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
+import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.api.score.stream.Joiners;
 
 public class TimetableConstraintProvider implements ConstraintProvider {
 
@@ -134,7 +134,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 roomConflict(constraintFactory),
                 teacherConflict(constraintFactory),
                 studentGroupConflict(constraintFactory),
-                // Soft constraints are only implemented in the timefold-quickstarts code
+                // Soft constraints are only implemented in the greycos-quickstarts code
         };
     }
 
@@ -185,11 +185,11 @@ Create a `src/main/kotlin/org/acme/schooltimetabling/solver/TimetableConstraintP
 ----
 package org.acme.kotlin.schooltimetabling.solver
 
-import ai.timefold.solver.core.api.score.buildin.hardsoft.HardSoftScore
-import ai.timefold.solver.core.api.score.stream.Constraint
-import ai.timefold.solver.core.api.score.stream.ConstraintFactory
-import ai.timefold.solver.core.api.score.stream.ConstraintProvider
-import ai.timefold.solver.core.api.score.stream.Joiners
+import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore
+import ai.greycos.solver.core.api.score.stream.Constraint
+import ai.greycos.solver.core.api.score.stream.ConstraintFactory
+import ai.greycos.solver.core.api.score.stream.ConstraintProvider
+import ai.greycos.solver.core.api.score.stream.Joiners
 import org.acme.kotlin.schooltimetabling.domain.Lesson
 import org.acme.kotlin.schooltimetabling.solver.justifications.*
 import java.time.Duration

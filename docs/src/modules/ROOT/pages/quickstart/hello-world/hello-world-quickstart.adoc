@@ -7,7 +7,7 @@
 include::../../_attributes.adoc[]
 
 This guide walks you through the process of creating a simple Java or Kotlin application
-with https://timefold.ai[Timefold]'s constraint solving Artificial Intelligence (AI).
+with https://greycos.ai[Greycos]'s constraint solving Artificial Intelligence (AI).
 
 == What you will build
 
@@ -49,7 +49,7 @@ Mathematically speaking, school timetabling is an _NP-hard_ problem.
 This means it is difficult to scale.
 Simply brute force iterating through all possible combinations takes millions of years
 for a non-trivial dataset, even on a supercomputer.
-Fortunately, AI constraint solvers such as Timefold Solver have advanced algorithms
+Fortunately, AI constraint solvers such as Greycos Solver have advanced algorithms
 that deliver a near-optimal solution in a reasonable amount of time.
 
 == Solution source code
@@ -95,9 +95,9 @@ include::../shared/java-prerequisites.adoc[]
 
 Create a Maven or Gradle build file and add these dependencies:
 
-* `timefold-solver-core` (compile scope) to solve the school timetable problem.
-* `timefold-solver-test` (test scope) to JUnit test the school timetabling constraints.
-* A xref:using-timefold-solver/running-the-solver.adoc#logging[logging] implementation, such as `logback-classic` (runtime scope), to see what Timefold Solver is doing.
+* `greycos-solver-core` (compile scope) to solve the school timetable problem.
+* `greycos-solver-test` (test scope) to JUnit test the school timetabling constraints.
+* A xref:using-greycos-solver/running-the-solver.adoc#logging[logging] implementation, such as `logback-classic` (runtime scope), to see what Greycos Solver is doing.
 
 [tabs]
 ====
@@ -125,9 +125,9 @@ Your `pom.xml` file has the following content:
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>ai.timefold.solver</groupId>
-        <artifactId>timefold-solver-bom</artifactId>
-        <version>{timefold-solver-version}</version>
+        <groupId>ai.greycos.solver</groupId>
+        <artifactId>greycos-solver-bom</artifactId>
+        <version>{greycos-solver-version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -141,8 +141,8 @@ Your `pom.xml` file has the following content:
 
   <dependencies>
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-core</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-core</artifactId>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
@@ -152,8 +152,8 @@ Your `pom.xml` file has the following content:
 
     <!-- Testing -->
     <dependency>
-      <groupId>ai.timefold.solver</groupId>
-      <artifactId>timefold-solver-test</artifactId>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-test</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -186,7 +186,7 @@ plugins {
     id "application"
 }
 
-def timefoldSolverVersion = "{timefold-solver-version}"
+def greycosSolverVersion = "{greycos-solver-version}"
 def logbackVersion = "{logback-version}"
 
 group = "org.acme"
@@ -197,9 +197,9 @@ repositories {
 }
 
 dependencies {
-    implementation platform("ai.timefold.solver:timefold-solver-bom:${timefoldSolverVersion}")
-    implementation "ai.timefold.solver:timefold-solver-core"
-    testImplementation "ai.timefold.solver:timefold-solver-test"
+    implementation platform("ai.greycos.solver:greycos-solver-bom:${greycosSolverVersion}")
+    implementation "ai.greycos.solver:greycos-solver-core"
+    testImplementation "ai.greycos.solver:greycos-solver-test"
 
     runtimeOnly "ch.qos.logback:logback-classic:${logbackVersion}"
 }
@@ -273,9 +273,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import ai.timefold.solver.core.api.solver.Solver;
-import ai.timefold.solver.core.api.solver.SolverFactory;
-import ai.timefold.solver.core.config.solver.SolverConfig;
+import ai.greycos.solver.core.api.solver.Solver;
+import ai.greycos.solver.core.api.solver.SolverFactory;
+import ai.greycos.solver.core.config.solver.SolverConfig;
 import org.acme.schooltimetabling.domain.Lesson;
 import org.acme.schooltimetabling.domain.Room;
 import org.acme.schooltimetabling.domain.Timeslot;
@@ -418,8 +418,8 @@ Create the `src/main/kotlin/org/acme/schooltimetabling/TimetableApp.kt` class:
 ----
 package org.acme.schooltimetabling
 
-import ai.timefold.solver.core.api.solver.SolverFactory
-import ai.timefold.solver.core.config.solver.SolverConfig
+import ai.greycos.solver.core.api.solver.SolverFactory
+import ai.greycos.solver.core.config.solver.SolverConfig
 import org.acme.schooltimetabling.domain.Lesson
 import org.acme.schooltimetabling.domain.Room
 import org.acme.schooltimetabling.domain.Timeslot
@@ -665,8 +665,8 @@ printTimetable(solution)
 The `solve()` method doesn't return instantly.
 It runs for five seconds before returning the best solution.
 
-Timefold Solver returns _the best solution_ found in the available termination time.
-Due to xref:optimization-algorithms/overview.adoc#doesTimefoldFindTheOptimalSolution[the nature of NP-hard problems],
+Greycos Solver returns _the best solution_ found in the available termination time.
+Due to xref:optimization-algorithms/overview.adoc#doesGreycosFindTheOptimalSolution[the nature of NP-hard problems],
 the best solution might not be optimal, especially for larger datasets.
 Increase the termination time to potentially find a better solution.
 
@@ -714,7 +714,7 @@ INFO  |            | 9th grade  | 10th grade |            |
 Verify the console output. Does it conform to all hard constraints?
 What happens if you comment out the `roomConflict` constraint in `TimetableConstraintProvider`?
 
-The `info` log shows what Timefold Solver did in those five seconds:
+The `info` log shows what Greycos Solver did in those five seconds:
 
 [source,options="nowrap"]
 ----
@@ -755,7 +755,7 @@ import org.acme.schooltimetabling.domain.Room;
 import org.acme.schooltimetabling.domain.Timetable;
 import org.acme.schooltimetabling.domain.Timeslot;
 import org.junit.jupiter.api.Test;
-import ai.timefold.solver.test.api.score.stream.ConstraintVerifier;
+import ai.greycos.solver.test.api.score.stream.ConstraintVerifier;
 
 class TimetableConstraintProviderTest {
 
@@ -790,8 +790,8 @@ Create the `src/test/kotlin/org/acme/schooltimetabling/solver/TimetableConstrain
 ----
 package org.acme.schooltimetabling.solver
 
-import ai.timefold.solver.core.api.score.stream.ConstraintFactory
-import ai.timefold.solver.test.api.score.stream.ConstraintVerifier
+import ai.greycos.solver.core.api.score.stream.ConstraintFactory
+import ai.greycos.solver.test.api.score.stream.ConstraintVerifier
 import org.acme.schooltimetabling.domain.Lesson
 import org.acme.schooltimetabling.domain.Room
 import org.acme.schooltimetabling.domain.Timeslot
@@ -851,7 +851,7 @@ after solving for the same amount of time, to assess the performance impact:
 ... Solving ended: ..., move evaluation speed (29455/sec), ...
 ----
 
-To understand how Timefold Solver is solving your problem internally:
+To understand how Greycos Solver is solving your problem internally:
 
 [tabs]
 ====
@@ -862,7 +862,7 @@ Change the logging in the `logback.xml` file:
 
 [source,xml]
 ----
-  <logger name="ai.timefold.solver" level="debug"/>
+  <logger name="ai.greycos.solver" level="debug"/>
 ----
 --
 ====
@@ -1004,7 +1004,7 @@ $ java -jar build/libs/hello-world-1.0-SNAPSHOT.jar
 == Summary
 
 Congratulations!
-You have just developed a Java or Kotlin application with https://timefold.ai[Timefold]!
+You have just developed a Java or Kotlin application with https://greycos.ai[Greycos]!
 
 If you ran into any issues, take a look at {hello-world-java-quickstart-url}[the Java quickstart source code].
 

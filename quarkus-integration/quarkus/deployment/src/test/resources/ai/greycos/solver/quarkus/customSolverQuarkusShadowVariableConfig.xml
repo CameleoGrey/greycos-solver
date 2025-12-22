@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+  <solutionClass>ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableSolution
+  </solutionClass>
+  <entityClass>ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableEntity</entityClass>
+  <scoreDirectorFactory>
+    <constraintProviderClass>
+      ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableConstraintProvider
+    </constraintProviderClass>
+  </scoreDirectorFactory>
+  <termination>
+    <secondsSpentLimit>4</secondsSpentLimit>
+  </termination>
+</solver>

@@ -44,7 +44,7 @@ file in the `build/ide-config/src/main/resources/` directory.
 +
 [source,shell]
 ----
-cd timefold
+cd greycos
 mkdir .vscode
 touch .vscode/settings.json
 ----
@@ -59,7 +59,7 @@ touch .vscode/settings.json
         "java",
         "jakarta",
         "javax",
-        "ai.timefold",
+        "ai.greycos",
         "org",
         "com"
     ]

@@ -49,8 +49,8 @@ that xref:optimization-algorithms/local-search.adoc#localSearch[Local Search]
 usually performs best for real-world problems given real-world time limitations.
 
 
-[#doesTimefoldFindTheOptimalSolution]
-=== Does Timefold Solver find the optimal solution?
+[#doesGreycosFindTheOptimalSolution]
+=== Does Greycos Solver find the optimal solution?
 
 The business wants the optimal solution, but they also have other requirements:
 
@@ -61,7 +61,7 @@ The business wants the optimal solution, but they also have other requirements:
 
 Given these requirements, and despite the promises of some salesmen,
 it is usually impossible for anyone or anything to find the optimal solution.
-Therefore, Timefold Solver focuses on finding the best solution in available time.
+Therefore, Greycos Solver focuses on finding the best solution in available time.
 
 The nature of NP-complete problems make scaling a prime concern.
 
@@ -78,7 +78,7 @@ Do not assess quality on small data sets (unless production encounters only such
 [#supportedOptimizationAlgorithms]
 === Supported optimization algorithms
 
-Timefold Solver supports three _families_ of optimization algorithms: Exhaustive Search, Construction Heuristics and Metaheuristics.
+Greycos Solver supports three _families_ of optimization algorithms: Exhaustive Search, Construction Heuristics and Metaheuristics.
 In practice, Metaheuristics (in combination with Construction Heuristics to initialize) are the recommended choice:
 
 image::optimization-algorithms/overview/scalabilityOfOptimizationAlgorithms.png[align="center"]
@@ -126,7 +126,7 @@ However, this basic procedure provides a good starting configuration that will p
 See xref:optimization-algorithms/construction-heuristics.adoc#firstFit[First Fit].
 
 . Next,
-implement xref:using-timefold-solver/modeling-planning-problems.adoc#planningEntitySorting[planning entity sorting]
+implement xref:using-greycos-solver/modeling-planning-problems.adoc#planningEntitySorting[planning entity sorting]
 and turn it into xref:optimization-algorithms/construction-heuristics.adoc#firstFitDecreasing[First Fit Decreasing].
 
 . Next, add Late Acceptance behind it:
@@ -136,14 +136,14 @@ and turn it into xref:optimization-algorithms/construction-heuristics.adoc#first
 At this point, the return on invested time lowers and the result is likely to be sufficient.
 
 However, this can be improved at a lower return on invested time.
-Use the xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker]
+Use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker]
 and try a couple of different Tabu Search, Simulated Annealing and Late Acceptance configurations,
 for example:
 
 . First Fit Decreasing
 . xref:optimization-algorithms/local-search.adoc#tabuSearch[Tabu Search].
 
-Use the xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker]
+Use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker]
 to improve the values for the size parameters.
 
 Other experiments can also be run.
@@ -156,7 +156,7 @@ For example, the following multiple algorithms can be combined together:
 [#architectureOverview]
 == Architecture
 
-Timefold Solver combines optimization algorithms (metaheuristics, ...)
+Greycos Solver combines optimization algorithms (metaheuristics, ...)
 with score calculation by a score calculation engine.
 This combination is very efficient, because:
 
@@ -175,10 +175,10 @@ image::optimization-algorithms/overview/architectureOverview.png[align="center"]
 === Power tweaking or default parameter values
 
 Many optimization algorithms have parameters that affect results and scalability.
-Timefold Solver applies __configuration by exception__, so all optimization algorithms have default parameter values.
+Greycos Solver applies __configuration by exception__, so all optimization algorithms have default parameter values.
 This is very similar to the Garbage Collection parameters in a JVM: most users have no need to tweak them, but power users often do.
 
-The default parameter values are sufficient for many cases (and especially for prototypes), but if development time allows, it may be beneficial to power tweak them with the xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[benchmarker] for better results and scalability on a specific use case.
+The default parameter values are sufficient for many cases (and especially for prototypes), but if development time allows, it may be beneficial to power tweak them with the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[benchmarker] for better results and scalability on a specific use case.
 The documentation for each optimization algorithm also declares the advanced configuration for power tweaking.
 
 [WARNING]
@@ -204,8 +204,8 @@ Here is a configuration that runs three phases in sequence:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
   ...
   <constructionHeuristic>
     ... <!-- First phase: First Fit Decreasing -->
@@ -228,15 +228,15 @@ Usually, a `Solver` will first run a construction heuristic and then run one or 
 
 image::optimization-algorithms/overview/generalPhaseSequence.png[align="center"]
 
-If no phases are configured, Timefold Solver will default to a Construction Heuristic phase followed by a Local Search phase.
+If no phases are configured, Greycos Solver will default to a Construction Heuristic phase followed by a Local Search phase.
 
 Some phases (especially construction heuristics) will terminate automatically.
 Other phases (especially metaheuristics) will only terminate if the `Phase` is configured to terminate:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
   ...
   <termination><!-- Solver termination -->
     <secondsSpentLimit>90</secondsSpentLimit>
@@ -270,7 +270,7 @@ These form four nested scopes:
 
 image::optimization-algorithms/overview/scopeOverview.png[align="center"]
 
-Configure xref:using-timefold-solver/running-the-solver.adoc#logging[logging] to display the log messages of each scope.
+Configure xref:using-greycos-solver/running-the-solver.adoc#logging[logging] to display the log messages of each scope.
 
 
 [#termination]
@@ -713,7 +713,7 @@ This is useful for benchmarking.
   </termination>
 ----
 
-Switching xref:using-timefold-solver/running-the-solver.adoc#environmentMode[EnvironmentMode] can heavily impact when this termination ends.
+Switching xref:using-greycos-solver/running-the-solver.adoc#environmentMode[EnvironmentMode] can heavily impact when this termination ends.
 
 [#moveCountTermination]
 ===== `MoveCountTermination`
@@ -728,7 +728,7 @@ This is useful for benchmarking.
   </termination>
 ----
 
-Switching xref:using-timefold-solver/running-the-solver.adoc#environmentMode[EnvironmentMode] can heavily impact when this termination ends.
+Switching xref:using-greycos-solver/running-the-solver.adoc#environmentMode[EnvironmentMode] can heavily impact when this termination ends.
 
 [#diminishedReturnsTermination]
 ===== `DiminishedReturnsTermination`
@@ -848,7 +848,7 @@ For example, to implement a custom Construction Heuristic without implementing a
 ====
 Most of the time, a custom solver phase is not worth the investment of development time.
 xref:optimization-algorithms/construction-heuristics.adoc#constructionHeuristics[Construction Heuristics] are configurable and support partially initialized solutions too.
-You can use the xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] to tweak them.
+You can use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] to tweak them.
 ====
 
 The `PhaseCommand` interface appears as follows:
@@ -881,8 +881,8 @@ Configure the `PhaseCommand` in the solver configuration:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://timefold.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://timefold.ai/xsd/solver https://timefold.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
   ...
   <customPhase>
     <customPhaseCommandClass>...MyCustomPhase</customPhaseCommandClass>
@@ -901,8 +901,8 @@ Effectively nothing will have changed for the next `Phase` or `PhaseCommand`.
 ====
 
 To configure values of a `PhaseCommand` dynamically in the solver configuration
-(so the xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `customProperties` element and use xref:using-timefold-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `customProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
 
 [source,xml,options="nowrap"]
 ----
@@ -1093,7 +1093,7 @@ To give each individual `Move` the same selection chance (as opposed to each ``M
     <unionMoveSelector>
       <changeMoveSelector/>
       <swapMoveSelector/>
-      <selectorProbabilityWeightFactoryClass>ai.timefold.solver.core.impl.heuristic.selector.common.decorator.FairSelectorProbabilityWeightFactory</selectorProbabilityWeightFactoryClass>
+      <selectorProbabilityWeightFactoryClass>ai.greycos.solver.core.impl.heuristic.selector.common.decorator.FairSelectorProbabilityWeightFactory</selectorProbabilityWeightFactoryClass>
     </unionMoveSelector>
 ----
 
@@ -1539,7 +1539,7 @@ If you do explicitly configure the ``Selector``, it overwrites the default setti
 Some `Selector` types implement a `SorterManner` out of the box:
 
 * `EntitySelector` supports:
-** ``DESCENDING``: Sorts the planning entities in descending order based on a give metric (xref:using-timefold-solver/modeling-planning-problems.adoc#planningEntitySorting[planning entity sorting]). Requires that planning entity is annotated on the domain model.
+** ``DESCENDING``: Sorts the planning entities in descending order based on a give metric (xref:using-greycos-solver/modeling-planning-problems.adoc#planningEntitySorting[planning entity sorting]). Requires that planning entity is annotated on the domain model.
 +
 [source,xml,options="nowrap"]
 ----
@@ -1550,7 +1550,7 @@ Some `Selector` types implement a `SorterManner` out of the box:
     </entitySelector>
 ----
 * `ValueSelector` supports:
-** ``ASCENDING``: Sorts the planning values in ascending order based on a given metric (xref:using-timefold-solver/modeling-planning-problems.adoc#planningValueSorting[planning value sorting]). Requires that planning value is annotated on the domain model.
+** ``ASCENDING``: Sorts the planning values in ascending order based on a given metric (xref:using-greycos-solver/modeling-planning-problems.adoc#planningValueSorting[planning value sorting]). Requires that planning value is annotated on the domain model.
 +
 [source,xml,options="nowrap"]
 ----
@@ -1759,9 +1759,9 @@ Mimic selection is useful to create <<cartesianProductMoveSelector,a composite m
 
 [NOTE]
 ====
-Nearby selection is a commercial feature of xref:enterprise-edition/enterprise-edition.adoc[Timefold Solver Enterprise Edition].
+Nearby selection is a commercial feature of xref:enterprise-edition/enterprise-edition.adoc[Greycos Solver Enterprise Edition].
 It is not open source, and it is free for development use only.
-https://timefold.ai/blog/2023/optaplanner-fork/[Learn more about Timefold].
+https://greycos.ai/blog/2023/optaplanner-fork/[Learn more about Greycos].
 ====
 
 Read about nearby selection in the xref:enterprise-edition/enterprise-edition.adoc#nearbySelection[Nearby selection section]
@@ -1775,8 +1775,8 @@ of the xref:enterprise-edition/enterprise-edition.adoc[Enterprise Edition manual
 ==== Which move types might be missing in my implementation?
 
 To determine which move types might be missing in your implementation,
-run a xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] __for a short amount of time__
-and xref:using-timefold-solver/benchmarking-and-tweaking.adoc#writeTheOutputSolutionOfBenchmarkRuns[configure it to write the best solutions to disk].
+run a xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] __for a short amount of time__
+and xref:using-greycos-solver/benchmarking-and-tweaking.adoc#writeTheOutputSolutionOfBenchmarkRuns[configure it to write the best solutions to disk].
 Take a look at such a best solution: it will likely be a local optima.
 Try to figure out if there's a move that could get out of that local optima faster.
 
@@ -1816,7 +1816,7 @@ public interface Move<Solution_> {
 ----
 
 To implement a custom move, it's recommended to extend `AbstractMove` instead implementing `Move` directly.
-Timefold Solver calls `AbstractMove.doMove(ScoreDirector)`, which calls `doMoveOnGenuineVariables(ScoreDirector)`.
+Greycos Solver calls `AbstractMove.doMove(ScoreDirector)`, which calls `doMoveOnGenuineVariables(ScoreDirector)`.
 For example, in school timetabling, this move changes one lesson to another timeslot:
 
 [source,java,options="nowrap"]
@@ -1859,7 +1859,7 @@ it must not change any of the problem facts as that will cause score corruption.
 Use xref:responding-to-change/responding-to-change.adoc#realTimePlanning[real-time planning] to change problem facts while solving.
 ====
 
-Timefold Solver automatically filters out _non doable moves_ by calling the `isMoveDoable(ScoreDirector)` method on each selected move.
+Greycos Solver automatically filters out _non doable moves_ by calling the `isMoveDoable(ScoreDirector)` method on each selected move.
 A _non doable move_ is:
 
 * A move that changes nothing on the current solution.
@@ -1890,7 +1890,7 @@ A solver phase might do and undo the same `Move` more than once.
 In fact, many solver phases will iteratively do and undo a number of moves to evaluate them,
 before selecting one of those and doing that move again (without undoing it the last time).
 
-Always implement the `toString()` method to keep Timefold Solver's logs readable.
+Always implement the `toString()` method to keep Greycos Solver's logs readable.
 Keep it non-verbose and make it consistent
 with xref:optimization-algorithms/move-selector-reference.adoc#moveSelectorReference[the generic moves]:
 
@@ -1902,7 +1902,7 @@ with xref:optimization-algorithms/move-selector-reference.adoc#moveSelectorRefer
 ----
 
 Optionally, implement the `getSimpleMoveTypeDescription()` method to support
-xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarkReportPickedMoveTypeBestScoreDiffOverTimeStatistic[picked move statistics]:
+xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarkReportPickedMoveTypeBestScoreDiffOverTimeStatistic[picked move statistics]:
 
 [source,java,options="nowrap"]
 ----
@@ -1934,7 +1934,7 @@ This allows multi-threaded solving to migrate moves from one thread to another.
 
 The `lookUpWorkingObject()` method translates a planning entity instance or problem fact instance
 from one working solution to that of the destination's working solution.
-Internally it often uses a mapping technique based on the xref:using-timefold-solver/modeling-planning-problems.adoc#planningId[planning ID].
+Internally it often uses a mapping technique based on the xref:using-greycos-solver/modeling-planning-problems.adoc#planningId[planning ID].
 
 To rebase lists or arrays in bulk, use `rebaseList()` and `rebaseArray()` on `AbstractMove`.
 
@@ -2053,8 +2053,8 @@ it does not support `cacheType` ``JUST_IN_TIME``.
 Therefore, `moveListFactory` uses `cacheType` ``STEP`` by default and it scales badly.
 
 To configure values of a `MoveListFactory` dynamically in the solver configuration
-(so the xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `moveListFactoryCustomProperties` element and use xref:using-timefold-solver/configuration.adoc#customPropertiesConfiguration[custom properties].
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `moveListFactoryCustomProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties].
 
 [WARNING]
 ====
@@ -2218,8 +2218,8 @@ Advanced configuration:
 ----
 
 To configure values of a `MoveIteratorFactory` dynamically in the solver configuration
-(so the xref:using-timefold-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `moveIteratorFactoryCustomProperties` element and use xref:using-timefold-solver/configuration.adoc#customPropertiesConfiguration[custom properties].
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `moveIteratorFactoryCustomProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties].
 
 [WARNING]
 ====
