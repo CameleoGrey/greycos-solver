@@ -52,6 +52,7 @@ public class ConstructionHeuristicPhaseConfig
   protected ConstructionHeuristicType constructionHeuristicType = null;
   protected EntitySorterManner entitySorterManner = null;
   protected ValueSorterManner valueSorterManner = null;
+  protected String moveThreadCount = null;
 
   @XmlElements({
     @XmlElement(name = "queuedEntityPlacer", type = QueuedEntityPlacerConfig.class),
@@ -153,6 +154,14 @@ public class ConstructionHeuristicPhaseConfig
     this.foragerConfig = foragerConfig;
   }
 
+  public @Nullable String getMoveThreadCount() {
+    return moveThreadCount;
+  }
+
+  public void setMoveThreadCount(@Nullable String moveThreadCount) {
+    this.moveThreadCount = moveThreadCount;
+  }
+
   // ************************************************************************
   // With methods
   // ************************************************************************
@@ -193,6 +202,12 @@ public class ConstructionHeuristicPhaseConfig
     return this;
   }
 
+  public @NonNull ConstructionHeuristicPhaseConfig withMoveThreadCount(
+      @NonNull String moveThreadCount) {
+    this.moveThreadCount = moveThreadCount;
+    return this;
+  }
+
   @Override
   public @NonNull ConstructionHeuristicPhaseConfig inherit(
       @NonNull ConstructionHeuristicPhaseConfig inheritedConfig) {
@@ -213,6 +228,9 @@ public class ConstructionHeuristicPhaseConfig
         ConfigUtils.inheritMergeableListConfig(
             moveSelectorConfigList, inheritedConfig.getMoveSelectorConfigList());
     foragerConfig = ConfigUtils.inheritConfig(foragerConfig, inheritedConfig.getForagerConfig());
+    moveThreadCount =
+        ConfigUtils.inheritOverwritableProperty(
+            moveThreadCount, inheritedConfig.getMoveThreadCount());
     return this;
   }
 

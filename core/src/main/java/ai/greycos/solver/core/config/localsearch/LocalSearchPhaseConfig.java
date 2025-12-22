@@ -120,6 +120,8 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
   @XmlElement(name = "forager")
   private LocalSearchForagerConfig foragerConfig = null;
 
+  protected String moveThreadCount = null;
+
   // ************************************************************************
   // Constructors and simple getters/setters
   // ************************************************************************
@@ -179,6 +181,14 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
     this.foragerConfig = foragerConfig;
   }
 
+  public @Nullable String getMoveThreadCount() {
+    return moveThreadCount;
+  }
+
+  public void setMoveThreadCount(@Nullable String moveThreadCount) {
+    this.moveThreadCount = moveThreadCount;
+  }
+
   // ************************************************************************
   // With methods
   // ************************************************************************
@@ -214,6 +224,11 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
     return this;
   }
 
+  public @NonNull LocalSearchPhaseConfig withMoveThreadCount(@NonNull String moveThreadCount) {
+    this.moveThreadCount = moveThreadCount;
+    return this;
+  }
+
   @Override
   public @NonNull LocalSearchPhaseConfig inherit(@NonNull LocalSearchPhaseConfig inheritedConfig) {
     super.inherit(inheritedConfig);
@@ -228,6 +243,9 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
             getNeighborhoodProviderClass(), inheritedConfig.getNeighborhoodProviderClass()));
     acceptorConfig = ConfigUtils.inheritConfig(acceptorConfig, inheritedConfig.getAcceptorConfig());
     foragerConfig = ConfigUtils.inheritConfig(foragerConfig, inheritedConfig.getForagerConfig());
+    moveThreadCount =
+        ConfigUtils.inheritOverwritableProperty(
+            moveThreadCount, inheritedConfig.getMoveThreadCount());
     return this;
   }
 

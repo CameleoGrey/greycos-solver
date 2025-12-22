@@ -86,7 +86,7 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
               setupOperation
                   .getScoreDirector()
                   .createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
-          stepIndex = 0;
+          // Don't initialize stepIndex here - it will be set by the first move evaluation
           lastStepScore = scoreDirector.calculateScore().raw();
           try {
             moveThreadBarrier.await();
@@ -100,11 +100,11 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
         } else if (operation instanceof ApplyStepOperation) {
           ApplyStepOperation<Solution_, Score_> applyStepOperation =
               (ApplyStepOperation<Solution_, Score_>) operation;
-          if (stepIndex + 1 != applyStepOperation.getStepIndex()) {
+          if (stepIndex != applyStepOperation.getStepIndex()) {
             throw new IllegalStateException(
                 "Impossible situation: the moveThread's stepIndex ("
                     + stepIndex
-                    + ") is not followed by the operation's stepIndex ("
+                    + ") differs from the operation's stepIndex ("
                     + applyStepOperation.getStepIndex()
                     + ").");
           }
@@ -124,7 +124,11 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           MoveEvaluationOperation<Solution_> moveEvaluationOperation =
               (MoveEvaluationOperation<Solution_>) operation;
           int moveIndex = moveEvaluationOperation.getMoveIndex();
-          if (stepIndex != moveEvaluationOperation.getStepIndex()) {
+
+          // If this is the first move evaluation for a step, accept it and set the stepIndex
+          if (stepIndex == -1) {
+            stepIndex = moveEvaluationOperation.getStepIndex();
+          } else if (stepIndex != moveEvaluationOperation.getStepIndex()) {
             throw new IllegalStateException(
                 "Impossible situation: the moveThread's stepIndex ("
                     + stepIndex
@@ -134,6 +138,7 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
                     + moveIndex
                     + ").");
           }
+
           Move<Solution_> move = moveEvaluationOperation.getMove().rebase(scoreDirector);
           if (evaluateDoable && !move.isMoveDoable(scoreDirector)) {
             resultQueue.addUndoableMove(moveThreadIndex, stepIndex, moveIndex, move);
