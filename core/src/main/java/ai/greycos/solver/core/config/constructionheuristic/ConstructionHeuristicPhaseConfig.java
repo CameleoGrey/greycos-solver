@@ -37,6 +37,7 @@ import org.jspecify.annotations.Nullable;
       "constructionHeuristicType",
       "entitySorterManner",
       "valueSorterManner",
+      "moveThreadCount",
       "entityPlacerConfig",
       "moveSelectorConfigList",
       "foragerConfig"

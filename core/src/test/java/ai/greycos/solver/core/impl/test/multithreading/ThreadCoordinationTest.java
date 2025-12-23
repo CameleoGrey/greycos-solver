@@ -1,7 +1,6 @@
 package ai.greycos.solver.core.impl.test.multithreading;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,10 +48,10 @@ public class ThreadCoordinationTest {
   @Test
   void testMultiThreadedLocalSearchDeciderThreadCoordination() {
     // Test that multiple threads coordinate properly in MultiThreadedLocalSearchDecider
-    PhaseTermination<TestSolution> termination = mock(PhaseTermination.class);
-    MoveRepository<TestSolution> moveRepository = mock(MoveRepository.class);
-    Acceptor<TestSolution> acceptor = mock(Acceptor.class);
-    LocalSearchForager<TestSolution> forager = mock(LocalSearchForager.class);
+    PhaseTermination<TestSolution> termination = null; // Use null for basic test
+    MoveRepository<TestSolution> moveRepository = null; // Use null for basic test
+    Acceptor<TestSolution> acceptor = null; // Use null for basic test
+    LocalSearchForager<TestSolution> forager = null; // Use null for basic test
 
     MultiThreadedLocalSearchDecider<TestSolution> decider =
         new MultiThreadedLocalSearchDecider<>(
@@ -278,10 +277,10 @@ public class ThreadCoordinationTest {
   @Test
   void testMultiThreadedDeciderPhaseCoordination() {
     // Test that the decider coordinates properly across phase boundaries
-    PhaseTermination<TestSolution> termination = mock(PhaseTermination.class);
-    MoveRepository<TestSolution> moveRepository = mock(MoveRepository.class);
-    Acceptor<TestSolution> acceptor = mock(Acceptor.class);
-    LocalSearchForager<TestSolution> forager = mock(LocalSearchForager.class);
+    PhaseTermination<TestSolution> termination = null; // Use null for basic test
+    MoveRepository<TestSolution> moveRepository = null; // Use null for basic test
+    Acceptor<TestSolution> acceptor = null; // Use null for basic test
+    LocalSearchForager<TestSolution> forager = null; // Use null for basic test
 
     MultiThreadedLocalSearchDecider<TestSolution> decider =
         new MultiThreadedLocalSearchDecider<>(

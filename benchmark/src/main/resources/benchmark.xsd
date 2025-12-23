@@ -674,6 +674,9 @@
           <xs:element minOccurs="0" name="valueSorterManner" type="tns:valueSorterManner"/>
                               
           
+          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
+                              
+          
           <xs:choice minOccurs="0">
                                     
             
@@ -2484,6 +2487,9 @@
                               
           
           <xs:element minOccurs="0" name="neighborhoodProviderClass" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
                               
           
           <xs:element minOccurs="0" name="acceptor" type="tns:localSearchAcceptorConfig"/>

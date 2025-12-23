@@ -41,6 +41,7 @@ import org.jspecify.annotations.Nullable;
       "localSearchType",
       "moveSelectorConfig",
       "neighborhoodProviderClass",
+      "moveThreadCount",
       "acceptorConfig",
       "foragerConfig"
     })
