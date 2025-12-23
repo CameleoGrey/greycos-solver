@@ -211,7 +211,10 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
               + ").");
     }
 
-    var foragingMove = result.getMove().rebase(stepScope.getScoreDirector());
+    var foragingMove =
+        result
+            .getMove()
+            .rebase((ai.greycos.solver.core.preview.api.move.Rebaser) stepScope.getScoreDirector());
     int foragingMoveIndex = result.getMoveIndex();
 
     ConstructionHeuristicMoveScope<Solution_> moveScope =

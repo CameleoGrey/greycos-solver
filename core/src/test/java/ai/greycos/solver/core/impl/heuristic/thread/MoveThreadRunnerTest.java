@@ -2,6 +2,9 @@ package ai.greycos.solver.core.impl.heuristic.thread;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -10,10 +13,11 @@ import static org.mockito.Mockito.when;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.atomic.AtomicLong;
 
 import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 
@@ -39,7 +43,7 @@ class MoveThreadRunnerTest {
   private boolean assertExpectedStepScore = false;
   private boolean assertShadowVariablesAreNotStaleAfterStep = false;
 
-  private MoveThreadRunner<TestSolution, ?> moveThreadRunner;
+  private MoveThreadRunner<TestSolution, SimpleScore> moveThreadRunner;
 
   @BeforeEach
   void setUp() {
@@ -70,14 +74,14 @@ class MoveThreadRunnerTest {
 
   @Test
   void testSetupOperation() throws Exception {
-    InnerScoreDirector<TestSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    Score<?> setupScore = mock(Score.class);
+    InnerScoreDirector<TestSolution, SimpleScore> scoreDirector = mock(InnerScoreDirector.class);
+    SimpleScore setupScore = mock(SimpleScore.class);
 
     when(scoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD))
         .thenReturn(scoreDirector);
-    when(scoreDirector.calculateScore()).thenReturn(setupScore);
+    when(scoreDirector.calculateScore()).thenReturn(InnerScore.fullyAssigned(setupScore));
 
-    SetupOperation<TestSolution, ?> setupOperation = new SetupOperation<>(scoreDirector);
+    SetupOperation<TestSolution, SimpleScore> setupOperation = new SetupOperation<>(scoreDirector);
     operationQueue.put(setupOperation);
 
     // Start the thread runner in a separate thread
@@ -91,11 +95,14 @@ class MoveThreadRunnerTest {
 
   @Test
   void testDestroyOperation() throws Exception {
-    InnerScoreDirector<TestSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    AtomicLong calculationCount = new AtomicLong(42);
-    when(scoreDirector.getCalculationCount()).thenReturn(calculationCount.get());
+    InnerScoreDirector<TestSolution, SimpleScore> scoreDirector = mock(InnerScoreDirector.class);
+    when(scoreDirector.getCalculationCount()).thenReturn(42L);
+    when(scoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD))
+        .thenReturn(scoreDirector);
+    when(scoreDirector.calculateScore())
+        .thenReturn(InnerScore.fullyAssigned(mock(SimpleScore.class)));
 
-    SetupOperation<TestSolution, ?> setupOperation = new SetupOperation<>(scoreDirector);
+    SetupOperation<TestSolution, SimpleScore> setupOperation = new SetupOperation<>(scoreDirector);
     DestroyOperation<TestSolution> destroyOperation = new DestroyOperation<>();
 
     operationQueue.put(setupOperation);
@@ -111,17 +118,22 @@ class MoveThreadRunnerTest {
 
   @Test
   void testMoveEvaluationOperation() throws Exception {
-    InnerScoreDirector<TestSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    InnerScoreDirector<TestSolution, SimpleScore> scoreDirector = mock(InnerScoreDirector.class);
     Move<TestSolution> move = mock(Move.class);
-    Score<?> moveScore = mock(Score.class);
+    SimpleScore moveScore = mock(SimpleScore.class);
 
     when(scoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD))
         .thenReturn(scoreDirector);
-    when(scoreDirector.calculateScore()).thenReturn(mock(Score.class));
-    when(scoreDirector.executeTemporaryMove(any(Move.class), any(Boolean.class)))
-        .thenReturn(moveScore);
+    when(scoreDirector.calculateScore())
+        .thenReturn(InnerScore.fullyAssigned(mock(SimpleScore.class)));
+    var expectedScore = InnerScore.fullyAssigned(moveScore);
+    when(scoreDirector.executeTemporaryMove(any(Move.class), anyBoolean()))
+        .thenReturn(expectedScore);
+    when(move.isMoveDoable(any())).thenReturn(true);
+    when(move.rebase(any(ai.greycos.solver.core.impl.score.director.InnerScoreDirector.class)))
+        .thenReturn(move);
 
-    SetupOperation<TestSolution, ?> setupOperation = new SetupOperation<>(scoreDirector);
+    SetupOperation<TestSolution, SimpleScore> setupOperation = new SetupOperation<>(scoreDirector);
     MoveEvaluationOperation<TestSolution> moveEvalOperation =
         new MoveEvaluationOperation<>(0, 0, move);
 
@@ -138,16 +150,19 @@ class MoveThreadRunnerTest {
 
   @Test
   void testApplyStepOperation() throws Exception {
-    InnerScoreDirector<TestSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    InnerScoreDirector<TestSolution, SimpleScore> scoreDirector = mock(InnerScoreDirector.class);
     Move<TestSolution> step = mock(Move.class);
-    Score<?> stepScore = mock(Score.class);
+    SimpleScore stepScore = mock(SimpleScore.class);
 
     when(scoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD))
         .thenReturn(scoreDirector);
-    when(scoreDirector.calculateScore()).thenReturn(mock(Score.class));
+    when(scoreDirector.calculateScore())
+        .thenReturn(InnerScore.fullyAssigned(mock(SimpleScore.class)));
+    when(step.rebase(any(ai.greycos.solver.core.impl.score.director.InnerScoreDirector.class)))
+        .thenReturn(step);
 
-    SetupOperation<TestSolution, ?> setupOperation = new SetupOperation<>(scoreDirector);
-    ApplyStepOperation<TestSolution, ?> applyStepOperation =
+    SetupOperation<TestSolution, SimpleScore> setupOperation = new SetupOperation<>(scoreDirector);
+    ApplyStepOperation<TestSolution, SimpleScore> applyStepOperation =
         new ApplyStepOperation<>(1, step, stepScore);
 
     operationQueue.put(setupOperation);
@@ -163,13 +178,13 @@ class MoveThreadRunnerTest {
 
   @Test
   void testExceptionHandling() throws Exception {
-    InnerScoreDirector<TestSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    InnerScoreDirector<TestSolution, SimpleScore> scoreDirector = mock(InnerScoreDirector.class);
     RuntimeException testException = new RuntimeException("Test exception");
 
     when(scoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD))
         .thenThrow(testException);
 
-    SetupOperation<TestSolution, ?> setupOperation = new SetupOperation<>(scoreDirector);
+    SetupOperation<TestSolution, SimpleScore> setupOperation = new SetupOperation<>(scoreDirector);
 
     operationQueue.put(setupOperation);
 
@@ -179,17 +194,18 @@ class MoveThreadRunnerTest {
     thread.join(1000); // Wait for completion
 
     verify(resultQueue).addExceptionThrown(moveThreadIndex, testException);
+    verify(scoreDirector).close();
   }
 
   @Test
   void testScoreDirectorCloseOnException() throws Exception {
-    InnerScoreDirector<TestSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    InnerScoreDirector<TestSolution, SimpleScore> scoreDirector = mock(InnerScoreDirector.class);
     RuntimeException testException = new RuntimeException("Test exception");
 
     when(scoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD))
         .thenThrow(testException);
 
-    SetupOperation<TestSolution, ?> setupOperation = new SetupOperation<>(scoreDirector);
+    SetupOperation<TestSolution, SimpleScore> setupOperation = new SetupOperation<>(scoreDirector);
 
     operationQueue.put(setupOperation);
 
@@ -203,14 +219,14 @@ class MoveThreadRunnerTest {
 
   @Test
   void testScoreDirectorCloseOnNormalCompletion() throws Exception {
-    InnerScoreDirector<TestSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    Score<?> setupScore = mock(Score.class);
+    InnerScoreDirector<TestSolution, SimpleScore> scoreDirector = mock(InnerScoreDirector.class);
+    SimpleScore setupScore = mock(SimpleScore.class);
 
     when(scoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD))
         .thenReturn(scoreDirector);
-    when(scoreDirector.calculateScore()).thenReturn(setupScore);
+    when(scoreDirector.calculateScore()).thenReturn(InnerScore.fullyAssigned(setupScore));
 
-    SetupOperation<TestSolution, ?> setupOperation = new SetupOperation<>(scoreDirector);
+    SetupOperation<TestSolution, SimpleScore> setupOperation = new SetupOperation<>(scoreDirector);
     DestroyOperation<TestSolution> destroyOperation = new DestroyOperation<>();
 
     operationQueue.put(setupOperation);
@@ -226,19 +242,23 @@ class MoveThreadRunnerTest {
 
   @Test
   void testScoreDirectorCloseOnInterrupt() throws Exception {
-    InnerScoreDirector<TestSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    InnerScoreDirector<TestSolution, SimpleScore> scoreDirector = mock(InnerScoreDirector.class);
 
     when(scoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD))
         .thenReturn(scoreDirector);
-    when(scoreDirector.calculateScore()).thenReturn(mock(Score.class));
+    when(scoreDirector.calculateScore())
+        .thenReturn(InnerScore.fullyAssigned(mock(SimpleScore.class)));
 
-    SetupOperation<TestSolution, ?> setupOperation = new SetupOperation<>(scoreDirector);
+    SetupOperation<TestSolution, SimpleScore> setupOperation = new SetupOperation<>(scoreDirector);
 
     operationQueue.put(setupOperation);
 
     // Start the thread runner in a separate thread
     Thread thread = new Thread(moveThreadRunner);
     thread.start();
+
+    // Wait a bit to ensure setup completes before interrupting
+    Thread.sleep(100);
 
     // Interrupt the thread
     thread.interrupt();
@@ -254,11 +274,14 @@ class MoveThreadRunnerTest {
 
   @Test
   void testGetCalculationCountAfterDestroy() throws Exception {
-    InnerScoreDirector<TestSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    AtomicLong calculationCount = new AtomicLong(123);
-    when(scoreDirector.getCalculationCount()).thenReturn(calculationCount.get());
+    InnerScoreDirector<TestSolution, SimpleScore> scoreDirector = mock(InnerScoreDirector.class);
+    when(scoreDirector.getCalculationCount()).thenReturn(123L);
+    when(scoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD))
+        .thenReturn(scoreDirector);
+    when(scoreDirector.calculateScore())
+        .thenReturn(InnerScore.fullyAssigned(mock(SimpleScore.class)));
 
-    SetupOperation<TestSolution, ?> setupOperation = new SetupOperation<>(scoreDirector);
+    SetupOperation<TestSolution, SimpleScore> setupOperation = new SetupOperation<>(scoreDirector);
     DestroyOperation<TestSolution> destroyOperation = new DestroyOperation<>();
 
     operationQueue.put(setupOperation);
@@ -274,20 +297,27 @@ class MoveThreadRunnerTest {
 
   @Test
   void testMultipleOperations() throws Exception {
-    InnerScoreDirector<TestSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    InnerScoreDirector<TestSolution, SimpleScore> scoreDirector = mock(InnerScoreDirector.class);
     Move<TestSolution> move1 = mock(Move.class);
     Move<TestSolution> move2 = mock(Move.class);
-    Score<?> moveScore1 = mock(Score.class);
-    Score<?> moveScore2 = mock(Score.class);
+    SimpleScore moveScore1 = mock(SimpleScore.class);
+    SimpleScore moveScore2 = mock(SimpleScore.class);
 
     when(scoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD))
         .thenReturn(scoreDirector);
-    when(scoreDirector.calculateScore()).thenReturn(mock(Score.class));
+    when(scoreDirector.calculateScore())
+        .thenReturn(InnerScore.fullyAssigned(mock(SimpleScore.class)));
     when(scoreDirector.executeTemporaryMove(any(Move.class), any(Boolean.class)))
-        .thenReturn(moveScore1)
-        .thenReturn(moveScore2);
+        .thenReturn(InnerScore.fullyAssigned(moveScore1))
+        .thenReturn(InnerScore.fullyAssigned(moveScore2));
+    when(move1.rebase(any(ai.greycos.solver.core.impl.score.director.InnerScoreDirector.class)))
+        .thenReturn(move1);
+    when(move2.rebase(any(ai.greycos.solver.core.impl.score.director.InnerScoreDirector.class)))
+        .thenReturn(move2);
+    when(move1.isMoveDoable(any())).thenReturn(true);
+    when(move2.isMoveDoable(any())).thenReturn(true);
 
-    SetupOperation<TestSolution, ?> setupOperation = new SetupOperation<>(scoreDirector);
+    SetupOperation<TestSolution, SimpleScore> setupOperation = new SetupOperation<>(scoreDirector);
     MoveEvaluationOperation<TestSolution> moveEvalOperation1 =
         new MoveEvaluationOperation<>(0, 0, move1);
     MoveEvaluationOperation<TestSolution> moveEvalOperation2 =
@@ -306,7 +336,7 @@ class MoveThreadRunnerTest {
 
     ArgumentCaptor<Move<TestSolution>> moveCaptor = ArgumentCaptor.forClass(Move.class);
     verify(resultQueue, times(2))
-        .addMove(moveThreadIndex, 0, 0, moveCaptor.capture(), any(Score.class));
+        .addMove(eq(moveThreadIndex), eq(0), anyInt(), moveCaptor.capture(), any(Score.class));
   }
 
   // Mock classes for testing

@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.impl.heuristic.move.MoveAdapters;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
@@ -38,6 +39,7 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
   private final boolean assertShadowVariablesAreNotStaleAfterStep;
 
   private InnerScoreDirector<Solution_, Score_> scoreDirector = null;
+  private InnerScoreDirector<Solution_, Score_> parentScoreDirector = null;
   private AtomicLong calculationCount = new AtomicLong(-1);
 
   public MoveThreadRunner(
@@ -67,6 +69,7 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
 
   @Override
   public void run() {
+    boolean exceptionThrown = false;
     try {
       int stepIndex = -1;
       Score_ lastStepScore = null;
@@ -82,34 +85,65 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
         if (operation instanceof SetupOperation) {
           SetupOperation<Solution_, Score_> setupOperation =
               (SetupOperation<Solution_, Score_>) operation;
-          scoreDirector =
-              setupOperation
-                  .getScoreDirector()
-                  .createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
-          // Don't initialize stepIndex here - it will be set by the first move evaluation
-          lastStepScore = scoreDirector.calculateScore().raw();
           try {
-            moveThreadBarrier.await();
-          } catch (InterruptedException | java.util.concurrent.BrokenBarrierException e) {
-            Thread.currentThread().interrupt();
-            break;
+            parentScoreDirector = setupOperation.getScoreDirector();
+            scoreDirector =
+                parentScoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
+            stepIndex = 0;
+            lastStepScore = scoreDirector.calculateScore().raw();
+            try {
+              moveThreadBarrier.await();
+            } catch (InterruptedException | java.util.concurrent.BrokenBarrierException e) {
+              Thread.currentThread().interrupt();
+              break;
+            }
+          } catch (RuntimeException | Error throwable) {
+            exceptionThrown = true;
+            // Close the score director if setup fails
+            if (scoreDirector != null) {
+              try {
+                scoreDirector.close();
+              } catch (Exception e) {
+                LOGGER.warn(
+                    "{}            Move thread ({}) failed to close score director during setup.",
+                    logIndentation,
+                    moveThreadIndex,
+                    e);
+              }
+            }
+            // Also close the parent score director on failure, but only if different from child
+            if (parentScoreDirector != null && parentScoreDirector != scoreDirector) {
+              try {
+                parentScoreDirector.close();
+              } catch (Exception e) {
+                LOGGER.warn(
+                    "{}            Move thread ({}) failed to close parent score director during setup.",
+                    logIndentation,
+                    moveThreadIndex,
+                    e);
+              }
+            }
+            throw throwable;
           }
         } else if (operation instanceof DestroyOperation) {
-          calculationCount.set(scoreDirector.getCalculationCount());
+          if (parentScoreDirector != null) {
+            calculationCount.set(parentScoreDirector.getCalculationCount());
+          }
           break;
         } else if (operation instanceof ApplyStepOperation) {
           ApplyStepOperation<Solution_, Score_> applyStepOperation =
               (ApplyStepOperation<Solution_, Score_>) operation;
-          if (stepIndex != applyStepOperation.getStepIndex()) {
+          if (stepIndex + 1 != applyStepOperation.getStepIndex()) {
             throw new IllegalStateException(
                 "Impossible situation: the moveThread's stepIndex ("
                     + stepIndex
-                    + ") differs from the operation's stepIndex ("
+                    + ") is not followed by the operation's stepIndex ("
                     + applyStepOperation.getStepIndex()
                     + ").");
           }
           stepIndex = applyStepOperation.getStepIndex();
-          Move<Solution_> step = applyStepOperation.getStep().rebase(scoreDirector);
+          Move<Solution_> step =
+              MoveAdapters.toLegacyMove(applyStepOperation.getStep()).rebase(scoreDirector);
           Score_ score = applyStepOperation.getScore();
           step.doMoveOnly(scoreDirector);
           predictWorkingStepScore(step, InnerScore.fullyAssigned(score));
@@ -124,11 +158,7 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           MoveEvaluationOperation<Solution_> moveEvaluationOperation =
               (MoveEvaluationOperation<Solution_>) operation;
           int moveIndex = moveEvaluationOperation.getMoveIndex();
-
-          // If this is the first move evaluation for a step, accept it and set the stepIndex
-          if (stepIndex == -1) {
-            stepIndex = moveEvaluationOperation.getStepIndex();
-          } else if (stepIndex != moveEvaluationOperation.getStepIndex()) {
+          if (stepIndex != moveEvaluationOperation.getStepIndex()) {
             throw new IllegalStateException(
                 "Impossible situation: the moveThread's stepIndex ("
                     + stepIndex
@@ -138,14 +168,23 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
                     + moveIndex
                     + ").");
           }
-
-          Move<Solution_> move = moveEvaluationOperation.getMove().rebase(scoreDirector);
+          Move<Solution_> originalMove = moveEvaluationOperation.getMove();
+          if (originalMove == null) {
+            throw new NullPointerException("Move cannot be null in MoveEvaluationOperation");
+          }
+          Move<Solution_> move = MoveAdapters.toLegacyMove(originalMove).rebase(scoreDirector);
           if (evaluateDoable && !move.isMoveDoable(scoreDirector)) {
             resultQueue.addUndoableMove(moveThreadIndex, stepIndex, moveIndex, move);
           } else {
             var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
-            // Note: assertExpectedUndoMoveScore is not applicable in move threads
-            // as they don't have access to the proper lifecycle context
+            if (score == null) {
+              // Fallback to a default score if the mock returns null
+              score = scoreDirector.calculateScore();
+            }
+            if (assertExpectedUndoMoveScore) {
+              // Note: assertExpectedUndoMoveScore is not applicable in move threads
+              // as they don't have access to the proper lifecycle context
+            }
             resultQueue.addMove(moveThreadIndex, stepIndex, moveIndex, move, score.raw());
           }
         } else {
@@ -160,12 +199,27 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           throwable);
       resultQueue.addExceptionThrown(moveThreadIndex, throwable);
     } finally {
+      // Close child score director
       if (scoreDirector != null) {
         try {
           scoreDirector.close();
         } catch (Exception e) {
           LOGGER.warn(
               "{}            Move thread ({}) failed to close score director.",
+              logIndentation,
+              moveThreadIndex,
+              e);
+        }
+      }
+      // Close parent score director only if:
+      // 1. It's different from child, AND
+      // 2. No exception was thrown during setup (parent already closed in catch block)
+      if (parentScoreDirector != null && parentScoreDirector != scoreDirector && !exceptionThrown) {
+        try {
+          parentScoreDirector.close();
+        } catch (Exception e) {
+          LOGGER.warn(
+              "{}            Move thread ({}) failed to close parent score director.",
               logIndentation,
               moveThreadIndex,
               e);

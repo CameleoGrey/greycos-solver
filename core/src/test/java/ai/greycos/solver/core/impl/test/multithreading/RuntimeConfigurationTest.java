@@ -1,7 +1,6 @@
 package ai.greycos.solver.core.impl.test.multithreading;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,9 +38,14 @@ public class RuntimeConfigurationTest {
     java.util.concurrent.ThreadFactory threadFactory =
         r -> new Thread(r, "TestThread-" + System.currentTimeMillis());
 
-    threadPoolManager = new AdaptiveThreadPoolManager(threadFactory, memoryMonitor, performanceMetrics, 2);
-    monitor = new MultithreadingMonitor(memoryMonitor, performanceMetrics, threadPoolManager, errorRecoveryManager);
-    configManager = new RuntimeConfigurationManager(memoryMonitor, performanceMetrics, threadPoolManager, errorRecoveryManager, monitor);
+    threadPoolManager =
+        new AdaptiveThreadPoolManager(threadFactory, memoryMonitor, performanceMetrics, 2);
+    monitor =
+        new MultithreadingMonitor(
+            memoryMonitor, performanceMetrics, threadPoolManager, errorRecoveryManager);
+    configManager =
+        new RuntimeConfigurationManager(
+            memoryMonitor, performanceMetrics, threadPoolManager, errorRecoveryManager, monitor);
   }
 
   @Test
@@ -160,8 +164,10 @@ public class RuntimeConfigurationTest {
   @Test
   void testUpdateMonitoringIntervalsInvalidValues() {
     // Test invalid monitoring interval values
-    assertThat(configManager.updateMonitoringIntervals(500, 30000)).isFalse(); // Too low health check
-    assertThat(configManager.updateMonitoringIntervals(1000, 3000)).isFalse(); // Too low detailed report
+    assertThat(configManager.updateMonitoringIntervals(500, 30000))
+        .isFalse(); // Too low health check
+    assertThat(configManager.updateMonitoringIntervals(1000, 3000))
+        .isFalse(); // Too low detailed report
     assertThat(configManager.updateMonitoringIntervals(-1, 30000)).isFalse();
     assertThat(configManager.updateMonitoringIntervals(5000, -1)).isFalse();
 
@@ -172,7 +178,8 @@ public class RuntimeConfigurationTest {
   @Test
   void testGetCurrentConfiguration() {
     // Test getting current configuration
-    RuntimeConfigurationManager.RuntimeConfiguration config = configManager.getCurrentConfiguration();
+    RuntimeConfigurationManager.RuntimeConfiguration config =
+        configManager.getCurrentConfiguration();
     assertThat(config).isNotNull();
     assertThat(config.getCurrentThreadCount()).isEqualTo(2);
     assertThat(config.isConfigurationEnabled()).isTrue();
@@ -183,13 +190,15 @@ public class RuntimeConfigurationTest {
   @Test
   void testConfigurationChangeEvents() {
     // Test configuration change event notifications
-    AtomicReference<RuntimeConfigurationManager.ConfigurationChangeEvent> lastEvent = new AtomicReference<>();
+    AtomicReference<RuntimeConfigurationManager.ConfigurationChangeEvent> lastEvent =
+        new AtomicReference<>();
     CountDownLatch eventLatch = new CountDownLatch(1);
 
-    configManager.setConfigurationChangeListener(event -> {
-      lastEvent.set(event);
-      eventLatch.countDown();
-    });
+    configManager.setConfigurationChangeListener(
+        event -> {
+          lastEvent.set(event);
+          eventLatch.countDown();
+        });
 
     // Trigger a configuration change
     assertThat(configManager.updateMoveThreadCount(3)).isTrue();
@@ -198,7 +207,7 @@ public class RuntimeConfigurationTest {
     try {
       boolean eventReceived = eventLatch.await(5, java.util.concurrent.TimeUnit.SECONDS);
       assertThat(eventReceived).isTrue();
-      
+
       RuntimeConfigurationManager.ConfigurationChangeEvent event = lastEvent.get();
       assertThat(event).isNotNull();
       assertThat(event.getSetting()).isEqualTo("moveThreadCount");
@@ -241,7 +250,8 @@ public class RuntimeConfigurationTest {
     configManager.updateMemoryThresholds(0.7, 0.8, 0.9);
     configManager.updatePerformanceThresholds(0.8, 30000);
 
-    RuntimeConfigurationManager.RuntimeConfiguration config = configManager.getCurrentConfiguration();
+    RuntimeConfigurationManager.RuntimeConfiguration config =
+        configManager.getCurrentConfiguration();
     assertThat(config.getConfigurationUpdateCount()).isEqualTo(3);
     assertThat(config.getLastConfigurationUpdate()).isGreaterThan(0);
 
@@ -256,7 +266,8 @@ public class RuntimeConfigurationTest {
   @Test
   void testConfigurationChangeStatistics() {
     // Test that configuration change statistics are tracked
-    RuntimeConfigurationManager.RuntimeConfiguration initialConfig = configManager.getCurrentConfiguration();
+    RuntimeConfigurationManager.RuntimeConfiguration initialConfig =
+        configManager.getCurrentConfiguration();
     assertThat(initialConfig.getConfigurationUpdateCount()).isEqualTo(0);
     assertThat(initialConfig.getLastConfigurationUpdate()).isEqualTo(0);
 
@@ -265,7 +276,8 @@ public class RuntimeConfigurationTest {
     configManager.updateMoveThreadCount(4);
     configManager.updateMemoryThresholds(0.7, 0.8, 0.9);
 
-    RuntimeConfigurationManager.RuntimeConfiguration updatedConfig = configManager.getCurrentConfiguration();
+    RuntimeConfigurationManager.RuntimeConfiguration updatedConfig =
+        configManager.getCurrentConfiguration();
     assertThat(updatedConfig.getConfigurationUpdateCount()).isEqualTo(3);
     assertThat(updatedConfig.getLastConfigurationUpdate()).isGreaterThan(0);
   }
@@ -273,9 +285,10 @@ public class RuntimeConfigurationTest {
   @Test
   void testConfigurationChangeListenerExceptionHandling() {
     // Test that exceptions in configuration change listeners don't break the system
-    configManager.setConfigurationChangeListener(event -> {
-      throw new RuntimeException("Test exception in listener");
-    });
+    configManager.setConfigurationChangeListener(
+        event -> {
+          throw new RuntimeException("Test exception in listener");
+        });
 
     // The configuration update should still succeed despite the listener exception
     assertThat(configManager.updateMoveThreadCount(3)).isTrue();
@@ -294,8 +307,9 @@ public class RuntimeConfigurationTest {
 
     // Verify all changes were applied
     assertThat(threadPoolManager.getCurrentThreadCount()).isEqualTo(1);
-    
-    RuntimeConfigurationManager.RuntimeConfiguration config = configManager.getCurrentConfiguration();
+
+    RuntimeConfigurationManager.RuntimeConfiguration config =
+        configManager.getCurrentConfiguration();
     assertThat(config.getConfigurationUpdateCount()).isEqualTo(6);
   }
 }

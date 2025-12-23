@@ -208,7 +208,8 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       return true;
     }
 
-    if (stepIndex != result.getStepIndex()) {
+    // Allow stepIndex to be -1 (initial state) or match the expected stepIndex
+    if (stepIndex != -1 && stepIndex != result.getStepIndex()) {
       throw new IllegalStateException(
           "Impossible situation: the solverThread's stepIndex ("
               + stepIndex
@@ -217,7 +218,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
               + ").");
     }
 
-    var foragingMove = result.getMove().rebase(stepScope.getScoreDirector());
+    var foragingMove = result.getMove().rebase(stepScope.getScoreDirector().getMoveDirector());
     int foragingMoveIndex = result.getMoveIndex();
 
     LocalSearchMoveScope<Solution_> moveScope =

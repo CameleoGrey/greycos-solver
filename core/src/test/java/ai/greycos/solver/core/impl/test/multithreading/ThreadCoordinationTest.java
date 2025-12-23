@@ -78,10 +78,10 @@ public class ThreadCoordinationTest {
         new OrderByMoveIndexBlockingQueue<>(20);
     CyclicBarrier moveThreadBarrier = new CyclicBarrier(moveThreadCount);
 
-    List<MoveThreadRunner<TestSolution, ?>> runners = new ArrayList<>();
+    List<MoveThreadRunner<TestSolution, SimpleScore>> runners = new ArrayList<>();
 
     for (int i = 0; i < moveThreadCount; i++) {
-      MoveThreadRunner<TestSolution, ?> runner =
+      MoveThreadRunner<TestSolution, SimpleScore> runner =
           new MoveThreadRunner<>(
               logIndentation,
               i,
@@ -98,7 +98,7 @@ public class ThreadCoordinationTest {
     }
 
     // Test that all runners can be created and started
-    for (MoveThreadRunner<TestSolution, ?> runner : runners) {
+    for (MoveThreadRunner<TestSolution, SimpleScore> runner : runners) {
       assertThat(runner).isNotNull();
     }
   }
@@ -143,9 +143,9 @@ public class ThreadCoordinationTest {
     CyclicBarrier moveThreadBarrier = new CyclicBarrier(moveThreadCount);
 
     // Create multiple runners
-    List<MoveThreadRunner<TestSolution, ?>> runners = new ArrayList<>();
+    List<MoveThreadRunner<TestSolution, SimpleScore>> runners = new ArrayList<>();
     for (int i = 0; i < moveThreadCount; i++) {
-      MoveThreadRunner<TestSolution, ?> runner =
+      MoveThreadRunner<TestSolution, SimpleScore> runner =
           new MoveThreadRunner<>(
               logIndentation,
               i,
@@ -164,7 +164,7 @@ public class ThreadCoordinationTest {
     // Test that runners can process operations from the shared queue
     // This is a basic coordination test - actual operation processing would require
     // more complex setup with score directors and moves
-    for (MoveThreadRunner<TestSolution, ?> runner : runners) {
+    for (MoveThreadRunner<TestSolution, SimpleScore> runner : runners) {
       assertThat(runner).isNotNull();
     }
   }
@@ -201,11 +201,11 @@ public class ThreadCoordinationTest {
         new OrderByMoveIndexBlockingQueue<>(10);
     CyclicBarrier moveThreadBarrier = new CyclicBarrier(moveThreadCount);
 
-    List<MoveThreadRunner<TestSolution, ?>> runners = new ArrayList<>();
+    List<MoveThreadRunner<TestSolution, SimpleScore>> runners = new ArrayList<>();
     List<Thread> threads = new ArrayList<>();
 
     for (int i = 0; i < moveThreadCount; i++) {
-      MoveThreadRunner<TestSolution, ?> runner =
+      MoveThreadRunner<TestSolution, SimpleScore> runner =
           new MoveThreadRunner<>(
               logIndentation,
               i,
@@ -250,7 +250,7 @@ public class ThreadCoordinationTest {
     CyclicBarrier moveThreadBarrier = new CyclicBarrier(moveThreadCount);
 
     // Create a runner that will throw an exception
-    MoveThreadRunner<TestSolution, ?> exceptionRunner =
+    MoveThreadRunner<TestSolution, SimpleScore> exceptionRunner =
         new MoveThreadRunner<>(
             logIndentation,
             0,
@@ -319,7 +319,7 @@ public class ThreadCoordinationTest {
     return new TestMove<>();
   }
 
-  private ai.greycos.solver.core.api.score.Score<?> mockScore() {
+  private SimpleScore mockScore() {
     return SimpleScore.of(100);
   }
 

@@ -41,8 +41,11 @@ public class EnhancedFeaturesTest {
     java.util.concurrent.ThreadFactory threadFactory =
         r -> new Thread(r, "TestThread-" + System.currentTimeMillis());
 
-    threadPoolManager = new AdaptiveThreadPoolManager(threadFactory, memoryMonitor, performanceMetrics, 2);
-    monitor = new MultithreadingMonitor(memoryMonitor, performanceMetrics, threadPoolManager, errorRecoveryManager);
+    threadPoolManager =
+        new AdaptiveThreadPoolManager(threadFactory, memoryMonitor, performanceMetrics, 2);
+    monitor =
+        new MultithreadingMonitor(
+            memoryMonitor, performanceMetrics, threadPoolManager, errorRecoveryManager);
   }
 
   @Test
@@ -58,7 +61,8 @@ public class EnhancedFeaturesTest {
     assertThat(stats.getMaxMemory()).isGreaterThan(0);
 
     // Test memory pressure statistics
-    MemoryMonitor.MemoryPressureStatistics pressureStats = memoryMonitor.getMemoryPressureStatistics();
+    MemoryMonitor.MemoryPressureStatistics pressureStats =
+        memoryMonitor.getMemoryPressureStatistics();
     assertThat(pressureStats).isNotNull();
     assertThat(pressureStats.getTotalPressureEvents()).isGreaterThanOrEqualTo(0);
   }
@@ -215,19 +219,20 @@ public class EnhancedFeaturesTest {
     AtomicInteger completedTasks = new AtomicInteger(0);
 
     for (int i = 0; i < 10; i++) {
-      executor.submit(() -> {
-        try {
-          // Simulate work
-          Thread.sleep(100);
-          performanceMetrics.recordMoveEvaluation(0, 1000000, true);
-          performanceMetrics.recordCalculationCount(0, 100);
-          completedTasks.incrementAndGet();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        } finally {
-          latch.countDown();
-        }
-      });
+      executor.submit(
+          () -> {
+            try {
+              // Simulate work
+              Thread.sleep(100);
+              performanceMetrics.recordMoveEvaluation(0, 1000000, true);
+              performanceMetrics.recordCalculationCount(0, 100);
+              completedTasks.incrementAndGet();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            } finally {
+              latch.countDown();
+            }
+          });
     }
 
     // Wait for completion
@@ -282,13 +287,15 @@ public class EnhancedFeaturesTest {
       errorRecoveryManager.recordError(new RuntimeException("Error " + i), 0);
     }
 
-    ErrorRecoveryManager.RecoveryStatistics beforeReset = errorRecoveryManager.getRecoveryStatistics();
+    ErrorRecoveryManager.RecoveryStatistics beforeReset =
+        errorRecoveryManager.getRecoveryStatistics();
     assertThat(beforeReset.getErrorCount()).isEqualTo(5);
 
     // Reset recovery state
     errorRecoveryManager.resetRecoveryState();
 
-    ErrorRecoveryManager.RecoveryStatistics afterReset = errorRecoveryManager.getRecoveryStatistics();
+    ErrorRecoveryManager.RecoveryStatistics afterReset =
+        errorRecoveryManager.getRecoveryStatistics();
     assertThat(afterReset.getErrorCount()).isEqualTo(0);
     assertThat(afterReset.getRecoveryAttempts()).isEqualTo(0);
   }
@@ -306,19 +313,21 @@ public class EnhancedFeaturesTest {
     AtomicInteger totalEvaluations = new AtomicInteger(0);
 
     for (int threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+      final int finalThreadIndex = threadIndex; // Make it effectively final for lambda
       for (int i = 0; i < 5; i++) {
-        executor.submit(() -> {
-          try {
-            // Simulate move evaluation
-            Thread.sleep(50);
-            testMetrics.recordMoveEvaluation(threadIndex, 500000, true);
-            totalEvaluations.incrementAndGet();
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-          } finally {
-            latch.countDown();
-          }
-        });
+        executor.submit(
+            () -> {
+              try {
+                // Simulate move evaluation
+                Thread.sleep(50);
+                testMetrics.recordMoveEvaluation(finalThreadIndex, 500000, true);
+                totalEvaluations.incrementAndGet();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              } finally {
+                latch.countDown();
+              }
+            });
       }
     }
 
