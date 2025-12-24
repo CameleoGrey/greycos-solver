@@ -1,9 +1,11 @@
 
 == Main idea of this project
 
-Reimplement multithreading and nearby features by using OptaPlanner code (Apache 2.0)
+Reimplement nearby, multi-threaded incremental solving, partitioned search features by using OptaPlanner code (Apache 2.0)
 inside fork of the latest version of Timefold Community Edition (Apache 2.0)
 and implement fixes of bugs, described into release notes.
+
+Additionally try to implement: enhanced node sharing, best solution events throttling and other enhancements of reimplemented features.
 
 == Build from source
 
@@ -32,7 +34,6 @@ $ ./mvnw clean install -Dquickly
 Greycos Solver was forked on 21 December 2025 from Timefold Solver Community Edition,
 which was entirely Apache-2.0 licensed (a permissive license).
 
-Greycos Solver is a derivative work of Timefold (Community Edition), OptaPlanner and OptaPy,
-which includes copyrights of the original creator, Red Hat Inc., affiliates, and contributors,
-that were all entirely licensed under the Apache-2.0 license.
-Every source file has been modified.
+Timefold Solver is a derivative work of OptaPlanner and OptaPy, which includes copyrights of 
+the original creator, Red Hat Inc., affiliates, and contributors, that were all entirely 
+licensed under the Apache-2.0 license. Every source file has been modified.

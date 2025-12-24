@@ -1,0 +1,72 @@
+package ai.greycos.solver.core.impl.heuristic.selector.value.nearby;
+
+import java.util.Objects;
+
+import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
+import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
+
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Abstract base class for nearby value selectors.
+ *
+ * @param <Solution_> the solution type
+ */
+abstract class AbstractNearbyValueSelector<Solution_>
+    extends AbstractDemandEnabledSelector<Solution_> implements ValueSelector<Solution_> {
+
+  protected final @NonNull ValueSelector<Solution_> childValueSelector;
+  protected final @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter;
+  protected final @Nullable NearbyRandom nearbyRandom;
+  protected final boolean randomSelection;
+
+  protected AbstractNearbyValueSelector(
+      @NonNull ValueSelector<Solution_> childValueSelector,
+      @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
+      @Nullable NearbyRandom nearbyRandom,
+      boolean randomSelection) {
+    this.childValueSelector = childValueSelector;
+    this.nearbyDistanceMeter = nearbyDistanceMeter;
+    this.nearbyRandom = nearbyRandom;
+    this.randomSelection = randomSelection;
+    phaseLifecycleSupport.addEventListener(childValueSelector);
+  }
+
+  @Override
+  public @NonNull GenuineVariableDescriptor<Solution_> getVariableDescriptor() {
+    return childValueSelector.getVariableDescriptor();
+  }
+
+  @Override
+  public boolean isCountable() {
+    return true;
+  }
+
+  @Override
+  public long getSize(Object entity) {
+    return childValueSelector.getSize(entity);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof AbstractNearbyValueSelector<?> that)) {
+      return false;
+    }
+    return Objects.equals(childValueSelector, that.childValueSelector)
+        && Objects.equals(nearbyDistanceMeter, that.nearbyDistanceMeter)
+        && Objects.equals(nearbyRandom, that.nearbyRandom)
+        && randomSelection == that.randomSelection;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(childValueSelector, nearbyDistanceMeter, nearbyRandom, randomSelection);
+  }
+}

@@ -10,6 +10,7 @@ local
 !/.mvn
 /nbproject
 /optaplanner
+/text_utils/helpers
 *.ipr
 *.iws
 *.iml
