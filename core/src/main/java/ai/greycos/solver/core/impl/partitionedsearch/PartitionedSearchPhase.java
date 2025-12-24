@@ -13,4 +13,7 @@ import ai.greycos.solver.core.impl.phase.Phase;
  * @see Phase
  * @see AbstractPhase
  */
-public interface PartitionedSearchPhase<Solution_> extends Phase<Solution_> {}
+public interface PartitionedSearchPhase<Solution_>
+    extends Phase<Solution_>,
+        ai.greycos.solver.core.impl.partitionedsearch.event.PartitionedSearchPhaseLifecycleListener<
+            Solution_> {}

@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,27 +17,28 @@ import org.junit.jupiter.api.Test;
 /**
  * Concurrent thread safety tests for NearbyDistanceMatrix.
  *
- * <p>These tests verify that NearbyDistanceMatrix is safe for concurrent access
- * from multiple threads, which is essential for multithreaded solver operation.
+ * <p>These tests verify that NearbyDistanceMatrix is safe for concurrent access from multiple
+ * threads, which is essential for multithreaded solver operation.
  */
 public class NearbyDistanceMatrixConcurrentTest {
 
   /**
    * Test concurrent access to getDestination with multiple origins.
    *
-   * <p>This test verifies that multiple threads can safely call getDestination()
-   * concurrently without race conditions, duplicate computations, or data corruption.
+   * <p>This test verifies that multiple threads can safely call getDestination() concurrently
+   * without race conditions, duplicate computations, or data corruption.
    */
   @Test
   void testConcurrentGetDestination() throws InterruptedException {
     // Setup: Create a simple distance meter and distance matrix
     TestDistanceMeter distanceMeter = new TestDistanceMeter();
     List<String> destinations = List.of("A", "B", "C", "D", "E", "F", "G", "H", "I", "J");
-    NearbyDistanceMatrix<String, String> matrix = new NearbyDistanceMatrix<>(
-        distanceMeter,
-        10, // originSize
-        destinations,
-        origin -> destinations.size());
+    NearbyDistanceMatrix<String, String> matrix =
+        new NearbyDistanceMatrix<>(
+            distanceMeter,
+            10, // originSize
+            destinations,
+            origin -> destinations.size());
 
     // Create thread pool with multiple threads
     int threadCount = 8;
@@ -51,28 +51,29 @@ public class NearbyDistanceMatrixConcurrentTest {
     // Each thread will access the distance matrix concurrently
     for (int i = 0; i < threadCount; i++) {
       final int threadId = i;
-      executor.submit(() -> {
-        startLatch.countDown();
-        try {
-          startLatch.await(); // Wait for all threads to start simultaneously
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return;
-        }
+      executor.submit(
+          () -> {
+            startLatch.countDown();
+            try {
+              startLatch.await(); // Wait for all threads to start simultaneously
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              return;
+            }
 
-        try {
-          // Each thread accesses multiple origins and indices
-          for (int j = 0; j < iterationsPerThread; j++) {
-            String origin = "Origin" + ((threadId * iterationsPerThread + j) % 10);
-            int nearbyIndex = j % destinations.size();
-            String destination = (String) matrix.getDestination(origin, nearbyIndex);
-            assertNotNull(destination, "Destination should not be null");
-            successCount.incrementAndGet();
-          }
-        } finally {
-          endLatch.countDown();
-        }
-      });
+            try {
+              // Each thread accesses multiple origins and indices
+              for (int j = 0; j < iterationsPerThread; j++) {
+                String origin = "Origin" + ((threadId * iterationsPerThread + j) % 10);
+                int nearbyIndex = j % destinations.size();
+                String destination = (String) matrix.getDestination(origin, nearbyIndex);
+                assertNotNull(destination, "Destination should not be null");
+                successCount.incrementAndGet();
+              }
+            } finally {
+              endLatch.countDown();
+            }
+          });
     }
 
     // Wait for all threads to complete
@@ -83,26 +84,29 @@ public class NearbyDistanceMatrixConcurrentTest {
 
     // Verify results
     int expectedSuccessCount = threadCount * iterationsPerThread;
-    assertEquals(expectedSuccessCount, successCount.get(),
+    assertEquals(
+        expectedSuccessCount,
+        successCount.get(),
         "All getDestination calls should succeed without errors");
   }
 
   /**
    * Test concurrent initialization of the same origin.
    *
-   * <p>This test verifies that when multiple threads call getDestination()
-   * for the same origin simultaneously, only one thread computes the distances
-   * (lazy initialization) and all threads receive the same result.
+   * <p>This test verifies that when multiple threads call getDestination() for the same origin
+   * simultaneously, only one thread computes the distances (lazy initialization) and all threads
+   * receive the same result.
    */
   @Test
   void testConcurrentSameOriginInitialization() throws InterruptedException {
     TestDistanceMeter distanceMeter = new TestDistanceMeter();
     List<String> destinations = List.of("A", "B", "C", "D", "E");
-    NearbyDistanceMatrix<String, String> matrix = new NearbyDistanceMatrix<>(
-        distanceMeter,
-        5, // originSize
-        destinations,
-        origin -> destinations.size());
+    NearbyDistanceMatrix<String, String> matrix =
+        new NearbyDistanceMatrix<>(
+            distanceMeter,
+            5, // originSize
+            destinations,
+            origin -> destinations.size());
 
     int threadCount = 4;
     int iterationsPerThread = 50;
@@ -115,23 +119,24 @@ public class NearbyDistanceMatrixConcurrentTest {
     String sameOrigin = "Origin0";
 
     for (int i = 0; i < threadCount; i++) {
-      executor.submit(() -> {
-        try {
-          startLatch.await();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return;
-        }
+      executor.submit(
+          () -> {
+            try {
+              startLatch.await();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              return;
+            }
 
-        try {
-          for (int j = 0; j < iterationsPerThread; j++) {
-            String destination = (String) matrix.getDestination(sameOrigin, 0);
-            assertNotNull(destination);
-          }
-        } finally {
-          endLatch.countDown();
-        }
-      });
+            try {
+              for (int j = 0; j < iterationsPerThread; j++) {
+                String destination = (String) matrix.getDestination(sameOrigin, 0);
+                assertNotNull(destination);
+              }
+            } finally {
+              endLatch.countDown();
+            }
+          });
       startLatch.countDown();
     }
 
@@ -144,25 +149,27 @@ public class NearbyDistanceMatrixConcurrentTest {
     // The distance meter counts how many times getNearbyDistance was called
     // For the same origin, it should be called at most once
     int maxExpectedComputations = 1; // At most one computation due to computeIfAbsent
-    assertTrue(computationCount.get() <= maxExpectedComputations * threadCount,
+    assertTrue(
+        computationCount.get() <= maxExpectedComputations * threadCount,
         "Distance computation should happen at most once due to computeIfAbsent");
   }
 
   /**
    * Test concurrent access with different origins simultaneously.
    *
-   * <p>This test verifies that multiple threads can compute distances for
-   * different origins concurrently without interference.
+   * <p>This test verifies that multiple threads can compute distances for different origins
+   * concurrently without interference.
    */
   @Test
   void testConcurrentDifferentOrigins() throws InterruptedException {
     TestDistanceMeter distanceMeter = new TestDistanceMeter();
     List<String> destinations = List.of("A", "B", "C", "D", "E");
-    NearbyDistanceMatrix<String, String> matrix = new NearbyDistanceMatrix<>(
-        distanceMeter,
-        10, // originSize
-        destinations,
-        origin -> destinations.size());
+    NearbyDistanceMatrix<String, String> matrix =
+        new NearbyDistanceMatrix<>(
+            distanceMeter,
+            10, // originSize
+            destinations,
+            origin -> destinations.size());
 
     int threadCount = 4;
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
@@ -172,24 +179,25 @@ public class NearbyDistanceMatrixConcurrentTest {
     // Each thread uses a different origin
     for (int i = 0; i < threadCount; i++) {
       final String origin = "Origin" + i;
-      executor.submit(() -> {
-        try {
-          startLatch.await();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return;
-        }
+      executor.submit(
+          () -> {
+            try {
+              startLatch.await();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              return;
+            }
 
-        try {
-          // Access multiple destinations for this origin
-          for (int j = 0; j < destinations.size(); j++) {
-            String destination = (String) matrix.getDestination(origin, j);
-            assertNotNull(destination);
-          }
-        } finally {
-          endLatch.countDown();
-        }
-      });
+            try {
+              // Access multiple destinations for this origin
+              for (int j = 0; j < destinations.size(); j++) {
+                String destination = (String) matrix.getDestination(origin, j);
+                assertNotNull(destination);
+              }
+            } finally {
+              endLatch.countDown();
+            }
+          });
       startLatch.countDown();
     }
 
@@ -202,18 +210,19 @@ public class NearbyDistanceMatrixConcurrentTest {
   /**
    * Test that the distance matrix produces consistent results across threads.
    *
-   * <p>This test verifies that for the same origin and index, all threads
-   * receive the same destination (deterministic behavior).
+   * <p>This test verifies that for the same origin and index, all threads receive the same
+   * destination (deterministic behavior).
    */
   @Test
   void testConcurrentDeterministicResults() throws InterruptedException {
     TestDistanceMeter distanceMeter = new TestDistanceMeter();
     List<String> destinations = List.of("A", "B", "C", "D", "E");
-    NearbyDistanceMatrix<String, String> matrix = new NearbyDistanceMatrix<>(
-        distanceMeter,
-        5, // originSize
-        destinations,
-        origin -> destinations.size());
+    NearbyDistanceMatrix<String, String> matrix =
+        new NearbyDistanceMatrix<>(
+            distanceMeter,
+            5, // originSize
+            destinations,
+            origin -> destinations.size());
 
     int threadCount = 8;
     int iterations = 20;
@@ -230,23 +239,24 @@ public class NearbyDistanceMatrixConcurrentTest {
 
     for (int i = 0; i < threadCount; i++) {
       final int threadId = i;
-      executor.submit(() -> {
-        try {
-          startLatch.await();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return;
-        }
+      executor.submit(
+          () -> {
+            try {
+              startLatch.await();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              return;
+            }
 
-        try {
-          String destination = (String) matrix.getDestination(origin, nearbyIndex);
-          synchronized (results) {
-            results.add(destination);
-          }
-        } finally {
-          endLatch.countDown();
-        }
-      });
+            try {
+              String destination = (String) matrix.getDestination(origin, nearbyIndex);
+              synchronized (results) {
+                results.add(destination);
+              }
+            } finally {
+              endLatch.countDown();
+            }
+          });
       startLatch.countDown();
     }
 
@@ -257,14 +267,16 @@ public class NearbyDistanceMatrixConcurrentTest {
 
     // All results should be the same
     for (String result : results) {
-      assertEquals(expectedDestination, result,
+      assertEquals(
+          expectedDestination,
+          result,
           "All threads should receive the same destination for deterministic behavior");
     }
   }
 
   /**
-   * Simple test distance meter that tracks how many times it was called.
-   * This helps verify lazy initialization behavior.
+   * Simple test distance meter that tracks how many times it was called. This helps verify lazy
+   * initialization behavior.
    */
   private static class TestDistanceMeter implements NearbyDistanceMeter<String, String> {
     private final AtomicInteger callCount = new AtomicInteger(0);

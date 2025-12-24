@@ -2,33 +2,36 @@ package ai.greycos.solver.core.impl.partitionedsearch.partitioner;
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.solution.cloner.SolutionCloner;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
 
+import org.jspecify.annotations.NullMarked;
+
 /**
- * Splits one {@link PlanningSolution solution} into multiple partitions. The partitions are solved
- * and merged based on the {@link PlanningSolution#lookUpStrategyType()}.
+ * Defines the strategy for splitting a planning problem into independent partitions.
  *
- * <p>To add custom properties, configure custom properties and add public setters for them.
+ * <p>Each planning entity must appear in exactly one partition. Problem facts can be shared or
+ * cloned across partitions. Partitions must be independently solvable.
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
+@NullMarked
 public interface SolutionPartitioner<Solution_> {
 
   /**
-   * Returns a list of partition cloned {@link PlanningSolution solutions} for which each {@link
-   * PlanningEntity planning entity} is partition cloned into exactly 1 of those partitions. Problem
-   * facts can be multiple partitions (with our without cloning).
+   * Splits a working solution into multiple partitions.
    *
-   * <p>Any class that is {@link SolutionCloner solution cloned} must also be partitioned cloned. A
-   * class can be partition cloned without being solution cloned.
+   * <p>Each partition must be a complete, valid solution with:
    *
-   * @param scoreDirector never null, the {@link ScoreDirector} which has the {@link
-   *     ScoreDirector#getWorkingSolution()} that needs to be split up
-   * @param runnablePartThreadLimit null if unlimited, never negative
-   * @return never null, {@link List#size()} of at least 1.
+   * <ul>
+   *   <li>Entities partitioned (each entity in exactly one partition)
+   *   <li>Facts shared or cloned appropriately
+   *   <li>Shadow variables recomputed after partitioning
+   * </ul>
+   *
+   * @param scoreDirector The score director with the working solution
+   * @param runnablePartThreadLimit Thread limit (null = unlimited)
+   * @return List of partitioned solutions
    */
   List<Solution_> splitWorkingSolution(
       ScoreDirector<Solution_> scoreDirector, Integer runnablePartThreadLimit);

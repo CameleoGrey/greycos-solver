@@ -144,7 +144,7 @@ public interface GreycosSolverEnterpriseService {
       EnvironmentMode environmentMode,
       HeuristicConfigPolicy<Solution_> configPolicy);
 
-  <Solution_> PartitionedSearchPhase<Solution_> buildPartitionedSearch(
+  default <Solution_> PartitionedSearchPhase<Solution_> buildPartitionedSearch(
       int phaseIndex,
       PartitionedSearchPhaseConfig phaseConfig,
       HeuristicConfigPolicy<Solution_> solverConfigPolicy,
@@ -153,7 +153,27 @@ public interface GreycosSolverEnterpriseService {
               HeuristicConfigPolicy<Solution_>,
               SolverTermination<Solution_>,
               PhaseTermination<Solution_>>
-          phaseTerminationFunction);
+          phaseTerminationFunction) {
+    return loadOrDefault(
+        enterpriseService ->
+            enterpriseService.buildPartitionedSearch(
+                phaseIndex,
+                phaseConfig,
+                solverConfigPolicy,
+                solverTermination,
+                phaseTerminationFunction),
+        () -> {
+          // Fallback to community implementation
+          return ai.greycos.solver.core.impl.partitionedsearch.DefaultGreycosSolverEnterpriseService
+              .getInstance(GreycosSolverEnterpriseService::getVersionString)
+              .buildPartitionedSearch(
+                  phaseIndex,
+                  phaseConfig,
+                  solverConfigPolicy,
+                  solverTermination,
+                  phaseTerminationFunction);
+        });
+  }
 
   <Solution_> EntitySelector<Solution_> applyNearbySelection(
       EntitySelectorConfig entitySelectorConfig,

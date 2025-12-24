@@ -9,7 +9,7 @@ import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-final class OrCompositeTermination<Solution_> extends AbstractCompositeTermination<Solution_>
+public final class OrCompositeTermination<Solution_> extends AbstractCompositeTermination<Solution_>
     implements ChildThreadSupportingTermination<Solution_, SolverScope<Solution_>> {
 
   public OrCompositeTermination(List<Termination<Solution_>> terminationList) {
