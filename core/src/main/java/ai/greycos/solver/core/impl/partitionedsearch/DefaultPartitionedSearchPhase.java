@@ -1,12 +1,12 @@
 package ai.greycos.solver.core.impl.partitionedsearch;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.IntFunction;
 
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
@@ -24,6 +24,7 @@ import ai.greycos.solver.core.impl.phase.AbstractPhase;
 import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.phase.PhaseFactory;
 import ai.greycos.solver.core.impl.phase.PhaseType;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecallerFactory;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
@@ -120,7 +121,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     PartitionQueue<Solution_> partitionQueue = new PartitionQueue<>(partCount);
 
     // Create thread pool
-    ExecutorService executor = Executors.newFixedThreadPool(partCount, threadFactory);
+    ExecutorService executor = createThreadPoolExecutor(partCount);
 
     // Create child thread plumbing termination for immediate stop
     ChildThreadPlumbingTermination<Solution_> childThreadPlumbingTermination =
@@ -178,6 +179,26 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     }
 
     phaseEnded(phaseScope);
+  }
+
+  /**
+   * Creates thread pool for partition threads with validation.
+   *
+   * @param partCount number of partitions
+   * @return configured thread pool executor
+   */
+  private ExecutorService createThreadPoolExecutor(int partCount) {
+    ThreadPoolExecutor threadPoolExecutor =
+        (ThreadPoolExecutor) Executors.newFixedThreadPool(partCount, threadFactory);
+    if (threadPoolExecutor.getMaximumPoolSize() < partCount) {
+      throw new IllegalStateException(
+          "The thread pool executor's maximum pool size ("
+              + threadPoolExecutor.getMaximumPoolSize()
+              + ") is less than the requested partCount ("
+              + partCount
+              + ").");
+    }
+    return threadPoolExecutor;
   }
 
   private void submitPartitionSolverTasks(
@@ -239,7 +260,6 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
                 solverScope, ChildThreadType.PART_THREAD));
 
     // Build phase list (default: CH + LS)
-    List<Phase<Solution_>> phaseList = new ArrayList<>();
     List<PhaseConfig> effectivePhaseConfigList = phaseConfigList;
     if (effectivePhaseConfigList == null || effectivePhaseConfigList.isEmpty()) {
       // Use default phases if not configured: CH + LS
@@ -247,18 +267,14 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
           Arrays.asList(new ConstructionHeuristicPhaseConfig(), new LocalSearchPhaseConfig());
     }
 
-    int subPhaseIndex = 0;
-    for (PhaseConfig phaseConfig : effectivePhaseConfigList) {
-      PhaseFactory<Solution_> subPhaseFactory = PhaseFactory.create(phaseConfig);
-      Phase<Solution_> phase =
-          subPhaseFactory.buildPhase(
-              subPhaseIndex++,
-              false,
-              configPolicy.createChildThreadConfigPolicy(ChildThreadType.PART_THREAD),
-              bestSolutionRecaller,
-              solverTermination);
-      phaseList.add(phase);
-    }
+    // Use PhaseFactory.buildPhases() to build phases with partTermination
+    // OrCompositeTermination implements SolverTermination through inheritance
+    List<Phase<Solution_>> phaseList =
+        PhaseFactory.buildPhases(
+            effectivePhaseConfigList,
+            configPolicy.createChildThreadConfigPolicy(ChildThreadType.PART_THREAD),
+            bestSolutionRecaller,
+            (SolverTermination<Solution_>) partTermination);
 
     // Create child thread solver scope
     SolverScope<Solution_> partSolverScope =
@@ -273,8 +289,15 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     partitionSolver.setBestSolutionChangedListener(
         (eventProducerId, newBestSolution) -> {
           // Create move from partition's best solution
+          InnerScoreDirector<Solution_, ?> childScoreDirector = partSolverScope.getScoreDirector();
           PartitionChangeMove<Solution_> move =
-              PartitionChangeMove.createMove(partSolverScope.getScoreDirector(), partIndex);
+              PartitionChangeMove.createMove(childScoreDirector, partIndex);
+
+          // Rebase move from partition to parent solution context
+          // This translates entity and value references from partition's cloned solution
+          // to the main solver's solution
+          InnerScoreDirector<Solution_, ?> parentScoreDirector = solverScope.getScoreDirector();
+          move = move.rebase(parentScoreDirector);
 
           // Queue for application
           partitionQueue.addMove(partIndex, move);
@@ -341,7 +364,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     }
 
     @Override
-    public Builder<Solution_> enableAssertions(
+    public DefaultPartitionedSearchPhase.Builder<Solution_> enableAssertions(
         ai.greycos.solver.core.config.solver.EnvironmentMode environmentMode) {
       super.enableAssertions(environmentMode);
       return this;

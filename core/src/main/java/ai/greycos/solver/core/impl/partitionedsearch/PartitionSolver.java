@@ -103,7 +103,7 @@ public class PartitionSolver<Solution_> {
   }
 
   /**
-   * Gets the score calculation count.
+   * Gets score calculation count.
    *
    * @return The calculation count
    */
@@ -127,5 +127,23 @@ public class PartitionSolver<Solution_> {
    */
   public int getPartIndex() {
     return partIndex;
+  }
+
+  /**
+   * Called before solving starts. Subclasses can override for custom behavior.
+   *
+   * @param solverScope solver scope
+   */
+  protected void solvingStarted(SolverScope<Solution_> solverScope) {
+    // Default implementation - can be overridden by subclasses
+  }
+
+  /**
+   * Called after solving ends. Subclasses can override for custom behavior.
+   *
+   * @param solverScope solver scope
+   */
+  protected void solvingEnded(SolverScope<Solution_> solverScope) {
+    // Default implementation - can be overridden by subclasses
   }
 }

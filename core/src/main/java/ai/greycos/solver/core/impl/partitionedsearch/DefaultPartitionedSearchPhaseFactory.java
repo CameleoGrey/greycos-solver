@@ -18,6 +18,7 @@ import ai.greycos.solver.core.impl.solver.termination.SolverTermination;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Factory for building partitioned search phases.
@@ -96,23 +97,11 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
     return (SolutionPartitioner<Solution_>) solutionPartitioner;
   }
 
-  private Integer resolveActiveThreadCount(@NonNull String runnablePartThreadLimit) {
-    if (runnablePartThreadLimit == null) {
-      return null;
-    }
-    if (PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_AUTO.equals(runnablePartThreadLimit)) {
-      return Math.max(1, Runtime.getRuntime().availableProcessors() - 2);
-    }
-    if (PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_UNLIMITED.equals(
-        runnablePartThreadLimit)) {
-      return null;
-    }
-    try {
-      return Integer.parseInt(runnablePartThreadLimit);
-    } catch (NumberFormatException e) {
-      throw new IllegalArgumentException(
-          "The runnablePartThreadLimit (" + runnablePartThreadLimit + ") is not a valid integer.",
-          e);
-    }
+  private Integer resolveActiveThreadCount(@Nullable String runnablePartThreadLimit) {
+    return ConfigUtils.resolvePoolSize(
+        "runnablePartThreadLimit",
+        runnablePartThreadLimit,
+        PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_AUTO,
+        PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_UNLIMITED);
   }
 }
