@@ -95,6 +95,7 @@ public class OrderByMoveIndexBlockingQueue<Solution_> {
   private final int moveThreadCount;
   private final AtomicInteger nextStepIndex = new AtomicInteger(-1);
   private final AtomicInteger nextMoveIndex = new AtomicInteger(-1);
+  private final Object queueLock = new Object();
 
   public OrderByMoveIndexBlockingQueue(int capacity) {
     this.queue = new ArrayBlockingQueue<>(capacity);
@@ -102,22 +103,30 @@ public class OrderByMoveIndexBlockingQueue<Solution_> {
   }
 
   public void startNextStep(int stepIndex) {
-    nextStepIndex.set(stepIndex);
-    nextMoveIndex.set(0);
+    synchronized (queueLock) {
+      nextStepIndex.set(stepIndex);
+      nextMoveIndex.set(0);
+    }
   }
 
   public void addMove(
       int moveThreadIndex, int stepIndex, int moveIndex, Move<Solution_> move, Score<?> score) {
-    queue.add(new MoveResult<>(moveThreadIndex, stepIndex, moveIndex, move, score));
+    synchronized (queueLock) {
+      queue.add(new MoveResult<>(moveThreadIndex, stepIndex, moveIndex, move, score));
+    }
   }
 
   public void addUndoableMove(
       int moveThreadIndex, int stepIndex, int moveIndex, Move<Solution_> move) {
-    queue.add(new MoveResult<>(moveThreadIndex, stepIndex, moveIndex, move));
+    synchronized (queueLock) {
+      queue.add(new MoveResult<>(moveThreadIndex, stepIndex, moveIndex, move));
+    }
   }
 
   public void addExceptionThrown(int moveThreadIndex, Throwable throwable) {
-    queue.add(new MoveResult<>(moveThreadIndex, throwable));
+    synchronized (queueLock) {
+      queue.add(new MoveResult<>(moveThreadIndex, throwable));
+    }
   }
 
   public MoveResult<Solution_> take() throws InterruptedException {

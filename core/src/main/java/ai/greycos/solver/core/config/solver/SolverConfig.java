@@ -56,6 +56,8 @@ import ai.greycos.solver.core.impl.solver.random.RandomFactory;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * To read it from XML, use {@link #createFromXmlResource(String)}. To build a {@link SolverFactory}
@@ -74,6 +76,7 @@ import org.jspecify.annotations.Nullable;
       "moveThreadCount",
       "moveThreadBufferSize",
       "threadFactoryClass",
+      "threadPoolShutdownTimeoutSeconds",
       "monitoringConfig",
       "solutionClass",
       "entityClassList",
@@ -84,6 +87,8 @@ import org.jspecify.annotations.Nullable;
       "phaseConfigList",
     })
 public class SolverConfig extends AbstractConfig<SolverConfig> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SolverConfig.class);
 
   public static final String XML_ELEMENT_NAME = "solver";
   public static final String XML_NAMESPACE = "https://greycos.ai/xsd/solver";
@@ -240,6 +245,7 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
   protected String moveThreadCount = null;
   protected Integer moveThreadBufferSize = null;
   protected Class<? extends ThreadFactory> threadFactoryClass = null;
+  protected Integer threadPoolShutdownTimeoutSeconds = null;
 
   protected Class<?> solutionClass = null;
 
@@ -380,6 +386,36 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
   }
 
   public void setMoveThreadCount(@Nullable String moveThreadCount) {
+    // Validate moveThreadCount if provided
+    if (moveThreadCount != null
+        && !MOVE_THREAD_COUNT_NONE.equals(moveThreadCount)
+        && !MOVE_THREAD_COUNT_AUTO.equals(moveThreadCount)) {
+      try {
+        int count = Integer.parseInt(moveThreadCount);
+        if (count <= 0) {
+          throw new IllegalArgumentException(
+              "The moveThreadCount (" + moveThreadCount + ") must be positive.");
+        }
+        int availableProcessorCount = Runtime.getRuntime().availableProcessors();
+        if (count > availableProcessorCount) {
+          LOGGER.warn(
+              "The moveThreadCount ({}) is higher than the availableProcessorCount ({}), "
+                  + "which is counter-efficient.",
+              count,
+              availableProcessorCount);
+        }
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException(
+            "The moveThreadCount ("
+                + moveThreadCount
+                + ") is not a valid number or one of the constants ("
+                + MOVE_THREAD_COUNT_NONE
+                + ", "
+                + MOVE_THREAD_COUNT_AUTO
+                + ").",
+            e);
+      }
+    }
     this.moveThreadCount = moveThreadCount;
   }
 
@@ -388,6 +424,11 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
   }
 
   public void setMoveThreadBufferSize(@Nullable Integer moveThreadBufferSize) {
+    // Validate moveThreadBufferSize if provided
+    if (moveThreadBufferSize != null && moveThreadBufferSize <= 0) {
+      throw new IllegalArgumentException(
+          "The moveThreadBufferSize (" + moveThreadBufferSize + ") must be positive.");
+    }
     this.moveThreadBufferSize = moveThreadBufferSize;
   }
 
@@ -397,6 +438,21 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
 
   public void setThreadFactoryClass(@Nullable Class<? extends ThreadFactory> threadFactoryClass) {
     this.threadFactoryClass = threadFactoryClass;
+  }
+
+  public @Nullable Integer getThreadPoolShutdownTimeoutSeconds() {
+    return threadPoolShutdownTimeoutSeconds;
+  }
+
+  public void setThreadPoolShutdownTimeoutSeconds(
+      @Nullable Integer threadPoolShutdownTimeoutSeconds) {
+    if (threadPoolShutdownTimeoutSeconds != null && threadPoolShutdownTimeoutSeconds <= 0) {
+      throw new IllegalArgumentException(
+          "The threadPoolShutdownTimeoutSeconds ("
+              + threadPoolShutdownTimeoutSeconds
+              + ") must be positive.");
+    }
+    this.threadPoolShutdownTimeoutSeconds = threadPoolShutdownTimeoutSeconds;
   }
 
   public @Nullable Class<?> getSolutionClass() {
@@ -531,6 +587,12 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
   public @NonNull SolverConfig withThreadFactoryClass(
       @NonNull Class<? extends ThreadFactory> threadFactoryClass) {
     this.threadFactoryClass = threadFactoryClass;
+    return this;
+  }
+
+  public @NonNull SolverConfig withThreadPoolShutdownTimeoutSeconds(
+      @NonNull Integer threadPoolShutdownTimeoutSeconds) {
+    this.threadPoolShutdownTimeoutSeconds = threadPoolShutdownTimeoutSeconds;
     return this;
   }
 

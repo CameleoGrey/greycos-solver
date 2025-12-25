@@ -60,6 +60,11 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   protected ExecutorService executor;
   protected List<MoveThreadRunner<Solution_, ?>> moveThreadRunnerList;
 
+  // Error recovery state
+  protected volatile boolean fallbackToSingleThreaded = false;
+  protected volatile int consecutiveFailures = 0;
+  protected static final int MAX_CONSECUTIVE_FAILURES = 3;
+
   public MultiThreadedConstructionHeuristicDecider(
       String logIndentation,
       PhaseTermination<Solution_> termination,
@@ -76,6 +81,10 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   @Override
   public void phaseStarted(ConstructionHeuristicPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
+
+    // Reset error recovery state for the new phase
+    fallbackToSingleThreaded = false;
+    consecutiveFailures = 0;
 
     // Initialize thread-safe queues and barriers
     operationQueue =
@@ -150,6 +159,13 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   @Override
   public void decideNextStep(
       ConstructionHeuristicStepScope<Solution_> stepScope, Iterator<Move<Solution_>> moveIterator) {
+    // If we've fallen back to single-threaded mode, delegate to parent
+    if (fallbackToSingleThreaded) {
+      LOGGER.debug("{}            Falling back to single-threaded mode", logIndentation);
+      super.decideNextStep(stepScope, moveIterator);
+      return;
+    }
+
     int stepIndex = stepScope.getStepIndex();
     resultQueue.startNextStep(stepIndex);
 
@@ -202,19 +218,42 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
       return true;
     }
 
+    // Check for exceptions from move threads
+    if (result.getThrowable() != null) {
+      consecutiveFailures++;
+      LOGGER.error(
+          "{}            Move thread ({}) threw exception: {}",
+          logIndentation,
+          result.getMoveThreadIndex(),
+          result.getThrowable());
+
+      // If too many consecutive failures, fall back to single-threaded mode
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        LOGGER.warn(
+            "{}            Too many consecutive failures ({}), "
+                + "falling back to single-threaded mode",
+            logIndentation,
+            consecutiveFailures);
+        fallbackToSingleThreaded = true;
+        return true;
+      }
+      return false;
+    }
+
+    // Reset failure counter on successful result
+    consecutiveFailures = 0;
+
+    // Step index must match exactly
     if (stepIndex != result.getStepIndex()) {
       throw new IllegalStateException(
-          "Impossible situation: the solverThread's stepIndex ("
+          "Impossible situation: solverThread's stepIndex ("
               + stepIndex
               + ") differs from the result's stepIndex ("
               + result.getStepIndex()
               + ").");
     }
 
-    var foragingMove =
-        result
-            .getMove()
-            .rebase((ai.greycos.solver.core.preview.api.move.Rebaser) stepScope.getScoreDirector());
+    var foragingMove = result.getMove().rebase(stepScope.getScoreDirector().getMoveDirector());
     int foragingMoveIndex = result.getMoveIndex();
 
     ConstructionHeuristicMoveScope<Solution_> moveScope =

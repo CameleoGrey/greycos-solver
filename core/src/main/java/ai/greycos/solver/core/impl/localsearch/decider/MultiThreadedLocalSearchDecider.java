@@ -61,6 +61,11 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   protected ExecutorService executor;
   protected List<MoveThreadRunner<Solution_, ?>> moveThreadRunnerList;
 
+  // Error recovery state
+  protected volatile boolean fallbackToSingleThreaded = false;
+  protected volatile int consecutiveFailures = 0;
+  protected static final int MAX_CONSECUTIVE_FAILURES = 3;
+
   public MultiThreadedLocalSearchDecider(
       String logIndentation,
       PhaseTermination<Solution_> termination,
@@ -79,6 +84,10 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   @Override
   public void phaseStarted(LocalSearchPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
+
+    // Reset error recovery state for the new phase
+    fallbackToSingleThreaded = false;
+    consecutiveFailures = 0;
 
     // Initialize thread-safe queues and barriers
     operationQueue =
@@ -152,6 +161,13 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
 
   @Override
   public void decideNextStep(LocalSearchStepScope<Solution_> stepScope) {
+    // If we've fallen back to single-threaded mode, delegate to parent
+    if (fallbackToSingleThreaded) {
+      LOGGER.debug("{}            Falling back to single-threaded mode", logIndentation);
+      super.decideNextStep(stepScope);
+      return;
+    }
+
     int stepIndex = stepScope.getStepIndex();
     resultQueue.startNextStep(stepIndex);
 
@@ -208,8 +224,33 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       return true;
     }
 
-    // Allow stepIndex to be -1 (initial state) or match the expected stepIndex
-    if (stepIndex != -1 && stepIndex != result.getStepIndex()) {
+    // Check for exceptions from move threads
+    if (result.getThrowable() != null) {
+      consecutiveFailures++;
+      LOGGER.error(
+          "{}            Move thread ({}) threw exception: {}",
+          logIndentation,
+          result.getMoveThreadIndex(),
+          result.getThrowable());
+
+      // If too many consecutive failures, fall back to single-threaded mode
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        LOGGER.warn(
+            "{}            Too many consecutive failures ({}), "
+                + "falling back to single-threaded mode",
+            logIndentation,
+            consecutiveFailures);
+        fallbackToSingleThreaded = true;
+        return true;
+      }
+      return false;
+    }
+
+    // Reset failure counter on successful result
+    consecutiveFailures = 0;
+
+    // Step index must match exactly
+    if (stepIndex != result.getStepIndex()) {
       throw new IllegalStateException(
           "Impossible situation: the solverThread's stepIndex ("
               + stepIndex

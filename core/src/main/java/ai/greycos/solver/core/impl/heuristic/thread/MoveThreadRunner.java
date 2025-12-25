@@ -10,6 +10,8 @@ import ai.greycos.solver.core.impl.heuristic.move.MoveAdapters;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
+import ai.greycos.solver.core.impl.solver.thread.MemoryMonitor;
+import ai.greycos.solver.core.impl.solver.thread.PerformanceMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +20,7 @@ import org.slf4j.LoggerFactory;
  * Core move thread implementation that processes operations from the operation queue. This runner
  * handles setup, move evaluation, step application, and cleanup operations.
  *
- * @param <Solution_> the solution type, the class with the {@link
+ * @param <Solution_> the solution type, class with the {@link
  *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
  * @param <Score_> the score type to go with the solution
  */
@@ -39,8 +41,13 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
   private final boolean assertShadowVariablesAreNotStaleAfterStep;
 
   private InnerScoreDirector<Solution_, Score_> scoreDirector = null;
-  private InnerScoreDirector<Solution_, Score_> parentScoreDirector = null;
   private AtomicLong calculationCount = new AtomicLong(-1);
+
+  // Optional monitoring components
+  private final MemoryMonitor memoryMonitor;
+  private final PerformanceMetrics performanceMetrics;
+  private final boolean enableMemoryMonitoring;
+  private final boolean enablePerformanceMetrics;
 
   public MoveThreadRunner(
       String logIndentation,
@@ -54,6 +61,41 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
       boolean assertStepScoreFromScratch,
       boolean assertExpectedStepScore,
       boolean assertShadowVariablesAreNotStaleAfterStep) {
+    this(
+        logIndentation,
+        moveThreadIndex,
+        evaluateDoable,
+        operationQueue,
+        resultQueue,
+        moveThreadBarrier,
+        assertMoveScoreFromScratch,
+        assertExpectedUndoMoveScore,
+        assertStepScoreFromScratch,
+        assertExpectedStepScore,
+        assertShadowVariablesAreNotStaleAfterStep,
+        null,
+        null,
+        false,
+        false);
+  }
+
+  /** Extended constructor with optional monitoring support. */
+  public MoveThreadRunner(
+      String logIndentation,
+      int moveThreadIndex,
+      boolean evaluateDoable,
+      BlockingQueue<MoveThreadOperation<Solution_>> operationQueue,
+      OrderByMoveIndexBlockingQueue<Solution_> resultQueue,
+      CyclicBarrier moveThreadBarrier,
+      boolean assertMoveScoreFromScratch,
+      boolean assertExpectedUndoMoveScore,
+      boolean assertStepScoreFromScratch,
+      boolean assertExpectedStepScore,
+      boolean assertShadowVariablesAreNotStaleAfterStep,
+      MemoryMonitor memoryMonitor,
+      PerformanceMetrics performanceMetrics,
+      boolean enableMemoryMonitoring,
+      boolean enablePerformanceMetrics) {
     this.logIndentation = logIndentation;
     this.moveThreadIndex = moveThreadIndex;
     this.evaluateDoable = evaluateDoable;
@@ -65,16 +107,20 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
     this.assertStepScoreFromScratch = assertStepScoreFromScratch;
     this.assertExpectedStepScore = assertExpectedStepScore;
     this.assertShadowVariablesAreNotStaleAfterStep = assertShadowVariablesAreNotStaleAfterStep;
+    this.memoryMonitor = memoryMonitor;
+    this.performanceMetrics = performanceMetrics;
+    this.enableMemoryMonitoring = enableMemoryMonitoring;
+    this.enablePerformanceMetrics = enablePerformanceMetrics;
   }
 
   @Override
   public void run() {
-    boolean exceptionThrown = false;
     try {
       int stepIndex = -1;
       Score_ lastStepScore = null;
       while (true) {
         MoveThreadOperation<Solution_> operation;
+        long operationStartTime = System.nanoTime();
         try {
           operation = operationQueue.take();
         } catch (InterruptedException e) {
@@ -82,11 +128,25 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           break;
         }
 
+        // Check memory pressure if enabled
+        if (enableMemoryMonitoring && memoryMonitor != null) {
+          MemoryMonitor.MemoryPressureLevel pressure = memoryMonitor.checkMemoryUsage();
+          if (pressure == MemoryMonitor.MemoryPressureLevel.CRITICAL
+              || pressure == MemoryMonitor.MemoryPressureLevel.EMERGENCY) {
+            LOGGER.warn(
+                "{}            Move thread ({}) detected high memory pressure ({}), "
+                    + "consider reducing moveThreadCount or moveThreadBufferSize.",
+                logIndentation,
+                moveThreadIndex,
+                pressure);
+          }
+        }
+
         if (operation instanceof SetupOperation) {
           SetupOperation<Solution_, Score_> setupOperation =
               (SetupOperation<Solution_, Score_>) operation;
           try {
-            parentScoreDirector = setupOperation.getScoreDirector();
+            var parentScoreDirector = setupOperation.getScoreDirector();
             scoreDirector =
                 parentScoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
             stepIndex = 0;
@@ -98,7 +158,6 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
               break;
             }
           } catch (RuntimeException | Error throwable) {
-            exceptionThrown = true;
             // Close the score director if setup fails
             if (scoreDirector != null) {
               try {
@@ -111,33 +170,19 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
                     e);
               }
             }
-            // Also close the parent score director on failure, but only if different from child
-            if (parentScoreDirector != null && parentScoreDirector != scoreDirector) {
-              try {
-                parentScoreDirector.close();
-              } catch (Exception e) {
-                LOGGER.warn(
-                    "{}            Move thread ({}) failed to close parent score director during setup.",
-                    logIndentation,
-                    moveThreadIndex,
-                    e);
-              }
-            }
             throw throwable;
           }
         } else if (operation instanceof DestroyOperation) {
-          if (parentScoreDirector != null) {
-            calculationCount.set(parentScoreDirector.getCalculationCount());
-          }
+          calculationCount.set(scoreDirector.getCalculationCount());
           break;
         } else if (operation instanceof ApplyStepOperation) {
           ApplyStepOperation<Solution_, Score_> applyStepOperation =
               (ApplyStepOperation<Solution_, Score_>) operation;
           if (stepIndex + 1 != applyStepOperation.getStepIndex()) {
             throw new IllegalStateException(
-                "Impossible situation: the moveThread's stepIndex ("
+                "Impossible situation: moveThread's stepIndex ("
                     + stepIndex
-                    + ") is not followed by the operation's stepIndex ("
+                    + ") is not followed by operation's stepIndex ("
                     + applyStepOperation.getStepIndex()
                     + ").");
           }
@@ -160,9 +205,9 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           int moveIndex = moveEvaluationOperation.getMoveIndex();
           if (stepIndex != moveEvaluationOperation.getStepIndex()) {
             throw new IllegalStateException(
-                "Impossible situation: the moveThread's stepIndex ("
+                "Impossible situation: moveThread's stepIndex ("
                     + stepIndex
-                    + ") differs from the operation's stepIndex ("
+                    + ") differs from operation's stepIndex ("
                     + moveEvaluationOperation.getStepIndex()
                     + ") with moveIndex ("
                     + moveIndex
@@ -173,19 +218,33 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
             throw new NullPointerException("Move cannot be null in MoveEvaluationOperation");
           }
           Move<Solution_> move = MoveAdapters.toLegacyMove(originalMove).rebase(scoreDirector);
-          if (evaluateDoable && !move.isMoveDoable(scoreDirector)) {
-            resultQueue.addUndoableMove(moveThreadIndex, stepIndex, moveIndex, move);
-          } else {
-            var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
-            if (score == null) {
-              // Fallback to a default score if the mock returns null
-              score = scoreDirector.calculateScore();
+
+          long evaluationStartTime = System.nanoTime();
+          boolean accepted = false;
+
+          try {
+            if (evaluateDoable && !move.isMoveDoable(scoreDirector)) {
+              resultQueue.addUndoableMove(moveThreadIndex, stepIndex, moveIndex, move);
+            } else {
+              var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
+              if (score == null) {
+                // Fallback to a default score if mock returns null
+                score = scoreDirector.calculateScore();
+              }
+              if (assertExpectedUndoMoveScore) {
+                // Note: assertExpectedUndoMoveScore is not applicable in move threads
+                // as they don't have access to the proper lifecycle context
+              }
+              resultQueue.addMove(moveThreadIndex, stepIndex, moveIndex, move, score.raw());
+              accepted = true;
             }
-            if (assertExpectedUndoMoveScore) {
-              // Note: assertExpectedUndoMoveScore is not applicable in move threads
-              // as they don't have access to the proper lifecycle context
+          } finally {
+            long evaluationTime = System.nanoTime() - evaluationStartTime;
+
+            // Record performance metrics if enabled
+            if (enablePerformanceMetrics && performanceMetrics != null) {
+              performanceMetrics.recordMoveEvaluation(moveThreadIndex, evaluationTime, accepted);
             }
-            resultQueue.addMove(moveThreadIndex, stepIndex, moveIndex, move, score.raw());
           }
         } else {
           throw new IllegalStateException("Unknown operation (" + operation + ").");
@@ -206,20 +265,6 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
         } catch (Exception e) {
           LOGGER.warn(
               "{}            Move thread ({}) failed to close score director.",
-              logIndentation,
-              moveThreadIndex,
-              e);
-        }
-      }
-      // Close parent score director only if:
-      // 1. It's different from child, AND
-      // 2. No exception was thrown during setup (parent already closed in catch block)
-      if (parentScoreDirector != null && parentScoreDirector != scoreDirector && !exceptionThrown) {
-        try {
-          parentScoreDirector.close();
-        } catch (Exception e) {
-          LOGGER.warn(
-              "{}            Move thread ({}) failed to close parent score director.",
               logIndentation,
               moveThreadIndex,
               e);
