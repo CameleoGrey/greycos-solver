@@ -1,8 +1,8 @@
 
 == Main idea of this project
 
-Reimplement nearby, multi-threaded incremental solving, partitioned search features by using OptaPlanner code (Apache 2.0)
-inside fork of the latest version of Timefold Community Edition (Apache 2.0)
+Reimplement nearby, multi-threaded incremental solving, partitioned search features by using OptaPlanner code (Apache 2.0) and official 
+(publicly available) documentation (descriptions of features) inside fork of the latest version of Timefold Community Edition (Apache 2.0)
 and implement fixes of bugs, described into release notes.
 
 Additionally try to implement: enhanced node sharing, best solution events throttling and other enhancements of reimplemented features.

@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.spatial.SpatialNearbyDistanceMatrix;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 
@@ -15,7 +16,8 @@ import org.jspecify.annotations.Nullable;
  * Nearby value selector that uses an entity as the origin.
  *
  * <p>Filters and reorders the selection of destination values based on distance from an origin
- * entity.
+ * entity. Supports both standard distance matrix and spatial-indexed distance matrix for improved
+ * performance on large datasets.
  */
 public final class NearEntityNearbyValueSelector<Solution_>
     extends AbstractNearbyValueSelector<Solution_> {
@@ -28,7 +30,34 @@ public final class NearEntityNearbyValueSelector<Solution_>
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
       @Nullable NearbyRandom nearbyRandom,
       boolean randomSelection) {
-    super(childValueSelector, nearbyDistanceMeter, nearbyRandom, randomSelection);
+    super(childValueSelector, nearbyDistanceMeter, nearbyRandom, randomSelection, null);
+    this.originEntitySelector = originEntitySelector;
+    phaseLifecycleSupport.addEventListener(originEntitySelector);
+  }
+
+  /**
+   * Creates a nearby value selector with spatial indexing support.
+   *
+   * @param childValueSelector child value selector
+   * @param originEntitySelector origin entity selector
+   * @param nearbyDistanceMeter distance meter
+   * @param nearbyRandom nearby random distribution
+   * @param randomSelection whether to use random selection
+   * @param spatialDistanceMatrix optional spatial distance matrix for performance
+   */
+  public NearEntityNearbyValueSelector(
+      @NonNull ValueSelector<Solution_> childValueSelector,
+      @NonNull EntitySelector<Solution_> originEntitySelector,
+      @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
+      @Nullable NearbyRandom nearbyRandom,
+      boolean randomSelection,
+      @Nullable SpatialNearbyDistanceMatrix<?, ?> spatialDistanceMatrix) {
+    super(
+        childValueSelector,
+        nearbyDistanceMeter,
+        nearbyRandom,
+        randomSelection,
+        spatialDistanceMatrix);
     this.originEntitySelector = originEntitySelector;
     phaseLifecycleSupport.addEventListener(originEntitySelector);
   }
@@ -104,8 +133,18 @@ public final class NearEntityNearbyValueSelector<Solution_>
       }
       int nearbyIndex = nearbyRandom.nextInt(workingRandom, nearbySize);
       count++;
-      // Get the nearbyIndex-th value from the child selector
-      // For now, we iterate through the child selector to get the value at index
+
+      // Use spatial distance matrix if available for O(1) lookup
+      if (isSpatialIndexingEnabled() && spatialDistanceMatrix != null) {
+        Object origin = originEntitySelector.iterator().next();
+        @SuppressWarnings("unchecked")
+        SpatialNearbyDistanceMatrix<Object, Object> castMatrix =
+            (SpatialNearbyDistanceMatrix<Object, Object>) spatialDistanceMatrix;
+        return castMatrix.getDestination(origin, nearbyIndex);
+      }
+
+      // Otherwise, iterate through child selector to get the value at index
+      // This is the fallback for non-spatial-indexed configurations
       Iterator<Object> childIterator = childValueSelector.iterator(entity);
       Object result = null;
       for (int i = 0; i <= nearbyIndex && childIterator.hasNext(); i++) {
