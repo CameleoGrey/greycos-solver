@@ -1,23 +1,48 @@
 package ai.greycos.solver.core.config.localsearch.decider.forager;
 
+import java.util.Map;
 import java.util.function.Consumer;
 
 import jakarta.xml.bind.annotation.XmlType;
 
 import ai.greycos.solver.core.config.AbstractConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
+import ai.greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+/**
+ * Configuration for a local search forager.
+ *
+ * <p>A forager is responsible for collecting evaluated moves during a step,
+ * deciding when to stop evaluating moves (early termination), and selecting the best move to apply.</p>
+ *
+ * <p>This configuration supports:</p>
+ * <ul>
+ *   <li>Built-in foragers configured via {@link #pickEarlyType}</li>
+ *   <li>Custom foragers configured via {@link #foragerClass} (enterprise feature)</li>
+ * </ul>
+ *
+ * <p>When using custom foragers, you can inject properties via {@link #customProperties}.
+ * Custom properties are set using setter methods on the forager class
+ * (e.g., {@code setTopK("5")}).</p>
+ *
+ * <p><b>Enterprise Feature:</b> Custom forager functionality requires a valid Greycos Enterprise license.
+ * Attempting to use a custom forager without a license will result in an {@link UnsupportedOperationException}.</p>
+ */
+
 @XmlType(
-    propOrder = {"pickEarlyType", "acceptedCountLimit", "finalistPodiumType", "breakTieRandomly"})
+    propOrder = {"pickEarlyType", "acceptedCountLimit", "finalistPodiumType", "breakTieRandomly",
+        "foragerClass", "customProperties"})
 public class LocalSearchForagerConfig extends AbstractConfig<LocalSearchForagerConfig> {
 
   protected LocalSearchPickEarlyType pickEarlyType = null;
   protected Integer acceptedCountLimit = null;
   protected FinalistPodiumType finalistPodiumType = null;
   protected Boolean breakTieRandomly = null;
+  protected Class<? extends LocalSearchForager> foragerClass = null;
+  protected Map<String, String> customProperties = null;
 
   public @Nullable LocalSearchPickEarlyType getPickEarlyType() {
     return pickEarlyType;
@@ -51,6 +76,22 @@ public class LocalSearchForagerConfig extends AbstractConfig<LocalSearchForagerC
     this.breakTieRandomly = breakTieRandomly;
   }
 
+  public @Nullable Class<? extends LocalSearchForager> getForagerClass() {
+    return foragerClass;
+  }
+
+  public void setForagerClass(@Nullable Class<? extends LocalSearchForager> foragerClass) {
+    this.foragerClass = foragerClass;
+  }
+
+  public @Nullable Map<String, String> getCustomProperties() {
+    return customProperties;
+  }
+
+  public void setCustomProperties(@Nullable Map<String, String> customProperties) {
+    this.customProperties = customProperties;
+  }
+
   // ************************************************************************
   // With methods
   // ************************************************************************
@@ -77,6 +118,18 @@ public class LocalSearchForagerConfig extends AbstractConfig<LocalSearchForagerC
     return this;
   }
 
+  public @NonNull LocalSearchForagerConfig withForagerClass(
+      @NonNull Class<? extends LocalSearchForager> foragerClass) {
+    this.foragerClass = foragerClass;
+    return this;
+  }
+
+  public @NonNull LocalSearchForagerConfig withCustomProperties(
+      @NonNull Map<String, String> customProperties) {
+    this.customProperties = customProperties;
+    return this;
+  }
+
   @Override
   public @NonNull LocalSearchForagerConfig inherit(
       @NonNull LocalSearchForagerConfig inheritedConfig) {
@@ -91,6 +144,10 @@ public class LocalSearchForagerConfig extends AbstractConfig<LocalSearchForagerC
     breakTieRandomly =
         ConfigUtils.inheritOverwritableProperty(
             breakTieRandomly, inheritedConfig.getBreakTieRandomly());
+    foragerClass =
+        ConfigUtils.inheritOverwritableProperty(foragerClass, inheritedConfig.getForagerClass());
+    customProperties =
+        ConfigUtils.inheritOverwritableProperty(customProperties, inheritedConfig.getCustomProperties());
     return this;
   }
 
@@ -101,6 +158,8 @@ public class LocalSearchForagerConfig extends AbstractConfig<LocalSearchForagerC
 
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
-    // No referenced classes
+    if (foragerClass != null) {
+      classVisitor.accept(foragerClass);
+    }
   }
 }

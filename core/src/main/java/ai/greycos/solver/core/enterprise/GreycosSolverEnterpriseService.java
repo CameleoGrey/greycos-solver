@@ -8,6 +8,7 @@ import java.util.function.Supplier;
 
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.api.solver.SolverFactory;
+import ai.greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicForagerConfig;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
@@ -17,6 +18,7 @@ import ai.greycos.solver.core.config.heuristic.selector.list.SubListSelectorConf
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
+import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchForagerConfig;
 import ai.greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.constructionheuristic.decider.ConstructionHeuristicDecider;
@@ -224,7 +226,9 @@ public interface GreycosSolverEnterpriseService {
         "Automatic node sharing", "remove automatic node sharing from solver configuration"),
     MULTISTAGE_MOVE(
         "Multistage move selector",
-        "remove multistageMoveSelector and/or listMultistageMoveSelector from the solver configuration");
+        "remove multistageMoveSelector and/or listMultistageMoveSelector from the solver configuration"),
+    CUSTOM_FORAGER(
+        "Custom forager", "remove foragerClass from forager configuration");
 
     private final String name;
     private final String workaround;
@@ -247,6 +251,28 @@ public interface GreycosSolverEnterpriseService {
 
     <T extends ConstraintProvider> Class<T> buildNodeSharedConstraintProvider(
         Class<T> constraintProviderClass);
+  }
+
+  /**
+   * Check if custom forager is enabled for the given configuration.
+   *
+   * @param foragerConfig the forager configuration
+   * @return true if custom forager is configured
+   */
+  default boolean isCustomForagerEnabled(
+      ConstructionHeuristicForagerConfig foragerConfig) {
+    return foragerConfig.getForagerClass() != null;
+  }
+
+  /**
+   * Check if custom forager is enabled for the given configuration.
+   *
+   * @param foragerConfig the forager configuration
+   * @return true if custom forager is configured
+   */
+  default boolean isCustomForagerEnabled(
+      LocalSearchForagerConfig foragerConfig) {
+    return foragerConfig.getForagerClass() != null;
   }
 
   final class EnterpriseLicenseException extends RuntimeException {

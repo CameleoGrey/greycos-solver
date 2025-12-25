@@ -297,4 +297,24 @@ public final class DefaultGreycosSolverEnterpriseService implements GreycosSolve
               ListMultistageMoveSelectorConfig moveSelectorConfig) {
     throw new UnsupportedOperationException("Multistage move selector is an enterprise feature.");
   }
+
+  @Override
+  public boolean isCustomForagerEnabled(
+      ai.greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicForagerConfig foragerConfig) {
+    if (foragerConfig.getForagerClass() != null) {
+      throw new UnsupportedOperationException(
+          "Custom forager is an enterprise feature.");
+    }
+    return false;
+  }
+
+  @Override
+  public boolean isCustomForagerEnabled(
+      ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchForagerConfig foragerConfig) {
+    if (foragerConfig.getForagerClass() != null) {
+      throw new UnsupportedOperationException(
+          "Custom forager is an enterprise feature.");
+    }
+    return false;
+  }
 }

@@ -1328,6 +1328,10 @@
         <xs:sequence>
                     
           <xs:element minOccurs="0" name="pickEarlyType" type="tns:constructionHeuristicPickEarlyType"/>
+          
+          <xs:element minOccurs="0" name="foragerClass" type="xs:string"/>
+          
+          <xs:element minOccurs="0" name="customProperties" type="tns:jaxbAdaptedMap"/>
                   
         </xs:sequence>
               
@@ -1544,6 +1548,10 @@
           <xs:element minOccurs="0" name="finalistPodiumType" type="tns:finalistPodiumType"/>
                     
           <xs:element minOccurs="0" name="breakTieRandomly" type="xs:boolean"/>
+          
+          <xs:element minOccurs="0" name="foragerClass" type="xs:string"/>
+          
+          <xs:element minOccurs="0" name="customProperties" type="tns:jaxbAdaptedMap"/>
                   
         </xs:sequence>
               
