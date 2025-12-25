@@ -20,10 +20,16 @@ import ai.greycos.solver.core.impl.score.stream.bavet.BavetConstraintSessionFact
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public final class BavetConstraintStreamScoreDirectorFactory<
         Solution_, Score_ extends Score<Score_>>
     extends AbstractConstraintStreamScoreDirectorFactory<
         Solution_, Score_, BavetConstraintStreamScoreDirectorFactory<Solution_, Score_>> {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(BavetConstraintStreamScoreDirectorFactory.class);
 
   public static <Solution_, Score_ extends Score<Score_>>
       BavetConstraintStreamScoreDirectorFactory<Solution_, Score_> buildScoreDirectorFactory(
@@ -55,12 +61,29 @@ public final class BavetConstraintStreamScoreDirectorFactory<
       ScoreDirectorFactoryConfig config,
       Class<? extends ConstraintProvider> providedConstraintProviderClass) {
     if (Boolean.TRUE.equals(config.getConstraintStreamAutomaticNodeSharing())) {
-      var enterpriseService =
-          GreycosSolverEnterpriseService.loadOrFail(
-              GreycosSolverEnterpriseService.Feature.AUTOMATIC_NODE_SHARING);
-      return enterpriseService
-          .createNodeSharer()
-          .buildNodeSharedConstraintProvider(providedConstraintProviderClass);
+      LOGGER.info(
+          "Automatic node sharing enabled for ConstraintProvider: {}",
+          providedConstraintProviderClass.getName());
+      try {
+        var enterpriseService =
+            GreycosSolverEnterpriseService.loadOrFail(
+                GreycosSolverEnterpriseService.Feature.AUTOMATIC_NODE_SHARING);
+        Class<? extends ConstraintProvider> transformedClass =
+            enterpriseService
+                .createNodeSharer()
+                .buildNodeSharedConstraintProvider(providedConstraintProviderClass);
+        LOGGER.info(
+            "Successfully applied node sharing transformation. Transformed class: {}",
+            transformedClass.getName());
+        return transformedClass;
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Node sharing transformation failed for {}. Falling back to original class. Error: {}",
+            providedConstraintProviderClass.getName(),
+            e.getMessage());
+        // Fall back to original class
+        return providedConstraintProviderClass;
+      }
     } else {
       return providedConstraintProviderClass;
     }

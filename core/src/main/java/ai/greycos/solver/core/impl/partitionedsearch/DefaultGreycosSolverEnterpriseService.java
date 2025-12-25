@@ -3,7 +3,6 @@ package ai.greycos.solver.core.impl.partitionedsearch;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
@@ -33,6 +32,7 @@ import ai.greycos.solver.core.impl.localsearch.decider.LocalSearchDecider;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.Acceptor;
 import ai.greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 import ai.greycos.solver.core.impl.neighborhood.MoveRepository;
+import ai.greycos.solver.core.impl.nodesharing.DefaultConstraintProviderNodeSharer;
 import ai.greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecallerFactory;
@@ -55,7 +55,7 @@ public final class DefaultGreycosSolverEnterpriseService implements GreycosSolve
   }
 
   /**
-   * Gets the singleton instance.
+   * Gets singleton instance.
    *
    * @param versionStringFunction Function to get version strings
    * @return The singleton instance
@@ -73,15 +73,8 @@ public final class DefaultGreycosSolverEnterpriseService implements GreycosSolve
 
   @Override
   public GreycosSolverEnterpriseService.ConstraintProviderNodeSharer createNodeSharer() {
-    // Return a simple node sharer that doesn't apply node sharing
-    return new ConstraintProviderNodeSharer() {
-      @Override
-      public <T extends ConstraintProvider> Class<T> buildNodeSharedConstraintProvider(
-          Class<T> constraintProviderClass) {
-        // Simply return the original class without node sharing
-        return constraintProviderClass;
-      }
-    };
+    // Return node sharer that applies ASM bytecode transformation
+    return new DefaultConstraintProviderNodeSharer();
   }
 
   @Override

@@ -35,6 +35,12 @@
       <optional>true</optional>
     </dependency>
 
+    <!-- ASM for bytecode manipulation (node sharing) -->
+    <dependency>
+      <groupId>org.ow2.asm</groupId>
+      <artifactId>asm</artifactId>
+    </dependency>
+
     <!-- External dependencies -->
     <!-- Common utils -->
     <dependency>
