@@ -111,6 +111,13 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
       throw new IllegalStateException(
           "Interrupted when waiting for the final best solution consumption.");
     }
+
+    // Terminate throttled consumer to ensure final delivery
+    if (bestSolutionConsumer instanceof ThrottlingBestSolutionEventConsumer) {
+      ((ThrottlingBestSolutionEventConsumer<Solution_>) bestSolutionConsumer)
+          .terminateAndDeliverPending();
+    }
+
     // Make sure the final best solution is consumed by the intermediate best solution consumer
     // first.
     // Situation:
@@ -247,6 +254,14 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
       Thread.currentThread().interrupt();
       throw new IllegalStateException("Interrupted when waiting for closing the consumer.");
     } finally {
+      // Close throttled consumer if it's AutoCloseable
+      if (bestSolutionConsumer instanceof AutoCloseable) {
+        try {
+          ((AutoCloseable) bestSolutionConsumer).close();
+        } catch (Exception e) {
+          // Ignore close exceptions to avoid masking original issues
+        }
+      }
       disposeConsumerThread();
       bestSolutionHolder.cancelPendingChanges();
       releaseAll();

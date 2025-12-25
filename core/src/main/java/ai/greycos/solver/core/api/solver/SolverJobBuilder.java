@@ -1,5 +1,6 @@
 package ai.greycos.solver.core.api.solver;
 
+import java.time.Duration;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -87,6 +88,44 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
    */
   @NonNull SolverJobBuilder<Solution_, ProblemId_> withBestSolutionEventConsumer(
       @NonNull Consumer<NewBestSolutionEvent<Solution_>> bestSolutionEventConsumer);
+
+  /**
+   * Sets a throttled best solution consumer.
+   *
+   * <p>The delegate consumer will receive at most one event per {@code throttleDuration}. If
+   * multiple events arrive during the interval, only the last is delivered. The final best solution
+   * is always delivered regardless of throttle.
+   *
+   * <p>This is useful to prevent system overload during rapid solution improvement phases, where
+   * hundreds of best solution events may arrive within seconds.
+   *
+   * <p>Example:
+   *
+   * <pre>{@code
+   * solverManager.solveBuilder()
+   *     .withProblemId(1L)
+   *     .withProblem(problem)
+   *     .withThrottledBestSolutionEventConsumer(
+   *         event -> handleBestSolution(event),
+   *         Duration.ofMillis(500)
+   *     )
+   *     .run();
+   * }</pre>
+   *
+   * @param delegate the actual consumer to call with throttled events
+   * @param throttleDuration minimum time between event deliveries; must be positive
+   * @return this
+   */
+  @NonNull
+  default SolverJobBuilder<Solution_, ProblemId_> withThrottledBestSolutionEventConsumer(
+      @NonNull Consumer<NewBestSolutionEvent<Solution_>> delegate,
+      @NonNull Duration throttleDuration) {
+    ai.greycos.solver.core.impl.solver.ThrottlingBestSolutionEventConsumer<Solution_>
+        throttledConsumer =
+            ai.greycos.solver.core.impl.solver.ThrottlingBestSolutionEventConsumer.of(
+                delegate, throttleDuration);
+    return withBestSolutionEventConsumer(throttledConsumer);
+  }
 
   /**
    * As defined by {@link #withFinalBestSolutionEventConsumer}.
