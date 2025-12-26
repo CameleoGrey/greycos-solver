@@ -227,8 +227,7 @@ public interface GreycosSolverEnterpriseService {
     MULTISTAGE_MOVE(
         "Multistage move selector",
         "remove multistageMoveSelector and/or listMultistageMoveSelector from the solver configuration"),
-    CUSTOM_FORAGER(
-        "Custom forager", "remove foragerClass from forager configuration");
+    CUSTOM_FORAGER("Custom forager", "remove foragerClass from forager configuration");
 
     private final String name;
     private final String workaround;
@@ -259,8 +258,7 @@ public interface GreycosSolverEnterpriseService {
    * @param foragerConfig the forager configuration
    * @return true if custom forager is configured
    */
-  default boolean isCustomForagerEnabled(
-      ConstructionHeuristicForagerConfig foragerConfig) {
+  default boolean isCustomForagerEnabled(ConstructionHeuristicForagerConfig foragerConfig) {
     return foragerConfig.getForagerClass() != null;
   }
 
@@ -270,8 +268,7 @@ public interface GreycosSolverEnterpriseService {
    * @param foragerConfig the forager configuration
    * @return true if custom forager is configured
    */
-  default boolean isCustomForagerEnabled(
-      LocalSearchForagerConfig foragerConfig) {
+  default boolean isCustomForagerEnabled(LocalSearchForagerConfig foragerConfig) {
     return foragerConfig.getForagerClass() != null;
   }
 

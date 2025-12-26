@@ -287,7 +287,22 @@ public final class DefaultGreycosSolverEnterpriseService implements GreycosSolve
   public <Solution_>
       AbstractMoveSelectorFactory<Solution_, MultistageMoveSelectorConfig>
           buildBasicMultistageMoveSelectorFactory(MultistageMoveSelectorConfig moveSelectorConfig) {
-    throw new UnsupportedOperationException("Multistage move selector is an enterprise feature.");
+    // Import factory classes dynamically to avoid circular dependency
+    try {
+      @SuppressWarnings("unchecked")
+      var factoryClass =
+          (Class<AbstractMoveSelectorFactory<Solution_, MultistageMoveSelectorConfig>>)
+              Class.forName(
+                  "ai.greycos.solver.core.impl.heuristic.selector.move.generic.MultistageMoveSelectorFactory");
+      var constructor = factoryClass.getConstructor(MultistageMoveSelectorConfig.class);
+      return constructor.newInstance(moveSelectorConfig);
+    } catch (ClassNotFoundException e) {
+      throw new UnsupportedOperationException(
+          "Multistage move selector is an enterprise feature.", e);
+    } catch (Exception e) {
+      throw new UnsupportedOperationException(
+          "Multistage move selector is an enterprise feature.", e);
+    }
   }
 
   @Override
@@ -295,25 +310,41 @@ public final class DefaultGreycosSolverEnterpriseService implements GreycosSolve
       AbstractMoveSelectorFactory<Solution_, ListMultistageMoveSelectorConfig>
           buildListMultistageMoveSelectorFactory(
               ListMultistageMoveSelectorConfig moveSelectorConfig) {
-    throw new UnsupportedOperationException("Multistage move selector is an enterprise feature.");
+    // Import factory classes dynamically to avoid circular dependency
+    try {
+      @SuppressWarnings("unchecked")
+      var factoryClass =
+          (Class<AbstractMoveSelectorFactory<Solution_, ListMultistageMoveSelectorConfig>>)
+              Class.forName(
+                  "ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ListMultistageMoveSelectorFactory");
+      var constructor = factoryClass.getConstructor(ListMultistageMoveSelectorConfig.class);
+      return constructor.newInstance(moveSelectorConfig);
+    } catch (ClassNotFoundException e) {
+      throw new UnsupportedOperationException(
+          "List multistage move selector is an enterprise feature.", e);
+    } catch (Exception e) {
+      throw new UnsupportedOperationException(
+          "List multistage move selector is an enterprise feature.", e);
+    }
   }
 
   @Override
   public boolean isCustomForagerEnabled(
-      ai.greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicForagerConfig foragerConfig) {
+      ai.greycos.solver.core.config.constructionheuristic.decider.forager
+              .ConstructionHeuristicForagerConfig
+          foragerConfig) {
     if (foragerConfig.getForagerClass() != null) {
-      throw new UnsupportedOperationException(
-          "Custom forager is an enterprise feature.");
+      throw new UnsupportedOperationException("Custom forager is an enterprise feature.");
     }
     return false;
   }
 
   @Override
   public boolean isCustomForagerEnabled(
-      ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchForagerConfig foragerConfig) {
+      ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchForagerConfig
+          foragerConfig) {
     if (foragerConfig.getForagerClass() != null) {
-      throw new UnsupportedOperationException(
-          "Custom forager is an enterprise feature.");
+      throw new UnsupportedOperationException("Custom forager is an enterprise feature.");
     }
     return false;
   }

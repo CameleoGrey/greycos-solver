@@ -344,6 +344,9 @@
           <xs:element minOccurs="0" name="threadFactoryClass" type="xs:string"/>
                               
           
+          <xs:element minOccurs="0" name="threadPoolShutdownTimeoutSeconds" type="xs:int"/>
+                              
+          
           <xs:element minOccurs="0" name="monitoring" type="tns:monitoringConfig"/>
                               
           
@@ -2286,6 +2289,51 @@
                               
           
           <xs:element minOccurs="0" name="pickEarlyType" type="tns:constructionHeuristicPickEarlyType"/>
+                              
+          
+          <xs:element minOccurs="0" name="foragerClass" type="xs:string"/>
+                              
+          
+          <xs:element name="customProperties">
+                                    
+            
+            <xs:complexType>
+                                          
+              
+              <xs:sequence>
+                                                
+                
+                <xs:element maxOccurs="unbounded" minOccurs="0" name="entry">
+                                                      
+                  
+                  <xs:complexType>
+                                                            
+                    
+                    <xs:sequence>
+                                                                  
+                      
+                      <xs:element minOccurs="0" name="key" type="xs:string"/>
+                                                                  
+                      
+                      <xs:element minOccurs="0" name="value" type="xs:string"/>
+                                                                
+                    
+                    </xs:sequence>
+                                                          
+                  
+                  </xs:complexType>
+                                                    
+                
+                </xs:element>
+                                              
+              
+              </xs:sequence>
+                                        
+            
+            </xs:complexType>
+                                  
+          
+          </xs:element>
                             
         
         </xs:sequence>
@@ -2613,6 +2661,51 @@
                               
           
           <xs:element minOccurs="0" name="breakTieRandomly" type="xs:boolean"/>
+                              
+          
+          <xs:element minOccurs="0" name="foragerClass" type="xs:string"/>
+                              
+          
+          <xs:element name="customProperties">
+                                    
+            
+            <xs:complexType>
+                                          
+              
+              <xs:sequence>
+                                                
+                
+                <xs:element maxOccurs="unbounded" minOccurs="0" name="entry">
+                                                      
+                  
+                  <xs:complexType>
+                                                            
+                    
+                    <xs:sequence>
+                                                                  
+                      
+                      <xs:element minOccurs="0" name="key" type="xs:string"/>
+                                                                  
+                      
+                      <xs:element minOccurs="0" name="value" type="xs:string"/>
+                                                                
+                    
+                    </xs:sequence>
+                                                          
+                  
+                  </xs:complexType>
+                                                    
+                
+                </xs:element>
+                                              
+              
+              </xs:sequence>
+                                        
+            
+            </xs:complexType>
+                                  
+          
+          </xs:element>
                             
         
         </xs:sequence>

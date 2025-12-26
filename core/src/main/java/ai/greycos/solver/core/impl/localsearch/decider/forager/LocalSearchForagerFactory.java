@@ -48,10 +48,10 @@ public class LocalSearchForagerFactory<Solution_> {
   @SuppressWarnings("unchecked")
   private LocalSearchForager<Solution_> buildCustomForager() {
     var foragerClass = foragerConfig.getForagerClass();
-    
+
     // Validate custom forager class
     validateCustomForagerClass(foragerClass);
-    
+
     // Instantiate custom forager
     var customProperties = foragerConfig.getCustomProperties();
     try {
@@ -63,12 +63,12 @@ public class LocalSearchForagerFactory<Solution_> {
         // Try no-arg constructor
         var constructor = foragerClass.getConstructor();
         var forager = (LocalSearchForager<Solution_>) constructor.newInstance();
-        
+
         // Inject custom properties if available
         if (customProperties != null && !customProperties.isEmpty()) {
           injectCustomProperties(forager, customProperties);
         }
-        
+
         return forager;
       }
     } catch (Exception e) {
@@ -77,14 +77,14 @@ public class LocalSearchForagerFactory<Solution_> {
     }
   }
 
-  private void validateCustomForagerClass(
-      Class<? extends LocalSearchForager> foragerClass) {
+  private void validateCustomForagerClass(Class<? extends LocalSearchForager> foragerClass) {
     if (foragerClass == AcceptedLocalSearchForager.class) {
       throw new IllegalArgumentException(
-          "The foragerClass (" + foragerClass.getName() +
-          ") is a built-in forager. Use foragerConfig properties instead.");
+          "The foragerClass ("
+              + foragerClass.getName()
+              + ") is a built-in forager. Use foragerConfig properties instead.");
     }
-    
+
     // Check for required constructor
     boolean hasConfigConstructor = false;
     boolean hasNoArgConstructor = false;
@@ -96,26 +96,26 @@ public class LocalSearchForagerFactory<Solution_> {
         hasNoArgConstructor = true;
       }
     }
-    
+
     if (!hasConfigConstructor && !hasNoArgConstructor) {
       throw new IllegalArgumentException(
-          "The custom forager class (" + foragerClass.getName() +
-          ") must have either a no-arg constructor or a constructor " +
-          "that accepts LocalSearchForagerConfig.");
+          "The custom forager class ("
+              + foragerClass.getName()
+              + ") must have either a no-arg constructor or a constructor "
+              + "that accepts LocalSearchForagerConfig.");
     }
   }
 
   private void injectCustomProperties(
-      LocalSearchForager<?> forager,
-      Map<String, String> customProperties) {
+      LocalSearchForager<?> forager, Map<String, String> customProperties) {
     // Use reflection to inject properties if setter methods exist
     for (var entry : customProperties.entrySet()) {
       var propertyName = entry.getKey();
       var propertyValue = entry.getValue();
-      
+
       try {
-        var setterName = "set" + Character.toUpperCase(propertyName.charAt(0)) +
-                         propertyName.substring(1);
+        var setterName =
+            "set" + Character.toUpperCase(propertyName.charAt(0)) + propertyName.substring(1);
         var setter = forager.getClass().getMethod(setterName, String.class);
         setter.invoke(forager, propertyValue);
       } catch (Exception e) {

@@ -15,22 +15,23 @@ import org.jspecify.annotations.Nullable;
 /**
  * Configuration for a construction heuristic forager.
  *
- * <p>A forager is responsible for collecting evaluated moves during a step,
- * deciding when to stop evaluating moves (early termination), and selecting the best move to apply.</p>
+ * <p>A forager is responsible for collecting evaluated moves during a step, deciding when to stop
+ * evaluating moves (early termination), and selecting the best move to apply.
  *
- * <p>This configuration supports:</p>
+ * <p>This configuration supports:
+ *
  * <ul>
- *   <li>Built-in foragers configured via {@link #pickEarlyType}</li>
- *   <li>Custom foragers configured via {@link #foragerClass} (enterprise feature)</li>
+ *   <li>Built-in foragers configured via {@link #pickEarlyType}
+ *   <li>Custom foragers configured via {@link #foragerClass} (enterprise feature)
  * </ul>
  *
- * <p>When using custom foragers, you can inject properties via {@link #customProperties}.
- * Custom properties are set using setter methods on the forager class (e.g., {@code setTopK("5")}).</p>
+ * <p>When using custom foragers, you can inject properties via {@link #customProperties}. Custom
+ * properties are set using setter methods on the forager class (e.g., {@code setTopK("5")}).
  *
- * <p><b>Enterprise Feature:</b> Custom forager functionality requires a valid Greycos Enterprise license.
- * Attempting to use a custom forager without a license will result in an {@link UnsupportedOperationException}.</p>
+ * <p><b>Enterprise Feature:</b> Custom forager functionality requires a valid Greycos Enterprise
+ * license. Attempting to use a custom forager without a license will result in an {@link
+ * UnsupportedOperationException}.
  */
-
 @XmlType(propOrder = {"pickEarlyType", "foragerClass", "customProperties"})
 public class ConstructionHeuristicForagerConfig
     extends AbstractConfig<ConstructionHeuristicForagerConfig> {
@@ -94,7 +95,8 @@ public class ConstructionHeuristicForagerConfig
     foragerClass =
         ConfigUtils.inheritOverwritableProperty(foragerClass, inheritedConfig.getForagerClass());
     customProperties =
-        ConfigUtils.inheritOverwritableProperty(customProperties, inheritedConfig.getCustomProperties());
+        ConfigUtils.inheritOverwritableProperty(
+            customProperties, inheritedConfig.getCustomProperties());
     return this;
   }
 

@@ -43,10 +43,10 @@ public class ConstructionHeuristicForagerFactory<Solution_> {
   private ConstructionHeuristicForager<Solution_> buildCustomForager(
       HeuristicConfigPolicy<Solution_> configPolicy) {
     var foragerClass = foragerConfig.getForagerClass();
-    
+
     // Validate custom forager class
     validateCustomForagerClass(foragerClass);
-    
+
     // Instantiate custom forager
     var customProperties = foragerConfig.getCustomProperties();
     try {
@@ -58,12 +58,12 @@ public class ConstructionHeuristicForagerFactory<Solution_> {
         // Try no-arg constructor
         var constructor = foragerClass.getConstructor();
         var forager = (ConstructionHeuristicForager<Solution_>) constructor.newInstance();
-        
+
         // Inject custom properties if available
         if (customProperties != null && !customProperties.isEmpty()) {
           injectCustomProperties(forager, customProperties);
         }
-        
+
         return forager;
       }
     } catch (Exception e) {
@@ -76,10 +76,11 @@ public class ConstructionHeuristicForagerFactory<Solution_> {
       Class<? extends ConstructionHeuristicForager> foragerClass) {
     if (foragerClass == DefaultConstructionHeuristicForager.class) {
       throw new IllegalArgumentException(
-          "The foragerClass (" + foragerClass.getName() +
-          ") is a built-in forager. Use pickEarlyType configuration instead.");
+          "The foragerClass ("
+              + foragerClass.getName()
+              + ") is a built-in forager. Use pickEarlyType configuration instead.");
     }
-    
+
     // Check for required constructor
     boolean hasConfigPolicyConstructor = false;
     boolean hasNoArgConstructor = false;
@@ -91,26 +92,26 @@ public class ConstructionHeuristicForagerFactory<Solution_> {
         hasNoArgConstructor = true;
       }
     }
-    
+
     if (!hasConfigPolicyConstructor && !hasNoArgConstructor) {
       throw new IllegalArgumentException(
-          "The custom forager class (" + foragerClass.getName() +
-          ") must have either a no-arg constructor or a constructor " +
-          "that accepts HeuristicConfigPolicy.");
+          "The custom forager class ("
+              + foragerClass.getName()
+              + ") must have either a no-arg constructor or a constructor "
+              + "that accepts HeuristicConfigPolicy.");
     }
   }
 
   private void injectCustomProperties(
-      ConstructionHeuristicForager<?> forager,
-      Map<String, String> customProperties) {
+      ConstructionHeuristicForager<?> forager, Map<String, String> customProperties) {
     // Use reflection to inject properties if setter methods exist
     for (var entry : customProperties.entrySet()) {
       var propertyName = entry.getKey();
       var propertyValue = entry.getValue();
-      
+
       try {
-        var setterName = "set" + Character.toUpperCase(propertyName.charAt(0)) +
-                         propertyName.substring(1);
+        var setterName =
+            "set" + Character.toUpperCase(propertyName.charAt(0)) + propertyName.substring(1);
         var setter = forager.getClass().getMethod(setterName, String.class);
         setter.invoke(forager, propertyValue);
       } catch (Exception e) {
