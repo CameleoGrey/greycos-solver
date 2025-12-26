@@ -86,32 +86,6 @@ jobs:
         shell: bash
         run: ./mvnw -B -Dquickly clean install
 
-      # Clone greycos-solver-enterprise
-      - name: Checkout greycos-solver-enterprise (PR) # Checkout the PR branch first, if it exists
-        id: checkout-solver-enterprise
-        uses: actions/checkout@v6
-        continue-on-error: true
-        with:
-          repository: CameleoGrey/greycos-solver-enterprise
-          ref: ${{ github.head_ref }}
-          token: ${{ secrets.JRELEASER_GITHUB_TOKEN }} # Safe; only used to clone the repo and not stored in the fork.
-          path: ./greycos-solver-enterprise
-          fetch-depth: 0 # Otherwise merge will fail on account of not having history.
-      - name: Checkout greycos-solver-enterprise (main) # Checkout the main branch if the PR branch does not exist
-        if: steps.checkout-solver-enterprise.outcome != 'success'
-        uses: actions/checkout@v6
-        with:
-          repository: CameleoGrey/greycos-solver-enterprise
-          ref: main
-          token: ${{ secrets.JRELEASER_GITHUB_TOKEN }} # Safe; only used to clone the repo and not stored in the fork.
-          path: ./greycos-solver-enterprise
-          fetch-depth: 0 # Otherwise merge will fail on account of not having history.
-
-      - name: Quickly build greycos-solver-enterprise
-        working-directory: ./greycos-solver-enterprise
-        shell: bash
-        run: ./mvnw -B -Dquickly clean install
-
       # Clone greycos-solver-benchmarks
       - name: Checkout greycos-solver-benchmarks (PR) # Checkout the PR branch first, if it exists
         if: github.head_ref # Only true if this is a PR.
@@ -159,27 +133,6 @@ jobs:
           path: ./greycos-solver
           ref: ${{ github.event.pull_request.head.sha }} # The GHA event will pull the main branch by default, and we must specify the PR reference version
 
-      # Clone greycos-solver-enterprise
-      # Need to check for stale repo, since Github is not aware of the build chain and therefore doesn't automate it.
-      - name: Checkout greycos-solver-enterprise (PR) # Checkout the PR branch first, if it exists
-        id: checkout-solver-enterprise
-        uses: actions/checkout@v6
-        continue-on-error: true
-        with:
-          repository: CameleoGrey/greycos-solver-enterprise
-          ref: ${{ github.head_ref }}
-          token: ${{ secrets.JRELEASER_GITHUB_TOKEN }} # Safe; only used to clone the repo and not stored in the fork.
-          path: ./greycos-solver-enterprise
-          fetch-depth: 0 # Otherwise merge will fail on account of not having history.
-      - name: Checkout greycos-solver-enterprise (main) # Checkout the main branch if the PR branch does not exist
-        if: steps.checkout-solver-enterprise.outcome != 'success'
-        uses: actions/checkout@v6
-        with:
-          repository: CameleoGrey/greycos-solver-enterprise
-          ref: main
-          token: ${{ secrets.JRELEASER_GITHUB_TOKEN }} # Safe; only used to clone the repo and not stored in the fork.
-          path: ./greycos-solver-enterprise
-          fetch-depth: 0 # Otherwise merge will fail on account of not having history.
 
       # Build and test
       - name: Setup Temurin 17 and Maven
@@ -192,10 +145,6 @@ jobs:
         working-directory: ./greycos-solver
         shell: bash
         run: ./mvnw -B -Dquickly clean install
-      - name: Build and test greycos-solver-enterprise
-        working-directory: ./greycos-solver-enterprise
-        shell: bash
-        run: ./mvnw -B clean verify
       - name: Test Summary
         uses: test-summary/action@2920bc1b1b377c787227b204af6981e8f41bbef3
         with:

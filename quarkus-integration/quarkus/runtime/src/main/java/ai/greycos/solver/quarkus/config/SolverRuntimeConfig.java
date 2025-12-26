@@ -25,9 +25,7 @@ public interface SolverRuntimeConfig {
   Optional<Boolean> daemon();
 
   /**
-   * Note: this setting is only available for <a
-   * href="https://greycos.ai/docs/greycos-solver/latest/enterprise-edition/enterprise-edition">Greycos
-   * Solver Enterprise Edition</a>. Enable multithreaded solving for a single problem, which
+   * Enable multithreaded solving for a single problem, which
    * increases CPU consumption. Defaults to {@value SolverConfig#MOVE_THREAD_COUNT_NONE}. Other
    * options include {@value SolverConfig#MOVE_THREAD_COUNT_AUTO}, a number or formula based on the
    * available processor count.

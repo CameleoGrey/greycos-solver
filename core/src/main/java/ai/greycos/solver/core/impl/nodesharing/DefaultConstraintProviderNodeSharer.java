@@ -1,7 +1,6 @@
 package ai.greycos.solver.core.impl.nodesharing;
 
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
-import ai.greycos.solver.core.enterprise.GreycosSolverEnterpriseService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +11,7 @@ import org.slf4j.LoggerFactory;
  * <p>Transforms ConstraintProvider classes to enable automatic node sharing using ASM bytecode
  * manipulation.
  */
-public final class DefaultConstraintProviderNodeSharer
-    implements GreycosSolverEnterpriseService.ConstraintProviderNodeSharer {
+public final class DefaultConstraintProviderNodeSharer {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DefaultConstraintProviderNodeSharer.class);
@@ -25,7 +23,6 @@ public final class DefaultConstraintProviderNodeSharer
     this.classLoader = new NodeSharedClassLoader();
   }
 
-  @Override
   public <T extends ConstraintProvider> Class<T> buildNodeSharedConstraintProvider(
       Class<T> constraintProviderClass) {
 

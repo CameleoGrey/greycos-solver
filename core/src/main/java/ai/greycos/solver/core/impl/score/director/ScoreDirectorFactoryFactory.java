@@ -67,7 +67,7 @@ public class ScoreDirectorFactoryFactory<Solution_, Score_ extends Score<Score_>
       throw new IllegalStateException(
           """
                             DRL constraints requested via scoreDrlList (%s), but this is no longer supported in Greycos Solver 0.9 and later.
-                            Maybe upgrade from scoreDRL to ConstraintStreams using this recipe: https://greycos.ai/blog/migrating-score-drl-to-constraint-streams"""
+                            Maybe upgrade from scoreDRL to ConstraintStreams using the migration guide."""
               .formatted(config.getScoreDrlList()));
     }
     assertCorrectDirectorFactory(config);

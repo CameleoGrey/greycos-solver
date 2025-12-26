@@ -8,11 +8,11 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheTyp
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 import ai.greycos.solver.core.config.heuristic.selector.list.DestinationSelectorConfig;
-import ai.greycos.solver.core.enterprise.GreycosSolverEnterpriseService;
 import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.common.ValueRangeRecorderId;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
@@ -161,15 +161,48 @@ public final class DestinationSelectorFactory<Solution_>
               entitySelector,
               (IterableValueSelector<Solution_>) valueSelector,
               selectionOrder.toRandomSelectionBoolean());
-      return GreycosSolverEnterpriseService.loadOrFail(
-              GreycosSolverEnterpriseService.Feature.NEARBY_SELECTION)
-          .applyNearbySelection(
-              config, configPolicy, minimumCacheType, selectionOrder, updatedDestinationSelector);
+      return new NearbyDestinationSelector<>(
+          config,
+          configPolicy,
+          nearbySelectionConfig,
+          minimumCacheType,
+          selectionOrder,
+          updatedDestinationSelector,
+          entitySelector,
+          (IterableValueSelector<Solution_>) valueSelector);
     } else {
-      return GreycosSolverEnterpriseService.loadOrFail(
-              GreycosSolverEnterpriseService.Feature.NEARBY_SELECTION)
-          .applyNearbySelection(
-              config, configPolicy, minimumCacheType, selectionOrder, destinationSelector);
+      // When enableEntityValueRange is false, we need to rebuild the selectors without filters
+      // for nearby selection to work properly
+      var entitySelector =
+          EntitySelectorFactory.<Solution_>create(
+                  Objects.requireNonNull(config.getEntitySelectorConfig()))
+              .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
+      var valueSelector =
+          ValueSelectorFactory.<Solution_>create(
+                  Objects.requireNonNull(config.getValueSelectorConfig()))
+              .buildValueSelector(
+                  configPolicy,
+                  entitySelector.getEntityDescriptor(),
+                  minimumCacheType,
+                  selectionOrder,
+                  configPolicy.isReinitializeVariableFilterEnabled(),
+                  ValueSelectorFactory.ListValueFilteringType.ACCEPT_ASSIGNED,
+                  null,
+                  false);
+      var updatedDestinationSelector =
+          new ElementDestinationSelector<>(
+              entitySelector,
+              (IterableValueSelector<Solution_>) valueSelector,
+              selectionOrder.toRandomSelectionBoolean());
+      return new NearbyDestinationSelector<>(
+          config,
+          configPolicy,
+          nearbySelectionConfig,
+          minimumCacheType,
+          selectionOrder,
+          updatedDestinationSelector,
+          entitySelector,
+          (IterableValueSelector<Solution_>) valueSelector);
     }
   }
 }

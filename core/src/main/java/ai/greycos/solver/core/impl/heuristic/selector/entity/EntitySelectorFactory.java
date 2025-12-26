@@ -14,7 +14,6 @@ import ai.greycos.solver.core.config.heuristic.selector.common.decorator.Selecti
 import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.enterprise.GreycosSolverEnterpriseService;
 import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelectorFactory;
@@ -24,6 +23,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.Comparato
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandomFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.CachingEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntityByEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntityByValueSelector;
@@ -34,6 +34,8 @@ import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.Shuffling
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.SortingEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.mimic.MimicRecordingEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.mimic.MimicReplayingEntitySelector;
+import ai.greycos.solver.core.impl.heuristic.selector.entity.nearby.NearEntityNearbyEntitySelector;
+import ai.greycos.solver.core.impl.heuristic.selector.entity.nearby.NearValueNearbyEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory;
 import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
@@ -340,15 +342,57 @@ public class EntitySelectorFactory<Solution_>
       SelectionCacheType minimumCacheType,
       SelectionOrder resolvedSelectionOrder,
       EntitySelector<Solution_> entitySelector) {
-    return GreycosSolverEnterpriseService.loadOrFail(
-            GreycosSolverEnterpriseService.Feature.NEARBY_SELECTION)
-        .applyNearbySelection(
+    var randomSelection = resolvedSelectionOrder.toRandomSelectionBoolean();
+    var instanceCache = configPolicy.getClassInstanceCache();
+
+    var nearbyDistanceMeter =
+        instanceCache.newInstance(
             config,
-            configPolicy,
-            nearbySelectionConfig,
-            minimumCacheType,
-            resolvedSelectionOrder,
-            entitySelector);
+            "nearbyDistanceMeterClass",
+            nearbySelectionConfig.getNearbyDistanceMeterClass());
+    var nearbyRandom =
+        NearbyRandomFactory.create(nearbySelectionConfig).buildNearbyRandom(randomSelection);
+
+    if (nearbySelectionConfig.getOriginEntitySelectorConfig() != null) {
+      var originEntitySelector =
+          EntitySelectorFactory.<Solution_>create(
+                  nearbySelectionConfig.getOriginEntitySelectorConfig())
+              .buildEntitySelector(configPolicy, minimumCacheType, resolvedSelectionOrder);
+      return new NearEntityNearbyEntitySelector<>(
+          entitySelector, originEntitySelector, nearbyDistanceMeter, nearbyRandom, randomSelection);
+    } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {
+      var originValueSelector =
+          ValueSelectorFactory.<Solution_>create(
+                  nearbySelectionConfig.getOriginValueSelectorConfig())
+              .buildValueSelector(
+                  configPolicy,
+                  entitySelector.getEntityDescriptor(),
+                  minimumCacheType,
+                  resolvedSelectionOrder);
+      if (!(originValueSelector
+          instanceof ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector)) {
+        throw new IllegalArgumentException(
+            "The originValueSelectorConfig ("
+                + nearbySelectionConfig.getOriginValueSelectorConfig()
+                + ") needs to be based on an IterableValueSelector ("
+                + originValueSelector
+                + ").");
+      }
+      return new NearValueNearbyEntitySelector<>(
+          entitySelector,
+          (ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector<Solution_>)
+              originValueSelector,
+          nearbyDistanceMeter,
+          nearbyRandom,
+          randomSelection);
+    } else {
+      throw new IllegalArgumentException(
+          "The entitySelectorConfig ("
+              + config
+              + ")'s nearbySelectionConfig ("
+              + nearbySelectionConfig
+              + ") requires an originEntitySelector or an originValueSelector.");
+    }
   }
 
   private EntitySelector<Solution_> applyFiltering(

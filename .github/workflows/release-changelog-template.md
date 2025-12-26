@@ -9,12 +9,6 @@
 {{changelogChanges}}
 {{changelogContributors}}
 
-_Greycos Solver Community Edition_ is an open source project, and you are more than welcome to contribute as well! 
-For more, see [Contributing](https://github.com/CameleoGrey/greycos-solver/blob/main/CONTRIBUTING.adoc).
-
-Should your business need to scale to truly massive data sets or require enterprise-grade support,
-check out [_Greycos Solver Enterprise Edition_](https://docs.greycos.ai/greycos-solver/latest/enterprise-edition/enterprise-edition). 
-Greycos Solver Enterprise Edition requires [a license](https://greycos.ai/pricing). 
 
 # How to use Greycos Solver
 

@@ -57,9 +57,7 @@ public interface SolverBuildTimeConfig {
   Optional<ConstraintStreamImplType> constraintStreamImplType();
 
   /**
-   * Note: this setting is only available for <a
-   * href="https://greycos.ai/docs/greycos-solver/latest/enterprise-edition/enterprise-edition">Greycos
-   * Solver Enterprise Edition</a>. Enable rewriting the {@link
+   * Enable rewriting the {@link
    * ai.greycos.solver.core.api.score.stream.ConstraintProvider} class so nodes share lambdas when
    * possible, improving performance. When enabled, breakpoints placed in the {@link
    * ai.greycos.solver.core.api.score.stream.ConstraintProvider} will no longer be triggered.

@@ -22,15 +22,11 @@ import org.jspecify.annotations.Nullable;
  *
  * <ul>
  *   <li>Built-in foragers configured via {@link #pickEarlyType}
- *   <li>Custom foragers configured via {@link #foragerClass} (enterprise feature)
+ *   <li>Custom foragers configured via {@link #foragerClass}
  * </ul>
  *
  * <p>When using custom foragers, you can inject properties via {@link #customProperties}. Custom
  * properties are set using setter methods on the forager class (e.g., {@code setTopK("5")}).
- *
- * <p><b>Enterprise Feature:</b> Custom forager functionality requires a valid Greycos Enterprise
- * license. Attempting to use a custom forager without a license will result in an {@link
- * UnsupportedOperationException}.
  */
 @XmlType(
     propOrder = {

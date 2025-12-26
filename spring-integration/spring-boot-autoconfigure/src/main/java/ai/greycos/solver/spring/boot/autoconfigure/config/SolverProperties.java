@@ -33,9 +33,7 @@ public class SolverProperties {
   private Boolean daemon;
 
   /**
-   * Note: this setting is only available for <a
-   * href="https://greycos.ai/docs/greycos-solver/latest/enterprise-edition/enterprise-edition">Greycos
-   * Solver Enterprise Edition</a>. Enable multithreaded solving for a single problem, which
+   * Enable multithreaded solving for a single problem, which
    * increases CPU consumption. Defaults to "NONE". Other options include "AUTO", a number or
    * formula based on the available processor count.
    */
@@ -63,9 +61,7 @@ public class SolverProperties {
   private ConstraintStreamImplType constraintStreamImplType;
 
   /**
-   * Note: this setting is only available for <a
-   * href="https://greycos.ai/docs/greycos-solver/latest/enterprise-edition/enterprise-edition">Greycos
-   * Solver Enterprise Edition</a>. Enable rewriting the {@link
+   * Enable rewriting the {@link
    * ai.greycos.solver.core.api.score.stream.ConstraintProvider} class so nodes share lambdas when
    * possible, improving performance. When enabled, breakpoints placed in the {@link
    * ai.greycos.solver.core.api.score.stream.ConstraintProvider} will no longer be triggered.

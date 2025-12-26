@@ -23,7 +23,7 @@
           "attribute": "propOrder",
           "oldValue": "{\"easyScoreCalculatorClass\", \"easyScoreCalculatorCustomProperties\", \"constraintProviderClass\", \"constraintProviderCustomProperties\", \"constraintStreamImplType\", \"incrementalScoreCalculatorClass\", \"incrementalScoreCalculatorCustomProperties\", \"scoreDrlList\", \"initializingScoreTrend\", \"assertionScoreDirectorFactory\"}",
           "newValue": "{\"easyScoreCalculatorClass\", \"easyScoreCalculatorCustomProperties\", \"constraintProviderClass\", \"constraintProviderCustomProperties\", \"constraintStreamImplType\", \"constraintStreamAutomaticNodeSharing\", \"incrementalScoreCalculatorClass\", \"incrementalScoreCalculatorCustomProperties\", \"scoreDrlList\", \"initializingScoreTrend\", \"assertionScoreDirectorFactory\"}",
-          "justification": "Add support for automatic constraint stream node sharing outside of Quarkus for Greycos Solver Enterprise edition users."
+          "justification": "Add support for automatic constraint stream node sharing outside of Quarkus for Greycos Solver."
         },
         {
           "ignore": true,

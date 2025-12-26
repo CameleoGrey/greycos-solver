@@ -1,7 +1,6 @@
 # Axioms of the release pipeline:
 # - Each release starts from greycos-solver by running this Github Action.
 # - Each individual repository can only start its own release when its dependencies are fully released.
-#   greycos-solver-enterprise depends on greycos-solver
 #   greycos-quickstarts depends on greycos-solver
 #   greycos-website releases last
 # - Each individual repository uses 999-SNAPSHOT as its development version, even on micro branches.

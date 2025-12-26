@@ -7,23 +7,24 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 import ai.greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.enterprise.GreycosSolverEnterpriseService;
 import ai.greycos.solver.core.impl.AbstractFromConfigFactory;
 import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
+import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.list.mimic.MimicRecordingSubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.mimic.MimicReplayingSubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.mimic.SubListMimicRecorder;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandomFactory;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySubListSelector;
 
 public final class SubListSelectorFactory<Solution_>
     extends AbstractFromConfigFactory<Solution_, SubListSelectorConfig> {
 
-  private static final int DEFAULT_MINIMUM_SUB_LIST_SIZE =
-      1; // TODO Bump this to 2 in Greycos Solver 2.0
+  private static final int DEFAULT_MINIMUM_SUB_LIST_SIZE = 2;
   private static final int DEFAULT_MAXIMUM_SUB_LIST_SIZE = Integer.MAX_VALUE;
 
   private SubListSelectorFactory(SubListSelectorConfig config) {
@@ -113,14 +114,18 @@ public final class SubListSelectorFactory<Solution_>
       SelectionCacheType minimumCacheType,
       SelectionOrder resolvedSelectionOrder,
       RandomSubListSelector<Solution_> subListSelector) {
-    NearbySelectionConfig nearbySelectionConfig = config.getNearbySelectionConfig();
+    var nearbySelectionConfig = config.getNearbySelectionConfig();
     if (nearbySelectionConfig == null) {
       return subListSelector;
     }
-    return GreycosSolverEnterpriseService.loadOrFail(
-            GreycosSolverEnterpriseService.Feature.NEARBY_SELECTION)
-        .applyNearbySelection(
-            config, configPolicy, minimumCacheType, resolvedSelectionOrder, subListSelector);
+    return new NearbySubListSelector<>(
+        config,
+        configPolicy,
+        nearbySelectionConfig,
+        minimumCacheType,
+        resolvedSelectionOrder,
+        subListSelector.getVariableDescriptor(),
+        subListSelector);
   }
 
   private IterableValueSelector<Solution_> buildIterableValueSelector(

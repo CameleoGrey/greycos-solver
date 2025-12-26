@@ -89,19 +89,7 @@ public abstract class AbstractPhaseFactory<
     } else if (phaseConfig instanceof ExhaustiveSearchPhaseConfig) {
       return ExhaustiveSearchPhaseScope.class;
     } else if (phaseConfig instanceof PartitionedSearchPhaseConfig) {
-      try {
-        return (Class<? extends AbstractPhaseScope>)
-            Class.forName(
-                "ai.greycos.solver.enterprise.core.partitioned.PartitionedSearchPhaseScope");
-      } catch (ClassNotFoundException e) {
-        throw new IllegalStateException(
-            """
-                        The class (%s) is not found.
-                        Make sure Greycos Solver Enterprise Edition is on the classpath, or disable partitioned search.
-                        """
-                .formatted(
-                    "ai.greycos.solver.enterprise.core.partitioned.PartitionedSearchPhaseScope"));
-      }
+      return ai.greycos.solver.core.impl.partitionedsearch.scope.PartitionedSearchPhaseScope.class;
     } else {
       throw new IllegalStateException(
           "Unsupported phaseConfig class: %s".formatted(phaseConfig.getClass()));

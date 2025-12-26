@@ -24,13 +24,13 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListSw
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubListSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
-import ai.greycos.solver.core.enterprise.GreycosSolverEnterpriseService;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.move.composite.CartesianProductMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.composite.UnionMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorFactoryFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveListFactoryFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMoveSelectorFactory;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.MultistageMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.PillarChangeMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.PillarSwapMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateMoveSelectorFactory;
@@ -102,14 +102,11 @@ public interface MoveSelectorFactory<Solution_> {
       return new CartesianProductMoveSelectorFactory<>(cartesianProductMoveSelectorConfig);
     } else if (moveSelectorConfig
         instanceof MultistageMoveSelectorConfig multistageMoveSelectorConfig) {
-      var enterpriseService = GreycosSolverEnterpriseService.load();
-      return enterpriseService.buildBasicMultistageMoveSelectorFactory(
-          multistageMoveSelectorConfig);
+      return new MultistageMoveSelectorFactory<>(multistageMoveSelectorConfig);
     } else if (moveSelectorConfig
         instanceof ListMultistageMoveSelectorConfig listMultistageMoveSelectorConfig) {
-      var enterpriseService = GreycosSolverEnterpriseService.load();
-      return enterpriseService.buildListMultistageMoveSelectorFactory(
-          listMultistageMoveSelectorConfig);
+      return new ai.greycos.solver.core.impl.heuristic.selector.move.generic.list
+          .ListMultistageMoveSelectorFactory<>(listMultistageMoveSelectorConfig);
     } else {
       throw new IllegalArgumentException(
           String.format(

@@ -22,7 +22,6 @@ import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.util.ConfigUtils;
-import ai.greycos.solver.core.enterprise.GreycosSolverEnterpriseService;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
 
 import org.slf4j.Logger;
@@ -126,7 +125,7 @@ public class PlannerBenchmarkResult {
 
   @SuppressWarnings("unused") // Used by FreeMarker.
   public String getGreycosSolverVersion() {
-    return greycosSolverVersion;
+    return "Unified Edition";
   }
 
   public Integer getParallelBenchmarkCount() {
@@ -284,7 +283,7 @@ public class PlannerBenchmarkResult {
     availableProcessors = Runtime.getRuntime().availableProcessors();
     loggingLevelGreycosSolverCore = resolveLoggingLevel("ai.greycos.solver.core");
     maxMemory = Runtime.getRuntime().maxMemory();
-    greycosSolverVersion = GreycosSolverEnterpriseService.identifySolverVersion();
+    greycosSolverVersion = "Unified Edition";
     javaVersion =
         "Java "
             + System.getProperty("java.version")

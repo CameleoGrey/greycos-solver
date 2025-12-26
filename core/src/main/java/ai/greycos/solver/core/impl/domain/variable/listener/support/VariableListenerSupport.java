@@ -18,7 +18,6 @@ import java.util.function.IntFunction;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
-import ai.greycos.solver.core.enterprise.GreycosSolverEnterpriseService;
 import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.domain.variable.cascade.CascadingUpdateShadowVariableDescriptor;
@@ -61,8 +60,7 @@ public final class VariableListenerSupport<Solution_> implements SupplyManager {
     return new VariableListenerSupport<>(
         scoreDirector,
         new NotifiableRegistry<>(scoreDirector.getSolutionDescriptor()),
-        GreycosSolverEnterpriseService.loadOrDefault(
-            service -> service::buildTopologyGraph, () -> DefaultTopologicalOrderGraph::new));
+        DefaultTopologicalOrderGraph::new);
   }
 
   private static final int SHADOW_VARIABLE_VIOLATION_DISPLAY_LIMIT = 3;

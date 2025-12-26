@@ -9,9 +9,9 @@ import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.util.ConfigUtils;
-import ai.greycos.solver.core.enterprise.GreycosSolverEnterpriseService;
 import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.domain.variable.declarative.ConsistencyTracker;
+import ai.greycos.solver.core.impl.nodesharing.DefaultConstraintProviderNodeSharer;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirector;
 import ai.greycos.solver.core.impl.score.stream.bavet.BavetConstraintFactory;
@@ -65,13 +65,9 @@ public final class BavetConstraintStreamScoreDirectorFactory<
           "Automatic node sharing enabled for ConstraintProvider: {}",
           providedConstraintProviderClass.getName());
       try {
-        var enterpriseService =
-            GreycosSolverEnterpriseService.loadOrFail(
-                GreycosSolverEnterpriseService.Feature.AUTOMATIC_NODE_SHARING);
+        var nodeSharer = new DefaultConstraintProviderNodeSharer();
         Class<? extends ConstraintProvider> transformedClass =
-            enterpriseService
-                .createNodeSharer()
-                .buildNodeSharedConstraintProvider(providedConstraintProviderClass);
+            nodeSharer.buildNodeSharedConstraintProvider(providedConstraintProviderClass);
         LOGGER.info(
             "Successfully applied node sharing transformation. Transformed class: {}",
             transformedClass.getName());

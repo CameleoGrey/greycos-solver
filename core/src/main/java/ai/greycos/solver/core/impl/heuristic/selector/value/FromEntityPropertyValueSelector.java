@@ -83,7 +83,6 @@ public final class FromEntityPropertyValueSelector<Solution_>
   public long getSize(Object entity) {
     if (entity == null) {
       // When the entity is null, the size of the complete list of values is returned
-      // This logic aligns with the requirements for Nearby in the enterprise repository
       return Objects.requireNonNull(countableValueRange).getSize();
     } else {
       return scoreDirector.getValueRangeManager().countOnEntity(valueRangeDescriptor, entity);
@@ -107,7 +106,6 @@ public final class FromEntityPropertyValueSelector<Solution_>
   public Iterator<Object> endingIterator(Object entity) {
     if (entity == null) {
       // When the entity is null, the complete list of values is returned
-      // This logic aligns with the requirements for Nearby in the enterprise repository
       return countableValueRange.createOriginalIterator();
     } else {
       var valueRange =

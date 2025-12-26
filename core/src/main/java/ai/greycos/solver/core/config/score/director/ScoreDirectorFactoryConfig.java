@@ -154,8 +154,7 @@ public class ScoreDirectorFactoryConfig extends AbstractConfig<ScoreDirectorFact
 
   /**
    * @deprecated All support for Score DRL was removed when Greycos was forked from OptaPlanner. See
-   *     <a href="https://greycos.ai/blog/migrating-score-drl-to-constraint-streams">DRL to
-   *     Constraint Streams migration recipe</a>.
+   *     the DRL to Constraint Streams migration recipe.
    */
   @Deprecated(forRemoval = true)
   public List<String> getScoreDrlList() {
@@ -164,8 +163,7 @@ public class ScoreDirectorFactoryConfig extends AbstractConfig<ScoreDirectorFact
 
   /**
    * @deprecated All support for Score DRL was removed when Greycos was forked from OptaPlanner. See
-   *     <a href="https://greycos.ai/blog/migrating-score-drl-to-constraint-streams">DRL to
-   *     Constraint Streams migration recipe</a>.
+   *     the DRL to Constraint Streams migration recipe.
    */
   @Deprecated(forRemoval = true)
   public void setScoreDrlList(List<String> scoreDrlList) {
@@ -248,8 +246,7 @@ public class ScoreDirectorFactoryConfig extends AbstractConfig<ScoreDirectorFact
 
   /**
    * @deprecated All support for Score DRL was removed when Greycos was forked from OptaPlanner. See
-   *     <a href="https://greycos.ai/blog/migrating-score-drl-to-constraint-streams">DRL to
-   *     Constraint Streams migration recipe</a>.
+   *     the DRL to Constraint Streams migration recipe.
    */
   @Deprecated(forRemoval = true)
   public ScoreDirectorFactoryConfig withScoreDrlList(List<String> scoreDrlList) {
@@ -259,8 +256,7 @@ public class ScoreDirectorFactoryConfig extends AbstractConfig<ScoreDirectorFact
 
   /**
    * @deprecated All support for Score DRL was removed when Greycos was forked from OptaPlanner. See
-   *     <a href="https://greycos.ai/blog/migrating-score-drl-to-constraint-streams">DRL to
-   *     Constraint Streams migration recipe</a>.
+   *     the DRL to Constraint Streams migration recipe.
    */
   @Deprecated(forRemoval = true)
   public ScoreDirectorFactoryConfig withScoreDrls(String... scoreDrls) {
