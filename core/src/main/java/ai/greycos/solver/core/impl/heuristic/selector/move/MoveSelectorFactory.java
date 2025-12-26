@@ -102,16 +102,12 @@ public interface MoveSelectorFactory<Solution_> {
       return new CartesianProductMoveSelectorFactory<>(cartesianProductMoveSelectorConfig);
     } else if (moveSelectorConfig
         instanceof MultistageMoveSelectorConfig multistageMoveSelectorConfig) {
-      var enterpriseService =
-          GreycosSolverEnterpriseService.loadOrFail(
-              GreycosSolverEnterpriseService.Feature.MULTISTAGE_MOVE);
+      var enterpriseService = GreycosSolverEnterpriseService.load();
       return enterpriseService.buildBasicMultistageMoveSelectorFactory(
           multistageMoveSelectorConfig);
     } else if (moveSelectorConfig
         instanceof ListMultistageMoveSelectorConfig listMultistageMoveSelectorConfig) {
-      var enterpriseService =
-          GreycosSolverEnterpriseService.loadOrFail(
-              GreycosSolverEnterpriseService.Feature.MULTISTAGE_MOVE);
+      var enterpriseService = GreycosSolverEnterpriseService.load();
       return enterpriseService.buildListMultistageMoveSelectorFactory(
           listMultistageMoveSelectorConfig);
     } else {

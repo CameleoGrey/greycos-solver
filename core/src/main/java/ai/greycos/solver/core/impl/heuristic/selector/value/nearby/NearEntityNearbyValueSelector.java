@@ -110,13 +110,13 @@ public final class NearEntityNearbyValueSelector<Solution_>
 
   private class RandomNearbyValueIterator implements Iterator<Object> {
 
-    private final java.util.Random workingRandom;
+    private final java.util.Random random;
     private final @Nullable Object entity;
     private final int nearbySize;
     private int count = 0;
 
-    public RandomNearbyValueIterator(java.util.Random workingRandom, @Nullable Object entity) {
-      this.workingRandom = workingRandom;
+    public RandomNearbyValueIterator(java.util.Random random, @Nullable Object entity) {
+      this.random = random != null ? random : NearEntityNearbyValueSelector.this.workingRandom;
       this.entity = entity;
       this.nearbySize = (int) childValueSelector.getSize(entity);
     }
@@ -131,7 +131,7 @@ public final class NearEntityNearbyValueSelector<Solution_>
       if (nearbyRandom == null) {
         throw new IllegalStateException("nearbyRandom is null but randomSelection is true");
       }
-      int nearbyIndex = nearbyRandom.nextInt(workingRandom, nearbySize);
+      int nearbyIndex = nearbyRandom.nextInt(random, nearbySize);
       count++;
 
       // Use spatial distance matrix if available for O(1) lookup

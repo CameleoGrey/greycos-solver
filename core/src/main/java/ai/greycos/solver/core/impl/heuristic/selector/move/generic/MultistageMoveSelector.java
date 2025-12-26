@@ -8,10 +8,9 @@ import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.jspecify.annotations.NonNull;
 
 /**
  * A move selector that generates multistage moves.
@@ -94,7 +93,7 @@ public class MultistageMoveSelector<Solution_> extends GenericMoveSelector<Solut
   public void stepStarted(@NonNull AbstractStepScope<Solution_> stepScope) {
     super.stepStarted(stepScope);
     // Stage selectors receive stepStarted through phaseLifecycleSupport
-    
+
     if (LOGGER.isTraceEnabled()) {
       LOGGER.trace("Step started for multistage move selector");
     }
@@ -132,11 +131,11 @@ public class MultistageMoveSelector<Solution_> extends GenericMoveSelector<Solut
       }
       size *= stageSize;
     }
-    
+
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Multistage move selector size: {}", size);
     }
-    
+
     return size;
   }
 
@@ -150,10 +149,9 @@ public class MultistageMoveSelector<Solution_> extends GenericMoveSelector<Solut
   public Iterator<Move<Solution_>> iterator() {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Creating {} multistage move iterator",
-          randomSelection ? "random" : "sequential");
+          "Creating {} multistage move iterator", randomSelection ? "random" : "sequential");
     }
-    
+
     if (randomSelection) {
       return new RandomMultistageMoveIterator<>(stageSelectors, workingRandom);
     } else {

@@ -9,10 +9,9 @@ import ai.greycos.solver.core.impl.heuristic.move.CompositeMove;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.jspecify.annotations.NonNull;
 
 /**
  * Iterator for multistage moves in random order.
@@ -94,9 +93,9 @@ public class RandomMultistageMoveIterator<Solution_> implements Iterator<Move<So
    * <p>If selector is never-ending (random), we just take the first move. For finite selectors:
    *
    * <ul>
-   *   <li>If size <= CACHE_THRESHOLD: cache moves and select randomly (O(1) after cache)</li>
-   *   <li>If size > CACHE_THRESHOLD: skip to random position (O(n), but n is large so memory
-   *       would be worse)</li>
+   *   <li>If size <= CACHE_THRESHOLD: cache moves and select randomly (O(1) after cache)
+   *   <li>If size > CACHE_THRESHOLD: skip to random position (O(n), but n is large so memory would
+   *       be worse)
    * </ul>
    *
    * @param selector move selector to get random move from
@@ -110,7 +109,7 @@ public class RandomMultistageMoveIterator<Solution_> implements Iterator<Move<So
       if (LOGGER.isTraceEnabled()) {
         LOGGER.trace("Stage {} is never-ending, taking first move", stageIndex);
       }
-      
+
       Iterator<Move<Solution_>> iterator = selector.iterator();
       if (!iterator.hasNext()) {
         throw new IllegalStateException("Stage selector " + selector + " has no moves");
@@ -128,14 +127,17 @@ public class RandomMultistageMoveIterator<Solution_> implements Iterator<Move<So
     // Use caching for small selectors to avoid O(n) skip operations
     if (size <= CACHE_THRESHOLD) {
       if (LOGGER.isTraceEnabled()) {
-        LOGGER.trace("Stage {} size {} <= cache threshold {}, using cache",
-            stageIndex, size, CACHE_THRESHOLD);
+        LOGGER.trace(
+            "Stage {} size {} <= cache threshold {}, using cache",
+            stageIndex,
+            size,
+            CACHE_THRESHOLD);
       }
       return getRandomMoveFromCache(selector, stageIndex, (int) size);
     } else {
       if (LOGGER.isTraceEnabled()) {
-        LOGGER.trace("Stage {} size {} > cache threshold {}, using skip",
-            stageIndex, size, CACHE_THRESHOLD);
+        LOGGER.trace(
+            "Stage {} size {} > cache threshold {}, using skip", stageIndex, size, CACHE_THRESHOLD);
       }
       // For large selectors, use skip strategy (trade memory for time)
       return getRandomMoveBySkipping(selector);

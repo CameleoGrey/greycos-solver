@@ -63,20 +63,25 @@ public interface GreycosSolverEnterpriseService {
   }
 
   @SuppressWarnings("unchecked")
-  static GreycosSolverEnterpriseService load()
-      throws ClassNotFoundException,
-          NoSuchMethodException,
-          InvocationTargetException,
-          IllegalAccessException {
+  static GreycosSolverEnterpriseService load() {
     // Avoids ServiceLoader by using reflection directly.
-    var clz =
-        (Class<? extends GreycosSolverEnterpriseService>)
-            Class.forName(
-                "ai.greycos.solver.enterprise.core.DefaultGreycosSolverEnterpriseService");
-    Method method = clz.getMethod("getInstance", Function.class);
-    return (GreycosSolverEnterpriseService)
-        method.invoke(
-            null, (Function<Class<?>, String>) GreycosSolverEnterpriseService::getVersionString);
+    try {
+      var clz =
+          (Class<? extends GreycosSolverEnterpriseService>)
+              Class.forName(
+                  "ai.greycos.solver.enterprise.core.DefaultGreycosSolverEnterpriseService");
+      Method method = clz.getMethod("getInstance", Function.class);
+      return (GreycosSolverEnterpriseService)
+          method.invoke(
+              null, (Function<Class<?>, String>) GreycosSolverEnterpriseService::getVersionString);
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InvocationTargetException
+        | IllegalAccessException e) {
+      // Enterprise edition not available or failed to load, return default implementation
+      return ai.greycos.solver.core.impl.partitionedsearch.DefaultGreycosSolverEnterpriseService
+          .getInstance(GreycosSolverEnterpriseService::getVersionString);
+    }
   }
 
   static String getVersionString(Class<?> clz) {
@@ -207,14 +212,34 @@ public interface GreycosSolverEnterpriseService {
       SelectionOrder resolvedSelectionOrder,
       ElementDestinationSelector<Solution_> destinationSelector);
 
-  <Solution_>
+  default <Solution_>
       AbstractMoveSelectorFactory<Solution_, MultistageMoveSelectorConfig>
-          buildBasicMultistageMoveSelectorFactory(MultistageMoveSelectorConfig moveSelectorConfig);
+          buildBasicMultistageMoveSelectorFactory(MultistageMoveSelectorConfig moveSelectorConfig) {
+    return loadOrDefault(
+        enterpriseService ->
+            enterpriseService.buildBasicMultistageMoveSelectorFactory(moveSelectorConfig),
+        () -> {
+          // Fallback to community implementation
+          return ai.greycos.solver.core.impl.partitionedsearch.DefaultGreycosSolverEnterpriseService
+              .getInstance(GreycosSolverEnterpriseService::getVersionString)
+              .buildBasicMultistageMoveSelectorFactory(moveSelectorConfig);
+        });
+  }
 
-  <Solution_>
+  default <Solution_>
       AbstractMoveSelectorFactory<Solution_, ListMultistageMoveSelectorConfig>
           buildListMultistageMoveSelectorFactory(
-              ListMultistageMoveSelectorConfig moveSelectorConfig);
+              ListMultistageMoveSelectorConfig moveSelectorConfig) {
+    return loadOrDefault(
+        enterpriseService ->
+            enterpriseService.buildListMultistageMoveSelectorFactory(moveSelectorConfig),
+        () -> {
+          // Fallback to community implementation
+          return ai.greycos.solver.core.impl.partitionedsearch.DefaultGreycosSolverEnterpriseService
+              .getInstance(GreycosSolverEnterpriseService::getVersionString)
+              .buildListMultistageMoveSelectorFactory(moveSelectorConfig);
+        });
+  }
 
   enum Feature {
     MULTITHREADED_SOLVING(

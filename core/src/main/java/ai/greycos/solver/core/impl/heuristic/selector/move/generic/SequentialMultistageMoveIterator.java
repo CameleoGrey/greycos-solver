@@ -9,10 +9,9 @@ import ai.greycos.solver.core.impl.heuristic.move.CompositeMove;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.jspecify.annotations.NonNull;
 
 /**
  * Iterator for multistage moves in sequential order.
@@ -21,7 +20,8 @@ import org.jspecify.annotations.NonNull;
  */
 public class SequentialMultistageMoveIterator<Solution_> implements Iterator<Move<Solution_>> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SequentialMultistageMoveIterator.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SequentialMultistageMoveIterator.class);
 
   private final List<MoveSelector<Solution_>> stageSelectors;
   private final List<Iterator<Move<Solution_>>> stageIterators;

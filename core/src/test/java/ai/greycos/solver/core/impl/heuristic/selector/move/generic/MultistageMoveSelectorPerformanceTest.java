@@ -5,17 +5,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
+import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
+import ai.greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
+import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
+import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.testdomain.TestdataConstraintProvider;
 import ai.greycos.solver.core.testdomain.TestdataEntity;
 import ai.greycos.solver.core.testdomain.TestdataSolution;
@@ -25,17 +28,18 @@ import org.junit.jupiter.api.Test;
 /**
  * Performance benchmarks for MultistageMoveSelector.
  *
- * <p>These tests measure and compare the performance of multistage moves against
- * other move selector types (e.g., union moves). The benchmarks focus on:
+ * <p>These tests measure and compare the performance of multistage moves against other move
+ * selector types (e.g., union moves). The benchmarks focus on:
+ *
  * <ul>
- *   <li>Move generation speed</li>
- *   <li>Score calculation efficiency</li>
- *   <li>Memory usage</li>
- *   <li>Scalability with problem size</li>
+ *   <li>Move generation speed
+ *   <li>Score calculation efficiency
+ *   <li>Memory usage
+ *   <li>Scalability with problem size
  * </ul>
  *
- * <p><b>Note:</b> These tests are not executed during normal test runs. They are
- * designed to be run manually to collect performance data.
+ * <p><b>Note:</b> These tests are not executed during normal test runs. They are designed to be run
+ * manually to collect performance data.
  */
 class MultistageMoveSelectorPerformanceTest {
 
@@ -43,9 +47,10 @@ class MultistageMoveSelectorPerformanceTest {
    * Benchmark multistage moves vs union moves on a small problem.
    *
    * <p>This test compares:
+   *
    * <ul>
-   *   <li>Multistage: swap + change (atomic)</li>
-   *   <li>Union: swap OR change (individual)</li>
+   *   <li>Multistage: swap + change (atomic)
+   *   <li>Union: swap OR change (individual)
    * </ul>
    */
   @Test
@@ -55,8 +60,7 @@ class MultistageMoveSelectorPerformanceTest {
     long timeLimitMs = 500L;
 
     var multistageConfig =
-        createMultistageSolverConfig(
-            entityCount, valueCount, timeLimitMs, false);
+        createMultistageSolverConfig(entityCount, valueCount, timeLimitMs, false);
     var unionConfig = createUnionSolverConfig(entityCount, valueCount, timeLimitMs);
 
     var problem = TestdataSolution.generateSolution(entityCount, valueCount);
@@ -74,8 +78,8 @@ class MultistageMoveSelectorPerformanceTest {
     var unionTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - unionStart);
 
     // Both should find feasible solutions
-    assertThat(multistageSolution.getScore().isFeasible()).isTrue();
-    assertThat(unionSolution.getScore().isFeasible()).isTrue();
+    assertThat(((TestdataSolution) multistageSolution).getScore().isFeasible()).isTrue();
+    assertThat(((TestdataSolution) unionSolution).getScore().isFeasible()).isTrue();
 
     // Performance characteristics
     // Multistage moves are more expensive per move but may find better solutions faster
@@ -83,8 +87,8 @@ class MultistageMoveSelectorPerformanceTest {
     System.out.println("Small problem (5 entities, 30 values):");
     System.out.println("  Multistage time: " + multistageTime + "ms");
     System.out.println("  Union time: " + unionTime + "ms");
-    System.out.println("  Multistage score: " + multistageSolution.getScore());
-    System.out.println("  Union score: " + unionSolution.getScore());
+    System.out.println("  Multistage score: " + ((TestdataSolution) multistageSolution).getScore());
+    System.out.println("  Union score: " + ((TestdataSolution) unionSolution).getScore());
   }
 
   /**
@@ -99,8 +103,7 @@ class MultistageMoveSelectorPerformanceTest {
     long timeLimitMs = 1000L;
 
     var multistageConfig =
-        createMultistageSolverConfig(
-            entityCount, valueCount, timeLimitMs, false);
+        createMultistageSolverConfig(entityCount, valueCount, timeLimitMs, false);
     var unionConfig = createUnionSolverConfig(entityCount, valueCount, timeLimitMs);
 
     var problem = TestdataSolution.generateSolution(entityCount, valueCount);
@@ -117,14 +120,14 @@ class MultistageMoveSelectorPerformanceTest {
     var unionSolution = unionSolver.solve(problem);
     var unionTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - unionStart);
 
-    assertThat(multistageSolution.getScore().isFeasible()).isTrue();
-    assertThat(unionSolution.getScore().isFeasible()).isTrue();
+    assertThat(((TestdataSolution) multistageSolution).getScore().isFeasible()).isTrue();
+    assertThat(((TestdataSolution) unionSolution).getScore().isFeasible()).isTrue();
 
     System.out.println("Medium problem (10 entities, 50 values):");
     System.out.println("  Multistage time: " + multistageTime + "ms");
     System.out.println("  Union time: " + unionTime + "ms");
-    System.out.println("  Multistage score: " + multistageSolution.getScore());
-    System.out.println("  Union score: " + unionSolution.getScore());
+    System.out.println("  Multistage score: " + ((TestdataSolution) multistageSolution).getScore());
+    System.out.println("  Union score: " + ((TestdataSolution) unionSolution).getScore());
   }
 
   /**
@@ -139,11 +142,8 @@ class MultistageMoveSelectorPerformanceTest {
     long timeLimitMs = 500L;
 
     var sequentialConfig =
-        createMultistageSolverConfig(
-            entityCount, valueCount, timeLimitMs, false);
-    var randomConfig =
-        createMultistageSolverConfig(
-            entityCount, valueCount, timeLimitMs, true);
+        createMultistageSolverConfig(entityCount, valueCount, timeLimitMs, false);
+    var randomConfig = createMultistageSolverConfig(entityCount, valueCount, timeLimitMs, true);
 
     var problem = TestdataSolution.generateSolution(entityCount, valueCount);
 
@@ -151,8 +151,7 @@ class MultistageMoveSelectorPerformanceTest {
     var sequentialStart = System.nanoTime();
     var sequentialSolver = SolverFactory.create(sequentialConfig).buildSolver();
     var sequentialSolution = sequentialSolver.solve(problem);
-    var sequentialTime =
-        TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - sequentialStart);
+    var sequentialTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - sequentialStart);
 
     // Benchmark random
     var randomStart = System.nanoTime();
@@ -160,20 +159,20 @@ class MultistageMoveSelectorPerformanceTest {
     var randomSolution = randomSolver.solve(problem);
     var randomTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - randomStart);
 
-    assertThat(sequentialSolution.getScore().isFeasible()).isTrue();
-    assertThat(randomSolution.getScore().isFeasible()).isTrue();
+    assertThat(((TestdataSolution) sequentialSolution).getScore().isFeasible()).isTrue();
+    assertThat(((TestdataSolution) randomSolution).getScore().isFeasible()).isTrue();
 
     System.out.println("Sequential vs Random selection:");
     System.out.println("  Sequential time: " + sequentialTime + "ms");
     System.out.println("  Random time: " + randomTime + "ms");
-    System.out.println("  Sequential score: " + sequentialSolution.getScore());
-    System.out.println("  Random score: " + randomSolution.getScore());
+    System.out.println("  Sequential score: " + ((TestdataSolution) sequentialSolution).getScore());
+    System.out.println("  Random score: " + ((TestdataSolution) randomSolution).getScore());
   }
 
   /**
    * Benchmark with varying stage counts.
    *
-   * <p>This test evaluates the performance impact of adding more stages.
+   * <p>This test evaluates performance impact of adding more stages.
    */
   @Test
   void benchmarkVaryingStageCounts() {
@@ -185,8 +184,7 @@ class MultistageMoveSelectorPerformanceTest {
 
     // Test with 2 stages
     var twoStageConfig =
-        createMultistageSolverConfig(
-            entityCount, valueCount, timeLimitMs, false, 2);
+        createMultistageSolverConfig(entityCount, valueCount, timeLimitMs, false, 2);
     var twoStageStart = System.nanoTime();
     var twoStageSolver = SolverFactory.create(twoStageConfig).buildSolver();
     var twoStageSolution = twoStageSolver.solve(problem);
@@ -194,8 +192,7 @@ class MultistageMoveSelectorPerformanceTest {
 
     // Test with 3 stages
     var threeStageConfig =
-        createMultistageSolverConfig(
-            entityCount, valueCount, timeLimitMs, false, 3);
+        createMultistageSolverConfig(entityCount, valueCount, timeLimitMs, false, 3);
     var threeStageStart = System.nanoTime();
     var threeStageSolver = SolverFactory.create(threeStageConfig).buildSolver();
     var threeStageSolution = threeStageSolver.solve(problem);
@@ -204,8 +201,8 @@ class MultistageMoveSelectorPerformanceTest {
     System.out.println("Varying stage counts:");
     System.out.println("  2 stages time: " + twoStageTime + "ms");
     System.out.println("  3 stages time: " + threeStageTime + "ms");
-    System.out.println("  2 stages score: " + twoStageSolution.getScore());
-    System.out.println("  3 stages score: " + threeStageSolution.getScore());
+    System.out.println("  2 stages score: " + ((TestdataSolution) twoStageSolution).getScore());
+    System.out.println("  3 stages score: " + ((TestdataSolution) threeStageSolution).getScore());
   }
 
   /**
@@ -219,9 +216,7 @@ class MultistageMoveSelectorPerformanceTest {
     int valueCount = 100;
     long timeLimitMs = 2000L;
 
-    var config =
-        createMultistageSolverConfig(
-            entityCount, valueCount, timeLimitMs, false);
+    var config = createMultistageSolverConfig(entityCount, valueCount, timeLimitMs, false);
     var problem = TestdataSolution.generateSolution(entityCount, valueCount);
 
     var runtime = Runtime.getRuntime();
@@ -237,9 +232,9 @@ class MultistageMoveSelectorPerformanceTest {
 
     System.out.println("Memory usage:");
     System.out.println("  Memory used: " + memoryUsed + "MB");
-    System.out.println("  Final score: " + solution.getScore());
+    System.out.println("  Final score: " + ((TestdataSolution) solution).getScore());
 
-    assertThat(solution.getScore().isFeasible()).isTrue();
+    assertThat(((TestdataSolution) solution).getScore().isFeasible()).isTrue();
     // Memory usage should be reasonable (less than 500MB for this problem size)
     assertThat(memoryUsed).isLessThan(500);
   }
@@ -255,9 +250,7 @@ class MultistageMoveSelectorPerformanceTest {
     int valueCount = 60;
     long timeLimitMs = 1000L;
 
-    var config =
-        createMultistageSolverConfig(
-            entityCount, valueCount, timeLimitMs, true);
+    var config = createMultistageSolverConfig(entityCount, valueCount, timeLimitMs, true);
     var problem = TestdataSolution.generateSolution(entityCount, valueCount);
 
     // Run multiple iterations to warm up and measure average
@@ -271,7 +264,7 @@ class MultistageMoveSelectorPerformanceTest {
       var time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
       totalTime += time;
 
-      assertThat(solution.getScore().isFeasible()).isTrue();
+      assertThat(((TestdataSolution) solution).getScore().isFeasible()).isTrue();
     }
 
     var avgTime = totalTime / iterations;
@@ -286,16 +279,11 @@ class MultistageMoveSelectorPerformanceTest {
 
   private SolverConfig createMultistageSolverConfig(
       int entityCount, int valueCount, long timeLimitMs, boolean randomSelection) {
-    return createMultistageSolverConfig(
-        entityCount, valueCount, timeLimitMs, randomSelection, 2);
+    return createMultistageSolverConfig(entityCount, valueCount, timeLimitMs, randomSelection, 2);
   }
 
   private SolverConfig createMultistageSolverConfig(
-      int entityCount,
-      int valueCount,
-      long timeLimitMs,
-      boolean randomSelection,
-      int stageCount) {
+      int entityCount, int valueCount, long timeLimitMs, boolean randomSelection, int stageCount) {
     var multistageConfig =
         new MultistageMoveSelectorConfig()
             .withStageProviderClass(
@@ -304,7 +292,7 @@ class MultistageMoveSelectorPerformanceTest {
                     : TestThreeStageSwapChangeProvider.class)
             .withEntityClass(TestdataEntity.class)
             .withVariableName("value")
-            .withRandomSelection(randomSelection);
+            .withSelectionOrder(randomSelection ? SelectionOrder.RANDOM : SelectionOrder.ORIGINAL);
 
     return new SolverConfig()
         .withEnvironmentMode(EnvironmentMode.TRACKED_FULL_ASSERT)
@@ -319,14 +307,11 @@ class MultistageMoveSelectorPerformanceTest {
                 new LocalSearchPhaseConfig().withMoveSelectorConfig(multistageConfig)));
   }
 
-  private SolverConfig createUnionSolverConfig(
-      int entityCount, int valueCount, long timeLimitMs) {
+  private SolverConfig createUnionSolverConfig(int entityCount, int valueCount, long timeLimitMs) {
     var swapConfig = new SwapMoveSelectorConfig();
     var changeConfig = new ChangeMoveSelectorConfig();
 
-    var unionConfig =
-        new UnionMoveSelectorConfig()
-            .withMoveSelectorConfigList(List.of(swapConfig, changeConfig));
+    var unionConfig = new UnionMoveSelectorConfig().withMoveSelectors(swapConfig, changeConfig);
 
     return new SolverConfig()
         .withEnvironmentMode(EnvironmentMode.TRACKED_FULL_ASSERT)
@@ -341,9 +326,7 @@ class MultistageMoveSelectorPerformanceTest {
                 new LocalSearchPhaseConfig().withMoveSelectorConfig(unionConfig)));
   }
 
-  /**
-   * Test StageProvider for two-stage moves (swap + change).
-   */
+  /** Test StageProvider for two-stage moves (swap + change). */
   public static class TestTwoStageSwapChangeProvider<Solution_>
       implements StageProvider<Solution_> {
 
@@ -355,46 +338,48 @@ class MultistageMoveSelectorPerformanceTest {
 
       // Stage 1: Swap move selector
       var swapSelectorConfig =
-          ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig
-              .builder()
-              .withEntityClass(
-                  configPolicy
-                      .getSolutionDescriptor()
-                      .getGenuineEntityDescriptorList()
-                      .get(0)
-                      .getEntityClass())
-              .build();
+          new SwapMoveSelectorConfig()
+              .withEntitySelectorConfig(
+                  new EntitySelectorConfig(
+                      configPolicy
+                          .getSolutionDescriptor()
+                          .getEntityDescriptors()
+                          .iterator()
+                          .next()
+                          .getEntityClass()));
 
       var swapSelectorFactory =
-          ai.greycos.solver.core.impl.heuristic.selector.move.generic.SwapMoveSelectorFactory
-              .<Solution_>create(swapSelectorConfig);
+          ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory.<Solution_>create(
+              swapSelectorConfig);
       stages.add(
           swapSelectorFactory.buildMoveSelector(
               configPolicy,
-              ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType.JUST_IN_TIME,
+              ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType
+                  .JUST_IN_TIME,
               ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder.RANDOM,
               false));
 
       // Stage 2: Change move selector
       var changeSelectorConfig =
-          ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig
-              .builder()
-              .withEntityClass(
-                  configPolicy
-                      .getSolutionDescriptor()
-                      .getGenuineEntityDescriptorList()
-                      .get(0)
-                      .getEntityClass())
-              .withVariableName("value")
-              .build();
+          new ChangeMoveSelectorConfig()
+              .withEntitySelectorConfig(
+                  new EntitySelectorConfig(
+                      configPolicy
+                          .getSolutionDescriptor()
+                          .getEntityDescriptors()
+                          .iterator()
+                          .next()
+                          .getEntityClass()))
+              .withValueSelectorConfig(new ValueSelectorConfig().withVariableName("value"));
 
       var changeSelectorFactory =
-          ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMoveSelectorFactory
-              .<Solution_>create(changeSelectorConfig);
+          ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory.<Solution_>create(
+              changeSelectorConfig);
       stages.add(
           changeSelectorFactory.buildMoveSelector(
               configPolicy,
-              ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType.JUST_IN_TIME,
+              ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType
+                  .JUST_IN_TIME,
               ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder.RANDOM,
               false));
 
@@ -407,9 +392,7 @@ class MultistageMoveSelectorPerformanceTest {
     }
   }
 
-  /**
-   * Test StageProvider for three-stage moves (swap + change + swap).
-   */
+  /** Test StageProvider for three-stage moves (swap + change + swap). */
   public static class TestThreeStageSwapChangeProvider<Solution_>
       implements StageProvider<Solution_> {
 
@@ -421,68 +404,71 @@ class MultistageMoveSelectorPerformanceTest {
 
       // Stage 1: Swap move selector
       var swapSelectorConfig1 =
-          ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig
-              .builder()
-              .withEntityClass(
-                  configPolicy
-                      .getSolutionDescriptor()
-                      .getGenuineEntityDescriptorList()
-                      .get(0)
-                      .getEntityClass())
-              .build();
+          new SwapMoveSelectorConfig()
+              .withEntitySelectorConfig(
+                  new EntitySelectorConfig(
+                      configPolicy
+                          .getSolutionDescriptor()
+                          .getEntityDescriptors()
+                          .iterator()
+                          .next()
+                          .getEntityClass()));
 
       var swapSelectorFactory1 =
-          ai.greycos.solver.core.impl.heuristic.selector.move.generic.SwapMoveSelectorFactory
-              .<Solution_>create(swapSelectorConfig1);
+          ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory.<Solution_>create(
+              swapSelectorConfig1);
       stages.add(
           swapSelectorFactory1.buildMoveSelector(
               configPolicy,
-              ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType.JUST_IN_TIME,
+              ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType
+                  .JUST_IN_TIME,
               ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder.RANDOM,
               false));
 
       // Stage 2: Change move selector
       var changeSelectorConfig =
-          ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig
-              .builder()
-              .withEntityClass(
-                  configPolicy
-                      .getSolutionDescriptor()
-                      .getGenuineEntityDescriptorList()
-                      .get(0)
-                      .getEntityClass())
-              .withVariableName("value")
-              .build();
+          new ChangeMoveSelectorConfig()
+              .withEntitySelectorConfig(
+                  new EntitySelectorConfig(
+                      configPolicy
+                          .getSolutionDescriptor()
+                          .getEntityDescriptors()
+                          .iterator()
+                          .next()
+                          .getEntityClass()))
+              .withValueSelectorConfig(new ValueSelectorConfig().withVariableName("value"));
 
       var changeSelectorFactory =
-          ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMoveSelectorFactory
-              .<Solution_>create(changeSelectorConfig);
+          ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory.<Solution_>create(
+              changeSelectorConfig);
       stages.add(
           changeSelectorFactory.buildMoveSelector(
               configPolicy,
-              ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType.JUST_IN_TIME,
+              ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType
+                  .JUST_IN_TIME,
               ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder.RANDOM,
               false));
 
       // Stage 3: Swap move selector (another one)
       var swapSelectorConfig2 =
-          ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig
-              .builder()
-              .withEntityClass(
-                  configPolicy
-                      .getSolutionDescriptor()
-                      .getGenuineEntityDescriptorList()
-                      .get(0)
-                      .getEntityClass())
-              .build();
+          new SwapMoveSelectorConfig()
+              .withEntitySelectorConfig(
+                  new EntitySelectorConfig(
+                      configPolicy
+                          .getSolutionDescriptor()
+                          .getEntityDescriptors()
+                          .iterator()
+                          .next()
+                          .getEntityClass()));
 
       var swapSelectorFactory2 =
-          ai.greycos.solver.core.impl.heuristic.selector.move.generic.SwapMoveSelectorFactory
-              .<Solution_>create(swapSelectorConfig2);
+          ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory.<Solution_>create(
+              swapSelectorConfig2);
       stages.add(
           swapSelectorFactory2.buildMoveSelector(
               configPolicy,
-              ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType.JUST_IN_TIME,
+              ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType
+                  .JUST_IN_TIME,
               ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder.RANDOM,
               false));
 
