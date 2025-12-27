@@ -102,11 +102,12 @@ public final class KDTree<T> {
 
     findKNearest(root, point, 0, k, pq);
 
-    // Extract in reverse order (farthest to closest)
-    // Add to front of list so index 0 is closest
-    for (int i = pq.size() - 1; i >= 0; i--) {
-      neighbors.add(0, pq.poll().point);
+    // Extract from max-heap (farthest to closest) and reverse
+    while (!pq.isEmpty()) {
+      neighbors.add(pq.poll().point);
     }
+    // Reverse so index 0 is closest
+    java.util.Collections.reverse(neighbors);
 
     return neighbors;
   }
@@ -231,9 +232,10 @@ public final class KDTree<T> {
     double distance = distanceFunction.distance(point, node.point);
 
     // Add to priority queue if it's better than current worst
+    // Use <= for tie-breaking to ensure stable ordering when distances are equal
     if (pq.size() < k) {
       pq.add(new Neighbor<>(node.point, distance));
-    } else if (distance < pq.peek().getDistance()) {
+    } else if (distance <= pq.peek().getDistance()) {
       pq.poll();
       pq.add(new Neighbor<>(node.point, distance));
     }
@@ -269,7 +271,8 @@ public final class KDTree<T> {
 
     // Calculate distance to current node
     double distance = distanceFunction.distance(point, node.point);
-    if (distance <= radiusSquared) {
+    // Use strict inequality to exclude points exactly at the boundary
+    if (distance < radiusSquared) {
       result.add(node.point);
     }
 

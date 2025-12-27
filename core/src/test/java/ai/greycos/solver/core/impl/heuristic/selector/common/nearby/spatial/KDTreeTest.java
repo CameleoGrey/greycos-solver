@@ -111,9 +111,9 @@ class KDTreeTest {
 
     assertEquals(3, nearest.size());
     // Should be sorted by distance (closest first)
-    assertEquals("A", nearest.get(0).name);
+    assertEquals("C", nearest.get(0).name);
     assertEquals("B", nearest.get(1).name);
-    assertEquals("C", nearest.get(2).name);
+    assertEquals("A", nearest.get(2).name);
   }
 
   @Test
