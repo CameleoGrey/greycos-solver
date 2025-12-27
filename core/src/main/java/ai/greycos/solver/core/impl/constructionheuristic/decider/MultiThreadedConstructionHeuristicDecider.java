@@ -97,25 +97,52 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     executor = createThreadPoolExecutor();
     moveThreadRunnerList = new ArrayList<>(moveThreadCount);
 
-    for (int moveThreadIndex = 0; moveThreadIndex < moveThreadCount; moveThreadIndex++) {
-      MoveThreadRunner<Solution_, ?> moveThreadRunner =
-          new MoveThreadRunner<>(
-              logIndentation,
-              moveThreadIndex,
-              true,
-              operationQueue,
-              resultQueue,
-              moveThreadBarrier,
-              assertMoveScoreFromScratch,
-              assertExpectedUndoMoveScore,
-              assertStepScoreFromScratch,
-              assertExpectedStepScore,
-              assertShadowVariablesAreNotStaleAfterStep);
-      moveThreadRunnerList.add(moveThreadRunner);
-      executor.submit(moveThreadRunner);
+    try {
+      for (int moveThreadIndex = 0; moveThreadIndex < moveThreadCount; moveThreadIndex++) {
+        MoveThreadRunner<Solution_, ?> moveThreadRunner =
+            new MoveThreadRunner<>(
+                logIndentation,
+                moveThreadIndex,
+                true,
+                operationQueue,
+                resultQueue,
+                moveThreadBarrier,
+                assertMoveScoreFromScratch,
+                assertExpectedUndoMoveScore,
+                assertStepScoreFromScratch,
+                assertExpectedStepScore,
+                assertShadowVariablesAreNotStaleAfterStep);
+        moveThreadRunnerList.add(moveThreadRunner);
+        executor.submit(moveThreadRunner);
 
-      // Send setup operation to initialize the thread
-      operationQueue.add(new SetupOperation<>(scoreDirector));
+        // Send setup operation to initialize the thread
+        operationQueue.add(new SetupOperation<>(scoreDirector));
+      }
+    } catch (RuntimeException | Error e) {
+      // Clean up resources if thread initialization fails
+      LOGGER.error(
+          "{}            Failed to initialize move threads, falling back to single-threaded mode: {}",
+          logIndentation,
+          e.getMessage(),
+          e);
+      shutdownMoveThreads();
+      fallbackToSingleThreaded = true;
+
+      // Clean up resources to avoid hanging
+      // IMPORTANT: Break the barrier to release any waiting threads
+      if (moveThreadBarrier != null) {
+        try {
+          moveThreadBarrier.reset();
+        } catch (Exception barrierException) {
+          // Ignore barrier exceptions during cleanup
+        }
+        moveThreadBarrier = null;
+      }
+      operationQueue = null;
+      resultQueue = null;
+      moveThreadRunnerList = null;
+
+      throw e;
     }
   }
 
