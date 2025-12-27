@@ -195,9 +195,6 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       }
     } while (movesInPlay > 0);
 
-    // Clear any remaining operations in the queue
-    operationQueue.clear();
-
     // Pick the best move from the results
     pickMove(stepScope);
 

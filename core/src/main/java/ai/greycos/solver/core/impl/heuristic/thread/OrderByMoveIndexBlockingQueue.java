@@ -1,8 +1,9 @@
 package ai.greycos.solver.core.impl.heuristic.thread;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
@@ -54,8 +55,8 @@ public class OrderByMoveIndexBlockingQueue<Solution_> {
 
     public MoveResult(int moveThreadIndex, Throwable throwable) {
       this.moveThreadIndex = moveThreadIndex;
-      this.stepIndex = -1;
-      this.moveIndex = -1;
+      this.stepIndex = Integer.MIN_VALUE;
+      this.moveIndex = Integer.MIN_VALUE;
       this.move = null;
       this.moveDoable = false;
       this.score = null;
@@ -89,55 +90,121 @@ public class OrderByMoveIndexBlockingQueue<Solution_> {
     public Throwable getThrowable() {
       return throwable;
     }
+
+    public boolean hasThrownException() {
+      return throwable != null;
+    }
   }
 
-  private final BlockingQueue<MoveResult<Solution_>> queue;
-  private final int moveThreadCount;
-  private final AtomicInteger nextStepIndex = new AtomicInteger(-1);
-  private final AtomicInteger nextMoveIndex = new AtomicInteger(-1);
-  private final Object queueLock = new Object();
+  private final BlockingQueue<MoveResult<Solution_>> innerQueue;
+  private final Map<Integer, MoveResult<Solution_>> backlog;
+
+  private int filterStepIndex = Integer.MIN_VALUE;
+  private int nextMoveIndex = Integer.MIN_VALUE;
 
   public OrderByMoveIndexBlockingQueue(int capacity) {
-    this.queue = new ArrayBlockingQueue<>(capacity);
-    this.moveThreadCount = 0; // Will be set when threads are created
+    this.innerQueue = new ArrayBlockingQueue<>(capacity);
+    this.backlog = new HashMap<>(capacity);
   }
 
   public void startNextStep(int stepIndex) {
-    synchronized (queueLock) {
-      nextStepIndex.set(stepIndex);
-      nextMoveIndex.set(0);
+    synchronized (this) {
+      if (filterStepIndex >= stepIndex) {
+        throw new IllegalStateException(
+            "Impossible situation: stepIndex ("
+                + stepIndex
+                + ") is not greater than previous stepIndex ("
+                + filterStepIndex
+                + ").");
+      }
+      filterStepIndex = stepIndex;
+
+      // Check for exceptions from previous step before clearing
+      MoveResult<Solution_> exceptionResult =
+          innerQueue.stream().filter(MoveResult::hasThrownException).findFirst().orElse(null);
+      if (exceptionResult != null) {
+        throw new IllegalStateException(
+            "Move thread (" + exceptionResult.getMoveThreadIndex() + ") threw exception.",
+            exceptionResult.getThrowable());
+      }
+
+      innerQueue.clear();
     }
+    nextMoveIndex = 0;
+    backlog.clear();
   }
 
   public void addMove(
       int moveThreadIndex, int stepIndex, int moveIndex, Move<Solution_> move, Score<?> score) {
-    synchronized (queueLock) {
-      queue.add(new MoveResult<>(moveThreadIndex, stepIndex, moveIndex, move, score));
+    MoveResult<Solution_> result =
+        new MoveResult<>(moveThreadIndex, stepIndex, moveIndex, move, score);
+    synchronized (this) {
+      if (result.getStepIndex() != filterStepIndex) {
+        // Discard stale result from previous step
+        return;
+      }
+      innerQueue.add(result);
     }
   }
 
   public void addUndoableMove(
       int moveThreadIndex, int stepIndex, int moveIndex, Move<Solution_> move) {
-    synchronized (queueLock) {
-      queue.add(new MoveResult<>(moveThreadIndex, stepIndex, moveIndex, move));
+    MoveResult<Solution_> result = new MoveResult<>(moveThreadIndex, stepIndex, moveIndex, move);
+    synchronized (this) {
+      if (result.getStepIndex() != filterStepIndex) {
+        // Discard stale result from previous step
+        return;
+      }
+      innerQueue.add(result);
     }
   }
 
   public void addExceptionThrown(int moveThreadIndex, Throwable throwable) {
-    synchronized (queueLock) {
-      queue.add(new MoveResult<>(moveThreadIndex, throwable));
+    MoveResult<Solution_> result = new MoveResult<>(moveThreadIndex, throwable);
+    synchronized (this) {
+      innerQueue.add(result);
     }
   }
 
   public MoveResult<Solution_> take() throws InterruptedException {
-    return queue.take();
+    final int moveIndex = nextMoveIndex++;
+
+    // Check backlog first
+    MoveResult<Solution_> cached = backlog.remove(moveIndex);
+    if (cached != null) {
+      return cached;
+    }
+
+    // Wait for expected moveIndex with ordering logic
+    while (true) {
+      MoveResult<Solution_> result = innerQueue.take();
+
+      if (result.hasThrownException()) {
+        throw new IllegalStateException(
+            "Move thread (" + result.getMoveThreadIndex() + ") threw exception.",
+            result.getThrowable());
+      }
+
+      if (result.getStepIndex() != filterStepIndex) {
+        // Discard stale result from previous step
+        // IMPORTANT: Do NOT store stale results in backlog
+        continue;
+      }
+
+      if (result.getMoveIndex() == moveIndex) {
+        return result;
+      }
+
+      // Store future result in backlog (only for current step)
+      backlog.put(result.getMoveIndex(), result);
+    }
   }
 
   public boolean isEmpty() {
-    return queue.isEmpty();
+    return innerQueue.isEmpty();
   }
 
   public int size() {
-    return queue.size();
+    return innerQueue.size();
   }
 }

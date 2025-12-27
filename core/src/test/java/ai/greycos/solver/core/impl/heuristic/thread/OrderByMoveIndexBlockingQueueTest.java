@@ -72,8 +72,8 @@ class OrderByMoveIndexBlockingQueueTest {
         new OrderByMoveIndexBlockingQueue.MoveResult<>(moveThreadIndex, exception);
 
     assertThat(result.getMoveThreadIndex()).isEqualTo(moveThreadIndex);
-    assertThat(result.getStepIndex()).isEqualTo(-1);
-    assertThat(result.getMoveIndex()).isEqualTo(-1);
+    assertThat(result.getStepIndex()).isEqualTo(Integer.MIN_VALUE);
+    assertThat(result.getMoveIndex()).isEqualTo(Integer.MIN_VALUE);
     assertThat(result.getMove()).isNull();
     assertThat(result.getScore()).isNull();
     assertThat(result.isMoveDoable()).isFalse();

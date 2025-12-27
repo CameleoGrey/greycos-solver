@@ -4,22 +4,19 @@ import java.util.Objects;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
-import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 import ai.greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.impl.AbstractFromConfigFactory;
 import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
-import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.list.mimic.MimicRecordingSubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.mimic.MimicReplayingSubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.mimic.SubListMimicRecorder;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory;
-import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandomFactory;
-import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySubListSelector;
 
 public final class SubListSelectorFactory<Solution_>
     extends AbstractFromConfigFactory<Solution_, SubListSelectorConfig> {
