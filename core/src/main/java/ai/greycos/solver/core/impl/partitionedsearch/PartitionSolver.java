@@ -3,12 +3,16 @@ package ai.greycos.solver.core.impl.partitionedsearch;
 import java.util.List;
 import java.util.function.BiConsumer;
 
+import ai.greycos.solver.core.api.solver.ProblemFactChange;
+import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.impl.phase.Phase;
+import ai.greycos.solver.core.impl.solver.AbstractSolver;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.impl.solver.termination.Termination;
+import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 
 /**
@@ -27,11 +31,8 @@ import org.jspecify.annotations.NullMarked;
  *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
  */
 @NullMarked
-public class PartitionSolver<Solution_> {
+public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
 
-  private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
-  private final Termination<Solution_> termination;
-  private final List<Phase<Solution_>> phaseList;
   private final SolverScope<Solution_> solverScope;
   private final int partIndex;
 
@@ -39,13 +40,11 @@ public class PartitionSolver<Solution_> {
 
   public PartitionSolver(
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
-      Termination<Solution_> termination,
+      UniversalTermination<Solution_> termination,
       List<Phase<Solution_>> phaseList,
       SolverScope<Solution_> solverScope,
       int partIndex) {
-    this.bestSolutionRecaller = bestSolutionRecaller;
-    this.termination = termination;
-    this.phaseList = phaseList;
+    super(bestSolutionRecaller, termination, phaseList);
     this.solverScope = solverScope;
     this.partIndex = partIndex;
   }
@@ -63,21 +62,73 @@ public class PartitionSolver<Solution_> {
    * Solves the partition.
    *
    * @param initialSolution The initial solution for this partition
+   * @return The best solution found
    */
-  public void solve(Solution_ initialSolution) {
-    solverScope.getScoreDirector().setWorkingSolution(initialSolution);
+  @Override
+  public Solution_ solve(Solution_ initialSolution) {
+    solverScope.initializeYielding();
+    try {
+      solverScope.setBestSolution(initialSolution);
+      solvingStarted(solverScope);
+      runPhases();
+      solvingEnded(solverScope);
+      return solverScope.getBestSolution();
+    } finally {
+      solverScope.destroyYielding();
+    }
+  }
 
-    // Initialize best solution
-    Solution_ bestSolution = solverScope.getScoreDirector().cloneWorkingSolution();
-    solverScope.setBestSolution(bestSolution);
-    var score = solverScope.calculateScore();
-    solverScope.setBestScore(score);
+  @Override
+  public boolean isSolving() {
+    return false;
+  }
 
-    // Run phases
-    runPhases();
+  @Override
+  public boolean isTerminateEarly() {
+    return false;
+  }
 
-    // Clean up
-    solverScope.getScoreDirector().close();
+  @Override
+  public boolean terminateEarly() {
+    return false;
+  }
+
+  @Override
+  public boolean isEveryProblemChangeProcessed() {
+    return false;
+  }
+
+  @Override
+  public void addProblemChange(@NonNull ProblemChange<Solution_> problemChange) {
+    throw new UnsupportedOperationException(
+        "The PartitionSolver does not support problem changes.");
+  }
+
+  @Override
+  public void addProblemChanges(@NonNull List<ProblemChange<Solution_>> problemChangeList) {
+    throw new UnsupportedOperationException(
+        "The PartitionSolver does not support problem changes.");
+  }
+
+  @Override
+  @Deprecated(forRemoval = true)
+  public boolean isEveryProblemFactChangeProcessed() {
+    return false;
+  }
+
+  @Override
+  @Deprecated(forRemoval = true)
+  public boolean addProblemFactChange(@NonNull ProblemFactChange<Solution_> problemFactChange) {
+    throw new UnsupportedOperationException(
+        "The PartitionSolver does not support problem fact changes.");
+  }
+
+  @Override
+  @Deprecated(forRemoval = true)
+  public boolean addProblemFactChanges(
+      @NonNull List<ProblemFactChange<Solution_>> problemFactChangeList) {
+    throw new UnsupportedOperationException(
+        "The PartitionSolver does not support problem fact changes.");
   }
 
   private void runPhases() {
@@ -96,7 +147,7 @@ public class PartitionSolver<Solution_> {
 
       // Check termination - PhaseTermination has phase methods
       // According to spec, partitions should terminate when parent phase termination is signaled
-      if (termination.isSolverTerminated(solverScope)) {
+      if (globalTermination.isSolverTerminated(solverScope)) {
         break;
       }
     }
@@ -127,23 +178,5 @@ public class PartitionSolver<Solution_> {
    */
   public int getPartIndex() {
     return partIndex;
-  }
-
-  /**
-   * Called before solving starts. Subclasses can override for custom behavior.
-   *
-   * @param solverScope solver scope
-   */
-  protected void solvingStarted(SolverScope<Solution_> solverScope) {
-    // Default implementation - can be overridden by subclasses
-  }
-
-  /**
-   * Called after solving ends. Subclasses can override for custom behavior.
-   *
-   * @param solverScope solver scope
-   */
-  protected void solvingEnded(SolverScope<Solution_> solverScope) {
-    // Default implementation - can be overridden by subclasses
   }
 }

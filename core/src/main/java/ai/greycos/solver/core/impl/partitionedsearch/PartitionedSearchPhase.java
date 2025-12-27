@@ -1,7 +1,6 @@
 package ai.greycos.solver.core.impl.partitionedsearch;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.impl.phase.AbstractPhase;
 import ai.greycos.solver.core.impl.phase.Phase;
 
 /**
@@ -11,9 +10,7 @@ import ai.greycos.solver.core.impl.phase.Phase;
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  * @see Phase
- * @see AbstractPhase
  */
-public interface PartitionedSearchPhase<Solution_>
-    extends Phase<Solution_>,
-        ai.greycos.solver.core.impl.partitionedsearch.event.PartitionedSearchPhaseLifecycleListener<
-            Solution_> {}
+public interface PartitionedSearchPhase<Solution_> extends Phase<Solution_> {
+  // Marker interface for partitioned search phase
+}

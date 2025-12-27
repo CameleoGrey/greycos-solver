@@ -29,11 +29,9 @@ import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecallerFactory;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.ChildThreadPlumbingTermination;
-import ai.greycos.solver.core.impl.solver.termination.ChildThreadSupportingTermination;
-import ai.greycos.solver.core.impl.solver.termination.OrCompositeTermination;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.impl.solver.termination.SolverTermination;
-import ai.greycos.solver.core.impl.solver.termination.Termination;
+import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 import ai.greycos.solver.core.impl.solver.thread.ThreadUtils;
 
@@ -43,8 +41,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Default implementation of partitioned search phase.
  *
- * <p>Orchestrates the partitioned solving process, managing the lifecycle of sub-solvers and
- * aggregating results.
+ * <p>Orchestrates partitioned solving process, managing lifecycle of sub-solvers and aggregating
+ * results.
  *
  * @param <Solution_> solution type, class with {@link
  *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
@@ -95,6 +93,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     }
 
     var phaseScope = new PartitionedSearchPhaseScope<>(solverScope, phaseIndex);
+    phaseScope.setPartCount(null);
     phaseStarted(phaseScope);
 
     // Create partition queue
@@ -103,6 +102,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
             phaseScope.getScoreDirector(), runnablePartThreadLimit);
 
     int partCount = partList.size();
+    phaseScope.setPartCount(partCount);
     if (partCount == 0) {
       logger.warn(
           "{}Partitioned Search phase ({}) produced 0 partitions. Skipping.",
@@ -192,11 +192,15 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
         (ThreadPoolExecutor) Executors.newFixedThreadPool(partCount, threadFactory);
     if (threadPoolExecutor.getMaximumPoolSize() < partCount) {
       throw new IllegalStateException(
-          "The thread pool executor's maximum pool size ("
+          "The threadPoolExecutor's maximumPoolSize ("
               + threadPoolExecutor.getMaximumPoolSize()
-              + ") is less than the requested partCount ("
+              + ") is less than partCount ("
               + partCount
-              + ").");
+              + "), so some partitions will starve.\n"
+              + "Normally this is impossible because the threadPoolExecutor should be unbounded."
+              + " Use runnablePartThreadLimit ("
+              + runnablePartThreadLimit
+              + ") instead to avoid CPU hogging and live locks.");
     }
     return threadPoolExecutor;
   }
@@ -250,13 +254,10 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     // According to spec, must be OrCompositeTermination combining:
     // 1. ChildThreadPlumbingTermination (immediate stop signal)
     // 2. PhaseTermination.createChildThreadTermination() (bridged to parent)
-    @SuppressWarnings("unchecked")
-    ChildThreadSupportingTermination<Solution_, SolverScope<Solution_>> supportingTermination =
-        (ChildThreadSupportingTermination<Solution_, SolverScope<Solution_>>) phaseTermination;
-    Termination<Solution_> partTermination =
-        new OrCompositeTermination<>(
+    UniversalTermination<Solution_> partTermination =
+        UniversalTermination.or(
             childThreadPlumbingTermination,
-            supportingTermination.createChildThreadTermination(
+            phaseTermination.createChildThreadTermination(
                 solverScope, ChildThreadType.PART_THREAD));
 
     // Build phase list (default: CH + LS)
@@ -268,13 +269,12 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     }
 
     // Use PhaseFactory.buildPhases() to build phases with partTermination
-    // OrCompositeTermination implements SolverTermination through inheritance
     List<Phase<Solution_>> phaseList =
         PhaseFactory.buildPhases(
             effectivePhaseConfigList,
             configPolicy.createChildThreadConfigPolicy(ChildThreadType.PART_THREAD),
             bestSolutionRecaller,
-            (SolverTermination<Solution_>) partTermination);
+            partTermination);
 
     // Create child thread solver scope
     SolverScope<Solution_> partSolverScope =
@@ -295,14 +295,13 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
 
           // Rebase move from partition to parent solution context
           // This translates entity and value references from partition's cloned solution
-          // to the main solver's solution
+          // to main solver's solution
           InnerScoreDirector<Solution_, ?> parentScoreDirector = solverScope.getScoreDirector();
           move = move.rebase(parentScoreDirector);
 
           // Queue for application
           partitionQueue.addMove(partIndex, move);
         });
-
     return partitionSolver;
   }
 

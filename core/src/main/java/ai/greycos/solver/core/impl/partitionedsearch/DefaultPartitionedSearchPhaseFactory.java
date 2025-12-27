@@ -81,10 +81,17 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
         phaseConfig.getSolutionPartitionerClass();
 
     if (solutionPartitionerClass == null) {
-      throw new IllegalStateException(
-          "The partitionedSearchPhaseConfig ("
-              + phaseConfig
-              + ") does not specify a solutionPartitionerClass.");
+      if (phaseConfig.getSolutionPartitionerCustomProperties() != null) {
+        throw new IllegalStateException(
+            "If there is no solutionPartitionerClass ("
+                + solutionPartitionerClass
+                + "), then there can be no solutionPartitionerCustomProperties ("
+                + phaseConfig.getSolutionPartitionerCustomProperties()
+                + ") either.");
+      }
+      // TODO Implement generic partitioner
+      throw new UnsupportedOperationException(
+          "A solutionPartitionerClass must be specified. Generic partitioner is not yet implemented.");
     }
 
     SolutionPartitioner<?> solutionPartitioner =
