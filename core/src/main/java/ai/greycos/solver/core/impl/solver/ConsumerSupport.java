@@ -57,7 +57,7 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
       EventProducerId producerId,
       BooleanSupplier isEveryProblemChangeProcessed) {
     /*
-     * If the bestSolutionConsumer is not provided, the best solution is still set for the purpose of recording
+     * If bestSolutionConsumer is not provided, the best solution is still set for the purpose of recording
      * problem changes.
      */
     bestSolutionHolder.set(bestSolution, producerId, isEveryProblemChangeProcessed);
@@ -76,7 +76,7 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new IllegalStateException(
-          "Interrupted when waiting for the first initialized solution consumption.");
+          "Interrupted when waiting for first initialized solution consumption.");
     }
     // called on the Consumer thread
     this.firstInitializedSolution = firstInitializedSolution;
@@ -94,8 +94,7 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
       startSolverJobConsumption.acquire();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new IllegalStateException(
-          "Interrupted when waiting for the start solver job consumption.");
+      throw new IllegalStateException("Interrupted when waiting for start solver job consumption.");
     }
     // called on the Consumer thread
     this.initialSolution = initialSolution;
@@ -109,22 +108,23 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new IllegalStateException(
-          "Interrupted when waiting for the final best solution consumption.");
+          "Interrupted when waiting for final best solution consumption.");
     }
 
-    // Terminate throttled consumer to ensure final delivery
-    if (bestSolutionConsumer instanceof ThrottlingBestSolutionEventConsumer) {
-      ((ThrottlingBestSolutionEventConsumer<Solution_>) bestSolutionConsumer)
-          .terminateAndDeliverPending();
-    }
-
-    // Make sure the final best solution is consumed by the intermediate best solution consumer
+    // Make sure that final best solution is consumed by the intermediate best solution consumer
     // first.
     // Situation:
     // The consumer is consuming the last but one best solution. The final best solution is waiting
     // for the consumer.
     if (bestSolutionConsumer != null) {
       scheduleIntermediateBestSolutionConsumption();
+    }
+
+    // Terminate throttled consumer AFTER scheduling final event to ensure proper ordering
+    // This ensures that the final best solution event is delivered before termination
+    if (bestSolutionConsumer instanceof ThrottlingBestSolutionEventConsumer) {
+      ((ThrottlingBestSolutionEventConsumer<Solution_>) bestSolutionConsumer)
+          .terminateAndDeliverPending();
     }
     consumerExecutor.submit(
         () -> {
@@ -133,7 +133,7 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
           } catch (Throwable throwable) {
             exceptionHandler.accept(problemId, throwable);
           } finally {
-            // If there is no intermediate best solution consumer, complete the problem changes now.
+            // If there is no intermediate best solution consumer, complete problem changes now.
             if (bestSolutionConsumer == null) {
               var solutionHolder = bestSolutionHolder.take();
               if (solutionHolder != null) {
@@ -189,7 +189,7 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
   }
 
   /**
-   * Called on the Consumer thread. Don't call without locking firstSolutionConsumption, because the
+   * Called on the Consumer thread. Don't call without locking firstSolutionConsumption, because
    * consumption may not be executed before the final best solution is executed.
    */
   private void scheduleFirstInitializedSolutionConsumption(
@@ -199,7 +199,7 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
 
   /**
    * Called on the Consumer thread. Don't call without locking startSolverJobConsumption, because
-   * the consumption may not be executed before the final best solution is executed.
+   * consumption may not be executed before the final best solution is executed.
    */
   private void scheduleStartJobConsumption() {
     scheduleConsumption(
@@ -252,7 +252,7 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
       acquireAll();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted when waiting for closing the consumer.");
+      throw new IllegalStateException("Interrupted when waiting for closing consumer.");
     } finally {
       // Close throttled consumer if it's AutoCloseable
       if (bestSolutionConsumer instanceof AutoCloseable) {
