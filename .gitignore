@@ -10,6 +10,9 @@ local
 !/.mvn
 /nbproject
 /optaplanner
+/examples
+/data
+/docs/examples
 *.ipr
 *.iws
 *.iml

@@ -222,6 +222,10 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       }
     } while (movesInPlay > 0);
 
+    // Clear any remaining operations in the queue to prevent stale operations
+    // from being processed in the next step, which would cause deadlock
+    operationQueue.clear();
+
     // Pick the best move from the results
     pickMove(stepScope);
 
