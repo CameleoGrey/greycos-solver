@@ -145,8 +145,8 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
         if (operation instanceof SetupOperation) {
           SetupOperation<Solution_, Score_> setupOperation =
               (SetupOperation<Solution_, Score_>) operation;
+          var parentScoreDirector = setupOperation.getScoreDirector();
           try {
-            var parentScoreDirector = setupOperation.getScoreDirector();
             scoreDirector =
                 parentScoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
             stepIndex = 0;
@@ -169,6 +169,16 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
                     moveThreadIndex,
                     e);
               }
+            }
+            // Also close the parent score director if child creation failed
+            try {
+              parentScoreDirector.close();
+            } catch (Exception e) {
+              LOGGER.warn(
+                  "{}            Move thread ({}) failed to close parent score director during setup.",
+                  logIndentation,
+                  moveThreadIndex,
+                  e);
             }
             throw throwable;
           }
