@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.phase;
 import ai.greycos.solver.core.impl.constructionheuristic.ConstructionHeuristicPhase;
 import ai.greycos.solver.core.impl.exhaustivesearch.ExhaustiveSearchPhase;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateConstructionHeuristicPhase;
+import ai.greycos.solver.core.impl.islandmodel.IslandModelPhase;
 import ai.greycos.solver.core.impl.localsearch.LocalSearchPhase;
 import ai.greycos.solver.core.impl.partitionedsearch.PartitionedSearchPhase;
 import ai.greycos.solver.core.impl.phase.custom.CustomPhase;
@@ -28,7 +29,9 @@ public enum PhaseType {
   /** The type of phase associated with {@link PartitionedSearchPhase}. */
   PARTITIONED_SEARCH("Partitioned Search"),
   /** The type of phase associated with {@link CustomPhase}. */
-  CUSTOM_PHASE("Custom Phase");
+  CUSTOM_PHASE("Custom Phase"),
+  /** The type of phase associated with {@link IslandModelPhase}. */
+  ISLAND_MODEL("Island Model");
 
   private final String phaseName;
 

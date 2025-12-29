@@ -25,10 +25,10 @@ public interface SolverRuntimeConfig {
   Optional<Boolean> daemon();
 
   /**
-   * Enable multithreaded solving for a single problem, which
-   * increases CPU consumption. Defaults to {@value SolverConfig#MOVE_THREAD_COUNT_NONE}. Other
-   * options include {@value SolverConfig#MOVE_THREAD_COUNT_AUTO}, a number or formula based on the
-   * available processor count.
+   * Enable multithreaded solving for a single problem, which increases CPU consumption. Defaults to
+   * {@value SolverConfig#MOVE_THREAD_COUNT_NONE}. Other options include {@value
+   * SolverConfig#MOVE_THREAD_COUNT_AUTO}, a number or formula based on the available processor
+   * count.
    */
   Optional<String> moveThreadCount();
 

@@ -51,11 +51,11 @@
                         
             <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
                         
+            <xs:element name="islandModel" type="tns:islandModelPhaseConfig"/>
+                        
             <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
                         
             <xs:element name="noChangePhase" type="tns:noChangePhaseConfig"/>
-                        
-            <xs:element name="partitionedSearch" type="tns:partitionedSearchPhaseConfig"/>
                       
           </xs:choice>
                   
@@ -1575,37 +1575,35 @@
       
   </xs:complexType>
     
-  <xs:complexType name="partitionedSearchPhaseConfig">
+  <xs:complexType name="islandModelPhaseConfig">
+
+<xs:complexContent>
+    
+<xs:extension base="tns:phaseConfig">
         
-    <xs:complexContent>
+<xs:sequence>
+    
+  <xs:element minOccurs="0" name="islandCount" type="xs:int"/>
+    
+  <xs:element minOccurs="0" name="migrationRate" type="xs:double"/>
+    
+  <xs:element minOccurs="0" name="migrationFrequency" type="xs:int"/>
+    
+  <xs:choice maxOccurs="unbounded" minOccurs="0">
             
-      <xs:extension base="tns:phaseConfig">
-                
-        <xs:sequence>
-                    
-          <xs:element minOccurs="0" name="solutionPartitionerClass" type="xs:string"/>
-                    
-          <xs:element minOccurs="0" name="solutionPartitionerCustomProperties" type="tns:jaxbAdaptedMap"/>
-                    
-          <xs:element minOccurs="0" name="runnablePartThreadLimit" type="xs:string"/>
-                    
-          <xs:choice maxOccurs="unbounded" minOccurs="0">
-                        
-            <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
-                        
-            <xs:element name="customPhase" type="tns:customPhaseConfig"/>
-                        
-            <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
-                        
-            <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
-                        
-            <xs:element name="noChangePhase" type="tns:noChangePhaseConfig"/>
-                        
-            <xs:element name="partitionedSearch" type="tns:partitionedSearchPhaseConfig"/>
-                      
-          </xs:choice>
-                  
-        </xs:sequence>
+    <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
+            
+    <xs:element name="customPhase" type="tns:customPhaseConfig"/>
+            
+    <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
+            
+    <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
+            
+    <xs:element name="noChangePhase" type="tns:noChangePhaseConfig"/>
+            
+  </xs:choice>
+    
+</xs:sequence>
               
       </xs:extension>
           

@@ -283,7 +283,8 @@ public class SolverScope<Solution_> {
   }
 
   public boolean isBestSolutionInitialized() {
-    return getBestScore().isFullyAssigned();
+    var bestScore = getBestScore();
+    return bestScore != null && bestScore.isFullyAssigned();
   }
 
   public long calculateTimeMillisSpentUpToNow() {
@@ -349,6 +350,7 @@ public class SolverScope<Solution_> {
     childThreadSolverScope.monitoringTags = monitoringTags;
     childThreadSolverScope.solverMetricSet = solverMetricSet;
     childThreadSolverScope.startingSolverCount = startingSolverCount;
+    childThreadSolverScope.solver = solver; // Inherit solver reference
     // TODO FIXME use RandomFactory
     // Experiments show that this trick to attain reproducibility doesn't break uniform distribution
     childThreadSolverScope.workingRandom = new Random(workingRandom.nextLong());
@@ -358,6 +360,7 @@ public class SolverScope<Solution_> {
     resetAtomicLongTimeMillis(childThreadSolverScope.endingSystemTimeMillis);
     childThreadSolverScope.startingInitializedScore = null;
     childThreadSolverScope.bestSolutionTimeMillis = null;
+    childThreadSolverScope.problemSizeStatistics.set(problemSizeStatistics.get());
     return childThreadSolverScope;
   }
 

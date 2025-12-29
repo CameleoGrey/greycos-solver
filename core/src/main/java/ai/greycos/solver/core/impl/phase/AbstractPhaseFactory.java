@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
+import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
@@ -84,6 +85,8 @@ public abstract class AbstractPhaseFactory<
       return ConstructionHeuristicPhaseScope.class;
     } else if (phaseConfig instanceof CustomPhaseConfig) {
       return CustomPhaseScope.class;
+    } else if (phaseConfig instanceof IslandModelPhaseConfig) {
+      return null;
     } else if (phaseConfig instanceof LocalSearchPhaseConfig) {
       return LocalSearchPhaseScope.class;
     } else if (phaseConfig instanceof ExhaustiveSearchPhaseConfig) {

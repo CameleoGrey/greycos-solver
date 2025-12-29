@@ -33,9 +33,9 @@ public class SolverProperties {
   private Boolean daemon;
 
   /**
-   * Enable multithreaded solving for a single problem, which
-   * increases CPU consumption. Defaults to "NONE". Other options include "AUTO", a number or
-   * formula based on the available processor count.
+   * Enable multithreaded solving for a single problem, which increases CPU consumption. Defaults to
+   * "NONE". Other options include "AUTO", a number or formula based on the available processor
+   * count.
    */
   private String moveThreadCount;
 
@@ -61,11 +61,10 @@ public class SolverProperties {
   private ConstraintStreamImplType constraintStreamImplType;
 
   /**
-   * Enable rewriting the {@link
-   * ai.greycos.solver.core.api.score.stream.ConstraintProvider} class so nodes share lambdas when
-   * possible, improving performance. When enabled, breakpoints placed in the {@link
-   * ai.greycos.solver.core.api.score.stream.ConstraintProvider} will no longer be triggered.
-   * Defaults to "false".
+   * Enable rewriting the {@link ai.greycos.solver.core.api.score.stream.ConstraintProvider} class
+   * so nodes share lambdas when possible, improving performance. When enabled, breakpoints placed
+   * in the {@link ai.greycos.solver.core.api.score.stream.ConstraintProvider} will no longer be
+   * triggered. Defaults to "false".
    */
   private Boolean constraintStreamAutomaticNodeSharing;
 

@@ -7,6 +7,7 @@ import jakarta.xml.bind.annotation.XmlType;
 import ai.greycos.solver.core.config.AbstractConfig;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
+import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import ai.greycos.solver.core.config.phase.custom.CustomPhaseConfig;
@@ -20,6 +21,7 @@ import org.jspecify.annotations.Nullable;
   ConstructionHeuristicPhaseConfig.class,
   CustomPhaseConfig.class,
   ExhaustiveSearchPhaseConfig.class,
+  IslandModelPhaseConfig.class,
   LocalSearchPhaseConfig.class,
   NoChangePhaseConfig.class,
   PartitionedSearchPhaseConfig.class

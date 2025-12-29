@@ -6,6 +6,7 @@ import java.util.List;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
 import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
+import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import ai.greycos.solver.core.config.phase.NoChangePhaseConfig;
@@ -15,6 +16,7 @@ import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhaseFactory;
 import ai.greycos.solver.core.impl.exhaustivesearch.DefaultExhaustiveSearchPhaseFactory;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import ai.greycos.solver.core.impl.islandmodel.DefaultIslandModelPhaseFactory;
 import ai.greycos.solver.core.impl.localsearch.DefaultLocalSearchPhaseFactory;
 import ai.greycos.solver.core.impl.partitionedsearch.DefaultPartitionedSearchPhaseFactory;
 import ai.greycos.solver.core.impl.phase.custom.DefaultCustomPhaseFactory;
@@ -24,7 +26,9 @@ import ai.greycos.solver.core.impl.solver.termination.SolverTermination;
 public interface PhaseFactory<Solution_> {
 
   static <Solution_> PhaseFactory<Solution_> create(PhaseConfig<?> phaseConfig) {
-    if (LocalSearchPhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
+    if (IslandModelPhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
+      return new DefaultIslandModelPhaseFactory<>((IslandModelPhaseConfig) phaseConfig);
+    } else if (LocalSearchPhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
       return new DefaultLocalSearchPhaseFactory<>((LocalSearchPhaseConfig) phaseConfig);
     } else if (ConstructionHeuristicPhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
       return new DefaultConstructionHeuristicPhaseFactory<>(
@@ -114,7 +118,8 @@ public interface PhaseFactory<Solution_> {
   static boolean canTerminate(PhaseConfig phaseConfig) {
     if (phaseConfig instanceof ConstructionHeuristicPhaseConfig
         || phaseConfig instanceof ExhaustiveSearchPhaseConfig
-        || phaseConfig instanceof CustomPhaseConfig) { // Termination guaranteed.
+        || phaseConfig instanceof CustomPhaseConfig
+        || phaseConfig instanceof IslandModelPhaseConfig) { // Termination guaranteed.
       return true;
     }
     TerminationConfig terminationConfig = phaseConfig.getTerminationConfig();

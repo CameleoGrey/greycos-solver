@@ -36,6 +36,7 @@ import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.AbstractConfig;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
+import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import ai.greycos.solver.core.config.phase.NoChangePhaseConfig;
@@ -272,6 +273,9 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     @XmlElement(
         name = ExhaustiveSearchPhaseConfig.XML_ELEMENT_NAME,
         type = ExhaustiveSearchPhaseConfig.class),
+    @XmlElement(
+        name = IslandModelPhaseConfig.XML_ELEMENT_NAME,
+        type = IslandModelPhaseConfig.class),
     @XmlElement(
         name = LocalSearchPhaseConfig.XML_ELEMENT_NAME,
         type = LocalSearchPhaseConfig.class),

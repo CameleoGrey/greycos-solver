@@ -57,11 +57,10 @@ public interface SolverBuildTimeConfig {
   Optional<ConstraintStreamImplType> constraintStreamImplType();
 
   /**
-   * Enable rewriting the {@link
-   * ai.greycos.solver.core.api.score.stream.ConstraintProvider} class so nodes share lambdas when
-   * possible, improving performance. When enabled, breakpoints placed in the {@link
-   * ai.greycos.solver.core.api.score.stream.ConstraintProvider} will no longer be triggered.
-   * Defaults to "false".
+   * Enable rewriting the {@link ai.greycos.solver.core.api.score.stream.ConstraintProvider} class
+   * so nodes share lambdas when possible, improving performance. When enabled, breakpoints placed
+   * in the {@link ai.greycos.solver.core.api.score.stream.ConstraintProvider} will no longer be
+   * triggered. Defaults to "false".
    */
   // Build time - modifies the ConstraintProvider class if set
   Optional<Boolean> constraintStreamAutomaticNodeSharing();
