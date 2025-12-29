@@ -110,6 +110,11 @@ public class IslandAgent<Solution_> implements Runnable {
         }
 
         LOGGER.debug("Agent {} running phase: {}", agentId, phase.getClass().getSimpleName());
+
+        // Attach migration trigger listener to this phase
+        MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
+        phase.addPhaseLifecycleListener(migrationTrigger);
+
         // Call solvingStarted to initialize selectors with the island's workingRandom
         phase.solvingStarted(islandScope);
         phase.solve(islandScope);
@@ -177,6 +182,26 @@ public class IslandAgent<Solution_> implements Runnable {
     }
 
     stepsUntilNextMigration = config.getMigrationFrequency();
+  }
+
+  /**
+   * Checks if migration should occur after a step and performs it if needed. This method is called
+   * by MigrationTrigger after each step.
+   */
+  void checkAndPerformMigration() {
+    // Decrement step counter
+    stepsUntilNextMigration--;
+
+    // Check if it's time to migrate
+    if (stepsUntilNextMigration <= 0) {
+      try {
+        LOGGER.debug("Agent {} triggering migration", agentId);
+        performMigrationWithTimeout(null);
+      } catch (InterruptedException e) {
+        LOGGER.info("Agent {} interrupted during migration", agentId);
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
   /**
@@ -249,17 +274,18 @@ public class IslandAgent<Solution_> implements Runnable {
 
     // Integrate migrant if better than current best
     Solution_ migrant = update.getMigrant();
-    var migrantInnerScore = calculateScore(migrant);
-    var currentInnerScore = getCurrentBestScore();
+    var migrantScore = islandScope.getScoreDirector().getSolutionDescriptor().getScore(migrant);
+    var currentScore =
+        islandScope.getScoreDirector().getSolutionDescriptor().getScore(getCurrentBestSolution());
 
-    if (migrantInnerScore != null && currentInnerScore != null) {
-      // Compare raw Score values (extract from InnerScore)
-      // Use raw cast to handle wildcard type, similar to SharedGlobalState
+    if (migrantScore != null && currentScore != null) {
+      // Compare raw Score values (extract from wildcard types)
+      // Use raw cast to handle wildcard type, similar to receiveMigrationWithTimeout
       @SuppressWarnings("unchecked")
-      var migrantScore = (Score) migrantInnerScore.raw();
+      var migrantScoreCast = (Score) migrantScore;
       @SuppressWarnings("unchecked")
-      var currentScore = (Score) currentInnerScore.raw();
-      int comparisonResult = migrantScore.compareTo(currentScore);
+      var currentScoreCast = (Score) currentScore;
+      int comparisonResult = migrantScoreCast.compareTo(currentScoreCast);
       if (comparisonResult > 0) {
         LOGGER.info(
             "Agent {} received better migrant from agent {} (score: {} vs {})",
@@ -411,9 +437,16 @@ public class IslandAgent<Solution_> implements Runnable {
     if (solution == null) {
       return null;
     }
-    // For now, return solution's current score from scope
-    // In a full implementation, we would score the specific solution
-    return islandScope.calculateScore();
+    // Extract the score that's already embedded in the migrant solution
+    // Migrant solutions are fully assigned, so we use unassignedCount = 0
+    var score = islandScope.getScoreDirector().getSolutionDescriptor().getScore(solution);
+    if (score == null) {
+      return null;
+    }
+    // Wrap the score in an InnerScore using raw cast for wildcard type
+    @SuppressWarnings("unchecked")
+    var scoreCast = (Score) score;
+    return ai.greycos.solver.core.impl.score.director.InnerScore.fullyAssigned(scoreCast);
   }
 
   /**
@@ -427,8 +460,16 @@ public class IslandAgent<Solution_> implements Runnable {
     islandScope.getScoreDirector().setWorkingSolution(newSolution);
     // Update the best solution with the migrant (clone it to ensure separation)
     islandScope.setBestSolution(islandScope.getScoreDirector().cloneSolution(newSolution));
-    // Update the best score to match
-    islandScope.setBestScore(islandScope.getScoreDirector().calculateScore());
+    // Calculate and set the best score
+    var newBestScore = islandScope.getScoreDirector().calculateScore();
+    islandScope.setBestScore(newBestScore);
+    // CRITICAL: Update the embedded score in the working solution
+    // This ensures that when the phase compares working solution's score
+    // against the best score, it uses the correct (updated) score
+    // Use raw cast to handle wildcard type
+    @SuppressWarnings("unchecked")
+    var scoreToSet = (Score) newBestScore.raw();
+    islandScope.getSolutionDescriptor().setScore(newSolution, scoreToSet);
   }
 
   /**
