@@ -60,7 +60,8 @@ public class DefaultIslandModelPhaseFactory<Solution_>
 
     // Get wrapped phase config list (store for rebuilding per agent)
     List<PhaseConfig<?>> wrappedPhaseConfigList = phaseConfig.getPhaseConfigList();
-    LOGGER.debug("Found {} wrapped phase configs for island model",
+    LOGGER.debug(
+        "Found {} wrapped phase configs for island model",
         wrappedPhaseConfigList != null ? wrappedPhaseConfigList.size() : 0);
 
     // Build phase termination for island model phase itself

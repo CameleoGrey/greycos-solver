@@ -153,7 +153,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
       // Rebuild phases for each agent to avoid sharing mutable selector state
       // This is necessary because phases contain selectors (like MimicReplayingEntitySelector)
-      // that maintain state during execution, and sharing them across parallel agents causes conflicts
+      // that maintain state during execution, and sharing them across parallel agents causes
+      // conflicts
       var agentPhases = buildPhasesForAgent();
       var agent = createAgent(solverScope, random, i, sender, receiver, agentPhases);
       executor.submit(agent);
@@ -203,10 +204,10 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   /**
-   * Builds phases for a single island agent.
-   * This is necessary because phases contain selectors (like MimicReplayingEntitySelector)
-   * that maintain state during execution, and sharing them across parallel agents causes conflicts.
-   * Each agent gets its own independent phase instances with separate selector states.
+   * Builds phases for a single island agent. This is necessary because phases contain selectors
+   * (like MimicReplayingEntitySelector) that maintain state during execution, and sharing them
+   * across parallel agents causes conflicts. Each agent gets its own independent phase instances
+   * with separate selector states.
    *
    * @return a new list of phases for this agent
    */
@@ -220,12 +221,9 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     @SuppressWarnings("unchecked")
     List<PhaseConfig> rawPhaseConfigList = (List<PhaseConfig>) (List<?>) wrappedPhaseConfigList;
     var childConfigPolicy = configPolicy.createChildThreadConfigPolicy(ChildThreadType.MOVE_THREAD);
-    
+
     return PhaseFactory.buildPhases(
-        rawPhaseConfigList,
-        childConfigPolicy,
-        bestSolutionRecaller,
-        solverTermination);
+        rawPhaseConfigList, childConfigPolicy, bestSolutionRecaller, solverTermination);
   }
 
   /**
@@ -304,8 +302,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
      * @param wrappedPhaseConfigList the phase configs to run on each island
      * @return this builder
      */
-    public Builder<Solution_> withWrappedPhaseConfigs(
-        List<PhaseConfig<?>> wrappedPhaseConfigList) {
+    public Builder<Solution_> withWrappedPhaseConfigs(List<PhaseConfig<?>> wrappedPhaseConfigList) {
       this.wrappedPhaseConfigList = wrappedPhaseConfigList;
       return this;
     }

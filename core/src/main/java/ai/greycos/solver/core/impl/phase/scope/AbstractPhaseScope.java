@@ -267,12 +267,16 @@ public abstract class AbstractPhaseScope<Solution_> {
   }
 
   public EventProducerId getPhaseId() {
-    return solverScope
-        .getSolver()
-        .getPhaseList()
-        .get(phaseIndex)
-        .getEventProducerIdSupplier()
-        .apply(phaseIndex);
+    var phaseList = solverScope.getSolver().getPhaseList();
+    // Handle case where phaseIndex is out of bounds (e.g., in Island Model agents
+    // or other child thread scenarios where the solver's phase list doesn't contain
+    // all the phases being run)
+    if (phaseIndex >= phaseList.size()) {
+      // Fall back to a generic phase ID for phases not in the solver's phase list
+      return new ai.greycos.solver.core.impl.phase.event.PhaseEventProducerId(
+          ai.greycos.solver.core.impl.phase.PhaseType.LOCAL_SEARCH, phaseIndex);
+    }
+    return phaseList.get(phaseIndex).getEventProducerIdSupplier().apply(phaseIndex);
   }
 
   @Override
