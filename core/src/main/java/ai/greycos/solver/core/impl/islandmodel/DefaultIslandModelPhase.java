@@ -8,7 +8,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.IntFunction;
 
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
-import ai.greycos.solver.core.config.phase.PhaseConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.phase.AbstractPhase;
@@ -45,7 +44,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultIslandModelPhase.class);
 
-  private final List<PhaseConfig<?>> wrappedPhaseConfigList;
+  private final ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig islandModelConfig;
   private final int islandCount;
   private final int migrationFrequency;
   private final boolean compareGlobalEnabled;
@@ -58,7 +57,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
   private DefaultIslandModelPhase(Builder<Solution_> builder) {
     super(builder);
-    this.wrappedPhaseConfigList = builder.wrappedPhaseConfigList;
+    this.islandModelConfig = builder.islandModelConfig;
     this.islandCount = builder.islandCount;
     this.migrationFrequency = builder.migrationFrequency;
     this.compareGlobalEnabled = builder.compareGlobalEnabled;
@@ -190,16 +189,22 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   private List<Phase<Solution_>> buildPhasesForAgent() {
-    if (wrappedPhaseConfigList == null || wrappedPhaseConfigList.isEmpty()) {
-      return new ArrayList<>();
-    }
-
-    @SuppressWarnings("unchecked")
-    List<PhaseConfig> rawPhaseConfigList = (List<PhaseConfig>) (List<?>) wrappedPhaseConfigList;
+    // IslandModelPhaseConfig includes all local search configuration fields,
+    // so each island runs the same local search configuration with independent random seeds
     var childConfigPolicy = configPolicy.createChildThreadConfigPolicy(ChildThreadType.MOVE_THREAD);
 
+    // Create a LocalSearchPhaseConfig from the island model's local search fields
+    var localSearchConfig = new ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig();
+    localSearchConfig.setLocalSearchType(islandModelConfig.getLocalSearchType());
+    localSearchConfig.setMoveSelectorConfig(islandModelConfig.getMoveSelectorConfig());
+    localSearchConfig.setAcceptorConfig(islandModelConfig.getAcceptorConfig());
+    localSearchConfig.setForagerConfig(islandModelConfig.getForagerConfig());
+    localSearchConfig.setMoveThreadCount(islandModelConfig.getMoveThreadCount());
+    localSearchConfig.setTerminationConfig(islandModelConfig.getTerminationConfig());
+
+    // Build a single LocalSearchPhase from the local search config
     return PhaseFactory.buildPhases(
-        rawPhaseConfigList, childConfigPolicy, bestSolutionRecaller, solverTermination);
+        List.of(localSearchConfig), childConfigPolicy, bestSolutionRecaller, solverTermination);
   }
 
   @SuppressWarnings("unchecked")
@@ -226,14 +231,12 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         + islandCount
         + ", migrationFrequency="
         + migrationFrequency
-        + ", wrappedPhaseConfigs="
-        + (wrappedPhaseConfigList != null ? wrappedPhaseConfigList.size() : 0)
         + '}';
   }
 
   public static class Builder<Solution_> extends AbstractPhaseBuilder<Solution_> {
 
-    private List<PhaseConfig<?>> wrappedPhaseConfigList;
+    private ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig islandModelConfig;
     private int islandCount = IslandModelConfig.DEFAULT_ISLAND_COUNT;
     private int migrationFrequency = IslandModelConfig.DEFAULT_MIGRATION_FREQUENCY;
     private boolean compareGlobalEnabled = true;
@@ -248,8 +251,9 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       super(phaseIndex, logIndentation, phaseTermination);
     }
 
-    public Builder<Solution_> withWrappedPhaseConfigs(List<PhaseConfig<?>> wrappedPhaseConfigList) {
-      this.wrappedPhaseConfigList = wrappedPhaseConfigList;
+    public Builder<Solution_> withIslandModelConfig(
+        ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig islandModelConfig) {
+      this.islandModelConfig = islandModelConfig;
       return this;
     }
 

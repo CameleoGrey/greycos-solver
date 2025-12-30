@@ -58,7 +58,7 @@ public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<
       long startTime = System.nanoTime();
       boolean updated = globalState.tryUpdate(bestSolution, bestScore.raw());
       long endTime = System.nanoTime();
-      
+
       if (updated) {
         long timeSpentMs = (endTime - startTime) / 1_000_000;
         LOGGER.debug(

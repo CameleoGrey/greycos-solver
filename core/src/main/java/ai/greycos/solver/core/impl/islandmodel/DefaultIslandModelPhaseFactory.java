@@ -1,14 +1,8 @@
 package ai.greycos.solver.core.impl.islandmodel;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
-import ai.greycos.solver.core.config.phase.PhaseConfig;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.phase.AbstractPhaseFactory;
-import ai.greycos.solver.core.impl.phase.Phase;
-import ai.greycos.solver.core.impl.phase.PhaseFactory;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.termination.SolverTermination;
 
@@ -71,15 +65,15 @@ public class DefaultIslandModelPhaseFactory<Solution_>
               + "Please use 'receiveGlobalUpdateFrequency' instead.");
     }
 
-    List<PhaseConfig<?>> wrappedPhaseConfigList = phaseConfig.getPhaseConfigList();
+    // IslandModelPhaseConfig now extends LocalSearchPhaseConfig, so each island runs
+    // the same local search configuration with independent random seeds and solution states
     LOGGER.debug(
-        "Found {} wrapped phase configs for island model",
-        wrappedPhaseConfigList != null ? wrappedPhaseConfigList.size() : 0);
+        "Building island model with {} islands, inheriting LocalSearchPhaseConfig", islandCount);
 
     var phaseTermination = buildPhaseTermination(solverConfigPolicy, solverTermination);
 
     return new DefaultIslandModelPhase.Builder<>(phaseIndex, "", phaseTermination)
-        .withWrappedPhaseConfigs(wrappedPhaseConfigList)
+        .withIslandModelConfig(phaseConfig)
         .withConfigPolicy(solverConfigPolicy)
         .withBestSolutionRecaller(bestSolutionRecaller)
         .withSolverTermination(solverTermination)
@@ -88,27 +82,6 @@ public class DefaultIslandModelPhaseFactory<Solution_>
         .withCompareGlobalEnabled(compareGlobalEnabled)
         .withReceiveGlobalUpdateFrequency(receiveGlobalUpdateFrequency)
         .build();
-  }
-
-  private List<Phase<Solution_>> buildWrappedPhases(
-      HeuristicConfigPolicy<Solution_> solverConfigPolicy,
-      BestSolutionRecaller<Solution_> bestSolutionRecaller,
-      SolverTermination<Solution_> solverTermination) {
-
-    List<PhaseConfig<?>> wrappedPhaseConfigList = phaseConfig.getPhaseConfigList();
-    if (wrappedPhaseConfigList == null || wrappedPhaseConfigList.isEmpty()) {
-      LOGGER.warn("IslandModelPhaseConfig has no wrapped phase config, using empty phase list");
-      return new ArrayList<>();
-    }
-
-    @SuppressWarnings("unchecked")
-    List<PhaseConfig> rawPhaseConfigList = (List<PhaseConfig>) (List<?>) wrappedPhaseConfigList;
-    List<Phase<Solution_>> wrappedPhases =
-        PhaseFactory.buildPhases(
-            rawPhaseConfigList, solverConfigPolicy, bestSolutionRecaller, solverTermination);
-
-    LOGGER.debug("Built {} wrapped phases for island model", wrappedPhases.size());
-    return wrappedPhases;
   }
 
   private void validateConfig(IslandModelPhaseConfig config) {
