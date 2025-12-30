@@ -45,7 +45,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
   private final List<PhaseConfig<?>> wrappedPhaseConfigList;
   private final int islandCount;
-  private final double migrationRate;
   private final int migrationFrequency;
   private final boolean compareGlobalEnabled;
   private final int compareGlobalFrequency;
@@ -59,7 +58,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     super(builder);
     this.wrappedPhaseConfigList = builder.wrappedPhaseConfigList;
     this.islandCount = builder.islandCount;
-    this.migrationRate = builder.migrationRate;
     this.migrationFrequency = builder.migrationFrequency;
     this.compareGlobalEnabled = builder.compareGlobalEnabled;
     this.compareGlobalFrequency = builder.compareGlobalFrequency;
@@ -198,7 +196,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     var config =
         IslandModelConfig.builder()
             .withIslandCount(islandCount)
-            .withMigrationRate(migrationRate)
             .withMigrationFrequency(migrationFrequency)
             .withCompareGlobalEnabled(compareGlobalEnabled)
             .withCompareGlobalFrequency(compareGlobalFrequency)
@@ -275,8 +272,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         + islandCount
         + ", migrationFrequency="
         + migrationFrequency
-        + ", migrationRate="
-        + migrationRate
         + ", wrappedPhaseConfigs="
         + (wrappedPhaseConfigList != null ? wrappedPhaseConfigList.size() : 0)
         + '}';
@@ -291,7 +286,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
     private List<PhaseConfig<?>> wrappedPhaseConfigList;
     private int islandCount = IslandModelConfig.DEFAULT_ISLAND_COUNT;
-    private double migrationRate = IslandModelConfig.DEFAULT_MIGRATION_RATE;
     private int migrationFrequency = IslandModelConfig.DEFAULT_MIGRATION_FREQUENCY;
     private boolean compareGlobalEnabled = true;
     private int compareGlobalFrequency = IslandModelConfig.DEFAULT_COMPARE_GLOBAL_FREQUENCY;
@@ -365,17 +359,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
      */
     public Builder<Solution_> withIslandCount(int islandCount) {
       this.islandCount = islandCount;
-      return this;
-    }
-
-    /**
-     * Sets the migration rate.
-     *
-     * @param migrationRate the migration rate
-     * @return this builder
-     */
-    public Builder<Solution_> withMigrationRate(double migrationRate) {
-      this.migrationRate = migrationRate;
       return this;
     }
 

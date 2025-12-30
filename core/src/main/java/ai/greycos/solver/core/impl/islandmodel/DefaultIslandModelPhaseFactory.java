@@ -49,10 +49,6 @@ public class DefaultIslandModelPhaseFactory<Solution_>
         phaseConfig.getIslandCount() != null
             ? phaseConfig.getIslandCount()
             : IslandModelPhaseConfig.DEFAULT_ISLAND_COUNT;
-    double migrationRate =
-        phaseConfig.getMigrationRate() != null
-            ? phaseConfig.getMigrationRate()
-            : IslandModelPhaseConfig.DEFAULT_MIGRATION_RATE;
     int migrationFrequency =
         phaseConfig.getMigrationFrequency() != null
             ? phaseConfig.getMigrationFrequency()
@@ -86,7 +82,6 @@ public class DefaultIslandModelPhaseFactory<Solution_>
         .withBestSolutionRecaller(bestSolutionRecaller)
         .withSolverTermination(solverTermination)
         .withIslandCount(islandCount)
-        .withMigrationRate(migrationRate)
         .withMigrationFrequency(migrationFrequency)
         .withCompareGlobalEnabled(compareGlobalEnabled)
         .withCompareGlobalFrequency(compareGlobalFrequency)
@@ -142,12 +137,6 @@ public class DefaultIslandModelPhaseFactory<Solution_>
     if (islandCount > 100) {
       throw new IllegalArgumentException(
           "Island count must not exceed 100, but was: " + islandCount);
-    }
-
-    Double migrationRate = config.getMigrationRate();
-    if (migrationRate != null && (migrationRate < 0.0 || migrationRate > 1.0)) {
-      throw new IllegalArgumentException(
-          "Migration rate must be between 0.0 and 1.0, but was: " + migrationRate);
     }
 
     Integer migrationFrequency = config.getMigrationFrequency();

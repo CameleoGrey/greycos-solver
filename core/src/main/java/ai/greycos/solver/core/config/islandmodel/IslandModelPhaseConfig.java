@@ -42,12 +42,6 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   /** Default number of islands to use. */
   public static final int DEFAULT_ISLAND_COUNT = 4;
 
-  /**
-   * Default migration rate (proportion of solution to migrate). This is currently a placeholder for
-   * future expansion.
-   */
-  public static final double DEFAULT_MIGRATION_RATE = 0.1;
-
   /** Default frequency of migration (number of steps between migrations). */
   public static final int DEFAULT_MIGRATION_FREQUENCY = 100;
 
@@ -59,9 +53,6 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
 
   @XmlElement(name = "islandCount")
   private Integer islandCount = null;
-
-  @XmlElement(name = "migrationRate")
-  private Double migrationRate = null;
 
   @XmlElement(name = "migrationFrequency")
   private Integer migrationFrequency = null;
@@ -109,25 +100,6 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
    */
   public void setIslandCount(@Nullable Integer islandCount) {
     this.islandCount = islandCount;
-  }
-
-  /**
-   * Returns migration rate. Currently a placeholder for future expansion where partial solutions
-   * might be migrated.
-   *
-   * @return migration rate between 0 and 1, or null if not specified
-   */
-  public @Nullable Double getMigrationRate() {
-    return migrationRate;
-  }
-
-  /**
-   * Sets migration rate.
-   *
-   * @param migrationRate migration rate between 0 and 1
-   */
-  public void setMigrationRate(@Nullable Double migrationRate) {
-    this.migrationRate = migrationRate;
   }
 
   /**
@@ -248,17 +220,6 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   }
 
   /**
-   * Sets migration rate and returns this config.
-   *
-   * @param migrationRate migration rate
-   * @return this config
-   */
-  public @NonNull IslandModelPhaseConfig withMigrationRate(double migrationRate) {
-    this.migrationRate = migrationRate;
-    return this;
-  }
-
-  /**
    * Sets migration frequency and returns this config.
    *
    * @param migrationFrequency migration frequency
@@ -326,8 +287,6 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     super.inherit(inheritedConfig);
     islandCount =
         ConfigUtils.inheritOverwritableProperty(islandCount, inheritedConfig.getIslandCount());
-    migrationRate =
-        ConfigUtils.inheritOverwritableProperty(migrationRate, inheritedConfig.getMigrationRate());
     migrationFrequency =
         ConfigUtils.inheritOverwritableProperty(
             migrationFrequency, inheritedConfig.getMigrationFrequency());

@@ -1582,11 +1582,9 @@
 <xs:extension base="tns:phaseConfig">
         
 <xs:sequence>
-    
+  
   <xs:element minOccurs="0" name="islandCount" type="xs:int"/>
-    
-  <xs:element minOccurs="0" name="migrationRate" type="xs:double"/>
-    
+  
   <xs:element minOccurs="0" name="migrationFrequency" type="xs:int"/>
     
   <xs:choice maxOccurs="unbounded" minOccurs="0">

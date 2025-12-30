@@ -11,12 +11,6 @@ public class IslandModelConfig {
   /** Default number of islands to use. */
   public static final int DEFAULT_ISLAND_COUNT = 4;
 
-  /**
-   * Default migration rate (proportion of solution to migrate). This is currently a placeholder for
-   * future expansion.
-   */
-  public static final double DEFAULT_MIGRATION_RATE = 0.1;
-
   /** Default frequency of migration (number of steps between migrations). */
   public static final int DEFAULT_MIGRATION_FREQUENCY = 100;
 
@@ -24,7 +18,6 @@ public class IslandModelConfig {
   public static final int DEFAULT_COMPARE_GLOBAL_FREQUENCY = 50;
 
   private int islandCount = DEFAULT_ISLAND_COUNT;
-  private double migrationRate = DEFAULT_MIGRATION_RATE;
   private int migrationFrequency = DEFAULT_MIGRATION_FREQUENCY;
   private boolean enabled = false; // Default disabled for backward compatibility
   private boolean compareGlobalEnabled = true; // Default enabled for compare-to-global
@@ -37,12 +30,10 @@ public class IslandModelConfig {
    * Creates a new island model configuration with specified values.
    *
    * @param islandCount number of islands (must be positive)
-   * @param migrationRate migration rate (must be between 0 and 1)
    * @param migrationFrequency number of steps between migrations (must be positive)
    */
-  public IslandModelConfig(int islandCount, double migrationRate, int migrationFrequency) {
+  public IslandModelConfig(int islandCount, int migrationFrequency) {
     setIslandCount(islandCount);
-    setMigrationRate(migrationRate);
     setMigrationFrequency(migrationFrequency);
   }
 
@@ -66,30 +57,6 @@ public class IslandModelConfig {
       throw new IllegalArgumentException("Island count (" + islandCount + ") must be at least 1.");
     }
     this.islandCount = islandCount;
-  }
-
-  /**
-   * Returns the migration rate. Currently a placeholder for future expansion where partial
-   * solutions might be migrated.
-   *
-   * @return migration rate (between 0 and 1)
-   */
-  public double getMigrationRate() {
-    return migrationRate;
-  }
-
-  /**
-   * Sets the migration rate.
-   *
-   * @param migrationRate migration rate (must be between 0 and 1, inclusive)
-   * @throws IllegalArgumentException if migrationRate is outside valid range
-   */
-  public void setMigrationRate(double migrationRate) {
-    if (migrationRate < 0.0 || migrationRate > 1.0) {
-      throw new IllegalArgumentException(
-          "Migration rate (" + migrationRate + ") must be between 0 and 1.");
-    }
-    this.migrationRate = migrationRate;
   }
 
   /**
@@ -189,7 +156,6 @@ public class IslandModelConfig {
   /** Builder for creating IslandModelConfig instances. */
   public static class Builder {
     private int islandCount = DEFAULT_ISLAND_COUNT;
-    private double migrationRate = DEFAULT_MIGRATION_RATE;
     private int migrationFrequency = DEFAULT_MIGRATION_FREQUENCY;
     private boolean enabled = false;
     private boolean compareGlobalEnabled = true;
@@ -203,17 +169,6 @@ public class IslandModelConfig {
      */
     public Builder withIslandCount(int islandCount) {
       this.islandCount = islandCount;
-      return this;
-    }
-
-    /**
-     * Sets the migration rate.
-     *
-     * @param migrationRate migration rate
-     * @return this builder
-     */
-    public Builder withMigrationRate(double migrationRate) {
-      this.migrationRate = migrationRate;
       return this;
     }
 
@@ -269,7 +224,6 @@ public class IslandModelConfig {
     public IslandModelConfig build() {
       IslandModelConfig config = new IslandModelConfig();
       config.setIslandCount(islandCount);
-      config.setMigrationRate(migrationRate);
       config.setMigrationFrequency(migrationFrequency);
       config.setEnabled(enabled);
       config.setCompareGlobalEnabled(compareGlobalEnabled);
@@ -288,7 +242,6 @@ public class IslandModelConfig {
     }
     IslandModelConfig that = (IslandModelConfig) o;
     return islandCount == that.islandCount
-        && Double.compare(that.migrationRate, migrationRate) == 0
         && migrationFrequency == that.migrationFrequency
         && enabled == that.enabled
         && compareGlobalEnabled == that.compareGlobalEnabled
@@ -299,7 +252,6 @@ public class IslandModelConfig {
   public int hashCode() {
     return Objects.hash(
         islandCount,
-        migrationRate,
         migrationFrequency,
         enabled,
         compareGlobalEnabled,
@@ -311,8 +263,6 @@ public class IslandModelConfig {
     return "IslandModelConfig{"
         + "islandCount="
         + islandCount
-        + ", migrationRate="
-        + migrationRate
         + ", migrationFrequency="
         + migrationFrequency
         + ", enabled="
