@@ -51,6 +51,9 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   /** Default frequency of migration (number of steps between migrations). */
   public static final int DEFAULT_MIGRATION_FREQUENCY = 100;
 
+  /** Default frequency of comparing to global best (number of steps between checks). */
+  public static final int DEFAULT_COMPARE_GLOBAL_FREQUENCY = 50;
+
   // Warning: all fields are null (and not defaulted) because they can be inherited
   // and also because input config file should match output config file
 
@@ -62,6 +65,12 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
 
   @XmlElement(name = "migrationFrequency")
   private Integer migrationFrequency = null;
+
+  @XmlElement(name = "compareGlobalEnabled")
+  private Boolean compareGlobalEnabled = null;
+
+  @XmlElement(name = "compareGlobalFrequency")
+  private Integer compareGlobalFrequency = null;
 
   @XmlElements({
     @XmlElement(
@@ -137,6 +146,45 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
    */
   public void setMigrationFrequency(@Nullable Integer migrationFrequency) {
     this.migrationFrequency = migrationFrequency;
+  }
+
+  /**
+   * Returns whether comparing to global best is enabled.
+   *
+   * <p>When enabled, agents periodically check the shared global best solution and adopt it if it's
+   * better than their current best. This provides faster convergence and better solution quality.
+   *
+   * @return true if compare-to-global is enabled, false otherwise, or null if not specified
+   */
+  public @Nullable Boolean getCompareGlobalEnabled() {
+    return compareGlobalEnabled;
+  }
+
+  /**
+   * Sets whether comparing to global best is enabled.
+   *
+   * @param compareGlobalEnabled true to enable compare-to-global, false to disable
+   */
+  public void setCompareGlobalEnabled(@Nullable Boolean compareGlobalEnabled) {
+    this.compareGlobalEnabled = compareGlobalEnabled;
+  }
+
+  /**
+   * Returns the frequency of comparing to global best (number of steps between checks).
+   *
+   * @return number of steps between global best comparisons, or null if not specified
+   */
+  public @Nullable Integer getCompareGlobalFrequency() {
+    return compareGlobalFrequency;
+  }
+
+  /**
+   * Sets the frequency of comparing to global best.
+   *
+   * @param compareGlobalFrequency number of steps between comparisons (must be at least 1)
+   */
+  public void setCompareGlobalFrequency(@Nullable Integer compareGlobalFrequency) {
+    this.compareGlobalFrequency = compareGlobalFrequency;
   }
 
   /**
@@ -222,6 +270,28 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   }
 
   /**
+   * Sets whether comparing to global best is enabled and returns this config.
+   *
+   * @param compareGlobalEnabled true to enable compare-to-global, false to disable
+   * @return this config
+   */
+  public @NonNull IslandModelPhaseConfig withCompareGlobalEnabled(boolean compareGlobalEnabled) {
+    this.compareGlobalEnabled = compareGlobalEnabled;
+    return this;
+  }
+
+  /**
+   * Sets the frequency of comparing to global best and returns this config.
+   *
+   * @param compareGlobalFrequency number of steps between comparisons
+   * @return this config
+   */
+  public @NonNull IslandModelPhaseConfig withCompareGlobalFrequency(int compareGlobalFrequency) {
+    this.compareGlobalFrequency = compareGlobalFrequency;
+    return this;
+  }
+
+  /**
    * Sets phase configurations and returns this config.
    *
    * @param phaseConfigList list of phase configurations
@@ -261,6 +331,12 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     migrationFrequency =
         ConfigUtils.inheritOverwritableProperty(
             migrationFrequency, inheritedConfig.getMigrationFrequency());
+    compareGlobalEnabled =
+        ConfigUtils.inheritOverwritableProperty(
+            compareGlobalEnabled, inheritedConfig.getCompareGlobalEnabled());
+    compareGlobalFrequency =
+        ConfigUtils.inheritOverwritableProperty(
+            compareGlobalFrequency, inheritedConfig.getCompareGlobalFrequency());
     phaseConfigList =
         ConfigUtils.inheritOverwritableProperty(
             phaseConfigList, inheritedConfig.getPhaseConfigList());

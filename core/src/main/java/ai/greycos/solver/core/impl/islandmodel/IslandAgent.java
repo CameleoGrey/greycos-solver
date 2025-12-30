@@ -7,6 +7,7 @@ import java.util.Random;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.impl.localsearch.LocalSearchPhase;
 import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
@@ -114,6 +115,17 @@ public class IslandAgent<Solution_> implements Runnable {
         // Attach migration trigger listener to this phase
         MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
         phase.addPhaseLifecycleListener(migrationTrigger);
+
+        // Attach global compare listener for local search phases
+        if (config.isCompareGlobalEnabled() && phase instanceof LocalSearchPhase) {
+          GlobalCompareListener<Solution_> globalCompareListener =
+              new GlobalCompareListener<>(globalState, config, agentId);
+          phase.addPhaseLifecycleListener(globalCompareListener);
+          LOGGER.debug(
+              "Agent {} attached global compare listener to phase {}",
+              agentId,
+              phase.getClass().getSimpleName());
+        }
 
         // Call solvingStarted to initialize selectors with the island's workingRandom
         phase.solvingStarted(islandScope);

@@ -57,6 +57,14 @@ public class DefaultIslandModelPhaseFactory<Solution_>
         phaseConfig.getMigrationFrequency() != null
             ? phaseConfig.getMigrationFrequency()
             : IslandModelPhaseConfig.DEFAULT_MIGRATION_FREQUENCY;
+    boolean compareGlobalEnabled =
+        phaseConfig.getCompareGlobalEnabled() != null
+            ? phaseConfig.getCompareGlobalEnabled()
+            : true; // Default: enabled
+    int compareGlobalFrequency =
+        phaseConfig.getCompareGlobalFrequency() != null
+            ? phaseConfig.getCompareGlobalFrequency()
+            : IslandModelPhaseConfig.DEFAULT_COMPARE_GLOBAL_FREQUENCY;
 
     // Get wrapped phase config list (store for rebuilding per agent)
     List<PhaseConfig<?>> wrappedPhaseConfigList = phaseConfig.getPhaseConfigList();
@@ -80,6 +88,8 @@ public class DefaultIslandModelPhaseFactory<Solution_>
         .withIslandCount(islandCount)
         .withMigrationRate(migrationRate)
         .withMigrationFrequency(migrationFrequency)
+        .withCompareGlobalEnabled(compareGlobalEnabled)
+        .withCompareGlobalFrequency(compareGlobalFrequency)
         .build();
   }
 

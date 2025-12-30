@@ -20,10 +20,15 @@ public class IslandModelConfig {
   /** Default frequency of migration (number of steps between migrations). */
   public static final int DEFAULT_MIGRATION_FREQUENCY = 100;
 
+  /** Default frequency of comparing to global best (number of steps between checks). */
+  public static final int DEFAULT_COMPARE_GLOBAL_FREQUENCY = 50;
+
   private int islandCount = DEFAULT_ISLAND_COUNT;
   private double migrationRate = DEFAULT_MIGRATION_RATE;
   private int migrationFrequency = DEFAULT_MIGRATION_FREQUENCY;
   private boolean enabled = false; // Default disabled for backward compatibility
+  private boolean compareGlobalEnabled = true; // Default enabled for compare-to-global
+  private int compareGlobalFrequency = DEFAULT_COMPARE_GLOBAL_FREQUENCY;
 
   /** Creates a new island model configuration with default values. */
   public IslandModelConfig() {}
@@ -129,6 +134,50 @@ public class IslandModelConfig {
   }
 
   /**
+   * Returns whether comparing to global best is enabled.
+   *
+   * <p>When enabled, agents periodically check the shared global best solution and adopt it if it's
+   * better than their current best. This provides faster convergence and better solution quality.
+   *
+   * @return true if compare-to-global is enabled, false otherwise
+   */
+  public boolean isCompareGlobalEnabled() {
+    return compareGlobalEnabled;
+  }
+
+  /**
+   * Sets whether comparing to global best is enabled.
+   *
+   * @param compareGlobalEnabled true to enable compare-to-global, false to disable
+   */
+  public void setCompareGlobalEnabled(boolean compareGlobalEnabled) {
+    this.compareGlobalEnabled = compareGlobalEnabled;
+  }
+
+  /**
+   * Returns the frequency of comparing to global best (number of steps between checks).
+   *
+   * @return number of steps between global best comparisons (at least 1)
+   */
+  public int getCompareGlobalFrequency() {
+    return compareGlobalFrequency;
+  }
+
+  /**
+   * Sets the frequency of comparing to global best.
+   *
+   * @param compareGlobalFrequency number of steps between comparisons (must be at least 1)
+   * @throws IllegalArgumentException if compareGlobalFrequency is less than 1
+   */
+  public void setCompareGlobalFrequency(int compareGlobalFrequency) {
+    if (compareGlobalFrequency < 1) {
+      throw new IllegalArgumentException(
+          "Compare global frequency (" + compareGlobalFrequency + ") must be at least 1.");
+    }
+    this.compareGlobalFrequency = compareGlobalFrequency;
+  }
+
+  /**
    * Creates a builder for IslandModelConfig.
    *
    * @return a new builder instance
@@ -143,6 +192,8 @@ public class IslandModelConfig {
     private double migrationRate = DEFAULT_MIGRATION_RATE;
     private int migrationFrequency = DEFAULT_MIGRATION_FREQUENCY;
     private boolean enabled = false;
+    private boolean compareGlobalEnabled = true;
+    private int compareGlobalFrequency = DEFAULT_COMPARE_GLOBAL_FREQUENCY;
 
     /**
      * Sets the number of islands.
@@ -189,6 +240,28 @@ public class IslandModelConfig {
     }
 
     /**
+     * Sets whether comparing to global best is enabled.
+     *
+     * @param compareGlobalEnabled true to enable compare-to-global, false to disable
+     * @return this builder
+     */
+    public Builder withCompareGlobalEnabled(boolean compareGlobalEnabled) {
+      this.compareGlobalEnabled = compareGlobalEnabled;
+      return this;
+    }
+
+    /**
+     * Sets the frequency of comparing to global best.
+     *
+     * @param compareGlobalFrequency number of steps between comparisons
+     * @return this builder
+     */
+    public Builder withCompareGlobalFrequency(int compareGlobalFrequency) {
+      this.compareGlobalFrequency = compareGlobalFrequency;
+      return this;
+    }
+
+    /**
      * Builds the IslandModelConfig instance.
      *
      * @return a new IslandModelConfig with the configured values
@@ -199,6 +272,8 @@ public class IslandModelConfig {
       config.setMigrationRate(migrationRate);
       config.setMigrationFrequency(migrationFrequency);
       config.setEnabled(enabled);
+      config.setCompareGlobalEnabled(compareGlobalEnabled);
+      config.setCompareGlobalFrequency(compareGlobalFrequency);
       return config;
     }
   }
@@ -215,12 +290,20 @@ public class IslandModelConfig {
     return islandCount == that.islandCount
         && Double.compare(that.migrationRate, migrationRate) == 0
         && migrationFrequency == that.migrationFrequency
-        && enabled == that.enabled;
+        && enabled == that.enabled
+        && compareGlobalEnabled == that.compareGlobalEnabled
+        && compareGlobalFrequency == that.compareGlobalFrequency;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(islandCount, migrationRate, migrationFrequency, enabled);
+    return Objects.hash(
+        islandCount,
+        migrationRate,
+        migrationFrequency,
+        enabled,
+        compareGlobalEnabled,
+        compareGlobalFrequency);
   }
 
   @Override
@@ -234,6 +317,10 @@ public class IslandModelConfig {
         + migrationFrequency
         + ", enabled="
         + enabled
+        + ", compareGlobalEnabled="
+        + compareGlobalEnabled
+        + ", compareGlobalFrequency="
+        + compareGlobalFrequency
         + '}';
   }
 }

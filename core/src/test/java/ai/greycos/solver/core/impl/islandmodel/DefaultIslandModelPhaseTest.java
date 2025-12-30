@@ -12,6 +12,7 @@ import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
+import ai.greycos.solver.core.impl.event.BestScoreChangedEvent;
 import ai.greycos.solver.core.testdomain.TestdataEntity;
 import ai.greycos.solver.core.testdomain.TestdataSolution;
 import ai.greycos.solver.core.testdomain.TestdataValue;
@@ -76,6 +77,14 @@ class DefaultIslandModelPhaseTest {
     assertThat(bestSolution.getScore()).isNotNull();
     // Both entities should be assigned
     assertThat(bestSolution.getEntityList().stream().filter(e -> e.getValue() == null)).isEmpty();
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (initial solution adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
   }
 
   @Test
@@ -139,6 +148,14 @@ class DefaultIslandModelPhaseTest {
     assertThat(bestSolution.getScore()).isNotNull();
     // With more islands and more entities, should find better solution
     assertThat(bestSolution.getScore().compareTo(SimpleScore.of(-40))).isLessThan(0);
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (initial solution adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
   }
 
   @Test
@@ -167,6 +184,14 @@ class DefaultIslandModelPhaseTest {
 
     assertThat(bestSolution).isNotNull();
     assertThat(bestSolution.getScore()).isNotNull();
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (initial solution adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
   }
 
   @Test
@@ -267,6 +292,14 @@ class DefaultIslandModelPhaseTest {
 
     // Should complete without error but with no phases
     assertThat(bestSolution).isNotNull();
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (initial solution adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
   }
 
   @Test
@@ -297,6 +330,14 @@ class DefaultIslandModelPhaseTest {
     assertThat(bestSolution.getScore()).isNotNull();
     // Both entities should be assigned
     assertThat(bestSolution.getEntityList().stream().filter(e -> e.getValue() == null)).isEmpty();
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (initial solution adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
   }
 
   @Test
@@ -325,6 +366,14 @@ class DefaultIslandModelPhaseTest {
 
     assertThat(bestSolution).isNotNull();
     assertThat(bestSolution.getScore()).isEqualTo(SimpleScore.ZERO);
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (initial solution adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
   }
 
   @Test
@@ -354,5 +403,216 @@ class DefaultIslandModelPhaseTest {
     assertThat(bestSolution.getScore()).isNotNull();
     // With single island, should behave like regular phase
     assertThat(bestSolution.getEntityList().stream().filter(e -> e.getValue() == null)).isEmpty();
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (initial solution adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
+  }
+
+  @Test
+  void solveWithCompareGlobalEnabled() {
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(TestdataSimpleScoreCalculator.class)
+            .withPhases(
+                new IslandModelPhaseConfig()
+                    .withIslandCount(2)
+                    .withMigrationFrequency(10)
+                    .withCompareGlobalEnabled(true)
+                    .withCompareGlobalFrequency(5)
+                    .withPhaseConfig(
+                        new LocalSearchPhaseConfig()
+                            .withTerminationConfig(
+                                new TerminationConfig().withStepCountLimit(20))));
+
+    var solution = new TestdataSolution("s1");
+    var v1 = new TestdataValue("v1");
+    var v2 = new TestdataValue("v2");
+    solution.setValueList(List.of(v1, v2));
+    solution.setEntityList(List.of(new TestdataEntity("e1", v1), new TestdataEntity("e2", v2)));
+
+    var bestSolution = PlannerTestUtils.solve(solverConfig, solution, ListAssert::isEmpty);
+
+    assertThat(bestSolution).isNotNull();
+    assertThat(bestSolution.getScore()).isNotNull();
+    // Compare-to-global should help find better solution
+    assertThat(bestSolution.getScore().compareTo(SimpleScore.of(-20))).isLessThan(0);
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (compare-to-global feature adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
+  }
+
+  @Test
+  void solveWithCompareGlobalDisabled() {
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(TestdataSimpleScoreCalculator.class)
+            .withPhases(
+                new IslandModelPhaseConfig()
+                    .withIslandCount(2)
+                    .withMigrationFrequency(10)
+                    .withCompareGlobalEnabled(false)
+                    .withPhaseConfig(
+                        new LocalSearchPhaseConfig()
+                            .withTerminationConfig(
+                                new TerminationConfig().withStepCountLimit(20))));
+
+    var solution = new TestdataSolution("s1");
+    var v1 = new TestdataValue("v1");
+    var v2 = new TestdataValue("v2");
+    solution.setValueList(List.of(v1, v2));
+    solution.setEntityList(List.of(new TestdataEntity("e1", v1), new TestdataEntity("e2", v2)));
+
+    var bestSolution = PlannerTestUtils.solve(solverConfig, solution, ListAssert::isEmpty);
+
+    assertThat(bestSolution).isNotNull();
+    assertThat(bestSolution.getScore()).isNotNull();
+    // Should still work with compare-to-global disabled
+    assertThat(bestSolution.getScore().compareTo(SimpleScore.of(-20))).isLessThan(0);
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (compare-to-global feature adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
+  }
+
+  @Test
+  void solveWithCompareGlobalAndMigration() {
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(TestdataSimpleScoreCalculator.class)
+            .withPhases(
+                new IslandModelPhaseConfig()
+                    .withIslandCount(3)
+                    .withMigrationFrequency(10)
+                    .withCompareGlobalEnabled(true)
+                    .withCompareGlobalFrequency(5)
+                    .withPhaseConfig(
+                        new LocalSearchPhaseConfig()
+                            .withTerminationConfig(
+                                new TerminationConfig().withStepCountLimit(30))));
+
+    var solution = new TestdataSolution("s1");
+    var v1 = new TestdataValue("v1");
+    var v2 = new TestdataValue("v2");
+    solution.setValueList(List.of(v1, v2));
+    solution.setEntityList(List.of(new TestdataEntity("e1", v1), new TestdataEntity("e2", v2)));
+
+    var bestSolution = PlannerTestUtils.solve(solverConfig, solution, ListAssert::isEmpty);
+
+    assertThat(bestSolution).isNotNull();
+    assertThat(bestSolution.getScore()).isNotNull();
+    // Both mechanisms should work together
+    assertThat(bestSolution.getScore().compareTo(SimpleScore.of(-20))).isLessThan(0);
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (compare-to-global feature adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
+  }
+
+  @Test
+  void solveWithCompareGlobalDifferentFrequencies() {
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(TestdataSimpleScoreCalculator.class)
+            .withPhases(
+                new IslandModelPhaseConfig()
+                    .withIslandCount(2)
+                    .withMigrationFrequency(20)
+                    .withCompareGlobalEnabled(true)
+                    .withCompareGlobalFrequency(3)
+                    .withPhaseConfig(
+                        new LocalSearchPhaseConfig()
+                            .withTerminationConfig(
+                                new TerminationConfig().withStepCountLimit(25))));
+
+    var solution = new TestdataSolution("s1");
+    var v1 = new TestdataValue("v1");
+    var v2 = new TestdataValue("v2");
+    solution.setValueList(List.of(v1, v2));
+    solution.setEntityList(List.of(new TestdataEntity("e1", v1), new TestdataEntity("e2", v2)));
+
+    var bestSolution = PlannerTestUtils.solve(solverConfig, solution, ListAssert::isEmpty);
+
+    assertThat(bestSolution).isNotNull();
+    assertThat(bestSolution.getScore()).isNotNull();
+    // Different frequencies should work
+    assertThat(bestSolution.getScore().compareTo(SimpleScore.of(-20))).isLessThan(0);
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (compare-to-global feature adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
+  }
+
+  @Test
+  void solveWithCompareGlobalWithConstructionHeuristic() {
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(TestdataSimpleScoreCalculator.class)
+            .withPhases(
+                new IslandModelPhaseConfig()
+                    .withIslandCount(2)
+                    .withCompareGlobalEnabled(true)
+                    .withCompareGlobalFrequency(5)
+                    .withPhaseConfig(
+                        new ConstructionHeuristicPhaseConfig()
+                            .withTerminationConfig(
+                                new TerminationConfig().withStepCountLimit(10))));
+
+    var solution = new TestdataSolution("s1");
+    var v1 = new TestdataValue("v1");
+    var v2 = new TestdataValue("v2");
+    solution.setValueList(List.of(v1, v2));
+    solution.setEntityList(
+        List.of(
+            new TestdataEntity("e1", null),
+            new TestdataEntity("e2", null),
+            new TestdataEntity("e3", null),
+            new TestdataEntity("e4", null)));
+
+    var bestSolution = PlannerTestUtils.solve(solverConfig, solution, ListAssert::isEmpty);
+
+    assertThat(bestSolution).isNotNull();
+    assertThat(bestSolution.getScore()).isNotNull();
+    // Compare-to-global should not break construction heuristic
+    assertThat(bestSolution.getEntityList().stream().filter(e -> e.getValue() == null)).isEmpty();
+    // Filter out BestScoreChangedEvent from SOLVING_STARTED (compare-to-global feature adds these)
+    List<BestScoreChangedEvent> bestScoreEvents =
+        bestSolution.getSolverEventList().stream()
+            .filter(e -> e instanceof BestScoreChangedEvent)
+            .map(e -> (BestScoreChangedEvent) e)
+            .filter(e -> !"SOLVING_STARTED".equals(e.getEventProducerId()))
+            .toList();
+    assertThat(bestScoreEvents).isEmpty();
   }
 }

@@ -1,11 +1,10 @@
 
 == Main idea of this project
 
-Reimplement nearby, multi-threaded incremental solving, partitioned search features by using OptaPlanner code (Apache 2.0) and official 
-(publicly available) documentation (descriptions of features) inside fork of the latest version of Timefold Community Edition (Apache 2.0)
-and implement fixes of bugs, described into release notes.
-
-Additionally try to implement: enhanced node sharing, best solution events throttling and other enhancements of reimplemented features.
+Integrate back several advanced features from OptaPlanner (Apache 2.0) into fork of TimeFold Solver Community Edition (Apache 2.0).
+Reinvent (create my own) implementations of advanced Timefold Solver features based on publicly available information (common public description without
+access to the propritary codebase or byte code).
+Implement some good ideas from my own GreyJack Solver (Apache 2.0).
 
 == Build from source
 
@@ -37,3 +36,5 @@ which was entirely Apache-2.0 licensed (a permissive license).
 Timefold Solver is a derivative work of OptaPlanner and OptaPy, which includes copyrights of 
 the original creator, Red Hat Inc., affiliates, and contributors, that were all entirely 
 licensed under the Apache-2.0 license. Every source file has been modified.
+
+I'd never buy the Enterprise Edition of TimeFold Solver and never had an access to its source code or it's byte code.

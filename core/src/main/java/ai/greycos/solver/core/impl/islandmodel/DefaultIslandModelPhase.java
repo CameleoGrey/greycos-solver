@@ -47,6 +47,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   private final int islandCount;
   private final double migrationRate;
   private final int migrationFrequency;
+  private final boolean compareGlobalEnabled;
+  private final int compareGlobalFrequency;
   private final SharedGlobalState<Solution_> globalState;
   private SolverScope<Solution_> solverScope; // Cache for solution cloning
   private final HeuristicConfigPolicy<Solution_> configPolicy;
@@ -59,15 +61,19 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     this.islandCount = builder.islandCount;
     this.migrationRate = builder.migrationRate;
     this.migrationFrequency = builder.migrationFrequency;
+    this.compareGlobalEnabled = builder.compareGlobalEnabled;
+    this.compareGlobalFrequency = builder.compareGlobalFrequency;
     this.globalState = new SharedGlobalState<>();
     this.configPolicy = builder.configPolicy;
     this.bestSolutionRecaller = builder.bestSolutionRecaller;
     this.solverTermination = builder.solverTermination;
 
     LOGGER.info(
-        "DefaultIslandModelPhase created with {} islands, migration frequency: {}",
+        "DefaultIslandModelPhase created with {} islands, migration frequency: {}, compare to global: {} (frequency: {})",
         islandCount,
-        migrationFrequency);
+        migrationFrequency,
+        compareGlobalEnabled,
+        compareGlobalFrequency);
   }
 
   @Override
@@ -189,7 +195,14 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       BoundedChannel<AgentUpdate<Solution_>> receiver,
       List<Phase<Solution_>> agentPhases) {
     var agentRandom = new Random(random.nextLong());
-    var config = new IslandModelConfig(islandCount, migrationRate, migrationFrequency);
+    var config =
+        IslandModelConfig.builder()
+            .withIslandCount(islandCount)
+            .withMigrationRate(migrationRate)
+            .withMigrationFrequency(migrationFrequency)
+            .withCompareGlobalEnabled(compareGlobalEnabled)
+            .withCompareGlobalFrequency(compareGlobalFrequency)
+            .build();
 
     return new IslandAgent<>(
         agentId,
@@ -280,6 +293,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     private int islandCount = IslandModelConfig.DEFAULT_ISLAND_COUNT;
     private double migrationRate = IslandModelConfig.DEFAULT_MIGRATION_RATE;
     private int migrationFrequency = IslandModelConfig.DEFAULT_MIGRATION_FREQUENCY;
+    private boolean compareGlobalEnabled = true;
+    private int compareGlobalFrequency = IslandModelConfig.DEFAULT_COMPARE_GLOBAL_FREQUENCY;
     private HeuristicConfigPolicy<Solution_> configPolicy;
     private BestSolutionRecaller<Solution_> bestSolutionRecaller;
     private SolverTermination<Solution_> solverTermination;
@@ -372,6 +387,28 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
      */
     public Builder<Solution_> withMigrationFrequency(int migrationFrequency) {
       this.migrationFrequency = migrationFrequency;
+      return this;
+    }
+
+    /**
+     * Sets whether comparing to global best is enabled.
+     *
+     * @param compareGlobalEnabled true to enable compare-to-global, false to disable
+     * @return this builder
+     */
+    public Builder<Solution_> withCompareGlobalEnabled(boolean compareGlobalEnabled) {
+      this.compareGlobalEnabled = compareGlobalEnabled;
+      return this;
+    }
+
+    /**
+     * Sets the frequency of comparing to global best.
+     *
+     * @param compareGlobalFrequency number of steps between comparisons
+     * @return this builder
+     */
+    public Builder<Solution_> withCompareGlobalFrequency(int compareGlobalFrequency) {
+      this.compareGlobalFrequency = compareGlobalFrequency;
       return this;
     }
 
