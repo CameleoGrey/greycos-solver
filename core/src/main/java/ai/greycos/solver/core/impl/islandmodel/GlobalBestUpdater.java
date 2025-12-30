@@ -55,9 +55,18 @@ public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<
     boolean shouldUpdate = shouldUpdateGlobalBest(stepScope, bestScore);
 
     if (shouldUpdate) {
+      long startTime = System.nanoTime();
       boolean updated = globalState.tryUpdate(bestSolution, bestScore.raw());
+      long endTime = System.nanoTime();
+      
       if (updated) {
-        LOGGER.debug("Agent {} updated global best (score: {})", agentId, bestScore.raw());
+        long timeSpentMs = (endTime - startTime) / 1_000_000;
+        LOGGER.debug(
+            "Agent {} updated global best (score: {}, time spent: {} ms, step index: {})",
+            agentId,
+            bestScore.raw(),
+            timeSpentMs,
+            stepScope.getStepIndex());
         previousBestScore = bestScore.raw();
       }
     }
