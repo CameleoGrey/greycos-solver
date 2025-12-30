@@ -3,10 +3,13 @@ package ai.greycos.solver.core.impl.islandmodel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.IntFunction;
 
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.phase.AbstractPhase;
 import ai.greycos.solver.core.impl.phase.Phase;
@@ -93,19 +96,15 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           phaseIndex,
           islandCount);
 
-      // Cache solver scope for solution cloning and set in global state
       this.solverScope = solverScope;
       globalState.setSolverScope(solverScope);
 
-      // Initialize global state with initial solution
       var initialSolution = solverScope.getBestSolution();
       var innerScore = solverScope.calculateScore();
       globalState.tryUpdate(initialSolution, innerScore.raw());
 
-      // Create island agents and run them
       createAndRunAgents(solverScope);
 
-      // Update solver scope with global best solution
       var globalBest = globalState.getBestSolution();
       if (globalBest != null) {
         LOGGER.info(
@@ -132,33 +131,21 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     }
   }
 
-  /**
-   * Creates island agents and runs them in parallel.
-   *
-   * @param solverScope the solver scope
-   */
   private void createAndRunAgents(SolverScope<Solution_> solverScope) {
-    var executor = java.util.concurrent.Executors.newFixedThreadPool(islandCount);
+    var executor = Executors.newFixedThreadPool(islandCount);
     var random = solverScope.getWorkingRandom();
 
     LOGGER.info("Creating {} island agents with ring topology...", islandCount);
 
-    // Create channels for ring topology: agent i sends to agent (i+1) mod n
-    var channels = new java.util.ArrayList<BoundedChannel<AgentUpdate<Solution_>>>(islandCount);
+    var channels = new ArrayList<BoundedChannel<AgentUpdate<Solution_>>>(islandCount);
     for (int i = 0; i < islandCount; i++) {
       channels.add(new BoundedChannel<>(1));
     }
 
-    // Create and submit agents with proper ring connections
     for (int i = 0; i < islandCount; i++) {
-      // Agent i receives from channel i, sends to channel (i+1) mod islandCount
       var receiver = channels.get(i);
       var sender = channels.get((i + 1) % islandCount);
 
-      // Rebuild phases for each agent to avoid sharing mutable selector state
-      // This is necessary because phases contain selectors (like MimicReplayingEntitySelector)
-      // that maintain state during execution, and sharing them across parallel agents causes
-      // conflicts
       var agentPhases = buildPhasesForAgent();
       var agent = createAgent(solverScope, random, i, sender, receiver, agentPhases);
       executor.submit(agent);
@@ -167,8 +154,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     executor.shutdown();
 
     try {
-      // Wait for all agents to complete
-      executor.awaitTermination(24, java.util.concurrent.TimeUnit.HOURS);
+      executor.awaitTermination(24, TimeUnit.HOURS);
       LOGGER.info("All {} island agents completed", islandCount);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -176,15 +162,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     }
   }
 
-  /**
-   * Creates a single island agent.
-   *
-   * @param solverScope the solver scope
-   * @param random the random number generator
-   * @param agentId the agent ID
-   * @param agentPhases the phases for this agent (rebuilt)
-   * @return the created agent
-   */
   private IslandAgent<Solution_> createAgent(
       SolverScope<Solution_> solverScope,
       Random random,
@@ -213,21 +190,11 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         solverScope);
   }
 
-  /**
-   * Builds phases for a single island agent. This is necessary because phases contain selectors
-   * (like MimicReplayingEntitySelector) that maintain state during execution, and sharing them
-   * across parallel agents causes conflicts. Each agent gets its own independent phase instances
-   * with separate selector states.
-   *
-   * @return a new list of phases for this agent
-   */
   private List<Phase<Solution_>> buildPhasesForAgent() {
     if (wrappedPhaseConfigList == null || wrappedPhaseConfigList.isEmpty()) {
       return new ArrayList<>();
     }
 
-    // Build phases using child thread config policy for MOVE_THREAD type
-    // This ensures each agent gets its own phase instances
     @SuppressWarnings("unchecked")
     List<PhaseConfig> rawPhaseConfigList = (List<PhaseConfig>) (List<?>) wrappedPhaseConfigList;
     var childConfigPolicy = configPolicy.createChildThreadConfigPolicy(ChildThreadType.MOVE_THREAD);
@@ -236,12 +203,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         rawPhaseConfigList, childConfigPolicy, bestSolutionRecaller, solverTermination);
   }
 
-  /**
-   * Performs a deep clone of a solution using Greycos's solution cloning infrastructure.
-   *
-   * @param solution the solution to clone
-   * @return a deep clone of solution
-   */
   @SuppressWarnings("unchecked")
   private Solution_ deepCloneSolution(Solution_ solution) {
     if (solution == null) {
@@ -250,15 +211,9 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     if (solverScope == null) {
       throw new IllegalStateException("Solver scope not set for solution cloning");
     }
-    // Use Greycos's solution cloner from the score director
     return solverScope.getScoreDirector().cloneSolution(solution);
   }
 
-  /**
-   * Returns the shared global state. This can be used for testing or monitoring.
-   *
-   * @return the shared global state
-   */
   public SharedGlobalState<Solution_> getGlobalState() {
     return globalState;
   }
@@ -277,11 +232,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         + '}';
   }
 
-  /**
-   * Builder for creating DefaultIslandModelPhase instances.
-   *
-   * @param <Solution_> the solution type
-   */
   public static class Builder<Solution_> extends AbstractPhaseBuilder<Solution_> {
 
     private List<PhaseConfig<?>> wrappedPhaseConfigList;
@@ -293,111 +243,55 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     private BestSolutionRecaller<Solution_> bestSolutionRecaller;
     private SolverTermination<Solution_> solverTermination;
 
-    /**
-     * Creates a builder for the island model phase.
-     *
-     * @param phaseIndex the phase index
-     * @param logIndentation the log indentation
-     * @param phaseTermination the phase termination criteria
-     */
     public Builder(
         int phaseIndex, String logIndentation, PhaseTermination<Solution_> phaseTermination) {
       super(phaseIndex, logIndentation, phaseTermination);
     }
 
-    /**
-     * Sets the wrapped phase configs to run on each island.
-     *
-     * @param wrappedPhaseConfigList the phase configs to run on each island
-     * @return this builder
-     */
     public Builder<Solution_> withWrappedPhaseConfigs(List<PhaseConfig<?>> wrappedPhaseConfigList) {
       this.wrappedPhaseConfigList = wrappedPhaseConfigList;
       return this;
     }
 
-    /**
-     * Sets the configuration policy for building phases.
-     *
-     * @param configPolicy the configuration policy
-     * @return this builder
-     */
     public Builder<Solution_> withConfigPolicy(HeuristicConfigPolicy<Solution_> configPolicy) {
       this.configPolicy = configPolicy;
       return this;
     }
 
-    /**
-     * Sets the best solution recaller for building phases.
-     *
-     * @param bestSolutionRecaller the best solution recaller
-     * @return this builder
-     */
     public Builder<Solution_> withBestSolutionRecaller(
         BestSolutionRecaller<Solution_> bestSolutionRecaller) {
       this.bestSolutionRecaller = bestSolutionRecaller;
       return this;
     }
 
-    /**
-     * Sets the solver termination for building phases.
-     *
-     * @param solverTermination the solver termination
-     * @return this builder
-     */
     public Builder<Solution_> withSolverTermination(
         SolverTermination<Solution_> solverTermination) {
       this.solverTermination = solverTermination;
       return this;
     }
 
-    /**
-     * Sets the number of islands.
-     *
-     * @param islandCount the number of islands
-     * @return this builder
-     */
     public Builder<Solution_> withIslandCount(int islandCount) {
       this.islandCount = islandCount;
       return this;
     }
 
-    /**
-     * Sets the migration frequency.
-     *
-     * @param migrationFrequency the number of steps between migrations
-     * @return this builder
-     */
     public Builder<Solution_> withMigrationFrequency(int migrationFrequency) {
       this.migrationFrequency = migrationFrequency;
       return this;
     }
 
-    /**
-     * Sets whether comparing to global best is enabled.
-     *
-     * @param compareGlobalEnabled true to enable compare-to-global, false to disable
-     * @return this builder
-     */
     public Builder<Solution_> withCompareGlobalEnabled(boolean compareGlobalEnabled) {
       this.compareGlobalEnabled = compareGlobalEnabled;
       return this;
     }
 
-    /**
-     * Sets the frequency of comparing to global best.
-     *
-     * @param compareGlobalFrequency number of steps between comparisons
-     * @return this builder
-     */
     public Builder<Solution_> withCompareGlobalFrequency(int compareGlobalFrequency) {
       this.compareGlobalFrequency = compareGlobalFrequency;
       return this;
     }
 
     @Override
-    public Builder<Solution_> enableAssertions(
-        ai.greycos.solver.core.config.solver.EnvironmentMode environmentMode) {
+    public Builder<Solution_> enableAssertions(EnvironmentMode environmentMode) {
       super.enableAssertions(environmentMode);
       return this;
     }

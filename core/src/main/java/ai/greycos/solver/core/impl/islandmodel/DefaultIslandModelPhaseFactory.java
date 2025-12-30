@@ -41,10 +41,8 @@ public class DefaultIslandModelPhaseFactory<Solution_>
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
 
-    // Validate island model configuration parameters
     validateConfig(phaseConfig);
 
-    // Get island model parameters
     int islandCount =
         phaseConfig.getIslandCount() != null
             ? phaseConfig.getIslandCount()
@@ -56,26 +54,22 @@ public class DefaultIslandModelPhaseFactory<Solution_>
     boolean compareGlobalEnabled =
         phaseConfig.getCompareGlobalEnabled() != null
             ? phaseConfig.getCompareGlobalEnabled()
-            : true; // Default: enabled
+            : true;
     int compareGlobalFrequency =
         phaseConfig.getCompareGlobalFrequency() != null
             ? phaseConfig.getCompareGlobalFrequency()
             : IslandModelPhaseConfig.DEFAULT_COMPARE_GLOBAL_FREQUENCY;
 
-    // Get wrapped phase config list (store for rebuilding per agent)
     List<PhaseConfig<?>> wrappedPhaseConfigList = phaseConfig.getPhaseConfigList();
     LOGGER.debug(
         "Found {} wrapped phase configs for island model",
         wrappedPhaseConfigList != null ? wrappedPhaseConfigList.size() : 0);
 
-    // Build phase termination for island model phase itself
     var phaseTermination = buildPhaseTermination(solverConfigPolicy, solverTermination);
 
-    // Create island model phase with builder
-    // Pass wrappedPhaseConfigList instead of built phases - phases will be rebuilt per agent
     return new DefaultIslandModelPhase.Builder<>(
             phaseIndex,
-            "", // logIndentation will be set by parent
+            "",
             phaseTermination)
         .withWrappedPhaseConfigs(wrappedPhaseConfigList)
         .withConfigPolicy(solverConfigPolicy)
@@ -88,14 +82,6 @@ public class DefaultIslandModelPhaseFactory<Solution_>
         .build();
   }
 
-  /**
-   * Builds the wrapped phases that will run on each island.
-   *
-   * @param solverConfigPolicy solver configuration policy
-   * @param bestSolutionRecaller best solution recaller
-   * @param solverTermination solver termination
-   * @return list of wrapped phases
-   */
   private List<Phase<Solution_>> buildWrappedPhases(
       HeuristicConfigPolicy<Solution_> solverConfigPolicy,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
@@ -107,7 +93,6 @@ public class DefaultIslandModelPhaseFactory<Solution_>
       return new ArrayList<>();
     }
 
-    // Build the wrapped phases using the standard phase building mechanism
     @SuppressWarnings("unchecked")
     List<PhaseConfig> rawPhaseConfigList = (List<PhaseConfig>) (List<?>) wrappedPhaseConfigList;
     List<Phase<Solution_>> wrappedPhases =
@@ -118,11 +103,6 @@ public class DefaultIslandModelPhaseFactory<Solution_>
     return wrappedPhases;
   }
 
-  /**
-   * Validates island model configuration parameters.
-   *
-   * @param config configuration to validate
-   */
   private void validateConfig(IslandModelPhaseConfig config) {
     int islandCount =
         config.getIslandCount() != null

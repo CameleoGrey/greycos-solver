@@ -19,13 +19,6 @@ public class AgentUpdate<Solution_> {
   private final Solution_ migrant;
   private final List<AgentStatus> statusVector;
 
-  /**
-   * Creates an agent update message.
-   *
-   * @param agentId the ID of the agent sending this update
-   * @param migrant the best solution from this agent (the migrant), never null
-   * @param statusVector the status of all agents, never null
-   */
   public AgentUpdate(int agentId, Solution_ migrant, List<AgentStatus> statusVector) {
     this.agentId = agentId;
     this.migrant = Objects.requireNonNull(migrant, "Migrant cannot be null");
@@ -33,29 +26,14 @@ public class AgentUpdate<Solution_> {
         new ArrayList<>(Objects.requireNonNull(statusVector, "Status vector cannot be null"));
   }
 
-  /**
-   * Returns the ID of the agent that sent this update.
-   *
-   * @return the agent ID
-   */
   public int getAgentId() {
     return agentId;
   }
 
-  /**
-   * Returns the migrant solution (best solution from sending agent).
-   *
-   * @return the migrant solution, never null
-   */
   public Solution_ getMigrant() {
     return migrant;
   }
 
-  /**
-   * Returns the status vector containing the status of all agents.
-   *
-   * @return an unmodifiable list of agent statuses, never null
-   */
   public List<AgentStatus> getStatusVector() {
     return Collections.unmodifiableList(statusVector);
   }

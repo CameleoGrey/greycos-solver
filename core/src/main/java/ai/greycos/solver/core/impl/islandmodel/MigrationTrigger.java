@@ -16,18 +16,12 @@ class MigrationTrigger<Solution_> extends PhaseLifecycleListenerAdapter<Solution
 
   private final IslandAgent<Solution_> agent;
 
-  /**
-   * Creates a new migration trigger.
-   *
-   * @param agent the island agent that owns this trigger
-   */
   MigrationTrigger(IslandAgent<Solution_> agent) {
     this.agent = agent;
   }
 
   @Override
   public void stepEnded(AbstractStepScope<Solution_> stepScope) {
-    // Check if migration should occur after this step
     agent.checkAndPerformMigration();
   }
 }
