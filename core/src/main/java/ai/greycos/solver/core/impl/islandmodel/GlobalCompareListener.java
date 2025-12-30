@@ -125,14 +125,25 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
     @SuppressWarnings("unchecked")
     var scoreToSet = (Score) newBestScore.raw();
     solverScope.getScoreDirector().getSolutionDescriptor().setScore(newSolution, scoreToSet);
+
+    // Update step scope's score to reflect the new best solution
+    stepScope.setScore(newBestScore);
+    // Mark that the best score was improved in this step (for logging)
+    stepScope.setBestScoreImproved(true);
+    // Update the phase scope's best solution step index
+    phaseScope.setBestSolutionStepIndex(stepScope.getStepIndex());
   }
 
   private void updateGlobalBest(LocalSearchStepScope<Solution_> stepScope) {
     var phaseScope = stepScope.getPhaseScope();
     var solverScope = phaseScope.getSolverScope();
-    var scoreDirector = solverScope.getScoreDirector();
-    var currentSolution = scoreDirector.getWorkingSolution();
-
-    globalState.tryUpdate(currentSolution, scoreDirector.calculateScore().raw());
+    
+    // Use the best solution and its score directly, not the working solution
+    var bestSolution = solverScope.getBestSolution();
+    var bestScore = solverScope.getBestScore();
+    
+    if (bestSolution != null && bestScore != null) {
+      globalState.tryUpdate(bestSolution, bestScore.raw());
+    }
   }
 }

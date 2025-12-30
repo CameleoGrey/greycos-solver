@@ -96,6 +96,11 @@ public class IslandAgent<Solution_> implements Runnable {
         MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
         phase.addPhaseLifecycleListener(migrationTrigger);
 
+        // Add global best updater to propagate local improvements to global state
+        GlobalBestUpdater<Solution_> globalBestUpdater =
+            new GlobalBestUpdater<>(globalState, agentId);
+        phase.addPhaseLifecycleListener(globalBestUpdater);
+
         if (config.isCompareGlobalEnabled() && phase instanceof LocalSearchPhase) {
           GlobalCompareListener<Solution_> globalCompareListener =
               new GlobalCompareListener<>(globalState, config, agentId);
