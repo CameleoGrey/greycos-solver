@@ -55,10 +55,21 @@ public class DefaultIslandModelPhaseFactory<Solution_>
         phaseConfig.getCompareGlobalEnabled() != null
             ? phaseConfig.getCompareGlobalEnabled()
             : true;
-    int compareGlobalFrequency =
-        phaseConfig.getCompareGlobalFrequency() != null
-            ? phaseConfig.getCompareGlobalFrequency()
-            : IslandModelPhaseConfig.DEFAULT_COMPARE_GLOBAL_FREQUENCY;
+
+    // Read receive global update frequency
+    int receiveGlobalUpdateFrequency =
+        phaseConfig.getReceiveGlobalUpdateFrequency() != null
+            ? phaseConfig.getReceiveGlobalUpdateFrequency()
+            : IslandModelPhaseConfig.DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY;
+
+    // Fall back to deprecated parameter if new parameter is not set
+    if (phaseConfig.getReceiveGlobalUpdateFrequency() == null
+        && phaseConfig.getCompareGlobalFrequency() != null) {
+      receiveGlobalUpdateFrequency = phaseConfig.getCompareGlobalFrequency();
+      LOGGER.warn(
+          "Using deprecated 'compareGlobalFrequency' parameter. "
+              + "Please use 'receiveGlobalUpdateFrequency' instead.");
+    }
 
     List<PhaseConfig<?>> wrappedPhaseConfigList = phaseConfig.getPhaseConfigList();
     LOGGER.debug(
@@ -67,10 +78,7 @@ public class DefaultIslandModelPhaseFactory<Solution_>
 
     var phaseTermination = buildPhaseTermination(solverConfigPolicy, solverTermination);
 
-    return new DefaultIslandModelPhase.Builder<>(
-            phaseIndex,
-            "",
-            phaseTermination)
+    return new DefaultIslandModelPhase.Builder<>(phaseIndex, "", phaseTermination)
         .withWrappedPhaseConfigs(wrappedPhaseConfigList)
         .withConfigPolicy(solverConfigPolicy)
         .withBestSolutionRecaller(bestSolutionRecaller)
@@ -78,7 +86,7 @@ public class DefaultIslandModelPhaseFactory<Solution_>
         .withIslandCount(islandCount)
         .withMigrationFrequency(migrationFrequency)
         .withCompareGlobalEnabled(compareGlobalEnabled)
-        .withCompareGlobalFrequency(compareGlobalFrequency)
+        .withReceiveGlobalUpdateFrequency(receiveGlobalUpdateFrequency)
         .build();
   }
 

@@ -45,8 +45,11 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   /** Default frequency of migration (number of steps between migrations). */
   public static final int DEFAULT_MIGRATION_FREQUENCY = 100;
 
-  /** Default frequency of comparing to global best (number of steps between checks). */
-  public static final int DEFAULT_COMPARE_GLOBAL_FREQUENCY = 50;
+  /**
+   * Default frequency of receiving global best updates (number of steps between checks). This is
+   * the frequency at which islands check and adopt the global best solution.
+   */
+  public static final int DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY = 50;
 
   // Warning: all fields are null (and not defaulted) because they can be inherited
   // and also because input config file should match output config file
@@ -60,6 +63,12 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   @XmlElement(name = "compareGlobalEnabled")
   private Boolean compareGlobalEnabled = null;
 
+  // NEW: Receive global update frequency
+  @XmlElement(name = "receiveGlobalUpdateFrequency")
+  private Integer receiveGlobalUpdateFrequency = null;
+
+  // DEPRECATED: Compare global frequency
+  @Deprecated
   @XmlElement(name = "compareGlobalFrequency")
   private Integer compareGlobalFrequency = null;
 
@@ -142,10 +151,31 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   }
 
   /**
+   * Returns the frequency at which islands receive and check global best updates. Islands will
+   * check the global best solution every N steps and adopt it if better.
+   *
+   * @return number of steps between global best checks, or null if not specified
+   */
+  public @Nullable Integer getReceiveGlobalUpdateFrequency() {
+    return receiveGlobalUpdateFrequency;
+  }
+
+  /**
+   * Sets the frequency at which islands receive and check global best updates.
+   *
+   * @param receiveGlobalUpdateFrequency number of steps between checks (must be at least 1)
+   */
+  public void setReceiveGlobalUpdateFrequency(@Nullable Integer receiveGlobalUpdateFrequency) {
+    this.receiveGlobalUpdateFrequency = receiveGlobalUpdateFrequency;
+  }
+
+  /**
    * Returns the frequency of comparing to global best (number of steps between checks).
    *
    * @return number of steps between global best comparisons, or null if not specified
+   * @deprecated Use {@link #getReceiveGlobalUpdateFrequency()} instead.
    */
+  @Deprecated
   public @Nullable Integer getCompareGlobalFrequency() {
     return compareGlobalFrequency;
   }
@@ -154,7 +184,9 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
    * Sets the frequency of comparing to global best.
    *
    * @param compareGlobalFrequency number of steps between comparisons (must be at least 1)
+   * @deprecated Use {@link #setReceiveGlobalUpdateFrequency(Integer)} instead.
    */
+  @Deprecated
   public void setCompareGlobalFrequency(@Nullable Integer compareGlobalFrequency) {
     this.compareGlobalFrequency = compareGlobalFrequency;
   }
@@ -242,11 +274,26 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   }
 
   /**
+   * Sets the frequency at which islands receive and check global best updates and returns this
+   * config.
+   *
+   * @param receiveGlobalUpdateFrequency number of steps between checks
+   * @return this config
+   */
+  public @NonNull IslandModelPhaseConfig withReceiveGlobalUpdateFrequency(
+      int receiveGlobalUpdateFrequency) {
+    this.receiveGlobalUpdateFrequency = receiveGlobalUpdateFrequency;
+    return this;
+  }
+
+  /**
    * Sets the frequency of comparing to global best and returns this config.
    *
    * @param compareGlobalFrequency number of steps between comparisons
    * @return this config
+   * @deprecated Use {@link #withReceiveGlobalUpdateFrequency(int)} instead.
    */
+  @Deprecated
   public @NonNull IslandModelPhaseConfig withCompareGlobalFrequency(int compareGlobalFrequency) {
     this.compareGlobalFrequency = compareGlobalFrequency;
     return this;
@@ -293,9 +340,17 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     compareGlobalEnabled =
         ConfigUtils.inheritOverwritableProperty(
             compareGlobalEnabled, inheritedConfig.getCompareGlobalEnabled());
+
+    // NEW: Inherit receive global update frequency
+    receiveGlobalUpdateFrequency =
+        ConfigUtils.inheritOverwritableProperty(
+            receiveGlobalUpdateFrequency, inheritedConfig.getReceiveGlobalUpdateFrequency());
+
+    // DEPRECATED: Inherit compare global frequency for backward compatibility
     compareGlobalFrequency =
         ConfigUtils.inheritOverwritableProperty(
             compareGlobalFrequency, inheritedConfig.getCompareGlobalFrequency());
+
     phaseConfigList =
         ConfigUtils.inheritOverwritableProperty(
             phaseConfigList, inheritedConfig.getPhaseConfigList());

@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
  * Lifecycle listener that checks and adopts global best solution periodically. Attached to local
  * search phases to enable compare-to-global functionality.
  *
- * <p>This listener provides "compare to global" mechanism where agents periodically check the
+ * <p>This listener provides "receive global update" mechanism where agents periodically check the
  * shared global best solution (the best solution found across ALL islands) and adopt it if it's
  * better than their current best. This provides:
  *
@@ -22,6 +22,10 @@ import org.slf4j.LoggerFactory;
  *   <li>Complementary to migration - Migration provides diversity, global comparison provides
  *       intensification
  * </ul>
+ *
+ * <p>The frequency of checking the global best is controlled by the {@code
+ * receiveGlobalUpdateFrequency} parameter. Islands will check the global best every N steps and
+ * adopt it if it's better than their local best.
  *
  * <p>This listener only performs meaningful work when attached to local search phases, as it
  * requires access to {@link LocalSearchStepScope}. When attached to other phase types, it will
@@ -36,14 +40,20 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
   private final SharedGlobalState<Solution_> globalState;
   private final IslandModelConfig config;
   private final int agentId;
-  private int stepsUntilNextCheck;
+  private int stepsUntilNextReceive;
 
   public GlobalCompareListener(
       SharedGlobalState<Solution_> globalState, IslandModelConfig config, int agentId) {
     this.globalState = globalState;
     this.config = config;
     this.agentId = agentId;
-    this.stepsUntilNextCheck = config.getCompareGlobalFrequency();
+    // Use receiveGlobalUpdateFrequency (or fall back to deprecated compareGlobalFrequency)
+    this.stepsUntilNextReceive = getReceiveFrequency(config);
+  }
+
+  /** Gets the receive frequency from config. */
+  private int getReceiveFrequency(IslandModelConfig config) {
+    return config.getReceiveGlobalUpdateFrequency();
   }
 
   @Override
@@ -58,11 +68,11 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
 
     var localSearchStepScope = (LocalSearchStepScope) stepScope;
 
-    stepsUntilNextCheck--;
+    stepsUntilNextReceive--;
 
-    if (stepsUntilNextCheck <= 0) {
+    if (stepsUntilNextReceive <= 0) {
       checkAndAdoptGlobalBest(localSearchStepScope);
-      stepsUntilNextCheck = config.getCompareGlobalFrequency();
+      stepsUntilNextReceive = getReceiveFrequency(config);
     }
   }
 
@@ -137,11 +147,11 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
   private void updateGlobalBest(LocalSearchStepScope<Solution_> stepScope) {
     var phaseScope = stepScope.getPhaseScope();
     var solverScope = phaseScope.getSolverScope();
-    
+
     // Use the best solution and its score directly, not the working solution
     var bestSolution = solverScope.getBestSolution();
     var bestScore = solverScope.getBestScore();
-    
+
     if (bestSolution != null && bestScore != null) {
       globalState.tryUpdate(bestSolution, bestScore.raw());
     }

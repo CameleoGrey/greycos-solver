@@ -352,8 +352,7 @@ public class IslandAgent<Solution_> implements Runnable {
     return islandScope.getBestScore();
   }
 
-  private InnerScore<?> calculateScore(
-      Solution_ solution) {
+  private InnerScore<?> calculateScore(Solution_ solution) {
     if (solution == null) {
       return null;
     }

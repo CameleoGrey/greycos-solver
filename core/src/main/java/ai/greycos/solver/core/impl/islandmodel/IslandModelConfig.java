@@ -4,7 +4,7 @@ import java.util.Objects;
 
 /**
  * Configuration for the island model phase in Greycos. Controls the number of islands, migration
- * behavior, and related parameters.
+ * behavior, and global best synchronization.
  */
 public class IslandModelConfig {
 
@@ -14,14 +14,17 @@ public class IslandModelConfig {
   /** Default frequency of migration (number of steps between migrations). */
   public static final int DEFAULT_MIGRATION_FREQUENCY = 100;
 
-  /** Default frequency of comparing to global best (number of steps between checks). */
-  public static final int DEFAULT_COMPARE_GLOBAL_FREQUENCY = 50;
+  /**
+   * Default frequency of receiving global best updates (number of steps between checks). This is
+   * the frequency at which islands check and adopt the global best solution.
+   */
+  public static final int DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY = 50;
 
   private int islandCount = DEFAULT_ISLAND_COUNT;
   private int migrationFrequency = DEFAULT_MIGRATION_FREQUENCY;
   private boolean enabled = false; // Default disabled for backward compatibility
   private boolean compareGlobalEnabled = true; // Default enabled for compare-to-global
-  private int compareGlobalFrequency = DEFAULT_COMPARE_GLOBAL_FREQUENCY;
+  private int receiveGlobalUpdateFrequency = DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY;
 
   public IslandModelConfig() {}
 
@@ -69,16 +72,30 @@ public class IslandModelConfig {
     this.compareGlobalEnabled = compareGlobalEnabled;
   }
 
-  public int getCompareGlobalFrequency() {
-    return compareGlobalFrequency;
+  /**
+   * Gets the frequency at which islands receive and check global best updates. Islands will check
+   * the global best solution every N steps and adopt it if better.
+   *
+   * @return the receive global update frequency (in steps)
+   */
+  public int getReceiveGlobalUpdateFrequency() {
+    return receiveGlobalUpdateFrequency;
   }
 
-  public void setCompareGlobalFrequency(int compareGlobalFrequency) {
-    if (compareGlobalFrequency < 1) {
+  /**
+   * Sets the frequency at which islands receive and check global best updates.
+   *
+   * @param receiveGlobalUpdateFrequency the frequency (must be at least 1)
+   * @throws IllegalArgumentException if frequency is less than 1
+   */
+  public void setReceiveGlobalUpdateFrequency(int receiveGlobalUpdateFrequency) {
+    if (receiveGlobalUpdateFrequency < 1) {
       throw new IllegalArgumentException(
-          "Compare global frequency (" + compareGlobalFrequency + ") must be at least 1.");
+          "Receive global update frequency ("
+              + receiveGlobalUpdateFrequency
+              + ") must be at least 1.");
     }
-    this.compareGlobalFrequency = compareGlobalFrequency;
+    this.receiveGlobalUpdateFrequency = receiveGlobalUpdateFrequency;
   }
 
   public static Builder builder() {
@@ -90,7 +107,7 @@ public class IslandModelConfig {
     private int migrationFrequency = DEFAULT_MIGRATION_FREQUENCY;
     private boolean enabled = false;
     private boolean compareGlobalEnabled = true;
-    private int compareGlobalFrequency = DEFAULT_COMPARE_GLOBAL_FREQUENCY;
+    private int receiveGlobalUpdateFrequency = DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY;
 
     public Builder withIslandCount(int islandCount) {
       this.islandCount = islandCount;
@@ -112,8 +129,8 @@ public class IslandModelConfig {
       return this;
     }
 
-    public Builder withCompareGlobalFrequency(int compareGlobalFrequency) {
-      this.compareGlobalFrequency = compareGlobalFrequency;
+    public Builder withReceiveGlobalUpdateFrequency(int receiveGlobalUpdateFrequency) {
+      this.receiveGlobalUpdateFrequency = receiveGlobalUpdateFrequency;
       return this;
     }
 
@@ -123,7 +140,7 @@ public class IslandModelConfig {
       config.setMigrationFrequency(migrationFrequency);
       config.setEnabled(enabled);
       config.setCompareGlobalEnabled(compareGlobalEnabled);
-      config.setCompareGlobalFrequency(compareGlobalFrequency);
+      config.setReceiveGlobalUpdateFrequency(receiveGlobalUpdateFrequency);
       return config;
     }
   }
@@ -141,7 +158,7 @@ public class IslandModelConfig {
         && migrationFrequency == that.migrationFrequency
         && enabled == that.enabled
         && compareGlobalEnabled == that.compareGlobalEnabled
-        && compareGlobalFrequency == that.compareGlobalFrequency;
+        && receiveGlobalUpdateFrequency == that.receiveGlobalUpdateFrequency;
   }
 
   @Override
@@ -151,7 +168,7 @@ public class IslandModelConfig {
         migrationFrequency,
         enabled,
         compareGlobalEnabled,
-        compareGlobalFrequency);
+        receiveGlobalUpdateFrequency);
   }
 
   @Override
@@ -165,8 +182,8 @@ public class IslandModelConfig {
         + enabled
         + ", compareGlobalEnabled="
         + compareGlobalEnabled
-        + ", compareGlobalFrequency="
-        + compareGlobalFrequency
+        + ", receiveGlobalUpdateFrequency="
+        + receiveGlobalUpdateFrequency
         + '}';
   }
 }

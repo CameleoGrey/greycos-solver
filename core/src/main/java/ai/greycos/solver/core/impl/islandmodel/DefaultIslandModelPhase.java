@@ -28,9 +28,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Island model phase that coordinates multiple independent island agents.
  *
- * <p>This phase creates and manages multiple island agents, each running the same phases
- * independently. Agents periodically exchange their best solutions through migration in a ring
- * topology.
+ * <p>This phase creates and manages multiple island agents, each running same phases independently.
+ * Agents periodically exchange their best solutions through migration in a ring topology.
  *
  * <p>The island model is an opt-in feature that provides:
  *
@@ -40,7 +39,7 @@ import org.slf4j.LoggerFactory;
  *   <li>Fault tolerance (if one island fails, others continue)
  * </ul>
  *
- * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
+ * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
 public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_> {
 
@@ -50,7 +49,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   private final int islandCount;
   private final int migrationFrequency;
   private final boolean compareGlobalEnabled;
-  private final int compareGlobalFrequency;
+  private final int receiveGlobalUpdateFrequency;
   private final SharedGlobalState<Solution_> globalState;
   private SolverScope<Solution_> solverScope; // Cache for solution cloning
   private final HeuristicConfigPolicy<Solution_> configPolicy;
@@ -63,18 +62,18 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     this.islandCount = builder.islandCount;
     this.migrationFrequency = builder.migrationFrequency;
     this.compareGlobalEnabled = builder.compareGlobalEnabled;
-    this.compareGlobalFrequency = builder.compareGlobalFrequency;
+    this.receiveGlobalUpdateFrequency = builder.receiveGlobalUpdateFrequency;
     this.globalState = new SharedGlobalState<>();
     this.configPolicy = builder.configPolicy;
     this.bestSolutionRecaller = builder.bestSolutionRecaller;
     this.solverTermination = builder.solverTermination;
 
     LOGGER.info(
-        "DefaultIslandModelPhase created with {} islands, migration frequency: {}, compare to global: {} (frequency: {})",
+        "DefaultIslandModelPhase created with {} islands, migration frequency: {}, compare to global: {} (receive frequency: {})",
         islandCount,
         migrationFrequency,
         compareGlobalEnabled,
-        compareGlobalFrequency);
+        receiveGlobalUpdateFrequency);
   }
 
   @Override
@@ -175,7 +174,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
             .withIslandCount(islandCount)
             .withMigrationFrequency(migrationFrequency)
             .withCompareGlobalEnabled(compareGlobalEnabled)
-            .withCompareGlobalFrequency(compareGlobalFrequency)
+            .withReceiveGlobalUpdateFrequency(receiveGlobalUpdateFrequency)
             .build();
 
     return new IslandAgent<>(
@@ -238,7 +237,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     private int islandCount = IslandModelConfig.DEFAULT_ISLAND_COUNT;
     private int migrationFrequency = IslandModelConfig.DEFAULT_MIGRATION_FREQUENCY;
     private boolean compareGlobalEnabled = true;
-    private int compareGlobalFrequency = IslandModelConfig.DEFAULT_COMPARE_GLOBAL_FREQUENCY;
+    private int receiveGlobalUpdateFrequency =
+        IslandModelConfig.DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY;
     private HeuristicConfigPolicy<Solution_> configPolicy;
     private BestSolutionRecaller<Solution_> bestSolutionRecaller;
     private SolverTermination<Solution_> solverTermination;
@@ -285,8 +285,17 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       return this;
     }
 
+    public Builder<Solution_> withReceiveGlobalUpdateFrequency(int receiveGlobalUpdateFrequency) {
+      this.receiveGlobalUpdateFrequency = receiveGlobalUpdateFrequency;
+      return this;
+    }
+
+    /**
+     * @deprecated Use {@link #withReceiveGlobalUpdateFrequency(int)} instead.
+     */
+    @Deprecated
     public Builder<Solution_> withCompareGlobalFrequency(int compareGlobalFrequency) {
-      this.compareGlobalFrequency = compareGlobalFrequency;
+      this.receiveGlobalUpdateFrequency = compareGlobalFrequency;
       return this;
     }
 
