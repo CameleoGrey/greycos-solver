@@ -83,6 +83,8 @@ public class IslandAgent<Solution_> implements Runnable {
       }
 
       islandScope = parentSolverScope.createChildThreadSolverScope(ChildThreadType.MOVE_THREAD);
+      // Ensure this island uses its own random seed to prevent duplicate move sequences
+      islandScope.setWorkingRandom(random);
       islandScope.setInitialSolution(initialSolution);
 
       for (Phase<Solution_> phase : phases) {
