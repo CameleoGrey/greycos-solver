@@ -98,7 +98,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           islandCount);
 
       this.solverScope = solverScope;
-      globalState.setSolverScope(solverScope);
 
       var initialSolution = solverScope.getBestSolution();
       var innerScore = solverScope.calculateScore();
