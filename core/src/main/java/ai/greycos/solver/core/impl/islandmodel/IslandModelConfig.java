@@ -20,11 +20,15 @@ public class IslandModelConfig {
    */
   public static final int DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY = 50;
 
+  /** Default timeout for migration operations (in milliseconds). */
+  public static final long DEFAULT_MIGRATION_TIMEOUT = 100L;
+
   private int islandCount = DEFAULT_ISLAND_COUNT;
   private int migrationFrequency = DEFAULT_MIGRATION_FREQUENCY;
   private boolean enabled = false; // Default disabled for backward compatibility
   private boolean compareGlobalEnabled = true; // Default enabled for compare-to-global
   private int receiveGlobalUpdateFrequency = DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY;
+  private long migrationTimeout = DEFAULT_MIGRATION_TIMEOUT;
 
   public IslandModelConfig() {}
 
@@ -98,6 +102,29 @@ public class IslandModelConfig {
     this.receiveGlobalUpdateFrequency = receiveGlobalUpdateFrequency;
   }
 
+  /**
+   * Gets the timeout for migration operations (send and receive).
+   *
+   * @return the migration timeout in milliseconds
+   */
+  public long getMigrationTimeout() {
+    return migrationTimeout;
+  }
+
+  /**
+   * Sets the timeout for migration operations (send and receive).
+   *
+   * @param migrationTimeout the timeout in milliseconds (must be at least 1)
+   * @throws IllegalArgumentException if timeout is less than 1
+   */
+  public void setMigrationTimeout(long migrationTimeout) {
+    if (migrationTimeout < 1) {
+      throw new IllegalArgumentException(
+          "Migration timeout (" + migrationTimeout + ") must be at least 1.");
+    }
+    this.migrationTimeout = migrationTimeout;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -108,6 +135,7 @@ public class IslandModelConfig {
     private boolean enabled = false;
     private boolean compareGlobalEnabled = true;
     private int receiveGlobalUpdateFrequency = DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY;
+    private long migrationTimeout = DEFAULT_MIGRATION_TIMEOUT;
 
     public Builder withIslandCount(int islandCount) {
       this.islandCount = islandCount;
@@ -134,6 +162,11 @@ public class IslandModelConfig {
       return this;
     }
 
+    public Builder withMigrationTimeout(long migrationTimeout) {
+      this.migrationTimeout = migrationTimeout;
+      return this;
+    }
+
     public IslandModelConfig build() {
       IslandModelConfig config = new IslandModelConfig();
       config.setIslandCount(islandCount);
@@ -141,6 +174,7 @@ public class IslandModelConfig {
       config.setEnabled(enabled);
       config.setCompareGlobalEnabled(compareGlobalEnabled);
       config.setReceiveGlobalUpdateFrequency(receiveGlobalUpdateFrequency);
+      config.setMigrationTimeout(migrationTimeout);
       return config;
     }
   }
@@ -158,7 +192,8 @@ public class IslandModelConfig {
         && migrationFrequency == that.migrationFrequency
         && enabled == that.enabled
         && compareGlobalEnabled == that.compareGlobalEnabled
-        && receiveGlobalUpdateFrequency == that.receiveGlobalUpdateFrequency;
+        && receiveGlobalUpdateFrequency == that.receiveGlobalUpdateFrequency
+        && migrationTimeout == that.migrationTimeout;
   }
 
   @Override
@@ -168,7 +203,8 @@ public class IslandModelConfig {
         migrationFrequency,
         enabled,
         compareGlobalEnabled,
-        receiveGlobalUpdateFrequency);
+        receiveGlobalUpdateFrequency,
+        migrationTimeout);
   }
 
   @Override
@@ -184,6 +220,8 @@ public class IslandModelConfig {
         + compareGlobalEnabled
         + ", receiveGlobalUpdateFrequency="
         + receiveGlobalUpdateFrequency
+        + ", migrationTimeout="
+        + migrationTimeout
         + '}';
   }
 }

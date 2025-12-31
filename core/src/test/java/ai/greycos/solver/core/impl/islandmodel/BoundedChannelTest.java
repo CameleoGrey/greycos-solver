@@ -138,6 +138,37 @@ class BoundedChannelTest {
   }
 
   @Test
+  void sendWithTimeout() throws InterruptedException {
+    BoundedChannel<String> channel = new BoundedChannel<>(1);
+
+    // Should succeed when channel is not full
+    assertTrue(channel.send("message1", 100, TimeUnit.MILLISECONDS));
+    assertEquals("message1", channel.receive());
+
+    // Should return false when channel is full and timeout expires
+    channel.send("blocking");
+    assertFalse(channel.send("should_fail", 50, TimeUnit.MILLISECONDS));
+
+    // Should succeed after the blocking message is received
+    Thread receiverThread =
+        new Thread(
+            () -> {
+              try {
+                Thread.sleep(30);
+                channel.receive();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            });
+    receiverThread.start();
+
+    assertTrue(channel.send("delayed", 200, TimeUnit.MILLISECONDS));
+    assertEquals("delayed", channel.receive());
+
+    receiverThread.join();
+  }
+
+  @Test
   void sizeAndCapacity() throws InterruptedException {
     BoundedChannel<String> channel = new BoundedChannel<>(3);
 

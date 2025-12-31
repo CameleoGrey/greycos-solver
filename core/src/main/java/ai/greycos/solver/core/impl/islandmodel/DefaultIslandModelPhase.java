@@ -51,6 +51,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   private final int migrationFrequency;
   private final boolean compareGlobalEnabled;
   private final int receiveGlobalUpdateFrequency;
+  private final long migrationTimeout;
   private final SharedGlobalState<Solution_> globalState;
   private SolverScope<Solution_> solverScope; // Cache for solution cloning
   private final HeuristicConfigPolicy<Solution_> configPolicy;
@@ -65,17 +66,19 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     this.migrationFrequency = builder.migrationFrequency;
     this.compareGlobalEnabled = builder.compareGlobalEnabled;
     this.receiveGlobalUpdateFrequency = builder.receiveGlobalUpdateFrequency;
+    this.migrationTimeout = builder.migrationTimeout;
     this.globalState = new SharedGlobalState<>();
     this.configPolicy = builder.configPolicy;
     this.bestSolutionRecaller = builder.bestSolutionRecaller;
     this.solverTermination = builder.solverTermination;
 
     LOGGER.info(
-        "DefaultIslandModelPhase created with {} islands, migration frequency: {}, compare to global: {} (receive frequency: {})",
+        "DefaultIslandModelPhase created with {} islands, migration frequency: {}, compare to global: {} (receive frequency: {}, migration timeout: {}ms)",
         islandCount,
         migrationFrequency,
         compareGlobalEnabled,
-        receiveGlobalUpdateFrequency);
+        receiveGlobalUpdateFrequency,
+        migrationTimeout);
   }
 
   @Override
@@ -190,6 +193,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
             .withMigrationFrequency(migrationFrequency)
             .withCompareGlobalEnabled(compareGlobalEnabled)
             .withReceiveGlobalUpdateFrequency(receiveGlobalUpdateFrequency)
+            .withMigrationTimeout(migrationTimeout)
             .build();
 
     return new IslandAgent<>(
@@ -268,6 +272,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     private boolean compareGlobalEnabled = true;
     private int receiveGlobalUpdateFrequency =
         IslandModelConfig.DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY;
+    private long migrationTimeout = IslandModelConfig.DEFAULT_MIGRATION_TIMEOUT;
     private HeuristicConfigPolicy<Solution_> configPolicy;
     private BestSolutionRecaller<Solution_> bestSolutionRecaller;
     private SolverTermination<Solution_> solverTermination;
@@ -317,6 +322,11 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
     public Builder<Solution_> withReceiveGlobalUpdateFrequency(int receiveGlobalUpdateFrequency) {
       this.receiveGlobalUpdateFrequency = receiveGlobalUpdateFrequency;
+      return this;
+    }
+
+    public Builder<Solution_> withMigrationTimeout(long migrationTimeout) {
+      this.migrationTimeout = migrationTimeout;
       return this;
     }
 

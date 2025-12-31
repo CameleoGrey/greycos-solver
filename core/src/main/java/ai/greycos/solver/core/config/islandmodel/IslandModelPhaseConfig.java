@@ -65,7 +65,8 @@ import org.jspecify.annotations.Nullable;
       "migrationFrequency",
       "compareGlobalEnabled",
       "receiveGlobalUpdateFrequency",
-      "compareGlobalFrequency"
+      "compareGlobalFrequency",
+      "migrationTimeout"
     })
 public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> {
 
@@ -153,6 +154,9 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
    */
   public static final int DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY = 50;
 
+  /** Default timeout for migration operations (in milliseconds). */
+  public static final long DEFAULT_MIGRATION_TIMEOUT = 100L;
+
   // Warning: all fields are null (and not defaulted) because they can be inherited
   // and also because input config file should match output config file
 
@@ -173,6 +177,9 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   @Deprecated
   @XmlElement(name = "compareGlobalFrequency")
   private Integer compareGlobalFrequency = null;
+
+  @XmlElement(name = "migrationTimeout")
+  private Long migrationTimeout = null;
 
   // ************************************************************************
   // Constructors and simple getters/setters
@@ -274,6 +281,24 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   @Deprecated
   public void setCompareGlobalFrequency(@Nullable Integer compareGlobalFrequency) {
     this.compareGlobalFrequency = compareGlobalFrequency;
+  }
+
+  /**
+   * Returns the timeout for migration operations (send and receive).
+   *
+   * @return timeout in milliseconds, or null if not specified
+   */
+  public @Nullable Long getMigrationTimeout() {
+    return migrationTimeout;
+  }
+
+  /**
+   * Sets the timeout for migration operations (send and receive).
+   *
+   * @param migrationTimeout timeout in milliseconds (must be at least 1)
+   */
+  public void setMigrationTimeout(@Nullable Long migrationTimeout) {
+    this.migrationTimeout = migrationTimeout;
   }
 
   // Local search configuration getters/setters (from LocalSearchPhaseConfig)
@@ -381,6 +406,17 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     return this;
   }
 
+  /**
+   * Sets the timeout for migration operations and returns this config.
+   *
+   * @param migrationTimeout timeout in milliseconds
+   * @return this config
+   */
+  public @NonNull IslandModelPhaseConfig withMigrationTimeout(long migrationTimeout) {
+    this.migrationTimeout = migrationTimeout;
+    return this;
+  }
+
   // Local search configuration with methods (from LocalSearchPhaseConfig)
 
   public @NonNull IslandModelPhaseConfig withLocalSearchType(
@@ -449,6 +485,11 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     compareGlobalFrequency =
         ConfigUtils.inheritOverwritableProperty(
             compareGlobalFrequency, inheritedConfig.getCompareGlobalFrequency());
+
+    // Inherit migration timeout
+    migrationTimeout =
+        ConfigUtils.inheritOverwritableProperty(
+            migrationTimeout, inheritedConfig.getMigrationTimeout());
 
     return this;
   }

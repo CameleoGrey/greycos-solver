@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
@@ -271,13 +272,15 @@ public class IslandAgent<Solution_> implements Runnable {
     AgentUpdate<Solution_> update;
 
     if (status == AgentStatus.DEAD) {
-      update = receiver.tryReceive();
-      if (update == null) {
-        LOGGER.trace("Agent {} (DEAD) no message to receive", agentId);
-        return null;
-      }
-    } else {
-      update = receiver.receive();
+      // Skip migration entirely for dead agents
+      return null;
+    }
+
+    // Use timeout-based receive for alive agents
+    update = receiver.tryReceive(config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
+    if (update == null) {
+      LOGGER.trace("Agent {} timeout waiting for migration message", agentId);
+      return null;
     }
 
     for (int i = 0; i < statusVector.size(); i++) {
@@ -327,14 +330,7 @@ public class IslandAgent<Solution_> implements Runnable {
   private AgentUpdate<Solution_> sendMigrationWithTimeout(AgentUpdate<Solution_> messageToSend)
       throws InterruptedException {
     if (status == AgentStatus.DEAD) {
-      if (messageToSend != null) {
-        LOGGER.debug(
-            "Agent {} (DEAD) forwarding migration from agent {}",
-            agentId,
-            messageToSend.getAgentId());
-        sender.send(messageToSend);
-        return messageToSend;
-      }
+      // Skip migration entirely for dead agents - no forwarding
       return null;
     }
 
@@ -342,7 +338,12 @@ public class IslandAgent<Solution_> implements Runnable {
     AgentUpdate<Solution_> updateToSend =
         new AgentUpdate<>(agentId, deepClone(migrant), new ArrayList<>(statusVector));
     LOGGER.debug("Agent {} sending migration", agentId);
-    sender.send(updateToSend);
+    
+    // Use timeout-based send for alive agents
+    boolean sent = sender.send(updateToSend, config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
+    if (!sent) {
+      LOGGER.warn("Agent {} failed to send migration within timeout", agentId);
+    }
     return updateToSend;
   }
 

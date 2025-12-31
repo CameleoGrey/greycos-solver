@@ -65,6 +65,12 @@ public class DefaultIslandModelPhaseFactory<Solution_>
               + "Please use 'receiveGlobalUpdateFrequency' instead.");
     }
 
+    // Read migration timeout
+    long migrationTimeout =
+        phaseConfig.getMigrationTimeout() != null
+            ? phaseConfig.getMigrationTimeout()
+            : IslandModelPhaseConfig.DEFAULT_MIGRATION_TIMEOUT;
+
     // IslandModelPhaseConfig now extends LocalSearchPhaseConfig, so each island runs
     // the same local search configuration with independent random seeds and solution states
     LOGGER.debug(
@@ -81,6 +87,7 @@ public class DefaultIslandModelPhaseFactory<Solution_>
         .withMigrationFrequency(migrationFrequency)
         .withCompareGlobalEnabled(compareGlobalEnabled)
         .withReceiveGlobalUpdateFrequency(receiveGlobalUpdateFrequency)
+        .withMigrationTimeout(migrationTimeout)
         .build();
   }
 
@@ -104,6 +111,12 @@ public class DefaultIslandModelPhaseFactory<Solution_>
     if (migrationFrequency != null && migrationFrequency < 1) {
       throw new IllegalArgumentException(
           "Migration frequency must be at least 1, but was: " + migrationFrequency);
+    }
+
+    Long migrationTimeout = config.getMigrationTimeout();
+    if (migrationTimeout != null && migrationTimeout < 1) {
+      throw new IllegalArgumentException(
+          "Migration timeout must be at least 1, but was: " + migrationTimeout);
     }
   }
 }

@@ -25,6 +25,10 @@ public class BoundedChannel<T> {
     queue.put(message);
   }
 
+  public boolean send(T message, long timeout, TimeUnit unit) throws InterruptedException {
+    return queue.offer(message, timeout, unit);
+  }
+
   public T receive() throws InterruptedException {
     return queue.take();
   }
