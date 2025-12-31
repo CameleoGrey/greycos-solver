@@ -3,7 +3,7 @@ package ai.greycos.solver.core.api.domain.solution.diff;
 import java.util.Collection;
 
 import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.metamodel.PlanningEntityMetaModel;
+import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningEntityMetaModel;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

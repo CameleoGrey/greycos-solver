@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.api.domain.solution.diff;
 
 import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.metamodel.VariableMetaModel;
+import ai.greycos.solver.core.preview.api.domain.metamodel.VariableMetaModel;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

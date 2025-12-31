@@ -2,7 +2,7 @@ package ai.greycos.solver.core.api.domain.solution.diff;
 
 import java.util.Set;
 
-import ai.greycos.solver.core.api.domain.metamodel.PlanningSolutionMetaModel;
+import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningSolutionMetaModel;
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 
