@@ -16,16 +16,15 @@ import ai.greycos.solver.core.api.solver.SolutionUpdatePolicy;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
-import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.impl.domain.variable.declarative.ConsistencyTracker;
 import ai.greycos.solver.core.impl.domain.variable.listener.support.violation.VariableSnapshotTotal;
 import ai.greycos.solver.core.impl.score.DefaultScoreExplanation;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
 import ai.greycos.solver.core.impl.util.MutableReference;
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningSolutionDiff;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -175,7 +174,6 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
 
   @Override
   public PlanningSolutionDiff<Solution_> diff(Solution_ oldSolution, Solution_ newSolution) {
-    solverFactory.ensurePreviewFeature(PreviewFeature.PLANNING_SOLUTION_DIFF);
     return solverFactory.getSolutionDescriptor().diff(oldSolution, newSolution);
   }
 

@@ -10,32 +10,29 @@
 
 Greycos Solver offers preview features that are under development and not yet considered stable. These features are developed to the same standard as the rest of the solver, but their APIs may change without prior notice. Users are encouraged to try these features and provide feedback.
 
-**Note:** DIVERSIFIED_LATE_ACCEPTANCE has been promoted from preview feature status to a standard feature and is now enabled by default without requiring preview feature configuration.
+**Note:** Both DIVERSIFIED_LATE_ACCEPTANCE and PLANNING_SOLUTION_DIFF have been promoted from preview feature status to standard features and are now enabled by default without requiring preview feature configuration.
 
 ---
 
 ## Preview Features Overview
 
-### 1. PLANNING_SOLUTION_DIFF
+### 1. PLANNING_SOLUTION_DIFF (Standard Feature)
 
-**Status:** Preview Feature  
-**Purpose:** Compare two planning solutions and identify differences  
-**Implementation:** [`PlanningSolutionDiff.java`](core/src/main/java/ai/greycos/solver/core/preview/api/domain/solution/diff/PlanningSolutionDiff.java)
+**Status:** Standard Feature (promoted from preview)
+**Purpose:** Compare two planning solutions and identify differences
+**Implementation:** [`PlanningSolutionDiff.java`](core/src/main/java/ai/greycos/solver/core/api/domain/solution/diff/PlanningSolutionDiff.java)
 
 #### Description
 Provides detailed comparison between two planning solutions, identifying which planning entities have changed and which planning variables have different values.
 
 #### API Components
-- **[`PlanningSolutionDiff`](core/src/main/java/ai/greycos/solver/core/preview/api/domain/solution/diff/PlanningSolutionDiff.java)**: Main interface for solution comparison
-- **[`PlanningEntityDiff`](core/src/main/java/ai/greycos/solver/core/preview/api/domain/solution/diff/PlanningEntityDiff.java)**: Differences at entity level
-- **[`PlanningVariableDiff`](core/src/main/java/ai/greycos/solver/core/preview/api/domain/solution/diff/PlanningVariableDiff.java)**: Differences at variable level
+- **[`PlanningSolutionDiff`](core/src/main/java/ai/greycos/solver/core/api/domain/solution/diff/PlanningSolutionDiff.java)**: Main interface for solution comparison
+- **[`PlanningEntityDiff`](core/src/main/java/ai/greycos/solver/core/api/domain/solution/diff/PlanningEntityDiff.java)**: Differences at entity level
+- **[`PlanningVariableDiff`](core/src/main/java/ai/greycos/solver/core/api/domain/solution/diff/PlanningVariableDiff.java)**: Differences at variable level
 
 #### Usage Example
 ```java
-// Enable preview feature
-solverConfig.withPreviewFeature(PreviewFeature.PLANNING_SOLUTION_DIFF);
-
-// Compare solutions
+// Compare solutions (no preview feature required)
 PlanningSolutionDiff diff = solutionManager.diff(oldSolution, newSolution);
 
 // Analyze differences
@@ -49,7 +46,6 @@ List<PlanningEntityDiff> entityDiffs = diff.getEntityDiffs();
 - Incremental solution analysis
 
 #### Implementation Notes
-- Requires preview feature to be enabled
 - Works with both basic and list variables
 - Provides detailed change information including:
   - Which entities changed
@@ -295,11 +291,12 @@ When Neighborhoods stabilizes:
    - Traditional acceptors are insufficient
    - No preview feature configuration required
 
-2. **PLANNING_SOLUTION_DIFF:** Can be used for:
+2. **PLANNING_SOLUTION_DIFF (Standard Feature):** Can be used for:
    - Debugging and development
    - Solution comparison
    - Change tracking
    - Not recommended for hot paths
+   - No preview feature configuration required
 
 3. **NEIGHBORHOODS:** **DO NOT USE IN PRODUCTION**
    - Still in research phase
@@ -324,9 +321,9 @@ Greycos Solver offers both standard features and preview features that represent
 
 **Standard Features:**
 1. **DIVERSIFIED_LATE_ACCEPTANCE** - Production-ready advanced metaheuristic (promoted from preview)
+2. **PLANNING_SOLUTION_DIFF** - Production-ready utility feature (promoted from preview)
 
 **Preview Features:**
-2. **PLANNING_SOLUTION_DIFF** - Production-ready utility feature
 3. **NEIGHBORHOODS** - Research project, not ready for use
 
 The project maintains a clear distinction between standard features (stable, production-ready), preview features (ready for feedback), and research projects (not ready for feedback). Users should evaluate their needs and risk tolerance before adopting preview features.

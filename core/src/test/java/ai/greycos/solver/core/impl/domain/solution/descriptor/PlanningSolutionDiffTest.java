@@ -1,15 +1,13 @@
 package ai.greycos.solver.core.impl.domain.solution.descriptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.core.config.solver.PreviewFeature;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.testdomain.TestdataEntity;
 import ai.greycos.solver.core.testdomain.equals.TestdataEqualsByCodeEasyScoreCalculator;
 import ai.greycos.solver.core.testdomain.equals.TestdataEqualsByCodeEntity;
@@ -27,43 +25,19 @@ import org.junit.jupiter.api.Test;
 class PlanningSolutionDiffTest {
 
   @Nested
-  @DisplayName("Diff of two solutions called without the preview feature enabled")
-  class PlanningSolutionDiffPreviewNotEnabledTest {
-
-    private final SolutionManager<TestdataEqualsByCodeSolution, SimpleScore> solutionManager =
-        SolutionManager.create(
-            SolverFactory.create(
-                new SolverConfig()
-                    .withSolutionClass(TestdataEqualsByCodeSolution.class)
-                    .withEntityClasses(TestdataEqualsByCodeEntity.class)
-                    .withEasyScoreCalculatorClass(TestdataEqualsByCodeEasyScoreCalculator.class)));
-
-    @Test
-    void failsFast() {
-      assertThatThrownBy(
-              () ->
-                  solutionManager.diff(
-                      new TestdataEqualsByCodeSolution(), new TestdataEqualsByCodeSolution()))
-          .isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining(PreviewFeature.PLANNING_SOLUTION_DIFF.name());
-    }
-  }
-
-  @Nested
-  @DisplayName("Diff of two solutions of the same class with a single basic variable")
+  @DisplayName("Diff of two solutions of same class with a single basic variable")
   class BasicVariablePlanningSolutionDiffTest {
 
     private final SolutionManager<TestdataEqualsByCodeSolution, SimpleScore> solutionManager =
         SolutionManager.create(
             SolverFactory.create(
                 new SolverConfig()
-                    .withPreviewFeature(PreviewFeature.PLANNING_SOLUTION_DIFF)
                     .withSolutionClass(TestdataEqualsByCodeSolution.class)
                     .withEntityClasses(TestdataEqualsByCodeEntity.class)
                     .withEasyScoreCalculatorClass(TestdataEqualsByCodeEasyScoreCalculator.class)));
 
     @Nested
-    @DisplayName("Where the two solutions have identical contents")
+    @DisplayName("Where two solutions have identical contents")
     class BasicVariablePlanningSolutionDiffIdenticalContentsTest {
 
       private final TestdataEqualsByCodeSolution oldSolution =
@@ -117,7 +91,7 @@ class PlanningSolutionDiffTest {
     }
 
     @Nested
-    @DisplayName("Where the two solutions have different contents")
+    @DisplayName("Where two solutions have different contents")
     class BasicVariablePlanningSolutionDiffDifferentEntitiesTest {
 
       private final TestdataEqualsByCodeSolution oldSolution =
@@ -133,15 +107,15 @@ class PlanningSolutionDiffTest {
       @BeforeEach
       void beforeEach() {
         newSolution
-            .getEntityList()
-            .forEach(
-                entity -> {
-                  var newValue =
-                      entity.getValue() == newSolution.getValueList().get(0)
-                          ? newSolution.getValueList().get(1)
-                          : newSolution.getValueList().get(0);
-                  entity.setValue(newValue);
-                });
+              .getEntityList()
+              .forEach(
+                  entity -> {
+                    var newValue =
+                        entity.getValue() == newSolution.getValueList().get(0)
+                            ? newSolution.getValueList().get(1)
+                            : newSolution.getValueList().get(0);
+                    entity.setValue(newValue);
+                  });
         diff = solutionManager.diff(oldSolution, newSolution);
       }
 
@@ -195,14 +169,13 @@ class PlanningSolutionDiffTest {
   }
 
   @Nested
-  @DisplayName("Diff of two solutions of the same class with a list variable")
+  @DisplayName("Diff of two solutions of same class with a list variable")
   class ListVariablePlanningSolutionDiffTest {
 
     private final SolutionManager<TestdataEqualsByCodeListSolution, SimpleScore> solutionManager =
         SolutionManager.create(
             SolverFactory.create(
                 new SolverConfig()
-                    .withPreviewFeature(PreviewFeature.PLANNING_SOLUTION_DIFF)
                     .withSolutionClass(TestdataEqualsByCodeListSolution.class)
                     .withEntityClasses(
                         TestdataEqualsByCodeListEntity.class, TestdataEqualsByCodeListValue.class)
@@ -210,7 +183,7 @@ class PlanningSolutionDiffTest {
                         TestdataEqualsByCodeListEasyScoreCalculator.class)));
 
     @Nested
-    @DisplayName("Where the two solutions have identical contents")
+    @DisplayName("Where two solutions have identical contents")
     class ListVariablePlanningSolutionDiffIdenticalContentsTest {
 
       private final TestdataEqualsByCodeListSolution oldSolution =
@@ -264,7 +237,7 @@ class PlanningSolutionDiffTest {
     }
 
     @Nested
-    @DisplayName("Where the two solutions have different contents")
+    @DisplayName("Where two solutions have different contents")
     class ListVariablePlanningSolutionDiffDifferentEntitiesTest {
 
       private final TestdataEqualsByCodeListSolution oldSolution =

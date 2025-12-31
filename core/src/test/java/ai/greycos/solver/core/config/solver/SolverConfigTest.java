@@ -180,9 +180,9 @@ class SolverConfigTest {
   void withEnablePreviewFeatureSet() {
     var solverConfig = new SolverConfig();
     assertThat(solverConfig.getEnablePreviewFeatureSet()).isNull();
-    solverConfig.withPreviewFeature(PreviewFeature.PLANNING_SOLUTION_DIFF);
+    solverConfig.withPreviewFeature(PreviewFeature.NEIGHBORHOODS);
     assertThat(solverConfig.getEnablePreviewFeatureSet())
-        .hasSameElementsAs(List.of(PreviewFeature.PLANNING_SOLUTION_DIFF));
+        .hasSameElementsAs(List.of(PreviewFeature.NEIGHBORHOODS));
   }
 
   @Test

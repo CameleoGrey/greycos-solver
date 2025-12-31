@@ -17,8 +17,8 @@ import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.api.score.constraint.Indictment;
 import ai.greycos.solver.core.impl.domain.variable.ShadowVariableUpdateHelper;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.impl.solver.DefaultSolutionManager;
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningSolutionDiff;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

@@ -9,10 +9,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningEntityDiff;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.preview.api.domain.metamodel.GenuineVariableMetaModel;
 import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningSolutionMetaModel;
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningEntityDiff;
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningSolutionDiff;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

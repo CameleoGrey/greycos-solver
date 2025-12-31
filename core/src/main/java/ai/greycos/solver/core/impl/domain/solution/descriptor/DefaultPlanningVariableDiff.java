@@ -2,10 +2,10 @@ package ai.greycos.solver.core.impl.domain.solution.descriptor;
 
 import java.util.Objects;
 
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningEntityDiff;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningVariableDiff;
 import ai.greycos.solver.core.preview.api.domain.metamodel.GenuineVariableMetaModel;
 import ai.greycos.solver.core.preview.api.domain.metamodel.VariableMetaModel;
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningEntityDiff;
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningVariableDiff;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
