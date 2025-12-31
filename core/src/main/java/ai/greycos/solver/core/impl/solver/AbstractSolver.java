@@ -189,4 +189,8 @@ public abstract class AbstractSolver<Solution_> implements Solver<Solution_> {
   public List<Phase<Solution_>> getPhaseList() {
     return phaseList;
   }
+
+  public SolverEventSupport<Solution_> getSolverEventSupport() {
+    return solverEventSupport;
+  }
 }

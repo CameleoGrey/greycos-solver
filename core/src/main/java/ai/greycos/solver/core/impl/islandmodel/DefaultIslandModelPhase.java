@@ -15,6 +15,8 @@ import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.phase.PhaseFactory;
 import ai.greycos.solver.core.impl.phase.PhaseType;
 import ai.greycos.solver.core.impl.phase.event.PhaseEventProducerId;
+import ai.greycos.solver.core.impl.solver.AbstractSolver;
+import ai.greycos.solver.core.impl.solver.event.SolverEventSupport;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
@@ -54,6 +56,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   private final HeuristicConfigPolicy<Solution_> configPolicy;
   private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
   private final SolverTermination<Solution_> solverTermination;
+  private GlobalBestPropagator<Solution_> globalBestPropagator;
 
   private DefaultIslandModelPhase(Builder<Solution_> builder) {
     super(builder);
@@ -101,6 +104,15 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       var innerScore = solverScope.calculateScore();
       globalState.tryUpdate(initialSolution, innerScore.raw());
 
+      // Start propagating global best updates to main solver scope
+      globalBestPropagator =
+          new GlobalBestPropagator<>(
+              globalState,
+              solverScope,
+              getSolverEventSupport(solverScope),
+              new PhaseEventProducerId(getPhaseType(), phaseIndex));
+      globalBestPropagator.start();
+
       createAndRunAgents(solverScope);
 
       var globalBest = globalState.getBestSolution();
@@ -126,6 +138,11 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           e.getMessage(),
           e);
       throw e;
+    } finally {
+      // Ensure propagator is stopped even on exception
+      if (globalBestPropagator != null) {
+        globalBestPropagator.stop();
+      }
     }
   }
 
@@ -220,6 +237,16 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
   public SharedGlobalState<Solution_> getGlobalState() {
     return globalState;
+  }
+
+  private SolverEventSupport<Solution_> getSolverEventSupport(SolverScope<Solution_> solverScope) {
+    var solver = solverScope.getSolver();
+    if (solver instanceof AbstractSolver<Solution_>) {
+      var abstractSolver = (AbstractSolver<Solution_>) solver;
+      return abstractSolver.getSolverEventSupport();
+    }
+    throw new IllegalStateException(
+        "Solver must be an AbstractSolver to access SolverEventSupport");
   }
 
   @Override
