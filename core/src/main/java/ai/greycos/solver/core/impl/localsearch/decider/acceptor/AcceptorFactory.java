@@ -9,7 +9,6 @@ import java.util.stream.Stream;
 import ai.greycos.solver.core.config.localsearch.decider.acceptor.AcceptorType;
 import ai.greycos.solver.core.config.localsearch.decider.acceptor.LocalSearchAcceptorConfig;
 import ai.greycos.solver.core.config.localsearch.decider.acceptor.stepcountinghillclimbing.StepCountingHillClimbingType;
-import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.greatdeluge.GreatDelugeAcceptor;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.hillclimbing.HillClimbingAcceptor;
@@ -267,7 +266,6 @@ public class AcceptorFactory<Solution_> {
   private Optional<DiversifiedLateAcceptanceAcceptor<Solution_>>
       buildDiversifiedLateAcceptanceAcceptor(HeuristicConfigPolicy<Solution_> configPolicy) {
     if (acceptorTypeListsContainsAcceptorType(AcceptorType.DIVERSIFIED_LATE_ACCEPTANCE)) {
-      configPolicy.ensurePreviewFeature(PreviewFeature.DIVERSIFIED_LATE_ACCEPTANCE);
       var acceptor = new DiversifiedLateAcceptanceAcceptor<Solution_>();
       acceptor.setLateAcceptanceSize(
           Objects.requireNonNullElse(acceptorConfig.getLateAcceptanceSize(), 5));

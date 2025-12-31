@@ -65,13 +65,6 @@ public enum SolverBenchmarkBluePrintType {
     LocalSearchType[] lsTypes = LocalSearchType.getBluePrintTypes();
     List<SolverBenchmarkConfig> solverBenchmarkConfigList = new ArrayList<>(lsTypes.length);
     for (LocalSearchType lsType : lsTypes) {
-      if (lsType == LocalSearchType.DIVERSIFIED_LATE_ACCEPTANCE) {
-        // When the preview feature is removed, this will fail at compile time
-        // and the code will have to be adjusted.
-        // Most likely, the preview feature will be promoted to a regular feature,
-        // and this if statement will be removed.
-        continue;
-      }
       solverBenchmarkConfigList.add(
           buildSolverBenchmarkConfig(constructionHeuristicType, true, lsType));
     }

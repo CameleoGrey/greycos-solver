@@ -180,9 +180,9 @@ class SolverConfigTest {
   void withEnablePreviewFeatureSet() {
     var solverConfig = new SolverConfig();
     assertThat(solverConfig.getEnablePreviewFeatureSet()).isNull();
-    solverConfig.withPreviewFeature(PreviewFeature.DIVERSIFIED_LATE_ACCEPTANCE);
+    solverConfig.withPreviewFeature(PreviewFeature.PLANNING_SOLUTION_DIFF);
     assertThat(solverConfig.getEnablePreviewFeatureSet())
-        .hasSameElementsAs(List.of(PreviewFeature.DIVERSIFIED_LATE_ACCEPTANCE));
+        .hasSameElementsAs(List.of(PreviewFeature.PLANNING_SOLUTION_DIFF));
   }
 
   @Test

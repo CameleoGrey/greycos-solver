@@ -115,15 +115,5 @@ class AcceptorFactoryTest {
     acceptorFactory = AcceptorFactory.create(localSearchAcceptorConfig);
     acceptor = acceptorFactory.buildAcceptor(heuristicConfigPolicy);
     assertThat(acceptor).isExactlyInstanceOf(DiversifiedLateAcceptanceAcceptor.class);
-
-    doThrow(new IllegalStateException()).when(heuristicConfigPolicy).ensurePreviewFeature(any());
-    localSearchAcceptorConfig =
-        new LocalSearchAcceptorConfig()
-            .withAcceptorTypeList(List.of(AcceptorType.DIVERSIFIED_LATE_ACCEPTANCE))
-            .withLateAcceptanceSize(10);
-    AcceptorFactory<Solution_> badAcceptorFactory =
-        AcceptorFactory.create(localSearchAcceptorConfig);
-    assertThatIllegalStateException()
-        .isThrownBy(() -> badAcceptorFactory.buildAcceptor(heuristicConfigPolicy));
   }
 }

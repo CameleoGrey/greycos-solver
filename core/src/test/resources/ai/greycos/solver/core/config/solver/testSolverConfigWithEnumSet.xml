@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <solver xmlns="https://greycos.ai/xsd/solver">
-  <enablePreviewFeature>DIVERSIFIED_LATE_ACCEPTANCE</enablePreviewFeature>
+  <enablePreviewFeature>PLANNING_SOLUTION_DIFF</enablePreviewFeature>
   <environmentMode>FULL_ASSERT</environmentMode>
   <moveThreadCount>AUTO</moveThreadCount>
   <solutionClass>ai.greycos.solver.core.testdomain.TestdataSolution</solutionClass>

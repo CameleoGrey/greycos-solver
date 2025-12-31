@@ -16,7 +16,6 @@ package ai.greycos.solver.core.config.solver;
  * features themselves.
  */
 public enum PreviewFeature {
-  DIVERSIFIED_LATE_ACCEPTANCE,
   PLANNING_SOLUTION_DIFF,
   /**
    * Unlike other preview features, Neighborhoods are an active research project. It is intended to
