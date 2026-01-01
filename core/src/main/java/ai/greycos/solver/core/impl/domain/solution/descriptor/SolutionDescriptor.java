@@ -47,6 +47,7 @@ import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.domain.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.domain.solution.ProblemFactProperty;
 import ai.greycos.solver.core.api.domain.solution.cloner.SolutionCloner;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.api.domain.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
@@ -75,7 +76,6 @@ import ai.greycos.solver.core.impl.domain.variable.descriptor.VariableDescriptor
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
 import ai.greycos.solver.core.impl.util.MutableInt;
 import ai.greycos.solver.core.impl.util.MutableLong;
-import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.impl.util.MutablePair;
 import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningSolutionMetaModel;
 

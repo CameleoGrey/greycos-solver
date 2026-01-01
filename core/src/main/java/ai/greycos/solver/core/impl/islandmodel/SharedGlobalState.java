@@ -14,6 +14,7 @@ import ai.greycos.solver.core.api.score.Score;
  * Uses double-checked locking with volatile for thread-safe updates with minimal contention.
  *
  * <p>Optimizations:
+ *
  * <ul>
  *   <li>Fast path: check without lock for most failed updates (60-80% reduction in contention)
  *   <li>Slow path: acquire lock only for potential improvements
@@ -42,7 +43,7 @@ public class SharedGlobalState<Solution_> {
       @SuppressWarnings("unchecked")
       int comparison = ((Score) candidateScore).compareTo((Score) currentBest);
       if (comparison <= 0) {
-        return false;  // Not better, skip entirely
+        return false; // Not better, skip entirely
       }
     }
 
@@ -54,7 +55,7 @@ public class SharedGlobalState<Solution_> {
         @SuppressWarnings("unchecked")
         int comparison = ((Score) candidateScore).compareTo((Score) currentBest);
         if (comparison <= 0) {
-          return false;  // Lost race, not better anymore
+          return false; // Lost race, not better anymore
         }
       }
 

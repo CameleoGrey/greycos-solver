@@ -3,10 +3,10 @@ package ai.greycos.solver.core.impl.domain.solution.descriptor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.testdomain.TestdataEntity;
 import ai.greycos.solver.core.testdomain.equals.TestdataEqualsByCodeEasyScoreCalculator;
@@ -107,15 +107,15 @@ class PlanningSolutionDiffTest {
       @BeforeEach
       void beforeEach() {
         newSolution
-              .getEntityList()
-              .forEach(
-                  entity -> {
-                    var newValue =
-                        entity.getValue() == newSolution.getValueList().get(0)
-                            ? newSolution.getValueList().get(1)
-                            : newSolution.getValueList().get(0);
-                    entity.setValue(newValue);
-                  });
+            .getEntityList()
+            .forEach(
+                entity -> {
+                  var newValue =
+                      entity.getValue() == newSolution.getValueList().get(0)
+                          ? newSolution.getValueList().get(1)
+                          : newSolution.getValueList().get(0);
+                  entity.setValue(newValue);
+                });
         diff = solutionManager.diff(oldSolution, newSolution);
       }
 

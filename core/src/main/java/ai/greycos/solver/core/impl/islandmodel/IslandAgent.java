@@ -338,7 +338,7 @@ public class IslandAgent<Solution_> implements Runnable {
     AgentUpdate<Solution_> updateToSend =
         new AgentUpdate<>(agentId, deepClone(migrant), new ArrayList<>(statusVector));
     LOGGER.debug("Agent {} sending migration", agentId);
-    
+
     // Use timeout-based send for alive agents
     boolean sent = sender.send(updateToSend, config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
     if (!sent) {

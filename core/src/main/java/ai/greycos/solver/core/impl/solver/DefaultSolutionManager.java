@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.ScoreExplanation;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
@@ -19,7 +20,6 @@ import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.domain.variable.declarative.ConsistencyTracker;
 import ai.greycos.solver.core.impl.domain.variable.listener.support.violation.VariableSnapshotTotal;
 import ai.greycos.solver.core.impl.score.DefaultScoreExplanation;
-import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
