@@ -1,11 +1,15 @@
 package ai.greycos.solver.core.config.islandmodel;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElements;
 import jakarta.xml.bind.annotation.XmlType;
 
+import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.composite.CartesianProductMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
@@ -26,10 +30,13 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListRu
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubListSwapMoveSelectorConfig;
+import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchType;
 import ai.greycos.solver.core.config.localsearch.decider.acceptor.LocalSearchAcceptorConfig;
 import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchForagerConfig;
+import ai.greycos.solver.core.config.phase.NoChangePhaseConfig;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
+import ai.greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 
 import org.jspecify.annotations.NonNull;
@@ -66,7 +73,8 @@ import org.jspecify.annotations.Nullable;
       "compareGlobalEnabled",
       "receiveGlobalUpdateFrequency",
       "compareGlobalFrequency",
-      "migrationTimeout"
+      "migrationTimeout",
+      "phaseConfigList"
     })
 public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> {
 
@@ -139,6 +147,21 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   private LocalSearchForagerConfig foragerConfig = null;
 
   protected String moveThreadCount = null;
+
+  @XmlElements({
+    @XmlElement(
+        name = ConstructionHeuristicPhaseConfig.XML_ELEMENT_NAME,
+        type = ConstructionHeuristicPhaseConfig.class),
+    @XmlElement(name = CustomPhaseConfig.XML_ELEMENT_NAME, type = CustomPhaseConfig.class),
+    @XmlElement(
+        name = ExhaustiveSearchPhaseConfig.XML_ELEMENT_NAME,
+        type = ExhaustiveSearchPhaseConfig.class),
+    @XmlElement(
+        name = LocalSearchPhaseConfig.XML_ELEMENT_NAME,
+        type = LocalSearchPhaseConfig.class),
+    @XmlElement(name = NoChangePhaseConfig.XML_ELEMENT_NAME, type = NoChangePhaseConfig.class)
+  })
+  private List<PhaseConfig<?>> phaseConfigList = null;
 
   public static final String XML_ELEMENT_NAME = "islandModel";
 
@@ -343,6 +366,28 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     this.moveThreadCount = moveThreadCount;
   }
 
+  /**
+   * Returns the list of phase configurations for each island.
+   *
+   * <p>Each island runs the same sequence of phases. This allows defining multi-phase optimization
+   * strategies (e.g., construction heuristic followed by local search) that will be executed
+   * independently on each island.
+   *
+   * @return list of phase configurations, or null if not specified
+   */
+  public @Nullable List<PhaseConfig<?>> getPhaseConfigList() {
+    return phaseConfigList;
+  }
+
+  /**
+   * Sets the list of phase configurations for each island.
+   *
+   * @param phaseConfigList list of phase configurations
+   */
+  public void setPhaseConfigList(@Nullable List<PhaseConfig<?>> phaseConfigList) {
+    this.phaseConfigList = phaseConfigList;
+  }
+
   // ************************************************************************
   // With methods
   // ************************************************************************
@@ -448,6 +493,12 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     return this;
   }
 
+  public @NonNull IslandModelPhaseConfig withPhaseConfigList(
+      @NonNull List<PhaseConfig<?>> phaseConfigList) {
+    this.phaseConfigList = phaseConfigList;
+    return this;
+  }
+
   @Override
   public @NonNull IslandModelPhaseConfig inherit(@NonNull IslandModelPhaseConfig inheritedConfig) {
     // Call parent's inherit with the inheritedConfig
@@ -491,6 +542,16 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
         ConfigUtils.inheritOverwritableProperty(
             migrationTimeout, inheritedConfig.getMigrationTimeout());
 
+    // Inherit phase configuration list
+    if (inheritedConfig.getPhaseConfigList() != null && phaseConfigList == null) {
+      // Only copy phase list if we don't already have one
+      // Inheritance of phase list is not supported when both have phases
+      phaseConfigList = new ArrayList<>(inheritedConfig.getPhaseConfigList().size());
+      for (PhaseConfig<?> inheritedPhase : inheritedConfig.getPhaseConfigList()) {
+        phaseConfigList.add(inheritedPhase.copyConfig());
+      }
+    }
+
     return this;
   }
 
@@ -515,6 +576,13 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     }
     if (foragerConfig != null) {
       foragerConfig.visitReferencedClasses(classVisitor);
+    }
+
+    // Handle phase config list
+    if (phaseConfigList != null) {
+      for (PhaseConfig<?> phaseConfig : phaseConfigList) {
+        phaseConfig.visitReferencedClasses(classVisitor);
+      }
     }
   }
 }
