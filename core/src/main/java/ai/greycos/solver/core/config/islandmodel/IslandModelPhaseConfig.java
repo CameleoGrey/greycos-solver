@@ -63,18 +63,18 @@ import org.jspecify.annotations.Nullable;
  */
 @XmlType(
     propOrder = {
-      "localSearchType",
-      "moveSelectorConfig",
-      "moveThreadCount",
-      "acceptorConfig",
-      "foragerConfig",
-      "islandCount",
-      "migrationFrequency",
-      "compareGlobalEnabled",
-      "receiveGlobalUpdateFrequency",
-      "compareGlobalFrequency",
-      "migrationTimeout",
-      "phaseConfigList"
+            "islandCount",
+            "migrationFrequency",
+            "compareGlobalEnabled",
+            "receiveGlobalUpdateFrequency",
+            "compareGlobalFrequency",
+            "migrationTimeout",
+            "localSearchType",
+            "phaseConfigList",
+            "acceptorConfig",
+            "foragerConfig",
+            "moveSelectorConfig",
+            "moveThreadCount",
     })
 public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> {
 
