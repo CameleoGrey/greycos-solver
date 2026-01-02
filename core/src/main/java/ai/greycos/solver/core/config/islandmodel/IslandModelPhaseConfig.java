@@ -63,22 +63,23 @@ import org.jspecify.annotations.Nullable;
  */
 @XmlType(
     propOrder = {
-            "islandCount",
-            "migrationFrequency",
-            "compareGlobalEnabled",
-            "receiveGlobalUpdateFrequency",
-            "compareGlobalFrequency",
-            "migrationTimeout",
-            "localSearchType",
-            "phaseConfigList",
-            "acceptorConfig",
-            "foragerConfig",
-            "moveSelectorConfig",
-            "moveThreadCount",
+      "islandCount",
+      "migrationFrequency",
+      "compareGlobalEnabled",
+      "receiveGlobalUpdateFrequency",
+      "compareGlobalFrequency",
+      "migrationTimeout",
+      "localSearchType",
+      "moveSelectorConfig",
+      "moveThreadCount",
+      "acceptorConfig",
+      "foragerConfig",
+      "phaseConfigList",
     })
 public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> {
 
   // Local search configuration fields (inherited from LocalSearchPhaseConfig behavior)
+  @XmlElement(name = "localSearchType")
   protected LocalSearchType localSearchType = null;
 
   @XmlElements({
@@ -146,6 +147,7 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   @XmlElement(name = "forager")
   private LocalSearchForagerConfig foragerConfig = null;
 
+  @XmlElement(name = "moveThreadCount")
   protected String moveThreadCount = null;
 
   @XmlElements({
