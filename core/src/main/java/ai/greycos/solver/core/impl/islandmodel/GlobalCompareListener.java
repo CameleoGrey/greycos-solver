@@ -71,9 +71,7 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
       return;
     }
 
-    @SuppressWarnings("unchecked")
     var currentScore = (Score) currentInnerScore.raw();
-    @SuppressWarnings("unchecked")
     var globalScoreCast = (Score) globalScore;
 
     int comparisonResult = globalScoreCast.compareTo(currentScore);
@@ -91,7 +89,6 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
     }
   }
 
-  @SuppressWarnings("unchecked")
   private Solution_ deepClone(Solution_ solution, LocalSearchStepScope<Solution_> stepScope) {
     if (solution == null) {
       return null;
@@ -111,7 +108,6 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
     var newBestScore = solverScope.getScoreDirector().calculateScore();
     solverScope.setBestScore(newBestScore);
 
-    @SuppressWarnings("unchecked")
     var scoreToSet = (Score) newBestScore.raw();
     solverScope.getScoreDirector().getSolutionDescriptor().setScore(newSolution, scoreToSet);
 

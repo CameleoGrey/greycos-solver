@@ -234,9 +234,7 @@ public class IslandAgent<Solution_> implements Runnable {
         islandScope.getScoreDirector().getSolutionDescriptor().getScore(getCurrentBestSolution());
 
     if (migrantScore != null && currentScore != null) {
-      @SuppressWarnings("unchecked")
       var migrantScoreCast = (Score) migrantScore;
-      @SuppressWarnings("unchecked")
       var currentScoreCast = (Score) currentScore;
       int comparisonResult = migrantScoreCast.compareTo(currentScoreCast);
       if (comparisonResult > 0) {
@@ -289,9 +287,7 @@ public class IslandAgent<Solution_> implements Runnable {
     var currentInnerScore = getCurrentBestScore();
 
     if (migrantInnerScore != null && currentInnerScore != null) {
-      @SuppressWarnings("unchecked")
       var migrantScore = (Score) migrantInnerScore.raw();
-      @SuppressWarnings("unchecked")
       var currentScore = (Score) currentInnerScore.raw();
       int comparisonResult = migrantScore.compareTo(currentScore);
       if (comparisonResult > 0) {
@@ -349,7 +345,6 @@ public class IslandAgent<Solution_> implements Runnable {
     if (score == null) {
       return null;
     }
-    @SuppressWarnings("unchecked")
     var scoreCast = (Score) score;
     return InnerScore.fullyAssigned(scoreCast);
   }
@@ -359,12 +354,10 @@ public class IslandAgent<Solution_> implements Runnable {
     islandScope.setBestSolution(islandScope.getScoreDirector().cloneSolution(newSolution));
     var newBestScore = islandScope.getScoreDirector().calculateScore();
     islandScope.setBestScore(newBestScore);
-    @SuppressWarnings("unchecked")
     var scoreToSet = (Score) newBestScore.raw();
     islandScope.getSolutionDescriptor().setScore(newSolution, scoreToSet);
   }
 
-  @SuppressWarnings("unchecked")
   private Solution_ deepClone(Solution_ solution) {
     if (solution == null) {
       return null;

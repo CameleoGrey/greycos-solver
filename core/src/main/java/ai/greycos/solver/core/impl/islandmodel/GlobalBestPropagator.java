@@ -72,7 +72,6 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
       return true;
     }
 
-    @SuppressWarnings("unchecked")
     var comparisonResult = ((Score) newGlobalBestScore).compareTo((Score) lastKnownBestScore);
     return comparisonResult > 0;
   }
@@ -82,7 +81,6 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
 
     mainSolverScope.setBestSolution(clonedSolution);
 
-    @SuppressWarnings("unchecked")
     var innerScore = InnerScore.fullyAssigned((Score) newBestScore);
     mainSolverScope.setBestScore(innerScore);
 

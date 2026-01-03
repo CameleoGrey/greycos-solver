@@ -31,7 +31,6 @@ public class SharedGlobalState<Solution_> {
 
     Score<?> currentBest = bestScore;
     if (currentBest != null) {
-      @SuppressWarnings("unchecked")
       int comparison = ((Score) candidateScore).compareTo((Score) currentBest);
       if (comparison <= 0) {
         return false;
@@ -41,7 +40,6 @@ public class SharedGlobalState<Solution_> {
     synchronized (lock) {
       currentBest = bestScore;
       if (currentBest != null) {
-        @SuppressWarnings("unchecked")
         int comparison = ((Score) candidateScore).compareTo((Score) currentBest);
         if (comparison <= 0) {
           return false;

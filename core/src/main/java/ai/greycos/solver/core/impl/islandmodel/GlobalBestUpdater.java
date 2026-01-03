@@ -71,7 +71,6 @@ public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<
       return true;
     }
 
-    @SuppressWarnings("unchecked")
     var currentScore = (Score) currentBestScore.raw();
     int comparisonResult = currentScore.compareTo((Score) previousBestScore);
 
