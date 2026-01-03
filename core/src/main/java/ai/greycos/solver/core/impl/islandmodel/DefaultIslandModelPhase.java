@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.islandmodel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntFunction;
@@ -51,6 +52,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
   private final SolverTermination<Solution_> solverTermination;
   private GlobalBestPropagator<Solution_> globalBestPropagator;
+  private CyclicBarrier migrationBarrier;
 
   private DefaultIslandModelPhase(Builder<Solution_> builder) {
     super(builder);
@@ -145,6 +147,12 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
     LOGGER.info("Creating {} island agents with ring topology...", islandCount);
 
+    // Create migration barrier for synchronization across all agents
+    // This ensures all agents reach a consistent state before migration occurs
+    migrationBarrier = new CyclicBarrier(islandCount, () -> {
+      LOGGER.debug("All agents reached migration barrier");
+    });
+
     var channels = new ArrayList<BoundedChannel<AgentUpdate<Solution_>>>(islandCount);
     for (int i = 0; i < islandCount; i++) {
       channels.add(new BoundedChannel<>(1));
@@ -155,7 +163,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       var sender = channels.get((i + 1) % islandCount);
 
       var agentPhases = buildPhasesForAgent();
-      var agent = createAgent(solverScope, random, i, sender, receiver, agentPhases);
+      var agent = createAgent(solverScope, random, i, sender, receiver, agentPhases, migrationBarrier);
       executor.submit(agent);
     }
 
@@ -176,7 +184,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       int agentId,
       BoundedChannel<AgentUpdate<Solution_>> sender,
       BoundedChannel<AgentUpdate<Solution_>> receiver,
-      List<Phase<Solution_>> agentPhases) {
+      List<Phase<Solution_>> agentPhases,
+      CyclicBarrier migrationBarrier) {
     var agentRandom = new Random(random.nextLong());
     var config =
         IslandModelConfig.builder()
@@ -196,7 +205,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         receiver,
         config,
         agentRandom,
-        solverScope);
+        solverScope,
+        migrationBarrier);
   }
 
   private List<Phase<Solution_>> buildPhasesForAgent() {
