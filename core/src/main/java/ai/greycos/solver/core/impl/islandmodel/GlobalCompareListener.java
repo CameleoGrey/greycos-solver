@@ -11,8 +11,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Periodically checks and adopts global best solution from SharedGlobalState.
  *
- * <p>Attached to local search phases to enable compare-to-global functionality.
- * Provides faster convergence and better solution quality. Complements migration.
+ * <p>Attached to local search phases to enable compare-to-global functionality. Provides faster
+ * convergence and better solution quality. Complements migration.
  *
  * @param <Solution_> solution type
  */
@@ -101,19 +101,27 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
     var phaseScope = stepScope.getPhaseScope();
     var solverScope = phaseScope.getSolverScope();
 
-    solverScope.getScoreDirector().setWorkingSolution(newSolution);
+    // Synchronize on the ScoreDirector to ensure atomic solution replacement
+    // This prevents race conditions when phase thread and global best adoption access the solution
+    // concurrently. Without this synchronization, Bavet sessions can become corrupted:
+    // - NodeNetwork becomes stale (built for old solution entities)
+    // - ScoreInliner cached values become invalid
+    // - Shadow variable listeners fire out-of-order
+    // See: IslandAgent.replaceCurrentSolution() for the same pattern used in migration
+    synchronized (solverScope.getScoreDirector()) {
+      solverScope.getScoreDirector().setWorkingSolution(newSolution);
 
-    solverScope.setBestSolution(solverScope.getScoreDirector().cloneSolution(newSolution));
+      solverScope.setBestSolution(solverScope.getScoreDirector().cloneSolution(newSolution));
 
-    var newBestScore = solverScope.getScoreDirector().calculateScore();
-    solverScope.setBestScore(newBestScore);
+      var newBestScore = solverScope.getScoreDirector().calculateScore();
+      solverScope.setBestScore(newBestScore);
 
-    var scoreToSet = (Score) newBestScore.raw();
-    solverScope.getScoreDirector().getSolutionDescriptor().setScore(newSolution, scoreToSet);
+      var scoreToSet = (Score) newBestScore.raw();
+      solverScope.getScoreDirector().getSolutionDescriptor().setScore(newSolution, scoreToSet);
 
-    stepScope.setScore(newBestScore);
-    stepScope.setBestScoreImproved(true);
-    phaseScope.setBestSolutionStepIndex(stepScope.getStepIndex());
+      stepScope.setScore(newBestScore);
+      stepScope.setBestScoreImproved(true);
+      phaseScope.setBestSolutionStepIndex(stepScope.getStepIndex());
+    }
   }
-
 }

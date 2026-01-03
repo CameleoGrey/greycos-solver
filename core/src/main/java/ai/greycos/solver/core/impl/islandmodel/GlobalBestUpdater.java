@@ -11,8 +11,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Updates global best state when an agent finds a better solution.
  *
- * <p>Optimized to only update when local best improves, reducing lock contention.
- * Complements GlobalCompareListener (push vs pull).
+ * <p>Optimized to only update when local best improves, reducing lock contention. Complements
+ * GlobalCompareListener (push vs pull).
  *
  * @param <Solution_> solution type
  */

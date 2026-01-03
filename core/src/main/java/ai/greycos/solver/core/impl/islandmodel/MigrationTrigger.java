@@ -17,7 +17,8 @@ class MigrationTrigger<Solution_> extends PhaseLifecycleListenerAdapter<Solution
   private final IslandAgent<Solution_> agent;
   private final java.util.concurrent.CyclicBarrier migrationBarrier;
 
-  MigrationTrigger(IslandAgent<Solution_> agent, java.util.concurrent.CyclicBarrier migrationBarrier) {
+  MigrationTrigger(
+      IslandAgent<Solution_> agent, java.util.concurrent.CyclicBarrier migrationBarrier) {
     this.agent = agent;
     this.migrationBarrier = migrationBarrier;
   }

@@ -12,8 +12,8 @@ import ai.greycos.solver.core.api.score.Score;
 /**
  * Thread-safe shared state tracking global best solution across all islands.
  *
- * <p>Uses double-checked locking with volatile for minimal contention.
- * Fast path for failed updates, slow path only for potential improvements.
+ * <p>Uses double-checked locking with volatile for minimal contention. Fast path for failed
+ * updates, slow path only for potential improvements.
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */

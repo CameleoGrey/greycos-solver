@@ -2,9 +2,7 @@ package ai.greycos.solver.core.impl.islandmodel;
 
 import java.util.Objects;
 
-/**
- * Configuration for island model phase. Controls islands, migration, and global best sync.
- */
+/** Configuration for island model phase. Controls islands, migration, and global best sync. */
 public class IslandModelConfig {
 
   public static final int DEFAULT_ISLAND_COUNT = 4;

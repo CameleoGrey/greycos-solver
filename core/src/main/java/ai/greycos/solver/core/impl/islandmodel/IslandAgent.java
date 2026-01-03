@@ -96,7 +96,8 @@ public class IslandAgent<Solution_> implements Runnable {
 
         LOGGER.debug("Agent {} running phase: {}", agentId, phase.getClass().getSimpleName());
 
-        MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this, migrationBarrier);
+        MigrationTrigger<Solution_> migrationTrigger =
+            new MigrationTrigger<>(this, migrationBarrier);
         phase.addPhaseLifecycleListener(migrationTrigger);
 
         GlobalBestUpdater<Solution_> globalBestUpdater =
@@ -187,7 +188,7 @@ public class IslandAgent<Solution_> implements Runnable {
       try {
         LOGGER.debug("Agent {} triggering migration", agentId);
         performMigrationWithTimeout(null);
-        
+
         // Wait for all agents to complete migration at the barrier
         // This ensures no phase is executing while migration happens
         if (migrationBarrier != null) {
@@ -385,7 +386,8 @@ public class IslandAgent<Solution_> implements Runnable {
 
   private void replaceCurrentSolution(Solution_ newSolution) {
     // Synchronize on the ScoreDirector to ensure atomic solution replacement
-    // This prevents race conditions when phase and migration threads access the solution concurrently
+    // This prevents race conditions when phase and migration threads access the solution
+    // concurrently
     synchronized (islandScope.getScoreDirector()) {
       islandScope.getScoreDirector().setWorkingSolution(newSolution);
       islandScope.setBestSolution(islandScope.getScoreDirector().cloneSolution(newSolution));

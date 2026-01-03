@@ -149,9 +149,12 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
     // Create migration barrier for synchronization across all agents
     // This ensures all agents reach a consistent state before migration occurs
-    migrationBarrier = new CyclicBarrier(islandCount, () -> {
-      LOGGER.debug("All agents reached migration barrier");
-    });
+    migrationBarrier =
+        new CyclicBarrier(
+            islandCount,
+            () -> {
+              LOGGER.debug("All agents reached migration barrier");
+            });
 
     var channels = new ArrayList<BoundedChannel<AgentUpdate<Solution_>>>(islandCount);
     for (int i = 0; i < islandCount; i++) {
@@ -163,7 +166,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       var sender = channels.get((i + 1) % islandCount);
 
       var agentPhases = buildPhasesForAgent();
-      var agent = createAgent(solverScope, random, i, sender, receiver, agentPhases, migrationBarrier);
+      var agent =
+          createAgent(solverScope, random, i, sender, receiver, agentPhases, migrationBarrier);
       executor.submit(agent);
     }
 
