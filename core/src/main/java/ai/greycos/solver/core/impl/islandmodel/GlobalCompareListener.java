@@ -9,27 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Lifecycle listener that checks and adopts global best solution periodically. Attached to local
- * search phases to enable compare-to-global functionality.
+ * Periodically checks and adopts global best solution from SharedGlobalState.
  *
- * <p>This listener provides "receive global update" mechanism where agents periodically check the
- * shared global best solution (the best solution found across ALL islands) and adopt it if it's
- * better than their current best. This provides:
- *
- * <ul>
- *   <li>Faster convergence - Global best is immediately available to all agents
- *   <li>Better solution quality - Prevents getting stuck in local optima
- *   <li>Complementary to migration - Migration provides diversity, global comparison provides
- *       intensification
- * </ul>
- *
- * <p>The frequency of checking the global best is controlled by the {@code
- * receiveGlobalUpdateFrequency} parameter. Islands will check the global best every N steps and
- * adopt it if it's better than their local best.
- *
- * <p>This listener only performs meaningful work when attached to local search phases, as it
- * requires access to {@link LocalSearchStepScope}. When attached to other phase types, it will
- * simply do nothing.
+ * <p>Attached to local search phases to enable compare-to-global functionality.
+ * Provides faster convergence and better solution quality. Complements migration.
  *
  * @param <Solution_> solution type
  */
@@ -47,11 +30,9 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
     this.globalState = globalState;
     this.config = config;
     this.agentId = agentId;
-    // Use receiveGlobalUpdateFrequency (or fall back to deprecated compareGlobalFrequency)
     this.stepsUntilNextReceive = getReceiveFrequency(config);
   }
 
-  /** Gets the receive frequency from config. */
   private int getReceiveFrequency(IslandModelConfig config) {
     return config.getReceiveGlobalUpdateFrequency();
   }
@@ -107,9 +88,6 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
       Solution_ clonedGlobalBest = deepClone(globalBest, stepScope);
 
       replaceCurrentSolution(clonedGlobalBest, stepScope);
-
-      // Do NOT update global best here - we just adopted it, we haven't improved it yet
-      // The GlobalBestUpdater listener will update global state when we actually improve the solution
     }
   }
 
@@ -137,11 +115,8 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
     var scoreToSet = (Score) newBestScore.raw();
     solverScope.getScoreDirector().getSolutionDescriptor().setScore(newSolution, scoreToSet);
 
-    // Update step scope's score to reflect the new best solution
     stepScope.setScore(newBestScore);
-    // Mark that the best score was improved in this step (for logging)
     stepScope.setBestScoreImproved(true);
-    // Update the phase scope's best solution step index
     phaseScope.setBestSolutionStepIndex(stepScope.getStepIndex());
   }
 

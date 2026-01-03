@@ -18,11 +18,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An island agent that runs phases independently in island model. Each agent maintains its own
- * solution state and participates in periodic migration.
+ * Island agent running phases independently with periodic migration.
  *
- * <p>Agents run their configured phases sequentially, exchanging best solutions with neighboring
- * agents through migration at configured intervals.
+ * <p>Exchanges best solutions with neighboring agents through migration.
  *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
@@ -40,13 +38,11 @@ public class IslandAgent<Solution_> implements Runnable {
   private final Random random;
   private final SolverScope<Solution_> parentSolverScope;
 
-  // Agent state
   private volatile AgentStatus status = AgentStatus.ALIVE;
   private volatile List<AgentStatus> statusVector;
   private volatile int stepsUntilNextMigration;
   private volatile boolean phasesCompleted = false;
 
-  // Agent's solver scope (isolated from other agents)
   private SolverScope<Solution_> islandScope;
 
   public IslandAgent(
@@ -84,7 +80,6 @@ public class IslandAgent<Solution_> implements Runnable {
       }
 
       islandScope = parentSolverScope.createChildThreadSolverScope(ChildThreadType.MOVE_THREAD);
-      // Ensure this island uses its own random seed to prevent duplicate move sequences
       islandScope.setWorkingRandom(random);
       islandScope.setInitialSolution(initialSolution);
 
@@ -99,7 +94,6 @@ public class IslandAgent<Solution_> implements Runnable {
         MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
         phase.addPhaseLifecycleListener(migrationTrigger);
 
-        // Add global best updater to propagate local improvements to global state
         GlobalBestUpdater<Solution_> globalBestUpdater =
             new GlobalBestUpdater<>(globalState, agentId);
         phase.addPhaseLifecycleListener(globalBestUpdater);
@@ -161,11 +155,9 @@ public class IslandAgent<Solution_> implements Runnable {
 
   private void performMigration() throws InterruptedException {
     if (agentId % 2 == 0) {
-      // Even agents: send first, then receive
       sendMigration();
       receiveMigration();
     } else {
-      // Odd agents: receive first, then send
       receiveMigration();
       sendMigration();
     }
@@ -192,11 +184,9 @@ public class IslandAgent<Solution_> implements Runnable {
     AgentUpdate<Solution_> receivedMessage;
 
     if (agentId % 2 == 0) {
-      // Even agents: send first, then receive
       sendMigrationWithTimeout(pendingMessage);
       receivedMessage = receiveMigrationWithTimeout();
     } else {
-      // Odd agents: receive first, then send
       receivedMessage = receiveMigrationWithTimeout();
       sendMigrationWithTimeout(pendingMessage);
     }
@@ -272,11 +262,9 @@ public class IslandAgent<Solution_> implements Runnable {
     AgentUpdate<Solution_> update;
 
     if (status == AgentStatus.DEAD) {
-      // Skip migration entirely for dead agents
       return null;
     }
 
-    // Use timeout-based receive for alive agents
     update = receiver.tryReceive(config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
     if (update == null) {
       LOGGER.trace("Agent {} timeout waiting for migration message", agentId);
@@ -330,7 +318,6 @@ public class IslandAgent<Solution_> implements Runnable {
   private AgentUpdate<Solution_> sendMigrationWithTimeout(AgentUpdate<Solution_> messageToSend)
       throws InterruptedException {
     if (status == AgentStatus.DEAD) {
-      // Skip migration entirely for dead agents - no forwarding
       return null;
     }
 
@@ -339,7 +326,6 @@ public class IslandAgent<Solution_> implements Runnable {
         new AgentUpdate<>(agentId, deepClone(migrant), new ArrayList<>(statusVector));
     LOGGER.debug("Agent {} sending migration", agentId);
 
-    // Use timeout-based send for alive agents
     boolean sent = sender.send(updateToSend, config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
     if (!sent) {
       LOGGER.warn("Agent {} failed to send migration within timeout", agentId);

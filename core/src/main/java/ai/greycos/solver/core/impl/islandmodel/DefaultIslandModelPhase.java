@@ -27,18 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Island model phase that coordinates multiple independent island agents.
+ * Coordinates multiple independent island agents with periodic migration.
  *
- * <p>This phase creates and manages multiple island agents, each running same phases independently.
- * Agents periodically exchange their best solutions through migration in a ring topology.
- *
- * <p>The island model is an opt-in feature that provides:
- *
- * <ul>
- *   <li>Enhanced solution quality through migration
- *   <li>Near-linear horizontal scaling
- *   <li>Fault tolerance (if one island fails, others continue)
- * </ul>
+ * <p>Provides enhanced solution quality, near-linear scaling, and fault tolerance.
  *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
@@ -53,7 +44,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   private final int receiveGlobalUpdateFrequency;
   private final long migrationTimeout;
   private final SharedGlobalState<Solution_> globalState;
-  private SolverScope<Solution_> solverScope; // Cache for solution cloning
+  private SolverScope<Solution_> solverScope;
   private final HeuristicConfigPolicy<Solution_> configPolicy;
   private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
   private final SolverTermination<Solution_> solverTermination;
@@ -106,7 +97,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       var innerScore = solverScope.calculateScore();
       globalState.tryUpdate(initialSolution, innerScore.raw());
 
-      // Start propagating global best updates to main solver scope
       globalBestPropagator =
           new GlobalBestPropagator<>(
               globalState,
@@ -141,7 +131,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           e);
       throw e;
     } finally {
-      // Ensure propagator is stopped even on exception
       if (globalBestPropagator != null) {
         globalBestPropagator.stop();
       }
@@ -209,11 +198,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   private List<Phase<Solution_>> buildPhasesForAgent() {
-    // IslandModelPhaseConfig includes all local search configuration fields,
-    // so each island runs the same local search configuration with independent random seeds
     var childConfigPolicy = configPolicy.createChildThreadConfigPolicy(ChildThreadType.MOVE_THREAD);
 
-    // Create a LocalSearchPhaseConfig from the island model's local search fields
     var localSearchConfig = new ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig();
     localSearchConfig.setLocalSearchType(islandModelConfig.getLocalSearchType());
     localSearchConfig.setMoveSelectorConfig(islandModelConfig.getMoveSelectorConfig());
@@ -222,7 +208,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     localSearchConfig.setMoveThreadCount(islandModelConfig.getMoveThreadCount());
     localSearchConfig.setTerminationConfig(islandModelConfig.getTerminationConfig());
 
-    // Build a single LocalSearchPhase from the local search config
     return PhaseFactory.buildPhases(
         List.of(localSearchConfig), childConfigPolicy, bestSolutionRecaller, solverTermination);
   }
@@ -330,9 +315,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       return this;
     }
 
-    /**
-     * @deprecated Use {@link #withReceiveGlobalUpdateFrequency(int)} instead.
-     */
     @Deprecated
     public Builder<Solution_> withCompareGlobalFrequency(int compareGlobalFrequency) {
       this.receiveGlobalUpdateFrequency = compareGlobalFrequency;

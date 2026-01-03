@@ -12,13 +12,7 @@ import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 /**
  * Propagates global best solution updates from SharedGlobalState to main solver scope.
  *
- * <p>This ensures that:
- *
- * <ul>
- *   <li>Main solver's best solution is updated during solving (not just at end)
- *   <li>BestSolutionChangedEvent events are fired for user listeners
- *   <li>Termination criteria based on best score work correctly
- * </ul>
+ * <p>Updates main solver during solving, fires events, and enables termination criteria.
  *
  * @param <Solution_> solution type
  */
@@ -43,12 +37,10 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
     this.eventProducerId = Objects.requireNonNull(eventProducerId);
   }
 
-  /** Start observing global best changes. Must be called before island agents start solving. */
   public void start() {
     globalState.addObserver(this);
   }
 
-  /** Stop observing global best changes. Must be called after island agents complete. */
   public void stop() {
     globalState.removeObserver(this);
   }
@@ -64,7 +56,6 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
       return;
     }
 
-    // Only update if score actually improved
     boolean shouldUpdate = shouldUpdateMainSolverScope(newGlobalBestScore);
 
     if (shouldUpdate) {
@@ -78,7 +69,7 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
 
   private boolean shouldUpdateMainSolverScope(Score<?> newGlobalBestScore) {
     if (lastKnownBestScore == null) {
-      return true; // First update
+      return true;
     }
 
     @SuppressWarnings("unchecked")
@@ -87,10 +78,8 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
   }
 
   private void updateMainSolverScope(Solution_ newBestSolution, Score<?> newBestScore) {
-    // Clone to avoid sharing references with island agents
     var clonedSolution = mainSolverScope.getScoreDirector().cloneSolution(newBestSolution);
 
-    // Update main solver scope
     mainSolverScope.setBestSolution(clonedSolution);
 
     @SuppressWarnings("unchecked")

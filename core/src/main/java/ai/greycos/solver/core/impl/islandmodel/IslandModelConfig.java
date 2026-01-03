@@ -3,30 +3,22 @@ package ai.greycos.solver.core.impl.islandmodel;
 import java.util.Objects;
 
 /**
- * Configuration for the island model phase in Greycos. Controls the number of islands, migration
- * behavior, and global best synchronization.
+ * Configuration for island model phase. Controls islands, migration, and global best sync.
  */
 public class IslandModelConfig {
 
-  /** Default number of islands to use. */
   public static final int DEFAULT_ISLAND_COUNT = 4;
 
-  /** Default frequency of migration (number of steps between migrations). */
   public static final int DEFAULT_MIGRATION_FREQUENCY = 100;
 
-  /**
-   * Default frequency of receiving global best updates (number of steps between checks). This is
-   * the frequency at which islands check and adopt the global best solution.
-   */
   public static final int DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY = 50;
 
-  /** Default timeout for migration operations (in milliseconds). */
   public static final long DEFAULT_MIGRATION_TIMEOUT = 100L;
 
   private int islandCount = DEFAULT_ISLAND_COUNT;
   private int migrationFrequency = DEFAULT_MIGRATION_FREQUENCY;
-  private boolean enabled = false; // Default disabled for backward compatibility
-  private boolean compareGlobalEnabled = true; // Default enabled for compare-to-global
+  private boolean enabled = false;
+  private boolean compareGlobalEnabled = true;
   private int receiveGlobalUpdateFrequency = DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY;
   private long migrationTimeout = DEFAULT_MIGRATION_TIMEOUT;
 
@@ -76,22 +68,10 @@ public class IslandModelConfig {
     this.compareGlobalEnabled = compareGlobalEnabled;
   }
 
-  /**
-   * Gets the frequency at which islands receive and check global best updates. Islands will check
-   * the global best solution every N steps and adopt it if better.
-   *
-   * @return the receive global update frequency (in steps)
-   */
   public int getReceiveGlobalUpdateFrequency() {
     return receiveGlobalUpdateFrequency;
   }
 
-  /**
-   * Sets the frequency at which islands receive and check global best updates.
-   *
-   * @param receiveGlobalUpdateFrequency the frequency (must be at least 1)
-   * @throws IllegalArgumentException if frequency is less than 1
-   */
   public void setReceiveGlobalUpdateFrequency(int receiveGlobalUpdateFrequency) {
     if (receiveGlobalUpdateFrequency < 1) {
       throw new IllegalArgumentException(
@@ -102,21 +82,10 @@ public class IslandModelConfig {
     this.receiveGlobalUpdateFrequency = receiveGlobalUpdateFrequency;
   }
 
-  /**
-   * Gets the timeout for migration operations (send and receive).
-   *
-   * @return the migration timeout in milliseconds
-   */
   public long getMigrationTimeout() {
     return migrationTimeout;
   }
 
-  /**
-   * Sets the timeout for migration operations (send and receive).
-   *
-   * @param migrationTimeout the timeout in milliseconds (must be at least 1)
-   * @throws IllegalArgumentException if timeout is less than 1
-   */
   public void setMigrationTimeout(long migrationTimeout) {
     if (migrationTimeout < 1) {
       throw new IllegalArgumentException(
