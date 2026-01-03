@@ -108,7 +108,8 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
 
       replaceCurrentSolution(clonedGlobalBest, stepScope);
 
-      updateGlobalBest(stepScope);
+      // Do NOT update global best here - we just adopted it, we haven't improved it yet
+      // The GlobalBestUpdater listener will update global state when we actually improve the solution
     }
   }
 
@@ -144,16 +145,4 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
     phaseScope.setBestSolutionStepIndex(stepScope.getStepIndex());
   }
 
-  private void updateGlobalBest(LocalSearchStepScope<Solution_> stepScope) {
-    var phaseScope = stepScope.getPhaseScope();
-    var solverScope = phaseScope.getSolverScope();
-
-    // Use the best solution and its score directly, not the working solution
-    var bestSolution = solverScope.getBestSolution();
-    var bestScore = solverScope.getBestScore();
-
-    if (bestSolution != null && bestScore != null) {
-      globalState.tryUpdate(bestSolution, bestScore.raw());
-    }
-  }
 }
