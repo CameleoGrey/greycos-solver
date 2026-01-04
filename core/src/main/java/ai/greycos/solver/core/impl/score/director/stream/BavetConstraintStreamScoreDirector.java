@@ -1,7 +1,10 @@
 package ai.greycos.solver.core.impl.score.director.stream;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
@@ -33,6 +36,15 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
 
   private final boolean derived;
   private BavetConstraintSession<Score_> session;
+
+  /**
+   * Tracks entities that were inserted into the current session during
+   * setWorkingSolutionWithoutUpdatingShadows. Uses identity comparison to detect when an entity
+   * reference from an old solution is passed to update methods. When an entity is not in this set,
+   * it means it's from an old solution (e.g., cached in a move from before solution adoption) and
+   * should NOT be updated in the session to prevent score corruption.
+   */
+  private Set<Object> insertedEntities = Collections.emptySet();
 
   private BavetConstraintStreamScoreDirector(Builder<Solution_, Score_> builder, boolean derived) {
     super(builder);
@@ -74,13 +86,31 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
 
   @Override
   public void setWorkingSolutionWithoutUpdatingShadows(Solution_ workingSolution) {
+    // Reset the consistency tracker to clear any references to old entities.
+    // When a new working solution is set (e.g., during island model global best adoption),
+    // the new solution contains cloned entities with the same planning IDs but different
+    // Java object references. The old consistency tracker may still contain references to
+    // old entities, causing the Bavet session to track both old and new entities,
+    // resulting in score corruption (doubled scores).
+    variableListenerSupport.setConsistencyTracker(new ConsistencyTracker<>());
     session =
         scoreDirectorFactory.newSession(
             workingSolution,
             variableListenerSupport.getConsistencyTracker(),
             constraintMatchPolicy,
             derived);
-    super.setWorkingSolutionWithoutUpdatingShadows(workingSolution, session::insert);
+    // Track which entities are inserted into the session to detect stale entity references.
+    // When solution is replaced (e.g., island model adoption), cached moves may hold references
+    // to old entities. We track inserted entities using identity to detect and skip updates
+    // for entities not in the current session, preventing score corruption.
+    var entityTracker = Collections.newSetFromMap(new IdentityHashMap<>());
+    super.setWorkingSolutionWithoutUpdatingShadows(
+        workingSolution,
+        entity -> {
+          session.insert(entity);
+          entityTracker.add(entity);
+        });
+    insertedEntities = entityTracker;
   }
 
   @Override
@@ -162,7 +192,11 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
   @Override
   public void afterVariableChanged(
       VariableDescriptor<Solution_> variableDescriptor, Object entity) {
-    session.update(entity);
+    // Only update if entity is from current solution, not from cached moves with old references.
+    // Old entity references would be inserted as new tuples, corrupting the score.
+    if (insertedEntities.contains(entity)) {
+      session.update(entity);
+    }
     super.afterVariableChanged(variableDescriptor, entity);
   }
 
@@ -172,7 +206,11 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
       Object entity,
       int fromIndex,
       int toIndex) {
-    session.update(entity);
+    // Only update if entity is from current solution, not from cached moves with old references.
+    // Old entity references would be inserted as new tuples, corrupting the score.
+    if (insertedEntities.contains(entity)) {
+      session.update(entity);
+    }
     super.afterListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
   }
 
@@ -180,7 +218,12 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
 
   @Override
   public void afterEntityRemoved(EntityDescriptor<Solution_> entityDescriptor, Object entity) {
-    session.retract(entity);
+    // Only retract if entity is from current solution, not from cached moves with old references.
+    // Old entity references are not in the session, so retracting them would be a no-op at best
+    // or cause issues at worst.
+    if (insertedEntities.contains(entity)) {
+      session.retract(entity);
+    }
     super.afterEntityRemoved(entityDescriptor, entity);
   }
 

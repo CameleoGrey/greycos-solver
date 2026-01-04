@@ -45,7 +45,11 @@ public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<
     boolean shouldUpdate = shouldUpdateGlobalBest(stepScope, bestScore);
 
     if (shouldUpdate) {
-      boolean updated = globalState.tryUpdate(bestSolution, bestScore.raw());
+      // Clone the solution before storing in global state to prevent concurrent modification.
+      // Without cloning, another agent reading the global best could see inconsistent state
+      // if this agent modifies its best solution concurrently.
+      var clonedSolution = solverScope.getScoreDirector().cloneSolution(bestSolution);
+      boolean updated = globalState.tryUpdate(clonedSolution, bestScore.raw());
 
       if (updated) {
         long timeSpentMs = solverScope.getTimeMillisSpent();
