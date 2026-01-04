@@ -45,6 +45,7 @@ public class IslandAgent<Solution_> implements Runnable {
   private volatile int stepsUntilNextMigration;
   private volatile boolean phasesCompleted = false;
   private volatile boolean phaseExecuting = false;
+  private volatile boolean migrationJustOccurred = false;
 
   private SolverScope<Solution_> islandScope;
 
@@ -106,7 +107,7 @@ public class IslandAgent<Solution_> implements Runnable {
 
         if (config.isCompareGlobalEnabled() && phase instanceof LocalSearchPhase) {
           GlobalCompareListener<Solution_> globalCompareListener =
-              new GlobalCompareListener<>(globalState, config, agentId);
+              new GlobalCompareListener<>(globalState, config, this, agentId);
           phase.addPhaseLifecycleListener(globalCompareListener);
           LOGGER.debug(
               "Agent {} attached global compare listener to phase {}",
@@ -122,7 +123,6 @@ public class IslandAgent<Solution_> implements Runnable {
       phasesCompleted = true;
       markAsDead();
 
-      AgentUpdate<Solution_> pendingMessage = null;
       int roundsWithoutReceivingMessage = 0;
       int maxRoundsWithoutMessage = config.getIslandCount() * 3;
 
@@ -136,10 +136,9 @@ public class IslandAgent<Solution_> implements Runnable {
           break;
         }
 
-        boolean receivedMessage = (pendingMessage != null);
-        pendingMessage = performMigrationWithTimeout(pendingMessage);
+        boolean solutionReplaced = performMigrationWithTimeout(null);
 
-        if (!receivedMessage && pendingMessage == null) {
+        if (!solutionReplaced) {
           roundsWithoutReceivingMessage++;
         } else {
           roundsWithoutReceivingMessage = 0;
@@ -159,16 +158,18 @@ public class IslandAgent<Solution_> implements Runnable {
     }
   }
 
-  private void performMigration() throws InterruptedException {
+  private boolean performMigration() throws InterruptedException {
+    boolean solutionReplaced;
     if (agentId % 2 == 0) {
       sendMigration();
-      receiveMigration();
+      solutionReplaced = receiveMigration();
     } else {
-      receiveMigration();
+      solutionReplaced = receiveMigration();
       sendMigration();
     }
 
     stepsUntilNextMigration = config.getMigrationFrequency();
+    return solutionReplaced;
   }
 
   void checkAndPerformMigration() {
@@ -187,7 +188,11 @@ public class IslandAgent<Solution_> implements Runnable {
 
       try {
         LOGGER.debug("Agent {} triggering migration", agentId);
-        performMigrationWithTimeout(null);
+        boolean solutionReplaced = performMigrationWithTimeout(null);
+
+        // Set flag if solution was replaced during migration
+        // This signals GlobalCompareListener to skip global adoption in this step
+        migrationJustOccurred = solutionReplaced;
 
         // Wait for all agents to complete migration at the barrier
         // This ensures no phase is executing while migration happens
@@ -214,20 +219,28 @@ public class IslandAgent<Solution_> implements Runnable {
     return phaseExecuting;
   }
 
-  private AgentUpdate<Solution_> performMigrationWithTimeout(AgentUpdate<Solution_> pendingMessage)
+  void setMigrationJustOccurred(boolean occurred) {
+    this.migrationJustOccurred = occurred;
+  }
+
+  boolean getMigrationJustOccurred() {
+    return migrationJustOccurred;
+  }
+
+  private boolean performMigrationWithTimeout(AgentUpdate<Solution_> pendingMessage)
       throws InterruptedException {
-    AgentUpdate<Solution_> receivedMessage;
+    boolean solutionReplaced;
 
     if (agentId % 2 == 0) {
       sendMigrationWithTimeout(pendingMessage);
-      receivedMessage = receiveMigrationWithTimeout();
+      solutionReplaced = receiveMigrationWithTimeout();
     } else {
-      receivedMessage = receiveMigrationWithTimeout();
+      solutionReplaced = receiveMigrationWithTimeout();
       sendMigrationWithTimeout(pendingMessage);
     }
 
     stepsUntilNextMigration = config.getMigrationFrequency();
-    return receivedMessage;
+    return solutionReplaced;
   }
 
   private void sendMigration() throws InterruptedException {
@@ -247,7 +260,7 @@ public class IslandAgent<Solution_> implements Runnable {
     sender.send(update);
   }
 
-  private void receiveMigration() throws InterruptedException {
+  private boolean receiveMigration() throws InterruptedException {
     AgentUpdate<Solution_> update = receiver.receive();
 
     for (int i = 0; i < statusVector.size(); i++) {
@@ -260,7 +273,7 @@ public class IslandAgent<Solution_> implements Runnable {
 
     if (status == AgentStatus.DEAD) {
       LOGGER.debug("Agent {} (DEAD) forwarding migration", agentId);
-      return;
+      return false;
     }
 
     Solution_ migrant = update.getMigrant();
@@ -280,6 +293,7 @@ public class IslandAgent<Solution_> implements Runnable {
             migrantScore,
             currentScore);
         replaceCurrentSolution(deepClone(migrant));
+        return true;
       } else {
         LOGGER.debug(
             "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
@@ -289,19 +303,20 @@ public class IslandAgent<Solution_> implements Runnable {
             migrantScore);
       }
     }
+    return false;
   }
 
-  private AgentUpdate<Solution_> receiveMigrationWithTimeout() throws InterruptedException {
+  private boolean receiveMigrationWithTimeout() throws InterruptedException {
     AgentUpdate<Solution_> update;
 
     if (status == AgentStatus.DEAD) {
-      return null;
+      return false;
     }
 
     update = receiver.tryReceive(config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
     if (update == null) {
       LOGGER.trace("Agent {} timeout waiting for migration message", agentId);
-      return null;
+      return false;
     }
 
     for (int i = 0; i < statusVector.size(); i++) {
@@ -314,7 +329,7 @@ public class IslandAgent<Solution_> implements Runnable {
 
     if (status == AgentStatus.DEAD) {
       LOGGER.debug("Agent {} (DEAD) forwarding migration", agentId);
-      return update;
+      return false;
     }
 
     Solution_ migrant = update.getMigrant();
@@ -333,6 +348,7 @@ public class IslandAgent<Solution_> implements Runnable {
             migrantScore,
             currentScore);
         replaceCurrentSolution(deepClone(migrant));
+        return true;
       } else {
         LOGGER.debug(
             "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
@@ -343,7 +359,7 @@ public class IslandAgent<Solution_> implements Runnable {
       }
     }
 
-    return update;
+    return false;
   }
 
   private AgentUpdate<Solution_> sendMigrationWithTimeout(AgentUpdate<Solution_> messageToSend)

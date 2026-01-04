@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
  * <p>Attached to local search phases to enable compare-to-global functionality. Provides faster
  * convergence and better solution quality. Complements migration.
  *
+ * <p>Coordinates with migration to prevent double solution replacement in the same step.
+ *
  * @param <Solution_> solution type
  */
 public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdapter<Solution_> {
@@ -22,13 +24,18 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
 
   private final SharedGlobalState<Solution_> globalState;
   private final IslandModelConfig config;
+  private final IslandAgent<Solution_> agent;
   private final int agentId;
   private int stepsUntilNextReceive;
 
   public GlobalCompareListener(
-      SharedGlobalState<Solution_> globalState, IslandModelConfig config, int agentId) {
+      SharedGlobalState<Solution_> globalState,
+      IslandModelConfig config,
+      IslandAgent<Solution_> agent,
+      int agentId) {
     this.globalState = globalState;
     this.config = config;
+    this.agent = agent;
     this.agentId = agentId;
     this.stepsUntilNextReceive = getReceiveFrequency(config);
   }
@@ -44,6 +51,15 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
     }
 
     if (!(stepScope instanceof LocalSearchStepScope)) {
+      return;
+    }
+
+    // Check if migration just occurred in this step
+    // If so, skip global adoption to prevent double solution replacement
+    if (agent.getMigrationJustOccurred()) {
+      LOGGER.debug(
+          "Agent {} skipping global adoption - migration just occurred in this step", agentId);
+      agent.setMigrationJustOccurred(false); // Reset flag for next step
       return;
     }
 

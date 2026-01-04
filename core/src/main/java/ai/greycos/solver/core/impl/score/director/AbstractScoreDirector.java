@@ -247,6 +247,11 @@ public abstract class AbstractScoreDirector<
   protected void setWorkingSolutionWithoutUpdatingShadows(
       Solution_ workingSolution, Consumer<Object> entityAndFactVisitor) {
     this.workingSolution = requireNonNull(workingSolution);
+    // Reset the ValueRangeManager with the new working solution BEFORE visiting entities.
+    // This ensures getInitializationStatistics() uses the new solution, not the old cached one.
+    // Without this reset, entities from the old solution would be visited and inserted,
+    // causing score corruption (e.g., doubled scores in island model global best adoption).
+    valueRangeManager.reset(workingSolution);
     var solutionDescriptor = getSolutionDescriptor();
 
     /*
