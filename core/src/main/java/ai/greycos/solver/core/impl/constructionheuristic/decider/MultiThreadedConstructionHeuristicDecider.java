@@ -198,17 +198,19 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
 
     int selectMoveIndex = 0;
     int movesInPlay = 0;
+    var selectedMoveList = new ArrayList<Move<Solution_>>(selectedMoveBufferSize);
 
     do {
       boolean hasNextMove = moveIterator.hasNext();
       if (movesInPlay > 0 && (selectMoveIndex >= selectedMoveBufferSize || !hasNextMove)) {
-        if (forageResult(stepScope, stepIndex)) {
+        if (forageResult(stepScope, stepIndex, selectedMoveList)) {
           break;
         }
         movesInPlay--;
       }
       if (hasNextMove) {
         var move = moveIterator.next();
+        selectedMoveList.add(move);
         var legacyMove = MoveAdapters.toLegacyMove(move);
         operationQueue.add(new MoveEvaluationOperation<>(stepIndex, selectMoveIndex, legacyMove));
         selectMoveIndex++;
@@ -236,7 +238,10 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     }
   }
 
-  private boolean forageResult(ConstructionHeuristicStepScope<Solution_> stepScope, int stepIndex) {
+  private boolean forageResult(
+      ConstructionHeuristicStepScope<Solution_> stepScope,
+      int stepIndex,
+      List<Move<Solution_>> selectedMoveList) {
     OrderByMoveIndexBlockingQueue.MoveResult<Solution_> result;
     try {
       result = resultQueue.take();
@@ -280,8 +285,15 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
               + ").");
     }
 
-    var foragingMove = result.getMove().rebase(stepScope.getScoreDirector().getMoveDirector());
     int foragingMoveIndex = result.getMoveIndex();
+    Move<Solution_> foragingMove = null;
+    if (selectedMoveList != null && foragingMoveIndex < selectedMoveList.size()) {
+      foragingMove = selectedMoveList.get(foragingMoveIndex);
+      selectedMoveList.set(foragingMoveIndex, null);
+    }
+    if (foragingMove == null) {
+      foragingMove = result.getMove().rebase(stepScope.getScoreDirector().getMoveDirector());
+    }
 
     ConstructionHeuristicMoveScope<Solution_> moveScope =
         new ConstructionHeuristicMoveScope<>(stepScope, foragingMoveIndex, foragingMove);

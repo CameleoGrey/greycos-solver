@@ -31,6 +31,7 @@ import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.impl.solver.thread.ThreadUtils;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -200,22 +201,21 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
 
     int selectMoveIndex = 0;
     int movesInPlay = 0;
-    Iterator<?> moveIterator = moveRepository.iterator();
+    Iterator<Move<Solution_>> moveIterator = moveRepository.iterator();
+    var selectedMoveList = new ArrayList<Move<Solution_>>(selectedMoveBufferSize);
 
     do {
       boolean hasNextMove = moveIterator.hasNext();
       if (movesInPlay > 0 && (selectMoveIndex >= selectedMoveBufferSize || !hasNextMove)) {
-        if (forageResult(stepScope, stepIndex)) {
+        if (forageResult(stepScope, stepIndex, selectedMoveList)) {
           break;
         }
         movesInPlay--;
       }
       if (hasNextMove) {
         var move = moveIterator.next();
-        @SuppressWarnings("unchecked")
-        var legacyMove =
-            MoveAdapters.toLegacyMove(
-                (ai.greycos.solver.core.preview.api.move.Move<Solution_>) move);
+        selectedMoveList.add(move);
+        var legacyMove = MoveAdapters.toLegacyMove(move);
         operationQueue.add(new MoveEvaluationOperation<>(stepIndex, selectMoveIndex, legacyMove));
         selectMoveIndex++;
         movesInPlay++;
@@ -243,7 +243,10 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     }
   }
 
-  private boolean forageResult(LocalSearchStepScope<Solution_> stepScope, int stepIndex) {
+  private boolean forageResult(
+      LocalSearchStepScope<Solution_> stepScope,
+      int stepIndex,
+      List<Move<Solution_>> selectedMoveList) {
     OrderByMoveIndexBlockingQueue.MoveResult<Solution_> result;
     try {
       result = resultQueue.take();
@@ -287,8 +290,15 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
               + ").");
     }
 
-    var foragingMove = result.getMove().rebase(stepScope.getScoreDirector().getMoveDirector());
     int foragingMoveIndex = result.getMoveIndex();
+    Move<Solution_> foragingMove = null;
+    if (selectedMoveList != null && foragingMoveIndex < selectedMoveList.size()) {
+      foragingMove = selectedMoveList.get(foragingMoveIndex);
+      selectedMoveList.set(foragingMoveIndex, null);
+    }
+    if (foragingMove == null) {
+      foragingMove = result.getMove().rebase(stepScope.getScoreDirector().getMoveDirector());
+    }
 
     LocalSearchMoveScope<Solution_> moveScope =
         new LocalSearchMoveScope<>(stepScope, foragingMoveIndex, foragingMove);
