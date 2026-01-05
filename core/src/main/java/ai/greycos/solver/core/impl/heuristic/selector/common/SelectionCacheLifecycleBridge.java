@@ -12,6 +12,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
   private final SelectionCacheType cacheType;
   private final SelectionCacheLifecycleListener<Solution_> selectionCacheLifecycleListener;
   private boolean isConstructed = false;
+  private Long workingEntityListRevision = null;
 
   public SelectionCacheLifecycleBridge(
       SelectionCacheType cacheType,
@@ -34,6 +35,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
     if (cacheType == SelectionCacheType.SOLVER) {
       selectionCacheLifecycleListener.constructCache(solverScope);
       isConstructed = true;
+      updateWorkingEntityListRevision(solverScope);
     }
   }
 
@@ -54,6 +56,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
       assertNotConstructed();
       selectionCacheLifecycleListener.constructCache(phaseScope.getSolverScope());
       isConstructed = true;
+      updateWorkingEntityListRevision(phaseScope.getSolverScope());
     }
   }
 
@@ -63,6 +66,9 @@ public final class SelectionCacheLifecycleBridge<Solution_>
       assertNotConstructed();
       selectionCacheLifecycleListener.constructCache(stepScope.getPhaseScope().getSolverScope());
       isConstructed = true;
+      updateWorkingEntityListRevision(stepScope.getPhaseScope().getSolverScope());
+    } else if (cacheType == SelectionCacheType.PHASE || cacheType == SelectionCacheType.SOLVER) {
+      resetCacheIfWorkingSolutionChanged(stepScope);
     }
   }
 
@@ -72,6 +78,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
       assertConstructed();
       selectionCacheLifecycleListener.disposeCache(stepScope.getPhaseScope().getSolverScope());
       isConstructed = false;
+      workingEntityListRevision = null;
     }
   }
 
@@ -95,6 +102,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
       }
       selectionCacheLifecycleListener.disposeCache(phaseScope.getSolverScope());
       isConstructed = false;
+      workingEntityListRevision = null;
     }
   }
 
@@ -104,9 +112,27 @@ public final class SelectionCacheLifecycleBridge<Solution_>
       assertConstructed();
       selectionCacheLifecycleListener.disposeCache(solverScope);
       isConstructed = false;
+      workingEntityListRevision = null;
     } else {
       assertNotConstructed(); // Fail fast if we have a disposal problem, which is effectively a
       // memory leak.
+    }
+  }
+
+  private void updateWorkingEntityListRevision(SolverScope<Solution_> solverScope) {
+    workingEntityListRevision = solverScope.getScoreDirector().getWorkingEntityListRevision();
+  }
+
+  private void resetCacheIfWorkingSolutionChanged(AbstractStepScope<Solution_> stepScope) {
+    if (!isConstructed || workingEntityListRevision == null) {
+      return;
+    }
+    var scoreDirector = stepScope.getScoreDirector();
+    if (scoreDirector.isWorkingEntityListDirty(workingEntityListRevision)) {
+      var solverScope = stepScope.getPhaseScope().getSolverScope();
+      selectionCacheLifecycleListener.disposeCache(solverScope);
+      selectionCacheLifecycleListener.constructCache(solverScope);
+      workingEntityListRevision = scoreDirector.getWorkingEntityListRevision();
     }
   }
 

@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.domain.valuerange.descriptor;
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -41,7 +42,13 @@ public abstract sealed class AbstractValueRangeDescriptor<Solution_>
   public boolean mightContainEntity() {
     SolutionDescriptor<Solution_> solutionDescriptor =
         variableDescriptor.getEntityDescriptor().getSolutionDescriptor();
-    Class<?> variablePropertyType = variableDescriptor.getVariablePropertyType();
+    Class<?> variablePropertyType;
+    if (variableDescriptor instanceof ListVariableDescriptor<Solution_> listVariableDescriptor) {
+      // For list variables, the element type determines whether the value range contains entities.
+      variablePropertyType = listVariableDescriptor.getElementType();
+    } else {
+      variablePropertyType = variableDescriptor.getVariablePropertyType();
+    }
     for (Class<?> entityClass : solutionDescriptor.getEntityClassSet()) {
       if (variablePropertyType.isAssignableFrom(entityClass)) {
         return true;
