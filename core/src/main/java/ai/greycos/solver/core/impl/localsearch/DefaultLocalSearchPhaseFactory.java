@@ -65,6 +65,15 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
     var phaseConfigPolicy = solverConfigPolicy.createPhaseConfigPolicy();
+    var phaseMoveThreadCount = phaseConfig.getMoveThreadCount();
+    if (phaseMoveThreadCount != null) {
+      var resolvedMoveThreadCount = resolveMoveThreadCount(phaseMoveThreadCount, true);
+      phaseConfigPolicy =
+          phaseConfigPolicy
+              .cloneBuilder()
+              .withMoveThreadCount(resolvedMoveThreadCount)
+              .build();
+    }
     var phaseTermination = buildPhaseTermination(phaseConfigPolicy, solverTermination);
     var decider = buildDecider(phaseConfigPolicy, phaseTermination);
     return new DefaultLocalSearchPhase.Builder<>(

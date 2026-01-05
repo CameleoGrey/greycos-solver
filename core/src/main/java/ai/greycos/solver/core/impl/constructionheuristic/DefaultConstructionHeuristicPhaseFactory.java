@@ -61,15 +61,20 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
         Objects.requireNonNullElse(
             phaseConfig.getValueSorterManner(),
             constructionHeuristicType_.getDefaultValueSorterManner());
-    var phaseConfigPolicy =
+    var phaseConfigPolicyBuilder =
         solverConfigPolicy
             .cloneBuilder()
             .withReinitializeVariableFilterEnabled(true)
             .withInitializedChainedValueFilterEnabled(true)
             .withUnassignedValuesAllowed(true)
             .withEntitySorterManner(entitySorterManner)
-            .withValueSorterManner(valueSorterManner)
-            .build();
+            .withValueSorterManner(valueSorterManner);
+    var phaseMoveThreadCount = phaseConfig.getMoveThreadCount();
+    if (phaseMoveThreadCount != null) {
+      var resolvedMoveThreadCount = resolveMoveThreadCount(phaseMoveThreadCount, true);
+      phaseConfigPolicyBuilder.withMoveThreadCount(resolvedMoveThreadCount);
+    }
+    var phaseConfigPolicy = phaseConfigPolicyBuilder.build();
     var entityPlacerConfig_ =
         getValidEntityPlacerConfig()
             .orElseGet(
