@@ -9,12 +9,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Periodically checks and adopts global best solution from SharedGlobalState.
+ * Lifecycle listener that checks and adopts global best solution periodically. Attached to local
+ * search phases to enable compare-to-global functionality.
  *
- * <p>Attached to local search phases to enable compare-to-global functionality. Provides faster
- * convergence and better solution quality. Complements migration.
+ * <p>This listener provides "receive global update" mechanism where agents periodically check the
+ * shared global best solution (the best solution found across ALL islands) and adopt it if it's
+ * better than their current best. This provides:
  *
- * <p>Coordinates with migration to prevent double solution replacement in the same step.
+ * <ul>
+ *   <li>Faster convergence - Global best is immediately available to all agents
+ *   <li>Better solution quality - Prevents getting stuck in local optima
+ *   <li>Complementary to migration - Migration provides diversity, global comparison provides
+ *       intensification
+ * </ul>
+ *
+ * <p>The frequency of checking the global best is controlled by the {@code
+ * receiveGlobalUpdateFrequency} parameter. Islands will check the global best every N steps and
+ * adopt it if it's better than their local best.
+ *
+ * <p>This listener only performs meaningful work when attached to local search phases, as it
+ * requires access to {@link LocalSearchStepScope}. When attached to other phase types, it will
+ * simply do nothing.
  *
  * @param <Solution_> solution type
  */
@@ -24,22 +39,19 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
 
   private final SharedGlobalState<Solution_> globalState;
   private final IslandModelConfig config;
-  private final IslandAgent<Solution_> agent;
   private final int agentId;
   private int stepsUntilNextReceive;
 
   public GlobalCompareListener(
-      SharedGlobalState<Solution_> globalState,
-      IslandModelConfig config,
-      IslandAgent<Solution_> agent,
-      int agentId) {
+      SharedGlobalState<Solution_> globalState, IslandModelConfig config, int agentId) {
     this.globalState = globalState;
     this.config = config;
-    this.agent = agent;
     this.agentId = agentId;
+    // Use receiveGlobalUpdateFrequency (or fall back to deprecated compareGlobalFrequency)
     this.stepsUntilNextReceive = getReceiveFrequency(config);
   }
 
+  /** Gets the receive frequency from config. */
   private int getReceiveFrequency(IslandModelConfig config) {
     return config.getReceiveGlobalUpdateFrequency();
   }
@@ -51,15 +63,6 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
     }
 
     if (!(stepScope instanceof LocalSearchStepScope)) {
-      return;
-    }
-
-    // Check if migration just occurred in this step
-    // If so, skip global adoption to prevent double solution replacement
-    if (agent.getMigrationJustOccurred()) {
-      LOGGER.debug(
-          "Agent {} skipping global adoption - migration just occurred in this step", agentId);
-      agent.setMigrationJustOccurred(false); // Reset flag for next step
       return;
     }
 
@@ -87,7 +90,9 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
       return;
     }
 
+    @SuppressWarnings("unchecked")
     var currentScore = (Score) currentInnerScore.raw();
+    @SuppressWarnings("unchecked")
     var globalScoreCast = (Score) globalScore;
 
     int comparisonResult = globalScoreCast.compareTo(currentScore);
@@ -102,9 +107,12 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
       Solution_ clonedGlobalBest = deepClone(globalBest, stepScope);
 
       replaceCurrentSolution(clonedGlobalBest, stepScope);
+
+      updateGlobalBest(stepScope);
     }
   }
 
+  @SuppressWarnings("unchecked")
   private Solution_ deepClone(Solution_ solution, LocalSearchStepScope<Solution_> stepScope) {
     if (solution == null) {
       return null;
@@ -117,27 +125,35 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
     var phaseScope = stepScope.getPhaseScope();
     var solverScope = phaseScope.getSolverScope();
 
-    // Synchronize on the ScoreDirector to ensure atomic solution replacement
-    // This prevents race conditions when phase thread and global best adoption access the solution
-    // concurrently. Without this synchronization, Bavet sessions can become corrupted:
-    // - NodeNetwork becomes stale (built for old solution entities)
-    // - ScoreInliner cached values become invalid
-    // - Shadow variable listeners fire out-of-order
-    // See: IslandAgent.replaceCurrentSolution() for the same pattern used in migration
-    synchronized (solverScope.getScoreDirector()) {
-      solverScope.getScoreDirector().setWorkingSolution(newSolution);
+    solverScope.getScoreDirector().setWorkingSolution(newSolution);
 
-      solverScope.setBestSolution(solverScope.getScoreDirector().cloneSolution(newSolution));
+    solverScope.setBestSolution(solverScope.getScoreDirector().cloneSolution(newSolution));
 
-      var newBestScore = solverScope.getScoreDirector().calculateScore();
-      solverScope.setBestScore(newBestScore);
+    var newBestScore = solverScope.getScoreDirector().calculateScore();
+    solverScope.setBestScore(newBestScore);
 
-      var scoreToSet = (Score) newBestScore.raw();
-      solverScope.getScoreDirector().getSolutionDescriptor().setScore(newSolution, scoreToSet);
+    @SuppressWarnings("unchecked")
+    var scoreToSet = (Score) newBestScore.raw();
+    solverScope.getScoreDirector().getSolutionDescriptor().setScore(newSolution, scoreToSet);
 
-      stepScope.setScore(newBestScore);
-      stepScope.setBestScoreImproved(true);
-      phaseScope.setBestSolutionStepIndex(stepScope.getStepIndex());
+    // Update step scope's score to reflect the new best solution
+    stepScope.setScore(newBestScore);
+    // Mark that the best score was improved in this step (for logging)
+    stepScope.setBestScoreImproved(true);
+    // Update the phase scope's best solution step index
+    phaseScope.setBestSolutionStepIndex(stepScope.getStepIndex());
+  }
+
+  private void updateGlobalBest(LocalSearchStepScope<Solution_> stepScope) {
+    var phaseScope = stepScope.getPhaseScope();
+    var solverScope = phaseScope.getSolverScope();
+
+    // Use the best solution and its score directly, not the working solution
+    var bestSolution = solverScope.getBestSolution();
+    var bestScore = solverScope.getBestScore();
+
+    if (bestSolution != null && bestScore != null) {
+      globalState.tryUpdate(bestSolution, bestScore.raw());
     }
   }
 }

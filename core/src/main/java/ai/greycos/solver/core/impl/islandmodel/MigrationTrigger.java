@@ -15,25 +15,13 @@ import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 class MigrationTrigger<Solution_> extends PhaseLifecycleListenerAdapter<Solution_> {
 
   private final IslandAgent<Solution_> agent;
-  private final java.util.concurrent.CyclicBarrier migrationBarrier;
 
-  MigrationTrigger(
-      IslandAgent<Solution_> agent, java.util.concurrent.CyclicBarrier migrationBarrier) {
+  MigrationTrigger(IslandAgent<Solution_> agent) {
     this.agent = agent;
-    this.migrationBarrier = migrationBarrier;
-  }
-
-  @Override
-  public void stepStarted(AbstractStepScope<Solution_> stepScope) {
-    // Mark phase as executing before step begins
-    agent.setPhaseExecuting(true);
   }
 
   @Override
   public void stepEnded(AbstractStepScope<Solution_> stepScope) {
-    // Mark phase as not executing after step completes
-    agent.setPhaseExecuting(false);
-    // Now check and perform migration when phase is in stable state
     agent.checkAndPerformMigration();
   }
 }

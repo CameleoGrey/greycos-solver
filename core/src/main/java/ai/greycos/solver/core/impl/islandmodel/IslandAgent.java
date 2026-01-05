@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
-import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
@@ -19,9 +18,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Island agent running phases independently with periodic migration.
+ * An island agent that runs phases independently in island model. Each agent maintains its own
+ * solution state and participates in periodic migration.
  *
- * <p>Exchanges best solutions with neighboring agents through migration.
+ * <p>Agents run their configured phases sequentially, exchanging best solutions with neighboring
+ * agents through migration at configured intervals.
  *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
@@ -38,15 +39,14 @@ public class IslandAgent<Solution_> implements Runnable {
   private final IslandModelConfig config;
   private final Random random;
   private final SolverScope<Solution_> parentSolverScope;
-  private final CyclicBarrier migrationBarrier;
 
+  // Agent state
   private volatile AgentStatus status = AgentStatus.ALIVE;
   private volatile List<AgentStatus> statusVector;
   private volatile int stepsUntilNextMigration;
   private volatile boolean phasesCompleted = false;
-  private volatile boolean phaseExecuting = false;
-  private volatile boolean migrationJustOccurred = false;
 
+  // Agent's solver scope (isolated from other agents)
   private SolverScope<Solution_> islandScope;
 
   public IslandAgent(
@@ -58,8 +58,7 @@ public class IslandAgent<Solution_> implements Runnable {
       BoundedChannel<AgentUpdate<Solution_>> receiver,
       IslandModelConfig config,
       Random random,
-      SolverScope<Solution_> parentSolverScope,
-      CyclicBarrier migrationBarrier) {
+      SolverScope<Solution_> parentSolverScope) {
     this.agentId = agentId;
     this.phases = Objects.requireNonNull(phases, "Phases cannot be null");
     this.initialSolution =
@@ -71,7 +70,6 @@ public class IslandAgent<Solution_> implements Runnable {
     this.random = Objects.requireNonNull(random, "Random cannot be null");
     this.parentSolverScope =
         Objects.requireNonNull(parentSolverScope, "Parent solver scope cannot be null");
-    this.migrationBarrier = migrationBarrier;
     this.stepsUntilNextMigration = config.getMigrationFrequency();
   }
 
@@ -86,6 +84,7 @@ public class IslandAgent<Solution_> implements Runnable {
       }
 
       islandScope = parentSolverScope.createChildThreadSolverScope(ChildThreadType.MOVE_THREAD);
+      // Ensure this island uses its own random seed to prevent duplicate move sequences
       islandScope.setWorkingRandom(random);
       islandScope.setInitialSolution(initialSolution);
 
@@ -97,17 +96,17 @@ public class IslandAgent<Solution_> implements Runnable {
 
         LOGGER.debug("Agent {} running phase: {}", agentId, phase.getClass().getSimpleName());
 
-        MigrationTrigger<Solution_> migrationTrigger =
-            new MigrationTrigger<>(this, migrationBarrier);
+        MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
         phase.addPhaseLifecycleListener(migrationTrigger);
 
+        // Add global best updater to propagate local improvements to global state
         GlobalBestUpdater<Solution_> globalBestUpdater =
             new GlobalBestUpdater<>(globalState, agentId);
         phase.addPhaseLifecycleListener(globalBestUpdater);
 
         if (config.isCompareGlobalEnabled() && phase instanceof LocalSearchPhase) {
           GlobalCompareListener<Solution_> globalCompareListener =
-              new GlobalCompareListener<>(globalState, config, this, agentId);
+              new GlobalCompareListener<>(globalState, config, agentId);
           phase.addPhaseLifecycleListener(globalCompareListener);
           LOGGER.debug(
               "Agent {} attached global compare listener to phase {}",
@@ -123,6 +122,7 @@ public class IslandAgent<Solution_> implements Runnable {
       phasesCompleted = true;
       markAsDead();
 
+      AgentUpdate<Solution_> pendingMessage = null;
       int roundsWithoutReceivingMessage = 0;
       int maxRoundsWithoutMessage = config.getIslandCount() * 3;
 
@@ -136,9 +136,10 @@ public class IslandAgent<Solution_> implements Runnable {
           break;
         }
 
-        boolean solutionReplaced = performMigrationWithTimeout(null);
+        boolean receivedMessage = (pendingMessage != null);
+        pendingMessage = performMigrationWithTimeout(pendingMessage);
 
-        if (!solutionReplaced) {
+        if (!receivedMessage && pendingMessage == null) {
           roundsWithoutReceivingMessage++;
         } else {
           roundsWithoutReceivingMessage = 0;
@@ -158,52 +159,27 @@ public class IslandAgent<Solution_> implements Runnable {
     }
   }
 
-  private boolean performMigration() throws InterruptedException {
-    boolean solutionReplaced;
+  private void performMigration() throws InterruptedException {
     if (agentId % 2 == 0) {
+      // Even agents: send first, then receive
       sendMigration();
-      solutionReplaced = receiveMigration();
+      receiveMigration();
     } else {
-      solutionReplaced = receiveMigration();
+      // Odd agents: receive first, then send
+      receiveMigration();
       sendMigration();
     }
 
     stepsUntilNextMigration = config.getMigrationFrequency();
-    return solutionReplaced;
   }
 
   void checkAndPerformMigration() {
     stepsUntilNextMigration--;
 
     if (stepsUntilNextMigration <= 0) {
-      // Validate phase state - only perform migration when phase is not executing
-      // This prevents race conditions where migration could replace the solution
-      // while the phase is in the middle of executing a step
-      if (phaseExecuting) {
-        LOGGER.debug("Agent {} deferring migration - phase is currently executing", agentId);
-        // Keep stepsUntilNextMigration at 0 so migration will be triggered
-        // on the next stepEnded call when phase is no longer executing
-        return;
-      }
-
       try {
         LOGGER.debug("Agent {} triggering migration", agentId);
-        boolean solutionReplaced = performMigrationWithTimeout(null);
-
-        // Set flag if solution was replaced during migration
-        // This signals GlobalCompareListener to skip global adoption in this step
-        migrationJustOccurred = solutionReplaced;
-
-        // Wait for all agents to complete migration at the barrier
-        // This ensures no phase is executing while migration happens
-        if (migrationBarrier != null) {
-          try {
-            migrationBarrier.await();
-            LOGGER.debug("Agent {} passed migration barrier", agentId);
-          } catch (java.util.concurrent.BrokenBarrierException e) {
-            LOGGER.warn("Agent {} encountered broken barrier during migration", agentId, e);
-          }
-        }
+        performMigrationWithTimeout(null);
       } catch (InterruptedException e) {
         LOGGER.info("Agent {} interrupted during migration", agentId);
         Thread.currentThread().interrupt();
@@ -211,36 +187,22 @@ public class IslandAgent<Solution_> implements Runnable {
     }
   }
 
-  void setPhaseExecuting(boolean executing) {
-    this.phaseExecuting = executing;
-  }
-
-  boolean isPhaseExecuting() {
-    return phaseExecuting;
-  }
-
-  void setMigrationJustOccurred(boolean occurred) {
-    this.migrationJustOccurred = occurred;
-  }
-
-  boolean getMigrationJustOccurred() {
-    return migrationJustOccurred;
-  }
-
-  private boolean performMigrationWithTimeout(AgentUpdate<Solution_> pendingMessage)
+  private AgentUpdate<Solution_> performMigrationWithTimeout(AgentUpdate<Solution_> pendingMessage)
       throws InterruptedException {
-    boolean solutionReplaced;
+    AgentUpdate<Solution_> receivedMessage;
 
     if (agentId % 2 == 0) {
+      // Even agents: send first, then receive
       sendMigrationWithTimeout(pendingMessage);
-      solutionReplaced = receiveMigrationWithTimeout();
+      receivedMessage = receiveMigrationWithTimeout();
     } else {
-      solutionReplaced = receiveMigrationWithTimeout();
+      // Odd agents: receive first, then send
+      receivedMessage = receiveMigrationWithTimeout();
       sendMigrationWithTimeout(pendingMessage);
     }
 
     stepsUntilNextMigration = config.getMigrationFrequency();
-    return solutionReplaced;
+    return receivedMessage;
   }
 
   private void sendMigration() throws InterruptedException {
@@ -260,7 +222,7 @@ public class IslandAgent<Solution_> implements Runnable {
     sender.send(update);
   }
 
-  private boolean receiveMigration() throws InterruptedException {
+  private void receiveMigration() throws InterruptedException {
     AgentUpdate<Solution_> update = receiver.receive();
 
     for (int i = 0; i < statusVector.size(); i++) {
@@ -273,7 +235,7 @@ public class IslandAgent<Solution_> implements Runnable {
 
     if (status == AgentStatus.DEAD) {
       LOGGER.debug("Agent {} (DEAD) forwarding migration", agentId);
-      return false;
+      return;
     }
 
     Solution_ migrant = update.getMigrant();
@@ -282,7 +244,9 @@ public class IslandAgent<Solution_> implements Runnable {
         islandScope.getScoreDirector().getSolutionDescriptor().getScore(getCurrentBestSolution());
 
     if (migrantScore != null && currentScore != null) {
+      @SuppressWarnings("unchecked")
       var migrantScoreCast = (Score) migrantScore;
+      @SuppressWarnings("unchecked")
       var currentScoreCast = (Score) currentScore;
       int comparisonResult = migrantScoreCast.compareTo(currentScoreCast);
       if (comparisonResult > 0) {
@@ -293,7 +257,6 @@ public class IslandAgent<Solution_> implements Runnable {
             migrantScore,
             currentScore);
         replaceCurrentSolution(deepClone(migrant));
-        return true;
       } else {
         LOGGER.debug(
             "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
@@ -303,20 +266,21 @@ public class IslandAgent<Solution_> implements Runnable {
             migrantScore);
       }
     }
-    return false;
   }
 
-  private boolean receiveMigrationWithTimeout() throws InterruptedException {
+  private AgentUpdate<Solution_> receiveMigrationWithTimeout() throws InterruptedException {
     AgentUpdate<Solution_> update;
 
     if (status == AgentStatus.DEAD) {
-      return false;
+      // Skip migration entirely for dead agents
+      return null;
     }
 
+    // Use timeout-based receive for alive agents
     update = receiver.tryReceive(config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
     if (update == null) {
       LOGGER.trace("Agent {} timeout waiting for migration message", agentId);
-      return false;
+      return null;
     }
 
     for (int i = 0; i < statusVector.size(); i++) {
@@ -329,7 +293,7 @@ public class IslandAgent<Solution_> implements Runnable {
 
     if (status == AgentStatus.DEAD) {
       LOGGER.debug("Agent {} (DEAD) forwarding migration", agentId);
-      return false;
+      return update;
     }
 
     Solution_ migrant = update.getMigrant();
@@ -337,7 +301,9 @@ public class IslandAgent<Solution_> implements Runnable {
     var currentInnerScore = getCurrentBestScore();
 
     if (migrantInnerScore != null && currentInnerScore != null) {
+      @SuppressWarnings("unchecked")
       var migrantScore = (Score) migrantInnerScore.raw();
+      @SuppressWarnings("unchecked")
       var currentScore = (Score) currentInnerScore.raw();
       int comparisonResult = migrantScore.compareTo(currentScore);
       if (comparisonResult > 0) {
@@ -348,7 +314,6 @@ public class IslandAgent<Solution_> implements Runnable {
             migrantScore,
             currentScore);
         replaceCurrentSolution(deepClone(migrant));
-        return true;
       } else {
         LOGGER.debug(
             "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
@@ -359,12 +324,13 @@ public class IslandAgent<Solution_> implements Runnable {
       }
     }
 
-    return false;
+    return update;
   }
 
   private AgentUpdate<Solution_> sendMigrationWithTimeout(AgentUpdate<Solution_> messageToSend)
       throws InterruptedException {
     if (status == AgentStatus.DEAD) {
+      // Skip migration entirely for dead agents - no forwarding
       return null;
     }
 
@@ -373,6 +339,7 @@ public class IslandAgent<Solution_> implements Runnable {
         new AgentUpdate<>(agentId, deepClone(migrant), new ArrayList<>(statusVector));
     LOGGER.debug("Agent {} sending migration", agentId);
 
+    // Use timeout-based send for alive agents
     boolean sent = sender.send(updateToSend, config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
     if (!sent) {
       LOGGER.warn("Agent {} failed to send migration within timeout", agentId);
@@ -396,24 +363,22 @@ public class IslandAgent<Solution_> implements Runnable {
     if (score == null) {
       return null;
     }
+    @SuppressWarnings("unchecked")
     var scoreCast = (Score) score;
     return InnerScore.fullyAssigned(scoreCast);
   }
 
   private void replaceCurrentSolution(Solution_ newSolution) {
-    // Synchronize on the ScoreDirector to ensure atomic solution replacement
-    // This prevents race conditions when phase and migration threads access the solution
-    // concurrently
-    synchronized (islandScope.getScoreDirector()) {
-      islandScope.getScoreDirector().setWorkingSolution(newSolution);
-      islandScope.setBestSolution(islandScope.getScoreDirector().cloneSolution(newSolution));
-      var newBestScore = islandScope.getScoreDirector().calculateScore();
-      islandScope.setBestScore(newBestScore);
-      var scoreToSet = (Score) newBestScore.raw();
-      islandScope.getSolutionDescriptor().setScore(newSolution, scoreToSet);
-    }
+    islandScope.getScoreDirector().setWorkingSolution(newSolution);
+    islandScope.setBestSolution(islandScope.getScoreDirector().cloneSolution(newSolution));
+    var newBestScore = islandScope.getScoreDirector().calculateScore();
+    islandScope.setBestScore(newBestScore);
+    @SuppressWarnings("unchecked")
+    var scoreToSet = (Score) newBestScore.raw();
+    islandScope.getSolutionDescriptor().setScore(newSolution, scoreToSet);
   }
 
+  @SuppressWarnings("unchecked")
   private Solution_ deepClone(Solution_ solution) {
     if (solution == null) {
       return null;

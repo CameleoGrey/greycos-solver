@@ -12,6 +12,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Factory for creating island model phases.
  *
+ * <p>This factory builds {@link DefaultIslandModelPhase} instances that run multiple independent
+ * island agents in parallel.
+ *
  * @param <Solution_> solution type
  */
 public class DefaultIslandModelPhaseFactory<Solution_>
@@ -47,11 +50,13 @@ public class DefaultIslandModelPhaseFactory<Solution_>
             ? phaseConfig.getCompareGlobalEnabled()
             : true;
 
+    // Read receive global update frequency
     int receiveGlobalUpdateFrequency =
         phaseConfig.getReceiveGlobalUpdateFrequency() != null
             ? phaseConfig.getReceiveGlobalUpdateFrequency()
             : IslandModelPhaseConfig.DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY;
 
+    // Fall back to deprecated parameter if new parameter is not set
     if (phaseConfig.getReceiveGlobalUpdateFrequency() == null
         && phaseConfig.getCompareGlobalFrequency() != null) {
       receiveGlobalUpdateFrequency = phaseConfig.getCompareGlobalFrequency();
@@ -60,11 +65,14 @@ public class DefaultIslandModelPhaseFactory<Solution_>
               + "Please use 'receiveGlobalUpdateFrequency' instead.");
     }
 
+    // Read migration timeout
     long migrationTimeout =
         phaseConfig.getMigrationTimeout() != null
             ? phaseConfig.getMigrationTimeout()
             : IslandModelPhaseConfig.DEFAULT_MIGRATION_TIMEOUT;
 
+    // IslandModelPhaseConfig now extends LocalSearchPhaseConfig, so each island runs
+    // the same local search configuration with independent random seeds and solution states
     LOGGER.debug(
         "Building island model with {} islands, inheriting LocalSearchPhaseConfig", islandCount);
 

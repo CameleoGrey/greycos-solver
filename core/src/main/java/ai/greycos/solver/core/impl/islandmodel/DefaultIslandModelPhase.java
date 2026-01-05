@@ -3,14 +3,11 @@ package ai.greycos.solver.core.impl.islandmodel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntFunction;
 
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
-import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
-import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.phase.AbstractPhase;
@@ -30,9 +27,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Coordinates multiple independent island agents with periodic migration.
+ * Island model phase that coordinates multiple independent island agents.
  *
- * <p>Provides enhanced solution quality, near-linear scaling, and fault tolerance.
+ * <p>This phase creates and manages multiple island agents, each running same phases independently.
+ * Agents periodically exchange their best solutions through migration in a ring topology.
+ *
+ * <p>The island model is an opt-in feature that provides:
+ *
+ * <ul>
+ *   <li>Enhanced solution quality through migration
+ *   <li>Near-linear horizontal scaling
+ *   <li>Fault tolerance (if one island fails, others continue)
+ * </ul>
  *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
@@ -40,19 +46,18 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultIslandModelPhase.class);
 
-  private final IslandModelPhaseConfig islandModelConfig;
+  private final ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig islandModelConfig;
   private final int islandCount;
   private final int migrationFrequency;
   private final boolean compareGlobalEnabled;
   private final int receiveGlobalUpdateFrequency;
   private final long migrationTimeout;
   private final SharedGlobalState<Solution_> globalState;
-  private SolverScope<Solution_> solverScope;
+  private SolverScope<Solution_> solverScope; // Cache for solution cloning
   private final HeuristicConfigPolicy<Solution_> configPolicy;
   private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
   private final SolverTermination<Solution_> solverTermination;
   private GlobalBestPropagator<Solution_> globalBestPropagator;
-  private CyclicBarrier migrationBarrier;
 
   private DefaultIslandModelPhase(Builder<Solution_> builder) {
     super(builder);
@@ -101,6 +106,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       var innerScore = solverScope.calculateScore();
       globalState.tryUpdate(initialSolution, innerScore.raw());
 
+      // Start propagating global best updates to main solver scope
       globalBestPropagator =
           new GlobalBestPropagator<>(
               globalState,
@@ -135,6 +141,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           e);
       throw e;
     } finally {
+      // Ensure propagator is stopped even on exception
       if (globalBestPropagator != null) {
         globalBestPropagator.stop();
       }
@@ -147,15 +154,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
     LOGGER.info("Creating {} island agents with ring topology...", islandCount);
 
-    // Create migration barrier for synchronization across all agents
-    // This ensures all agents reach a consistent state before migration occurs
-    migrationBarrier =
-        new CyclicBarrier(
-            islandCount,
-            () -> {
-              LOGGER.debug("All agents reached migration barrier");
-            });
-
     var channels = new ArrayList<BoundedChannel<AgentUpdate<Solution_>>>(islandCount);
     for (int i = 0; i < islandCount; i++) {
       channels.add(new BoundedChannel<>(1));
@@ -166,8 +164,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       var sender = channels.get((i + 1) % islandCount);
 
       var agentPhases = buildPhasesForAgent();
-      var agent =
-          createAgent(solverScope, random, i, sender, receiver, agentPhases, migrationBarrier);
+      var agent = createAgent(solverScope, random, i, sender, receiver, agentPhases);
       executor.submit(agent);
     }
 
@@ -188,8 +185,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       int agentId,
       BoundedChannel<AgentUpdate<Solution_>> sender,
       BoundedChannel<AgentUpdate<Solution_>> receiver,
-      List<Phase<Solution_>> agentPhases,
-      CyclicBarrier migrationBarrier) {
+      List<Phase<Solution_>> agentPhases) {
     var agentRandom = new Random(random.nextLong());
     var config =
         IslandModelConfig.builder()
@@ -209,14 +205,16 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         receiver,
         config,
         agentRandom,
-        solverScope,
-        migrationBarrier);
+        solverScope);
   }
 
   private List<Phase<Solution_>> buildPhasesForAgent() {
+    // IslandModelPhaseConfig includes all local search configuration fields,
+    // so each island runs the same local search configuration with independent random seeds
     var childConfigPolicy = configPolicy.createChildThreadConfigPolicy(ChildThreadType.MOVE_THREAD);
 
-    var localSearchConfig = new LocalSearchPhaseConfig();
+    // Create a LocalSearchPhaseConfig from the island model's local search fields
+    var localSearchConfig = new ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig();
     localSearchConfig.setLocalSearchType(islandModelConfig.getLocalSearchType());
     localSearchConfig.setMoveSelectorConfig(islandModelConfig.getMoveSelectorConfig());
     localSearchConfig.setAcceptorConfig(islandModelConfig.getAcceptorConfig());
@@ -224,10 +222,12 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     localSearchConfig.setMoveThreadCount(islandModelConfig.getMoveThreadCount());
     localSearchConfig.setTerminationConfig(islandModelConfig.getTerminationConfig());
 
+    // Build a single LocalSearchPhase from the local search config
     return PhaseFactory.buildPhases(
         List.of(localSearchConfig), childConfigPolicy, bestSolutionRecaller, solverTermination);
   }
 
+  @SuppressWarnings("unchecked")
   private Solution_ deepCloneSolution(Solution_ solution) {
     if (solution == null) {
       throw new IllegalStateException("Solution to clone cannot be null");
@@ -266,7 +266,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
   public static class Builder<Solution_> extends AbstractPhaseBuilder<Solution_> {
 
-    private IslandModelPhaseConfig islandModelConfig;
+    private ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig islandModelConfig;
     private int islandCount = IslandModelConfig.DEFAULT_ISLAND_COUNT;
     private int migrationFrequency = IslandModelConfig.DEFAULT_MIGRATION_FREQUENCY;
     private boolean compareGlobalEnabled = true;
@@ -282,7 +282,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       super(phaseIndex, logIndentation, phaseTermination);
     }
 
-    public Builder<Solution_> withIslandModelConfig(IslandModelPhaseConfig islandModelConfig) {
+    public Builder<Solution_> withIslandModelConfig(
+        ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig islandModelConfig) {
       this.islandModelConfig = islandModelConfig;
       return this;
     }
@@ -329,6 +330,9 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       return this;
     }
 
+    /**
+     * @deprecated Use {@link #withReceiveGlobalUpdateFrequency(int)} instead.
+     */
     @Deprecated
     public Builder<Solution_> withCompareGlobalFrequency(int compareGlobalFrequency) {
       this.receiveGlobalUpdateFrequency = compareGlobalFrequency;
