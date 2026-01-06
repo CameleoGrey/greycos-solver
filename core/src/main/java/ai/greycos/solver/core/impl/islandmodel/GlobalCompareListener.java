@@ -105,10 +105,9 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
           currentScore);
 
       Solution_ clonedGlobalBest = deepClone(globalBest, stepScope);
-
-      replaceCurrentSolution(clonedGlobalBest, stepScope);
-
-      updateGlobalBest(stepScope);
+      var syncMove = SolutionSyncMove.createMove(stepScope.getScoreDirector(), clonedGlobalBest);
+      var solverScope = stepScope.getPhaseScope().getSolverScope();
+      solverScope.setPendingMove(syncMove, true);
     }
   }
 
@@ -118,42 +117,5 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
       return null;
     }
     return stepScope.getScoreDirector().cloneSolution(solution);
-  }
-
-  private void replaceCurrentSolution(
-      Solution_ newSolution, LocalSearchStepScope<Solution_> stepScope) {
-    var phaseScope = stepScope.getPhaseScope();
-    var solverScope = phaseScope.getSolverScope();
-
-    solverScope.getScoreDirector().setWorkingSolution(newSolution);
-
-    solverScope.setBestSolution(solverScope.getScoreDirector().cloneSolution(newSolution));
-
-    var newBestScore = solverScope.getScoreDirector().calculateScore();
-    solverScope.setBestScore(newBestScore);
-
-    @SuppressWarnings("unchecked")
-    var scoreToSet = (Score) newBestScore.raw();
-    solverScope.getScoreDirector().getSolutionDescriptor().setScore(newSolution, scoreToSet);
-
-    // Update step scope's score to reflect the new best solution
-    stepScope.setScore(newBestScore);
-    // Mark that the best score was improved in this step (for logging)
-    stepScope.setBestScoreImproved(true);
-    // Update the phase scope's best solution step index
-    phaseScope.setBestSolutionStepIndex(stepScope.getStepIndex());
-  }
-
-  private void updateGlobalBest(LocalSearchStepScope<Solution_> stepScope) {
-    var phaseScope = stepScope.getPhaseScope();
-    var solverScope = phaseScope.getSolverScope();
-
-    // Use the best solution and its score directly, not the working solution
-    var bestSolution = solverScope.getBestSolution();
-    var bestScore = solverScope.getBestScore();
-
-    if (bestSolution != null && bestScore != null) {
-      globalState.tryUpdate(bestSolution, bestScore.raw());
-    }
   }
 }

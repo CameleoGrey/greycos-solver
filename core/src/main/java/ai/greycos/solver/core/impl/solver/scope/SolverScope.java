@@ -29,6 +29,7 @@ import ai.greycos.solver.core.impl.solver.change.DefaultProblemChangeDirector;
 import ai.greycos.solver.core.impl.solver.monitoring.ScoreLevels;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 import io.micrometer.core.instrument.Tags;
 
@@ -54,6 +55,7 @@ public class SolverScope<Solution_> {
   private InnerScoreDirector<Solution_, ?> scoreDirector;
   private AbstractSolver<Solution_> solver;
   private DefaultProblemChangeDirector<Solution_> problemChangeDirector;
+  private final AtomicReference<PendingMove<Solution_>> pendingMove = new AtomicReference<>();
 
   /** Used for capping CPU power usage in multithreaded scenarios. */
   private Semaphore runnableThreadSemaphore = null;
@@ -109,6 +111,18 @@ public class SolverScope<Solution_> {
   public void setProblemChangeDirector(
       DefaultProblemChangeDirector<Solution_> problemChangeDirector) {
     this.problemChangeDirector = problemChangeDirector;
+  }
+
+  public void setPendingMove(Move<Solution_> move) {
+    setPendingMove(move, false);
+  }
+
+  public void setPendingMove(Move<Solution_> move, boolean requiresReset) {
+    pendingMove.set(new PendingMove<>(move, requiresReset));
+  }
+
+  public PendingMove<Solution_> consumePendingMove() {
+    return pendingMove.getAndSet(null);
   }
 
   public Tags getMonitoringTags() {
@@ -419,5 +433,23 @@ public class SolverScope<Solution_> {
           counter += count;
           return counter;
         });
+  }
+
+  public static final class PendingMove<Solution_> {
+    private final Move<Solution_> move;
+    private final boolean requiresReset;
+
+    private PendingMove(Move<Solution_> move, boolean requiresReset) {
+      this.move = move;
+      this.requiresReset = requiresReset;
+    }
+
+    public Move<Solution_> move() {
+      return move;
+    }
+
+    public boolean requiresReset() {
+      return requiresReset;
+    }
   }
 }

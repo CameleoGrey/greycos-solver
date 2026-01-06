@@ -13,7 +13,6 @@ import ai.greycos.solver.core.impl.localsearch.LocalSearchPhase;
 import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +38,7 @@ public class IslandAgent<Solution_> implements Runnable {
   private final BoundedChannel<AgentUpdate<Solution_>> receiver;
   private final IslandModelConfig config;
   private final Random random;
-  private final SolverScope<Solution_> parentSolverScope;
+  private final SolverScope<Solution_> islandScope;
   private final CountDownLatch completionLatch;
 
   // Agent state
@@ -47,9 +46,6 @@ public class IslandAgent<Solution_> implements Runnable {
   private volatile BitSet aliveBits;
   private volatile int stepsUntilNextMigration;
   private volatile boolean phasesCompleted = false;
-
-  // Agent's solver scope (isolated from other agents)
-  private SolverScope<Solution_> islandScope;
 
   public IslandAgent(
       int agentId,
@@ -60,7 +56,7 @@ public class IslandAgent<Solution_> implements Runnable {
       BoundedChannel<AgentUpdate<Solution_>> receiver,
       IslandModelConfig config,
       Random random,
-      SolverScope<Solution_> parentSolverScope,
+      SolverScope<Solution_> islandScope,
       CountDownLatch completionLatch) {
     this.agentId = agentId;
     this.phases = Objects.requireNonNull(phases, "Phases cannot be null");
@@ -71,8 +67,7 @@ public class IslandAgent<Solution_> implements Runnable {
     this.receiver = Objects.requireNonNull(receiver, "Receiver channel cannot be null");
     this.config = Objects.requireNonNull(config, "Config cannot be null");
     this.random = Objects.requireNonNull(random, "Random cannot be null");
-    this.parentSolverScope =
-        Objects.requireNonNull(parentSolverScope, "Parent solver scope cannot be null");
+    this.islandScope = Objects.requireNonNull(islandScope, "Island solver scope cannot be null");
     this.completionLatch =
         Objects.requireNonNull(completionLatch, "Completion latch cannot be null");
     this.stepsUntilNextMigration = config.getMigrationFrequency();
@@ -86,7 +81,6 @@ public class IslandAgent<Solution_> implements Runnable {
       aliveBits = new BitSet(config.getIslandCount());
       aliveBits.set(0, config.getIslandCount());
 
-      islandScope = parentSolverScope.createChildThreadSolverScope(ChildThreadType.MOVE_THREAD);
       // Ensure this island uses its own random seed to prevent duplicate move sequences
       islandScope.setWorkingRandom(random);
       islandScope.setInitialSolution(initialSolution);
@@ -230,7 +224,7 @@ public class IslandAgent<Solution_> implements Runnable {
             update.getAgentId(),
             migrantScore,
             currentScore);
-        replaceCurrentSolution(migrant);
+        scheduleAdoption(migrant);
       } else {
         LOGGER.debug(
             "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
@@ -291,7 +285,7 @@ public class IslandAgent<Solution_> implements Runnable {
             update.getAgentId(),
             migrantScore,
             currentScore);
-        replaceCurrentSolution(migrant);
+        scheduleAdoption(migrant);
       } else {
         LOGGER.debug(
             "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
@@ -349,14 +343,9 @@ public class IslandAgent<Solution_> implements Runnable {
     return InnerScore.fullyAssigned(scoreCast);
   }
 
-  private void replaceCurrentSolution(Solution_ newSolution) {
-    islandScope.getScoreDirector().setWorkingSolution(newSolution);
-    islandScope.setBestSolution(islandScope.getScoreDirector().cloneSolution(newSolution));
-    var newBestScore = islandScope.getScoreDirector().calculateScore();
-    islandScope.setBestScore(newBestScore);
-    @SuppressWarnings("unchecked")
-    var scoreToSet = (Score) newBestScore.raw();
-    islandScope.getSolutionDescriptor().setScore(newSolution, scoreToSet);
+  private void scheduleAdoption(Solution_ migrant) {
+    var syncMove = SolutionSyncMove.createMove(islandScope.getScoreDirector(), migrant);
+    islandScope.setPendingMove(syncMove, true);
   }
 
   @SuppressWarnings("unchecked")

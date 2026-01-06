@@ -120,7 +120,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
         executor.submit(moveThreadRunner);
 
         // Send setup operation to initialize the thread
-        operationQueue.add(new SetupOperation<>(scoreDirector));
+        enqueueOperation(new SetupOperation<>(scoreDirector));
       }
     } catch (RuntimeException | Error e) {
       // Clean up resources if thread initialization fails
@@ -157,7 +157,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     // Signal all threads to shutdown
     DestroyOperation<Solution_> destroyOperation = new DestroyOperation<>();
     for (int i = 0; i < moveThreadCount; i++) {
-      operationQueue.add(destroyOperation);
+      enqueueOperation(destroyOperation);
     }
 
     shutdownMoveThreads();
@@ -199,35 +199,46 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     int stepIndex = stepScope.getStepIndex();
     resultQueue.startNextStep(stepIndex);
 
-    int selectMoveIndex = 0;
-    int movesInPlay = 0;
-    Iterator<Move<Solution_>> moveIterator = moveRepository.iterator();
-    var selectedMoveList = new ArrayList<Move<Solution_>>(selectedMoveBufferSize);
+    var pending = stepScope.getPhaseScope().getSolverScope().consumePendingMove();
+    if (pending != null) {
+      resetOnPendingMove = pending.requiresReset();
+      var move = pending.move();
+      var score = stepScope.getScoreDirector().executeTemporaryMove(move, assertMoveScoreFromScratch);
+      stepScope.setStep(move);
+      if (logger.isDebugEnabled()) {
+        stepScope.setStepString(move.toString());
+      }
+      stepScope.setScore(score);
+      stepScope.setSelectedMoveCount(1L);
+      stepScope.setAcceptedMoveCount(1L);
+    } else {
+      int selectMoveIndex = 0;
+      int movesInPlay = 0;
+      Iterator<Move<Solution_>> moveIterator = moveRepository.iterator();
+      var selectedMoveList = new ArrayList<Move<Solution_>>(selectedMoveBufferSize);
 
-    do {
-      boolean hasNextMove = moveIterator.hasNext();
-      if (movesInPlay > 0 && (selectMoveIndex >= selectedMoveBufferSize || !hasNextMove)) {
-        if (forageResult(stepScope, stepIndex, selectedMoveList)) {
-          break;
+      do {
+        boolean hasNextMove = moveIterator.hasNext();
+        if (movesInPlay > 0 && (selectMoveIndex >= selectedMoveBufferSize || !hasNextMove)) {
+          if (forageResult(stepScope, stepIndex, selectedMoveList)) {
+            break;
+          }
+          movesInPlay--;
         }
-        movesInPlay--;
-      }
-      if (hasNextMove) {
-        var move = moveIterator.next();
-        selectedMoveList.add(move);
-        var legacyMove = MoveAdapters.toLegacyMove(move);
-        operationQueue.add(new MoveEvaluationOperation<>(stepIndex, selectMoveIndex, legacyMove));
-        selectMoveIndex++;
-        movesInPlay++;
-      }
-    } while (movesInPlay > 0);
+        if (hasNextMove) {
+          var move = moveIterator.next();
+          selectedMoveList.add(move);
+          var legacyMove = MoveAdapters.toLegacyMove(move);
+          enqueueOperation(new MoveEvaluationOperation<>(stepIndex, selectMoveIndex, legacyMove));
+          selectMoveIndex++;
+          movesInPlay++;
+        }
+      } while (movesInPlay > 0);
+      // Pick the best move from the results
+      pickMove(stepScope);
+    }
 
-    // Clear any remaining operations in the queue to prevent stale operations
-    // from being processed in the next step, which would cause deadlock
-    operationQueue.clear();
-
-    // Pick the best move from the results
-    pickMove(stepScope);
+    clearMoveEvaluationOperations();
 
     // If we have a step, apply it to all threads
     if (stepScope.getStep() != null) {
@@ -238,7 +249,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
 
       // Send the step operation to all move threads
       for (int i = 0; i < moveThreadCount; i++) {
-        operationQueue.add(stepOperation);
+        enqueueOperation(stepOperation);
       }
     }
   }
@@ -337,6 +348,19 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     if (executor != null && !executor.isShutdown()) {
       ThreadUtils.shutdownAwaitOrKill(executor, logIndentation, "Multi-threaded Local Search");
     }
+  }
+
+  private void enqueueOperation(MoveThreadOperation<Solution_> operation) {
+    try {
+      operationQueue.put(operation);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while enqueueing move thread operation.", e);
+    }
+  }
+
+  private void clearMoveEvaluationOperations() {
+    operationQueue.removeIf(operation -> operation instanceof MoveEvaluationOperation);
   }
 
   // Override assertion setters to support child thread assertions

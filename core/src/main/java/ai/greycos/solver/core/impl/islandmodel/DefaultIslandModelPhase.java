@@ -20,11 +20,16 @@ import ai.greycos.solver.core.impl.phase.PhaseFactory;
 import ai.greycos.solver.core.impl.phase.PhaseType;
 import ai.greycos.solver.core.impl.phase.event.PhaseEventProducerId;
 import ai.greycos.solver.core.impl.solver.AbstractSolver;
+import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
+import ai.greycos.solver.core.impl.solver.change.DefaultProblemChangeDirector;
 import ai.greycos.solver.core.impl.solver.event.SolverEventSupport;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
+import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecallerFactory;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.impl.solver.termination.ChildThreadSupportingTermination;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.impl.solver.termination.SolverTermination;
+import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 
 import org.slf4j.Logger;
@@ -180,9 +185,27 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       var receiver = channels.get(i);
       var sender = channels.get((i + 1) % islandCount);
 
-      var agentPhases = buildPhasesForAgent();
+      var agentRandom = new Random(random.nextLong());
+      var agentConfigPolicy = createAgentConfigPolicy(agentRandom);
+      var agentScope = createAgentSolverScope(solverScope);
+      var agentTermination = createAgentTermination(agentScope);
+      var agentRecaller =
+          BestSolutionRecallerFactory.create()
+              .<Solution_>buildBestSolutionRecaller(agentConfigPolicy.getEnvironmentMode());
+      var agentPhases = buildPhasesForAgent(agentConfigPolicy, agentRecaller, agentTermination);
+      var islandSolver = new IslandSolver<>(agentRecaller, toUniversalTermination(agentTermination));
+      agentScope.setSolver(islandSolver);
+      var initialSolution = deepCloneSolution(solverScope.getBestSolution());
       var agent =
-          createAgent(solverScope, random, i, sender, receiver, agentPhases, completionLatch);
+          createAgent(
+              i,
+              sender,
+              receiver,
+              agentPhases,
+              agentScope,
+              initialSolution,
+              completionLatch,
+              agentRandom);
       futures.add(executor.submit(agent));
     }
 
@@ -207,14 +230,14 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   private IslandAgent<Solution_> createAgent(
-      SolverScope<Solution_> solverScope,
-      Random random,
       int agentId,
       BoundedChannel<AgentUpdate<Solution_>> sender,
       BoundedChannel<AgentUpdate<Solution_>> receiver,
       List<Phase<Solution_>> agentPhases,
-      CountDownLatch completionLatch) {
-    var agentRandom = new Random(random.nextLong());
+      SolverScope<Solution_> agentScope,
+      Solution_ initialSolution,
+      CountDownLatch completionLatch,
+      Random agentRandom) {
     var config =
         IslandModelConfig.builder()
             .withIslandCount(islandCount)
@@ -227,21 +250,22 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     return new IslandAgent<>(
         agentId,
         agentPhases,
-        deepCloneSolution(solverScope.getBestSolution()),
+        initialSolution,
         globalState,
         sender,
         receiver,
         config,
         agentRandom,
-        solverScope,
+        agentScope,
         completionLatch);
   }
 
-  private List<Phase<Solution_>> buildPhasesForAgent() {
+  private List<Phase<Solution_>> buildPhasesForAgent(
+      HeuristicConfigPolicy<Solution_> agentConfigPolicy,
+      BestSolutionRecaller<Solution_> bestSolutionRecaller,
+      SolverTermination<Solution_> solverTermination) {
     // IslandModelPhaseConfig includes all local search configuration fields,
     // so each island runs the same local search configuration with independent random seeds
-    var childConfigPolicy = configPolicy.createChildThreadConfigPolicy(ChildThreadType.MOVE_THREAD);
-
     // Create a LocalSearchPhaseConfig from the island model's local search fields
     var localSearchConfig = new ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig();
     localSearchConfig.setLocalSearchType(islandModelConfig.getLocalSearchType());
@@ -253,7 +277,65 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
     // Build a single LocalSearchPhase from the local search config
     return PhaseFactory.buildPhases(
-        List.of(localSearchConfig), childConfigPolicy, bestSolutionRecaller, solverTermination);
+        List.of(localSearchConfig), agentConfigPolicy, bestSolutionRecaller, solverTermination);
+  }
+
+  private SolverTermination<Solution_> createAgentTermination(SolverScope<Solution_> solverScope) {
+    var childTermination =
+        ChildThreadSupportingTermination.assertChildThreadSupport(solverTermination)
+            .createChildThreadTermination(solverScope, ChildThreadType.PART_THREAD);
+    if (childTermination instanceof SolverTermination<?> solverChildTermination) {
+      @SuppressWarnings("unchecked")
+      var castTermination = (SolverTermination<Solution_>) solverChildTermination;
+      return castTermination;
+    }
+    throw new IllegalStateException(
+        "Child termination (" + childTermination + ") does not implement SolverTermination.");
+  }
+
+  private UniversalTermination<Solution_> toUniversalTermination(
+      SolverTermination<Solution_> termination) {
+    if (termination instanceof UniversalTermination<?> universalTermination) {
+      @SuppressWarnings("unchecked")
+      var castTermination = (UniversalTermination<Solution_>) universalTermination;
+      return castTermination;
+    }
+    return UniversalTermination.or(termination);
+  }
+
+  private HeuristicConfigPolicy<Solution_> createAgentConfigPolicy(Random agentRandom) {
+    var basePolicy = configPolicy.createChildThreadConfigPolicy(ChildThreadType.PART_THREAD);
+    return basePolicy
+        .cloneBuilder()
+        .withRandom(agentRandom)
+        .withClassInstanceCache(ClassInstanceCache.create())
+        .withEntitySorterManner(basePolicy.getEntitySorterManner())
+        .withValueSorterManner(basePolicy.getValueSorterManner())
+        .withReinitializeVariableFilterEnabled(basePolicy.isReinitializeVariableFilterEnabled())
+        .withInitializedChainedValueFilterEnabled(basePolicy.isInitializedChainedValueFilterEnabled())
+        .withUnassignedValuesAllowed(basePolicy.isUnassignedValuesAllowed())
+        .build();
+  }
+
+  private SolverScope<Solution_> createAgentSolverScope(SolverScope<Solution_> parentScope) {
+    var agentScope = parentScope.createChildThreadSolverScope(ChildThreadType.PART_THREAD);
+    var parentScoreDirector = parentScope.getScoreDirector();
+    var scoreDirectorFactory = parentScoreDirector.getScoreDirectorFactory();
+    var newScoreDirector =
+        scoreDirectorFactory
+            .createScoreDirectorBuilder()
+            .withLookUpEnabled(true)
+            .withConstraintMatchPolicy(parentScoreDirector.getConstraintMatchPolicy())
+            .build();
+    var previousScoreDirector = agentScope.getScoreDirector();
+    try {
+      previousScoreDirector.close();
+    } catch (Exception e) {
+      LOGGER.warn("Failed to close island score director replacement.", e);
+    }
+    agentScope.setScoreDirector(newScoreDirector);
+    agentScope.setProblemChangeDirector(new DefaultProblemChangeDirector<>(newScoreDirector));
+    return agentScope;
   }
 
   @SuppressWarnings("unchecked")
