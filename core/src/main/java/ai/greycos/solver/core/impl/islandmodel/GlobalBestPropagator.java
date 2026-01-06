@@ -68,10 +68,10 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
     boolean shouldUpdate = shouldUpdateMainSolverScope(newGlobalBestScore);
 
     if (shouldUpdate) {
-      updateMainSolverScope(newGlobalBest, newGlobalBestScore);
-      fireBestSolutionChangedEvent(newGlobalBest);
+      var clonedSolution = updateMainSolverScope(newGlobalBest, newGlobalBestScore);
+      fireBestSolutionChangedEvent(clonedSolution);
 
-      lastKnownBestSolution = newGlobalBest;
+      lastKnownBestSolution = clonedSolution;
       lastKnownBestScore = newGlobalBestScore;
     }
   }
@@ -86,7 +86,7 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
     return comparisonResult > 0;
   }
 
-  private void updateMainSolverScope(Solution_ newBestSolution, Score<?> newBestScore) {
+  private Solution_ updateMainSolverScope(Solution_ newBestSolution, Score<?> newBestScore) {
     // Clone to avoid sharing references with island agents
     var clonedSolution = mainSolverScope.getScoreDirector().cloneSolution(newBestSolution);
 
@@ -98,6 +98,7 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
     mainSolverScope.setBestScore(innerScore);
 
     mainSolverScope.setBestSolutionTimeMillis(mainSolverScope.getClock().millis());
+    return clonedSolution;
   }
 
   private void fireBestSolutionChangedEvent(Solution_ newBestSolution) {

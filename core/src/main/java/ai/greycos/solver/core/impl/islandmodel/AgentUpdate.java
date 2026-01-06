@@ -1,8 +1,6 @@
 package ai.greycos.solver.core.impl.islandmodel;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.BitSet;
 import java.util.Objects;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
@@ -17,13 +15,13 @@ public class AgentUpdate<Solution_> {
 
   private final int agentId;
   private final Solution_ migrant;
-  private final List<AgentStatus> statusVector;
+  private final BitSet aliveBits;
 
-  public AgentUpdate(int agentId, Solution_ migrant, List<AgentStatus> statusVector) {
+  public AgentUpdate(int agentId, Solution_ migrant, BitSet aliveBits) {
     this.agentId = agentId;
     this.migrant = Objects.requireNonNull(migrant, "Migrant cannot be null");
-    this.statusVector =
-        new ArrayList<>(Objects.requireNonNull(statusVector, "Status vector cannot be null"));
+    this.aliveBits =
+        (BitSet) Objects.requireNonNull(aliveBits, "Alive bits cannot be null").clone();
   }
 
   public int getAgentId() {
@@ -34,8 +32,8 @@ public class AgentUpdate<Solution_> {
     return migrant;
   }
 
-  public List<AgentStatus> getStatusVector() {
-    return Collections.unmodifiableList(statusVector);
+  public BitSet getAliveBits() {
+    return (BitSet) aliveBits.clone();
   }
 
   @Override
@@ -49,12 +47,12 @@ public class AgentUpdate<Solution_> {
     AgentUpdate<?> that = (AgentUpdate<?>) o;
     return agentId == that.agentId
         && Objects.equals(migrant, that.migrant)
-        && Objects.equals(statusVector, that.statusVector);
+        && Objects.equals(aliveBits, that.aliveBits);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(agentId, migrant, statusVector);
+    return Objects.hash(agentId, migrant, aliveBits);
   }
 
   @Override
@@ -64,8 +62,8 @@ public class AgentUpdate<Solution_> {
         + agentId
         + ", migrant="
         + migrant
-        + ", statusVector="
-        + statusVector
+        + ", aliveBits="
+        + aliveBits
         + '}';
   }
 }

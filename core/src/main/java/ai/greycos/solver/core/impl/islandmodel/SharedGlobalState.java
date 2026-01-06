@@ -48,6 +48,7 @@ public class SharedGlobalState<Solution_> {
     }
 
     // Slow path: acquire lock and double-check
+    Solution_ updatedSolution = null;
     synchronized (lock) {
       // Double-check in case another thread updated while waiting
       currentBest = bestScore;
@@ -62,9 +63,13 @@ public class SharedGlobalState<Solution_> {
       // Update - store reference, don't clone (observers clone when needed)
       bestScore = candidateScore;
       bestSolution = candidate;
-      notifyObservers(candidate);
+      updatedSolution = candidate;
+    }
+    if (updatedSolution != null) {
+      notifyObservers(updatedSolution);
       return true;
     }
+    return false;
   }
 
   public Solution_ getBestSolution() {

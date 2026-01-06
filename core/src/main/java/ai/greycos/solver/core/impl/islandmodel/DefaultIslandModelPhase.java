@@ -3,8 +3,12 @@ package ai.greycos.solver.core.impl.islandmodel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntFunction;
 
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
@@ -103,7 +107,10 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       this.solverScope = solverScope;
 
       var initialSolution = solverScope.getBestSolution();
-      var innerScore = solverScope.calculateScore();
+      var innerScore = solverScope.getBestScore();
+      if (innerScore == null) {
+        innerScore = solverScope.calculateScore();
+      }
       globalState.tryUpdate(initialSolution, innerScore.raw());
 
       // Start propagating global best updates to main solver scope
@@ -149,8 +156,18 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   private void createAndRunAgents(SolverScope<Solution_> solverScope) {
-    var executor = Executors.newFixedThreadPool(islandCount);
+    var threadCounter = new AtomicInteger(0);
+    var executor =
+        Executors.newFixedThreadPool(
+            islandCount,
+            runnable -> {
+              Thread thread = new Thread(runnable);
+              thread.setName("island-agent-" + threadCounter.getAndIncrement());
+              return thread;
+            });
     var random = solverScope.getWorkingRandom();
+    var completionLatch = new CountDownLatch(islandCount);
+    var futures = new ArrayList<Future<?>>(islandCount);
 
     LOGGER.info("Creating {} island agents with ring topology...", islandCount);
 
@@ -164,18 +181,28 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       var sender = channels.get((i + 1) % islandCount);
 
       var agentPhases = buildPhasesForAgent();
-      var agent = createAgent(solverScope, random, i, sender, receiver, agentPhases);
-      executor.submit(agent);
+      var agent =
+          createAgent(solverScope, random, i, sender, receiver, agentPhases, completionLatch);
+      futures.add(executor.submit(agent));
     }
 
     executor.shutdown();
 
     try {
-      executor.awaitTermination(24, TimeUnit.HOURS);
+      boolean terminated = executor.awaitTermination(24, TimeUnit.HOURS);
+      if (!terminated) {
+        executor.shutdownNow();
+        throw new IllegalStateException("Timed out waiting for island agents to complete.");
+      }
+      for (Future<?> future : futures) {
+        future.get();
+      }
       LOGGER.info("All {} island agents completed", islandCount);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new RuntimeException("Interrupted while waiting for agents", e);
+    } catch (ExecutionException e) {
+      throw new IllegalStateException("Island agent failed.", e.getCause());
     }
   }
 
@@ -185,7 +212,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       int agentId,
       BoundedChannel<AgentUpdate<Solution_>> sender,
       BoundedChannel<AgentUpdate<Solution_>> receiver,
-      List<Phase<Solution_>> agentPhases) {
+      List<Phase<Solution_>> agentPhases,
+      CountDownLatch completionLatch) {
     var agentRandom = new Random(random.nextLong());
     var config =
         IslandModelConfig.builder()
@@ -205,7 +233,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         receiver,
         config,
         agentRandom,
-        solverScope);
+        solverScope,
+        completionLatch);
   }
 
   private List<Phase<Solution_>> buildPhasesForAgent() {

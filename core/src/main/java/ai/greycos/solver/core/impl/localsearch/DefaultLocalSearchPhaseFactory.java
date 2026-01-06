@@ -69,10 +69,7 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
     if (phaseMoveThreadCount != null) {
       var resolvedMoveThreadCount = resolveMoveThreadCount(phaseMoveThreadCount, true);
       phaseConfigPolicy =
-          phaseConfigPolicy
-              .cloneBuilder()
-              .withMoveThreadCount(resolvedMoveThreadCount)
-              .build();
+          phaseConfigPolicy.cloneBuilder().withMoveThreadCount(resolvedMoveThreadCount).build();
     }
     var phaseTermination = buildPhaseTermination(phaseConfigPolicy, solverTermination);
     var decider = buildDecider(phaseConfigPolicy, phaseTermination);

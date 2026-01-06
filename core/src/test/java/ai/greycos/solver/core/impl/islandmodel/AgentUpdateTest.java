@@ -2,8 +2,7 @@ package ai.greycos.solver.core.impl.islandmodel;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.BitSet;
 
 import org.junit.jupiter.api.Test;
 
@@ -13,30 +12,31 @@ class AgentUpdateTest {
   @Test
   void constructorAndGetters() {
     String migrant = "test solution";
-    List<AgentStatus> statusVector =
-        List.of(AgentStatus.ALIVE, AgentStatus.ALIVE, AgentStatus.DEAD);
+    BitSet aliveBits = new BitSet();
+    aliveBits.set(0);
+    aliveBits.set(1);
     int agentId = 2;
 
-    AgentUpdate<String> update = new AgentUpdate<>(agentId, migrant, statusVector);
+    AgentUpdate<String> update = new AgentUpdate<>(agentId, migrant, aliveBits);
 
     assertEquals(agentId, update.getAgentId());
     assertEquals(migrant, update.getMigrant());
-    assertEquals(statusVector, update.getStatusVector());
+    assertEquals(aliveBits, update.getAliveBits());
   }
 
   @Test
   void constructorWithNullMigrantThrowsException() {
-    List<AgentStatus> statusVector = new ArrayList<>();
+    BitSet aliveBits = new BitSet();
 
     assertThrows(
         NullPointerException.class,
         () -> {
-          new AgentUpdate<>(0, null, statusVector);
+          new AgentUpdate<>(0, null, aliveBits);
         });
   }
 
   @Test
-  void constructorWithNullStatusVectorThrowsException() {
+  void constructorWithNullAliveBitsThrowsException() {
     assertThrows(
         NullPointerException.class,
         () -> {
@@ -45,26 +45,28 @@ class AgentUpdateTest {
   }
 
   @Test
-  void statusVectorIsImmutable() {
-    List<AgentStatus> originalVector = new ArrayList<>();
-    originalVector.add(AgentStatus.ALIVE);
+  void aliveBitsIsImmutable() {
+    BitSet originalBits = new BitSet();
+    originalBits.set(0);
 
-    AgentUpdate<String> update = new AgentUpdate<>(0, "solution", originalVector);
+    AgentUpdate<String> update = new AgentUpdate<>(0, "solution", originalBits);
 
-    // Modify original vector
-    originalVector.add(AgentStatus.DEAD);
+    // Modify original bits
+    originalBits.clear(0);
 
-    // Update's status vector should not be affected
-    assertNotEquals(originalVector, update.getStatusVector());
+    // Update's bits should not be affected
+    assertNotEquals(originalBits, update.getAliveBits());
   }
 
   @Test
   void equalityBasedOnContent() {
-    List<AgentStatus> statusVector = List.of(AgentStatus.ALIVE, AgentStatus.ALIVE);
+    BitSet aliveBits = new BitSet();
+    aliveBits.set(0);
+    aliveBits.set(1);
 
-    AgentUpdate<String> update1 = new AgentUpdate<>(0, "solution", statusVector);
-    AgentUpdate<String> update2 = new AgentUpdate<>(0, "solution", statusVector);
-    AgentUpdate<String> update3 = new AgentUpdate<>(1, "solution", statusVector);
+    AgentUpdate<String> update1 = new AgentUpdate<>(0, "solution", aliveBits);
+    AgentUpdate<String> update2 = new AgentUpdate<>(0, "solution", aliveBits);
+    AgentUpdate<String> update3 = new AgentUpdate<>(1, "solution", aliveBits);
 
     assertEquals(update1, update2);
     assertNotEquals(update1, update3);

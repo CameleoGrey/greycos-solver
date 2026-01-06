@@ -7,23 +7,24 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.IntFunction;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.impl.phase.Phase;
+import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
+import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 /** Unit tests for IslandAgent. */
 public class IslandAgentTest {
 
   private static final int TEST_ISLAND_COUNT = 4;
   private static final int TEST_MIGRATION_FREQUENCY = 100;
-  private static final double TEST_MIGRATION_RATE = 0.1;
 
   private IslandModelConfig config;
   private SharedGlobalState<TestSolution> globalState;
@@ -32,17 +33,18 @@ public class IslandAgentTest {
   private Random random;
   private SolverScope<TestSolution> solverScope;
   private TestSolution initialSolution;
+  private CountDownLatch completionLatch;
 
   @BeforeEach
   public void setUp() {
-    config =
-        new IslandModelConfig(TEST_ISLAND_COUNT, TEST_MIGRATION_RATE, TEST_MIGRATION_FREQUENCY);
+    config = new IslandModelConfig(TEST_ISLAND_COUNT, TEST_MIGRATION_FREQUENCY);
     globalState = new SharedGlobalState<>();
     sender = new BoundedChannel<>(1);
     receiver = new BoundedChannel<>(1);
     random = new Random(42);
-    solverScope = createMockSolverScope();
+    solverScope = new TestSolverScope();
     initialSolution = new TestSolution(100);
+    completionLatch = new CountDownLatch(1);
   }
 
   @Test
@@ -52,7 +54,16 @@ public class IslandAgentTest {
 
     IslandAgent<TestSolution> agent =
         new IslandAgent<>(
-            0, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            0,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
 
     assertEquals(0, agent.getAgentId());
     assertEquals(AgentStatus.ALIVE, agent.getStatus());
@@ -72,7 +83,8 @@ public class IslandAgentTest {
                 receiver,
                 config,
                 random,
-                solverScope));
+                solverScope,
+                completionLatch));
   }
 
   @Test
@@ -82,7 +94,16 @@ public class IslandAgentTest {
         NullPointerException.class,
         () ->
             new IslandAgent<>(
-                0, phases, null, globalState, sender, receiver, config, random, solverScope));
+                0,
+                phases,
+                null,
+                globalState,
+                sender,
+                receiver,
+                config,
+                random,
+                solverScope,
+                completionLatch));
   }
 
   @Test
@@ -92,7 +113,16 @@ public class IslandAgentTest {
         NullPointerException.class,
         () ->
             new IslandAgent<>(
-                0, phases, initialSolution, null, sender, receiver, config, random, solverScope));
+                0,
+                phases,
+                initialSolution,
+                null,
+                sender,
+                receiver,
+                config,
+                random,
+                solverScope,
+                completionLatch));
   }
 
   @Test
@@ -110,7 +140,8 @@ public class IslandAgentTest {
                 receiver,
                 config,
                 random,
-                solverScope));
+                solverScope,
+                completionLatch));
   }
 
   @Test
@@ -128,7 +159,8 @@ public class IslandAgentTest {
                 null,
                 config,
                 random,
-                solverScope));
+                solverScope,
+                completionLatch));
   }
 
   @Test
@@ -146,7 +178,8 @@ public class IslandAgentTest {
                 receiver,
                 null,
                 random,
-                solverScope));
+                solverScope,
+                completionLatch));
   }
 
   @Test
@@ -164,7 +197,8 @@ public class IslandAgentTest {
                 receiver,
                 config,
                 null,
-                solverScope));
+                solverScope,
+                completionLatch));
   }
 
   @Test
@@ -174,7 +208,35 @@ public class IslandAgentTest {
         NullPointerException.class,
         () ->
             new IslandAgent<>(
-                0, phases, initialSolution, globalState, sender, receiver, config, random, null));
+                0,
+                phases,
+                initialSolution,
+                globalState,
+                sender,
+                receiver,
+                config,
+                random,
+                null,
+                completionLatch));
+  }
+
+  @Test
+  public void testConstructorWithNullCompletionLatch() {
+    List<Phase<TestSolution>> phases = new ArrayList<>();
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new IslandAgent<>(
+                0,
+                phases,
+                initialSolution,
+                globalState,
+                sender,
+                receiver,
+                config,
+                random,
+                solverScope,
+                null));
   }
 
   @Test
@@ -182,7 +244,16 @@ public class IslandAgentTest {
     List<Phase<TestSolution>> phases = new ArrayList<>();
     IslandAgent<TestSolution> agent =
         new IslandAgent<>(
-            0, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            0,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
 
     Thread thread = new Thread(agent);
     thread.start();
@@ -199,7 +270,16 @@ public class IslandAgentTest {
 
     IslandAgent<TestSolution> agent =
         new IslandAgent<>(
-            0, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            0,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
 
     Thread thread = new Thread(agent);
     thread.start();
@@ -222,7 +302,16 @@ public class IslandAgentTest {
 
     IslandAgent<TestSolution> agent =
         new IslandAgent<>(
-            0, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            0,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
 
     Thread thread = new Thread(agent);
     thread.start();
@@ -243,7 +332,16 @@ public class IslandAgentTest {
 
     IslandAgent<TestSolution> agent =
         new IslandAgent<>(
-            0, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            0,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
 
     Thread thread = new Thread(agent);
     thread.start();
@@ -264,7 +362,16 @@ public class IslandAgentTest {
 
     IslandAgent<TestSolution> agent =
         new IslandAgent<>(
-            0, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            0,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
 
     Thread thread = new Thread(agent);
     thread.start();
@@ -281,7 +388,16 @@ public class IslandAgentTest {
 
     IslandAgent<TestSolution> agent =
         new IslandAgent<>(
-            0, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            0,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
 
     // Start agent
     Thread thread = new Thread(agent);
@@ -304,7 +420,16 @@ public class IslandAgentTest {
 
     IslandAgent<TestSolution> agent =
         new IslandAgent<>(
-            0, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            0,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
 
     // Start agent
     Thread thread = new Thread(agent);
@@ -325,7 +450,16 @@ public class IslandAgentTest {
 
     IslandAgent<TestSolution> agent =
         new IslandAgent<>(
-            0, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            0,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
 
     String str = agent.toString();
     assertTrue(str.contains("agentId=0"));
@@ -340,10 +474,28 @@ public class IslandAgentTest {
 
     IslandAgent<TestSolution> agent1 =
         new IslandAgent<>(
-            0, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            0,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
     IslandAgent<TestSolution> agent2 =
         new IslandAgent<>(
-            1, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            1,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
 
     assertEquals(0, agent1.getAgentId());
     assertEquals(1, agent2.getAgentId());
@@ -356,69 +508,52 @@ public class IslandAgentTest {
 
     IslandAgent<TestSolution> agent =
         new IslandAgent<>(
-            0, phases, initialSolution, globalState, sender, receiver, config, random, solverScope);
+            0,
+            phases,
+            initialSolution,
+            globalState,
+            sender,
+            receiver,
+            config,
+            random,
+            solverScope,
+            completionLatch);
 
     assertEquals(AgentStatus.ALIVE, agent.getStatus());
   }
 
   // Helper methods
 
-  @SuppressWarnings("unchecked")
-  private SolverScope<TestSolution> createMockSolverScope() {
-    SolverScope<TestSolution> mockScope = Mockito.mock(SolverScope.class);
-    SolverScope<TestSolution> childScope = Mockito.mock(SolverScope.class);
-
-    Mockito.when(mockScope.createChildThreadSolverScope(ChildThreadType.MOVE_THREAD))
-        .thenReturn(childScope);
-    Mockito.when(mockScope.getBestSolution()).thenReturn(initialSolution);
-
-    return mockScope;
-  }
-
   private Phase<TestSolution> createMockPhase(String name) {
     return createMockPhase(name, null);
   }
 
-  @SuppressWarnings("unchecked")
   private Phase<TestSolution> createMockPhase(String name, CountDownLatch latch) {
-    Phase<TestSolution> mockPhase = Mockito.mock(Phase.class);
-    Mockito.doAnswer(
-            invocation -> {
-              if (latch != null) {
-                latch.countDown();
-              }
-              return null;
-            })
-        .when(mockPhase)
-        .solve(Mockito.any());
-    Mockito.when(mockPhase.toString()).thenReturn(name);
-    return mockPhase;
+    return new TestPhase(
+        name,
+        () -> {
+          if (latch != null) {
+            latch.countDown();
+          }
+        });
   }
 
-  @SuppressWarnings("unchecked")
   private Phase<TestSolution> createInterruptingPhase(CountDownLatch latch) {
-    Phase<TestSolution> mockPhase = Mockito.mock(Phase.class);
-    Mockito.doAnswer(
-            invocation -> {
-              latch.countDown();
-              Thread.currentThread().interrupt();
-              throw new InterruptedException("Test interrupt");
-            })
-        .when(mockPhase)
-        .solve(Mockito.any());
-    return mockPhase;
+    return new TestPhase(
+        "InterruptingPhase",
+        () -> {
+          latch.countDown();
+          Thread.currentThread().interrupt();
+          throw new RuntimeException("Test interrupt");
+        });
   }
 
-  @SuppressWarnings("unchecked")
   private Phase<TestSolution> createFailingPhase() {
-    Phase<TestSolution> mockPhase = Mockito.mock(Phase.class);
-    Mockito.doAnswer(
-            invocation -> {
-              throw new RuntimeException("Test exception");
-            })
-        .when(mockPhase)
-        .solve(Mockito.any());
-    return mockPhase;
+    return new TestPhase(
+        "FailingPhase",
+        () -> {
+          throw new RuntimeException("Test exception");
+        });
   }
 
   // Test classes
@@ -440,71 +575,54 @@ public class IslandAgentTest {
     }
   }
 
-  static class TestScore implements Score<TestScore> {
-    private final int score;
-
-    public TestScore(int score) {
-      this.score = score;
+  private static final class TestSolverScope extends SolverScope<TestSolution> {
+    @Override
+    public SolverScope<TestSolution> createChildThreadSolverScope(ChildThreadType childThreadType) {
+      return new TestSolverScope();
     }
 
     @Override
-    public int compareTo(TestScore other) {
-      return Integer.compare(this.score, other.score);
+    public void setInitialSolution(TestSolution initialSolution) {
+      setBestSolution(initialSolution);
+    }
+  }
+
+  private static final class TestPhase extends PhaseLifecycleListenerAdapter<TestSolution>
+      implements Phase<TestSolution> {
+    private final String name;
+    private final Runnable solveAction;
+    private final List<PhaseLifecycleListener<TestSolution>> listeners = new ArrayList<>();
+
+    private TestPhase(String name, Runnable solveAction) {
+      this.name = name;
+      this.solveAction = solveAction;
     }
 
     @Override
-    public TestScore add(TestScore addend) {
-      return new TestScore(this.score + addend.score);
+    public void addPhaseLifecycleListener(PhaseLifecycleListener<TestSolution> listener) {
+      listeners.add(listener);
     }
 
     @Override
-    public TestScore subtract(TestScore subtrahend) {
-      return new TestScore(this.score - subtrahend.score);
+    public void removePhaseLifecycleListener(PhaseLifecycleListener<TestSolution> listener) {
+      listeners.remove(listener);
     }
 
     @Override
-    public TestScore multiply(double multiplicand) {
-      return new TestScore((int) (this.score * multiplicand));
+    public void solve(SolverScope<TestSolution> solverScope) {
+      if (solveAction != null) {
+        solveAction.run();
+      }
     }
 
     @Override
-    public TestScore divide(double divisor) {
-      return new TestScore((int) (this.score / divisor));
-    }
-
-    @Override
-    public TestScore power(double exponent) {
-      return new TestScore((int) Math.pow(this.score, exponent));
-    }
-
-    @Override
-    public TestScore abs() {
-      return new TestScore(Math.abs(this.score));
-    }
-
-    @Override
-    public TestScore zero() {
-      return new TestScore(0);
-    }
-
-    @Override
-    public Number[] toLevelNumbers() {
-      return new Number[] {score};
-    }
-
-    @Override
-    public boolean isFeasible() {
-      return true;
-    }
-
-    @Override
-    public String toShortString() {
-      return String.valueOf(score);
+    public IntFunction<EventProducerId> getEventProducerIdSupplier() {
+      return i -> EventProducerId.unknown();
     }
 
     @Override
     public String toString() {
-      return String.valueOf(score);
+      return name;
     }
   }
 }

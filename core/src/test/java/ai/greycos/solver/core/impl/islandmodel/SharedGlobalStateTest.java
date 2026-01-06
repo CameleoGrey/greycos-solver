@@ -11,30 +11,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
-import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 /** Unit tests for {@link SharedGlobalState}. */
 class SharedGlobalStateTest {
 
   private SharedGlobalState<String> globalState;
-  private SolverScope<String> mockSolverScope;
 
   @BeforeEach
   void setUp() {
     globalState = new SharedGlobalState<>();
-    // Create a mock solver scope for solution cloning
-    mockSolverScope = Mockito.mock(SolverScope.class);
-    var mockScoreDirector =
-        Mockito.mock(ai.greycos.solver.core.impl.score.director.InnerScoreDirector.class);
-    Mockito.when(mockSolverScope.getScoreDirector()).thenReturn(mockScoreDirector);
-    // Mock the cloneSolution method on score director
-    Mockito.when(mockScoreDirector.cloneSolution(Mockito.any()))
-        .thenAnswer(invocation -> invocation.getArgument(0));
-    globalState.setSolverScope(mockSolverScope);
   }
 
   @Test
@@ -59,24 +47,24 @@ class SharedGlobalStateTest {
   void tryUpdateWithBetterScore() {
     globalState.tryUpdate("solution1", SimpleScore.of(-10));
 
-    // Better score (lower is better)
-    boolean updated = globalState.tryUpdate("solution2", SimpleScore.of(-20));
+    // Better score (higher is better)
+    boolean updated = globalState.tryUpdate("solution2", SimpleScore.of(-5));
 
     assertTrue(updated);
     assertEquals("solution2", globalState.getBestSolution());
-    assertEquals(SimpleScore.of(-20), globalState.getBestScore());
+    assertEquals(SimpleScore.of(-5), globalState.getBestScore());
   }
 
   @Test
   void tryUpdateWithWorseScore() {
-    globalState.tryUpdate("solution1", SimpleScore.of(-20));
+    globalState.tryUpdate("solution1", SimpleScore.of(-10));
 
-    // Worse score (higher is worse)
-    boolean updated = globalState.tryUpdate("solution2", SimpleScore.of(-10));
+    // Worse score (lower is worse)
+    boolean updated = globalState.tryUpdate("solution2", SimpleScore.of(-20));
 
     assertFalse(updated);
     assertEquals("solution1", globalState.getBestSolution());
-    assertEquals(SimpleScore.of(-20), globalState.getBestScore());
+    assertEquals(SimpleScore.of(-10), globalState.getBestScore());
   }
 
   @Test
@@ -210,7 +198,7 @@ class SharedGlobalStateTest {
     // Should have at least one update (the best one)
     assertTrue(updateCount.get() > 0);
     assertNotNull(globalState.getBestSolution());
-    assertNotNull(globalState.getBestScore());
+    assertEquals(SimpleScore.of(0), globalState.getBestScore());
   }
 
   @Test

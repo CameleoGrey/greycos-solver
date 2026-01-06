@@ -1,9 +1,10 @@
 package ai.greycos.solver.core.impl.islandmodel;
 
-import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
@@ -39,10 +40,11 @@ public class IslandAgent<Solution_> implements Runnable {
   private final IslandModelConfig config;
   private final Random random;
   private final SolverScope<Solution_> parentSolverScope;
+  private final CountDownLatch completionLatch;
 
   // Agent state
   private volatile AgentStatus status = AgentStatus.ALIVE;
-  private volatile List<AgentStatus> statusVector;
+  private volatile BitSet aliveBits;
   private volatile int stepsUntilNextMigration;
   private volatile boolean phasesCompleted = false;
 
@@ -58,7 +60,8 @@ public class IslandAgent<Solution_> implements Runnable {
       BoundedChannel<AgentUpdate<Solution_>> receiver,
       IslandModelConfig config,
       Random random,
-      SolverScope<Solution_> parentSolverScope) {
+      SolverScope<Solution_> parentSolverScope,
+      CountDownLatch completionLatch) {
     this.agentId = agentId;
     this.phases = Objects.requireNonNull(phases, "Phases cannot be null");
     this.initialSolution =
@@ -70,6 +73,8 @@ public class IslandAgent<Solution_> implements Runnable {
     this.random = Objects.requireNonNull(random, "Random cannot be null");
     this.parentSolverScope =
         Objects.requireNonNull(parentSolverScope, "Parent solver scope cannot be null");
+    this.completionLatch =
+        Objects.requireNonNull(completionLatch, "Completion latch cannot be null");
     this.stepsUntilNextMigration = config.getMigrationFrequency();
   }
 
@@ -78,10 +83,8 @@ public class IslandAgent<Solution_> implements Runnable {
     try {
       LOGGER.info("Agent {} started with {} phases", agentId, phases.size());
 
-      statusVector = new ArrayList<>();
-      for (int i = 0; i < config.getIslandCount(); i++) {
-        statusVector.add(AgentStatus.ALIVE);
-      }
+      aliveBits = new BitSet(config.getIslandCount());
+      aliveBits.set(0, config.getIslandCount());
 
       islandScope = parentSolverScope.createChildThreadSolverScope(ChildThreadType.MOVE_THREAD);
       // Ensure this island uses its own random seed to prevent duplicate move sequences
@@ -121,42 +124,16 @@ public class IslandAgent<Solution_> implements Runnable {
 
       phasesCompleted = true;
       markAsDead();
-
-      AgentUpdate<Solution_> pendingMessage = null;
-      int roundsWithoutReceivingMessage = 0;
-      int maxRoundsWithoutMessage = config.getIslandCount() * 3;
-
-      while (!shouldTerminate()) {
-        if (status == AgentStatus.DEAD
-            && roundsWithoutReceivingMessage >= maxRoundsWithoutMessage) {
-          LOGGER.info(
-              "Agent {} terminating after {} rounds without receiving messages (assuming all agents DEAD)",
-              agentId,
-              roundsWithoutReceivingMessage);
-          break;
-        }
-
-        boolean receivedMessage = (pendingMessage != null);
-        pendingMessage = performMigrationWithTimeout(pendingMessage);
-
-        if (!receivedMessage && pendingMessage == null) {
-          roundsWithoutReceivingMessage++;
-        } else {
-          roundsWithoutReceivingMessage = 0;
-        }
-
-        Thread.yield();
-      }
-
-      LOGGER.info("Agent {} terminated", agentId);
-
-    } catch (InterruptedException e) {
-      LOGGER.info("Agent {} interrupted", agentId);
-      Thread.currentThread().interrupt();
     } catch (Exception e) {
       LOGGER.error("Agent {} encountered unexpected error", agentId, e);
       markAsDead();
+      throw new IllegalStateException("Island agent " + agentId + " failed.", e);
+    } finally {
+      completionLatch.countDown();
     }
+
+    awaitAllAgents();
+    LOGGER.info("Agent {} terminated", agentId);
   }
 
   private void performMigration() throws InterruptedException {
@@ -216,7 +193,7 @@ public class IslandAgent<Solution_> implements Runnable {
 
     Solution_ migrant = getCurrentBestSolution();
     AgentUpdate<Solution_> update =
-        new AgentUpdate<>(agentId, deepClone(migrant), new ArrayList<>(statusVector));
+        new AgentUpdate<>(agentId, deepClone(migrant), snapshotAliveBits());
 
     LOGGER.debug("Agent {} sending migration", agentId);
     sender.send(update);
@@ -225,16 +202,13 @@ public class IslandAgent<Solution_> implements Runnable {
   private void receiveMigration() throws InterruptedException {
     AgentUpdate<Solution_> update = receiver.receive();
 
-    for (int i = 0; i < statusVector.size(); i++) {
-      if (i != agentId) {
-        statusVector.set(i, update.getStatusVector().get(i));
-      }
-    }
+    applyIncomingAliveBits(update.getAliveBits());
 
     updateAliveAgentsCount();
 
     if (status == AgentStatus.DEAD) {
       LOGGER.debug("Agent {} (DEAD) forwarding migration", agentId);
+      sender.send(update);
       return;
     }
 
@@ -256,7 +230,7 @@ public class IslandAgent<Solution_> implements Runnable {
             update.getAgentId(),
             migrantScore,
             currentScore);
-        replaceCurrentSolution(deepClone(migrant));
+        replaceCurrentSolution(migrant);
       } else {
         LOGGER.debug(
             "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
@@ -272,8 +246,16 @@ public class IslandAgent<Solution_> implements Runnable {
     AgentUpdate<Solution_> update;
 
     if (status == AgentStatus.DEAD) {
-      // Skip migration entirely for dead agents
-      return null;
+      update = receiver.tryReceive(config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
+      if (update == null) {
+        LOGGER.trace("Agent {} timeout waiting for migration message", agentId);
+        return null;
+      }
+      applyIncomingAliveBits(update.getAliveBits());
+      updateAliveAgentsCount();
+      LOGGER.debug("Agent {} (DEAD) forwarding migration", agentId);
+      sender.send(update, config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
+      return update;
     }
 
     // Use timeout-based receive for alive agents
@@ -283,11 +265,7 @@ public class IslandAgent<Solution_> implements Runnable {
       return null;
     }
 
-    for (int i = 0; i < statusVector.size(); i++) {
-      if (i != agentId) {
-        statusVector.set(i, update.getStatusVector().get(i));
-      }
-    }
+    applyIncomingAliveBits(update.getAliveBits());
 
     updateAliveAgentsCount();
 
@@ -313,7 +291,7 @@ public class IslandAgent<Solution_> implements Runnable {
             update.getAgentId(),
             migrantScore,
             currentScore);
-        replaceCurrentSolution(deepClone(migrant));
+        replaceCurrentSolution(migrant);
       } else {
         LOGGER.debug(
             "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
@@ -330,13 +308,16 @@ public class IslandAgent<Solution_> implements Runnable {
   private AgentUpdate<Solution_> sendMigrationWithTimeout(AgentUpdate<Solution_> messageToSend)
       throws InterruptedException {
     if (status == AgentStatus.DEAD) {
-      // Skip migration entirely for dead agents - no forwarding
-      return null;
+      AgentUpdate<Solution_> receivedUpdate = receiver.tryReceive();
+      if (receivedUpdate != null) {
+        sender.send(receivedUpdate, config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
+      }
+      return receivedUpdate;
     }
 
     Solution_ migrant = getCurrentBestSolution();
     AgentUpdate<Solution_> updateToSend =
-        new AgentUpdate<>(agentId, deepClone(migrant), new ArrayList<>(statusVector));
+        new AgentUpdate<>(agentId, deepClone(migrant), snapshotAliveBits());
     LOGGER.debug("Agent {} sending migration", agentId);
 
     // Use timeout-based send for alive agents
@@ -386,43 +367,40 @@ public class IslandAgent<Solution_> implements Runnable {
     return islandScope.getScoreDirector().cloneSolution(solution);
   }
 
-  private void updateAliveAgentsCount() {
-    int aliveCount = 0;
-    for (AgentStatus status : statusVector) {
-      if (status == AgentStatus.ALIVE) {
-        aliveCount++;
-      }
-    }
-    LOGGER.trace("Agent {} sees {} alive agents in status vector", agentId, aliveCount);
+  private BitSet snapshotAliveBits() {
+    return (BitSet) aliveBits.clone();
   }
 
-  private int countAliveAgents() {
-    int count = 0;
-    for (AgentStatus status : statusVector) {
-      if (status == AgentStatus.ALIVE) {
-        count++;
-      }
+  private void applyIncomingAliveBits(BitSet incomingAliveBits) {
+    aliveBits.clear();
+    aliveBits.or(incomingAliveBits);
+    aliveBits.set(agentId, status == AgentStatus.ALIVE);
+  }
+
+  private void awaitAllAgents() {
+    try {
+      completionLatch.await();
+    } catch (InterruptedException e) {
+      LOGGER.info("Agent {} interrupted while waiting for peers", agentId);
+      Thread.currentThread().interrupt();
     }
-    return count;
+  }
+
+  private void updateAliveAgentsCount() {
+    int aliveCount = aliveBits.cardinality();
+    LOGGER.trace("Agent {} sees {} alive agents in status vector", agentId, aliveCount);
   }
 
   private boolean shouldTerminate() {
     if (!phasesCompleted) {
       return false;
     }
-
-    for (AgentStatus status : statusVector) {
-      if (status == AgentStatus.ALIVE) {
-        return false;
-      }
-    }
-
-    return true;
+    return aliveBits.isEmpty();
   }
 
   private void markAsDead() {
     status = AgentStatus.DEAD;
-    statusVector.set(agentId, AgentStatus.DEAD);
+    aliveBits.clear(agentId);
     LOGGER.info("Agent {} marked as DEAD", agentId);
   }
 
