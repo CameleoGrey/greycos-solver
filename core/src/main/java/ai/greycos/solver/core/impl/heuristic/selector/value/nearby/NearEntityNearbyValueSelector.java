@@ -7,7 +7,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistan
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.spatial.SpatialNearbyDistanceMatrix;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
-import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -25,7 +25,7 @@ public final class NearEntityNearbyValueSelector<Solution_>
   private final @NonNull EntitySelector<Solution_> originEntitySelector;
 
   public NearEntityNearbyValueSelector(
-      @NonNull ValueSelector<Solution_> childValueSelector,
+      @NonNull IterableValueSelector<Solution_> childValueSelector,
       @NonNull EntitySelector<Solution_> originEntitySelector,
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
       @Nullable NearbyRandom nearbyRandom,
@@ -46,7 +46,7 @@ public final class NearEntityNearbyValueSelector<Solution_>
    * @param spatialDistanceMatrix optional spatial distance matrix for performance
    */
   public NearEntityNearbyValueSelector(
-      @NonNull ValueSelector<Solution_> childValueSelector,
+      @NonNull IterableValueSelector<Solution_> childValueSelector,
       @NonNull EntitySelector<Solution_> originEntitySelector,
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
       @Nullable NearbyRandom nearbyRandom,
@@ -65,6 +65,11 @@ public final class NearEntityNearbyValueSelector<Solution_>
   @Override
   public boolean isNeverEnding() {
     return randomSelection || childValueSelector.isNeverEnding();
+  }
+
+  @Override
+  public @NonNull Iterator<Object> iterator() {
+    return new EntityDependentNearbyIterator();
   }
 
   @Override
@@ -180,6 +185,29 @@ public final class NearEntityNearbyValueSelector<Solution_>
       }
       index++;
       return result;
+    }
+  }
+
+  /**
+   * Iterator for nearby selection when no entity is provided. This iterator delegates to the child
+   * selector's iterator without entity context.
+   */
+  private class EntityDependentNearbyIterator implements Iterator<Object> {
+
+    private final Iterator<Object> childIterator;
+
+    public EntityDependentNearbyIterator() {
+      this.childIterator = childValueSelector.iterator();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return childIterator.hasNext();
+    }
+
+    @Override
+    public Object next() {
+      return childIterator.next();
     }
   }
 }

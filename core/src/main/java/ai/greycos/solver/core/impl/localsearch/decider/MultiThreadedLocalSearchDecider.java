@@ -203,7 +203,8 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     if (pending != null) {
       resetOnPendingMove = pending.requiresReset();
       var move = pending.move();
-      var score = stepScope.getScoreDirector().executeTemporaryMove(move, assertMoveScoreFromScratch);
+      var score =
+          stepScope.getScoreDirector().executeTemporaryMove(move, assertMoveScoreFromScratch);
       stepScope.setStep(move);
       if (logger.isDebugEnabled()) {
         stepScope.setStepString(move.toString());

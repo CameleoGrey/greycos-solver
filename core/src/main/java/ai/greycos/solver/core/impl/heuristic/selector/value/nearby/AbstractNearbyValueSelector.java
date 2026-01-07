@@ -1,5 +1,6 @@
 package ai.greycos.solver.core.impl.heuristic.selector.value.nearby;
 
+import java.util.Iterator;
 import java.util.Objects;
 
 import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
@@ -7,7 +8,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelec
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.spatial.SpatialNearbyDistanceMatrix;
-import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -25,16 +26,16 @@ import org.jspecify.annotations.Nullable;
  * @param <Solution_> the solution type
  */
 abstract class AbstractNearbyValueSelector<Solution_>
-    extends AbstractDemandEnabledSelector<Solution_> implements ValueSelector<Solution_> {
+    extends AbstractDemandEnabledSelector<Solution_> implements IterableValueSelector<Solution_> {
 
-  protected final @NonNull ValueSelector<Solution_> childValueSelector;
+  protected final @NonNull IterableValueSelector<Solution_> childValueSelector;
   protected final @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter;
   protected final @Nullable NearbyRandom nearbyRandom;
   protected final boolean randomSelection;
   protected final @Nullable SpatialNearbyDistanceMatrix<?, ?> spatialDistanceMatrix;
 
   protected AbstractNearbyValueSelector(
-      @NonNull ValueSelector<Solution_> childValueSelector,
+      @NonNull IterableValueSelector<Solution_> childValueSelector,
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
       @Nullable NearbyRandom nearbyRandom,
       boolean randomSelection) {
@@ -42,7 +43,7 @@ abstract class AbstractNearbyValueSelector<Solution_>
   }
 
   protected AbstractNearbyValueSelector(
-      @NonNull ValueSelector<Solution_> childValueSelector,
+      @NonNull IterableValueSelector<Solution_> childValueSelector,
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
       @Nullable NearbyRandom nearbyRandom,
       boolean randomSelection,
@@ -78,6 +79,17 @@ abstract class AbstractNearbyValueSelector<Solution_>
   public long getSize(Object entity) {
     return childValueSelector.getSize(entity);
   }
+
+  @Override
+  public long getSize() {
+    return childValueSelector.getSize();
+  }
+
+  @Override
+  public abstract @NonNull Iterator<Object> iterator(@NonNull Object entity);
+
+  @Override
+  public abstract @NonNull Iterator<Object> endingIterator(@NonNull Object entity);
 
   @Override
   public boolean equals(Object o) {

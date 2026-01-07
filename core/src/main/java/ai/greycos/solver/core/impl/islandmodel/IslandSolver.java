@@ -61,14 +61,12 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_> {
 
   @Override
   public void addProblemChange(@NonNull ProblemChange<Solution_> problemChange) {
-    throw new UnsupportedOperationException(
-        "IslandSolver does not support problem changes.");
+    throw new UnsupportedOperationException("IslandSolver does not support problem changes.");
   }
 
   @Override
   public void addProblemChanges(@NonNull List<ProblemChange<Solution_>> problemChangeList) {
-    throw new UnsupportedOperationException(
-        "IslandSolver does not support problem changes.");
+    throw new UnsupportedOperationException("IslandSolver does not support problem changes.");
   }
 
   @Override
@@ -80,15 +78,13 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_> {
   @Override
   @Deprecated(forRemoval = true)
   public boolean addProblemFactChange(@NonNull ProblemFactChange<Solution_> problemFactChange) {
-    throw new UnsupportedOperationException(
-        "IslandSolver does not support problem fact changes.");
+    throw new UnsupportedOperationException("IslandSolver does not support problem fact changes.");
   }
 
   @Override
   @Deprecated(forRemoval = true)
   public boolean addProblemFactChanges(
       @NonNull List<ProblemFactChange<Solution_>> problemFactChangeList) {
-    throw new UnsupportedOperationException(
-        "IslandSolver does not support problem fact changes.");
+    throw new UnsupportedOperationException("IslandSolver does not support problem fact changes.");
   }
 }

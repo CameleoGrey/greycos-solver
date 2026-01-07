@@ -60,8 +60,8 @@ final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
           }
           for (GenuineVariableDescriptor<Solution_> variableDescriptor :
               entityDescriptor.getGenuineVariableDescriptorList()) {
-            if (variableDescriptor instanceof ListVariableDescriptor<Solution_>
-                listVariableDescriptor) {
+            if (variableDescriptor
+                instanceof ListVariableDescriptor<Solution_> listVariableDescriptor) {
               List<Object> values = new ArrayList<>(listVariableDescriptor.getValue(entity));
               listChangeMap
                   .computeIfAbsent(listVariableDescriptor, k -> new ArrayList<>())
@@ -124,7 +124,9 @@ final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
         }
         if (fromIndex > targetList.size()) {
           throw new IllegalStateException(
-              "Target list size (" + targetList.size() + ") is smaller than pinned index ("
+              "Target list size ("
+                  + targetList.size()
+                  + ") is smaller than pinned index ("
                   + fromIndex
                   + ").");
         }
@@ -158,8 +160,8 @@ final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
   @Override
   public SolutionSyncMove<Solution_> rebase(ScoreDirector<Solution_> destinationScoreDirector) {
     var innerScoreDirector = (InnerScoreDirector<Solution_, ?>) destinationScoreDirector;
-    Map<GenuineVariableDescriptor<Solution_>, List<BasicChangeRecord<?>>> destinationBasicChangeMap =
-        new LinkedHashMap<>();
+    Map<GenuineVariableDescriptor<Solution_>, List<BasicChangeRecord<?>>>
+        destinationBasicChangeMap = new LinkedHashMap<>();
     Map<ListVariableDescriptor<Solution_>, List<ListChangeRecord<?>>> destinationListChangeMap =
         new LinkedHashMap<>();
 
@@ -169,11 +171,8 @@ final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
       for (BasicChangeRecord<?> record : entry.getValue()) {
         Object destinationEntity = innerScoreDirector.lookUpWorkingObject(record.entity());
         Object destinationValue =
-            record.value() == null
-                ? null
-                : innerScoreDirector.lookUpWorkingObject(record.value());
-        destinationChangeRecords.add(
-            new BasicChangeRecord<>(destinationEntity, destinationValue));
+            record.value() == null ? null : innerScoreDirector.lookUpWorkingObject(record.value());
+        destinationChangeRecords.add(new BasicChangeRecord<>(destinationEntity, destinationValue));
       }
       destinationBasicChangeMap.put(entry.getKey(), destinationChangeRecords);
     }
@@ -185,12 +184,9 @@ final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
         Object destinationEntity = innerScoreDirector.lookUpWorkingObject(record.entity());
         List<Object> destinationValues =
             record.values().stream()
-                .map(
-                    value ->
-                        value == null ? null : innerScoreDirector.lookUpWorkingObject(value))
+                .map(value -> value == null ? null : innerScoreDirector.lookUpWorkingObject(value))
                 .toList();
-        destinationChangeRecords.add(
-            new ListChangeRecord<>(destinationEntity, destinationValues));
+        destinationChangeRecords.add(new ListChangeRecord<>(destinationEntity, destinationValues));
       }
       destinationListChangeMap.put(entry.getKey(), destinationChangeRecords);
     }

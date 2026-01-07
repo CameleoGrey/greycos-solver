@@ -31,6 +31,14 @@ public class NearbyDestinationSelector<Solution_> extends ElementDestinationSele
   private final @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter;
   private final @Nullable NearbyRandom nearbyRandom;
   private final boolean randomSelection;
+  private final ai.greycos.solver.core.impl.domain.variable.descriptor.@NonNull
+          ListVariableDescriptor<
+          Solution_>
+      listVariableDescriptor;
+
+  private ai.greycos.solver.core.impl.domain.variable.@Nullable ListVariableStateSupply<
+          Solution_, Object, Object>
+      listVariableStateSupply;
 
   public NearbyDestinationSelector(
       @NonNull DestinationSelectorConfig config,
@@ -44,6 +52,9 @@ public class NearbyDestinationSelector<Solution_> extends ElementDestinationSele
     super(entitySelector, valueSelector, resolvedSelectionOrder == SelectionOrder.RANDOM);
     this.entitySelector = entitySelector;
     this.valueSelector = valueSelector;
+    this.listVariableDescriptor =
+        (ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor<Solution_>)
+            valueSelector.getVariableDescriptor();
     this.randomSelection = resolvedSelectionOrder.toRandomSelectionBoolean();
 
     var instanceCache = configPolicy.getClassInstanceCache();
@@ -57,6 +68,21 @@ public class NearbyDestinationSelector<Solution_> extends ElementDestinationSele
         NearbyRandomFactory.create(nearbySelectionConfig).buildNearbyRandom(randomSelection);
 
     phaseLifecycleSupport.addEventListener(destinationSelector);
+  }
+
+  @Override
+  public void solvingStarted(
+      ai.greycos.solver.core.impl.solver.scope.SolverScope<Solution_> solverScope) {
+    super.solvingStarted(solverScope);
+    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
+    listVariableStateSupply = supplyManager.demand(listVariableDescriptor.getStateDemand());
+  }
+
+  @Override
+  public void solvingEnded(
+      ai.greycos.solver.core.impl.solver.scope.SolverScope<Solution_> solverScope) {
+    super.solvingEnded(solverScope);
+    listVariableStateSupply = null;
   }
 
   @Override
@@ -159,11 +185,12 @@ public class NearbyDestinationSelector<Solution_> extends ElementDestinationSele
       if (workingRandom.nextDouble() < entityProbability) {
         // Select entity-based destination
         Object entity = entitySelector.iterator().next();
-        return ElementPosition.of(entity, 0);
+        return ElementPosition.of(entity, listVariableDescriptor.getFirstUnpinnedIndex(entity));
       } else {
         // Select value-based destination
         Object value = valueSelector.iterator().next();
-        return ElementPosition.of(value, 0);
+        var positionInList = listVariableStateSupply.getElementPosition(value).ensureAssigned();
+        return ElementPosition.of(positionInList.entity(), positionInList.index() + 1);
       }
     }
   }
@@ -194,15 +221,16 @@ public class NearbyDestinationSelector<Solution_> extends ElementDestinationSele
     @Override
     public ElementPosition next() {
       if (index < entitySize) {
-        // Entity-based destination: entity at index 0
+        // Entity-based destination: entity at first unpinned index
         var entity = entityIterator.next();
         index++;
-        return ElementPosition.of(entity, 0);
+        return ElementPosition.of(entity, listVariableDescriptor.getFirstUnpinnedIndex(entity));
       } else {
         // Value-based destination
         var value = valueIterator.next();
         index++;
-        return ElementPosition.of(value, 0);
+        var positionInList = listVariableStateSupply.getElementPosition(value).ensureAssigned();
+        return ElementPosition.of(positionInList.entity(), positionInList.index() + 1);
       }
     }
   }

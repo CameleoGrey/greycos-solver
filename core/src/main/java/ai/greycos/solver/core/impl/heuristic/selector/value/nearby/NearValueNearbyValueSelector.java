@@ -38,6 +38,11 @@ public final class NearValueNearbyValueSelector<Solution_>
   }
 
   @Override
+  public @NonNull Iterator<Object> iterator() {
+    return new EntityDependentNearbyIterator();
+  }
+
+  @Override
   public @NonNull Iterator<Object> iterator(@NonNull Object entity) {
     if (randomSelection) {
       return new RandomNearbyValueIterator(workingRandom, entity);
@@ -138,6 +143,29 @@ public final class NearValueNearbyValueSelector<Solution_>
       }
       index++;
       return result;
+    }
+  }
+
+  /**
+   * Iterator for nearby selection when no entity is provided. This iterator delegates to the child
+   * selector's iterator without entity context.
+   */
+  private class EntityDependentNearbyIterator implements Iterator<Object> {
+
+    private final Iterator<Object> childIterator;
+
+    public EntityDependentNearbyIterator() {
+      this.childIterator = childValueSelector.iterator();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return childIterator.hasNext();
+    }
+
+    @Override
+    public Object next() {
+      return childIterator.next();
     }
   }
 }

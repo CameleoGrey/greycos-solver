@@ -193,7 +193,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           BestSolutionRecallerFactory.create()
               .<Solution_>buildBestSolutionRecaller(agentConfigPolicy.getEnvironmentMode());
       var agentPhases = buildPhasesForAgent(agentConfigPolicy, agentRecaller, agentTermination);
-      var islandSolver = new IslandSolver<>(agentRecaller, toUniversalTermination(agentTermination));
+      var islandSolver =
+          new IslandSolver<>(agentRecaller, toUniversalTermination(agentTermination));
       agentScope.setSolver(islandSolver);
       var initialSolution = deepCloneSolution(solverScope.getBestSolution());
       var agent =
@@ -312,7 +313,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         .withEntitySorterManner(basePolicy.getEntitySorterManner())
         .withValueSorterManner(basePolicy.getValueSorterManner())
         .withReinitializeVariableFilterEnabled(basePolicy.isReinitializeVariableFilterEnabled())
-        .withInitializedChainedValueFilterEnabled(basePolicy.isInitializedChainedValueFilterEnabled())
+        .withInitializedChainedValueFilterEnabled(
+            basePolicy.isInitializedChainedValueFilterEnabled())
         .withUnassignedValuesAllowed(basePolicy.isUnassignedValuesAllowed())
         .build();
   }

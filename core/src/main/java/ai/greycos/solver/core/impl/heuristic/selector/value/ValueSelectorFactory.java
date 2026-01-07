@@ -713,8 +713,22 @@ public class ValueSelectorFactory<Solution_>
           EntitySelectorFactory.<Solution_>create(
                   nearbySelectionConfig.getOriginEntitySelectorConfig())
               .buildEntitySelector(configPolicy, minimumCacheType, resolvedSelectionOrder);
+      if (!(valueSelector
+          instanceof ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector)) {
+        throw new IllegalArgumentException(
+            "The valueSelectorConfig ("
+                + config
+                + ") needs to be based on an IterableValueSelector ("
+                + valueSelector
+                + ").");
+      }
       return new NearEntityNearbyValueSelector<>(
-          valueSelector, originEntitySelector, nearbyDistanceMeter, nearbyRandom, randomSelection);
+          (ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector<Solution_>)
+              valueSelector,
+          originEntitySelector,
+          nearbyDistanceMeter,
+          nearbyRandom,
+          randomSelection);
     } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {
       var originValueSelector =
           ValueSelectorFactory.<Solution_>create(
