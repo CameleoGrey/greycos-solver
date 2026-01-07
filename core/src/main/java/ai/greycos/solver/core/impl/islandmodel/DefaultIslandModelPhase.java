@@ -270,11 +270,36 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     // Create a LocalSearchPhaseConfig from the island model's local search fields
     var localSearchConfig = new ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig();
     localSearchConfig.setLocalSearchType(islandModelConfig.getLocalSearchType());
-    localSearchConfig.setMoveSelectorConfig(islandModelConfig.getMoveSelectorConfig());
-    localSearchConfig.setAcceptorConfig(islandModelConfig.getAcceptorConfig());
-    localSearchConfig.setForagerConfig(islandModelConfig.getForagerConfig());
+
+    // CRITICAL: Deep copy the move selector config so each island gets its own independent copy
+    // Otherwise all islands share the same config instance, causing nearbySelectionConfig to be
+    // lost
+    var moveSelectorConfig = islandModelConfig.getMoveSelectorConfig();
+    if (moveSelectorConfig != null) {
+      @SuppressWarnings("unchecked")
+      var copiedConfig =
+          (ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig)
+              moveSelectorConfig.copyConfig();
+      localSearchConfig.setMoveSelectorConfig(copiedConfig);
+    }
+
+    // Deep copy acceptor and forager configs as well for consistency
+    var acceptorConfig = islandModelConfig.getAcceptorConfig();
+    if (acceptorConfig != null) {
+      localSearchConfig.setAcceptorConfig(acceptorConfig.copyConfig());
+    }
+
+    var foragerConfig = islandModelConfig.getForagerConfig();
+    if (foragerConfig != null) {
+      localSearchConfig.setForagerConfig(foragerConfig.copyConfig());
+    }
+
+    var terminationConfig = islandModelConfig.getTerminationConfig();
+    if (terminationConfig != null) {
+      localSearchConfig.setTerminationConfig(terminationConfig.copyConfig());
+    }
+
     localSearchConfig.setMoveThreadCount(islandModelConfig.getMoveThreadCount());
-    localSearchConfig.setTerminationConfig(islandModelConfig.getTerminationConfig());
 
     // Build a single LocalSearchPhase from the local search config
     return PhaseFactory.buildPhases(

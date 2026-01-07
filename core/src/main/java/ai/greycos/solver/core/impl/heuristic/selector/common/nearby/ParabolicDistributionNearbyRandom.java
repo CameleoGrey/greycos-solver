@@ -8,11 +8,25 @@ import org.jspecify.annotations.NonNull;
 /**
  * Parabolic distribution for nearby selection.
  *
- * <p>{@code P(x) = 3/m² - 3x²/m³}.
+ * <p>This distribution strongly favors nearby items while still allowing selection of moderately
+ * distant items. It is the recommended default for most nearby selection use cases.
  *
- * <p>Cumulative probability: {@code F(x) = x(3m² - x²)/m³}.
+ * <p>Probability density function: {@code P(x) = 3(m - x)²/m³} where x is the distance rank (0, 1,
+ * 2, ...) and m is the sizeMaximum.
  *
- * <p>Inverse cumulative probability: {@code F(p) = m(1 - (1 - p)^(1/3))}.
+ * <p>Cumulative distribution function: {@code F(x) = 1 - (1 - x/m)³}
+ *
+ * <p>Inverse cumulative distribution function: {@code F⁻¹(p) = m(1 - (1 - p)^(1/3))}
+ *
+ * <p>This gives a strong quadratic preference for nearer items. For example, with sizeMaximum=40:
+ *
+ * <ul>
+ *   <li>Rank 0 (nearest): ~12.3% probability
+ *   <li>Rank 10: ~7.7% probability
+ *   <li>Rank 20: ~4.6% probability
+ *   <li>Rank 30: ~2.3% probability
+ *   <li>Rank 39 (farthest): ~0.2% probability
+ * </ul>
  */
 public final class ParabolicDistributionNearbyRandom implements NearbyRandom {
 

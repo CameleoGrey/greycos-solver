@@ -7,10 +7,12 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -19,18 +21,31 @@ import org.jspecify.annotations.Nullable;
  * Nearby value selector that applies nearby selection to value selectors.
  *
  * <p>This selector wraps a value selector and applies nearby selection logic based on an origin
- * value selector. Destinations are filtered and reordered based on distance from the origin value.
+ * value selector. Destinations are filtered and reordered based on distance from the origin value
+ * using a distance matrix that caches sorted destinations.
+ *
+ * <p><b>Key Features:</b>
+ *
+ * <ul>
+ *   <li>Distance-based selection: Prefers values near the origin value
+ *   <li>Distance matrix caching: Pre-computes and sorts values by distance
+ *   <li>Probability distributions: Supports parabolic, linear, block, and beta distributions
+ *   <li>Thread-safe: Uses concurrent distance matrix for parallel solving
+ * </ul>
  *
  * @param <Solution_> solution type
  */
 public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
     implements ValueSelector<Solution_> {
 
-  private final @NonNull ValueSelector<Solution_> childValueSelector;
+  private final @NonNull IterableValueSelector<Solution_> childValueSelector;
   private final @NonNull IterableValueSelector<Solution_> originValueSelector;
   private final @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter;
   private final @Nullable NearbyRandom nearbyRandom;
   private final boolean randomSelection;
+
+  // Distance matrix for caching sorted values by distance from origin
+  private final @NonNull NearbyDistanceMatrix<Object, Object> distanceMatrix;
 
   public NearbyValueSelector(
       @NonNull ValueSelectorConfig config,
@@ -39,7 +54,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
       @NonNull SelectionCacheType minimumCacheType,
       @NonNull SelectionOrder resolvedSelectionOrder,
       @NonNull EntityDescriptor<Solution_> entityDescriptor,
-      @NonNull ValueSelector<Solution_> valueSelector) {
+      @NonNull IterableValueSelector<Solution_> valueSelector) {
     this.childValueSelector = valueSelector;
     this.randomSelection = resolvedSelectionOrder.toRandomSelectionBoolean();
 
@@ -53,20 +68,11 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
     this.nearbyRandom =
         NearbyRandomFactory.create(nearbySelectionConfig).buildNearbyRandom(randomSelection);
 
-    if (!(valueSelector instanceof IterableValueSelector)) {
-      throw new IllegalArgumentException(
-          "The valueSelectorConfig ("
-              + config
-              + ") needs to be based on an IterableValueSelector ("
-              + valueSelector
-              + "). Check your @ValueRangeProvider annotations.");
-    }
-
     // Build origin value selector from config
     this.originValueSelector =
         (IterableValueSelector<Solution_>)
-            ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory
-                .<Solution_>create(nearbySelectionConfig.getOriginValueSelectorConfig())
+            ValueSelectorFactory.<Solution_>create(
+                    nearbySelectionConfig.getOriginValueSelectorConfig())
                 .buildValueSelector(
                     configPolicy, entityDescriptor, minimumCacheType, resolvedSelectionOrder);
 
@@ -79,13 +85,23 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
               + "). Check your @ValueRangeProvider annotations.");
     }
 
+    // Create distance matrix for caching sorted values
+    @SuppressWarnings("unchecked")
+    var castedDistanceMeter = (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
+
+    this.distanceMatrix =
+        new NearbyDistanceMatrix<>(
+            castedDistanceMeter,
+            100, // Initial capacity estimate
+            origin -> childValueSelector.iterator(origin),
+            origin -> (int) childValueSelector.getSize(origin));
+
     phaseLifecycleSupport.addEventListener(childValueSelector);
     phaseLifecycleSupport.addEventListener(originValueSelector);
   }
 
   @Override
-  public ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor<Solution_>
-      getVariableDescriptor() {
+  public GenuineVariableDescriptor<Solution_> getVariableDescriptor() {
     return childValueSelector.getVariableDescriptor();
   }
 
@@ -153,25 +169,34 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
   }
 
   // ************************************************************************
-  // Inner classes
+  // Iterator implementations
   // ************************************************************************
 
+  /**
+   * Random nearby value iterator. Uses probability distribution to select values sorted by distance
+   * from the origin.
+   */
   private class RandomNearbyValueIterator implements Iterator<Object> {
 
-    private final java.util.Random workingRandom;
+    private final java.util.Random random;
     private final @NonNull Object entity;
+    private final Iterator<Object> replayingOriginIterator;
     private final int nearbySize;
-    private int count = 0;
 
-    public RandomNearbyValueIterator(java.util.Random workingRandom, @NonNull Object entity) {
-      this.workingRandom = workingRandom;
+    // Origin caching - origin is selected once from replaying iterator
+    private Object origin = null;
+
+    public RandomNearbyValueIterator(java.util.Random random, @NonNull Object entity) {
+      this.random = random;
       this.entity = entity;
+      this.replayingOriginIterator = originValueSelector.iterator(entity);
       this.nearbySize = (int) childValueSelector.getSize(entity);
     }
 
     @Override
     public boolean hasNext() {
-      return count < nearbySize;
+      // The replaying iterator provides a constant origin until the recording iterator advances
+      return (origin != null || replayingOriginIterator.hasNext()) && nearbySize > 0;
     }
 
     @Override
@@ -179,47 +204,77 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
       if (nearbyRandom == null) {
         throw new IllegalStateException("nearbyRandom is null but randomSelection is true");
       }
-      int nearbyIndex = nearbyRandom.nextInt(workingRandom, nearbySize);
-      count++;
 
-      // Get origin value
-      Object origin = originValueSelector.iterator(entity).next();
-
-      // Get nearbyIndex-th value from child selector
-      Iterator<Object> childIterator = childValueSelector.iterator(entity);
-      Object result = null;
-      for (int i = 0; i <= nearbyIndex && childIterator.hasNext(); i++) {
-        result = childIterator.next();
+      // Get origin from replaying iterator (will be constant until recording iterator advances)
+      if (replayingOriginIterator.hasNext()) {
+        origin = replayingOriginIterator.next();
       }
-      return result;
+
+      // Select nearby index using probability distribution
+      int nearbyIndex = nearbyRandom.nextInt(random, nearbySize);
+
+      // Get the nearbyIndex-th closest value from the distance matrix
+      return distanceMatrix.getDestination(origin, nearbyIndex);
     }
   }
 
+  /**
+   * Deterministic nearby value iterator. Iterates through values in sorted distance order from the
+   * origin.
+   */
   private class OriginalNearbyValueIterator implements Iterator<Object> {
 
     private final @NonNull Object entity;
+    private final Iterator<Object> replayingOriginIterator;
     private final int nearbySize;
-    private int index = 0;
+    private int nextNearbyIndex = 0;
+
+    // Origin caching state
+    private boolean originSelected = false;
+    private boolean originIsNotEmpty;
+    private Object origin = null;
 
     public OriginalNearbyValueIterator(@NonNull Object entity) {
       this.entity = entity;
+      this.replayingOriginIterator = originValueSelector.iterator(entity);
       this.nearbySize = (int) childValueSelector.getSize(entity);
+    }
+
+    /**
+     * Selects the origin from the replaying iterator. Called once on first access, then the origin
+     * is cached for all subsequent calls until the recording iterator advances.
+     */
+    private void selectOrigin() {
+      if (originSelected) {
+        return; // Already selected, use cached origin
+      }
+      /*
+       * The origin iterator is guaranteed to be a replaying iterator.
+       * Therefore next() will point to whatever the related recording iterator was pointing to
+       * at the time when its next() was called.
+       * As a result, origin here will be constant unless next() on the original recording
+       * iterator is called first.
+       */
+      originIsNotEmpty = replayingOriginIterator.hasNext();
+      if (originIsNotEmpty) {
+        origin = replayingOriginIterator.next();
+      }
+      originSelected = true;
     }
 
     @Override
     public boolean hasNext() {
-      return index < nearbySize;
+      selectOrigin();
+      return originIsNotEmpty && nextNearbyIndex < nearbySize;
     }
 
     @Override
     public Object next() {
-      // For original order, just iterate through values in order
-      Iterator<Object> childIterator = childValueSelector.iterator(entity);
-      Object result = null;
-      for (int i = 0; i <= index && childIterator.hasNext(); i++) {
-        result = childIterator.next();
-      }
-      index++;
+      selectOrigin(); // Ensure origin is selected and cached
+
+      // Get the nextNearbyIndex-th closest value from the distance matrix
+      Object result = distanceMatrix.getDestination(origin, nextNearbyIndex);
+      nextNearbyIndex++;
       return result;
     }
   }

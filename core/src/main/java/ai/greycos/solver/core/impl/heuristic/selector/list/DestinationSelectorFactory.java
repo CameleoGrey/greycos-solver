@@ -156,6 +156,41 @@ public final class DestinationSelectorFactory<Solution_>
                   ValueSelectorFactory.ListValueFilteringType.ACCEPT_ASSIGNED,
                   null,
                   false);
+
+      // Build origin selector from nearby selection config
+      ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector<Solution_>
+          originEntitySelector = null;
+      ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector<Solution_>
+          originSubListSelector = null;
+      IterableValueSelector<Solution_> originValueSelector = null;
+
+      if (nearbySelectionConfig.getOriginEntitySelectorConfig() != null) {
+        originEntitySelector =
+            EntitySelectorFactory.<Solution_>create(
+                    nearbySelectionConfig.getOriginEntitySelectorConfig())
+                .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
+      } else if (nearbySelectionConfig.getOriginSubListSelectorConfig() != null) {
+        originSubListSelector =
+            ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelectorFactory
+                .<Solution_>create(nearbySelectionConfig.getOriginSubListSelectorConfig())
+                .buildSubListSelector(
+                    configPolicy, entitySelector, minimumCacheType, selectionOrder);
+      } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {
+        originValueSelector =
+            (IterableValueSelector<Solution_>)
+                ValueSelectorFactory.<Solution_>create(
+                        nearbySelectionConfig.getOriginValueSelectorConfig())
+                    .buildValueSelector(
+                        configPolicy,
+                        entitySelector.getEntityDescriptor(),
+                        minimumCacheType,
+                        selectionOrder);
+      } else {
+        throw new IllegalArgumentException(
+            "The destinationSelectorConfig (%s) with nearbySelectionConfig (%s) requires one of originEntitySelectorConfig, originSubListSelectorConfig, or originValueSelectorConfig."
+                .formatted(config, nearbySelectionConfig));
+      }
+
       var updatedDestinationSelector =
           new ElementDestinationSelector<>(
               entitySelector,
@@ -169,7 +204,10 @@ public final class DestinationSelectorFactory<Solution_>
           selectionOrder,
           updatedDestinationSelector,
           entitySelector,
-          (IterableValueSelector<Solution_>) valueSelector);
+          (IterableValueSelector<Solution_>) valueSelector,
+          originEntitySelector,
+          originSubListSelector,
+          originValueSelector);
     } else {
       // When enableEntityValueRange is false, we need to rebuild the selectors without filters
       // for nearby selection to work properly
@@ -189,6 +227,41 @@ public final class DestinationSelectorFactory<Solution_>
                   ValueSelectorFactory.ListValueFilteringType.ACCEPT_ASSIGNED,
                   null,
                   false);
+
+      // Build origin selector from nearby selection config
+      ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector<Solution_>
+          originEntitySelector = null;
+      ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector<Solution_>
+          originSubListSelector = null;
+      IterableValueSelector<Solution_> originValueSelector = null;
+
+      if (nearbySelectionConfig.getOriginEntitySelectorConfig() != null) {
+        originEntitySelector =
+            EntitySelectorFactory.<Solution_>create(
+                    nearbySelectionConfig.getOriginEntitySelectorConfig())
+                .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
+      } else if (nearbySelectionConfig.getOriginSubListSelectorConfig() != null) {
+        originSubListSelector =
+            ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelectorFactory
+                .<Solution_>create(nearbySelectionConfig.getOriginSubListSelectorConfig())
+                .buildSubListSelector(
+                    configPolicy, entitySelector, minimumCacheType, selectionOrder);
+      } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {
+        originValueSelector =
+            (IterableValueSelector<Solution_>)
+                ValueSelectorFactory.<Solution_>create(
+                        nearbySelectionConfig.getOriginValueSelectorConfig())
+                    .buildValueSelector(
+                        configPolicy,
+                        entitySelector.getEntityDescriptor(),
+                        minimumCacheType,
+                        selectionOrder);
+      } else {
+        throw new IllegalArgumentException(
+            "The destinationSelectorConfig (%s) with nearbySelectionConfig (%s) requires one of originEntitySelectorConfig, originSubListSelectorConfig, or originValueSelectorConfig."
+                .formatted(config, nearbySelectionConfig));
+      }
+
       var updatedDestinationSelector =
           new ElementDestinationSelector<>(
               entitySelector,
@@ -202,7 +275,10 @@ public final class DestinationSelectorFactory<Solution_>
           selectionOrder,
           updatedDestinationSelector,
           entitySelector,
-          (IterableValueSelector<Solution_>) valueSelector);
+          (IterableValueSelector<Solution_>) valueSelector,
+          originEntitySelector,
+          originSubListSelector,
+          originValueSelector);
     }
   }
 }

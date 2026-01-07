@@ -8,11 +8,25 @@ import org.jspecify.annotations.NonNull;
 /**
  * Linear distribution for nearby selection.
  *
- * <p>{@code P(x) = 2/m - 2x/m²}.
+ * <p>This distribution provides a balanced preference for nearby items with more exploration than
+ * parabolic distribution. It linearly decreases the probability as distance increases.
  *
- * <p>Cumulative probability: {@code F(x) = x(2m - x)/m²}.
+ * <p>Probability density function: {@code P(x) = 2(m - x)/(m²)} where x is the distance rank (0, 1,
+ * 2, ...) and m is the sizeMaximum.
  *
- * <p>Inverse cumulative probability: {@code F(p) = m(1 - (1 - p)^(1/2))}.
+ * <p>Cumulative distribution function: {@code F(x) = x(2m - x)/m²}
+ *
+ * <p>Inverse cumulative distribution function: {@code F⁻¹(p) = m(1 - √(1 - p))}
+ *
+ * <p>This gives a linear preference for nearer items. For example, with sizeMaximum=40:
+ *
+ * <ul>
+ *   <li>Rank 0 (nearest): ~5.0% probability
+ *   <li>Rank 10: ~3.75% probability
+ *   <li>Rank 20: ~2.5% probability
+ *   <li>Rank 30: ~1.25% probability
+ *   <li>Rank 39 (farthest): ~0.13% probability
+ * </ul>
  */
 public final class LinearDistributionNearbyRandom implements NearbyRandom {
 
