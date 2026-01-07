@@ -9,6 +9,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistan
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.spatial.SpatialNearbyDistanceMatrix;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
+import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -23,37 +24,80 @@ import org.jspecify.annotations.Nullable;
  * can efficiently find nearby destinations using KD-tree queries instead of linear scans, providing
  * O(log n) performance instead of O(n) for large datasets.
  *
+ * <p><b>Replaying Selector Pattern:</b> Nearby selectors require a replaying selector to provide a
+ * consistent origin for distance calculation. The replaying selector ensures that all nearby values
+ * are selected relative to the same origin entity/value.
+ *
  * @param <Solution_> the solution type
+ * @param <ReplayingSelector_> the type of the replaying selector (entity or value selector)
  */
-abstract class AbstractNearbyValueSelector<Solution_>
+abstract class AbstractNearbyValueSelector<
+        Solution_, ReplayingSelector_ extends PhaseLifecycleListener<Solution_>>
     extends AbstractDemandEnabledSelector<Solution_> implements IterableValueSelector<Solution_> {
 
   protected final @NonNull IterableValueSelector<Solution_> childValueSelector;
+  protected final @NonNull ReplayingSelector_ replayingSelector;
   protected final @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter;
   protected final @Nullable NearbyRandom nearbyRandom;
   protected final boolean randomSelection;
   protected final @Nullable SpatialNearbyDistanceMatrix<?, ?> spatialDistanceMatrix;
+  protected final ai.greycos.solver.core.impl.heuristic.selector.common.nearby.@NonNull
+          NearbyDistanceMatrix<
+          Object, Object>
+      distanceMatrix;
 
   protected AbstractNearbyValueSelector(
       @NonNull IterableValueSelector<Solution_> childValueSelector,
+      @NonNull ReplayingSelector_ replayingSelector,
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
       @Nullable NearbyRandom nearbyRandom,
       boolean randomSelection) {
-    this(childValueSelector, nearbyDistanceMeter, nearbyRandom, randomSelection, null);
+    this(
+        childValueSelector,
+        replayingSelector,
+        nearbyDistanceMeter,
+        nearbyRandom,
+        randomSelection,
+        null);
   }
 
   protected AbstractNearbyValueSelector(
       @NonNull IterableValueSelector<Solution_> childValueSelector,
+      @NonNull ReplayingSelector_ replayingSelector,
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
       @Nullable NearbyRandom nearbyRandom,
       boolean randomSelection,
       @Nullable SpatialNearbyDistanceMatrix<?, ?> spatialDistanceMatrix) {
     this.childValueSelector = childValueSelector;
+    this.replayingSelector = replayingSelector;
     this.nearbyDistanceMeter = nearbyDistanceMeter;
+    if (randomSelection && nearbyRandom == null) {
+      throw new IllegalArgumentException(
+          "The selector ("
+              + this
+              + ") with randomSelection ("
+              + randomSelection
+              + ") has no nearbyRandom ("
+              + nearbyRandom
+              + ").");
+    }
     this.nearbyRandom = nearbyRandom;
     this.randomSelection = randomSelection;
     this.spatialDistanceMatrix = spatialDistanceMatrix;
+    // Create distance matrix for caching sorted destinations
+    @SuppressWarnings("unchecked")
+    var castedDistanceMeter =
+        (ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter<
+                Object, Object>)
+            nearbyDistanceMeter;
+    this.distanceMatrix =
+        new ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMatrix<>(
+            castedDistanceMeter,
+            100, // Initial capacity estimate
+            origin -> childValueSelector.iterator(origin),
+            origin -> (int) childValueSelector.getSize(origin));
     phaseLifecycleSupport.addEventListener(childValueSelector);
+    phaseLifecycleSupport.addEventListener(replayingSelector);
   }
 
   /**
@@ -96,10 +140,11 @@ abstract class AbstractNearbyValueSelector<Solution_>
     if (this == o) {
       return true;
     }
-    if (!(o instanceof AbstractNearbyValueSelector<?> that)) {
+    if (!(o instanceof AbstractNearbyValueSelector<?, ?> that)) {
       return false;
     }
     return Objects.equals(childValueSelector, that.childValueSelector)
+        && Objects.equals(replayingSelector, that.replayingSelector)
         && Objects.equals(nearbyDistanceMeter, that.nearbyDistanceMeter)
         && Objects.equals(nearbyRandom, that.nearbyRandom)
         && randomSelection == that.randomSelection
@@ -110,6 +155,7 @@ abstract class AbstractNearbyValueSelector<Solution_>
   public int hashCode() {
     return Objects.hash(
         childValueSelector,
+        replayingSelector,
         nearbyDistanceMeter,
         nearbyRandom,
         randomSelection,
