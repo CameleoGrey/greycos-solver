@@ -9,7 +9,7 @@ import {columnBodyRenderer} from '@vaadin/grid/lit.js';
 
 export class ConfigComponent extends LitElement {
 
-    jsonRpc = new JsonRpc("Greycos Solver");
+    jsonRpc = new JsonRpc("GreyCOS Solver");
 
     // Component style
     static styles = css`

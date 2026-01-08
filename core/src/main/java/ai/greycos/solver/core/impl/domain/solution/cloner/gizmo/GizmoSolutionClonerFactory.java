@@ -14,7 +14,7 @@ public final class GizmoSolutionClonerFactory {
    * @return The generated class name for solutionDescriptor
    */
   public static String getGeneratedClassName(SolutionDescriptor<?> solutionDescriptor) {
-    return solutionDescriptor.getSolutionClass().getName() + "$Greycos$SolutionCloner";
+    return solutionDescriptor.getSolutionClass().getName() + "$GreyCOS$SolutionCloner";
   }
 
   public static <T> SolutionCloner<T> build(

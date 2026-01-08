@@ -8,7 +8,7 @@ import ai.greycos.solver.benchmark.config.PlannerBenchmarkConfig;
 
 import io.quarkus.arc.DefaultBean;
 
-public class GreycosBenchmarkBeanProvider {
+public class GreyCOSBenchmarkBeanProvider {
 
   @DefaultBean
   @Singleton

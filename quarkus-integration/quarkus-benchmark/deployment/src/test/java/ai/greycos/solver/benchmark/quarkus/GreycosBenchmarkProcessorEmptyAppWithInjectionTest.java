@@ -12,7 +12,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import io.quarkus.arc.Arc;
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosBenchmarkProcessorEmptyAppWithInjectionTest {
+class GreyCOSBenchmarkProcessorEmptyAppWithInjectionTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =

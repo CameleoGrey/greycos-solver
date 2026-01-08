@@ -3,7 +3,7 @@ package ai.greycos.solver.jackson.preview.api.domain.solution.diff;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.greycos.solver.core.testdomain.equals.TestdataEqualsByCodeSolution;
-import ai.greycos.solver.jackson.api.GreycosJacksonModule;
+import ai.greycos.solver.jackson.api.GreyCOSJacksonModule;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +23,7 @@ class PlanningSolutionDiffTest {
 
     var objectMapper =
         JsonMapper.builder()
-            .addModule(GreycosJacksonModule.createModule())
+            .addModule(GreyCOSJacksonModule.createModule())
             .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
             .build();
 

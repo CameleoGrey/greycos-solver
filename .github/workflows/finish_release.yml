@@ -19,7 +19,7 @@ jobs:
 
       - name: Put back the 999-SNAPSHOT version on the release branch
         run: |
-          git config user.name "Greycos Release Bot"
+          git config user.name "GreyCOS Release Bot"
           git config user.email "release@greycos.ai"
           git checkout $RELEASE_BRANCH_NAME
           ./mvnw -Dfull versions:set -DnewVersion=999-SNAPSHOT
@@ -37,7 +37,7 @@ jobs:
           exists="$(git branch -a | grep -w $version || true)"
           echo "branch $exists"
           if [ -n "$exists" ]; then
-            git config user.name "Greycos Release Bot"
+            git config user.name "GreyCOS Release Bot"
             git config user.email "release@greycos.ai"
             git checkout $RELEASE_BRANCH_NAME
             git checkout $version

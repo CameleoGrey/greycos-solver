@@ -15,12 +15,12 @@ import ai.greycos.solver.quarkus.it.reflection.domain.TestdataReflectionEntity;
 import ai.greycos.solver.quarkus.it.reflection.domain.TestdataReflectionSolution;
 
 @Path("/greycos/test")
-public class GreycosTestResource {
+public class GreyCOSTestResource {
 
   private final SolverManager<TestdataReflectionSolution, Long> solverManager;
 
   @Inject
-  public GreycosTestResource(SolverManager<TestdataReflectionSolution, Long> solverManager) {
+  public GreyCOSTestResource(SolverManager<TestdataReflectionSolution, Long> solverManager) {
     this.solverManager = solverManager;
   }
 

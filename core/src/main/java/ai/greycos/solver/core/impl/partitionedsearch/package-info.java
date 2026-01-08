@@ -1,5 +1,5 @@
 /**
- * Partitioned search implementation for Greycos Solver.
+ * Partitioned search implementation for GreyCOS Solver.
  *
  * <p>Partitioned search enables parallel solving of problem sub-domains by splitting a planning
  * problem into independent partitions and solving them concurrently.

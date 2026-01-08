@@ -4,13 +4,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class GreycosModelProperties {
+public class GreyCOSModelProperties {
   String solutionClass;
   List<String> entityClassList;
   Map<String, List<String>> entityClassToGenuineVariableListMap;
   Map<String, List<String>> entityClassToShadowVariableListMap;
 
-  public GreycosModelProperties() {
+  public GreyCOSModelProperties() {
     solutionClass = "null";
     entityClassList = Collections.emptyList();
     entityClassToGenuineVariableListMap = Collections.emptyMap();

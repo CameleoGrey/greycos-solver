@@ -7,7 +7,7 @@ import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.SolverManagerConfig;
 import ai.greycos.solver.core.impl.io.jaxb.SolverConfigIO;
-import ai.greycos.solver.spring.boot.autoconfigure.config.GreycosProperties;
+import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.config.SolverManagerProperties;
 
 import org.springframework.boot.context.properties.bind.BindResult;
@@ -15,15 +15,15 @@ import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.core.env.Environment;
 
-public class GreycosSolverAotFactory implements EnvironmentAware {
-  private GreycosProperties greycosProperties;
+public class GreyCOSSolverAotFactory implements EnvironmentAware {
+  private GreyCOSProperties greycosProperties;
 
   @Override
   public void setEnvironment(Environment environment) {
     // We need the environment to set run time properties of SolverFactory and SolverManager
-    BindResult<GreycosProperties> result =
-        Binder.get(environment).bind("greycos", GreycosProperties.class);
-    this.greycosProperties = result.orElseGet(GreycosProperties::new);
+    BindResult<GreyCOSProperties> result =
+        Binder.get(environment).bind("greycos", GreyCOSProperties.class);
+    this.greycosProperties = result.orElseGet(GreyCOSProperties::new);
   }
 
   public <Solution_, ProblemId_> SolverManager<Solution_, ProblemId_> solverManagerSupplier(

@@ -469,14 +469,14 @@ class SolverMetricsIT extends AbstractMeterTest {
         new MonitoringConfig().withSolverMetricList(List.of(SolverMetric.BEST_SCORE)));
     solverConfig.setPhaseConfigList(
         List.of(
-            // Force Greycos to select "none" value which reward 0 soft
+            // Force GreyCOS to select "none" value which reward 0 soft
             new ConstructionHeuristicPhaseConfig()
                 .withConstructionHeuristicType(ConstructionHeuristicType.FIRST_FIT)
                 .withMoveSelectorConfigList(
                     List.of(
                         new ChangeMoveSelectorConfig()
                             .withFilterClass(NoneValueSelectionFilter.class))),
-            // Then do a local search, which allow Greycos to select "reward" value
+            // Then do a local search, which allow GreyCOS to select "reward" value
             // which reward 1 soft per entity
             new LocalSearchPhaseConfig().withLocalSearchType(LocalSearchType.HILL_CLIMBING)));
     SolverFactory<TestdataHardSoftScoreSolution> solverFactory = SolverFactory.create(solverConfig);
@@ -602,7 +602,7 @@ class SolverMetricsIT extends AbstractMeterTest {
 
     solverConfig.setPhaseConfigList(
         List.of(
-            // Force Greycos to select "none" value which reward 0 soft
+            // Force GreyCOS to select "none" value which reward 0 soft
             new ConstructionHeuristicPhaseConfig()
                 .withConstructionHeuristicType(ConstructionHeuristicType.FIRST_FIT)
                 .withMoveSelectorConfigList(

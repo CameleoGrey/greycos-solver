@@ -10,7 +10,7 @@
   </parent>
 
   <artifactId>greycos-solver-quarkus</artifactId>
-  <name>Greycos Solver Quarkus - Runtime</name>
+  <name>GreyCOS Solver Quarkus - Runtime</name>
   <description>Solve planning and scheduling with AI constraint optimization of vehicle routes, employee rosters, maintenance, tasks, lessons, conferences, ...</description>
   <url>https://solver.greycos.ai</url>
 

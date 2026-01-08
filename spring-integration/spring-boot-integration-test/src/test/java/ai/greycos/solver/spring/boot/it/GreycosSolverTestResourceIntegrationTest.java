@@ -20,7 +20,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class GreycosSolverTestResourceIntegrationTest {
+class GreyCOSSolverTestResourceIntegrationTest {
 
   @LocalServerPort String port;
 

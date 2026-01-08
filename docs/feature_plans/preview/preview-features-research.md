@@ -1,14 +1,14 @@
-# Greycos Solver - Preview Features Research Report
+# GreyCOS Solver - Preview Features Research Report
 
 **Date:** January 2025
-**Project:** Greycos Solver (fork of TimeFold Solver Community Edition)
+**Project:** GreyCOS Solver (fork of TimeFold Solver Community Edition)
 **License:** Apache 2.0
 
 ---
 
 ## Executive Summary
 
-Greycos Solver offers preview features that are under development and not yet considered stable. These features are developed to the same standard as the rest of the solver, but their APIs may change without prior notice. Users are encouraged to try these features and provide feedback.
+GreyCOS Solver offers preview features that are under development and not yet considered stable. These features are developed to the same standard as the rest of the solver, but their APIs may change without prior notice. Users are encouraged to try these features and provide feedback.
 
 **Note:** Both DIVERSIFIED_LATE_ACCEPTANCE and PLANNING_SOLUTION_DIFF have been promoted from preview feature status to standard features and are now enabled by default without requiring preview feature configuration.
 
@@ -317,7 +317,7 @@ When Neighborhoods stabilizes:
 
 ## Conclusion
 
-Greycos Solver offers both standard features and preview features that represent the future direction of the project:
+GreyCOS Solver offers both standard features and preview features that represent the future direction of the project:
 
 **Standard Features:**
 1. **DIVERSIFIED_LATE_ACCEPTANCE** - Production-ready advanced metaheuristic (promoted from preview)
@@ -341,6 +341,6 @@ The project maintains a clear distinction between standard features (stable, pro
 ---
 
 **Report Generated:** January 2025  
-**Greycos Solver Version:** 999-SNAPSHOT  
+**GreyCOS Solver Version:** 999-SNAPSHOT  
 **Java Version Required:** 17+
 **Maven Version Required:** 3.9+

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorConstraintMetaModelTest {
+class GreyCOSProcessorConstraintMetaModelTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =

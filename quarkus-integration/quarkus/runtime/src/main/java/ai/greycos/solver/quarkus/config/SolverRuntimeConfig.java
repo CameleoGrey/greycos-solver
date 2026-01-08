@@ -8,7 +8,7 @@ import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 
 import io.quarkus.runtime.annotations.ConfigGroup;
 
-/** During run time, this overrides some of Greycos's {@link SolverConfig} properties. */
+/** During run time, this overrides some of GreyCOS's {@link SolverConfig} properties. */
 @ConfigGroup
 public interface SolverRuntimeConfig {
   /**

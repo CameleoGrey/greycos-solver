@@ -44,7 +44,7 @@ import ai.greycos.solver.core.impl.domain.solution.cloner.gizmo.GizmoSolutionClo
 import ai.greycos.solver.core.impl.domain.solution.cloner.gizmo.GizmoSolutionClonerImplementor;
 import ai.greycos.solver.core.impl.domain.solution.cloner.gizmo.GizmoSolutionOrEntityDescriptor;
 import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.quarkus.gizmo.GreycosGizmoBeanFactory;
+import ai.greycos.solver.quarkus.gizmo.GreyCOSGizmoBeanFactory;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.ClassInfo;
@@ -137,7 +137,7 @@ final class GizmoMemberAccessorEntityEnhancer {
           new BytecodeTransformerBuildItem(
               classInfo.getName(),
               (className, classVisitor) ->
-                  new GreycosFieldEnhancingClassVisitor(classInfo, classVisitor, fieldInfo)));
+                  new GreyCOSFieldEnhancingClassVisitor(classInfo, classVisitor, fieldInfo)));
       visitedFields.add(fieldInfo);
     }
   }
@@ -151,7 +151,7 @@ final class GizmoMemberAccessorEntityEnhancer {
         new BytecodeTransformerBuildItem(
             finalField.getDeclaringClass().getName(),
             (className, classVisitor) ->
-                new GreycosFinalFieldEnhancingClassVisitor(classVisitor, finalField)));
+                new GreyCOSFinalFieldEnhancingClassVisitor(classVisitor, finalField)));
     visitedFinalFields.add(finalField);
   }
 
@@ -310,7 +310,7 @@ final class GizmoMemberAccessorEntityEnhancer {
           new BytecodeTransformerBuildItem(
               classInfo.name().toString(),
               (className, classVisitor) ->
-                  new GreycosMethodEnhancingClassVisitor(
+                  new GreyCOSMethodEnhancingClassVisitor(
                       classInfo, classVisitor, methodInfo, name, setterDescriptor)));
       visitedMethods.add(methodInfo);
     }
@@ -452,12 +452,12 @@ final class GizmoMemberAccessorEntityEnhancer {
             new BytecodeTransformerBuildItem(
                 clazz.getName(),
                 (className, classVisitor) ->
-                    new GreycosConstructorEnhancingClassVisitor(classVisitor)));
+                    new GreyCOSConstructorEnhancingClassVisitor(classVisitor)));
         visitedClasses.add(clazz);
       }
     } catch (NoSuchMethodException e) {
       throw new IllegalStateException(
-          "Class (%s) must have a no-args constructor so it can be constructed by Greycos."
+          "Class (%s) must have a no-args constructor so it can be constructed by GreyCOS."
               .formatted(clazz.getName()),
           e);
     }
@@ -547,13 +547,13 @@ final class GizmoMemberAccessorEntityEnhancer {
       ClassOutput classOutput,
       Set<Class<?>> beanClasses,
       BuildProducer<BytecodeTransformerBuildItem> transformers) {
-    var generatedClassName = GreycosGizmoBeanFactory.class.getName() + "$Implementation";
+    var generatedClassName = GreyCOSGizmoBeanFactory.class.getName() + "$Implementation";
 
     var gizmo = Gizmo.create(classOutput);
     gizmo.class_(
         generatedClassName,
         classCreator -> {
-          classCreator.implements_(GreycosGizmoBeanFactory.class);
+          classCreator.implements_(GreyCOSGizmoBeanFactory.class);
 
           classCreator.addAnnotation(ApplicationScoped.class);
           classCreator.defaultConstructor();
@@ -581,10 +581,10 @@ final class GizmoMemberAccessorEntityEnhancer {
         });
   }
 
-  private static class GreycosFinalFieldEnhancingClassVisitor extends ClassVisitor {
+  private static class GreyCOSFinalFieldEnhancingClassVisitor extends ClassVisitor {
     final Field finalField;
 
-    public GreycosFinalFieldEnhancingClassVisitor(
+    public GreyCOSFinalFieldEnhancingClassVisitor(
         ClassVisitor outputClassVisitor, Field finalField) {
       super(io.quarkus.gizmo.Gizmo.ASM_API_VERSION, outputClassVisitor);
       this.finalField = finalField;
@@ -602,8 +602,8 @@ final class GizmoMemberAccessorEntityEnhancer {
     }
   }
 
-  private static class GreycosConstructorEnhancingClassVisitor extends ClassVisitor {
-    public GreycosConstructorEnhancingClassVisitor(ClassVisitor outputClassVisitor) {
+  private static class GreyCOSConstructorEnhancingClassVisitor extends ClassVisitor {
+    public GreyCOSConstructorEnhancingClassVisitor(ClassVisitor outputClassVisitor) {
       super(io.quarkus.gizmo.Gizmo.ASM_API_VERSION, outputClassVisitor);
     }
 
@@ -617,12 +617,12 @@ final class GizmoMemberAccessorEntityEnhancer {
     }
   }
 
-  private static class GreycosFieldEnhancingClassVisitor extends ClassVisitor {
+  private static class GreyCOSFieldEnhancingClassVisitor extends ClassVisitor {
     private final Field fieldInfo;
     private final Class<?> clazz;
     private final String fieldTypeDescriptor;
 
-    public GreycosFieldEnhancingClassVisitor(
+    public GreyCOSFieldEnhancingClassVisitor(
         Class<?> classInfo, ClassVisitor outputClassVisitor, Field fieldInfo) {
       super(io.quarkus.gizmo.Gizmo.ASM_API_VERSION, outputClassVisitor);
       this.fieldInfo = fieldInfo;
@@ -664,14 +664,14 @@ final class GizmoMemberAccessorEntityEnhancer {
   }
 
   @NullMarked
-  private static class GreycosMethodEnhancingClassVisitor extends ClassVisitor {
+  private static class GreyCOSMethodEnhancingClassVisitor extends ClassVisitor {
     private final MethodInfo methodInfo;
     private final Class<?> clazz;
     private final String returnTypeDescriptor;
     @Nullable private final MethodDesc setter;
     private final String name;
 
-    public GreycosMethodEnhancingClassVisitor(
+    public GreyCOSMethodEnhancingClassVisitor(
         ClassInfo classInfo,
         ClassVisitor outputClassVisitor,
         MethodInfo methodInfo,

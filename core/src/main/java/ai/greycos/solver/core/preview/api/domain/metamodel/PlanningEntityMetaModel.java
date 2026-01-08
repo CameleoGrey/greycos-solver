@@ -18,8 +18,8 @@ import org.jspecify.annotations.NullMarked;
  *
  * <p>We encourage you to try the API and give us feedback on your experience with it, before we
  * finalize the API. Please direct your feedback to <a
- * href="https://github.com/CameleoGrey/greycos-solver/discussions">Greycos Solver Github</a> or to
- * <a href="https://discord.com/channels/1413420192213631086/1414521616955605003">Greycos
+ * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver Github</a> or to
+ * <a href="https://discord.com/channels/1413420192213631086/1414521616955605003">GreyCOS
  * Discord</a>.
  *
  * @param <Solution_> The solution type.

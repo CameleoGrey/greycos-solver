@@ -9,7 +9,7 @@ import java.util.function.Supplier;
 
 import ai.greycos.solver.benchmark.config.PlannerBenchmarkConfig;
 import ai.greycos.solver.benchmark.config.SolverBenchmarkConfig;
-import ai.greycos.solver.benchmark.quarkus.config.GreycosBenchmarkRuntimeConfig;
+import ai.greycos.solver.benchmark.quarkus.config.GreyCOSBenchmarkRuntimeConfig;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
@@ -18,9 +18,9 @@ import io.quarkus.arc.Arc;
 import io.quarkus.runtime.annotations.Recorder;
 
 @Recorder
-public class GreycosBenchmarkRecorder {
+public class GreyCOSBenchmarkRecorder {
   public Supplier<PlannerBenchmarkConfig> benchmarkConfigSupplier(
-      PlannerBenchmarkConfig benchmarkConfig, GreycosBenchmarkRuntimeConfig greycosRuntimeConfig) {
+      PlannerBenchmarkConfig benchmarkConfig, GreyCOSBenchmarkRuntimeConfig greycosRuntimeConfig) {
     return () -> {
       var solverConfig = Arc.container().instance(SolverConfig.class).get();
       // If the termination configuration is set and the created benchmark configuration has no
@@ -41,7 +41,7 @@ public class GreycosBenchmarkRecorder {
 
   private PlannerBenchmarkConfig updateBenchmarkConfigWithRuntimeProperties(
       PlannerBenchmarkConfig plannerBenchmarkConfig,
-      GreycosBenchmarkRuntimeConfig benchmarkRuntimeConfig,
+      GreyCOSBenchmarkRuntimeConfig benchmarkRuntimeConfig,
       SolverConfig solverConfig) {
     if (plannerBenchmarkConfig == null) { // no benchmarkConfig.xml provided
       // Can't do this in processor; SolverConfig is not completed yet (has some runtime properties)

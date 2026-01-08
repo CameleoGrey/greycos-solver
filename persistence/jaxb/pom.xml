@@ -11,9 +11,9 @@
 
   <artifactId>greycos-solver-jaxb</artifactId>
 
-  <name>Greycos Solver JAXB</name>
+  <name>GreyCOS Solver JAXB</name>
   <description>
-    Greycos solves planning problems.
+    GreyCOS solves planning problems.
     This lightweight, embeddable planning engine implements powerful and scalable algorithms
     to optimize business resource scheduling and planning.
 

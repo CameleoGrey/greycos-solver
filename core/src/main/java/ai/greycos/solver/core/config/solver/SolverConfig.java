@@ -50,7 +50,7 @@ import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.domain.common.accessor.MemberAccessor;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
-import ai.greycos.solver.core.impl.io.jaxb.GreycosXmlSerializationException;
+import ai.greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 import ai.greycos.solver.core.impl.io.jaxb.SolverConfigIO;
 import ai.greycos.solver.core.impl.phase.PhaseFactory;
 import ai.greycos.solver.core.impl.solver.random.RandomFactory;
@@ -134,7 +134,7 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
         throw new IllegalArgumentException(errorMessage);
       }
       return createFromXmlInputStream(in, classLoader);
-    } catch (GreycosXmlSerializationException e) {
+    } catch (GreyCOSXmlSerializationException e) {
       throw new IllegalArgumentException(
           "Unmarshalling of solverConfigResource (" + solverConfigResource + ") fails.", e);
     } catch (IOException e) {
@@ -163,7 +163,7 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
       @NonNull File solverConfigFile, @Nullable ClassLoader classLoader) {
     try (InputStream in = new FileInputStream(solverConfigFile)) {
       return createFromXmlInputStream(in, classLoader);
-    } catch (GreycosXmlSerializationException e) {
+    } catch (GreyCOSXmlSerializationException e) {
       throw new IllegalArgumentException(
           "Unmarshalling the solverConfigFile (" + solverConfigFile + ") fails.", e);
     } catch (FileNotFoundException e) {

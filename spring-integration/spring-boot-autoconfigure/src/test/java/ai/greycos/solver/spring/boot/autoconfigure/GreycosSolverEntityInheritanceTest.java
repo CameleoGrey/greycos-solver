@@ -37,7 +37,7 @@ import org.springframework.test.context.TestExecutionListeners;
 
 @TestExecutionListeners
 @Execution(ExecutionMode.CONCURRENT)
-class GreycosSolverEntityInheritanceTest {
+class GreyCOSSolverEntityInheritanceTest {
 
   private final ApplicationContextRunner bothClassesAnnotatedContextRunner;
   private final ApplicationContextRunner bothClassesAnnotatedBaseInterfaceContextRunner;
@@ -55,96 +55,96 @@ class GreycosSolverEntityInheritanceTest {
   private final ApplicationContextRunner multipleOnlyBaseClassAnnotatedContextRunner;
   private final ApplicationContextRunner multipleOnlyBaseClassAnnotatedBaseInterfaceContextRunner;
 
-  public GreycosSolverEntityInheritanceTest() {
+  public GreyCOSSolverEntityInheritanceTest() {
     bothClassesAnnotatedContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(BothAnnotatedSpringTestConfiguration.class);
     bothClassesAnnotatedBaseInterfaceContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(BothAnnotatedInterfaceSpringTestConfiguration.class);
     onlyBaseClassAnnotatedContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(OnlyBaseAnnotatedSpringTestConfiguration.class);
     onlyBaseClassAnnotatedBaseInterfaceContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(OnlyBaseAnnotatedInterfaceSpringTestConfiguration.class);
     onlyChildClassAnnotatedContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(OnlyChildAnnotatedSpringTestConfiguration.class);
     onlyChildClassAnnotatedBaseInterfaceContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(OnlyChildAnnotatedInterfaceSpringTestConfiguration.class);
     bothAnnotatedAddNewVarContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(AddVarSpringTestConfiguration.class);
     bothAnnotatedAddNewVarBaseInterfaceContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(AddVarInterfaceSpringTestConfiguration.class);
     bothClassAnnotatedReplaceVarContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(ReplaceVarSpringTestConfiguration.class);
     bothClassAnnotatedReplaceVarBaseInterfaceContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(ReplaceVarInterfaceSpringTestConfiguration.class);
     multipleBothClassesAnnotatedContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(MultipleBothAnnotatedSpringTestConfiguration.class);
     multipleBothClassesAnnotatedBaseInterfaceContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(MultipleBothAnnotatedInterfaceSpringTestConfiguration.class);
     multipleOnlyBaseClassAnnotatedContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(MultipleOnlyBaseAnnotatedSpringTestConfiguration.class);
     multipleOnlyBaseClassAnnotatedBaseInterfaceContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(MultipleOnlyBaseAnnotatedInterfaceSpringTestConfiguration.class);
     multipleBothClassesAnnotatedMixedPatternContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(MultipleBothAnnotatedMixedSpringTestConfiguration.class);
   }
 

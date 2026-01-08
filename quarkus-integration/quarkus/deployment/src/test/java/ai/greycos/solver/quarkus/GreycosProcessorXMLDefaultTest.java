@@ -21,7 +21,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorXMLDefaultTest {
+class GreyCOSProcessorXMLDefaultTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =

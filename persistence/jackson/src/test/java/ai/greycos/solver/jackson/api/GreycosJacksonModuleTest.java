@@ -37,7 +37,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
-class GreycosJacksonModuleTest extends AbstractJacksonRoundTripTest {
+class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
 
   /**
    * According to official specification (see {@link Class#getDeclaredMethods()}), "The elements in
@@ -48,11 +48,11 @@ class GreycosJacksonModuleTest extends AbstractJacksonRoundTripTest {
   void polymorphicScore() {
     var objectMapper =
         JsonMapper.builder()
-            .addModule(GreycosJacksonModule.createModule())
+            .addModule(GreyCOSJacksonModule.createModule())
             .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
             .build();
 
-    var input = new TestGreycosJacksonModuleWrapper();
+    var input = new TestGreyCOSJacksonModuleWrapper();
     input.setBendableScore(BendableScore.of(new int[] {1000, 200}, new int[] {34}));
     input.setHardSoftScore(HardSoftScore.of(-1, -20));
     input.setPolymorphicScore(HardSoftScore.of(-20, -300));
@@ -76,7 +76,7 @@ class GreycosJacksonModuleTest extends AbstractJacksonRoundTripTest {
   void scoreAnalysisWithoutMatches() throws JsonProcessingException {
     var objectMapper = new ObjectMapper();
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
-    objectMapper.registerModule(GreycosJacksonModule.createModule());
+    objectMapper.registerModule(GreyCOSJacksonModule.createModule());
 
     var constraintRef1 = ConstraintRef.of("packageB", "constraint1");
     var constraintRef2 = ConstraintRef.of("packageA", "constraint2");
@@ -123,7 +123,7 @@ class GreycosJacksonModuleTest extends AbstractJacksonRoundTripTest {
   void scoreAnalysisWithMatches() throws JsonProcessingException {
     var objectMapper = new ObjectMapper();
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
-    objectMapper.registerModule(GreycosJacksonModule.createModule());
+    objectMapper.registerModule(GreyCOSJacksonModule.createModule());
 
     var originalScoreAnalysis = getScoreAnalysis();
     var serialized = objectMapper.writeValueAsString(originalScoreAnalysis);
@@ -215,7 +215,7 @@ class GreycosJacksonModuleTest extends AbstractJacksonRoundTripTest {
   void recommendedFit() throws JsonProcessingException {
     var objectMapper = new ObjectMapper();
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
-    objectMapper.registerModule(GreycosJacksonModule.createModule());
+    objectMapper.registerModule(GreyCOSJacksonModule.createModule());
 
     var proposition = new Pair<>("A", "1");
     var originalScoreAnalysis = getScoreAnalysis();
@@ -248,7 +248,7 @@ class GreycosJacksonModuleTest extends AbstractJacksonRoundTripTest {
   void recommendedAssignment() throws JsonProcessingException {
     var objectMapper = new ObjectMapper();
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
-    objectMapper.registerModule(GreycosJacksonModule.createModule());
+    objectMapper.registerModule(GreyCOSJacksonModule.createModule());
 
     var proposition = new Pair<>("A", "1");
     var originalScoreAnalysis = getScoreAnalysis();
@@ -282,7 +282,7 @@ class GreycosJacksonModuleTest extends AbstractJacksonRoundTripTest {
   void constraintWeightOverrides() throws JsonProcessingException {
     var objectMapper = new ObjectMapper();
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
-    objectMapper.registerModule(GreycosJacksonModule.createModule());
+    objectMapper.registerModule(GreyCOSJacksonModule.createModule());
 
     var constraintWeightOverrides =
         ConstraintWeightOverrides.of(
@@ -307,7 +307,7 @@ class GreycosJacksonModuleTest extends AbstractJacksonRoundTripTest {
   public static final class CustomJacksonModule extends SimpleModule {
 
     public CustomJacksonModule() {
-      super("Greycos Custom");
+      super("GreyCOS Custom");
       addDeserializer(ScoreAnalysis.class, new CustomScoreAnalysisJacksonDeserializer());
       addDeserializer(RecommendedFit.class, new CustomRecommendedFitJacksonDeserializer());
       addDeserializer(
@@ -367,14 +367,14 @@ class GreycosJacksonModuleTest extends AbstractJacksonRoundTripTest {
     }
   }
 
-  public static class TestGreycosJacksonModuleWrapper {
+  public static class TestGreyCOSJacksonModuleWrapper {
 
     private BendableScore bendableScore;
     private HardSoftScore hardSoftScore;
     private Score polymorphicScore;
 
     @SuppressWarnings("unused")
-    private TestGreycosJacksonModuleWrapper() {}
+    private TestGreyCOSJacksonModuleWrapper() {}
 
     public BendableScore getBendableScore() {
       return bendableScore;

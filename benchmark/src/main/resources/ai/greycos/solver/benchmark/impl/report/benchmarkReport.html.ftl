@@ -92,7 +92,7 @@
         <div class="container">
             <div class="text-white">
                 <a href="#" class="navbar-brand">
-                    <img src="website/img/greycos-logo-horizontal-negative.svg" alt="Greycos Logo (horizontal, negative)">
+                    <img src="website/img/greycos-logo-horizontal-negative.svg" alt="GreyCOS Logo (horizontal, negative)">
                 </a>
                 <br />
                 Benchmark Report
@@ -128,7 +128,7 @@
                 </ul>
                 <ul class="navbar-nav">
                     <li class="d-inline-flex align-items-center">
-                        <span class="mx-1" style="position:relative; top:3px;"><a class="github-button" aria-label="Star Greycos on GitHub" href="https://github.com/CameleoGrey/greycos-solver" data-show-count="true" data-color-scheme="no-preference: dark; light: dark; dark: dark;">Star</a></span>
+                        <span class="mx-1" style="position:relative; top:3px;"><a class="github-button" aria-label="Star GreyCOS on GitHub" href="https://github.com/CameleoGrey/greycos-solver" data-show-count="true" data-color-scheme="no-preference: dark; light: dark; dark: dark;">Star</a></span>
                         <a class="mx-1" href="https://stackoverflow.com/questions/tagged/greycos"><i class="fa-brands fa-stack-overflow text-white"></i></a>
                         <a class="mx-1" href="https://youtube.com/@greycos"><i class="fa-brands fa-youtube text-white"></i></a>
                         <a class="mx-1" href="https://twitter.com/CameleoGrey"><i class="fa-brands fa-twitter text-white"></i></a>
@@ -141,7 +141,7 @@
 
     <main class="container-fluid p-2 w-75"> <!-- Content -->
         <header class="visually-hidden">
-            <h1>Greycos Benchmark report</h1>
+            <h1>GreyCOS Benchmark report</h1>
         </header>
 
         <section id="summary_result">
@@ -879,7 +879,7 @@
                 </tr>
                 <tr>
                     <th>Logging level for ai.greycos.solver.core</th>
-                    <td>${benchmarkReport.plannerBenchmarkResult.loggingLevelGreycosSolverCore!"Differs"}</td>
+                    <td>${benchmarkReport.plannerBenchmarkResult.loggingLevelGreyCOSSolverCore!"Differs"}</td>
                 </tr>
                 <tr>
                     <th>Solver ranking class</th>
@@ -898,7 +898,7 @@
                     </#if>
                 </tr>
                 <tr>
-                    <th>Greycos Solver version</th>
+                    <th>GreyCOS Solver version</th>
                     <td>${benchmarkReport.plannerBenchmarkResult.greycosSolverVersion!"Differs"}</td>
                 </tr>
                 <tr>
@@ -927,7 +927,7 @@
     <footer class="bg-black text-white-50">
         <div class="container">
             <div class="hstack gap-3 p-4">
-                <div class="ms-auto"><a class="text-white" href="https://greycos.ai">Greycos</a></div>
+                <div class="ms-auto"><a class="text-white" href="https://greycos.ai">GreyCOS</a></div>
                 <div class="vr"></div>
                 <div><a class="text-white" href="https://docs.greycos.ai/greycos-solver/latest/">Documentation</a></div>
                 <div class="vr"></div>

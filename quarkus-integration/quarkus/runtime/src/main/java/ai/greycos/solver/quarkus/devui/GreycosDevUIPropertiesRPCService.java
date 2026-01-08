@@ -19,20 +19,20 @@ import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamScoreDirectorFactory;
 import ai.greycos.solver.core.impl.solver.DefaultSolverFactory;
-import ai.greycos.solver.quarkus.config.GreycosRuntimeConfig;
+import ai.greycos.solver.quarkus.config.GreyCOSRuntimeConfig;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 @ApplicationScoped
-public class GreycosDevUIPropertiesRPCService {
+public class GreyCOSDevUIPropertiesRPCService {
 
   private final DevUISolverConfig devUISolverConfig;
 
-  private final Map<String, GreycosDevUIProperties> devUIProperties;
+  private final Map<String, GreyCOSDevUIProperties> devUIProperties;
 
   @Inject
-  public GreycosDevUIPropertiesRPCService(DevUISolverConfig devUISolverConfig) {
+  public GreyCOSDevUIPropertiesRPCService(DevUISolverConfig devUISolverConfig) {
     this.devUISolverConfig = devUISolverConfig;
     this.devUIProperties = new HashMap<>();
   }
@@ -50,7 +50,7 @@ public class GreycosDevUIPropertiesRPCService {
               key ->
                   this.devUIProperties.put(
                       key,
-                      new GreycosDevUIProperties(
+                      new GreyCOSDevUIProperties(
                           buildModelInfo(devUISolverConfig.getFactory(key)),
                           buildXmlContentWithComment(
                               devUISolverConfig.getSolverConfigFile(key),
@@ -58,8 +58,8 @@ public class GreycosDevUIPropertiesRPCService {
                           buildConstraintList(devUISolverConfig.getFactory(key)))));
     } else {
       devUIProperties.put(
-          GreycosRuntimeConfig.DEFAULT_SOLVER_NAME,
-          new GreycosDevUIProperties(
+          GreyCOSRuntimeConfig.DEFAULT_SOLVER_NAME,
+          new GreyCOSDevUIProperties(
               buildModelInfo(null),
               "<!-- Plugin execution was skipped "
                   + "because there are no @"
@@ -97,7 +97,7 @@ public class GreycosDevUIPropertiesRPCService {
     devUIProperties.forEach(
         (key, value) -> {
           JsonObject property = new JsonObject();
-          GreycosModelProperties modelProperties = value.getGreycosModelProperties();
+          GreyCOSModelProperties modelProperties = value.getGreyCOSModelProperties();
           property.put("solutionClass", modelProperties.solutionClass);
           property.put("entityClassList", JsonArray.of(modelProperties.entityClassList.toArray()));
           property.put(
@@ -121,13 +121,13 @@ public class GreycosDevUIPropertiesRPCService {
     return out;
   }
 
-  private GreycosModelProperties buildModelInfo(SolverFactory<?> solverFactory) {
+  private GreyCOSModelProperties buildModelInfo(SolverFactory<?> solverFactory) {
     if (solverFactory != null) {
       var solutionDescriptor =
           ((DefaultSolverFactory<?>) solverFactory)
               .getScoreDirectorFactory()
               .getSolutionDescriptor();
-      var out = new GreycosModelProperties();
+      var out = new GreyCOSModelProperties();
       out.setSolutionClass(solutionDescriptor.getSolutionClass().getName());
       var entityClassList = new ArrayList<String>();
       var entityClassToGenuineVariableListMap = new HashMap<String, List<String>>();
@@ -153,7 +153,7 @@ public class GreycosDevUIPropertiesRPCService {
       out.setEntityClassToShadowVariableListMap(entityClassToShadowVariableListMap);
       return out;
     } else {
-      return new GreycosModelProperties();
+      return new GreyCOSModelProperties();
     }
   }
 

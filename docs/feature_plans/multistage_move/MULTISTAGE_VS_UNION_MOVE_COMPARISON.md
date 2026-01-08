@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-**No, multistage move is NOT the same as union move** in Greycos Solver. They are fundamentally different features with different purposes, implementations, and availability.
+**No, multistage move is NOT the same as union move** in GreyCOS Solver. They are fundamentally different features with different purposes, implementations, and availability.
 
 ---
 
@@ -24,9 +24,9 @@
 | **Union Move** | ✅ Available | ✅ Available |
 
 **Multistage Move Enterprise Restriction**:
-- Throws [`UnsupportedOperationException`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreycosSolverEnterpriseService.java:287-299) in community edition
-- Requires valid Greycos Enterprise license
-- Activated via [`GreycosSolverEnterpriseService.loadOrFail()`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java:85-112)
+- Throws [`UnsupportedOperationException`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreyCOSSolverEnterpriseService.java:287-299) in community edition
+- Requires valid GreyCOS Enterprise license
+- Activated via [`GreyCOSSolverEnterpriseService.loadOrFail()`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java:85-112)
 
 ### 3. Implementation
 
@@ -35,7 +35,7 @@
   - [`MultistageMoveSelectorConfig`](../../core/src/main/java/ai/greycos/solver/core/config/heuristic/selector/move/generic/MultistageMoveSelectorConfig.java:1-101) - For basic planning variables
   - [`ListMultistageMoveSelectorConfig`](../../core/src/main/java/ai/greycos/solver/core/config/heuristic/selector/move/generic/list/ListMultistageMoveSelectorConfig.java:1-69) - For list planning variables
 - **Required**: Custom `stageProviderClass` that defines move selection stages
-- **Enterprise Service Methods** (in [`GreycosSolverEnterpriseService.java:209-215`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java:209-215)):
+- **Enterprise Service Methods** (in [`GreyCOSSolverEnterpriseService.java:209-215`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java:209-215)):
   ```java
   <Solution_>
       AbstractMoveSelectorFactory<Solution_, MultistageMoveSelectorConfig>
@@ -183,7 +183,7 @@ UnionMoveSelectorConfig weightedConfig = new UnionMoveSelectorConfig()
 ## Integration Points
 
 ### Multistage Move Integration
-- **Enterprise Service**: Activated via [`GreycosSolverEnterpriseService.loadOrFail(Feature.MULTISTAGE_MOVE)`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java:85-112)
+- **Enterprise Service**: Activated via [`GreyCOSSolverEnterpriseService.loadOrFail(Feature.MULTISTAGE_MOVE)`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java:85-112)
 - **Factory Method**: [`MoveSelectorFactory.create()`](../../core/src/main/java/ai/greycos/solver/core/impl/heuristic/selector/move/MoveSelectorFactory.java:104-116) checks for `MultistageMoveSelectorConfig` and loads enterprise service
 
 ### Union Move Integration

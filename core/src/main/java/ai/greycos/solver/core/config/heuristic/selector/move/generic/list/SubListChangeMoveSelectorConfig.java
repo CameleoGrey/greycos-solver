@@ -28,7 +28,7 @@ public class SubListChangeMoveSelectorConfig
 
   /**
    * @deprecated The minimumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of Greycos. Use {@link
+   *     will be removed in a future major version of GreyCOS. Use {@link
    *     SubListSelectorConfig#getMinimumSubListSize()} instead.
    */
   @Deprecated(forRemoval = true)
@@ -36,7 +36,7 @@ public class SubListChangeMoveSelectorConfig
 
   /**
    * @deprecated The maximumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of Greycos. Use {@link
+   *     will be removed in a future major version of GreyCOS. Use {@link
    *     SubListSelectorConfig#getMaximumSubListSize()} instead.
    */
   @Deprecated(forRemoval = true)
@@ -52,7 +52,7 @@ public class SubListChangeMoveSelectorConfig
 
   /**
    * @deprecated The minimumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of Greycos. Use {@link
+   *     will be removed in a future major version of GreyCOS. Use {@link
    *     SubListSelectorConfig#getMinimumSubListSize()} instead.
    */
   @Deprecated(forRemoval = true)
@@ -62,7 +62,7 @@ public class SubListChangeMoveSelectorConfig
 
   /**
    * @deprecated The minimumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of Greycos. Use {@link
+   *     will be removed in a future major version of GreyCOS. Use {@link
    *     SubListSelectorConfig#setMinimumSubListSize(Integer)} instead.
    */
   @Deprecated(forRemoval = true)
@@ -72,7 +72,7 @@ public class SubListChangeMoveSelectorConfig
 
   /**
    * @deprecated The maximumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of Greycos. Use {@link
+   *     will be removed in a future major version of GreyCOS. Use {@link
    *     SubListSelectorConfig#getMaximumSubListSize()} instead.
    */
   @Deprecated(forRemoval = true)
@@ -82,7 +82,7 @@ public class SubListChangeMoveSelectorConfig
 
   /**
    * @deprecated The maximumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of Greycos. Use {@link
+   *     will be removed in a future major version of GreyCOS. Use {@link
    *     SubListSelectorConfig#setMaximumSubListSize(Integer)} instead.
    */
   @Deprecated(forRemoval = true)

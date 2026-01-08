@@ -1,4 +1,4 @@
-# Best Solution Throttling Feature - Implementation Plan for Greycos
+# Best Solution Throttling Feature - Implementation Plan for GreyCOS
 
 ## Executive Summary
 
@@ -6,7 +6,7 @@ This document outlines the plan to reimplement Timefold's `ThrottlingBestSolutio
 
 ## Current State Analysis
 
-### Greycos Architecture
+### GreyCOS Architecture
 - **SolverManager**: Manages multiple solver jobs with thread pools for solver and consumer threads
 - **SolverJobBuilder**: Fluent API for configuring solver jobs
 - **ConsumerSupport**: Handles event consumption on separate consumer thread using `ExecutorService`
@@ -417,6 +417,6 @@ solverManager.solveBuilder()
 ## References
 
 - Timefold Documentation: `text_utils/features/best_solution_throttling/official_docs_description.md`
-- Greycos Event System: `core/src/main/java/ai/greycos/solver/core/api/solver/event/`
+- GreyCOS Event System: `core/src/main/java/ai/greycos/solver/core/api/solver/event/`
 - ConsumerSupport: `core/src/main/java/ai/greycos/solver/core/impl/solver/ConsumerSupport.java`
 - Java Concurrency: `java.util.concurrent` package

@@ -14,9 +14,9 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.path.xml.XmlPath;
 
-/** Test various Greycos benchmarking operations running in Quarkus */
+/** Test various GreyCOS benchmarking operations running in Quarkus */
 @QuarkusTest
-class GreycosBenchmarkResourceTest extends GreycosBenchmarkAbstract {
+class GreyCOSBenchmarkResourceTest extends GreyCOSBenchmarkAbstract {
 
   @BeforeEach
   void setup() {

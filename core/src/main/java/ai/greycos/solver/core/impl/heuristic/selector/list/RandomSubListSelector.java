@@ -37,7 +37,7 @@ public class RandomSubListSelector<Solution_> extends AbstractSelector<Solution_
     this.listVariableDescriptor =
         (ListVariableDescriptor<Solution_>) valueSelector.getVariableDescriptor();
     if (minimumSubListSize < 1) {
-      // TODO raise this to 2 in Greycos Solver 2.0
+      // TODO raise this to 2 in GreyCOS Solver 2.0
       throw new IllegalArgumentException(
           "The minimumSubListSize (" + minimumSubListSize + ") must be greater than 0.");
     }

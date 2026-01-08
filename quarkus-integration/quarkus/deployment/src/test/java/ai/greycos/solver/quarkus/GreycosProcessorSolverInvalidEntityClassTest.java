@@ -12,7 +12,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorSolverInvalidEntityClassTest {
+class GreyCOSProcessorSolverInvalidEntityClassTest {
 
   // Empty classes
   @RegisterExtension

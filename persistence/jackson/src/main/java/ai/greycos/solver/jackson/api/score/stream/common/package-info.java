@@ -7,7 +7,7 @@
  * ai.greycos.solver.core.api.score.analysis.ScoreAnalysis} through user-specified {@link
  * ai.greycos.solver.core.api.score.stream.ConstraintJustification}. The serialization and
  * deserialization of these types happens automatically, if the user has registered {@link
- * ai.greycos.solver.jackson.api.GreycosJacksonModule} with their {@link
+ * ai.greycos.solver.jackson.api.GreyCOSJacksonModule} with their {@link
  * com.fasterxml.jackson.databind.ObjectMapper}.
  *
  * <p>Sequences carry user-specified types of values and for this to work, these values need to be

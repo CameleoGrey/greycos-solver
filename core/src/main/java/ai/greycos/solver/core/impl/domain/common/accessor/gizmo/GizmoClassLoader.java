@@ -27,7 +27,7 @@ public final class GizmoClassLoader extends ClassLoader {
 
   @Override
   public String getName() {
-    return "Greycos Solver Gizmo ClassLoader";
+    return "GreyCOS Solver Gizmo ClassLoader";
   }
 
   @Override

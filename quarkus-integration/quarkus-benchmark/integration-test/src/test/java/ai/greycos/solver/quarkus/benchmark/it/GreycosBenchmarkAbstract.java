@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
-public abstract class GreycosBenchmarkAbstract {
+public abstract class GreyCOSBenchmarkAbstract {
 
   public void deleteAllFolders(File directoryToBeDeleted) {
     var allContents = directoryToBeDeleted.listFiles();

@@ -6,12 +6,12 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
 @Component
-public class GreycosSolverBannerBean implements InitializingBean {
+public class GreyCOSSolverBannerBean implements InitializingBean {
 
-  private static final Log LOG = LogFactory.getLog(GreycosSolverBannerBean.class);
+  private static final Log LOG = LogFactory.getLog(GreyCOSSolverBannerBean.class);
 
   @Override
   public void afterPropertiesSet() {
-    LOG.info("Using Greycos Solver.");
+    LOG.info("Using GreyCOS Solver.");
   }
 }

@@ -30,7 +30,7 @@ import ai.greycos.solver.core.testdomain.TestdataEntity;
 import ai.greycos.solver.core.testdomain.TestdataSolution;
 import ai.greycos.solver.core.testdomain.TestdataValue;
 import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedChildEntity;
-import ai.greycos.solver.quarkus.gizmo.GreycosGizmoBeanFactory;
+import ai.greycos.solver.quarkus.gizmo.GreyCOSGizmoBeanFactory;
 import ai.greycos.solver.quarkus.testdomain.gizmo.DummyVariableListener;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
@@ -41,7 +41,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorGeneratedGizmoSupplierTest {
+class GreyCOSProcessorGeneratedGizmoSupplierTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =
@@ -70,7 +70,7 @@ class GreycosProcessorGeneratedGizmoSupplierTest {
                           DummySolutionPartitioner.class,
                           DummyValueFilter.class));
 
-  @Inject GreycosGizmoBeanFactory gizmoBeanFactory;
+  @Inject GreyCOSGizmoBeanFactory gizmoBeanFactory;
 
   private void assertFactoryContains(Class<?> clazz) {
     assertThat(gizmoBeanFactory.newInstance(clazz)).isNotNull();

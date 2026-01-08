@@ -11,9 +11,9 @@
 
   <artifactId>greycos-solver-jackson</artifactId>
 
-  <name>Greycos Solver Jackson</name>
+  <name>GreyCOS Solver Jackson</name>
   <description>
-    Greycos solves planning problems.
+    GreyCOS solves planning problems.
     This lightweight, embeddable planning engine implements powerful and scalable algorithms
     to optimize business resource scheduling and planning.
 

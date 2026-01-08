@@ -17,7 +17,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import io.quarkus.test.QuarkusUnitTest;
 import io.smallrye.config.ConfigValidationException;
 
-class GreycosProcessorMultipleSolversInvalidNearbyClassTest {
+class GreyCOSProcessorMultipleSolversInvalidNearbyClassTest {
 
   // No class found
   @RegisterExtension

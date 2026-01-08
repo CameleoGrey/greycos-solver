@@ -4,14 +4,14 @@ import java.util.List;
 
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 
-public class GreycosDevUIProperties { // TODO make record?
+public class GreyCOSDevUIProperties { // TODO make record?
 
-  private final GreycosModelProperties greycosModelProperties;
+  private final GreyCOSModelProperties greycosModelProperties;
   private final String effectiveSolverConfigXML;
   private final List<ConstraintRef> constraintList;
 
-  public GreycosDevUIProperties(
-      GreycosModelProperties greycosModelProperties,
+  public GreyCOSDevUIProperties(
+      GreyCOSModelProperties greycosModelProperties,
       String effectiveSolverConfigXML,
       List<ConstraintRef> constraintList) {
     this.greycosModelProperties = greycosModelProperties;
@@ -19,7 +19,7 @@ public class GreycosDevUIProperties { // TODO make record?
     this.constraintList = constraintList;
   }
 
-  public GreycosModelProperties getGreycosModelProperties() {
+  public GreyCOSModelProperties getGreyCOSModelProperties() {
     return greycosModelProperties;
   }
 

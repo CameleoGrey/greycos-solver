@@ -18,7 +18,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorOnlyMultiConstructorTest {
+class GreyCOSProcessorOnlyMultiConstructorTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =
@@ -37,7 +37,7 @@ class GreycosProcessorOnlyMultiConstructorTest {
                       .hasMessageContainingAll(
                           "Class (",
                           OnlyMultiArgsConstructorEntity.class.getName(),
-                          ") must have a no-args constructor so it can be constructed by Greycos."));
+                          ") must have a no-args constructor so it can be constructed by GreyCOS."));
 
   @Inject SolverManager<PrivateNoArgsConstructorSolution, Long> solverManager;
 

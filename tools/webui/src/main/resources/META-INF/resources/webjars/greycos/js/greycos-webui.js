@@ -1,4 +1,4 @@
-function replaceGreycosAutoHeaderFooter() {
+function replaceGreyCOSAutoHeaderFooter() {
   const greycosHeader = $("header#greycos-auto-header");
   if (greycosHeader != null) {
     greycosHeader.addClass("bg-black")
@@ -6,7 +6,7 @@ function replaceGreycosAutoHeaderFooter() {
       $(`<div class="container-fluid">
         <nav class="navbar sticky-top navbar-expand-lg navbar-dark shadow mb-3">
           <a class="navbar-brand" href="https://greycos.ai">
-            <img src="webjars/greycos/img/greycos-logo-horizontal-negative.svg" alt="Greycos logo" width="200">
+            <img src="webjars/greycos/img/greycos-logo-horizontal-negative.svg" alt="GreyCOS logo" width="200">
           </a>
         </nav>
       </div>`));
@@ -17,7 +17,7 @@ function replaceGreycosAutoHeaderFooter() {
       $(`<footer class="bg-black text-white-50">
            <div class="container">
              <div class="hstack gap-3 p-4">
-               <div class="ms-auto"><a class="text-white" href="https://greycos.ai">Greycos</a></div>
+               <div class="ms-auto"><a class="text-white" href="https://greycos.ai">GreyCOS</a></div>
                <div class="vr"></div>
                <div><a class="text-white" href="https://greycos.ai/docs">Documentation</a></div>
                <div class="vr"></div>

@@ -7,7 +7,7 @@ import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 
 import io.quarkus.runtime.annotations.ConfigGroup;
 
-/** Translated into Greycos's {@link TerminationConfig} at startup. */
+/** Translated into GreyCOS's {@link TerminationConfig} at startup. */
 @ConfigGroup
 public interface TerminationRuntimeConfig {
 

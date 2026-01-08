@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 public class BenchmarkProperties {
 
   public static final String DEFAULT_SOLVER_BENCHMARK_CONFIG_URL =
-      GreycosProperties.DEFAULT_SOLVER_BENCHMARK_CONFIG_URL;
+      GreyCOSProperties.DEFAULT_SOLVER_BENCHMARK_CONFIG_URL;
   public static final String DEFAULT_BENCHMARK_RESULT_DIRECTORY = "target/benchmarks";
 
   /**

@@ -16,7 +16,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosBenchmarkProcessorMissingSpentLimitTest {
+class GreyCOSBenchmarkProcessorMissingSpentLimitTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =
@@ -34,7 +34,7 @@ class GreycosBenchmarkProcessorMissingSpentLimitTest {
   void benchmark() throws ExecutionException, InterruptedException {
     assertThatCode(
             () ->
-                new GreycosBenchmarkRecorder()
+                new GreyCOSBenchmarkRecorder()
                     .benchmarkConfigSupplier(new PlannerBenchmarkConfig(), null)
                     .get())
         .hasMessageContaining(

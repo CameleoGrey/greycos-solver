@@ -10,8 +10,8 @@
   </parent>
 
   <artifactId>greycos-solver-quarkus-jackson-integration-test</artifactId>
-  <name>Greycos Solver Quarkus Jackson - Integration tests</name>
-  <description>Quarkus integration tests for Greycos with Jackson</description>
+  <name>GreyCOS Solver Quarkus Jackson - Integration tests</name>
+  <description>Quarkus integration tests for GreyCOS with Jackson</description>
   <url>https://solver.greycos.ai</url>
 
   <properties>

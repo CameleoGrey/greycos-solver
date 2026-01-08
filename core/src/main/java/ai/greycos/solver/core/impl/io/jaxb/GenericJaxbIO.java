@@ -84,7 +84,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
           String.format(
               "Failed to create JAXB Marshaller for a root element class (%s).",
               rootClass.getName());
-      throw new GreycosXmlSerializationException(errorMessage, jaxbException);
+      throw new GreyCOSXmlSerializationException(errorMessage, jaxbException);
     }
   }
 
@@ -95,7 +95,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
       return (T) createUnmarshaller().unmarshal(reader);
     } catch (JAXBException jaxbException) {
       String errorMessage = String.format(ERR_MSG_READ, rootClass.getName());
-      throw new GreycosXmlSerializationException(errorMessage, jaxbException);
+      throw new GreyCOSXmlSerializationException(errorMessage, jaxbException);
     }
   }
 
@@ -128,7 +128,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
           String.format(
               "Failed to configure the %s to validate an XML for a root class (%s) using the (%s) XML Schema.",
               SchemaFactory.class.getSimpleName(), rootClass.getName(), schemaResource);
-      throw new GreycosXmlSerializationException(errorMessage, saxException);
+      throw new GreyCOSXmlSerializationException(errorMessage, saxException);
     }
 
     try {
@@ -138,7 +138,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
           String.format(
               "Failed to read an XML Schema resource (%s) to validate an XML for a root class (%s).",
               nonNullSchemaResource, rootClass.getName());
-      throw new GreycosXmlSerializationException(errorMessage, saxException);
+      throw new GreyCOSXmlSerializationException(errorMessage, saxException);
     }
   }
 
@@ -162,7 +162,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
               "Failed to set a validation event handler to the %s for "
                   + "a root element class (%s).",
               Unmarshaller.class.getSimpleName(), rootClass.getName());
-      throw new GreycosXmlSerializationException(errorMessage, jaxbException);
+      throw new GreyCOSXmlSerializationException(errorMessage, jaxbException);
     }
 
     try {
@@ -181,10 +181,10 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
                             + validationEvent.getLocator().getNode().getNodeName())
                 .collect(Collectors.joining("\n"));
         String errorMessageWithValidationEvents = errorMessage + "\n" + validationErrors;
-        throw new GreycosXmlSerializationException(errorMessageWithValidationEvents, jaxbException);
+        throw new GreyCOSXmlSerializationException(errorMessageWithValidationEvents, jaxbException);
       } else {
         String errorMessage = String.format(ERR_MSG_READ, rootClass.getName());
-        throw new GreycosXmlSerializationException(errorMessage, jaxbException);
+        throw new GreyCOSXmlSerializationException(errorMessage, jaxbException);
       }
     }
   }
@@ -229,7 +229,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
               ERR_MSG_READ_OVERRIDE_NAMESPACE,
               rootClass.getName(),
               Arrays.toString(elementNamespaceOverrides));
-      throw new GreycosXmlSerializationException(errorMessage, e);
+      throw new GreyCOSXmlSerializationException(errorMessage, e);
     }
   }
 
@@ -246,7 +246,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
           String.format(
               "Failed to create a %s instance to parse an XML for a root class (%s).",
               DocumentBuilder.class.getSimpleName(), rootClass.getName());
-      throw new GreycosXmlSerializationException(errorMessage, e);
+      throw new GreyCOSXmlSerializationException(errorMessage, e);
     }
 
     try (Reader nonNullReader = Objects.requireNonNull(reader)) {
@@ -254,11 +254,11 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
     } catch (SAXException saxException) {
       String errorMessage =
           String.format("Failed to parse an XML for a root class (%s).", rootClass.getName());
-      throw new GreycosXmlSerializationException(errorMessage, saxException);
+      throw new GreyCOSXmlSerializationException(errorMessage, saxException);
     } catch (IOException ioException) {
       String errorMessage =
           String.format("Failed to read an XML for a root class (%s).", rootClass.getName());
-      throw new GreycosXmlSerializationException(errorMessage, ioException);
+      throw new GreyCOSXmlSerializationException(errorMessage, ioException);
     }
   }
 
@@ -270,7 +270,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
           String.format(
               "Failed to create a JAXB %s for a root element class (%s).",
               Unmarshaller.class.getSimpleName(), rootClass.getName());
-      throw new GreycosXmlSerializationException(errorMessage, e);
+      throw new GreyCOSXmlSerializationException(errorMessage, e);
     }
   }
 
@@ -288,13 +288,13 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
           String.format("XML validation failed for a root element class (%s).", rootClass.getName())
               + "\n"
               + saxException.getMessage();
-      throw new GreycosXmlSerializationException(errorMessage, saxException);
+      throw new GreyCOSXmlSerializationException(errorMessage, saxException);
     } catch (IOException ioException) {
       String errorMessage =
           String.format(
               "Failed to read an XML for a root element class (%s) during validation.",
               rootClass.getName());
-      throw new GreycosXmlSerializationException(errorMessage, ioException);
+      throw new GreyCOSXmlSerializationException(errorMessage, ioException);
     }
   }
 
@@ -317,7 +317,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
       }
       write(root, writer, new StreamSource(xsltInputStream));
     } catch (Exception e) {
-      throw new GreycosXmlSerializationException(
+      throw new GreyCOSXmlSerializationException(
           String.format(ERR_MSG_WRITE, rootClass.getName()), e);
     }
   }
@@ -328,7 +328,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
     try {
       marshaller.marshal(root, domResult);
     } catch (JAXBException jaxbException) {
-      throw new GreycosXmlSerializationException(
+      throw new GreyCOSXmlSerializationException(
           String.format(ERR_MSG_WRITE, rootClass.getName()), jaxbException);
     }
     return domResult;
@@ -354,7 +354,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
     } catch (TransformerException transformerException) {
       String errorMessage =
           String.format("Failed to format XML for a root element class (%s).", rootClass.getName());
-      throw new GreycosXmlSerializationException(errorMessage, transformerException);
+      throw new GreyCOSXmlSerializationException(errorMessage, transformerException);
     }
   }
 

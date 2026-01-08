@@ -13,7 +13,7 @@ import ai.greycos.solver.benchmark.config.PlannerBenchmarkConfig;
 import ai.greycos.solver.benchmark.config.SolverBenchmarkConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.spring.boot.autoconfigure.config.BenchmarkProperties;
-import ai.greycos.solver.spring.boot.autoconfigure.config.GreycosProperties;
+import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanClassLoaderAware;
@@ -28,18 +28,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 
 @Configuration
-@AutoConfigureAfter(GreycosSolverAutoConfiguration.class)
+@AutoConfigureAfter(GreyCOSSolverAutoConfiguration.class)
 @ConditionalOnClass({PlannerBenchmarkFactory.class})
 @ConditionalOnMissingBean({PlannerBenchmarkFactory.class})
-@EnableConfigurationProperties({GreycosProperties.class})
-public class GreycosBenchmarkAutoConfiguration
+@EnableConfigurationProperties({GreyCOSProperties.class})
+public class GreyCOSBenchmarkAutoConfiguration
     implements BeanClassLoaderAware, ApplicationContextAware {
 
-  private final GreycosProperties greycosProperties;
+  private final GreyCOSProperties greycosProperties;
   private ClassLoader beanClassLoader;
   private ApplicationContext context;
 
-  protected GreycosBenchmarkAutoConfiguration(GreycosProperties greycosProperties) {
+  protected GreyCOSBenchmarkAutoConfiguration(GreyCOSProperties greycosProperties) {
     this.greycosProperties = greycosProperties;
   }
 
@@ -70,7 +70,7 @@ public class GreycosBenchmarkAutoConfiguration
         != null) {
       benchmarkConfig =
           PlannerBenchmarkConfig.createFromXmlResource(
-              GreycosProperties.DEFAULT_SOLVER_BENCHMARK_CONFIG_URL, beanClassLoader);
+              GreyCOSProperties.DEFAULT_SOLVER_BENCHMARK_CONFIG_URL, beanClassLoader);
     } else {
       benchmarkConfig = PlannerBenchmarkConfig.createFromSolverConfig(solverConfig);
       benchmarkConfig.setBenchmarkDirectory(
@@ -99,7 +99,7 @@ public class GreycosBenchmarkAutoConfiguration
         Objects.requireNonNull(inheritedBenchmarkConfig.getSolverConfig());
     if (greycosProperties.getBenchmark() != null
         && greycosProperties.getBenchmark().getSolver() != null) {
-      GreycosSolverAutoConfiguration.applyTerminationProperties(
+      GreyCOSSolverAutoConfiguration.applyTerminationProperties(
           inheritedBenchmarkSolverConfig,
           greycosProperties.getBenchmark().getSolver().getTermination());
     }

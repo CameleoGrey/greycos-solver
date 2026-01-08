@@ -2,14 +2,14 @@
 
 ## Executive Summary
 
-This document outlines a corrected, implementation-ready plan to add "comparing to global" functionality to Greycos's island model implementation. This feature allows agents to periodically check and adopt the global best solution from across all islands, significantly improving convergence speed and solution quality.
+This document outlines a corrected, implementation-ready plan to add "comparing to global" functionality to GreyCOS's island model implementation. This feature allows agents to periodically check and adopt the global best solution from across all islands, significantly improving convergence speed and solution quality.
 
 **Status**: Island model foundation is implemented, but compare-to-global functionality is missing.
 
 **Key Changes from Original Plan**:
-- Removed all references to Genetic Algorithm and LSHADE (not implemented in Greycos)
+- Removed all references to Genetic Algorithm and LSHADE (not implemented in GreyCOS)
 - Fixed hallucinated API methods that don't exist
-- Provided feasible implementation approach using actual Greycos APIs
+- Provided feasible implementation approach using actual GreyCOS APIs
 - Simplified to pragmatic approach that works without modifying acceptor classes
 
 ---
@@ -138,7 +138,7 @@ Compare-to-global is particularly beneficial for **local search algorithms** (TS
 
 ### Functional Gaps
 
-| Feature | GreyJack (Rust) | Greycos (Java) | Gap |
+| Feature | GreyJack (Rust) | GreyCOS (Java) | Gap |
 |---------|------------------|------------------|-----|
 | Global best reference in agents | ✅ `global_top_individual: Arc<Mutex<Individual>>` | ✅ `globalState: SharedGlobalState` | None |
 | Periodic global best check | ✅ Every step (in main loop) | ❌ Not implemented | **Missing** |
@@ -296,7 +296,7 @@ public class IslandModelPhaseConfig {
 **Decision**: Use phase lifecycle listeners to check global best after each step.
 
 **Rationale**:
-- Greycos has built-in lifecycle listener system
+- GreyCOS has built-in lifecycle listener system
 - `LocalSearchPhaseLifecycleListener` provides `stepEnded()` hook
 - Works with existing phase infrastructure
 - No need to modify phase execution logic
@@ -610,7 +610,7 @@ public class GlobalCompareListener<Solution_>
             return;
         }
 
-        // Compare (higher score is better in Greycos)
+        // Compare (higher score is better in GreyCOS)
         int comparisonResult = ((Score) globalScore).compareTo((Score) currentScore);
         
         if (comparisonResult > 0) {
@@ -634,7 +634,7 @@ public class GlobalCompareListener<Solution_>
         if (solution == null) {
             return null;
         }
-        // Use Greycos's solution cloner from score director
+        // Use GreyCOS's solution cloner from score director
         return stepScope.getScoreDirector().cloneSolution(solution);
     }
 
@@ -1072,7 +1072,7 @@ void testCompareToGlobal_improvesConvergence() {
 
 ### Regression Tests
 
-- Run full Greycos test suite
+- Run full GreyCOS test suite
 - Ensure island model tests still pass
 - Verify no breaking changes to existing functionality
 - Test backward compatibility (default enabled/disabled)
@@ -1248,13 +1248,13 @@ void testCompareToGlobal_improvesConvergence() {
 
 - GreyJack Island Model Documentation: [`ISLAND_MODEL_DOCUMENTATION.md`](./ISLAND_MODEL_DOCUMENTATION.md)
 - GreyJack Implementation: `greyjack/src/agents/base/agent_base.rs`
-- Greycos Island Agent: [`IslandAgent.java`](../../core/src/main/java/ai/greycos/solver/core/impl/islandmodel/IslandAgent.java)
-- Greycos Shared Global State: [`SharedGlobalState.java`](../../core/src/main/java/ai/greycos/solver/core/impl/islandmodel/SharedGlobalState.java)
-- Greycos Configuration: [`IslandModelConfig.java`](../../core/src/main/java/ai/greycos/solver/core/impl/islandmodel/IslandModelConfig.java)
-- Greycos Tabu Acceptor: [`AbstractTabuAcceptor.java`](../../core/src/main/java/ai/greycos/solver/core/impl/localsearch/decider/acceptor/tabu/AbstractTabuAcceptor.java)
-- Greycos Late Acceptance Acceptor: [`LateAcceptanceAcceptor.java`](../../core/src/main/java/ai/greycos/solver/core/impl/localsearch/decider/acceptor/lateacceptance/LateAcceptanceAcceptor.java)
-- Greycos Local Search Phase: [`LocalSearchPhase.java`](../../core/src/main/java/ai/greycos/solver/core/impl/localsearch/LocalSearchPhase.java)
-- Greycos Local Search Lifecycle Listener: [`LocalSearchPhaseLifecycleListener.java`](../../core/src/main/java/ai/greycos/solver/core/impl/localsearch/event/LocalSearchPhaseLifecycleListener.java)
+- GreyCOS Island Agent: [`IslandAgent.java`](../../core/src/main/java/ai/greycos/solver/core/impl/islandmodel/IslandAgent.java)
+- GreyCOS Shared Global State: [`SharedGlobalState.java`](../../core/src/main/java/ai/greycos/solver/core/impl/islandmodel/SharedGlobalState.java)
+- GreyCOS Configuration: [`IslandModelConfig.java`](../../core/src/main/java/ai/greycos/solver/core/impl/islandmodel/IslandModelConfig.java)
+- GreyCOS Tabu Acceptor: [`AbstractTabuAcceptor.java`](../../core/src/main/java/ai/greycos/solver/core/impl/localsearch/decider/acceptor/tabu/AbstractTabuAcceptor.java)
+- GreyCOS Late Acceptance Acceptor: [`LateAcceptanceAcceptor.java`](../../core/src/main/java/ai/greycos/solver/core/impl/localsearch/decider/acceptor/lateacceptance/LateAcceptanceAcceptor.java)
+- GreyCOS Local Search Phase: [`LocalSearchPhase.java`](../../core/src/main/java/ai/greycos/solver/core/impl/localsearch/LocalSearchPhase.java)
+- GreyCOS Local Search Lifecycle Listener: [`LocalSearchPhaseLifecycleListener.java`](../../core/src/main/java/ai/greycos/solver/core/impl/localsearch/event/LocalSearchPhaseLifecycleListener.java)
 
 ---
 

@@ -12,10 +12,10 @@
 
   <artifactId>greycos-solver-migration</artifactId>
 
-  <name>Greycos Solver Migration</name>
+  <name>GreyCOS Solver Migration</name>
   <description>
     Upgrade your code with a single command.
-    This migration replace all your calls to deleted/deprecated methods of Greycos with their proper alternatives.
+    This migration replace all your calls to deleted/deprecated methods of GreyCOS with their proper alternatives.
   </description>
   <url>https://solver.greycos.ai</url>
 

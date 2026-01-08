@@ -15,7 +15,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorWarningRuntimePropertyChangedTest {
+class GreyCOSProcessorWarningRuntimePropertyChangedTest {
   @RegisterExtension
   static final QuarkusUnitTest config =
       new QuarkusUnitTest()

@@ -41,7 +41,7 @@ import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.io.jaxb.SolverConfigIO;
 import ai.greycos.solver.spring.boot.autoconfigure.config.DiminishedReturnsProperties;
-import ai.greycos.solver.spring.boot.autoconfigure.config.GreycosProperties;
+import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.config.SolverProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.config.TerminationProperties;
 
@@ -84,15 +84,15 @@ import org.springframework.core.env.Environment;
   SolutionManager.class,
   SolverManager.class
 })
-@EnableConfigurationProperties({GreycosProperties.class})
-public class GreycosSolverAutoConfiguration
+@EnableConfigurationProperties({GreyCOSProperties.class})
+public class GreyCOSSolverAutoConfiguration
     implements BeanClassLoaderAware,
         ApplicationContextAware,
         EnvironmentAware,
         BeanFactoryInitializationAotProcessor,
         BeanDefinitionRegistryPostProcessor {
 
-  private static final Log LOG = LogFactory.getLog(GreycosSolverAutoConfiguration.class);
+  private static final Log LOG = LogFactory.getLog(GreyCOSSolverAutoConfiguration.class);
   private static final String DEFAULT_SOLVER_CONFIG_NAME = "getSolverConfig";
   private static final Class<? extends Annotation>[] PLANNING_ENTITY_FIELD_ANNOTATIONS =
       new Class[] {
@@ -111,9 +111,9 @@ public class GreycosSolverAutoConfiguration
       };
   private ApplicationContext context;
   private ClassLoader beanClassLoader;
-  private GreycosProperties greycosProperties;
+  private GreyCOSProperties greycosProperties;
 
-  protected GreycosSolverAutoConfiguration() {}
+  protected GreyCOSSolverAutoConfiguration() {}
 
   @Override
   public void setBeanClassLoader(ClassLoader beanClassLoader) {
@@ -127,11 +127,11 @@ public class GreycosSolverAutoConfiguration
 
   @Override
   public void setEnvironment(Environment environment) {
-    // postProcessBeanFactory runs before creating any bean, but we need GreycosProperties.
+    // postProcessBeanFactory runs before creating any bean, but we need GreyCOSProperties.
     // Therefore, we use the Environment to load the properties
-    BindResult<GreycosProperties> result =
-        Binder.get(environment).bind("greycos", GreycosProperties.class);
-    this.greycosProperties = result.orElseGet(GreycosProperties::new);
+    BindResult<GreyCOSProperties> result =
+        Binder.get(environment).bind("greycos", GreyCOSProperties.class);
+    this.greycosProperties = result.orElseGet(GreyCOSProperties::new);
   }
 
   private Map<String, SolverConfig> getSolverConfigMap() {
@@ -139,7 +139,7 @@ public class GreycosSolverAutoConfiguration
     if (!entityScanner.hasSolutionOrEntityClasses()) {
       LOG.warn(
           """
-                            Skipping Greycos loading because there are no @%s  or @%s annotated classes.
+                            Skipping GreyCOS loading because there are no @%s  or @%s annotated classes.
                             Maybe your annotated classes are not in a subpackage of your @%s annotated class's package.
                             Maybe move your planning solution and entity classes to your application class's (sub)package (or use @%s)."""
               .formatted(
@@ -154,8 +154,8 @@ public class GreycosSolverAutoConfiguration
     // If the config map is empty, we build the config using the default solver name
     if (greycosProperties.getSolver() == null || greycosProperties.getSolver().isEmpty()) {
       solverConfigMap.put(
-          GreycosProperties.DEFAULT_SOLVER_NAME,
-          createSolverConfig(greycosProperties, GreycosProperties.DEFAULT_SOLVER_NAME));
+          GreyCOSProperties.DEFAULT_SOLVER_NAME,
+          createSolverConfig(greycosProperties, GreyCOSProperties.DEFAULT_SOLVER_NAME));
     } else {
       greycosProperties
           .getSolver()
@@ -184,7 +184,7 @@ public class GreycosSolverAutoConfiguration
   public BeanFactoryInitializationAotContribution processAheadOfTime(
       ConfigurableListableBeanFactory beanFactory) {
     var solverConfigMap = getSolverConfigMap();
-    return new GreycosSolverAotContribution(solverConfigMap);
+    return new GreyCOSSolverAotContribution(solverConfigMap);
   }
 
   @Override
@@ -193,11 +193,11 @@ public class GreycosSolverAutoConfiguration
     var solverConfigMap = getSolverConfigMap();
     var solverConfigIO = new SolverConfigIO();
     registry.registerBeanDefinition(
-        GreycosSolverAotFactory.class.getName(),
-        new RootBeanDefinition(GreycosSolverAotFactory.class));
+        GreyCOSSolverAotFactory.class.getName(),
+        new RootBeanDefinition(GreyCOSSolverAotFactory.class));
     if (solverConfigMap.isEmpty()) {
       var rootBeanDefinition = new RootBeanDefinition(SolverConfig.class);
-      rootBeanDefinition.setFactoryBeanName(GreycosSolverAotFactory.class.getName());
+      rootBeanDefinition.setFactoryBeanName(GreyCOSSolverAotFactory.class.getName());
       rootBeanDefinition.setFactoryMethodName("solverConfigSupplier");
       var solverXmlOutput = new StringWriter();
       solverConfigIO.write(new SolverConfig(), solverXmlOutput);
@@ -210,7 +210,7 @@ public class GreycosSolverAutoConfiguration
 
     if (greycosProperties.getSolver() == null || greycosProperties.getSolver().size() == 1) {
       var rootBeanDefinition = new RootBeanDefinition(SolverConfig.class);
-      rootBeanDefinition.setFactoryBeanName(GreycosSolverAotFactory.class.getName());
+      rootBeanDefinition.setFactoryBeanName(GreyCOSSolverAotFactory.class.getName());
       rootBeanDefinition.setFactoryMethodName("solverConfigSupplier");
       var solverXmlOutput = new StringWriter();
       solverConfigIO.write(solverConfigMap.values().iterator().next(), solverXmlOutput);
@@ -223,7 +223,7 @@ public class GreycosSolverAutoConfiguration
       solverConfigMap.forEach(
           (solverName, solverConfig) -> {
             var rootBeanDefinition = new RootBeanDefinition(SolverManager.class);
-            rootBeanDefinition.setFactoryBeanName(GreycosSolverAotFactory.class.getName());
+            rootBeanDefinition.setFactoryBeanName(GreyCOSSolverAotFactory.class.getName());
             rootBeanDefinition.setFactoryMethodName("solverManagerSupplier");
             var solverXmlOutput = new StringWriter();
             solverConfigIO.write(solverConfig, solverXmlOutput);
@@ -235,7 +235,7 @@ public class GreycosSolverAutoConfiguration
     }
   }
 
-  private SolverConfig createSolverConfig(GreycosProperties greycosProperties, String solverName) {
+  private SolverConfig createSolverConfig(GreyCOSProperties greycosProperties, String solverName) {
     // 1 - The solver configuration takes precedence over root and default settings
     var solverConfigXml =
         greycosProperties.getSolverConfig(solverName).map(SolverProperties::getSolverConfigXml);
@@ -252,7 +252,7 @@ public class GreycosSolverAutoConfiguration
         String message =
             "Invalid greycos.solverConfigXml property (%s): that classpath resource does not exist."
                 .formatted(solverUrl);
-        if (!solverName.equals(GreycosProperties.DEFAULT_SOLVER_NAME)) {
+        if (!solverName.equals(GreyCOSProperties.DEFAULT_SOLVER_NAME)) {
           message =
               "Invalid greycos.solver.\"%s\".solverConfigXML property (%s): that classpath resource does not exist."
                   .formatted(solverName, solverUrl);
@@ -260,10 +260,10 @@ public class GreycosSolverAutoConfiguration
         throw new IllegalStateException(message);
       }
       solverConfig = SolverConfig.createFromXmlResource(solverUrl);
-    } else if (beanClassLoader.getResource(GreycosProperties.DEFAULT_SOLVER_CONFIG_URL) != null) {
+    } else if (beanClassLoader.getResource(GreyCOSProperties.DEFAULT_SOLVER_CONFIG_URL) != null) {
       // 3 - Default file URL
       solverConfig =
-          SolverConfig.createFromXmlResource(GreycosProperties.DEFAULT_SOLVER_CONFIG_URL);
+          SolverConfig.createFromXmlResource(GreyCOSProperties.DEFAULT_SOLVER_CONFIG_URL);
     } else {
       solverConfig = new SolverConfig(beanClassLoader);
     }
@@ -273,7 +273,7 @@ public class GreycosSolverAutoConfiguration
 
   private void loadSolverConfig(
       IncludeAbstractClassesEntityScanner entityScanner,
-      GreycosProperties greycosProperties,
+      GreyCOSProperties greycosProperties,
       String solverName,
       SolverConfig solverConfig) {
     if (solverConfig.getSolutionClass() == null) {

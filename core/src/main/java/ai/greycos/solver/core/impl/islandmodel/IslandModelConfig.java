@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.islandmodel;
 import java.util.Objects;
 
 /**
- * Configuration for the island model phase in Greycos. Controls the number of islands, migration
+ * Configuration for the island model phase in GreyCOS. Controls the number of islands, migration
  * behavior, and global best synchronization.
  */
 public class IslandModelConfig {

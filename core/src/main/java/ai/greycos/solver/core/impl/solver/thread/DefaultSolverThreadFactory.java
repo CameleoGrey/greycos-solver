@@ -20,7 +20,7 @@ public class DefaultSolverThreadFactory implements ThreadFactory {
   public DefaultSolverThreadFactory(String threadPrefix) {
     SecurityManager s = System.getSecurityManager();
     group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
-    namePrefix = "Greycos-" + poolNumber.getAndIncrement() + "-" + threadPrefix + "-";
+    namePrefix = "GreyCOS-" + poolNumber.getAndIncrement() + "-" + threadPrefix + "-";
   }
 
   @Override

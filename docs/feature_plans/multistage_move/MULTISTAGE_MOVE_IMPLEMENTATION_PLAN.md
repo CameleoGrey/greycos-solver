@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document provides a detailed implementation plan for the **Multistage Move** feature in Greycos Solver. Multistage moves enable the solver to make coordinated, multi-step changes in a single atomic operation, allowing it to escape local optima and score traps where single-variable moves are ineffective.
+This document provides a detailed implementation plan for the **Multistage Move** feature in GreyCOS Solver. Multistage moves enable the solver to make coordinated, multi-step changes in a single atomic operation, allowing it to escape local optima and score traps where single-variable moves are ineffective.
 
 **Key Insight from Research**: Multistage moves are fundamentally different from union moves. Union moves combine multiple move types horizontally (OR composition), while multistage moves compose multiple dependent steps vertically (AND composition) into one atomic move.
 
@@ -110,7 +110,7 @@ From research and common optimization problems:
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         GreycosSolverEnterpriseService (Enterprise)        │
+│         GreyCOSSolverEnterpriseService (Enterprise)        │
 │  - buildBasicMultistageMoveSelectorFactory()                │
 │  - buildListMultistageMoveSelectorFactory()                 │
 └──────────────────────────┬──────────────────────────────────┘
@@ -166,7 +166,7 @@ MultistageMoveSelector
    XML → MultistageMoveSelectorConfig
 
 2. Factory Creation
-   Config → GreycosSolverEnterpriseService
+   Config → GreyCOSSolverEnterpriseService
            → MultistageMoveSelectorFactory
 
 3. Stage Provider Instantiation
@@ -681,7 +681,7 @@ public class ListMultistageMoveSelectorFactory<Solution_>
 
 ### 3.2 Enterprise Service Integration
 
-Update [`GreycosSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java) to replace the `UnsupportedOperationException` with actual implementations:
+Update [`GreyCOSSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java) to replace the `UnsupportedOperationException` with actual implementations:
 
 ```java
 @Override
@@ -828,12 +828,12 @@ Update [`solver.xsd`](../../core/src/main/resources/solver.xsd) to include multi
 
 **Tasks**:
 
-1. **Update GreycosSolverEnterpriseService**
+1. **Update GreyCOSSolverEnterpriseService**
    - Remove `UnsupportedOperationException` from `buildBasicMultistageMoveSelectorFactory()`
    - Remove `UnsupportedOperationException` from `buildListMultistageMoveSelectorFactory()`
    - Return actual factory instances
 
-2. **Update DefaultGreycosSolverEnterpriseService**
+2. **Update DefaultGreyCOSSolverEnterpriseService**
    - Replace exceptions with implementations or keep as community fallback
    - Ensure proper error messages for community edition
 
@@ -1595,8 +1595,8 @@ No deprecation needed. Multistage moves complement existing features.
    - Path: `core/src/main/java/ai/greycos/solver/core/config/heuristic/selector/move/generic/MultistageMoveSelectorConfig.java`
    - Current state: Configuration class exists, throws UnsupportedOperationException in community edition
 
-2. **GreycosSolverEnterpriseService**
-   - Path: `core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java`
+2. **GreyCOSSolverEnterpriseService**
+   - Path: `core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java`
    - Current state: Interface defines factory methods but implementations throw exceptions
 
 3. **UnionMoveSelector**
@@ -1637,8 +1637,8 @@ No deprecation needed. Multistage moves complement existing features.
 - [ ] Review and approve
 
 ### Phase 3: Enterprise Service Integration
-- [ ] Update GreycosSolverEnterpriseService
-- [ ] Update DefaultGreycosSolverEnterpriseService
+- [ ] Update GreyCOSSolverEnterpriseService
+- [ ] Update DefaultGreyCOSSolverEnterpriseService
 - [ ] Write integration tests
 - [ ] Review and approve
 
@@ -1673,7 +1673,7 @@ No deprecation needed. Multistage moves complement existing features.
 
 ## Conclusion
 
-This implementation plan provides a comprehensive roadmap for implementing the Multistage Move feature in Greycos Solver. The plan is organized into 7 phases over 8 weeks, with clear objectives, tasks, acceptance criteria, and deliverables for each phase.
+This implementation plan provides a comprehensive roadmap for implementing the Multistage Move feature in GreyCOS Solver. The plan is organized into 7 phases over 8 weeks, with clear objectives, tasks, acceptance criteria, and deliverables for each phase.
 
 **Key Success Factors**:
 

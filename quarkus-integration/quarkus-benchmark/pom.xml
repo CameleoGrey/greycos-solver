@@ -12,7 +12,7 @@
   <artifactId>greycos-solver-quarkus-benchmark-parent</artifactId>
   <packaging>pom</packaging>
 
-  <name>Greycos Solver Quarkus Benchmark</name>
+  <name>GreyCOS Solver Quarkus Benchmark</name>
   <url>https://solver.greycos.ai</url>
 
   <modules>

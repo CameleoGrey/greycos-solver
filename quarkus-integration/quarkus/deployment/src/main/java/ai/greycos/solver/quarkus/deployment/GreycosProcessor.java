@@ -48,19 +48,19 @@ import ai.greycos.solver.core.impl.domain.common.accessor.gizmo.AccessorInfo;
 import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.domain.variable.declarative.RootVariableSource;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
-import ai.greycos.solver.quarkus.GreycosRecorder;
+import ai.greycos.solver.quarkus.GreyCOSRecorder;
 import ai.greycos.solver.quarkus.bean.BeanUtil;
-import ai.greycos.solver.quarkus.bean.DefaultGreycosBeanProvider;
-import ai.greycos.solver.quarkus.bean.GreycosSolverBannerBean;
-import ai.greycos.solver.quarkus.bean.UnavailableGreycosBeanProvider;
-import ai.greycos.solver.quarkus.config.GreycosRuntimeConfig;
+import ai.greycos.solver.quarkus.bean.DefaultGreyCOSBeanProvider;
+import ai.greycos.solver.quarkus.bean.GreyCOSSolverBannerBean;
+import ai.greycos.solver.quarkus.bean.UnavailableGreyCOSBeanProvider;
+import ai.greycos.solver.quarkus.config.GreyCOSRuntimeConfig;
 import ai.greycos.solver.quarkus.deployment.api.ConstraintMetaModelBuildItem;
-import ai.greycos.solver.quarkus.deployment.config.GreycosBuildTimeConfig;
+import ai.greycos.solver.quarkus.deployment.config.GreyCOSBuildTimeConfig;
 import ai.greycos.solver.quarkus.deployment.config.SolverBuildTimeConfig;
 import ai.greycos.solver.quarkus.devui.DevUISolverConfig;
-import ai.greycos.solver.quarkus.devui.GreycosDevUIPropertiesRPCService;
-import ai.greycos.solver.quarkus.devui.GreycosDevUIRecorder;
-import ai.greycos.solver.quarkus.gizmo.GreycosGizmoBeanFactory;
+import ai.greycos.solver.quarkus.devui.GreyCOSDevUIPropertiesRPCService;
+import ai.greycos.solver.quarkus.devui.GreyCOSDevUIRecorder;
+import ai.greycos.solver.quarkus.gizmo.GreyCOSGizmoBeanFactory;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationTarget;
@@ -104,11 +104,11 @@ import io.quarkus.gizmo2.desc.ConstructorDesc;
 import io.quarkus.gizmo2.desc.MethodDesc;
 import io.quarkus.runtime.configuration.ConfigurationException;
 
-class GreycosProcessor {
+class GreyCOSProcessor {
 
-  private static final Logger log = Logger.getLogger(GreycosProcessor.class.getName());
+  private static final Logger log = Logger.getLogger(GreyCOSProcessor.class.getName());
 
-  GreycosBuildTimeConfig greycosBuildTimeConfig;
+  GreyCOSBuildTimeConfig greycosBuildTimeConfig;
 
   @BuildStep
   FeatureBuildItem feature() {
@@ -121,7 +121,7 @@ class GreycosProcessor {
     var solverConfigXML =
         greycosBuildTimeConfig
             .solverConfigXml()
-            .orElse(GreycosBuildTimeConfig.DEFAULT_SOLVER_CONFIG_URL);
+            .orElse(GreyCOSBuildTimeConfig.DEFAULT_SOLVER_CONFIG_URL);
     var solverCongigXmlFileSet = new HashSet<String>();
     solverCongigXmlFileSet.add(solverConfigXML);
     greycosBuildTimeConfig.solver().values().stream()
@@ -141,7 +141,7 @@ class GreycosProcessor {
 
   @BuildStep(onlyIf = NativeBuild.class)
   void makeGizmoBeanFactoryUnremovable(BuildProducer<UnremovableBeanBuildItem> unremovableBeans) {
-    unremovableBeans.produce(UnremovableBeanBuildItem.beanTypes(GreycosGizmoBeanFactory.class));
+    unremovableBeans.produce(UnremovableBeanBuildItem.beanTypes(GreyCOSGizmoBeanFactory.class));
   }
 
   @BuildStep(onlyIfNot = NativeBuild.class)
@@ -181,7 +181,7 @@ class GreycosProcessor {
 
   @BuildStep(onlyIf = IsDevelopment.class)
   public JsonRPCProvidersBuildItem registerRPCService() {
-    return new JsonRPCProvidersBuildItem("Greycos Solver", GreycosDevUIPropertiesRPCService.class);
+    return new JsonRPCProvidersBuildItem("GreyCOS Solver", GreyCOSDevUIPropertiesRPCService.class);
   }
 
   /**
@@ -234,29 +234,29 @@ class GreycosProcessor {
         && indexView.getAnnotations(DotNames.PLANNING_ENTITY).isEmpty()) {
       log.warn(
           """
-                            Skipping Greycos extension because there are no @%s or @%s annotated classes.
+                            Skipping GreyCOS extension because there are no @%s or @%s annotated classes.
                             If your domain classes are located in a dependency of this project, maybe try generating the \
                             Jandex index by using the jandex-maven-plugin in that dependency, or by addingapplication.properties entries \
                             (quarkus.index-dependency.<name>.group-id and quarkus.index-dependency.<name>.artifact-id)."""
               .formatted(
                   PlanningSolution.class.getSimpleName(), PlanningEntity.class.getSimpleName()));
-      additionalBeans.produce(new AdditionalBeanBuildItem(UnavailableGreycosBeanProvider.class));
+      additionalBeans.produce(new AdditionalBeanBuildItem(UnavailableGreyCOSBeanProvider.class));
       solverNames.forEach(solverName -> solverConfigMap.put(solverName, null));
       return new SolverConfigBuildItem(solverConfigMap, null);
     }
 
     // Quarkus extensions must always use getContextClassLoader()
-    // Internally, Greycos defaults the ClassLoader to getContextClassLoader() too
+    // Internally, GreyCOS defaults the ClassLoader to getContextClassLoader() too
     var classLoader = Thread.currentThread().getContextClassLoader();
-    GreycosRecorder.assertNoUnmatchedProperties(
+    GreyCOSRecorder.assertNoUnmatchedProperties(
         solverNames, greycosBuildTimeConfig.solver().keySet());
 
     // Step 1 - create all SolverConfig
     // If the config map is empty, we build the config using the default solver name
     if (solverNames.isEmpty()) {
       solverConfigMap.put(
-          GreycosBuildTimeConfig.DEFAULT_SOLVER_NAME,
-          createSolverConfig(classLoader, GreycosBuildTimeConfig.DEFAULT_SOLVER_NAME));
+          GreyCOSBuildTimeConfig.DEFAULT_SOLVER_NAME,
+          createSolverConfig(classLoader, GreyCOSBuildTimeConfig.DEFAULT_SOLVER_NAME));
     } else {
       // One config per solver mapped name
       solverNames.forEach(
@@ -316,12 +316,12 @@ class GreycosProcessor {
             transformers,
             reflectiveClassSet);
 
-    additionalBeans.produce(new AdditionalBeanBuildItem(GreycosSolverBannerBean.class));
+    additionalBeans.produce(new AdditionalBeanBuildItem(GreyCOSSolverBannerBean.class));
     if (solverConfigMap.size() <= 1) {
       // Only registered for the default solver
-      additionalBeans.produce(new AdditionalBeanBuildItem(DefaultGreycosBeanProvider.class));
+      additionalBeans.produce(new AdditionalBeanBuildItem(DefaultGreyCOSBeanProvider.class));
     }
-    unremovableBeans.produce(UnremovableBeanBuildItem.beanTypes(GreycosRuntimeConfig.class));
+    unremovableBeans.produce(UnremovableBeanBuildItem.beanTypes(GreyCOSRuntimeConfig.class));
     return new SolverConfigBuildItem(solverConfigMap, generatedGizmoClasses);
   }
 
@@ -693,7 +693,7 @@ class GreycosProcessor {
         String message =
             "Invalid quarkus.greycos.solverConfigXML property (%s): that classpath resource does not exist."
                 .formatted(solverUrl);
-        if (!solverName.equals(GreycosBuildTimeConfig.DEFAULT_SOLVER_NAME)) {
+        if (!solverName.equals(GreyCOSBuildTimeConfig.DEFAULT_SOLVER_NAME)) {
           message =
               "Invalid quarkus.greycos.solver.\"%s\".solverConfigXML property (%s): that classpath resource does not exist."
                   .formatted(solverName, solverUrl);
@@ -701,10 +701,10 @@ class GreycosProcessor {
         throw new ConfigurationException(message);
       }
       solverConfig = SolverConfig.createFromXmlResource(solverUrl);
-    } else if (classLoader.getResource(GreycosBuildTimeConfig.DEFAULT_SOLVER_CONFIG_URL) != null) {
+    } else if (classLoader.getResource(GreyCOSBuildTimeConfig.DEFAULT_SOLVER_CONFIG_URL) != null) {
       // 3 - Default file URL
       solverConfig =
-          SolverConfig.createFromXmlResource(GreycosBuildTimeConfig.DEFAULT_SOLVER_CONFIG_URL);
+          SolverConfig.createFromXmlResource(GreyCOSBuildTimeConfig.DEFAULT_SOLVER_CONFIG_URL);
     } else {
       solverConfig = new SolverConfig();
     }
@@ -774,7 +774,7 @@ class GreycosProcessor {
   @BuildStep
   @Record(RUNTIME_INIT)
   void recordAndRegisterRuntimeBeans(
-      GreycosRecorder recorder,
+      GreyCOSRecorder recorder,
       RecorderContext recorderContext,
       BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer,
       SolverConfigBuildItem solverConfigBuildItem) {
@@ -793,7 +793,7 @@ class GreycosProcessor {
         .forEach(
             (key, value) -> {
               if (solverConfigBuildItem.isDefaultSolverConfig(key)) {
-                // The two configuration resources are required for DefaultGreycosBeanProvider
+                // The two configuration resources are required for DefaultGreyCOSBeanProvider
                 // to produce all available managed beans for the default solver.
                 syntheticBeanBuildItemBuildProducer.produce(
                     SyntheticBeanBuildItem.configure(SolverConfig.class)
@@ -824,8 +824,8 @@ class GreycosProcessor {
                         .defaultBean()
                         .done());
               }
-              if (!GreycosBuildTimeConfig.DEFAULT_SOLVER_NAME.equals(key)) {
-                // The default SolverManager instance is generated by DefaultGreycosBeanProvider
+              if (!GreyCOSBuildTimeConfig.DEFAULT_SOLVER_NAME.equals(key)) {
+                // The default SolverManager instance is generated by DefaultGreyCOSBeanProvider
                 syntheticBeanBuildItemBuildProducer.produce(
                     // We generate all required resources only to create a SolverManager and set it
                     // as managed bean
@@ -861,7 +861,7 @@ class GreycosProcessor {
   @BuildStep(onlyIf = IsDevelopment.class)
   @Record(RUNTIME_INIT)
   public void recordAndRegisterDevUIBean(
-      GreycosDevUIRecorder devUIRecorder,
+      GreyCOSDevUIRecorder devUIRecorder,
       RecorderContext recorderContext,
       SolverConfigBuildItem solverConfigBuildItem,
       BuildProducer<SyntheticBeanBuildItem> syntheticBeans) {
@@ -1407,7 +1407,7 @@ class GreycosProcessor {
               transformers);
         }
       }
-      // Using REFLECTION domain access type so Greycos doesn't try to generate GIZMO code
+      // Using REFLECTION domain access type so GreyCOS doesn't try to generate GIZMO code
       solverConfigMap
           .values()
           .forEach(

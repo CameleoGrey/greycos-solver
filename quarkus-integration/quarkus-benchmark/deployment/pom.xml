@@ -9,7 +9,7 @@
   </parent>
 
   <artifactId>greycos-solver-quarkus-benchmark-deployment</artifactId>
-  <name>Greycos Solver Quarkus Benchmark - Deployment</name>
+  <name>GreyCOS Solver Quarkus Benchmark - Deployment</name>
   <description>Quarkus deployment module for greycos-solver-quarkus-benchmark.</description>
   <url>https://solver.greycos.ai</url>
 

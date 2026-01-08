@@ -4,7 +4,7 @@ import java.util.function.Supplier;
 
 import jakarta.enterprise.inject.spi.CDI;
 
-import ai.greycos.solver.quarkus.gizmo.GreycosGizmoBeanFactory;
+import ai.greycos.solver.quarkus.gizmo.GreyCOSGizmoBeanFactory;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -19,7 +19,7 @@ public final class Substitute_ConfigUtils {
         CDI.current()
             .getBeanManager()
             .createInstance()
-            .select(GreycosGizmoBeanFactory.class)
+            .select(GreyCOSGizmoBeanFactory.class)
             .get()
             .newInstance(clazz);
     if (out != null) {

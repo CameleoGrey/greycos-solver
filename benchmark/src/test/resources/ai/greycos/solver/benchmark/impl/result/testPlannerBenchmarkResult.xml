@@ -3,7 +3,7 @@
   <name>2020-07-13_125809</name>
   <aggregation>false</aggregation>
   <availableProcessors>4</availableProcessors>
-  <loggingLevelGreycosSolverCore>DEBUG</loggingLevelGreycosSolverCore>
+  <loggingLevelGreyCOSSolverCore>DEBUG</loggingLevelGreyCOSSolverCore>
   <maxMemory>5523898368</maxMemory>
   <greycosSolverVersion>Unjarred development snapshot</greycosSolverVersion>
   <javaVersion>Java 1.8.0_252 (Oracle Corporation)</javaVersion>

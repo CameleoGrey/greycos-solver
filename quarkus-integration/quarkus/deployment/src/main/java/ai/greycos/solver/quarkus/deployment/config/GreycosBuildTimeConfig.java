@@ -10,10 +10,10 @@ import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithUnnamedKey;
 
-/** During build time, this is translated into Greycos's Config classes. */
+/** During build time, this is translated into GreyCOS's Config classes. */
 @ConfigMapping(prefix = "quarkus.greycos")
 @ConfigRoot(phase = ConfigPhase.BUILD_TIME)
-public interface GreycosBuildTimeConfig {
+public interface GreyCOSBuildTimeConfig {
 
   String DEFAULT_SOLVER_CONFIG_URL = "solverConfig.xml";
   String DEFAULT_SOLVER_NAME = "default";

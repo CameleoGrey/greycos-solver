@@ -28,7 +28,7 @@ import ai.greycos.solver.benchmark.config.report.BenchmarkReportConfig;
 import ai.greycos.solver.benchmark.impl.io.PlannerBenchmarkConfigIO;
 import ai.greycos.solver.benchmark.impl.report.BenchmarkReport;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.core.impl.io.jaxb.GreycosXmlSerializationException;
+import ai.greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -131,7 +131,7 @@ public class PlannerBenchmarkConfig {
         throw new IllegalArgumentException(errorMessage);
       }
       return createFromXmlInputStream(in, classLoader);
-    } catch (GreycosXmlSerializationException e) {
+    } catch (GreyCOSXmlSerializationException e) {
       throw new IllegalArgumentException(
           "Unmarshalling of benchmarkConfigResource (" + benchmarkConfigResource + ") fails.", e);
     } catch (IOException e) {
@@ -161,7 +161,7 @@ public class PlannerBenchmarkConfig {
       @NonNull File benchmarkConfigFile, @Nullable ClassLoader classLoader) {
     try (InputStream in = new FileInputStream(benchmarkConfigFile)) {
       return createFromXmlInputStream(in, classLoader);
-    } catch (GreycosXmlSerializationException e) {
+    } catch (GreyCOSXmlSerializationException e) {
       throw new IllegalArgumentException(
           "Unmarshalling the benchmarkConfigFile (" + benchmarkConfigFile + ") fails.", e);
     } catch (FileNotFoundException e) {

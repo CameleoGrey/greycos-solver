@@ -1,5 +1,5 @@
 /**
- * Island model implementation for Greycos.
+ * Island model implementation for GreyCOS.
  *
  * <p>The island model is a parallel evolutionary computation paradigm where multiple independent
  * "islands" (agents) run separate searches and periodically exchange their best solutions
@@ -27,7 +27,7 @@
  * <ul>
  *   <li><b>Opt-in Feature:</b> Island model is disabled by default to maintain backward
  *       compatibility
- *   <li><b>Phase Integration:</b> Island model is implemented as a phase type, preserving Greycos's
+ *   <li><b>Phase Integration:</b> Island model is implemented as a phase type, preserving GreyCOS's
  *       phase architecture
  *   <li><b>Ring Topology:</b> Agents communicate in a ring, each sending to the next agent
  *   <li><b>Periodic Migration:</b> Best solutions are exchanged between islands at configurable

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorGizmoKitchenSinkAutoDiscoverFieldTest {
+class GreyCOSProcessorGizmoKitchenSinkAutoDiscoverFieldTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =

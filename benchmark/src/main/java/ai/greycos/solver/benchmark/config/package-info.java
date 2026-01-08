@@ -1,5 +1,5 @@
 /**
- * Classes which represent the XML Benchmark configuration of Greycos Benchmark.
+ * Classes which represent the XML Benchmark configuration of GreyCOS Benchmark.
  *
  * <p>The XML Benchmark configuration is backwards compatible for all elements, except for elements
  * that require the use of non-public API classes.

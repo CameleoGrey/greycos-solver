@@ -19,7 +19,7 @@ import ai.greycos.solver.core.config.solver.termination.DiminishedReturnsTermina
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.domain.common.accessor.MemberAccessor;
 import ai.greycos.solver.quarkus.config.DiminishedReturnsRuntimeConfig;
-import ai.greycos.solver.quarkus.config.GreycosRuntimeConfig;
+import ai.greycos.solver.quarkus.config.GreyCOSRuntimeConfig;
 import ai.greycos.solver.quarkus.config.SolverRuntimeConfig;
 
 import org.jspecify.annotations.Nullable;
@@ -28,17 +28,17 @@ import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.annotations.Recorder;
 
 @Recorder
-public class GreycosRecorder {
-  final RuntimeValue<GreycosRuntimeConfig> greycosRuntimeConfig;
+public class GreyCOSRecorder {
+  final RuntimeValue<GreyCOSRuntimeConfig> greycosRuntimeConfig;
 
-  public GreycosRecorder(final RuntimeValue<GreycosRuntimeConfig> greycosRuntimeConfig) {
+  public GreyCOSRecorder(final RuntimeValue<GreyCOSRuntimeConfig> greycosRuntimeConfig) {
     this.greycosRuntimeConfig = greycosRuntimeConfig;
   }
 
   public static void assertNoUnmatchedProperties(
       Set<String> expectedNames, Set<String> actualNames) {
     var allExpectedNames = new HashSet<>(expectedNames);
-    allExpectedNames.add(GreycosRuntimeConfig.DEFAULT_SOLVER_NAME);
+    allExpectedNames.add(GreyCOSRuntimeConfig.DEFAULT_SOLVER_NAME);
 
     if (!allExpectedNames.containsAll(actualNames)) {
       var expectedNamesSorted = expectedNames.stream().sorted().toList();

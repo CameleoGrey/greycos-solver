@@ -10,8 +10,8 @@
   </parent>
 
   <artifactId>greycos-solver-quarkus-reflection-integration-test</artifactId>
-  <name>Greycos Solver Quarkus - Reflection Integration tests</name>
-  <description>Quarkus reflection integration tests for Greycos</description>
+  <name>GreyCOS Solver Quarkus - Reflection Integration tests</name>
+  <description>Quarkus reflection integration tests for GreyCOS</description>
   <url>https://solver.greycos.ai</url>
 
   <properties>

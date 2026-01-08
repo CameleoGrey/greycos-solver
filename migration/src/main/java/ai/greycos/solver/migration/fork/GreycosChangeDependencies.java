@@ -12,7 +12,7 @@ import org.openrewrite.gradle.ChangeDependencyGroupId;
 import org.openrewrite.maven.ChangeDependencyGroupIdAndArtifactId;
 import org.openrewrite.maven.ChangeManagedDependencyGroupIdAndArtifactId;
 
-public final class GreycosChangeDependencies extends AbstractRecipe {
+public final class GreyCOSChangeDependencies extends AbstractRecipe {
 
   private static final String[] ARTIFACT_SUFFIXES =
       new String[] {
@@ -66,7 +66,7 @@ public final class GreycosChangeDependencies extends AbstractRecipe {
 
   private final List<Recipe> recipeList = new ArrayList<>();
 
-  public GreycosChangeDependencies() {
+  public GreyCOSChangeDependencies() {
     String oldGroupId = "org.optaplanner";
     String newGroupId = "ai.greycos.solver";
     for (String artifactSuffix : ARTIFACT_SUFFIXES) {
@@ -103,7 +103,7 @@ public final class GreycosChangeDependencies extends AbstractRecipe {
 
   @Override
   public String getDisplayName() {
-    return "Migrate all Maven and Gradle groupIds and artifactIds from OptaPlanner to Greycos";
+    return "Migrate all Maven and Gradle groupIds and artifactIds from OptaPlanner to GreyCOS";
   }
 
   @Override
@@ -118,7 +118,7 @@ public final class GreycosChangeDependencies extends AbstractRecipe {
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof GreycosChangeDependencies other && recipeList.equals(other.recipeList);
+    return o instanceof GreyCOSChangeDependencies other && recipeList.equals(other.recipeList);
   }
 
   @Override

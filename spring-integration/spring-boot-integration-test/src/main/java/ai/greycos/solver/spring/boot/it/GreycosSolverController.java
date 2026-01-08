@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/integration-test")
-public class GreycosSolverController {
+public class GreyCOSSolverController {
   private final SolverFactory<IntegrationTestSolution> solverFactory;
 
-  public GreycosSolverController(SolverFactory<IntegrationTestSolution> solverFactory) {
+  public GreyCOSSolverController(SolverFactory<IntegrationTestSolution> solverFactory) {
     this.solverFactory = solverFactory;
   }
 

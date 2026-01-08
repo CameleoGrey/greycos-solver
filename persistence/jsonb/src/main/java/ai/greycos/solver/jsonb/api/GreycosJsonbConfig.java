@@ -19,7 +19,7 @@ import ai.greycos.solver.jsonb.api.score.buildin.simplebigdecimal.SimpleBigDecim
 import ai.greycos.solver.jsonb.api.score.buildin.simplelong.SimpleLongScoreJsonbAdapter;
 
 /** This class adds all JSON-B adapters. */
-public class GreycosJsonbConfig {
+public class GreyCOSJsonbConfig {
 
   /**
    * @return never null, use it to create a {@link Jsonb} instance with {@link

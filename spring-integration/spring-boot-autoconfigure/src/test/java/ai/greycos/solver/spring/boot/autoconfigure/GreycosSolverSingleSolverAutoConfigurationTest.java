@@ -23,7 +23,7 @@ import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChaine
 import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringEntity;
 import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringObject;
 import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringSolution;
-import ai.greycos.solver.spring.boot.autoconfigure.config.GreycosProperties;
+import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.declarative.SupplierVariableSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.declarative.domain.TestdataSpringSupplierVariableEntity;
 import ai.greycos.solver.spring.boot.autoconfigure.declarative.domain.TestdataSpringSupplierVariableSolution;
@@ -45,7 +45,7 @@ import org.springframework.test.context.TestExecutionListeners;
 
 @TestExecutionListeners
 @Execution(ExecutionMode.CONCURRENT)
-class GreycosSolverSingleSolverAutoConfigurationTest {
+class GreyCOSSolverSingleSolverAutoConfigurationTest {
 
   private final ApplicationContextRunner contextRunner;
   private final ApplicationContextRunner chainedContextRunner;
@@ -55,50 +55,50 @@ class GreycosSolverSingleSolverAutoConfigurationTest {
   private final ApplicationContextRunner benchmarkContextRunner;
   private final FilteredClassLoader allDefaultsFilteredClassLoader;
 
-  public GreycosSolverSingleSolverAutoConfigurationTest() {
+  public GreyCOSSolverSingleSolverAutoConfigurationTest() {
     contextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(NormalSpringTestConfiguration.class);
     chainedContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(ChainedSpringTestConfiguration.class);
     supplierVariableContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(SupplierVariableSpringTestConfiguration.class);
     missingSupplierVariableContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(MissingSupplierVariableSpringTestConfiguration.class);
     multimoduleRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(MultiModuleSpringTestConfiguration.class);
     benchmarkContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class,
-                    GreycosSolverBeanFactory.class,
-                    GreycosBenchmarkAutoConfiguration.class))
+                    GreyCOSSolverAutoConfiguration.class,
+                    GreyCOSSolverBeanFactory.class,
+                    GreyCOSBenchmarkAutoConfiguration.class))
             .withUserConfiguration(NormalSpringTestConfiguration.class);
     allDefaultsFilteredClassLoader =
         new FilteredClassLoader(
             FilteredClassLoader.PackageFilter.of("ai.greycos.solver.test"),
             FilteredClassLoader.ClassPathResourceFilter.of(
-                new ClassPathResource(GreycosProperties.DEFAULT_SOLVER_CONFIG_URL)));
+                new ClassPathResource(GreyCOSProperties.DEFAULT_SOLVER_CONFIG_URL)));
   }
 
   @Test

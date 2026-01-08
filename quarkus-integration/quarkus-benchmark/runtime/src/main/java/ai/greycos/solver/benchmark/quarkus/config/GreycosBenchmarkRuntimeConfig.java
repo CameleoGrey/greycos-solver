@@ -10,7 +10,7 @@ import io.smallrye.config.WithName;
 
 @ConfigMapping(prefix = "quarkus.greycos.benchmark")
 @ConfigRoot(phase = ConfigPhase.RUN_TIME)
-public interface GreycosBenchmarkRuntimeConfig {
+public interface GreyCOSBenchmarkRuntimeConfig {
   String DEFAULT_BENCHMARK_RESULT_DIRECTORY = "target/benchmarks";
 
   /**

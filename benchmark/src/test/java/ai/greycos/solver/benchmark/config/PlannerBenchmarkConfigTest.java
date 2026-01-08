@@ -12,7 +12,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 
 import ai.greycos.solver.benchmark.impl.io.PlannerBenchmarkConfigIO;
-import ai.greycos.solver.core.impl.io.jaxb.GreycosXmlSerializationException;
+import ai.greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 import ai.greycos.solver.core.testdomain.TestdataSolution;
 import ai.greycos.solver.jackson.impl.domain.solution.JacksonSolutionFileIO;
 import ai.greycos.solver.persistence.common.api.domain.solution.RigidTestdataSolutionFileIO;
@@ -97,7 +97,7 @@ class PlannerBenchmarkConfigTest {
             + "</plannerBenchmark>\n";
 
     StringReader stringReader = new StringReader(benchmarkConfigXml);
-    assertThatExceptionOfType(GreycosXmlSerializationException.class)
+    assertThatExceptionOfType(GreyCOSXmlSerializationException.class)
         .isThrownBy(() -> xmlIO.read(stringReader))
         .withRootCauseExactlyInstanceOf(SAXParseException.class)
         .withMessageContaining("solutionKlazz");

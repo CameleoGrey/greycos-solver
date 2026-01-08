@@ -9,7 +9,7 @@ import java.util.function.Function;
 import ai.greycos.solver.core.api.score.stream.ConstraintCollectors;
 import ai.greycos.solver.core.api.score.stream.common.LoadBalance;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
-import ai.greycos.solver.jackson.api.GreycosJacksonModule;
+import ai.greycos.solver.jackson.api.GreyCOSJacksonModule;
 
 import org.junit.jupiter.api.Test;
 
@@ -49,7 +49,7 @@ class LoadBalanceRoundTripTest {
         JsonMapper.builder()
             .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
             .serializationInclusion(JsonInclude.Include.NON_NULL)
-            .addModule(GreycosJacksonModule.createModule())
+            .addModule(GreyCOSJacksonModule.createModule())
             .build();
 
     assertRoundTrip(

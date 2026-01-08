@@ -4,8 +4,8 @@
 # @triceo is required to review all changes before merge, but may delegate deeper review to secondary owners.
 #
 # Rationale for assignments:
-# - @triceo is the main code owner of Greycos Solver.
-# - @TomCools (Greycos DevRel) is the secondary code owner of user-facing documentation.
+# - @triceo is the main code owner of GreyCOS Solver.
+# - @TomCools (GreyCOS DevRel) is the secondary code owner of user-facing documentation.
 # - @zepfred and @Christopher-Chianelli are secondary code owners for specific parts of the codebase
 #   with which they interacted frequently, or wrote entirely.
 #

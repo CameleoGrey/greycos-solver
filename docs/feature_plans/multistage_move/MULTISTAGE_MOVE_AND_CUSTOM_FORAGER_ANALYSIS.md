@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Both MULTISTAGE_MOVE and Custom Forager are **enterprise-exclusive features** in Greycos Solver. They are gated behind the enterprise licensing system and throw `UnsupportedOperationException` in the community edition. These features provide advanced move selection and move harvesting capabilities for optimization solving.
+Both MULTISTAGE_MOVE and Custom Forager are **enterprise-exclusive features** in GreyCOS Solver. They are gated behind the enterprise licensing system and throw `UnsupportedOperationException` in the community edition. These features provide advanced move selection and move harvesting capabilities for optimization solving.
 
 ---
 
@@ -10,7 +10,7 @@ Both MULTISTAGE_MOVE and Custom Forager are **enterprise-exclusive features** in
 
 ### 1.1 Definition
 
-**MULTISTAGE_MOVE** is a `Feature` enum value defined in [`GreycosSolverEnterpriseService.java:225-227`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java:225-227):
+**MULTISTAGE_MOVE** is a `Feature` enum value defined in [`GreyCOSSolverEnterpriseService.java:225-227`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java:225-227):
 
 ```java
 MULTISTAGE_MOVE(
@@ -45,21 +45,21 @@ MULTISTAGE_MOVE(
 ```java
 else if (moveSelectorConfig instanceof MultistageMoveSelectorConfig multistageMoveSelectorConfig) {
   var enterpriseService =
-      GreycosSolverEnterpriseService.loadOrFail(
-          GreycosSolverEnterpriseService.Feature.MULTISTAGE_MOVE);
+      GreyCOSSolverEnterpriseService.loadOrFail(
+          GreyCOSSolverEnterpriseService.Feature.MULTISTAGE_MOVE);
   return enterpriseService.buildBasicMultistageMoveSelectorFactory(
       multistageMoveSelectorConfig);
 }
 else if (moveSelectorConfig instanceof ListMultistageMoveSelectorConfig listMultistageMoveSelectorConfig) {
   var enterpriseService =
-      GreycosSolverEnterpriseService.loadOrFail(
-          GreycosSolverEnterpriseService.Feature.MULTISTAGE_MOVE);
+      GreyCOSSolverEnterpriseService.loadOrFail(
+          GreyCOSSolverEnterpriseService.Feature.MULTISTAGE_MOVE);
   return enterpriseService.buildListMultistageMoveSelectorFactory(
       listMultistageMoveSelectorConfig);
 }
 ```
 
-**Enterprise Service Methods** in [`GreycosSolverEnterpriseService.java:209-215`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java:209-215):
+**Enterprise Service Methods** in [`GreyCOSSolverEnterpriseService.java:209-215`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java:209-215):
 
 ```java
 <Solution_>
@@ -72,7 +72,7 @@ else if (moveSelectorConfig instanceof ListMultistageMoveSelectorConfig listMult
             ListMultistageMoveSelectorConfig moveSelectorConfig);
 ```
 
-**Community Edition Fallback** in [`DefaultGreycosSolverEnterpriseService.java:287-299`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreycosSolverEnterpriseService.java:287-299):
+**Community Edition Fallback** in [`DefaultGreyCOSSolverEnterpriseService.java:287-299`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreyCOSSolverEnterpriseService.java:287-299):
 
 ```java
 @Override
@@ -93,7 +93,7 @@ public <Solution_>
 
 ### 1.4 Dependencies and Requirements
 
-- **Enterprise License**: Required (checked via [`GreycosSolverEnterpriseService.loadOrFail()`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java:85-112))
+- **Enterprise License**: Required (checked via [`GreyCOSSolverEnterpriseService.loadOrFail()`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java:85-112))
 - **Custom Stage Provider**: Must implement a stage provider class that defines move selection stages
 - **Solver Configuration**: Must be configured in XML or via programmatic configuration
 
@@ -148,7 +148,7 @@ public interface ConstructionHeuristicForager<Solution_>
 
 **Default Implementation**: [`DefaultConstructionHeuristicForager.java:8-108`](../../core/src/main/java/ai/greycos/solver/core/impl/constructionheuristic/decider/forager/DefaultConstructionHeuristicForager.java:8-108)
 
-**Enterprise Integration** in [`GreycosSolverEnterpriseService.buildConstructionHeuristic()`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java:133-136):
+**Enterprise Integration** in [`GreyCOSSolverEnterpriseService.buildConstructionHeuristic()`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java:133-136):
 
 ```java
 <Solution_> ConstructionHeuristicDecider<Solution_> buildConstructionHeuristic(
@@ -157,7 +157,7 @@ public interface ConstructionHeuristicForager<Solution_>
     HeuristicConfigPolicy<Solution_> configPolicy);
 ```
 
-**Community Edition Fallback** in [`DefaultGreycosSolverEnterpriseService.buildConstructionHeuristic()`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreycosSolverEnterpriseService.java:81-87):
+**Community Edition Fallback** in [`DefaultGreyCOSSolverEnterpriseService.buildConstructionHeuristic()`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreyCOSSolverEnterpriseService.java:81-87):
 
 ```java
 @Override
@@ -180,7 +180,7 @@ The community edition uses the default forager implementation without custom for
 
 **Default Implementation**: [`AcceptedLocalSearchForager.java:18-`](../../core/src/main/java/ai/greycos/solver/core/impl/localsearch/decider/forager/AcceptedLocalSearchForager.java:18-)
 
-**Enterprise Integration** in [`GreycosSolverEnterpriseService.buildLocalSearch()`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java:138-145):
+**Enterprise Integration** in [`GreyCOSSolverEnterpriseService.buildLocalSearch()`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java:138-145):
 
 ```java
 <Solution_> LocalSearchDecider<Solution_> buildLocalSearch(
@@ -193,7 +193,7 @@ The community edition uses the default forager implementation without custom for
     HeuristicConfigPolicy<Solution_> configPolicy);
 ```
 
-**Community Edition Fallback** in [`DefaultGreycosSolverEnterpriseService.buildLocalSearch()`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreycosSolverEnterpriseService.java:90-100):
+**Community Edition Fallback** in [`DefaultGreyCOSSolverEnterpriseService.buildLocalSearch()`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreyCOSSolverEnterpriseService.java:90-100):
 
 ```java
 @Override
@@ -238,7 +238,7 @@ The community edition uses the default forager implementation without custom for
 ### 3.2 Shared Dependencies
 
 Both features share:
-- **Enterprise License**: Both require [`GreycosSolverEnterpriseService.loadOrFail()`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java:85-112) to activate
+- **Enterprise License**: Both require [`GreyCOSSolverEnterpriseService.loadOrFail()`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java:85-112) to activate
 - **Move Selector Factory**: Both integrate through the move selector factory pattern
 - **Phase Configuration**: Both are configured at the phase level (construction heuristic or local search)
 - **Decider Pattern**: Both integrate with the decider architecture for move evaluation
@@ -269,10 +269,10 @@ Phase Execution (with enterprise features if licensed)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| [`GreycosSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java) | 225-227 | Feature enum definition |
-| [`GreycosSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java) | 209-215 | Enterprise service methods |
+| [`GreyCOSSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java) | 225-227 | Feature enum definition |
+| [`GreyCOSSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java) | 209-215 | Enterprise service methods |
 | [`MoveSelectorFactory.java`](../../core/src/main/java/ai/greycos/solver/core/impl/heuristic/selector/move/MoveSelectorFactory.java) | 104-116 | Invocation and factory building |
-| [`DefaultGreycosSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreycosSolverEnterpriseService.java) | 287-299 | Community edition fallback |
+| [`DefaultGreyCOSSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreyCOSSolverEnterpriseService.java) | 287-299 | Community edition fallback |
 | [`MultistageMoveSelectorConfig.java`](../../core/src/main/java/ai/greycos/solver/core/config/heuristic/selector/move/generic/MultistageMoveSelectorConfig.java) | 1-101 | Configuration class for basic variables |
 | [`ListMultistageMoveSelectorConfig.java`](../../core/src/main/java/ai/greycos/solver/core/config/heuristic/selector/move/generic/list/ListMultistageMoveSelectorConfig.java) | 1-69 | Configuration class for list variables |
 
@@ -280,10 +280,10 @@ Phase Execution (with enterprise features if licensed)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| [`DefaultGreycosSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreycosSolverEnterpriseService.java) | 81-87 | Construction heuristic custom forager fallback |
-| [`DefaultGreycosSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreycosSolverEnterpriseService.java) | 90-100 | Local search custom forager fallback |
-| [`GreycosSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java) | 133-136 | Construction heuristic enterprise method |
-| [`GreycosSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java) | 138-145 | Local search enterprise method |
+| [`DefaultGreyCOSSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreyCOSSolverEnterpriseService.java) | 81-87 | Construction heuristic custom forager fallback |
+| [`DefaultGreyCOSSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreyCOSSolverEnterpriseService.java) | 90-100 | Local search custom forager fallback |
+| [`GreyCOSSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java) | 133-136 | Construction heuristic enterprise method |
+| [`GreyCOSSolverEnterpriseService.java`](../../core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java) | 138-145 | Local search enterprise method |
 | [`ConstructionHeuristicForagerConfig.java`](../../core/src/main/java/ai/greycos/solver/core/config/constructionheuristic/decider/forager/ConstructionHeuristicForagerConfig.java) | 1-54 | CH forager configuration |
 | [`LocalSearchForagerConfig.java`](../../core/src/main/java/ai/greycos/solver/core/config/localsearch/decider/forager/LocalSearchForagerConfig.java) | 1-106 | LS forager configuration |
 | [`ConstructionHeuristicForager.java`](../../core/src/main/java/ai/greycos/solver/core/impl/constructionheuristic/decider/forager/ConstructionHeuristicForager.java) | 10-19 | CH forager interface |
@@ -297,7 +297,7 @@ Phase Execution (with enterprise features if licensed)
 
 ## 5. Key Takeaways
 
-1. **Both are Enterprise-Only**: MULTISTAGE_MOVE and Custom Forager require a valid Greycos Enterprise license
+1. **Both are Enterprise-Only**: MULTISTAGE_MOVE and Custom Forager require a valid GreyCOS Enterprise license
 2. **Independent Features**: They serve different purposes and can be used independently
 3. **Community Fallback**: The community edition throws `UnsupportedOperationException` when these features are requested
 4. **Configuration-Based**: Both are configured through XML or programmatic configuration

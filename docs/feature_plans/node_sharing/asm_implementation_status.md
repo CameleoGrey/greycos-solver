@@ -52,9 +52,9 @@ The configuration infrastructure is in place:
 
 The enterprise service provides access to the node sharer:
 
-- **Implementation**: [`DefaultGreycosSolverEnterpriseService.createNodeSharer()`](core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreycosSolverEnterpriseService.java:75-79)
+- **Implementation**: [`DefaultGreyCOSSolverEnterpriseService.createNodeSharer()`](core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreyCOSSolverEnterpriseService.java:75-79)
 - **Returns**: `DefaultConstraintProviderNodeSharer` instance
-- **Access**: Available through `GreycosSolverEnterpriseService` interface
+- **Access**: Available through `GreyCOSSolverEnterpriseService` interface
 
 ### 4. Test Coverage
 
@@ -88,7 +88,7 @@ public List<Constraint_> buildConstraints(ConstraintProvider constraintProvider)
 
 **What's Missing**:
 - No check for `constraintStreamAutomaticNodeSharing` configuration flag
-- No access to `GreycosSolverEnterpriseService` to get `ConstraintProviderNodeSharer`
+- No access to `GreyCOSSolverEnterpriseService` to get `ConstraintProviderNodeSharer`
 - No transformation of ConstraintProvider class before instantiation
 - No logic to use transformed class instead of original class
 
@@ -98,7 +98,7 @@ public List<Constraint_> buildConstraints(ConstraintProvider constraintProvider)
 public List<Constraint_> buildConstraints(
     ConstraintProvider constraintProvider,
     Boolean constraintStreamAutomaticNodeSharing,
-    GreycosSolverEnterpriseService enterpriseService) {
+    GreyCOSSolverEnterpriseService enterpriseService) {
     
     Class<? extends ConstraintProvider> providerClass = constraintProvider.getClass();
     
@@ -129,7 +129,7 @@ public BavetConstraintSessionFactory(
 ```
 
 **What's Missing**:
-- No parameter for `GreycosSolverEnterpriseService` or `ConstraintProviderNodeSharer`
+- No parameter for `GreyCOSSolverEnterpriseService` or `ConstraintProviderNodeSharer`
 - No parameter for `constraintStreamAutomaticNodeSharing` configuration flag
 - No access to the original ConstraintProvider class before instantiation
 - No transformation logic in constructor or [`buildSession()`](core/src/main/java/ai/greycos/solver/core/impl/score/stream/bavet/BavetConstraintSessionFactory.java:51-133) method
@@ -200,7 +200,7 @@ The following integration points from the reimplementation plan are not implemen
 The `BavetConstraintSessionFactory` lacks access to:
 
 - The `ScoreDirectorFactoryConfig` instance to read `constraintStreamAutomaticNodeSharing`
-- The `GreycosSolverEnterpriseService` instance to get the node sharer
+- The `GreyCOSSolverEnterpriseService` instance to get the node sharer
 - The ConstraintProvider class before it's instantiated by `InnerConstraintFactory`
 
 **Impact**: Even if we wanted to add transformation logic, the factory doesn't have the necessary dependencies.
@@ -239,7 +239,7 @@ if (constraintStreamAutomaticNodeSharing) {
 
 **Tasks**:
 1. Add constructor parameters:
-   - `GreycosSolverEnterpriseService enterpriseService`
+   - `GreyCOSSolverEnterpriseService enterpriseService`
    - `Boolean constraintStreamAutomaticNodeSharing`
    - `Class<? extends ConstraintProvider> constraintProviderClass`
 
@@ -287,7 +287,7 @@ if (constraintStreamAutomaticNodeSharing) {
 
 **Tasks**:
 1. Pass `constraintStreamAutomaticNodeSharing` from configuration to factories
-2. Pass `GreycosSolverEnterpriseService` instance to factories
+2. Pass `GreyCOSSolverEnterpriseService` instance to factories
 3. Pass original ConstraintProvider class to `BavetConstraintSessionFactory`
 4. Ensure transformation happens before ConstraintMetaModel is built
 
@@ -368,7 +368,7 @@ The reimplementation plan ([`reimplementation_plan_ns.md`](text_utils/features/n
    - Need careful testing of configuration inheritance
 
 3. **Enterprise Service Dependency**
-   - Community edition uses `DefaultGreycosSolverEnterpriseService`
+   - Community edition uses `DefaultGreyCOSSolverEnterpriseService`
    - Real enterprise edition may have different implementation
    - Need to ensure both work correctly
 
@@ -464,7 +464,7 @@ However, the **integration layer is completely absent**. The transformation pipe
 - [`InnerConstraintFactory.java`](core/src/main/java/ai/greycos/solver/core/impl/score/stream/common/InnerConstraintFactory.java) - Needs to use transformed class
 
 ### Enterprise Service (Complete)
-- [`DefaultGreycosSolverEnterpriseService.java`](core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreycosSolverEnterpriseService.java) - Provides node sharer
+- [`DefaultGreyCOSSolverEnterpriseService.java`](core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreyCOSSolverEnterpriseService.java) - Provides node sharer
 
 ### Tests (Partial)
 - [`LambdaKeyTest.java`](core/src/test/java/ai/greycos/solver/core/impl/nodesharing/LambdaKeyTest.java)

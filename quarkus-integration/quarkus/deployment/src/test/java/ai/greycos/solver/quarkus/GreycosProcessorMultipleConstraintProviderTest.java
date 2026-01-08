@@ -14,7 +14,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorMultipleConstraintProviderTest {
+class GreyCOSProcessorMultipleConstraintProviderTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =

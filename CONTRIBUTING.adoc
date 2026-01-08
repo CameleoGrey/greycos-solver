@@ -1,4 +1,4 @@
-== Contributing to Greycos Solver
+== Contributing to GreyCOS Solver
 
 This is an open source project, and you are more than welcome to contribute!
 
@@ -16,7 +16,7 @@ The CI checks against your PR to ensure that it doesn't introduce errors.
 If the CI identifies a potential problem, our friendly PR maintainers will help you resolve it.
 
 
-=== Build the Greycos Solver project
+=== Build the GreyCOS Solver project
 
 Use one of the following ways to build this project:
 
@@ -35,7 +35,7 @@ Use one of the following ways to build this project:
 and configure a _Run/Debug configuration_ like this:
 +
 * Type: Application
-* Main class: `ai.greycos.solver.examples.app.GreycosExamplesApp`
+* Main class: `ai.greycos.solver.examples.app.GreyCOSExamplesApp`
 * VM options: `-Xmx2G` (memory only needed when using the big datasets in the examples)
 * Program arguments: (none)
 * Working directory: `$MODULE_DIR$` (must resolve to `examples` directory)
@@ -78,7 +78,7 @@ This convention is enforced by CI checks on pull requests.
 
 ==== Development philosophy
 
-Greycos Solver is developed in accordance with the following general principles:
+GreyCOS Solver is developed in accordance with the following general principles:
 
 * **Fail fast**: Invalid states are checked as early as possible.
 * **Understandable error message**: Errors describe what happened and if possible, suggest solutions.
@@ -89,14 +89,14 @@ Greycos Solver is developed in accordance with the following general principles:
 
 ==== Package structure
 
-The codebase of Greycos Solver is structured into three conceptual parts:
+The codebase of GreyCOS Solver is structured into three conceptual parts:
 
 * Public API, typically in a package with *api* somewhere in its name.
 * Configuration, typically in a package with *config* somewhere in its name.
 * Implementation, which is everything else.
 
 The public API and configuration are the parts that we keep 100 % backwards compatible.
-Compatibility-breaking changes are only allowed in major versions of Greycos Solver, such as 2.0.0.
+Compatibility-breaking changes are only allowed in major versions of GreyCOS Solver, such as 2.0.0.
 
 The implementation is out of bounds for users and it can and does change all the time.
 If users choose to depend on the implementation classes, they do so at their own risk.
@@ -151,7 +151,7 @@ The word _maybe_ is to indicate that the advice is not guaranteed to be right in
 
 ==== Lifecycle
 
-One of the biggest challenges in multi-algorithm implementations (such as Greycos Solver)
+One of the biggest challenges in multi-algorithm implementations (such as GreyCOS Solver)
 is the lifecycle management of internal subsystems.
 These guidelines avoid lifecycle complexity:
 

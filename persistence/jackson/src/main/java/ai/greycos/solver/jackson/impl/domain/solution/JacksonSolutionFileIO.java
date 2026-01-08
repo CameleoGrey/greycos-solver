@@ -24,7 +24,7 @@ public class JacksonSolutionFileIO<Solution_> implements SolutionFileIO<Solution
   public JacksonSolutionFileIO(Class<Solution_> clazz, ObjectMapper mapper) {
     this.clazz = clazz;
     this.mapper = mapper;
-    // Loads GreycosJacksonModule via ServiceLoader, as well as any other Jackson modules on the
+    // Loads GreyCOSJacksonModule via ServiceLoader, as well as any other Jackson modules on the
     // classpath.
     mapper.findAndRegisterModules();
   }

@@ -42,7 +42,7 @@ public class PlannerBenchmarkResult {
   // If it is an aggregation, many properties can stay null
 
   private Integer availableProcessors = null;
-  private LoggingLevel loggingLevelGreycosSolverCore = null;
+  private LoggingLevel loggingLevelGreyCOSSolverCore = null;
   private Long maxMemory = null;
   private String greycosSolverVersion = null;
   private String javaVersion = null;
@@ -103,8 +103,8 @@ public class PlannerBenchmarkResult {
     return availableProcessors;
   }
 
-  public LoggingLevel getLoggingLevelGreycosSolverCore() {
-    return loggingLevelGreycosSolverCore;
+  public LoggingLevel getLoggingLevelGreyCOSSolverCore() {
+    return loggingLevelGreyCOSSolverCore;
   }
 
   public Long getMaxMemory() {
@@ -124,7 +124,7 @@ public class PlannerBenchmarkResult {
   }
 
   @SuppressWarnings("unused") // Used by FreeMarker.
-  public String getGreycosSolverVersion() {
+  public String getGreyCOSSolverVersion() {
     return "Unified Edition";
   }
 
@@ -225,7 +225,7 @@ public class PlannerBenchmarkResult {
     String[] levelLabels = solverBenchmarkResultList.get(0).getScoreDefinition().getLevelLabels();
     if (scoreLevel >= levelLabels.length) {
       // Occurs when mixing multiple examples in the same benchmark run, such as
-      // GeneralGreycosBenchmarkApp
+      // GeneralGreyCOSBenchmarkApp
       return "unknown-" + (scoreLevel - levelLabels.length);
     }
     return levelLabels[scoreLevel];
@@ -281,7 +281,7 @@ public class PlannerBenchmarkResult {
 
   public void initSystemProperties() {
     availableProcessors = Runtime.getRuntime().availableProcessors();
-    loggingLevelGreycosSolverCore = resolveLoggingLevel("ai.greycos.solver.core");
+    loggingLevelGreyCOSSolverCore = resolveLoggingLevel("ai.greycos.solver.core");
     maxMemory = Runtime.getRuntime().maxMemory();
     greycosSolverVersion = "Unified Edition";
     javaVersion =
@@ -480,7 +480,7 @@ public class PlannerBenchmarkResult {
           newResult = new PlannerBenchmarkResult();
           newResult.setAggregation(true);
           newResult.availableProcessors = oldResult.availableProcessors;
-          newResult.loggingLevelGreycosSolverCore = oldResult.loggingLevelGreycosSolverCore;
+          newResult.loggingLevelGreyCOSSolverCore = oldResult.loggingLevelGreyCOSSolverCore;
           newResult.maxMemory = oldResult.maxMemory;
           newResult.greycosSolverVersion = oldResult.greycosSolverVersion;
           newResult.javaVersion = oldResult.javaVersion;
@@ -498,9 +498,9 @@ public class PlannerBenchmarkResult {
           newResult.availableProcessors =
               ConfigUtils.mergeProperty(
                   newResult.availableProcessors, oldResult.availableProcessors);
-          newResult.loggingLevelGreycosSolverCore =
+          newResult.loggingLevelGreyCOSSolverCore =
               ConfigUtils.mergeProperty(
-                  newResult.loggingLevelGreycosSolverCore, oldResult.loggingLevelGreycosSolverCore);
+                  newResult.loggingLevelGreyCOSSolverCore, oldResult.loggingLevelGreyCOSSolverCore);
           newResult.maxMemory = ConfigUtils.mergeProperty(newResult.maxMemory, oldResult.maxMemory);
           newResult.greycosSolverVersion =
               ConfigUtils.mergeProperty(

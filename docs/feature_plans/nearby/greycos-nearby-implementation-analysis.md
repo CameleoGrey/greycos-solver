@@ -1,4 +1,4 @@
-# Greycos vs OptaPlanner Nearby Selection - Implementation Analysis
+# GreyCOS vs OptaPlanner Nearby Selection - Implementation Analysis
 
 **Date**: 2026-01-08
 **Status**: Critical Issues Identified
@@ -68,7 +68,7 @@ public Object next() {
 ```
 
 **Problem**:
-- Greycos calls `originEntitySelector.iterator().next()` on **every invocation** of `next()`
+- GreyCOS calls `originEntitySelector.iterator().next()` on **every invocation** of `next()`
 - Creates a new iterator each time via `iterator()` call
 - Without a replaying selector, this likely returns a **different origin** each time
 - Results in selecting value 1 near origin A, value 2 near origin B, value 3 near origin C...
@@ -152,7 +152,7 @@ From OptaPlanner documentation (nearby-selection-feature.md:549-586):
 - When you call `replayingIterator.next()` multiple times **without advancing the recording selector**, it returns the **same value**
 - This ensures all nearby values are selected for the **same origin**
 
-**Problem in Greycos**:
+**Problem in GreyCOS**:
 - No replaying selector - just stores `originEntitySelector` directly
 - No validation that the selector is a replaying selector
 - No mechanism to ensure origin stays constant during nearby value iteration
@@ -206,7 +206,7 @@ public Iterator<Object> iterator(Object entity) {
 
 **Key Differences**:
 
-| Aspect | Greycos | OptaPlanner |
+| Aspect | GreyCOS | OptaPlanner |
 |--------|---------|-------------|
 | What's passed | `entity` (the entity to find values for) | `replayingOriginEntityIterator` (iterator that provides constant origin) |
 | Origin retrieval | `originEntitySelector.iterator().next()` on every call | `replayingIterator.next()` once, then cached |
@@ -214,7 +214,7 @@ public Iterator<Object> iterator(Object entity) {
 | Iterator type | Regular `EntitySelector.iterator()` | `MimicReplayingEntitySelector.iterator()` |
 
 **Problem**:
-- Greycos passes the wrong parameter (entity instead of replaying iterator)
+- GreyCOS passes the wrong parameter (entity instead of replaying iterator)
 - Iterator retrieves origin fresh each time instead of caching
 - Directly causes Issue #1
 
@@ -254,7 +254,7 @@ this.nextNearbyIndex = discardNearbyIndexZero ? 1 : 0;
 - Discarding index 0 prevents selecting the same entity as both origin and destination
 - Example: When swapping entity A, don't consider "swap A with A" as a move
 
-**Missing in Greycos**:
+**Missing in GreyCOS**:
 ```java
 // greycos-solver/core/.../NearEntityNearbyValueSelector.java
 // No discardNearbyIndexZero field
@@ -365,7 +365,7 @@ public final boolean equals(Object o) {
 }
 ```
 
-**Greycos Approach**:
+**GreyCOS Approach**:
 - Each selector creates its own distance matrix
 - No sharing between selectors
 - Matrix persists throughout solver lifecycle
@@ -403,7 +403,7 @@ public final boolean equals(Object o) {
 
 // If both use same distance meter and entity type:
 // OptaPlanner: 1 shared distance matrix (memory efficient)
-// Greycos: 2 separate distance matrices (memory duplication)
+// GreyCOS: 2 separate distance matrices (memory duplication)
 ```
 
 ---
@@ -435,7 +435,7 @@ Step 7: Third next() call:
 Result: All values (X, Y, Z) selected nearby to Entity A ✅
 ```
 
-**Greycos (Broken Behavior)**:
+**GreyCOS (Broken Behavior)**:
 
 ```
 Step 1: Move selector starts iteration
@@ -468,7 +468,7 @@ Origin: A ──┬──> Value X (distance 2.5 from A)
             ├──> Value Y (distance 4.1 from A)
             └──> Value Z (distance 5.7 from A)
 
-Greycos:
+GreyCOS:
 Origin: A ────> Value X (distance 2.5 from A)
 Origin: B ────> Value Y (distance 4.1 from B)  ← Different origin!
 Origin: C ────> Value Z (distance 5.7 from C)  ← Different origin!
@@ -489,7 +489,7 @@ From OptaPlanner documentation (nearby-selection-feature.md:46-71):
 
 **The critical assumption**: All destinations are sorted relative to **the same origin O**.
 
-Greycos violates this by using different origins for each destination selection, making the distance-based ranking meaningless.
+GreyCOS violates this by using different origins for each destination selection, making the distance-based ranking meaningless.
 
 ---
 
@@ -519,7 +519,7 @@ OptaPlanner Architecture:
                   ├──> Caches origin = A (from replaying iterator)
                   └──> Returns V1, V2, V3... (all relative to A)
 
-Greycos Architecture:
+GreyCOS Architecture:
 ┌─────────────────────────────────────────────────────────────┐
 │ Move Selector                                               │
 └───────┬─────────────────────────────────────────────────────┘
@@ -559,7 +559,7 @@ return nearbyDistanceMatrix;
 - Matrix is fully populated when phase starts
 - `getDestination(origin, index)` is then just an array lookup
 
-**Greycos**:
+**GreyCOS**:
 ```java
 // In NearbyDistanceMatrix.getDestination():
 public @NonNull Object getDestination(@NonNull Origin origin, int nearbyIndex) {
@@ -579,7 +579,7 @@ public @NonNull Object getDestination(@NonNull Origin origin, int nearbyIndex) {
 
 **Comparison**:
 
-| Aspect | OptaPlanner | Greycos |
+| Aspect | OptaPlanner | GreyCOS |
 |--------|-------------|---------|
 | Population | Eager (all at phase start) | Lazy (on first access) |
 | Thread safety | Not needed (populated upfront) | ConcurrentHashMap (thread-safe) |
@@ -608,7 +608,7 @@ State Transitions:
 4. Iterator exhausted: nextNearbyIndex >= childSize
 ```
 
-**Greycos OriginalNearbyValueIterator State**:
+**GreyCOS OriginalNearbyValueIterator State**:
 ```java
 State Variables:
 - entity: Object  // The entity parameter (not used correctly)
@@ -1049,7 +1049,7 @@ void benchmarkNearbySelectionAgainstOptaPlanner() {
     // Run both solvers on identical problem
     VehicleRoutingSolution problem = loadBenchmarkProblem();
 
-    // Greycos solver
+    // GreyCOS solver
     long greycosStart = System.currentTimeMillis();
     VehicleRoutingSolution greycosSolution = greycosSolver.solve(problem.clone());
     long greycosTime = System.currentTimeMillis() - greycosStart;
@@ -1060,7 +1060,7 @@ void benchmarkNearbySelectionAgainstOptaPlanner() {
     long optaTime = System.currentTimeMillis() - optaStart;
 
     // Compare results
-    System.out.println("Greycos: " + greycosSolution.getScore() + " in " + greycosTime + "ms");
+    System.out.println("GreyCOS: " + greycosSolution.getScore() + " in " + greycosTime + "ms");
     System.out.println("OptaPlanner: " + optaSolution.getScore() + " in " + optaTime + "ms");
 
     // Scores should be comparable (within 10%)
@@ -1087,7 +1087,7 @@ void benchmarkNearbySelectionAgainstOptaPlanner() {
 - `optaplanner/core/.../common/nearby/NearbyDistanceMatrix.java` - Distance matrix implementation
 - `optaplanner/core/.../entity/mimic/MimicReplayingEntitySelector.java` - Replaying selector pattern
 
-### Greycos Current Implementation
+### GreyCOS Current Implementation
 - `core/src/main/java/ai/greycos/solver/core/impl/heuristic/selector/value/nearby/AbstractNearbyValueSelector.java`
 - `core/src/main/java/ai/greycos/solver/core/impl/heuristic/selector/value/nearby/NearEntityNearbyValueSelector.java`
 - `core/src/main/java/ai/greycos/solver/core/impl/heuristic/selector/value/nearby/NearValueNearbyValueSelector.java`

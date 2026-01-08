@@ -25,10 +25,10 @@ import ai.greycos.solver.core.api.solver.SolverManager;
 import io.quarkus.arc.DefaultBean;
 
 /**
- * Throws an exception if an application tries to inject beans and the Greycos Quarkus extension is
+ * Throws an exception if an application tries to inject beans and the GreyCOS Quarkus extension is
  * skipped due to missing domain classes.
  */
-public class UnavailableGreycosBeanProvider {
+public class UnavailableGreyCOSBeanProvider {
 
   @DefaultBean
   @Dependent

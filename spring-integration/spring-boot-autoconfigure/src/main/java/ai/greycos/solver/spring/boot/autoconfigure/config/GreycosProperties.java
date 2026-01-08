@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
 @ConfigurationProperties(value = "greycos", ignoreUnknownFields = false)
-public class GreycosProperties {
+public class GreyCOSProperties {
 
   public static final String DEFAULT_SOLVER_CONFIG_URL = "solverConfig.xml";
   public static final String DEFAULT_SOLVER_BENCHMARK_CONFIG_URL = "solverBenchmarkConfig.xml";

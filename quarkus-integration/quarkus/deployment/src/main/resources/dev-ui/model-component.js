@@ -9,7 +9,7 @@ import '@vaadin/grid/vaadin-grid-sort-column.js';
 
 export class ModelComponent extends LitElement {
 
-    jsonRpc = new JsonRpc("Greycos Solver");
+    jsonRpc = new JsonRpc("GreyCOS Solver");
 
     // Component style
     static styles = css`

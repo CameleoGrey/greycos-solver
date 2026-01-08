@@ -1,8 +1,8 @@
-# Node Sharing Reimplementation Plan for Greycos
+# Node Sharing Reimplementation Plan for GreyCOS
 
 ## Executive Summary
 
-This document outlines a plan to reimplement automatic node sharing for Greycos Solver, aligning the implementation with the official OptaPlanner documentation while maintaining Greycos's architectural goals.
+This document outlines a plan to reimplement automatic node sharing for GreyCOS Solver, aligning the implementation with the official OptaPlanner documentation while maintaining GreyCOS's architectural goals.
 
 ## 1. Analysis of Official Documentation
 
@@ -84,7 +84,7 @@ public class MyConstraintProvider implements ConstraintProvider {
 }
 ```
 
-## 2. Current Greycos Implementation Analysis
+## 2. Current GreyCOS Implementation Analysis
 
 ### 2.1 Existing Architecture
 
@@ -120,8 +120,8 @@ public class MyConstraintProvider implements ConstraintProvider {
 - Uses **reference equality** (`predicate == other.predicate`) for lambdas
 
 #### Enterprise Integration
-- [`GreycosSolverEnterpriseService.ConstraintProviderNodeSharer`](core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java:246-250): Interface for transforming ConstraintProvider classes
-- [`GreycosSolverEnterpriseService.createNodeSharer()`](core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java:131): Creates node sharer (Enterprise feature)
+- [`GreyCOSSolverEnterpriseService.ConstraintProviderNodeSharer`](core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java:246-250): Interface for transforming ConstraintProvider classes
+- [`GreyCOSSolverEnterpriseService.createNodeSharer()`](core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java:131): Creates node sharer (Enterprise feature)
 
 #### Test Coverage
 - Comprehensive test suite in [`AbstractUniConstraintStreamNodeSharingTest`](core/src/test/java/ai/greycos/solver/core/impl/score/stream/common/uni/AbstractUniConstraintStreamNodeSharingTest.java)
@@ -307,7 +307,7 @@ Transform the ConstraintProvider class to:
 
 **Option 1: ASM (Recommended)**
 - Lightweight, widely used bytecode manipulation library
-- Already used by Greycos (via Gizmo)
+- Already used by GreyCOS (via Gizmo)
 - Fine-grained control over bytecode generation
 - Good documentation and community support
 
@@ -447,7 +447,7 @@ private static final BiFunction<Shift, Employee, Boolean> $function1 =
 **Update ConstraintProviderNodeSharer**:
 ```java
 public class DefaultConstraintProviderNodeSharer 
-        implements GreycosSolverEnterpriseService.ConstraintProviderNodeSharer {
+        implements GreyCOSSolverEnterpriseService.ConstraintProviderNodeSharer {
     
     private final NodeSharingTransformer transformer;
     private final NodeSharedClassLoader classLoader;
@@ -751,7 +751,7 @@ Ensure all existing tests in `AbstractUniConstraintStreamNodeSharingTest` contin
 
 **Tasks**:
 1. Implement `DefaultConstraintProviderNodeSharer`
-2. Update `GreycosSolverEnterpriseService`
+2. Update `GreyCOSSolverEnterpriseService`
 3. Update `BavetConstraintSessionFactory` to use node sharer
 4. Implement `NodeSharingValidator`
 5. Add configuration integration
@@ -863,7 +863,7 @@ Ensure all existing tests in `AbstractUniConstraintStreamNodeSharingTest` contin
 - [ ] Backward compatible with existing ConstraintProviders
 - [ ] Works with all score types
 - [ ] Works with all constraint stream operations
-- [ ] Compatible with existing Greycos features
+- [ ] Compatible with existing GreyCOS features
 
 ## 7. Future Enhancements
 
@@ -893,7 +893,7 @@ Ensure all existing tests in `AbstractUniConstraintStreamNodeSharingTest` contin
 
 ## 8. Conclusion
 
-This plan provides a comprehensive roadmap for reimplementing automatic node sharing in Greycos Solver. The two-tier approach ensures that:
+This plan provides a comprehensive roadmap for reimplementing automatic node sharing in GreyCOS Solver. The two-tier approach ensures that:
 
 1. **Community users** get improved node sharing through enhanced runtime deduplication
 2. **Enterprise users** get maximum performance through bytecode transformation
@@ -916,7 +916,7 @@ The phased implementation allows for iterative development, testing, and refinem
 - [`BavetFilterUniConstraintStream.java`](core/src/main/java/ai/greycos/solver/core/impl/score/stream/bavet/uni/BavetFilterUniConstraintStream.java) - Filter stream example
 
 ### Enterprise Integration
-- [`GreycosSolverEnterpriseService.java`](core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java) - Enterprise service interface
+- [`GreyCOSSolverEnterpriseService.java`](core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java) - Enterprise service interface
 
 ### Tests
 - [`AbstractUniConstraintStreamNodeSharingTest.java`](core/src/test/java/ai/greycos/solver/core/impl/score/stream/common/uni/AbstractUniConstraintStreamNodeSharingTest.java) - Node sharing tests
@@ -1017,5 +1017,5 @@ public class EnterpriseConstraintProvider$NodeShared
 
 **Document Version**: 1.0  
 **Last Updated**: 2024  
-**Author**: Greycos Solver Team  
+**Author**: GreyCOS Solver Team  
 **Status**: Planning Phase

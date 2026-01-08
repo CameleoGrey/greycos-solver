@@ -29,7 +29,7 @@ import io.quarkus.bootstrap.model.AppArtifact;
 import io.quarkus.test.QuarkusProdModeTest;
 import io.restassured.RestAssured;
 
-class GreycosProcessorOverridePropertiesAtRuntimeTest {
+class GreyCOSProcessorOverridePropertiesAtRuntimeTest {
 
   private static final String QUARKUS_VERSION = getRequiredProperty("version.io.quarkus");
 
@@ -65,7 +65,7 @@ class GreycosProcessorOverridePropertiesAtRuntimeTest {
                           TestdataQuarkusEntity.class,
                           TestdataQuarkusSolution.class,
                           TestdataQuarkusConstraintProvider.class,
-                          GreycosTestResource.class))
+                          GreyCOSTestResource.class))
           .setRuntimeProperties(getRuntimeProperties())
           .setRun(true);
 
@@ -83,7 +83,7 @@ class GreycosProcessorOverridePropertiesAtRuntimeTest {
 
   // Can't use injection, so we need a resource to fetch the properties
   @Path("/greycos/test")
-  public static class GreycosTestResource {
+  public static class GreyCOSTestResource {
     @Inject SolverConfig solverConfig;
 
     @Inject SolverManagerConfig solverManagerConfig;

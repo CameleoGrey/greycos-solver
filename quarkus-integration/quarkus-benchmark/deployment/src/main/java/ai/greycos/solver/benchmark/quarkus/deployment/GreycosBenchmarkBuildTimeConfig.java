@@ -6,10 +6,10 @@ import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
 
-/** During build time, this is translated into Greycos's Config classes. */
+/** During build time, this is translated into GreyCOS's Config classes. */
 @ConfigMapping(prefix = "quarkus.greycos.benchmark")
 @ConfigRoot(phase = ConfigPhase.BUILD_TIME)
-public interface GreycosBenchmarkBuildTimeConfig {
+public interface GreyCOSBenchmarkBuildTimeConfig {
 
   String DEFAULT_SOLVER_BENCHMARK_CONFIG_URL = "solverBenchmarkConfig.xml";
 

@@ -22,7 +22,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorXMLNoneTest {
+class GreyCOSProcessorXMLNoneTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =

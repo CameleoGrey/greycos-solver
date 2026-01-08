@@ -142,7 +142,7 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
                         Corruptions typically arise from a bug in either your constraints or your variable listeners,
                         but they may also be caused by a rare solver bug.
                         Run your solver with %s %s to find out more information about the error \
-                        and if you are convinced that the problem is not in your code, please report a bug to Greycos.
+                        and if you are convinced that the problem is not in your code, please report a bug to GreyCOS.
                         At your own risk, you may run your solver with %s or %s instead to ignore this error."""
                 .formatted(
                     EnvironmentMode.class.getSimpleName(),

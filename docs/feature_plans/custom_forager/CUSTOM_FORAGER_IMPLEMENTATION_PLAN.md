@@ -2,9 +2,7 @@
 
 ## Executive Summary
 
-This document provides a comprehensive plan for implementing **Custom Forager** functionality in Greycos Solver. Custom Forager enables users to provide custom implementations of `ConstructionHeuristicForager` or `LocalSearchForager` for advanced move harvesting strategies during solving phases.
-
-**Status**: Enterprise-only feature (requires valid Greycos Enterprise license)
+This document provides a comprehensive plan for implementing **Custom Forager** functionality in GreyCOS Solver. Custom Forager enables users to provide custom implementations of `ConstructionHeuristicForager` or `LocalSearchForager` for advanced move harvesting strategies during solving phases.
 
 ---
 
@@ -517,13 +515,13 @@ public class LocalSearchForagerFactory<Solution_> {
 
 ### 3.3 Phase 3: Enterprise Service Integration
 
-#### 3.3.1 Update GreycosSolverEnterpriseService Interface
+#### 3.3.1 Update GreyCOSSolverEnterpriseService Interface
 
-**File**: `core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java`
+**File**: `core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java`
 
 **Changes**:
 ```java
-public interface GreycosSolverEnterpriseService {
+public interface GreyCOSSolverEnterpriseService {
 
   enum Feature {
     // Existing features...
@@ -558,9 +556,9 @@ public interface GreycosSolverEnterpriseService {
 }
 ```
 
-#### 3.3.2 Update DefaultGreycosSolverEnterpriseService
+#### 3.3.2 Update DefaultGreyCOSSolverEnterpriseService
 
-**File**: `core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreycosSolverEnterpriseService.java`
+**File**: `core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreyCOSSolverEnterpriseService.java`
 
 **Changes**:
 ```java
@@ -1685,7 +1683,7 @@ See test reports for coverage metrics.
 
 ## 10. Conclusion
 
-This implementation plan provides a comprehensive approach to adding Custom Forager functionality to Greycos Solver. The design:
+This implementation plan provides a comprehensive approach to adding Custom Forager functionality to GreyCOS Solver. The design:
 
 - Maintains backward compatibility
 - Follows existing patterns

@@ -31,7 +31,7 @@ import io.quarkus.arc.Lock;
 /** Provider for managed resources of the default solver. */
 @ApplicationScoped
 @Lock(Lock.Type.WRITE)
-public class DefaultGreycosBeanProvider {
+public class DefaultGreyCOSBeanProvider {
 
   private SolverFactory<?> solverFactory;
 

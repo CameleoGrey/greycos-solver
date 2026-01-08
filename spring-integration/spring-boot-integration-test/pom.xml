@@ -11,8 +11,8 @@
 
   <artifactId>spring-boot-integration-test</artifactId>
 
-  <name>Greycos Solver Spring Boot - Integration tests</name>
-  <description>Spring Boot integration tests for Greycos</description>
+  <name>GreyCOS Solver Spring Boot - Integration tests</name>
+  <description>Spring Boot integration tests for GreyCOS</description>
 
   <properties>
     <java.module.name>ai.greycos.solver.spring.boot</java.module.name>

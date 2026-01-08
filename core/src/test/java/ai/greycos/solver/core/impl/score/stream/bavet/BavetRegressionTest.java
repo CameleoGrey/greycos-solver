@@ -76,7 +76,7 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
   }
 
   /**
-   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/186">Greycos Solver Github
+   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/186">GreyCOS Solver Github
    *     Issue 186</a>
    */
   @TestTemplate
@@ -137,7 +137,7 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
   }
 
   /**
-   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/186">Greycos Solver Github
+   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/186">GreyCOS Solver Github
    *     Issue 186</a>
    */
   @TestTemplate
@@ -195,7 +195,7 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
   }
 
   /**
-   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/186">Greycos Solver Github
+   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/186">GreyCOS Solver Github
    *     Issue 186</a>
    */
   @TestTemplate
@@ -465,7 +465,7 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
   }
 
   /**
-   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/828">Greycos Solver Github
+   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/828">GreyCOS Solver Github
    *     Issue 828</a>
    */
   @TestTemplate

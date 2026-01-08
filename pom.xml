@@ -8,9 +8,9 @@
   <packaging>pom</packaging>
   <version>999-SNAPSHOT</version>
 
-  <name>Greycos Solver multiproject parent</name>
+  <name>GreyCOS Solver multiproject parent</name>
   <description>
-    Greycos solves planning problems.
+    GreyCOS solves planning problems.
     This lightweight, embeddable planning engine implements powerful and scalable algorithms
     to optimize business resource scheduling and planning.
 
@@ -50,8 +50,8 @@
   </issueManagement>
   <developers>
     <developer>
-      <name>Greycos Community</name>
-      <organization>Greycos</organization>
+      <name>GreyCOS Community</name>
+      <organization>GreyCOS</organization>
       <organizationUrl>https://greycos.ai</organizationUrl>
     </developer>
   </developers>
@@ -168,9 +168,9 @@
     </profile>
     <profile>
       <!--
-        Migration to Greycos 0.9 involves upgrading to Quarkus 3, Spring Boot 3 and migrating to jakarta.* packages.
-        Greycos 0.8 remains compatible with Quarkus 2, Spring Boot 2 and javax.* packages.
-        Both Greycos 0.8 and 0.9 are functionally equal.
+        Migration to GreyCOS 0.9 involves upgrading to Quarkus 3, Spring Boot 3 and migrating to jakarta.* packages.
+        GreyCOS 0.8 remains compatible with Quarkus 2, Spring Boot 2 and javax.* packages.
+        Both GreyCOS 0.8 and 0.9 are functionally equal.
       -->
       <id>8-to-9-migration</id>
       <activation>

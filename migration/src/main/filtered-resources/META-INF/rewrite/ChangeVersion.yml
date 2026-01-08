@@ -1,7 +1,7 @@
 type: specs.openrewrite.org/v1beta/recipe
 name: ai.greycos.solver.migration.ChangeVersion
-displayName: Change the Greycos version
-description: 'Replaces the version of Greycos'
+displayName: Change the GreyCOS version
+description: 'Replaces the version of GreyCOS'
 recipeList:
   - org.openrewrite.maven.ChangePropertyValue:
       key: "version.ai.greycos.solver"

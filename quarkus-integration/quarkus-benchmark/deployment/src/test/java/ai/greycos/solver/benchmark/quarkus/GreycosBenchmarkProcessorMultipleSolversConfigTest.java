@@ -21,7 +21,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import io.quarkus.runtime.configuration.ConfigurationException;
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosBenchmarkProcessorMultipleSolversConfigTest {
+class GreyCOSBenchmarkProcessorMultipleSolversConfigTest {
 
   // It is not possible run a benchmark for multiple solvers
   @RegisterExtension

@@ -9,7 +9,7 @@ import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 
 import io.quarkus.arc.DefaultBean;
 
-public class UnavailableGreycosBenchmarkBeanProvider {
+public class UnavailableGreyCOSBenchmarkBeanProvider {
 
   @DefaultBean
   @Singleton

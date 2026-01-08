@@ -114,7 +114,7 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
                 + " implementation using the '"
                 + CUSTOM_SCORE_INLINER_CLASS_PROPERTY_NAME
                 + "' system property.\n"
-                + "Note: support for custom scores will be removed in Greycos 2.0.");
+                + "Note: support for custom scores will be removed in GreyCOS 2.0.");
       }
       try {
         var customScoreInlinerClass = Class.forName(customScoreInlinerClassName);
@@ -125,7 +125,7 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
                   + ") does not extend "
                   + AbstractScoreInliner.class.getCanonicalName()
                   + ".\n"
-                  + "Note: support for custom scores will be removed in Greycos 2.0.");
+                  + "Note: support for custom scores will be removed in GreyCOS 2.0.");
         }
         return ((Class<ScoreInliner_>) customScoreInlinerClass).getConstructor().newInstance();
       } catch (ClassNotFoundException
@@ -138,7 +138,7 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
                 + customScoreInlinerClassName
                 + ") can not be instantiated.\n"
                 + "Maybe add a no-arg public constructor?\n"
-                + "Note: support for custom scores will be removed in Greycos 2.0.",
+                + "Note: support for custom scores will be removed in GreyCOS 2.0.",
             cause);
       }
     }

@@ -10,7 +10,7 @@
   </parent>
 
   <artifactId>greycos-solver-quarkus-deployment</artifactId>
-  <name>Greycos Solver Quarkus - Deployment</name>
+  <name>GreyCOS Solver Quarkus - Deployment</name>
   <description>Quarkus deployment module for greycos-solver-quarkus.</description>
   <url>https://solver.greycos.ai</url>
 

@@ -1,12 +1,12 @@
 package ai.greycos.solver.quarkus.jackson.deployment;
 
-import ai.greycos.solver.jackson.api.GreycosJacksonModule;
+import ai.greycos.solver.jackson.api.GreyCOSJacksonModule;
 
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.jackson.spi.ClassPathJacksonModuleBuildItem;
 
-class GreycosJacksonProcessor {
+class GreyCOSJacksonProcessor {
 
   @BuildStep
   FeatureBuildItem feature() {
@@ -14,9 +14,9 @@ class GreycosJacksonProcessor {
   }
 
   @BuildStep
-  ClassPathJacksonModuleBuildItem registerGreycosJacksonModule() {
+  ClassPathJacksonModuleBuildItem registerGreyCOSJacksonModule() {
     // Make greycos-solver-jackson discoverable by quarkus-rest
     // https://quarkus.io/guides/rest-migration#service-loading
-    return new ClassPathJacksonModuleBuildItem(GreycosJacksonModule.class.getName());
+    return new ClassPathJacksonModuleBuildItem(GreyCOSJacksonModule.class.getName());
   }
 }

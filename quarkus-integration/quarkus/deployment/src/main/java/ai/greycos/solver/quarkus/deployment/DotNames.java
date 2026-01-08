@@ -49,7 +49,7 @@ public final class DotNames {
   // Jakarta classes
   static final DotName NAMED = DotName.createSimple(Named.class);
 
-  // Greycos classes
+  // GreyCOS classes
   static final DotName PLANNING_SOLUTION = DotName.createSimple(PlanningSolution.class.getName());
   static final DotName PLANNING_ENTITY_COLLECTION_PROPERTY =
       DotName.createSimple(PlanningEntityCollectionProperty.class.getName());

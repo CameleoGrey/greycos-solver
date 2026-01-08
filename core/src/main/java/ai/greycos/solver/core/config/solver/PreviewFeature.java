@@ -1,14 +1,14 @@
 package ai.greycos.solver.core.config.solver;
 
 /**
- * Lists features available in Greycos Solver on a preview basis. These preview features are
- * developed to the same standard as the rest of Greycos Solver. However, their APIs are not yet
+ * Lists features available in GreyCOS Solver on a preview basis. These preview features are
+ * developed to the same standard as the rest of GreyCOS Solver. However, their APIs are not yet
  * considered stable, pending user feedback. Any class, method, or field related to these features
  * may change or be removed without prior notice, although we will strive to avoid this as much as
  * possible. We encourage you to try these preview features and give us feedback on your experience
  * with them. Please direct your feedback to <a
- * href="https://github.com/CameleoGrey/greycos-solver/discussions">Greycos Solver Github</a> or to
- * <a href="https://discord.com/channels/1413420192213631086/1414521616955605003">Greycos
+ * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver Github</a> or to
+ * <a href="https://discord.com/channels/1413420192213631086/1414521616955605003">GreyCOS
  * Discord</a>.
  *
  * <p>This list is not constant and is evolving over time, with items being added and removed

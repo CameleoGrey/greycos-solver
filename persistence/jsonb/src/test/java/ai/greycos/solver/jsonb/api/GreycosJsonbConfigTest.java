@@ -11,30 +11,30 @@ import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
 
 import org.junit.jupiter.api.Test;
 
-class GreycosJsonbConfigTest extends AbstractJsonbJsonAdapterTest {
+class GreyCOSJsonbConfigTest extends AbstractJsonbJsonAdapterTest {
 
   @Test
   void jsonbConfigSerializeAndDeserialize() {
-    JsonbConfig config = GreycosJsonbConfig.createConfig();
+    JsonbConfig config = GreyCOSJsonbConfig.createConfig();
     Jsonb jsonb = JsonbBuilder.create(config);
 
-    TestGreycosJsonbConfigWrapper input = new TestGreycosJsonbConfigWrapper();
+    TestGreyCOSJsonbConfigWrapper input = new TestGreyCOSJsonbConfigWrapper();
     input.setBendableScore(BendableScore.of(new int[] {1000, 200}, new int[] {34}));
     input.setHardSoftScore(HardSoftScore.of(-1, -20));
-    TestGreycosJsonbConfigWrapper output = serializeAndDeserialize(jsonb, input);
+    TestGreyCOSJsonbConfigWrapper output = serializeAndDeserialize(jsonb, input);
     assertThat(output.getBendableScore())
         .isEqualTo(BendableScore.of(new int[] {1000, 200}, new int[] {34}));
     assertThat(output.getHardSoftScore()).isEqualTo(HardSoftScore.of(-1, -20));
   }
 
-  public static class TestGreycosJsonbConfigWrapper {
+  public static class TestGreyCOSJsonbConfigWrapper {
 
     private BendableScore bendableScore;
     private HardSoftScore hardSoftScore;
 
     // Empty constructor required by JSON-B
     @SuppressWarnings("unused")
-    public TestGreycosJsonbConfigWrapper() {}
+    public TestGreyCOSJsonbConfigWrapper() {}
 
     public BendableScore getBendableScore() {
       return bendableScore;

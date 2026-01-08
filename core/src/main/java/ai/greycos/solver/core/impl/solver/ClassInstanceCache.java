@@ -8,7 +8,7 @@ import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 
 /**
- * Exists so that particular user-provided classes, which are instantiated by Greycos from {@link
+ * Exists so that particular user-provided classes, which are instantiated by GreyCOS from {@link
  * SolverConfig}, only ever have one instance. Each solver instance needs to get a fresh instance of
  * this class, so that solvers can not share state between them.
  *

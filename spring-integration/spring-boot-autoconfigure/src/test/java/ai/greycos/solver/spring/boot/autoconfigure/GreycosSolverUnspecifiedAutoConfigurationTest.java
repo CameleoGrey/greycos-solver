@@ -26,16 +26,16 @@ import org.springframework.test.context.TestExecutionListeners;
 
 @TestExecutionListeners
 @Execution(ExecutionMode.CONCURRENT)
-class GreycosSolverUnspecifiedAutoConfigurationTest {
+class GreyCOSSolverUnspecifiedAutoConfigurationTest {
 
   private final ApplicationContextRunner noUserConfigurationContextRunner;
 
-  public GreycosSolverUnspecifiedAutoConfigurationTest() {
+  public GreyCOSSolverUnspecifiedAutoConfigurationTest() {
     noUserConfigurationContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class));
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class));
   }
 
   @Test

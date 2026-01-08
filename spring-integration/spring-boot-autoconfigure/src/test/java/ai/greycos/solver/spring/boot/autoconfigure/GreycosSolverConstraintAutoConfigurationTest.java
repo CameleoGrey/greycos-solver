@@ -9,7 +9,7 @@ import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.ConstraintMetaModel;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.spring.boot.autoconfigure.config.GreycosProperties;
+import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.config.SolverProperty;
 import ai.greycos.solver.spring.boot.autoconfigure.multiple.MultipleConstraintSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.NormalSpringTestConfiguration;
@@ -32,7 +32,7 @@ import org.springframework.test.context.TestExecutionListeners;
 
 @TestExecutionListeners
 @Execution(ExecutionMode.CONCURRENT)
-class GreycosSolverConstraintAutoConfigurationTest {
+class GreyCOSSolverConstraintAutoConfigurationTest {
 
   private final ApplicationContextRunner contextRunner;
   private final ApplicationContextRunner multiConstraintProviderRunner;
@@ -40,24 +40,24 @@ class GreycosSolverConstraintAutoConfigurationTest {
   private final ApplicationContextRunner fakeNativeWithoutNodeSharingContextRunner;
   private final FilteredClassLoader testFilteredClassLoader;
 
-  public GreycosSolverConstraintAutoConfigurationTest() {
+  public GreyCOSSolverConstraintAutoConfigurationTest() {
     contextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(NormalSpringTestConfiguration.class);
     multiConstraintProviderRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(MultipleConstraintSpringTestConfiguration.class);
     fakeNativeWithNodeSharingContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(NormalSpringTestConfiguration.class)
             .withPropertyValues(
                 "greycos.solver.%s=true"
@@ -67,14 +67,14 @@ class GreycosSolverConstraintAutoConfigurationTest {
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(NormalSpringTestConfiguration.class)
             .withPropertyValues(
                 "greycos.solver.%s=false"
                     .formatted(
                         SolverProperty.CONSTRAINT_STREAM_AUTOMATIC_NODE_SHARING.getPropertyName()));
     testFilteredClassLoader =
-        new FilteredClassLoader(new ClassPathResource(GreycosProperties.DEFAULT_SOLVER_CONFIG_URL));
+        new FilteredClassLoader(new ClassPathResource(GreyCOSProperties.DEFAULT_SOLVER_CONFIG_URL));
   }
 
   @Test

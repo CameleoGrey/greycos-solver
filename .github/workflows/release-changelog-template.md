@@ -10,16 +10,16 @@
 {{changelogContributors}}
 
 
-# How to use Greycos Solver
+# How to use GreyCOS Solver
 
-To see Greycos Solver in action, check out [the quickstarts](https://github.com/CameleoGrey/greycos-quickstarts).
+To see GreyCOS Solver in action, check out [the quickstarts](https://github.com/CameleoGrey/greycos-quickstarts).
 
 [//]: # (Ideally we'd show the pom.xml snippet, but a JReleaser bug would remove all whitespace from it.)
 [//]: # (See https://github.com/jreleaser/jreleaser/issues/1142)
 With Maven or Gradle, add the `ai.greycos.solver : greycos-solver-core : {{projectVersion}}` dependency in your `pom.xml` to get started.
 
-You can also import the Greycos Solver Bom (`ai.greycos.solver : greycos-solver-bom : {{projectVersion}}`) 
-to avoid duplicating version numbers when adding other Greycos Solver dependencies later on.
+You can also import the GreyCOS Solver Bom (`ai.greycos.solver : greycos-solver-bom : {{projectVersion}}`) 
+to avoid duplicating version numbers when adding other GreyCOS Solver dependencies later on.
 
 # Additional notes
 

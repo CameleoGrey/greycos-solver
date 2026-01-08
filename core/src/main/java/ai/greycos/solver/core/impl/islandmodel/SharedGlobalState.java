@@ -29,7 +29,7 @@ public class SharedGlobalState<Solution_> {
   private volatile Score<?> bestScore;
   private final Object lock = new Object();
 
-  // Observers for best solution changes (for Greycos event system integration)
+  // Observers for best solution changes (for GreyCOS event system integration)
   private final List<Consumer<Solution_>> observers = new CopyOnWriteArrayList<>();
 
   public boolean tryUpdate(Solution_ candidate, Score<?> candidateScore) {

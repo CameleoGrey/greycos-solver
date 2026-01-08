@@ -1,12 +1,12 @@
 type: specs.openrewrite.org/v1beta/recipe
-name: ai.greycos.solver.migration.FromOptaPlannerToGreycosSolver
-displayName: Migrate from OptaPlanner to Greycos Solver
+name: ai.greycos.solver.migration.FromOptaPlannerToGreyCOSSolver
+displayName: Migrate from OptaPlanner to GreyCOS Solver
 description: 'Replaces your method/field calls, GAVs, etc. To replace deprecated methods too, use the recipe ToLatest'
 recipeList:
   # Java files
   - org.openrewrite.java.ChangeType:
       oldFullyQualifiedTypeName: org.optaplanner.persistence.jackson.api.OptaPlannerJacksonModule
-      newFullyQualifiedTypeName: ai.greycos.solver.jackson.api.GreycosJacksonModule
+      newFullyQualifiedTypeName: ai.greycos.solver.jackson.api.GreyCOSJacksonModule
       ignoreDefinition: true
   - org.openrewrite.java.ChangePackage:
       oldPackageName: org.optaplanner.persistence.jackson
@@ -94,7 +94,7 @@ recipeList:
       fileMatcher: "**/logback-test.xml"
 
   # Maven and Gradle
-  - ai.greycos.solver.migration.fork.GreycosChangeDependencies
+  - ai.greycos.solver.migration.fork.GreyCOSChangeDependencies
 
   # Maven files
   - org.openrewrite.maven.RenamePropertyKey:

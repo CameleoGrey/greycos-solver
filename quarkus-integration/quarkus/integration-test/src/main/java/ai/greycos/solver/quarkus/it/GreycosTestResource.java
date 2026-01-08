@@ -25,12 +25,12 @@ import ai.greycos.solver.quarkus.it.domain.TestdataStringLengthShadowEntity;
 import ai.greycos.solver.quarkus.it.domain.TestdataStringLengthShadowSolution;
 
 @Path("/greycos/test")
-public class GreycosTestResource {
+public class GreyCOSTestResource {
 
   private final SolverManager<TestdataStringLengthShadowSolution, Long> solverManager;
 
   @Inject
-  public GreycosTestResource(
+  public GreyCOSTestResource(
       SolverManager<TestdataStringLengthShadowSolution, Long> solverManager) {
     this.solverManager = solverManager;
   }

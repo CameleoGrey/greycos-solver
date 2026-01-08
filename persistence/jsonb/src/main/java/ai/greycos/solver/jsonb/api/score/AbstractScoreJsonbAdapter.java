@@ -3,14 +3,14 @@ package ai.greycos.solver.jsonb.api.score;
 import jakarta.json.bind.adapter.JsonbAdapter;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.jsonb.api.GreycosJsonbConfig;
+import ai.greycos.solver.jsonb.api.GreyCOSJsonbConfig;
 
 /**
  * JSON-B binding support for a {@link Score} type.
  *
  * <p>For example: use {@code @JsonbTypeAdapter(HardSoftScoreJsonbAdapter.class)} on a {@code
  * HardSoftScore score} field and it will be serialized to JSON as {@code
- * "score":"-999hard/-999soft"}. Or better yet, use {@link GreycosJsonbConfig} instead.
+ * "score":"-999hard/-999soft"}. Or better yet, use {@link GreyCOSJsonbConfig} instead.
  *
  * @see Score
  * @param <Score_> the actual score type

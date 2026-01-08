@@ -12,7 +12,7 @@ import ai.greycos.solver.quarkus.config.SolverRuntimeConfig;
 import io.quarkus.runtime.annotations.ConfigGroup;
 
 /**
- * During build time, this is translated into Greycos's {@link SolverConfig} (except for termination
+ * During build time, this is translated into GreyCOS's {@link SolverConfig} (except for termination
  * properties which are translated at bootstrap time).
  *
  * @see SolverRuntimeConfig

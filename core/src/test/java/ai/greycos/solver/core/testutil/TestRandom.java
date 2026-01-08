@@ -17,7 +17,7 @@ import java.util.stream.Stream;
  * <p>It allows to provide a sequence of pre-defined "random" values. It throws an exception if that
  * sequence has been exhausted.
  *
- * <p>Due to some internals of Greycos where randoms are read from {@link
+ * <p>Due to some internals of GreyCOS where randoms are read from {@link
  * ai.greycos.solver.core.impl.solver.scope.SolverScope} and never updated in later phases and
  * steps, we need to be able to reset the same random to start running a new sequence of numbers.
  * That is what {@link #reset(int...)} et al. are for.

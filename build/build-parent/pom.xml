@@ -13,7 +13,7 @@
   <artifactId>greycos-solver-build-parent</artifactId>
   <packaging>pom</packaging>
 
-  <name>Greycos Solver build parent</name>
+  <name>GreyCOS Solver build parent</name>
   <url>https://solver.greycos.ai</url>
 
   <properties>
@@ -68,7 +68,7 @@
     <jacoco.agent.argLine/>
     <enforcer.failOnDuplicatedClasses>true</enforcer.failOnDuplicatedClasses>
     <!-- Latest release to be used by api-compatibility-check to check backwards compatibility of the API. -->
-    <revapi.oldGreycosVersion>0.9.38</revapi.oldGreycosVersion>
+    <revapi.oldGreyCOSVersion>0.9.38</revapi.oldGreyCOSVersion>
     <!--suppress UnresolvedMavenProperty-->
     <project.root.dir>${maven.multiModuleProjectDirectory}</project.root.dir>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -332,7 +332,7 @@
           <configuration>
             <checkDependencies>false</checkDependencies>
             <oldArtifacts>
-              <artifact>${project.groupId}:${project.artifactId}:${revapi.oldGreycosVersion}</artifact>
+              <artifact>${project.groupId}:${project.artifactId}:${revapi.oldGreyCOSVersion}</artifact>
             </oldArtifacts>
             <newArtifacts>
               <artifact>${project.groupId}:${project.artifactId}:${project.version}</artifact>

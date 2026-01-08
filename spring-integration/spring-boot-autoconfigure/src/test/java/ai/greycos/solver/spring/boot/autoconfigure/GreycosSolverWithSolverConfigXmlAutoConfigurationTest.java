@@ -47,23 +47,23 @@ import org.springframework.test.context.TestExecutionListeners;
 @TestExecutionListeners
 @Execution(ExecutionMode.CONCURRENT)
 @ResourceLock("yamlAndXml")
-class GreycosSolverWithSolverConfigXmlAutoConfigurationTest {
+class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
 
   private final ApplicationContextRunner contextRunner;
   private final ApplicationContextRunner emptyContextRunner;
 
-  public GreycosSolverWithSolverConfigXmlAutoConfigurationTest() {
+  public GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest() {
     contextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(NormalSpringTestConfiguration.class);
     emptyContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(EmptySpringTestConfiguration.class);
   }
 

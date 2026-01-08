@@ -10,17 +10,17 @@ import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.impl.domain.common.accessor.MemberAccessor;
 import ai.greycos.solver.core.impl.io.jaxb.SolverConfigIO;
-import ai.greycos.solver.quarkus.GreycosRecorder;
-import ai.greycos.solver.quarkus.config.GreycosRuntimeConfig;
+import ai.greycos.solver.quarkus.GreyCOSRecorder;
+import ai.greycos.solver.quarkus.config.GreyCOSRuntimeConfig;
 
 import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.annotations.Recorder;
 
 @Recorder
-public class GreycosDevUIRecorder {
-  final RuntimeValue<GreycosRuntimeConfig> greycosRuntimeConfig;
+public class GreyCOSDevUIRecorder {
+  final RuntimeValue<GreyCOSRuntimeConfig> greycosRuntimeConfig;
 
-  public GreycosDevUIRecorder(final RuntimeValue<GreycosRuntimeConfig> greycosRuntimeConfig) {
+  public GreyCOSDevUIRecorder(final RuntimeValue<GreyCOSRuntimeConfig> greycosRuntimeConfig) {
     this.greycosRuntimeConfig = greycosRuntimeConfig;
   }
 
@@ -58,7 +58,7 @@ public class GreycosDevUIRecorder {
 
   private void updateSolverConfigWithRuntimeProperties(
       String solverName, SolverConfig solverConfig) {
-    GreycosRecorder.updateSolverConfigWithRuntimeProperties(
+    GreyCOSRecorder.updateSolverConfigWithRuntimeProperties(
         solverConfig,
         greycosRuntimeConfig.getValue().getSolverRuntimeConfig(solverName).orElse(null));
   }

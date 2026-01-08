@@ -20,7 +20,7 @@ import io.restassured.RestAssured;
 
 @SuppressWarnings(
     "java:S5786") // The public modifier is required when using QuarkusDevModeTest extension.
-public class GreycosProcessorHotReloadMultipleSolversTest {
+public class GreyCOSProcessorHotReloadMultipleSolversTest {
 
   @RegisterExtension
   static final QuarkusDevModeTest test =

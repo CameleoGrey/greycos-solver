@@ -349,12 +349,12 @@ public class BenchmarkReport {
           "The environmentMode (%s) is step-asserting or more. This decreases performance. Maybe set the environmentMode to %s."
               .formatted(environmentMode, EnvironmentMode.PHASE_ASSERT));
     }
-    LoggingLevel loggingLevelGreycosCore =
-        plannerBenchmarkResult.getLoggingLevelGreycosSolverCore();
-    if (loggingLevelGreycosCore == LoggingLevel.TRACE) {
+    LoggingLevel loggingLevelGreyCOSCore =
+        plannerBenchmarkResult.getLoggingLevelGreyCOSSolverCore();
+    if (loggingLevelGreyCOSCore == LoggingLevel.TRACE) {
       warningList.add(
           "The loggingLevel ("
-              + loggingLevelGreycosCore
+              + loggingLevelGreyCOSCore
               + ") of ai.greycos.solver.core is high."
               + " This decreases performance."
               + " Maybe set the loggingLevel to "

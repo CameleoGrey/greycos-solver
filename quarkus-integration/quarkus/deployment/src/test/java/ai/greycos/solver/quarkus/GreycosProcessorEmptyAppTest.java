@@ -7,7 +7,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorEmptyAppTest {
+class GreyCOSProcessorEmptyAppTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =

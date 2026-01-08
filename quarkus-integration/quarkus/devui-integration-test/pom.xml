@@ -10,8 +10,8 @@
   </parent>
 
   <artifactId>greycos-solver-quarkus-devui-integration-test</artifactId>
-  <name>Greycos Solver Quarkus - Dev UI Integration tests</name>
-  <description>Quarkus Dev UI integration tests for Greycos</description>
+  <name>GreyCOS Solver Quarkus - Dev UI Integration tests</name>
+  <description>Quarkus Dev UI integration tests for GreyCOS</description>
   <url>https://solver.greycos.ai</url>
 
   <properties>

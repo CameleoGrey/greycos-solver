@@ -1,8 +1,8 @@
-# Greycos Solver Unified Edition Refactor Plan - Enhanced Version
+# GreyCOS Solver Unified Edition Refactor Plan - Enhanced Version
 
 ## Executive Summary
 
-This document outlines the comprehensive plan to refactor Greycos Solver from a split Community/Enterprise edition architecture into a single unified edition. All previously enterprise-only features will be available by default without requiring explicit enabling or enterprise licenses.
+This document outlines the comprehensive plan to refactor GreyCOS Solver from a split Community/Enterprise edition architecture into a single unified edition. All previously enterprise-only features will be available by default without requiring explicit enabling or enterprise licenses.
 
 ## Enhanced Analysis: Complete Enterprise Footprint
 
@@ -11,16 +11,16 @@ This document outlines the comprehensive plan to refactor Greycos Solver from a 
 #### 1. Enterprise Service Layer
 ```
 core/src/main/java/ai/greycos/solver/core/enterprise/
-  └── GreycosSolverEnterpriseService.java          (310 lines)
+  └── GreyCOSSolverEnterpriseService.java          (310 lines)
 
 core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/
-  └── DefaultGreycosSolverEnterpriseService.java   (467 lines)
+  └── DefaultGreyCOSSolverEnterpriseService.java   (467 lines)
 ```
 
 #### 2. Enterprise Tests
 ```
 core/src/test/java/ai/greycos/solver/core/enterprise/
-  └── GreycosSolverEnterpriseServiceTest.java      (20 lines)
+  └── GreyCOSSolverEnterpriseServiceTest.java      (20 lines)
 ```
 
 ### Files to Modify (Complete List)
@@ -40,42 +40,42 @@ core/src/test/java/ai/greycos/solver/core/enterprise/
    - Keep multithreading logic
 
 4. **MoveSelectorFactory.java**
-   - Remove `GreycosSolverEnterpriseService` import
+   - Remove `GreyCOSSolverEnterpriseService` import
    - Remove `load()` calls for multistage selectors
    - Implement multistage logic directly
 
 5. **EntitySelectorFactory.java**
-   - Remove `GreycosSolverEnterpriseService` import
+   - Remove `GreyCOSSolverEnterpriseService` import
    - Remove `loadOrFail(Feature.NEARBY_SELECTION)` calls
    - Implement nearby selection directly
 
 6. **ValueSelectorFactory.java**
-   - Remove `GreycosSolverEnterpriseService` import
+   - Remove `GreyCOSSolverEnterpriseService` import
    - Remove `loadOrFail(Feature.NEARBY_SELECTION)` calls
    - Implement nearby selection directly
 
 7. **SubListSelectorFactory.java**
-   - Remove `GreycosSolverEnterpriseService` import
+   - Remove `GreyCOSSolverEnterpriseService` import
    - Remove `loadOrFail(Feature.NEARBY_SELECTION)` calls
    - Implement nearby selection directly
 
 8. **DestinationSelectorFactory.java**
-   - Remove `GreycosSolverEnterpriseService` import
+   - Remove `GreyCOSSolverEnterpriseService` import
    - Remove `loadOrFail(Feature.NEARBY_SELECTION)` calls
    - Implement nearby selection directly
 
 9. **BavetConstraintStreamScoreDirectorFactory.java**
-   - Remove `GreycosSolverEnterpriseService` import
+   - Remove `GreyCOSSolverEnterpriseService` import
    - Remove `loadOrFail(Feature.AUTOMATIC_NODE_SHARING)` calls
    - Implement node sharing directly
 
 10. **DefaultConstraintProviderNodeSharer.java**
-    - Remove `GreycosSolverEnterpriseService` import
+    - Remove `GreyCOSSolverEnterpriseService` import
     - Remove interface implementation
     - Make standalone class
 
 11. **VariableListenerSupport.java**
-    - Remove `GreycosSolverEnterpriseService` import
+    - Remove `GreyCOSSolverEnterpriseService` import
     - Remove `loadOrDefault()` calls
     - Implement topology graph logic directly
 
@@ -107,9 +107,9 @@ core/src/test/java/ai/greycos/solver/core/enterprise/
 
 #### Additional Files (3 files)
 
-18. **DefaultGreycosSolverEnterpriseService.java** (already listed)
-19. **GreycosSolverEnterpriseService.java** (already listed)
-20. **GreycosSolverEnterpriseServiceTest.java** (already listed)
+18. **DefaultGreyCOSSolverEnterpriseService.java** (already listed)
+19. **GreyCOSSolverEnterpriseService.java** (already listed)
+20. **GreyCOSSolverEnterpriseServiceTest.java** (already listed)
 
 ### Files to Create
 
@@ -123,8 +123,8 @@ core/src/test/java/ai/greycos/solver/core/enterprise/
 
 **Current Flow**:
 ```
-User → GreycosSolverEnterpriseService.load() → 
-ClassNotFoundException → DefaultGreycosSolverEnterpriseService → 
+User → GreyCOSSolverEnterpriseService.load() → 
+ClassNotFoundException → DefaultGreyCOSSolverEnterpriseService → 
 Feature checks → UnsupportedOperationException
 ```
 
@@ -134,9 +134,9 @@ User → Direct implementation → Feature available
 ```
 
 **Files to Modify**:
-- Delete: `GreycosSolverEnterpriseService.java`
-- Delete: `DefaultGreycosSolverEnterpriseService.java`
-- Delete: `GreycosSolverEnterpriseServiceTest.java`
+- Delete: `GreyCOSSolverEnterpriseService.java`
+- Delete: `DefaultGreyCOSSolverEnterpriseService.java`
+- Delete: `GreyCOSSolverEnterpriseServiceTest.java`
 
 **Impact**: All static factory methods removed, no more reflection-based loading
 
@@ -178,8 +178,8 @@ User → Direct implementation → Feature available
 1. `EntitySelectorFactory.java`
    ```java
    // BEFORE
-   return GreycosSolverEnterpriseService.loadOrFail(
-           GreycosSolverEnterpriseService.Feature.NEARBY_SELECTION)
+   return GreyCOSSolverEnterpriseService.loadOrFail(
+           GreyCOSSolverEnterpriseService.Feature.NEARBY_SELECTION)
        .applyNearbySelection(...);
    
    // AFTER
@@ -198,7 +198,7 @@ User → Direct implementation → Feature available
    - Remove enterprise service calls
    - Implement nearby selection logic directly
 
-**Implementation**: Move logic from `DefaultGreycosSolverEnterpriseService` to respective factories
+**Implementation**: Move logic from `DefaultGreyCOSSolverEnterpriseService` to respective factories
 
 ### Step 4: Integrate Custom Foragers
 
@@ -233,7 +233,7 @@ User → Direct implementation → Feature available
 1. `MoveSelectorFactory.java`
    ```java
    // BEFORE
-   var enterpriseService = GreycosSolverEnterpriseService.load();
+   var enterpriseService = GreyCOSSolverEnterpriseService.load();
    return enterpriseService.buildBasicMultistageMoveSelectorFactory(...);
    
    // AFTER
@@ -274,8 +274,8 @@ User → Direct implementation → Feature available
 1. `BavetConstraintStreamScoreDirectorFactory.java`
    ```java
    // BEFORE
-   var enterpriseService = GreycosSolverEnterpriseService.loadOrFail(
-       GreycosSolverEnterpriseService.Feature.AUTOMATIC_NODE_SHARING);
+   var enterpriseService = GreyCOSSolverEnterpriseService.loadOrFail(
+       GreyCOSSolverEnterpriseService.Feature.AUTOMATIC_NODE_SHARING);
    Class<? extends ConstraintProvider> transformedClass = 
        enterpriseService.createNodeSharer().buildNodeSharedConstraintProvider(...);
    
@@ -290,7 +290,7 @@ User → Direct implementation → Feature available
 3. `VariableListenerSupport.java`
    ```java
    // BEFORE
-   GreycosSolverEnterpriseService.loadOrDefault(
+   GreyCOSSolverEnterpriseService.loadOrDefault(
        service -> service::buildTopologyGraph, () -> DefaultTopologicalOrderGraph::new)
    
    // AFTER
@@ -336,9 +336,9 @@ User → Direct implementation → Feature available
 
 ### Files to Delete (3 files)
 ```
-core/src/main/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseService.java
-core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreycosSolverEnterpriseService.java
-core/src/test/java/ai/greycos/solver/core/enterprise/GreycosSolverEnterpriseServiceTest.java
+core/src/main/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseService.java
+core/src/main/java/ai/greycos/solver/core/impl/partitionedsearch/DefaultGreyCOSSolverEnterpriseService.java
+core/src/test/java/ai/greycos/solver/core/enterprise/GreyCOSSolverEnterpriseServiceTest.java
 ```
 
 ### Files to Modify (20+ files)
@@ -470,6 +470,6 @@ core/src/test/java/ai/greycos/solver/core/impl/partitionedsearch/PartitionedSear
 
 ## Conclusion
 
-This enhanced refactor plan provides a complete roadmap to unify Greycos Solver into a single edition. The plan addresses all identified enterprise features, provides detailed implementation steps, and includes comprehensive risk mitigation strategies.
+This enhanced refactor plan provides a complete roadmap to unify GreyCOS Solver into a single edition. The plan addresses all identified enterprise features, provides detailed implementation steps, and includes comprehensive risk mitigation strategies.
 
 The result will be a simpler, more maintainable codebase that is easier for users to understand and for developers to extend, with all features available by default without licensing complexity.

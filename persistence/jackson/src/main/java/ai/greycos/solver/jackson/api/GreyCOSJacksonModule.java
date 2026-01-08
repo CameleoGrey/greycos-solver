@@ -78,7 +78,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 
 /** This class adds all Jackson serializers and deserializers. */
-public class GreycosJacksonModule extends SimpleModule {
+public class GreyCOSJacksonModule extends SimpleModule {
 
   /**
    * Jackson modules can be loaded automatically via {@link java.util.ServiceLoader}. This will
@@ -88,18 +88,18 @@ public class GreycosJacksonModule extends SimpleModule {
    * @return never null
    */
   public static Module createModule() {
-    return new GreycosJacksonModule();
+    return new GreyCOSJacksonModule();
   }
 
   /**
    * @deprecated Have the module loaded automatically via {@link JacksonSolutionFileIO} or use
    *     {@link #createModule()}. This constructor will be hidden in a future major version of
-   *     Greycos.
+   *     GreyCOS.
    */
   @SuppressWarnings({"rawtypes", "unchecked"})
   @Deprecated(forRemoval = true)
-  public GreycosJacksonModule() {
-    super("Greycos");
+  public GreyCOSJacksonModule() {
+    super("GreyCOS");
     // For non-subtype Score fields/properties, we also need to record the score type
     addSerializer(Score.class, new PolymorphicScoreJacksonSerializer());
     addDeserializer(Score.class, new PolymorphicScoreJacksonDeserializer());

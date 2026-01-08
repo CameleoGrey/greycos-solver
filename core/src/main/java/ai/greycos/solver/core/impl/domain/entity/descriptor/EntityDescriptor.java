@@ -261,7 +261,7 @@ public class EntityDescriptor<Solution_> {
   }
 
   /**
-   * @deprecated Remove in the next major version of Greycos Solver.
+   * @deprecated Remove in the next major version of GreyCOS Solver.
    */
   @Deprecated(forRemoval = true, since = "1.23.0")
   private void processMovable(PlanningEntity entityAnnotation) {

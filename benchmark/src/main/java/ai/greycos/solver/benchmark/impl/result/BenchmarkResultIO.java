@@ -18,7 +18,7 @@ import ai.greycos.solver.benchmark.impl.statistic.PureSubSingleStatistic;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.impl.io.jaxb.ElementNamespaceOverride;
 import ai.greycos.solver.core.impl.io.jaxb.GenericJaxbIO;
-import ai.greycos.solver.core.impl.io.jaxb.GreycosXmlSerializationException;
+import ai.greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 import ai.greycos.solver.core.impl.solver.DefaultSolverFactory;
 
 import org.slf4j.Logger;
@@ -88,7 +88,7 @@ public class BenchmarkResultIO {
         new InputStreamReader(
             new FileInputStream(plannerBenchmarkResultFile), StandardCharsets.UTF_8)) {
       plannerBenchmarkResult = read(reader);
-    } catch (GreycosXmlSerializationException e) {
+    } catch (GreyCOSXmlSerializationException e) {
       LOGGER.warn("Failed reading plannerBenchmarkResultFile ({}).", plannerBenchmarkResultFile, e);
       // If the plannerBenchmarkResultFile's format has changed, the app should not crash entirely
       String benchmarkReportDirectoryName = plannerBenchmarkResultFile.getParentFile().getName();

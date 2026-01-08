@@ -19,7 +19,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorOnlyBaseAnnotatedTest {
+class GreyCOSProcessorOnlyBaseAnnotatedTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =

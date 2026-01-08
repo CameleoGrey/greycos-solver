@@ -24,7 +24,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorSolverYamlTest {
+class GreyCOSProcessorSolverYamlTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =

@@ -1,9 +1,9 @@
 type: specs.openrewrite.org/v1beta/recipe
 name: ai.greycos.solver.migration.ToLatest
-displayName: Upgrade to the latest Greycos Solver
-description: 'Replace all your calls to deleted/deprecated types and methods of Greycos Solver with their proper alternatives.'
+displayName: Upgrade to the latest GreyCOS Solver
+description: 'Replace all your calls to deleted/deprecated types and methods of GreyCOS Solver with their proper alternatives.'
 recipeList:
-  - ai.greycos.solver.migration.FromOptaPlannerToGreycosSolver
+  - ai.greycos.solver.migration.FromOptaPlannerToGreyCOSSolver
   - org.openrewrite.properties.ChangePropertyKey:
       oldPropertyKey: greycos.solver.solve-length
       newPropertyKey: greycos.solver.solve.duration

@@ -153,7 +153,7 @@ public class ScoreDirectorFactoryConfig extends AbstractConfig<ScoreDirectorFact
   }
 
   /**
-   * @deprecated All support for Score DRL was removed when Greycos was forked from OptaPlanner. See
+   * @deprecated All support for Score DRL was removed when GreyCOS was forked from OptaPlanner. See
    *     the DRL to Constraint Streams migration recipe.
    */
   @Deprecated(forRemoval = true)
@@ -162,7 +162,7 @@ public class ScoreDirectorFactoryConfig extends AbstractConfig<ScoreDirectorFact
   }
 
   /**
-   * @deprecated All support for Score DRL was removed when Greycos was forked from OptaPlanner. See
+   * @deprecated All support for Score DRL was removed when GreyCOS was forked from OptaPlanner. See
    *     the DRL to Constraint Streams migration recipe.
    */
   @Deprecated(forRemoval = true)
@@ -245,7 +245,7 @@ public class ScoreDirectorFactoryConfig extends AbstractConfig<ScoreDirectorFact
   }
 
   /**
-   * @deprecated All support for Score DRL was removed when Greycos was forked from OptaPlanner. See
+   * @deprecated All support for Score DRL was removed when GreyCOS was forked from OptaPlanner. See
    *     the DRL to Constraint Streams migration recipe.
    */
   @Deprecated(forRemoval = true)
@@ -255,7 +255,7 @@ public class ScoreDirectorFactoryConfig extends AbstractConfig<ScoreDirectorFact
   }
 
   /**
-   * @deprecated All support for Score DRL was removed when Greycos was forked from OptaPlanner. See
+   * @deprecated All support for Score DRL was removed when GreyCOS was forked from OptaPlanner. See
    *     the DRL to Constraint Streams migration recipe.
    */
   @Deprecated(forRemoval = true)

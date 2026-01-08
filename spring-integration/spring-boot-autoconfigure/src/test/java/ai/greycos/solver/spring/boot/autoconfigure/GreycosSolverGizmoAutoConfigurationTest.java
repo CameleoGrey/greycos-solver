@@ -7,7 +7,7 @@ import ai.greycos.solver.core.api.domain.common.DomainAccessType;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.spring.boot.autoconfigure.config.GreycosProperties;
+import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.gizmo.GizmoSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringSolution;
 
@@ -22,23 +22,23 @@ import org.springframework.test.context.TestExecutionListeners;
 
 @TestExecutionListeners
 @Execution(ExecutionMode.CONCURRENT)
-class GreycosSolverGizmoAutoConfigurationTest {
+class GreyCOSSolverGizmoAutoConfigurationTest {
 
   private final ApplicationContextRunner gizmoContextRunner;
   private final FilteredClassLoader noGizmoFilteredClassLoader;
 
-  public GreycosSolverGizmoAutoConfigurationTest() {
+  public GreyCOSSolverGizmoAutoConfigurationTest() {
     gizmoContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(GizmoSpringTestConfiguration.class);
     noGizmoFilteredClassLoader =
         new FilteredClassLoader(
             FilteredClassLoader.PackageFilter.of("io.quarkus.gizmo2"),
             FilteredClassLoader.ClassPathResourceFilter.of(
-                new ClassPathResource(GreycosProperties.DEFAULT_SOLVER_CONFIG_URL)));
+                new ClassPathResource(GreyCOSProperties.DEFAULT_SOLVER_CONFIG_URL)));
   }
 
   @Test

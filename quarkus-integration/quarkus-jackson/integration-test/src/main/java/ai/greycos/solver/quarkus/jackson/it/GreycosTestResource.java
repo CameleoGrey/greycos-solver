@@ -11,12 +11,12 @@ import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.quarkus.jackson.it.domain.ITestdataPlanningSolution;
 
 @Path("/greycos/test")
-public class GreycosTestResource {
+public class GreyCOSTestResource {
 
   private final SolverManager<ITestdataPlanningSolution, Long> solverManager;
 
   @Inject
-  public GreycosTestResource(SolverManager<ITestdataPlanningSolution, Long> solverManager) {
+  public GreyCOSTestResource(SolverManager<ITestdataPlanningSolution, Long> solverManager) {
     this.solverManager = solverManager;
   }
 

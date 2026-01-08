@@ -4,9 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class GreycosSolverSpringBootApp {
+public class GreyCOSSolverSpringBootApp {
 
   public static void main(String[] args) {
-    SpringApplication.run(GreycosSolverSpringBootApp.class, args);
+    SpringApplication.run(GreyCOSSolverSpringBootApp.class, args);
   }
 }

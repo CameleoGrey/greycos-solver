@@ -10,11 +10,11 @@ import ai.greycos.solver.benchmark.config.PlannerBenchmarkConfig;
  * Run this class from the command line interface to run a benchmarkConfigFile directly (using the
  * normal classpath from the JVM).
  */
-public class GreycosBenchmarkCli {
+public class GreyCOSBenchmarkCli {
 
   public static void main(String[] args) {
     if (args.length != 2) {
-      System.err.println("Usage: GreycosBenchmarkCli benchmarkConfigFile benchmarkDirectory");
+      System.err.println("Usage: GreyCOSBenchmarkCli benchmarkConfigFile benchmarkDirectory");
       System.exit(1);
     }
     File benchmarkConfigFile = new File(args[0]);

@@ -16,7 +16,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosBenchmarkProcessorMissingSpentLimitNoGlobalTerminationTest {
+class GreyCOSBenchmarkProcessorMissingSpentLimitNoGlobalTerminationTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =
@@ -42,7 +42,7 @@ class GreycosBenchmarkProcessorMissingSpentLimitNoGlobalTerminationTest {
             "solverBenchmarkConfigSpentLimitPerBenchmarkNoGlobalTermination.xml");
     assertThatThrownBy(
             () ->
-                new GreycosBenchmarkRecorder().benchmarkConfigSupplier(benchmarkConfig, null).get())
+                new GreyCOSBenchmarkRecorder().benchmarkConfigSupplier(benchmarkConfig, null).get())
         .hasMessage(
             "At least one of the solver benchmarks is not configured to terminate. "
                 + "At least one of the properties "

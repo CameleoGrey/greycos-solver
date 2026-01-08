@@ -7,7 +7,7 @@ import ai.greycos.solver.core.config.solver.SolverManagerConfig;
 import io.quarkus.runtime.annotations.ConfigGroup;
 import io.smallrye.config.WithDefault;
 
-/** During build time, this is translated into Greycos's {@link SolverManagerConfig}. */
+/** During build time, this is translated into GreyCOS's {@link SolverManagerConfig}. */
 @ConfigGroup
 public interface SolverManagerRuntimeConfig {
 

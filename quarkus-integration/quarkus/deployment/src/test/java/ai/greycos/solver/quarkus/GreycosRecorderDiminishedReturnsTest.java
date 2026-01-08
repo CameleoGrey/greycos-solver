@@ -19,7 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-class GreycosRecorderDiminishedReturnsTest {
+class GreyCOSRecorderDiminishedReturnsTest {
   SolverConfig solverConfig;
   SolverRuntimeConfig solverRuntimeConfig;
   TerminationRuntimeConfig terminationRuntimeConfig;
@@ -58,14 +58,14 @@ class GreycosRecorderDiminishedReturnsTest {
 
   @Test
   void nothingSet() {
-    GreycosRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
+    GreyCOSRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
     assertNoDiminishedReturns(solverConfig);
   }
 
   @Test
   void onlyEnabledSet() {
     Mockito.when(diminishedReturnsRuntimeConfig.enabled()).thenReturn(Optional.of(true));
-    GreycosRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
+    GreyCOSRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
     assertDiminishedReturns(solverConfig, null, null);
   }
 
@@ -73,7 +73,7 @@ class GreycosRecorderDiminishedReturnsTest {
   void onlySlidingWindowSet() {
     Mockito.when(diminishedReturnsRuntimeConfig.slidingWindowDuration())
         .thenReturn(Optional.ofNullable(Duration.ofMinutes(30)));
-    GreycosRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
+    GreyCOSRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
     assertDiminishedReturns(solverConfig, Duration.ofMinutes(30), null);
   }
 
@@ -81,7 +81,7 @@ class GreycosRecorderDiminishedReturnsTest {
   void onlyMinimumImprovementRatioSet() {
     Mockito.when(diminishedReturnsRuntimeConfig.minimumImprovementRatio())
         .thenReturn(OptionalDouble.of(123.0));
-    GreycosRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
+    GreyCOSRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
     assertDiminishedReturns(solverConfig, null, 123.0);
   }
 
@@ -91,7 +91,7 @@ class GreycosRecorderDiminishedReturnsTest {
         .thenReturn(Optional.ofNullable(Duration.ofMinutes(30)));
     Mockito.when(diminishedReturnsRuntimeConfig.minimumImprovementRatio())
         .thenReturn(OptionalDouble.of(123.0));
-    GreycosRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
+    GreyCOSRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
     assertDiminishedReturns(solverConfig, Duration.ofMinutes(30), 123.0);
   }
 
@@ -102,7 +102,7 @@ class GreycosRecorderDiminishedReturnsTest {
         .thenReturn(Optional.ofNullable(Duration.ofMinutes(30)));
     Mockito.when(diminishedReturnsRuntimeConfig.minimumImprovementRatio())
         .thenReturn(OptionalDouble.of(123.0));
-    GreycosRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
+    GreyCOSRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
     assertNoDiminishedReturns(solverConfig);
   }
 
@@ -112,7 +112,7 @@ class GreycosRecorderDiminishedReturnsTest {
         List.of(new ConstructionHeuristicPhaseConfig(), new LocalSearchPhaseConfig()));
     Mockito.when(diminishedReturnsRuntimeConfig.enabled()).thenReturn(Optional.of(false));
 
-    GreycosRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
+    GreyCOSRecorder.updateSolverConfigWithRuntimeProperties(solverConfig, solverRuntimeConfig);
     assertNoDiminishedReturns(solverConfig);
   }
 }

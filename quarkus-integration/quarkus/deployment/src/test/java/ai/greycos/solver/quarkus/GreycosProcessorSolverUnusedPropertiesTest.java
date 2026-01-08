@@ -20,7 +20,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosProcessorSolverUnusedPropertiesTest {
+class GreyCOSProcessorSolverUnusedPropertiesTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config1 =

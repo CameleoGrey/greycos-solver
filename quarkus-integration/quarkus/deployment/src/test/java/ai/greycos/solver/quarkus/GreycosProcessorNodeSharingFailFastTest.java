@@ -14,7 +14,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-public class GreycosProcessorNodeSharingFailFastTest {
+public class GreyCOSProcessorNodeSharingFailFastTest {
 
   @RegisterExtension
   static final QuarkusUnitTest config =

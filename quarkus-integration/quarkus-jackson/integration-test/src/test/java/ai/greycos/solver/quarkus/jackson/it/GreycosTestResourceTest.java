@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Timeout;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 
-/** Test various Greycos operations running in Quarkus */
+/** Test various GreyCOS operations running in Quarkus */
 @QuarkusTest
-class GreycosTestResourceTest {
+class GreyCOSTestResourceTest {
 
   @Test
   @Timeout(600)

@@ -6,7 +6,7 @@ import ai.greycos.solver.core.testdomain.TestdataObject;
 import ai.greycos.solver.core.testdomain.TestdataValue;
 
 /**
- * This POJO does not depend on Greycos: it has no Greycos imports (annotations, score, ...) except
+ * This POJO does not depend on GreyCOS: it has no GreyCOS imports (annotations, score, ...) except
  * for test imports.
  */
 public class TestdataThirdPartySolutionPojo extends TestdataObject {

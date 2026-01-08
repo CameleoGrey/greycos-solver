@@ -10,10 +10,10 @@ import org.springframework.aot.hint.ReflectionHints;
 import org.springframework.beans.factory.aot.BeanFactoryInitializationAotContribution;
 import org.springframework.beans.factory.aot.BeanFactoryInitializationCode;
 
-public class GreycosSolverAotContribution implements BeanFactoryInitializationAotContribution {
+public class GreyCOSSolverAotContribution implements BeanFactoryInitializationAotContribution {
   private final Map<String, SolverConfig> solverConfigMap;
 
-  public GreycosSolverAotContribution(Map<String, SolverConfig> solverConfigMap) {
+  public GreyCOSSolverAotContribution(Map<String, SolverConfig> solverConfigMap) {
     this.solverConfigMap = solverConfigMap;
   }
 

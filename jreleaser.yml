@@ -9,9 +9,9 @@ signing:
 release:
   github:
     commitAuthor:
-      name: "Greycos Release Bot"
+      name: "GreyCOS Release Bot"
       email: "release@greycos.ai"
-    releaseName: "Greycos Solver {{projectVersion}}"
+    releaseName: "GreyCOS Solver {{projectVersion}}"
     draft: true
     overwrite: false
     sign: true
@@ -29,7 +29,7 @@ release:
           - build
           - ci
         contributors:
-          - "Greycos Release Bot"
+          - "GreyCOS Release Bot"
 
 deploy:
   maven:

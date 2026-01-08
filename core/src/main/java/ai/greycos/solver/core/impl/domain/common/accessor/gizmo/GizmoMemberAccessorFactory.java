@@ -24,7 +24,7 @@ public class GizmoMemberAccessorFactory {
     String memberType = (member instanceof Field) ? "Field" : "Method";
 
     return member.getDeclaringClass().getName()
-        + "$Greycos$MemberAccessor$"
+        + "$GreyCOS$MemberAccessor$"
         + memberType
         + "$"
         + memberName;

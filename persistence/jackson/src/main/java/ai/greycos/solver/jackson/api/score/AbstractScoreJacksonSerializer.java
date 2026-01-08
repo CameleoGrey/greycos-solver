@@ -3,7 +3,7 @@ package ai.greycos.solver.jackson.api.score;
 import java.io.IOException;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.jackson.api.GreycosJacksonModule;
+import ai.greycos.solver.jackson.api.GreyCOSJacksonModule;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.BeanProperty;
@@ -22,7 +22,7 @@ import com.fasterxml.jackson.databind.ser.ContextualSerializer;
  * HardSoftScoreJacksonSerializer.class) @JsonDeserialize(using =
  * HardSoftScoreJacksonDeserializer.class)} on a {@code HardSoftScore score} field and it will
  * marshalled to JSON as {@code "score":"-999hard/-999soft"}. Or better yet, use {@link
- * GreycosJacksonModule} instead.
+ * GreyCOSJacksonModule} instead.
  *
  * @see Score
  * @param <Score_> the actual score type
@@ -37,7 +37,7 @@ public abstract class AbstractScoreJacksonSerializer<Score_ extends Score<Score_
     if (Score.class.equals(propertyType.getRawClass())) {
       // If the property type is Score (not HardSoftScore for example),
       // delegate to PolymorphicScoreJacksonSerializer instead to write the score type too
-      // This presumes that GreycosJacksonModule is registered
+      // This presumes that GreyCOSJacksonModule is registered
       return provider.findValueSerializer(propertyType);
     }
     return this;

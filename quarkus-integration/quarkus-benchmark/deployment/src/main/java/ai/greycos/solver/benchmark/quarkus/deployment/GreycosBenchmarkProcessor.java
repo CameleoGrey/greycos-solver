@@ -3,10 +3,10 @@ package ai.greycos.solver.benchmark.quarkus.deployment;
 import java.util.Optional;
 
 import ai.greycos.solver.benchmark.config.PlannerBenchmarkConfig;
-import ai.greycos.solver.benchmark.quarkus.GreycosBenchmarkBeanProvider;
-import ai.greycos.solver.benchmark.quarkus.GreycosBenchmarkRecorder;
-import ai.greycos.solver.benchmark.quarkus.UnavailableGreycosBenchmarkBeanProvider;
-import ai.greycos.solver.benchmark.quarkus.config.GreycosBenchmarkRuntimeConfig;
+import ai.greycos.solver.benchmark.quarkus.GreyCOSBenchmarkBeanProvider;
+import ai.greycos.solver.benchmark.quarkus.GreyCOSBenchmarkRecorder;
+import ai.greycos.solver.benchmark.quarkus.UnavailableGreyCOSBenchmarkBeanProvider;
+import ai.greycos.solver.benchmark.quarkus.config.GreyCOSBenchmarkRuntimeConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.quarkus.deployment.SolverConfigBuildItem;
 
@@ -23,11 +23,11 @@ import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.HotDeploymentWatchedFileBuildItem;
 import io.quarkus.runtime.configuration.ConfigurationException;
 
-class GreycosBenchmarkProcessor {
+class GreyCOSBenchmarkProcessor {
 
-  private static final Logger log = Logger.getLogger(GreycosBenchmarkProcessor.class.getName());
+  private static final Logger log = Logger.getLogger(GreyCOSBenchmarkProcessor.class.getName());
 
-  GreycosBenchmarkBuildTimeConfig greycosBenchmarkBuildTimeConfig;
+  GreyCOSBenchmarkBuildTimeConfig greycosBenchmarkBuildTimeConfig;
 
   @BuildStep
   FeatureBuildItem feature() {
@@ -39,7 +39,7 @@ class GreycosBenchmarkProcessor {
     String solverBenchmarkConfigXML =
         greycosBenchmarkBuildTimeConfig
             .solverBenchmarkConfigXml()
-            .orElse(GreycosBenchmarkBuildTimeConfig.DEFAULT_SOLVER_BENCHMARK_CONFIG_URL);
+            .orElse(GreyCOSBenchmarkBuildTimeConfig.DEFAULT_SOLVER_BENCHMARK_CONFIG_URL);
     return new HotDeploymentWatchedFileBuildItem(solverBenchmarkConfigXML);
   }
 
@@ -56,9 +56,9 @@ class GreycosBenchmarkProcessor {
                     Consider using separate <solverBenchmark> instances for evaluating different solver configurations.""");
     }
     if (solverConfigBuildItem.getGeneratedGizmoClasses() == null) {
-      log.warn("Skipping Greycos Benchmark extension because the Greycos extension was skipped.");
+      log.warn("Skipping GreyCOS Benchmark extension because the GreyCOS extension was skipped.");
       additionalBeans.produce(
-          new AdditionalBeanBuildItem(UnavailableGreycosBenchmarkBeanProvider.class));
+          new AdditionalBeanBuildItem(UnavailableGreyCOSBenchmarkBeanProvider.class));
       return new BenchmarkConfigBuildItem(null);
     }
     PlannerBenchmarkConfig benchmarkConfig;
@@ -75,17 +75,17 @@ class GreycosBenchmarkProcessor {
       }
       benchmarkConfig = PlannerBenchmarkConfig.createFromXmlResource(solverBenchmarkConfigXML);
     } else if (classLoader.getResource(
-            GreycosBenchmarkBuildTimeConfig.DEFAULT_SOLVER_BENCHMARK_CONFIG_URL)
+            GreyCOSBenchmarkBuildTimeConfig.DEFAULT_SOLVER_BENCHMARK_CONFIG_URL)
         != null) {
       benchmarkConfig =
           PlannerBenchmarkConfig.createFromXmlResource(
-              GreycosBenchmarkBuildTimeConfig.DEFAULT_SOLVER_BENCHMARK_CONFIG_URL);
+              GreyCOSBenchmarkBuildTimeConfig.DEFAULT_SOLVER_BENCHMARK_CONFIG_URL);
     } else {
       benchmarkConfig = null;
     }
-    additionalBeans.produce(new AdditionalBeanBuildItem(GreycosBenchmarkBeanProvider.class));
+    additionalBeans.produce(new AdditionalBeanBuildItem(GreyCOSBenchmarkBeanProvider.class));
     unremovableBeans.produce(
-        UnremovableBeanBuildItem.beanTypes(GreycosBenchmarkRuntimeConfig.class));
+        UnremovableBeanBuildItem.beanTypes(GreyCOSBenchmarkRuntimeConfig.class));
     unremovableBeans.produce(UnremovableBeanBuildItem.beanTypes(SolverConfig.class));
     return new BenchmarkConfigBuildItem(benchmarkConfig);
   }
@@ -93,11 +93,11 @@ class GreycosBenchmarkProcessor {
   @BuildStep
   @Record(ExecutionTime.RUNTIME_INIT)
   void registerRuntimeBeans(
-      GreycosBenchmarkRecorder recorder,
+      GreyCOSBenchmarkRecorder recorder,
       BuildProducer<SyntheticBeanBuildItem> syntheticBeans,
       SolverConfigBuildItem solverConfigBuildItem,
       BenchmarkConfigBuildItem benchmarkConfigBuildItem,
-      GreycosBenchmarkRuntimeConfig runtimeConfig) {
+      GreyCOSBenchmarkRuntimeConfig runtimeConfig) {
     if (solverConfigBuildItem.getGeneratedGizmoClasses() == null) {
       return;
     }

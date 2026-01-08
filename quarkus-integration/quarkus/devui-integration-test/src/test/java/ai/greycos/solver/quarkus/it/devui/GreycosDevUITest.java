@@ -29,7 +29,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import io.quarkus.devui.tests.DevUIJsonRPCTest;
 import io.quarkus.test.QuarkusDevModeTest;
 
-public class GreycosDevUITest extends DevUIJsonRPCTest {
+public class GreyCOSDevUITest extends DevUIJsonRPCTest {
 
   @RegisterExtension
   static final QuarkusDevModeTest config =
@@ -42,10 +42,10 @@ public class GreycosDevUITest extends DevUIJsonRPCTest {
                           TestdataStringLengthShadowEntity.class,
                           TestdataStringLengthShadowSolution.class,
                           TestdataStringLengthConstraintProvider.class,
-                          GreycosTestResource.class));
+                          GreyCOSTestResource.class));
 
   @Path("/greycos/test")
-  public static class GreycosTestResource {
+  public static class GreyCOSTestResource {
 
     @Inject SolverManager<TestdataStringLengthShadowSolution, Long> solverManager;
 
@@ -71,8 +71,8 @@ public class GreycosDevUITest extends DevUIJsonRPCTest {
     }
   }
 
-  public GreycosDevUITest() {
-    super("Greycos Solver");
+  public GreyCOSDevUITest() {
+    super("GreyCOS Solver");
   }
 
   @Test

@@ -20,7 +20,7 @@ import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.spring.boot.autoconfigure.chained.ChainedSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.chained.constraints.TestdataChainedSpringConstraintProvider;
 import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringSolution;
-import ai.greycos.solver.spring.boot.autoconfigure.config.GreycosProperties;
+import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleConstraintProviderSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleEasyScoreConstraintSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleIncrementalScoreConstraintSpringTestConfiguration;
@@ -57,7 +57,7 @@ import org.springframework.test.context.TestExecutionListeners;
 @TestExecutionListeners
 @Execution(ExecutionMode.CONCURRENT)
 @ResourceLock("yamlAndXml")
-class GreycosSolverMultipleSolverAutoConfigurationTest {
+class GreyCOSSolverMultipleSolverAutoConfigurationTest {
 
   private final ApplicationContextRunner contextRunner;
   private final ApplicationContextRunner emptyContextRunner;
@@ -66,41 +66,41 @@ class GreycosSolverMultipleSolverAutoConfigurationTest {
   private final ApplicationContextRunner multimoduleRunner;
   private final FilteredClassLoader allDefaultsFilteredClassLoader;
 
-  public GreycosSolverMultipleSolverAutoConfigurationTest() {
+  public GreyCOSSolverMultipleSolverAutoConfigurationTest() {
     contextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(NormalSpringTestConfiguration.class);
     emptyContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(EmptySpringTestConfiguration.class);
     chainedContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(ChainedSpringTestConfiguration.class);
     multimoduleRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class))
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(MultiModuleSpringTestConfiguration.class);
     allDefaultsFilteredClassLoader =
         new FilteredClassLoader(
             FilteredClassLoader.PackageFilter.of("ai.greycos.solver.test"),
             FilteredClassLoader.ClassPathResourceFilter.of(
-                new ClassPathResource(GreycosProperties.DEFAULT_SOLVER_CONFIG_URL)));
+                new ClassPathResource(GreyCOSProperties.DEFAULT_SOLVER_CONFIG_URL)));
     noUserConfigurationContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
                 AutoConfigurations.of(
-                    GreycosSolverAutoConfiguration.class, GreycosSolverBeanFactory.class));
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class));
   }
 
   @Test
@@ -290,7 +290,7 @@ class GreycosSolverMultipleSolverAutoConfigurationTest {
         .withPropertyValues("greycos.solver.solver1.environment-mode=FULL_ASSERT")
         .withPropertyValues("greycos.solver.solver2.environment-mode=TRACKED_FULL_ASSERT")
         .withUserConfiguration(
-            GreycosBenchmarkAutoConfiguration.class) // We load the configuration, but get no bean
+            GreyCOSBenchmarkAutoConfiguration.class) // We load the configuration, but get no bean
         .run(
             context -> {
               var solver1 =

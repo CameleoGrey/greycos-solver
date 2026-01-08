@@ -40,7 +40,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistan
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveListFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
-import ai.greycos.solver.core.impl.io.jaxb.GreycosXmlSerializationException;
+import ai.greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 import ai.greycos.solver.core.impl.io.jaxb.SolverConfigIO;
 import ai.greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
 import ai.greycos.solver.core.testdomain.TestdataEntity;
@@ -152,7 +152,7 @@ class SolverConfigTest {
                 </solver>""";
 
     var stringReader = new StringReader(solverConfigXml);
-    assertThatExceptionOfType(GreycosXmlSerializationException.class)
+    assertThatExceptionOfType(GreyCOSXmlSerializationException.class)
         .isThrownBy(() -> solverConfigIO.read(stringReader))
         .withRootCauseExactlyInstanceOf(SAXParseException.class)
         .withMessageContaining("Node: variableName");

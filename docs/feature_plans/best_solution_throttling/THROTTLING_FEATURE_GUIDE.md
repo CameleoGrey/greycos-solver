@@ -202,7 +202,7 @@ var throttledConsumer = new ThrottlingBestSolutionEventConsumer<>(
     Duration.ofSeconds(1)
 );
 
-// Greycos (same API)
+// GreyCOS (same API)
 var throttledConsumer = ThrottlingBestSolutionEventConsumer.of(
     delegate,
     Duration.ofSeconds(1)

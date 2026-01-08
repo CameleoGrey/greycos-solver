@@ -12,14 +12,14 @@
   <artifactId>greycos-solver-quarkus-jsonb-parent</artifactId>
   <packaging>pom</packaging>
 
-  <name>(Deprecated) Greycos Solver Quarkus JSON-B</name>
+  <name>(Deprecated) GreyCOS Solver Quarkus JSON-B</name>
   <description>
-    Greycos solves planning problems.
+    GreyCOS solves planning problems.
     This lightweight, embeddable planning engine implements powerful and scalable algorithms
     to optimize business resource scheduling and planning.
 
     This module contains the JSON-B integration for Quarkus.
-    This module is deprecated and will be removed in a future major version of Greycos Solver.
+    This module is deprecated and will be removed in a future major version of GreyCOS Solver.
     Please use the Jackson integration instead.
   </description>
   <url>https://solver.greycos.ai</url>

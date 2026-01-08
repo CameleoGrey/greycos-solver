@@ -17,12 +17,12 @@ import ai.greycos.solver.quarkus.benchmark.it.domain.TestdataStringLengthShadowE
 import ai.greycos.solver.quarkus.benchmark.it.domain.TestdataStringLengthShadowSolution;
 
 @Path("/greycos/test")
-public class GreycosBenchmarkTestResource {
+public class GreyCOSBenchmarkTestResource {
 
   private final PlannerBenchmarkFactory benchmarkFactory;
 
   @Inject
-  public GreycosBenchmarkTestResource(PlannerBenchmarkFactory benchmarkFactory) {
+  public GreyCOSBenchmarkTestResource(PlannerBenchmarkFactory benchmarkFactory) {
     this.benchmarkFactory = benchmarkFactory;
   }
 

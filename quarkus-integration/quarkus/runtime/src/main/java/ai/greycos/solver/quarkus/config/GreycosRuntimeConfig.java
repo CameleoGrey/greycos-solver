@@ -16,7 +16,7 @@ import io.smallrye.config.WithUnnamedKey;
 @ConfigMapping(prefix = "quarkus.greycos")
 @ConfigRoot(phase = ConfigPhase.RUN_TIME)
 @StaticInitSafe
-public interface GreycosRuntimeConfig {
+public interface GreyCOSRuntimeConfig {
 
   String DEFAULT_SOLVER_NAME = "default";
 

@@ -17,7 +17,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusUnitTest;
 
-class GreycosConstraintVerifierTest {
+class GreyCOSConstraintVerifierTest {
   @RegisterExtension
   static final QuarkusUnitTest config =
       new QuarkusUnitTest()

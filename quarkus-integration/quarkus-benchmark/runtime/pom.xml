@@ -10,8 +10,8 @@
   </parent>
 
   <artifactId>greycos-solver-quarkus-benchmark</artifactId>
-  <name>Greycos Solver Quarkus Benchmark - Runtime</name>
-  <description>Benchmark an Greycos project to power tweak the solver configuration for speed and scalability.</description>
+  <name>GreyCOS Solver Quarkus Benchmark - Runtime</name>
+  <description>Benchmark an GreyCOS project to power tweak the solver configuration for speed and scalability.</description>
   <url>https://solver.greycos.ai</url>
 
   <properties>

@@ -3,7 +3,7 @@ package ai.greycos.solver.quarkus.deployment;
 import java.util.Map;
 
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.quarkus.deployment.config.GreycosBuildTimeConfig;
+import ai.greycos.solver.quarkus.deployment.config.GreyCOSBuildTimeConfig;
 
 import io.quarkus.builder.item.SimpleBuildItem;
 
@@ -21,7 +21,7 @@ public final class SolverConfigBuildItem extends SimpleBuildItem {
 
   public boolean isDefaultSolverConfig(String solverName) {
     return solverConfigurations.size() <= 1
-        || GreycosBuildTimeConfig.DEFAULT_SOLVER_NAME.equals(solverName);
+        || GreyCOSBuildTimeConfig.DEFAULT_SOLVER_NAME.equals(solverName);
   }
 
   public Map<String, SolverConfig> getSolverConfigMap() {

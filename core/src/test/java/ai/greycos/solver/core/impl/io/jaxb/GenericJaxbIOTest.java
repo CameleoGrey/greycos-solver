@@ -54,7 +54,7 @@ class GenericJaxbIOTest {
   void readThrowsExceptionOnInvalidXml() {
     String invalidXml = "<unknownRootElement/>";
     StringReader stringReader = new StringReader(invalidXml);
-    assertThatExceptionOfType(GreycosXmlSerializationException.class)
+    assertThatExceptionOfType(GreyCOSXmlSerializationException.class)
         .isThrownBy(() -> xmlIO.read(stringReader));
   }
 
@@ -67,7 +67,7 @@ class GenericJaxbIOTest {
             + "  <!ENTITY xxe SYSTEM \"file:///etc/passwd\" >]"
             + ">"
             + "<dummyJaxbClass>&xxe;</dummyJaxbClass>";
-    assertThatExceptionOfType(GreycosXmlSerializationException.class)
+    assertThatExceptionOfType(GreyCOSXmlSerializationException.class)
         .isThrownBy(() -> xmlIO.readOverridingNamespace(new StringReader(maliciousXml)))
         .withRootCauseExactlyInstanceOf(SAXParseException.class)
         .withStackTraceContaining("accessExternalDTD");

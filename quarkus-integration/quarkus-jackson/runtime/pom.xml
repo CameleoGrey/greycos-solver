@@ -10,8 +10,8 @@
   </parent>
 
   <artifactId>greycos-solver-quarkus-jackson</artifactId>
-  <name>Greycos Solver Quarkus Jackson - Runtime</name>
-  <description>Activate Jackson bindings for Greycos's Score classes</description>
+  <name>GreyCOS Solver Quarkus Jackson - Runtime</name>
+  <description>Activate Jackson bindings for GreyCOS's Score classes</description>
   <url>https://solver.greycos.ai</url>
 
   <properties>

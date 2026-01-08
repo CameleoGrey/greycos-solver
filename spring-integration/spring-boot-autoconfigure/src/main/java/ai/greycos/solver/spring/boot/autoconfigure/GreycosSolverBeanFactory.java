@@ -16,8 +16,8 @@ import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.SolverManagerConfig;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamScoreDirectorFactory;
 import ai.greycos.solver.core.impl.solver.DefaultSolverFactory;
-import ai.greycos.solver.jackson.api.GreycosJacksonModule;
-import ai.greycos.solver.spring.boot.autoconfigure.config.GreycosProperties;
+import ai.greycos.solver.jackson.api.GreyCOSJacksonModule;
+import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.config.SolverManagerProperties;
 import ai.greycos.solver.test.api.score.stream.ConstraintVerifier;
 import ai.greycos.solver.test.api.score.stream.MultiConstraintVerification;
@@ -45,14 +45,14 @@ import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import com.fasterxml.jackson.databind.Module;
 
 /**
- * Must be seperated from {@link GreycosSolverAutoConfiguration} since {@link
- * GreycosSolverAutoConfiguration} will not be available at runtime for a native image (since it is
+ * Must be seperated from {@link GreyCOSSolverAutoConfiguration} since {@link
+ * GreyCOSSolverAutoConfiguration} will not be available at runtime for a native image (since it is
  * a {@link BeanFactoryInitializationAotProcessor}/ {@link BeanFactoryPostProcessor}).
  */
 @Configuration
-public class GreycosSolverBeanFactory implements ApplicationContextAware, EnvironmentAware {
+public class GreyCOSSolverBeanFactory implements ApplicationContextAware, EnvironmentAware {
   private ApplicationContext context;
-  private GreycosProperties greycosProperties;
+  private GreyCOSProperties greycosProperties;
 
   @Override
   public void setApplicationContext(ApplicationContext context) throws BeansException {
@@ -62,9 +62,9 @@ public class GreycosSolverBeanFactory implements ApplicationContextAware, Enviro
   @Override
   public void setEnvironment(Environment environment) {
     // We need the environment to set run time properties of SolverFactory and SolverManager
-    BindResult<GreycosProperties> result =
-        Binder.get(environment).bind("greycos", GreycosProperties.class);
-    this.greycosProperties = result.orElseGet(GreycosProperties::new);
+    BindResult<GreyCOSProperties> result =
+        Binder.get(environment).bind("greycos", GreyCOSProperties.class);
+    this.greycosProperties = result.orElseGet(GreyCOSProperties::new);
   }
 
   private void failInjectionWithMultipleSolvers(String resourceName) {
@@ -76,8 +76,8 @@ public class GreycosSolverBeanFactory implements ApplicationContextAware, Enviro
 
   @Bean
   @Lazy
-  public GreycosSolverBannerBean getBanner() {
-    return new GreycosSolverBannerBean();
+  public GreyCOSSolverBannerBean getBanner() {
+    return new GreyCOSSolverBannerBean();
   }
 
   @Bean
@@ -154,12 +154,12 @@ public class GreycosSolverBeanFactory implements ApplicationContextAware, Enviro
   // @Bean wrapped by static class to avoid classloading issues if dependencies are absent
   @ConditionalOnClass({ConstraintVerifier.class})
   @ConditionalOnMissingBean({ConstraintVerifier.class})
-  @AutoConfigureAfter(GreycosSolverAutoConfiguration.class)
-  class GreycosConstraintVerifierConfiguration {
+  @AutoConfigureAfter(GreyCOSSolverAutoConfiguration.class)
+  class GreyCOSConstraintVerifierConfiguration {
 
     private final ApplicationContext context;
 
-    protected GreycosConstraintVerifierConfiguration(ApplicationContext context) {
+    protected GreyCOSConstraintVerifierConfiguration(ApplicationContext context) {
       this.context = context;
     }
 
@@ -204,7 +204,7 @@ public class GreycosSolverBeanFactory implements ApplicationContextAware, Enviro
           || scoreDirectorFactoryConfig.getConstraintProviderClass() == null) {
         // Return a mock ConstraintVerifier so not having ConstraintProvider doesn't crash tests
         // (Cannot create custom condition that checks SolverConfig, since that
-        //  requires GreycosSolverAutoConfiguration to have a no-args constructor)
+        //  requires GreyCOSSolverAutoConfiguration to have a no-args constructor)
         final String noConstraintProviderErrorMsg =
             (scoreDirectorFactoryConfig != null)
                 ? "Cannot provision a ConstraintVerifier because there is no ConstraintProvider class."
@@ -219,11 +219,11 @@ public class GreycosSolverBeanFactory implements ApplicationContextAware, Enviro
   // @Bean wrapped by static class to avoid classloading issues if dependencies are absent
   @Configuration(proxyBeanMethods = false)
   @ConditionalOnClass({Jackson2ObjectMapperBuilder.class, Score.class})
-  static class GreycosJacksonConfiguration {
+  static class GreyCOSJacksonConfiguration {
 
     @Bean
     Module jacksonModule() {
-      return GreycosJacksonModule.createModule();
+      return GreyCOSJacksonModule.createModule();
     }
   }
 }

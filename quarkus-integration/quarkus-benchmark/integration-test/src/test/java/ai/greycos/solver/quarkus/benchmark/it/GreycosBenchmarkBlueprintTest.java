@@ -22,8 +22,8 @@ import io.restassured.path.xml.XmlPath;
 
 /** Test the benchmark for typical solver configs (blueprint). */
 @QuarkusTest
-@TestProfile(GreycosBenchmarkBlueprintTest.BlueprintTestProfile.class)
-class GreycosBenchmarkBlueprintTest extends GreycosBenchmarkAbstract {
+@TestProfile(GreyCOSBenchmarkBlueprintTest.BlueprintTestProfile.class)
+class GreyCOSBenchmarkBlueprintTest extends GreyCOSBenchmarkAbstract {
 
   @BeforeEach
   void setup() {
