@@ -35,7 +35,9 @@ import org.jspecify.annotations.Nullable;
       "linearDistributionSizeMaximum",
       "parabolicDistributionSizeMaximum",
       "betaDistributionAlpha",
-      "betaDistributionBeta"
+      "betaDistributionBeta",
+      "maxNearbySortSize",
+      "eagerInitialization"
     })
 public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig> {
 
@@ -63,6 +65,9 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
 
   protected Double betaDistributionAlpha = null;
   protected Double betaDistributionBeta = null;
+
+  protected Integer maxNearbySortSize = null;
+  protected Boolean eagerInitialization = null;
 
   public @Nullable EntitySelectorConfig getOriginEntitySelectorConfig() {
     return originEntitySelectorConfig;
@@ -176,6 +181,22 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
     this.betaDistributionBeta = betaDistributionBeta;
   }
 
+  public @Nullable Integer getMaxNearbySortSize() {
+    return maxNearbySortSize;
+  }
+
+  public void setMaxNearbySortSize(@Nullable Integer maxNearbySortSize) {
+    this.maxNearbySortSize = maxNearbySortSize;
+  }
+
+  public @Nullable Boolean getEagerInitialization() {
+    return eagerInitialization;
+  }
+
+  public void setEagerInitialization(@Nullable Boolean eagerInitialization) {
+    this.eagerInitialization = eagerInitialization;
+  }
+
   // ************************************************************************
   // With methods
   // ************************************************************************
@@ -256,6 +277,17 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
   public @NonNull NearbySelectionConfig withBetaDistributionBeta(
       @NonNull Double betaDistributionBeta) {
     this.setBetaDistributionBeta(betaDistributionBeta);
+    return this;
+  }
+
+  public @NonNull NearbySelectionConfig withMaxNearbySortSize(@NonNull Integer maxNearbySortSize) {
+    this.setMaxNearbySortSize(maxNearbySortSize);
+    return this;
+  }
+
+  public @NonNull NearbySelectionConfig withEagerInitialization(
+      @NonNull Boolean eagerInitialization) {
+    this.setEagerInitialization(eagerInitialization);
     return this;
   }
 
@@ -401,6 +433,12 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
     betaDistributionBeta =
         ConfigUtils.inheritOverwritableProperty(
             betaDistributionBeta, inheritedConfig.getBetaDistributionBeta());
+    maxNearbySortSize =
+        ConfigUtils.inheritOverwritableProperty(
+            maxNearbySortSize, inheritedConfig.getMaxNearbySortSize());
+    eagerInitialization =
+        ConfigUtils.inheritOverwritableProperty(
+            eagerInitialization, inheritedConfig.getEagerInitialization());
     return this;
   }
 

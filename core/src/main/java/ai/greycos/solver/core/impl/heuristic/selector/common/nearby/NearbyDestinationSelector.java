@@ -50,6 +50,8 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
   private final @Nullable NearbyRandom nearbyRandom;
   private final boolean randomSelection;
   private final @NonNull ListVariableDescriptor<Solution_> listVariableDescriptor;
+  private final int maxNearbySortSize;
+  private final boolean eagerInitialization;
 
   // Distance matrix for caching sorted destinations by distance from origin
   // Initialized lazily in solvingStarted()
@@ -108,6 +110,12 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
     this.nearbyRandom =
         NearbyRandomFactory.create(nearbySelectionConfig).buildNearbyRandom(randomSelection);
 
+    // Calculate maxNearbySortSize with auto-configuration
+    this.maxNearbySortSize = calculateMaxNearbySortSize(nearbySelectionConfig);
+
+    // Eager initialization flag
+    this.eagerInitialization = Boolean.TRUE.equals(nearbySelectionConfig.getEagerInitialization());
+
     // Distance matrix will be initialized lazily in solvingStarted()
     // when selectors are fully initialized (their cachedEntityList won't be null)
     this.distanceMatrix = null;
@@ -141,7 +149,13 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
             castedDistanceMeter,
             100, // Initial capacity estimate
             origin -> new CombinedDestinationIterator(),
-            origin -> (int) (entitySelector.getSize() + valueSelector.getSize()));
+            origin -> (int) (entitySelector.getSize() + valueSelector.getSize()),
+            maxNearbySortSize);
+
+    // Eager initialization: pre-compute all distance matrices
+    if (eagerInitialization) {
+      initializeAllOrigins();
+    }
   }
 
   @Override
@@ -229,6 +243,79 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
         + ")";
   }
 
+  /**
+   * Calculates the maxNearbySortSize with auto-configuration. If user specified a value, use it.
+   * Otherwise, auto-calculate based on distribution size.
+   *
+   * @param config the nearby selection config
+   * @return the max nearby sort size to use
+   */
+  private int calculateMaxNearbySortSize(@NonNull NearbySelectionConfig config) {
+    Integer userSpecified = config.getMaxNearbySortSize();
+    if (userSpecified != null && userSpecified > 0) {
+      return userSpecified;
+    }
+
+    // Auto-calculate: 10x the distribution size (heuristic)
+    int distributionSize = getDistributionSize(config);
+    return Math.max(500, distributionSize * 10);
+  }
+
+  /**
+   * Gets the distribution size from the config based on the distribution type.
+   *
+   * @param config the nearby selection config
+   * @return the distribution size
+   */
+  private int getDistributionSize(@NonNull NearbySelectionConfig config) {
+    var distributionType = config.getNearbySelectionDistributionType();
+    if (distributionType == null) {
+      return 40; // Default for PARABOLIC
+    }
+
+    return switch (distributionType) {
+      case PARABOLIC_DISTRIBUTION -> {
+        Integer size = config.getParabolicDistributionSizeMaximum();
+        yield size != null ? size : 40;
+      }
+      case LINEAR_DISTRIBUTION -> {
+        Integer size = config.getLinearDistributionSizeMaximum();
+        yield size != null ? size : 40;
+      }
+      case BLOCK_DISTRIBUTION -> {
+        Integer size = config.getBlockDistributionSizeMaximum();
+        yield size != null ? size : 40;
+      }
+      case BETA_DISTRIBUTION -> 40; // Beta distribution doesn't have a size parameter
+    };
+  }
+
+  /**
+   * Eagerly initializes all origins by pre-computing their distance matrices. This eliminates
+   * latency spikes during solving.
+   */
+  private void initializeAllOrigins() {
+    // Get all origins from the origin selector
+    Iterator<?> originIterator;
+    if (originEntitySelector != null) {
+      originIterator = originEntitySelector.endingIterator();
+    } else if (originSubListSelector != null) {
+      // SubListSelector doesn't have endingIterator(), use iterator() instead
+      originIterator = originSubListSelector.iterator();
+    } else if (originValueSelector != null) {
+      // IterableValueSelector doesn't have endingIterator(), use iterator() instead
+      originIterator = originValueSelector.iterator(null);
+    } else {
+      return;
+    }
+
+    // Pre-compute distance matrices for all origins
+    while (originIterator.hasNext()) {
+      Object origin = originIterator.next();
+      distanceMatrix.addAllDestinations(origin);
+    }
+  }
+
   // ************************************************************************
   // Helper classes
   // ************************************************************************
@@ -249,7 +336,8 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
     public CombinedDestinationIterator() {
       // Use endingIterator() to get finite iterators, not never-ending random iterators
       this.entityIterator = entitySelector.endingIterator();
-      this.valueIterator = valueSelector.endingIterator(null); // null = all values across all entities
+      this.valueIterator =
+          valueSelector.endingIterator(null); // null = all values across all entities
     }
 
     @Override

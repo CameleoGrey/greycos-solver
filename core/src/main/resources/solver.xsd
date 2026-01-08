@@ -472,6 +472,10 @@
           <xs:element minOccurs="0" name="betaDistributionAlpha" type="xs:double"/>
                     
           <xs:element minOccurs="0" name="betaDistributionBeta" type="xs:double"/>
+                    
+          <xs:element minOccurs="0" name="maxNearbySortSize" type="xs:int"/>
+                    
+          <xs:element minOccurs="0" name="eagerInitialization" type="xs:boolean"/>
                   
         </xs:sequence>
               

@@ -13,6 +13,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory;
+import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -21,13 +22,13 @@ import org.jspecify.annotations.Nullable;
  * Nearby value selector that applies nearby selection to value selectors.
  *
  * <p>This selector wraps a value selector and applies nearby selection logic based on an origin
- * value selector. Destinations are filtered and reordered based on distance from the origin value
- * using a distance matrix that caches sorted destinations.
+ * value selector. Destinations are filtered and reordered based on distance from origin value using
+ * a distance matrix that caches sorted destinations.
  *
  * <p><b>Key Features:</b>
  *
  * <ul>
- *   <li>Distance-based selection: Prefers values near the origin value
+ *   <li>Distance-based selection: Prefers values near origin value
  *   <li>Distance matrix caching: Pre-computes and sorts values by distance
  *   <li>Probability distributions: Supports parabolic, linear, block, and beta distributions
  *   <li>Thread-safe: Uses concurrent distance matrix for parallel solving
@@ -43,6 +44,8 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
   private final @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter;
   private final @Nullable NearbyRandom nearbyRandom;
   private final boolean randomSelection;
+  private final int maxNearbySortSize;
+  private final boolean eagerInitialization;
 
   // Distance matrix for caching sorted values by distance from origin
   private final @NonNull NearbyDistanceMatrix<Object, Object> distanceMatrix;
@@ -67,6 +70,12 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
 
     this.nearbyRandom =
         NearbyRandomFactory.create(nearbySelectionConfig).buildNearbyRandom(randomSelection);
+
+    // Calculate maxNearbySortSize with auto-configuration
+    this.maxNearbySortSize = calculateMaxNearbySortSize(nearbySelectionConfig);
+
+    // Eager initialization flag
+    this.eagerInitialization = Boolean.TRUE.equals(nearbySelectionConfig.getEagerInitialization());
 
     // Build origin value selector from config
     this.originValueSelector =
@@ -94,10 +103,26 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
             castedDistanceMeter,
             100, // Initial capacity estimate
             origin -> childValueSelector.iterator(origin),
-            origin -> (int) childValueSelector.getSize(origin));
+            origin -> (int) childValueSelector.getSize(origin),
+            maxNearbySortSize);
 
     phaseLifecycleSupport.addEventListener(childValueSelector);
     phaseLifecycleSupport.addEventListener(originValueSelector);
+  }
+
+  @Override
+  public void solvingStarted(SolverScope<Solution_> solverScope) {
+    super.solvingStarted(solverScope);
+
+    // Eager initialization: pre-compute all distance matrices
+    if (eagerInitialization) {
+      initializeAllOrigins(solverScope);
+    }
+  }
+
+  @Override
+  public void solvingEnded(SolverScope<Solution_> solverScope) {
+    super.solvingEnded(solverScope);
   }
 
   @Override
@@ -121,7 +146,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
 
   @Override
   public @NonNull Iterator<Object> endingIterator(@NonNull Object entity) {
-    // For nearby selection, ending iterator is the same as regular iterator
+    // For nearby selection, ending iterator is same as regular iterator
     // because we only iterate through nearby values
     return iterator(entity);
   }
@@ -168,13 +193,76 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
     return "NearbyValueSelector(" + getVariableDescriptor().getVariableName() + ")";
   }
 
+  /**
+   * Calculates maxNearbySortSize with auto-configuration. If user specified a value, use it.
+   * Otherwise, auto-calculate based on distribution size.
+   *
+   * @param config nearby selection config
+   * @return max nearby sort size to use
+   */
+  private int calculateMaxNearbySortSize(@NonNull NearbySelectionConfig config) {
+    Integer userSpecified = config.getMaxNearbySortSize();
+    if (userSpecified != null && userSpecified > 0) {
+      return userSpecified;
+    }
+
+    // Auto-calculate: 10x distribution size (heuristic)
+    int distributionSize = getDistributionSize(config);
+    return Math.max(500, distributionSize * 10);
+  }
+
+  /**
+   * Gets the distribution size from config based on distribution type.
+   *
+   * @param config nearby selection config
+   * @return distribution size
+   */
+  private int getDistributionSize(@NonNull NearbySelectionConfig config) {
+    var distributionType = config.getNearbySelectionDistributionType();
+    if (distributionType == null) {
+      return 40; // Default for PARABOLIC
+    }
+
+    return switch (distributionType) {
+      case PARABOLIC_DISTRIBUTION -> {
+        Integer size = config.getParabolicDistributionSizeMaximum();
+        yield size != null ? size : 40;
+      }
+      case LINEAR_DISTRIBUTION -> {
+        Integer size = config.getLinearDistributionSizeMaximum();
+        yield size != null ? size : 40;
+      }
+      case BLOCK_DISTRIBUTION -> {
+        Integer size = config.getBlockDistributionSizeMaximum();
+        yield size != null ? size : 40;
+      }
+      case BETA_DISTRIBUTION -> 40; // Beta distribution doesn't have a size parameter
+    };
+  }
+
+  /**
+   * Eagerly initializes all origins by pre-computing their distance matrices. This eliminates
+   * latency spikes during solving.
+   */
+  private void initializeAllOrigins(SolverScope<Solution_> solverScope) {
+    // Get all entities from the child value selector
+    var entityDescriptor = getVariableDescriptor().getEntityDescriptor();
+
+    // Iterate through all entities and pre-compute their distance matrices
+    entityDescriptor.visitAllEntities(
+        solverScope.getWorkingSolution(),
+        entity -> {
+          distanceMatrix.addAllDestinations(entity);
+        });
+  }
+
   // ************************************************************************
   // Iterator implementations
   // ************************************************************************
 
   /**
    * Random nearby value iterator. Uses probability distribution to select values sorted by distance
-   * from the origin.
+   * from origin.
    */
   private class RandomNearbyValueIterator implements Iterator<Object> {
 
@@ -195,7 +283,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
 
     @Override
     public boolean hasNext() {
-      // The replaying iterator provides a constant origin until the recording iterator advances
+      // The replaying iterator provides a constant origin until recording iterator advances
       return (origin != null || replayingOriginIterator.hasNext()) && nearbySize > 0;
     }
 
@@ -219,7 +307,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
   }
 
   /**
-   * Deterministic nearby value iterator. Iterates through values in sorted distance order from the
+   * Deterministic nearby value iterator. Iterates through values in sorted distance order from
    * origin.
    */
   private class OriginalNearbyValueIterator implements Iterator<Object> {
