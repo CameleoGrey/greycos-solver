@@ -1,4 +1,6 @@
 
+image::logos/GreyCOS logo 2.png[link="https://github.com/CameleoGrey/greycos-solver",GreyCOS Solver,align="center"]
+
 == Main idea of this project
 
 Integrate back several advanced features from OptaPlanner (Apache 2.0) into fork of TimeFold Solver Community Edition (Apache 2.0).
