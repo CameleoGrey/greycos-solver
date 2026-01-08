@@ -67,7 +67,6 @@
     <module>spring-integration</module>
     <module>quarkus-integration</module>
     <module>tools</module>
-    <module>migration</module><!-- TODO move to tools/migration -->
     <module>examples</module>
   </modules>
 
@@ -164,30 +163,6 @@
             </executions>
           </plugin>
         </plugins>
-      </build>
-    </profile>
-    <profile>
-      <!--
-        Migration to GreyCOS 0.9 involves upgrading to Quarkus 3, Spring Boot 3 and migrating to jakarta.* packages.
-        GreyCOS 0.8 remains compatible with Quarkus 2, Spring Boot 2 and javax.* packages.
-        Both GreyCOS 0.8 and 0.9 are functionally equal.
-      -->
-      <id>8-to-9-migration</id>
-      <activation>
-        <property>
-          <name>migration</name>
-        </property>
-      </activation>
-      <build>
-        <pluginManagement>
-          <plugins>
-            <plugin>
-              <groupId>org.openrewrite.maven</groupId>
-              <artifactId>rewrite-maven-plugin</artifactId>
-              <version>${version.rewrite.plugin}</version>
-            </plugin>
-          </plugins>
-        </pluginManagement>
       </build>
     </profile>
   </profiles>
