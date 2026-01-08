@@ -64,16 +64,16 @@ import org.jspecify.annotations.Nullable;
 @XmlType(
     propOrder = {
       "islandCount",
+      "moveThreadCount",
       "migrationFrequency",
       "compareGlobalEnabled",
       "receiveGlobalUpdateFrequency",
       "compareGlobalFrequency",
       "migrationTimeout",
       "localSearchType",
-      "moveSelectorConfig",
-      "moveThreadCount",
       "acceptorConfig",
       "foragerConfig",
+      "moveSelectorConfig",
       "phaseConfigList",
     })
 public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> {
@@ -189,14 +189,14 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   private Integer islandCount = null;
 
   @XmlElement(name = "migrationFrequency")
-  private Integer migrationFrequency = null;
+  private Integer migrationFrequency = Integer.MAX_VALUE;
 
   @XmlElement(name = "compareGlobalEnabled")
-  private Boolean compareGlobalEnabled = null;
+  private Boolean compareGlobalEnabled = true;
 
   // NEW: Receive global update frequency
   @XmlElement(name = "receiveGlobalUpdateFrequency")
-  private Integer receiveGlobalUpdateFrequency = null;
+  private Integer receiveGlobalUpdateFrequency = 400;
 
   // DEPRECATED: Compare global frequency
   @Deprecated
@@ -204,7 +204,7 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   private Integer compareGlobalFrequency = null;
 
   @XmlElement(name = "migrationTimeout")
-  private Long migrationTimeout = null;
+  private Long migrationTimeout = 1000L;
 
   // ************************************************************************
   // Constructors and simple getters/setters

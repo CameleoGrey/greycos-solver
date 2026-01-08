@@ -34,10 +34,10 @@ import org.jspecify.annotations.Nullable;
 
 @XmlType(
     propOrder = {
+      "moveThreadCount",
       "constructionHeuristicType",
       "entitySorterManner",
       "valueSorterManner",
-      "moveThreadCount",
       "entityPlacerConfig",
       "moveSelectorConfigList",
       "foragerConfig"
@@ -53,6 +53,8 @@ public class ConstructionHeuristicPhaseConfig
   protected ConstructionHeuristicType constructionHeuristicType = null;
   protected EntitySorterManner entitySorterManner = null;
   protected ValueSorterManner valueSorterManner = null;
+
+  @XmlElement(name = "moveThreadCount")
   protected String moveThreadCount = null;
 
   @XmlElements({

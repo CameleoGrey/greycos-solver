@@ -121,6 +121,7 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
   @XmlElement(name = "forager")
   private LocalSearchForagerConfig foragerConfig = null;
 
+  @XmlElement(name = "moveThreadCount")
   protected String moveThreadCount = null;
 
   // ************************************************************************
