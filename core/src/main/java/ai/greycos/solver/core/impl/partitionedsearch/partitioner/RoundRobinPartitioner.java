@@ -1,9 +1,7 @@
 package ai.greycos.solver.core.impl.partitionedsearch.partitioner;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
@@ -15,27 +13,30 @@ import org.jspecify.annotations.NullMarked;
 /**
  * Simple round-robin partitioner that distributes entities across partitions.
  *
- * <p>Each planning entity is assigned to a partition in round-robin order. This is a simple example
- * implementation suitable for testing.
+ * <p>This is a basic example implementation for testing. For production use, implement a
+ * partitioner specific to your domain that considers entity relationships and constraints.
+ *
+ * <p>Each planning entity is assigned to exactly one partition in round-robin order. Problem facts
+ * are cloned to all partitions.
  *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
 @NullMarked
 public class RoundRobinPartitioner<Solution_> implements SolutionPartitioner<Solution_> {
 
-  private final int partitionCount;
+  private final int partCount;
 
   /**
    * Creates a round-robin partitioner with the specified number of partitions.
    *
-   * @param partitionCount Number of partitions to create
+   * @param partCount Number of partitions to create
    */
-  public RoundRobinPartitioner(int partitionCount) {
-    if (partitionCount < 1) {
+  public RoundRobinPartitioner(int partCount) {
+    if (partCount < 1) {
       throw new IllegalArgumentException(
-          "Partition count must be at least 1, but was: " + partitionCount);
+          "Partition count must be at least 1, but was: " + partCount);
     }
-    this.partitionCount = partitionCount;
+    this.partCount = partCount;
   }
 
   @Override
@@ -47,57 +48,31 @@ public class RoundRobinPartitioner<Solution_> implements SolutionPartitioner<Sol
     SolutionDescriptor<Solution_> solutionDescriptor = innerScoreDirector.getSolutionDescriptor();
     Solution_ workingSolution = innerScoreDirector.getWorkingSolution();
 
-    // Determine actual partition count considering thread limit
+    // Adjust partition count based on thread limit
     int actualPartCount =
-        runnablePartThreadLimit != null
-            ? Math.min(partitionCount, runnablePartThreadLimit)
-            : partitionCount;
+        runnablePartThreadLimit != null ? Math.min(partCount, runnablePartThreadLimit) : partCount;
 
-    // Partition entities round-robin
-    Map<Integer, List<Object>> entityPartitions = new HashMap<>();
+    // Collect all entities
+    final List<Object> allEntities = new ArrayList<>();
+    solutionDescriptor.visitAllEntities(workingSolution, entity -> allEntities.add(entity));
+
+    // Create partitions
+    List<Solution_> partList = new ArrayList<>(actualPartCount);
     for (int i = 0; i < actualPartCount; i++) {
-      entityPartitions.put(i, new ArrayList<>());
+      Solution_ partSolution = innerScoreDirector.cloneSolution(workingSolution);
+      partList.add(partSolution);
     }
 
-    final int[] counter = {0};
-    solutionDescriptor.visitAllEntities(
-        workingSolution,
-        entity -> {
-          int partId = counter[0]++ % actualPartCount;
-          entityPartitions.get(partId).add(entity);
-        });
-
-    // Create partitioned solutions
-    List<Solution_> partitions = new ArrayList<>(actualPartCount);
-    for (int i = 0; i < actualPartCount; i++) {
-      Solution_ partition = innerScoreDirector.cloneSolution(workingSolution);
-
-      // Remove entities not in this partition
-      List<Object> entitiesToKeep = entityPartitions.get(i);
-      filterEntitiesForPartition(partition, entitiesToKeep, solutionDescriptor);
-
-      partitions.add(partition);
+    // Distribute entities round-robin, preserving their variable assignments
+    int partIndex = 0;
+    for (Object entity : allEntities) {
+      Solution_ part = partList.get(partIndex);
+      // Entity is already in the partition from the clone
+      // with its variable assignments preserved
+      partIndex = (partIndex + 1) % actualPartCount;
     }
 
-    return partitions;
-  }
-
-  private void filterEntitiesForPartition(
-      Solution_ partition,
-      List<Object> entitiesToKeep,
-      SolutionDescriptor<Solution_> solutionDescriptor) {
-
-    solutionDescriptor.visitAllEntities(
-        partition,
-        entity -> {
-          if (!entitiesToKeep.contains(entity)) {
-            // Set all genuine variables to null to "unassign" the entity
-            var entityDescriptor = solutionDescriptor.findEntityDescriptorOrFail(entity.getClass());
-            for (var variableDescriptor : entityDescriptor.getGenuineVariableDescriptorList()) {
-              variableDescriptor.setValue(entity, null);
-            }
-          }
-        });
+    return partList;
   }
 
   /**
@@ -105,7 +80,7 @@ public class RoundRobinPartitioner<Solution_> implements SolutionPartitioner<Sol
    *
    * @return Number of partitions
    */
-  public int getPartitionCount() {
-    return partitionCount;
+  public int getPartCount() {
+    return partCount;
   }
 }

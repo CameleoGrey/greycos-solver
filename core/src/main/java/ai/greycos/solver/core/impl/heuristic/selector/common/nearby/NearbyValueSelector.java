@@ -208,7 +208,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
 
     // Auto-calculate: 10x distribution size (heuristic)
     int distributionSize = getDistributionSize(config);
-    return Math.max(500, distributionSize * 10);
+    return Math.max(1000, distributionSize * 10);
   }
 
   /**

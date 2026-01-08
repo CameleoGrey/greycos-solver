@@ -19,6 +19,8 @@ import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Factory for building partitioned search phases.
@@ -28,6 +30,9 @@ import org.jspecify.annotations.Nullable;
  */
 public class DefaultPartitionedSearchPhaseFactory<Solution_>
     extends AbstractPhaseFactory<Solution_, PartitionedSearchPhaseConfig> {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(DefaultPartitionedSearchPhaseFactory.class);
 
   public DefaultPartitionedSearchPhaseFactory(PartitionedSearchPhaseConfig phaseConfig) {
     super(phaseConfig);
@@ -105,10 +110,42 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
   }
 
   private Integer resolveActiveThreadCount(@Nullable String runnablePartThreadLimit) {
-    return ConfigUtils.resolvePoolSize(
-        "runnablePartThreadLimit",
-        runnablePartThreadLimit,
-        PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_AUTO,
-        PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_UNLIMITED);
+    int availableProcessorCount = Runtime.getRuntime().availableProcessors();
+    Integer resolvedActiveThreadCount;
+    final boolean threadLimitNullOrAuto =
+        runnablePartThreadLimit == null
+            || runnablePartThreadLimit.equals(
+                PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_AUTO);
+    if (threadLimitNullOrAuto) {
+      // Leave one for the Operating System and 1 for the solver thread, take the rest
+      resolvedActiveThreadCount = Math.max(1, availableProcessorCount - 2);
+    } else if (runnablePartThreadLimit.equals(
+        PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_UNLIMITED)) {
+      resolvedActiveThreadCount = null;
+    } else {
+      resolvedActiveThreadCount =
+          ConfigUtils.resolvePoolSize(
+              "runnablePartThreadLimit",
+              runnablePartThreadLimit,
+              PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_AUTO,
+              PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_UNLIMITED);
+      if (resolvedActiveThreadCount < 1) {
+        throw new IllegalArgumentException(
+            "The runnablePartThreadLimit ("
+                + runnablePartThreadLimit
+                + ") resulted in a resolvedActiveThreadCount ("
+                + resolvedActiveThreadCount
+                + ") that is lower than 1.");
+      }
+      if (resolvedActiveThreadCount > availableProcessorCount) {
+        logger.debug(
+            "The resolvedActiveThreadCount ({}) is higher than "
+                + "the availableProcessorCount ({}), so the JVM will "
+                + "round-robin the CPU instead.",
+            resolvedActiveThreadCount,
+            availableProcessorCount);
+      }
+    }
+    return resolvedActiveThreadCount;
   }
 }

@@ -152,30 +152,38 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
         phaseScope.setLastCompletedStepScope(stepScope);
       }
 
-      // Check for exception
-      if (partitionQueue.getException() != null) {
-        throw new IllegalStateException(
-            "The partition child thread has thrown an exception.", partitionQueue.getException());
-      }
+      // Terminate all partition threads BEFORE exiting the queue consumption loop
+      // to ensure no best solution events are fired after phase ends
+      childThreadPlumbingTermination.terminateChildren();
+
+      // Wait for all partition threads to finish terminating
+      // This ensures no more events will be fired before we proceed
+      ThreadUtils.shutdownAwaitOrKill(executor, logIndentation, "Partitioned Search");
+
+      // Exceptions from child threads are thrown during iteration above,
+      // so no need to check here
 
       phaseScope.addChildThreadsScoreCalculationCount(partitionQueue.getPartsCalculationCount());
+
+      // Mark the phase as ended before logging metrics
+      phaseScope.endingNow();
 
       logger.info(
           "{}Partitioned Search phase ({}) ended: time spent ({}), best score ({}),"
               + " move evaluation speed ({}/sec), step total ({}).",
           logIndentation,
           phaseIndex,
-          phaseScope.calculatePhaseTimeMillisSpentUpToNow(),
+          phaseScope.getPhaseTimeMillisSpent(),
           phaseScope.getBestScore().raw(),
           phaseScope.getPhaseScoreCalculationSpeed(),
           phaseScope.getNextStepIndex());
 
     } finally {
-      // Terminate all partition threads
-      childThreadPlumbingTermination.terminateChildren();
-
-      // Shutdown executor
-      ThreadUtils.shutdownAwaitOrKill(executor, logIndentation, "Partitioned Search");
+      // Executor already shut down above, but keep in finally for safety in case of exceptions
+      if (!executor.isTerminated()) {
+        childThreadPlumbingTermination.terminateChildren();
+        ThreadUtils.shutdownAwaitOrKill(executor, logIndentation, "Partitioned Search");
+      }
     }
 
     phaseEnded(phaseScope);
@@ -316,22 +324,22 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
   // Lifecycle methods from PartitionedSearchPhaseLifecycleListener
   @Override
   public void phaseStarted(PartitionedSearchPhaseScope<Solution_> phaseScope) {
-    // Default implementation - can be overridden by subclasses
+    super.phaseStarted(phaseScope);
   }
 
   @Override
   public void stepStarted(PartitionedSearchStepScope<Solution_> stepScope) {
-    // Default implementation - can be overridden by subclasses
+    super.stepStarted(stepScope);
   }
 
   @Override
   public void stepEnded(PartitionedSearchStepScope<Solution_> stepScope) {
-    // Default implementation - can be overridden by subclasses
+    super.stepEnded(stepScope);
   }
 
   @Override
   public void phaseEnded(PartitionedSearchPhaseScope<Solution_> phaseScope) {
-    // Default implementation - can be overridden by subclasses
+    super.phaseEnded(phaseScope);
   }
 
   public static class Builder<Solution_> extends AbstractPhaseBuilder<Solution_> {

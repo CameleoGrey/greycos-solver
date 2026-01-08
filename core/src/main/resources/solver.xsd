@@ -44,19 +44,21 @@
           <xs:element minOccurs="0" name="nearbyDistanceMeterClass" type="xs:string"/>
                     
           <xs:choice maxOccurs="unbounded" minOccurs="0">
-                        
+
             <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
-                        
+
             <xs:element name="customPhase" type="tns:customPhaseConfig"/>
-                        
+
             <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
-                        
+
             <xs:element name="islandModel" type="tns:islandModelPhaseConfig"/>
-                        
+
             <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
-                        
+
             <xs:element name="noChangePhase" type="tns:noChangePhaseConfig"/>
-                      
+
+            <xs:element name="partitionedSearch" type="tns:partitionedSearchPhaseConfig"/>
+
           </xs:choice>
                   
         </xs:sequence>
@@ -1566,19 +1568,57 @@
   </xs:complexType>
     
   <xs:complexType name="noChangePhaseConfig">
-        
+
     <xs:complexContent>
-            
+
       <xs:extension base="tns:phaseConfig">
-                
+
         <xs:sequence/>
-              
+
       </xs:extension>
-          
+
     </xs:complexContent>
-      
+
   </xs:complexType>
-    
+
+  <xs:complexType name="partitionedSearchPhaseConfig">
+
+    <xs:complexContent>
+
+      <xs:extension base="tns:phaseConfig">
+
+        <xs:sequence>
+
+          <xs:element minOccurs="0" name="solutionPartitionerClass" type="xs:string"/>
+
+          <xs:element minOccurs="0" name="solutionPartitionerCustomProperties" type="tns:jaxbAdaptedMap"/>
+
+          <xs:element minOccurs="0" name="runnablePartThreadLimit" type="xs:string"/>
+
+          <xs:choice maxOccurs="unbounded" minOccurs="0">
+
+            <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
+
+            <xs:element name="customPhase" type="tns:customPhaseConfig"/>
+
+            <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
+
+            <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
+
+            <xs:element name="noChangePhase" type="tns:noChangePhaseConfig"/>
+
+            <xs:element name="partitionedSearch" type="tns:partitionedSearchPhaseConfig"/>
+
+          </xs:choice>
+
+        </xs:sequence>
+
+      </xs:extension>
+
+    </xs:complexContent>
+
+  </xs:complexType>
+
   <xs:complexType name="islandModelPhaseConfig">
 
 <xs:complexContent>
@@ -1652,17 +1692,19 @@
   <xs:element minOccurs="0" name="forager" type="tns:localSearchForagerConfig"/>
   
   <xs:choice maxOccurs="unbounded" minOccurs="0">
-            
+
     <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
-            
+
     <xs:element name="customPhase" type="tns:customPhaseConfig"/>
-            
+
     <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
-            
+
     <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
-            
+
     <xs:element name="noChangePhase" type="tns:noChangePhaseConfig"/>
-            
+
+    <xs:element name="partitionedSearch" type="tns:partitionedSearchPhaseConfig"/>
+
   </xs:choice>
     
 </xs:sequence>

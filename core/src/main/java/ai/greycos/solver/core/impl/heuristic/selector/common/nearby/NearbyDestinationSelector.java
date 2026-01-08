@@ -258,7 +258,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
 
     // Auto-calculate: 10x the distribution size (heuristic)
     int distributionSize = getDistributionSize(config);
-    return Math.max(500, distributionSize * 10);
+    return Math.max(1000, distributionSize * 10);
   }
 
   /**
