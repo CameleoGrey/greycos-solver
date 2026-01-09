@@ -93,16 +93,60 @@ public final class NodeSharingTransformer {
         new ClassWriter(reader, ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 
     // Chain visitors: field adding & lambda replacing -> writer
-    // Track initialized lambdas globally across all methods
-    Set<LambdaKey> initializedLambdas = new HashSet<>();
+    // Track lambda initializations for static initializer
+    List<LambdaInitialization> lambdaInitializations = new ArrayList<>();
     ClassVisitor transformer =
-        new NodeSharingClassVisitor(writer, className, deduplicator, initializedLambdas);
+        new NodeSharingClassVisitor(writer, className, deduplicator, lambdaInitializations);
 
     // Visit and transform
     reader.accept(transformer, 0);
 
+    // Add static initializer if we have lambdas to initialize
+    if (!lambdaInitializations.isEmpty()) {
+      addStaticInitializer(writer, className, lambdaInitializations, deduplicator);
+    }
+
     return writer.toByteArray();
   }
+
+  /** Adds a static initializer that initializes all shared lambda fields. */
+  private void addStaticInitializer(
+      ClassWriter writer,
+      String className,
+      List<LambdaInitialization> lambdaInitializations,
+      LambdaDeduplicator deduplicator) {
+
+    MethodVisitor mv = writer.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
+    mv.visitCode();
+
+    // Initialize each lambda field
+    for (LambdaInitialization init : lambdaInitializations) {
+      // Generate the lambda creation instruction
+      mv.visitInvokeDynamicInsn(
+          init.name(),
+          init.descriptor(),
+          init.bootstrapMethodHandle(),
+          init.bootstrapMethodArguments());
+      // Store it in the static field
+      mv.visitFieldInsn(
+          Opcodes.PUTSTATIC,
+          className,
+          deduplicator.getFieldName(init.key()),
+          deduplicator.getFieldDescriptor(init.key()));
+    }
+
+    mv.visitInsn(Opcodes.RETURN);
+    mv.visitMaxs(0, 0); // COMPUTE_MAXS will calculate these
+    mv.visitEnd();
+  }
+
+  /** Record of a lambda that needs to be initialized in the static initializer. */
+  private record LambdaInitialization(
+      LambdaKey key,
+      String name,
+      String descriptor,
+      Handle bootstrapMethodHandle,
+      Object[] bootstrapMethodArguments) {}
 
   /**
    * Class visitor that adds static final fields for shared lambdas and replaces lambda creation
@@ -112,17 +156,19 @@ public final class NodeSharingTransformer {
 
     private final String className;
     private final LambdaDeduplicator deduplicator;
-    private final Set<LambdaKey> initializedLambdas;
+    private final List<LambdaInitialization> lambdaInitializations;
+    private final Set<LambdaKey> seenLambdas;
 
     public NodeSharingClassVisitor(
         ClassVisitor cv,
         String className,
         LambdaDeduplicator deduplicator,
-        Set<LambdaKey> initializedLambdas) {
+        List<LambdaInitialization> lambdaInitializations) {
       super(Opcodes.ASM9, cv);
       this.className = className;
       this.deduplicator = deduplicator;
-      this.initializedLambdas = initializedLambdas;
+      this.lambdaInitializations = lambdaInitializations;
+      this.seenLambdas = new HashSet<>();
     }
 
     @Override
@@ -160,7 +206,7 @@ public final class NodeSharingTransformer {
       if (mv != null && !"<clinit>".equals(name) && !"<init>".equals(name)) {
         // Wrap method visitor with lambda replacing visitor
         return new LambdaReplacingMethodVisitor(
-            mv, className, name, descriptor, deduplicator, initializedLambdas);
+            mv, className, name, descriptor, deduplicator, seenLambdas, lambdaInitializations);
       }
 
       return mv;
@@ -170,15 +216,16 @@ public final class NodeSharingTransformer {
   /**
    * Method visitor that replaces lambda creation with field references.
    *
-   * <p>The first occurrence of each lambda group is kept and stored in a static field. Subsequent
-   * occurrences are replaced with GETSTATIC instructions.
+   * <p>All lambda occurrences are replaced with GETSTATIC instructions. The first occurrence of
+   * each lambda group is recorded for initialization in the static initializer.
    */
   private static class LambdaReplacingMethodVisitor extends MethodVisitor {
 
     private final String className;
     private final String methodName;
     private final LambdaDeduplicator deduplicator;
-    private final Set<LambdaKey> initializedLambdas;
+    private final Set<LambdaKey> seenLambdas;
+    private final List<LambdaInitialization> lambdaInitializations;
 
     public LambdaReplacingMethodVisitor(
         MethodVisitor mv,
@@ -186,12 +233,14 @@ public final class NodeSharingTransformer {
         String methodName,
         String descriptor,
         LambdaDeduplicator deduplicator,
-        Set<LambdaKey> initializedLambdas) {
+        Set<LambdaKey> seenLambdas,
+        List<LambdaInitialization> lambdaInitializations) {
       super(Opcodes.ASM9, mv);
       this.className = className;
       this.methodName = methodName;
       this.deduplicator = deduplicator;
-      this.initializedLambdas = initializedLambdas;
+      this.seenLambdas = seenLambdas;
+      this.lambdaInitializations = lambdaInitializations;
     }
 
     @Override
@@ -209,21 +258,15 @@ public final class NodeSharingTransformer {
           if (fieldName != null) {
             String fieldDescriptor = deduplicator.getFieldDescriptor(key);
             if (fieldDescriptor != null) {
-              // Check if we've already initialized this lambda
-              if (initializedLambdas.contains(key)) {
-                // Replace with field reference
-                mv.visitFieldInsn(Opcodes.GETSTATIC, className, fieldName, fieldDescriptor);
-                return;
-              } else {
-                // First occurrence: keep original and store in field
-                // Generate: original_lambda; DUP; PUTSTATIC field
-                initializedLambdas.add(key);
-                super.visitInvokeDynamicInsn(
-                    name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments);
-                mv.visitInsn(Opcodes.DUP);
-                mv.visitFieldInsn(Opcodes.PUTSTATIC, className, fieldName, fieldDescriptor);
-                return;
+              // Record first occurrence for initialization in static initializer
+              if (seenLambdas.add(key)) {
+                lambdaInitializations.add(
+                    new LambdaInitialization(
+                        key, name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments));
               }
+              // Replace with field reference
+              mv.visitFieldInsn(Opcodes.GETSTATIC, className, fieldName, fieldDescriptor);
+              return;
             }
           }
         }
@@ -262,10 +305,14 @@ public final class NodeSharingTransformer {
         }
       }
 
-      // Note: We don't include implementation method name in LambdaKey because
-      // Java compiler generates different synthetic method names for identical lambdas
+      String implementationMethod = getImplementationMethodName(implementationMethodHandle);
+
       return new LambdaKey(
-          functionalInterfaceClass, implementationMethodType.getDescriptor(), capturedArgs);
+          functionalInterfaceClass, implementationMethod, implementationMethodType.getDescriptor(), capturedArgs);
+    }
+
+    private String getImplementationMethodName(Handle methodHandle) {
+      return methodHandle.getOwner() + "." + methodHandle.getName() + methodHandle.getDesc();
     }
   }
 }

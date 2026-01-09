@@ -102,8 +102,14 @@ public class LambdaReplacingVisitor extends MethodVisitor {
       capturedArgs.add(arg);
     }
 
+    String implementationMethod = getImplementationMethodName(implementationMethodHandle);
+
     return new LambdaKey(
-        functionalInterfaceClass, implementationMethodType.getDescriptor(), capturedArgs);
+        functionalInterfaceClass, implementationMethod, implementationMethodType.getDescriptor(), capturedArgs);
+  }
+
+  private String getImplementationMethodName(Handle methodHandle) {
+    return methodHandle.getOwner() + "." + methodHandle.getName() + methodHandle.getDesc();
   }
 
   /**

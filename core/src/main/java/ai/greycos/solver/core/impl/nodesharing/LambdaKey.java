@@ -10,32 +10,40 @@ import java.util.Objects;
  *
  * <ul>
  *   <li>Functional interface type (e.g., Predicate, Function)
+ *   <li>Implementation method (owner.name.descriptor)
  *   <li>Implementation method type signature
  *   <li>Captured arguments (if any)
  * </ul>
  *
- * <p>Note: We don't include the implementation method name in the key because the Java compiler
- * generates different synthetic method names for identical lambdas (e.g.,
- * lambda$defineConstraints$0 and lambda$defineConstraints$1). Two lambdas with identical bytecode
- * but different synthetic method names are still functionally equivalent and should be shared.
+ * <p>The implementation method is included to distinguish between lambdas that have the same type
+ * signature but different implementations. For example, two lambdas with signature (Vehicle, Integer)
+ * -> long could have different implementations like (v,d) -> d - v.getCapacity() vs (v,d) ->
+ * Math.max(0,d).
  */
 public final class LambdaKey {
 
   private final String functionalInterfaceType;
+  private final String implementationMethod;
   private final String implementationMethodType;
   private final List<Object> capturedArguments;
 
   public LambdaKey(
       String functionalInterfaceType,
+      String implementationMethod,
       String implementationMethodType,
       List<Object> capturedArguments) {
     this.functionalInterfaceType = Objects.requireNonNull(functionalInterfaceType);
+    this.implementationMethod = Objects.requireNonNull(implementationMethod);
     this.implementationMethodType = Objects.requireNonNull(implementationMethodType);
     this.capturedArguments = List.copyOf(capturedArguments);
   }
 
   public String getFunctionalInterfaceType() {
     return functionalInterfaceType;
+  }
+
+  public String getImplementationMethod() {
+    return implementationMethod;
   }
 
   public String getImplementationMethodType() {
@@ -56,13 +64,14 @@ public final class LambdaKey {
     }
     LambdaKey lambdaKey = (LambdaKey) o;
     return Objects.equals(functionalInterfaceType, lambdaKey.functionalInterfaceType)
+        && Objects.equals(implementationMethod, lambdaKey.implementationMethod)
         && Objects.equals(implementationMethodType, lambdaKey.implementationMethodType)
         && Objects.equals(capturedArguments, lambdaKey.capturedArguments);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(functionalInterfaceType, implementationMethodType, capturedArguments);
+    return Objects.hash(functionalInterfaceType, implementationMethod, implementationMethodType, capturedArguments);
   }
 
   @Override
@@ -70,6 +79,9 @@ public final class LambdaKey {
     return "LambdaKey{"
         + "functionalInterfaceType='"
         + functionalInterfaceType
+        + '\''
+        + ", implementationMethod='"
+        + implementationMethod
         + '\''
         + ", implementationMethodType='"
         + implementationMethodType
