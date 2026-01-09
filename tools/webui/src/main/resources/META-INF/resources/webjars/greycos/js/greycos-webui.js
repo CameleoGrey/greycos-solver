@@ -1,7 +1,7 @@
 function replaceGreyCOSAutoHeaderFooter() {
   const greycosHeader = $("header#greycos-auto-header");
   if (greycosHeader != null) {
-    greycosHeader.addClass("bg-black")
+    greycosHeader.addClass("bg-dark-cyber")
     greycosHeader.append(
       $(`<div class="container-fluid">
         <nav class="navbar sticky-top navbar-expand-lg navbar-dark shadow mb-3">
@@ -14,16 +14,16 @@ function replaceGreyCOSAutoHeaderFooter() {
   const greycosFooter = $("footer#greycos-auto-footer");
   if (greycosFooter != null) {
     greycosFooter.append(
-      $(`<footer class="bg-black text-white-50">
+      $(`<footer class="bg-dark-cyber text-cyan-light">
            <div class="container">
              <div class="hstack gap-3 p-4">
-               <div class="ms-auto"><a class="text-white" href="https://greycos.ai">GreyCOS</a></div>
+               <div class="ms-auto"><a class="text-cyan" href="https://greycos.ai">GreyCOS</a></div>
                <div class="vr"></div>
-               <div><a class="text-white" href="https://greycos.ai/docs">Documentation</a></div>
+               <div><a class="text-cyan" href="https://greycos.ai/docs">Documentation</a></div>
                <div class="vr"></div>
-               <div><a class="text-white" href="https://github.com/CameleoGrey/greycos-quickstarts">Code</a></div>
+               <div><a class="text-cyan" href="https://github.com/CameleoGrey/greycos-quickstarts">Code</a></div>
                <div class="vr"></div>
-               <div class="me-auto"><a class="text-white" href="https://greycos.ai/product/support/">Support</a></div>
+               <div class="me-auto"><a class="text-cyan" href="https://greycos.ai/product/support/">Support</a></div>
              </div>
            </div>
            <div id="applicationInfo" class="container text-center"></div>
@@ -36,8 +36,8 @@ function replaceGreyCOSAutoHeaderFooter() {
 
 function showSimpleError(title) {
     const notification = $(`<div class="toast" role="alert" aria-live="assertive" aria-atomic="true" style="min-width: 50rem"/>`)
-        .append($(`<div class="toast-header bg-danger">
-                 <strong class="me-auto text-dark">Error</strong>
+        .append($(`<div class="toast-header bg-danger-cyber">
+                 <strong class="me-auto text-cyan">Error</strong>
                  <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
                </div>`))
         .append($(`<div class="toast-body"/>`)
@@ -62,8 +62,8 @@ function showError(title, xhr) {
 
   console.error(title + "\n" + serverErrorMessage + " : " + serverErrorDetails);
   const notification = $(`<div class="toast" role="alert" aria-live="assertive" aria-atomic="true" style="min-width: 50rem"/>`)
-    .append($(`<div class="toast-header bg-danger">
-                 <strong class="me-auto text-dark">Error</strong>
+    .append($(`<div class="toast-header bg-danger-cyber">
+                 <strong class="me-auto text-cyan">Error</strong>
                  <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
                </div>`))
     .append($(`<div class="toast-body"/>`)
@@ -89,12 +89,8 @@ function applicationInfo() {
    });
 }
 
-// ****************************************************************************
-// TangoColorFactory
-// ****************************************************************************
-
-const SEQUENCE_1 = [0x8AE234, 0xFCE94F, 0x729FCF, 0xE9B96E, 0xAD7FA8];
-const SEQUENCE_2 = [0x73D216, 0xEDD400, 0x3465A4, 0xC17D11, 0x75507B];
+const SEQUENCE_1 = [0x00FFFF, 0x0088FF, 0x00AAFF, 0x00A8A8, 0x0066CC];
+const SEQUENCE_2 = [0x00D4D4, 0x0066BB, 0x0055AA, 0x007C7C, 0x004D99];
 
 var colorMap = new Map;
 var nextColorCount = 0;

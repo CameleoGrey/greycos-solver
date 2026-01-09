@@ -2,59 +2,234 @@
     /* Keep in sync with .navbar height on a large screen. */
     --ts-navbar-height: 109px;
 
-    --ts-violet-1-rgb: #3E00FF;
-    --ts-violet-2-rgb: #3423A6;
-    --ts-violet-3-rgb: #2E1760;
-    --ts-violet-4-rgb: #200F4F;
-    --ts-violet-5-rgb: #000000; /* TODO FIXME */
-    --ts-violet-dark-1-rgb: #b6adfd;
-    --ts-violet-dark-2-rgb: #c1bbfd;
-    --ts-gray-rgb: #666666;
+    /* Cyberpunk Blue Color Palette */
+    --ts-cyan-1: #00FFFF;
+    --ts-cyan-2: #00D4D4;
+    --ts-cyan-3: #00A8A8;
+    --ts-cyan-4: #007C7C;
+    --ts-cyan-dark: #004D4D;
+    
+    --ts-blue-neon: #0088FF;
+    --ts-blue-bright: #00AAFF;
+    --ts-blue-mid: #0066CC;
+    --ts-blue-dark: #003366;
+    
+    /* Grey Scale for Cyberpunk Theme */
+    --ts-grey-1: #0A0A0F;
+    --ts-grey-2: #14141F;
+    --ts-grey-3: #1F1F2E;
+    --ts-grey-4: #2A2A3D;
+    --ts-grey-5: #3A3A4F;
+    --ts-grey-6: #4A4A5F;
+    --ts-grey-7: #5A5A6F;
+    --ts-grey-light: #8A8A9F;
+    
     --ts-white-rgb: #FFFFFF;
-    --ts-light-rgb: #F2F2F2;
-    --ts-gray-border: #c5c5c5;
+    --ts-light-rgb: #0D0D14;
+    --ts-gray-border: #2A2A3D;
 
-    --tf-light-rgb-transparent: rgb(242,242,242,0.5); /* #F2F2F2 = rgb(242,242,242) */
-    --bs-body-bg: var(--ts-light-rgb); /* link to html bg */
-    --bs-link-color: var(--ts-violet-1-rgb);
-    --bs-link-hover-color: var(--ts-violet-2-rgb);
+    --tf-light-rgb-transparent: rgb(26,26,38,0.5);
+    --bs-body-bg: var(--ts-light-rgb);
+    --bs-link-color: var(--ts-cyan-1);
+    --bs-link-hover-color: var(--ts-blue-neon);
 
-    --bs-navbar-color: var(--ts-white-rgb);
-    --bs-navbar-hover-color: var(--ts-white-rgb);
+    --bs-navbar-color: var(--ts-cyan-1);
+    --bs-navbar-hover-color: var(--ts-blue-bright);
     --bs-nav-link-font-size: 18px;
     --bs-nav-link-font-weight: 400;
-    --bs-nav-link-color: var(--ts-white-rgb);
-    --ts-nav-link-hover-border-color: var(--ts-violet-1-rgb);
+    --bs-nav-link-color: var(--ts-cyan-1);
+    --ts-nav-link-hover-border-color: var(--ts-blue-neon);
 }
+
+body {
+    background: linear-gradient(135deg, #0A0A0F 0%, #14141F 50%, #1F1F2E 100%);
+    color: #E0E0E0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 .btn {
-    --bs-btn-border-radius: 1.5rem;
+    --bs-btn-border-radius: 0.25rem;
+    border: 1px solid var(--ts-cyan-1);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    transition: all 0.3s ease;
 }
+
+.btn:hover {
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    transform: translateY(-2px);
+}
+
 .btn-primary {
-    --bs-btn-bg: var(--ts-violet-1-rgb);
-    --bs-btn-border-color: var(--ts-violet-1-rgb);
-    --bs-btn-hover-bg: var(--ts-violet-2-rgb);
-    --bs-btn-hover-border-color: var(--ts-violet-2-rgb);
-    --bs-btn-active-bg: var(--ts-violet-2-rgb);
-    --bs-btn-active-border-bg: var(--ts-violet-2-rgb);
-    --bs-btn-disabled-bg: var(--ts-violet-1-rgb);
-    --bs-btn-disabled-border-color: var(--ts-violet-1-rgb);
+    --bs-btn-bg: var(--ts-blue-mid);
+    --bs-btn-border-color: var(--ts-cyan-1);
+    --bs-btn-hover-bg: var(--ts-blue-neon);
+    --bs-btn-hover-border-color: var(--ts-cyan-1);
+    --bs-btn-active-bg: var(--ts-blue-dark);
+    --bs-btn-active-border-bg: var(--ts-blue-mid);
+    --bs-btn-disabled-bg: var(--ts-grey-4);
+    --bs-btn-disabled-border-color: var(--ts-grey-5);
+    color: var(--ts-cyan-1);
 }
+
 .btn-outline-primary {
-    --bs-btn-color: var(--ts-violet-1-rgb);
-    --bs-btn-border-color: var(--ts-violet-1-rgb);
-    --bs-btn-hover-bg: var(--ts-violet-1-rgb);
-    --bs-btn-hover-border-color: var(--ts-violet-1-rgb);
-    --bs-btn-active-bg: var(--ts-violet-1-rgb);
-    --bs-btn-active-border-color: var(--ts-violet-1-rgb);
-    --bs-btn-disabled-color: var(--ts-violet-1-rgb);
-    --bs-btn-disabled-border-color: var(--ts-violet-1-rgb);
+    --bs-btn-color: var(--ts-cyan-1);
+    --bs-btn-border-color: var(--ts-cyan-1);
+    --bs-btn-hover-bg: var(--ts-cyan-1);
+    --bs-btn-hover-border-color: var(--ts-cyan-1);
+    --bs-btn-active-bg: var(--ts-cyan-2);
+    --bs-btn-active-border-color: var(--ts-cyan-2);
+    --bs-btn-disabled-color: var(--ts-grey-5);
+    --bs-btn-disabled-border-color: var(--ts-grey-5);
 }
+
 .navbar-dark {
-    --bs-link-color: var(--ts-violet-dark-1-rgb);
-    --bs-link-hover-color: var(--ts-violet-dark-2-rgb);
-    --bs-navbar-color: var(--ts-white-rgb);
-    --bs-navbar-hover-color: var(--ts-white-rgb);
+    background: linear-gradient(180deg, #0A0A0F 0%, #14141F 100%) !important;
+    border-bottom: 2px solid var(--ts-cyan-1);
+    box-shadow: 0 4px 20px rgba(0, 255, 255, 0.1);
+    --bs-link-color: var(--ts-cyan-1);
+    --bs-link-hover-color: var(--ts-blue-bright);
+    --bs-navbar-color: var(--ts-cyan-1);
+    --bs-navbar-hover-color: var(--ts-blue-bright);
 }
+
+.navbar-brand {
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
 .nav-pills {
-    --bs-nav-pills-link-active-bg: var(--ts-violet-1-rgb);
+    --bs-nav-pills-link-active-bg: var(--ts-blue-mid);
+    --bs-nav-pills-link-active-color: var(--ts-cyan-1);
+    border: 1px solid var(--ts-cyan-1);
+}
+
+.nav-link {
+    color: var(--ts-grey-light) !important;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    color: var(--ts-cyan-1) !important;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+}
+
+.card {
+    background: var(--ts-grey-2);
+    border: 1px solid var(--ts-cyan-4);
+    border-radius: 4px;
+    box-shadow: 0 4px 15px rgba(0, 136, 255, 0.15);
+}
+
+.card-header {
+    background: linear-gradient(90deg, var(--ts-grey-3) 0%, var(--ts-grey-4) 100%);
+    border-bottom: 1px solid var(--ts-cyan-4);
+    color: var(--ts-cyan-1);
+}
+
+.form-control {
+    background: var(--ts-grey-1);
+    border: 1px solid var(--ts-cyan-4);
+    color: var(--ts-cyan-1);
+    border-radius: 4px;
+}
+
+.form-control:focus {
+    background: var(--ts-grey-2);
+    border-color: var(--ts-cyan-1);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+    color: var(--ts-white-rgb);
+}
+
+.table {
+    color: var(--ts-grey-light);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    color: var(--ts-grey-light);
+    background-color: rgba(0, 136, 255, 0.05);
+}
+
+.toast {
+    background: var(--ts-grey-2);
+    border: 1px solid var(--ts-cyan-4);
+    box-shadow: 0 4px 20px rgba(0, 255, 255, 0.2);
+}
+
+.toast-header {
+    background: var(--ts-grey-3);
+    border-bottom: 1px solid var(--ts-cyan-4);
+    color: var(--ts-cyan-1);
+}
+
+a {
+    color: var(--ts-cyan-1);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+a:hover {
+    color: var(--ts-blue-bright);
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+}
+
+footer {
+    background: linear-gradient(180deg, #14141F 0%, #0A0A0F 100%) !important;
+    border-top: 2px solid var(--ts-cyan-4);
+}
+
+.text-white {
+    color: var(--ts-cyan-1) !important;
+}
+
+.text-white-50 {
+    color: var(--ts-grey-light) !important;
+}
+
+/* Cyberpunk theme specific classes */
+.bg-dark-cyber {
+    background: linear-gradient(180deg, #0A0A0F 0%, #14141F 100%) !important;
+    border-bottom: 2px solid var(--ts-cyan-1);
+}
+
+.text-cyan {
+    color: var(--ts-cyan-1) !important;
+}
+
+.text-cyan-light {
+    color: var(--ts-grey-light) !important;
+}
+
+.bg-danger-cyber {
+    background: linear-gradient(90deg, #4A1A1A 0%, #6B2B2B 100%) !important;
+    border-bottom: 1px solid var(--ts-cyan-1);
+}
+
+/* Cyberpunk accent borders and glows */
+.cyber-border {
+    border: 1px solid var(--ts-cyan-1);
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
+}
+
+.cyber-glow {
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--ts-grey-1);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--ts-cyan-4);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--ts-cyan-3);
 }
