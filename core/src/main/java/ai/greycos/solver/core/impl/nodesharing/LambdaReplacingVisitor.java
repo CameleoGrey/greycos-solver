@@ -1,6 +1,8 @@
 package ai.greycos.solver.core.impl.nodesharing;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -86,7 +88,7 @@ public class LambdaReplacingVisitor extends MethodVisitor {
     Type returnType = Type.getReturnType(invokedynamicDescriptor);
     String functionalInterfaceClass = returnType.getClassName();
 
-    java.util.List<Object> capturedArgs = new java.util.ArrayList<>();
+    List<Object> capturedArgs = new ArrayList<>();
     for (int i = 3; i < bootstrapMethodArguments.length; i++) {
       Object arg = bootstrapMethodArguments[i];
       if (arg instanceof ConstantDynamic) {

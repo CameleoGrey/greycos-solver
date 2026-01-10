@@ -2,6 +2,9 @@ package ai.greycos.solver.core.impl.nodesharing;
 
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Loads transformed ConstraintProvider classes with node sharing enabled.
  *
@@ -11,7 +14,7 @@ import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
  */
 public final class NodeSharedClassLoader extends ClassLoader {
 
-  private final java.util.Map<String, Class<?>> classCache = new java.util.HashMap<>();
+  private final Map<String, Class<?>> classCache = new HashMap<>();
 
   public NodeSharedClassLoader() {
     super(ClassLoader.getSystemClassLoader());
