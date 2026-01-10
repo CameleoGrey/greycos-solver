@@ -4,21 +4,11 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Key for identifying functionally equivalent lambdas.
+ * Key for identifying functionally equivalent lambdas to enable deduplication.
  *
- * <p>Lambdas with same key can be shared in constraint stream network. The key is based on:
- *
- * <ul>
- *   <li>Functional interface type (e.g., Predicate, Function)
- *   <li>Implementation method (owner.name.descriptor)
- *   <li>Implementation method type signature
- *   <li>Captured arguments (if any)
- * </ul>
- *
- * <p>The implementation method is included to distinguish between lambdas that have the same type
- * signature but different implementations. For example, two lambdas with signature (Vehicle,
- * Integer) -> long could have different implementations like (v,d) -> d - v.getCapacity() vs (v,d)
- * -> Math.max(0,d).
+ * <p>Why: Need to determine which lambdas are identical and can be shared.
+ * How: Combines functional interface type, implementation method, and captured arguments.
+ * What: Used as map key to group identical lambdas for node sharing.
  */
 public final class LambdaKey {
 

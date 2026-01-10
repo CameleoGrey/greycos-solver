@@ -5,10 +5,11 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Opcodes;
 
 /**
- * ASM visitor that adds static final fields for shared lambdas.
+ * ASM visitor that adds static final fields for shared lambdas to transformed classes.
  *
- * <p>Adds fields after existing class fields but before methods. The fields are not initialized
- * here - they will be lazily initialized by the first lambda creation in the transformed bytecode.
+ * <p>Why: Identical lambdas need shared static fields to enable node sharing.
+ * How: Adds private static final fields via ASM after analyzing lambda groups.
+ * What: Inserts field declarations into bytecode before methods.
  */
 public class FieldAddingVisitor extends ClassVisitor {
 
@@ -24,14 +25,12 @@ public class FieldAddingVisitor extends ClassVisitor {
 
   @Override
   public void visitEnd() {
-    // Add static final fields for each lambda group
     for (var entry : deduplicator.getAnalysis().getShareableLambdas().entrySet()) {
       LambdaKey key = entry.getKey();
       String fieldName = deduplicator.getFieldName(key);
       String fieldDescriptor = deduplicator.getFieldDescriptor(key);
 
       if (fieldName != null && fieldDescriptor != null) {
-        // Create field: private static final Predicate<Shift> $predicate1;
         FieldVisitor fv = cv.visitField(STATIC_FINAL, fieldName, fieldDescriptor, null, null);
         if (fv != null) {
           fv.visitEnd();

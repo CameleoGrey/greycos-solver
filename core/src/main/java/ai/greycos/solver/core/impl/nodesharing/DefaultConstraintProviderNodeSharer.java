@@ -6,10 +6,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Default implementation of ConstraintProviderNodeSharer for community edition.
+ * Transforms ConstraintProvider classes to enable automatic lambda node sharing.
  *
- * <p>Transforms ConstraintProvider classes to enable automatic node sharing using ASM bytecode
- * manipulation.
+ * <p>Why: Sharing identical lambdas across constraint streams reduces memory and improves performance.
+ * How: Validates class requirements, transforms bytecode using ASM, loads transformed class.
+ * What: Public API for creating node-shared ConstraintProvider instances.
  */
 public final class DefaultConstraintProviderNodeSharer {
 
@@ -19,7 +20,6 @@ public final class DefaultConstraintProviderNodeSharer {
   private final NodeSharedClassLoader classLoader;
 
   public DefaultConstraintProviderNodeSharer() {
-    // NodeSharedClassLoader uses system class loader as parent by default
     this.classLoader = new NodeSharedClassLoader();
   }
 
@@ -28,16 +28,13 @@ public final class DefaultConstraintProviderNodeSharer {
 
     LOGGER.debug("Starting node sharing transformation for {}", constraintProviderClass.getName());
     try {
-      // Validate class meets requirements
       NodeSharingValidator.validate(constraintProviderClass);
       LOGGER.debug("Validation passed for {}", constraintProviderClass.getName());
 
-      // Transform class bytecode
       NodeSharingTransformer transformer = new NodeSharingTransformer(constraintProviderClass);
       byte[] transformedBytecode = transformer.transform();
       LOGGER.debug("Bytecode transformation completed for {}", constraintProviderClass.getName());
 
-      // Define and load transformed class
       Class<T> transformedClass =
           classLoader.defineNodeSharedClass(constraintProviderClass, transformedBytecode);
       LOGGER.info(
@@ -48,12 +45,10 @@ public final class DefaultConstraintProviderNodeSharer {
       return transformedClass;
 
     } catch (IllegalArgumentException e) {
-      // Validation failed - rethrow as-is
       LOGGER.warn(
           "Validation failed for {}: {}", constraintProviderClass.getName(), e.getMessage());
       throw e;
     } catch (Exception e) {
-      // Transformation failed - throw with helpful message
       LOGGER.error(
           "Node sharing transformation failed for {}: {}",
           constraintProviderClass.getName(),

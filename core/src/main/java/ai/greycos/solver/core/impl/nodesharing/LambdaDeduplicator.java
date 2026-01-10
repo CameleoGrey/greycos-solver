@@ -4,10 +4,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Deduplicates lambdas by assigning unique field names to each group of identical lambdas.
+ * Assigns unique field names to groups of identical lambdas for bytecode transformation.
  *
- * <p>Each group of identical lambdas gets a unique field name (e.g., $predicate1, $function2) that
- * will be used in the transformed class.
+ * <p>Why: Identical lambdas need shared fields with consistent naming.
+ * How: Maps each lambda group to a unique field name (e.g., $predicate1).
+ * What: Provides field metadata for ASM bytecode transformation.
  */
 public final class LambdaDeduplicator {
 
@@ -22,7 +23,6 @@ public final class LambdaDeduplicator {
     assignFieldNames();
   }
 
-  /** Assigns unique field names to each lambda group. */
   private void assignFieldNames() {
     int fieldIndex = 1;
 
@@ -35,18 +35,11 @@ public final class LambdaDeduplicator {
     }
   }
 
-  /**
-   * Generates a field name for a lambda.
-   *
-   * <p>Uses naming convention: $predicate1, $function2, $joiner3, etc.
-   */
   private String generateFieldName(LambdaKey key, int index) {
     String functionalInterface = key.getFunctionalInterfaceType();
 
-    // Extract simple name from functional interface type
     String simpleName = functionalInterface.substring(functionalInterface.lastIndexOf('.') + 1);
 
-    // Map common functional interfaces to prefixes
     String prefix =
         switch (simpleName) {
           case "Predicate" -> "$predicate";
@@ -65,38 +58,18 @@ public final class LambdaDeduplicator {
     return prefix + index;
   }
 
-  /** Generates field descriptor for a lambda based on its functional interface type. */
   private String generateFieldDescriptor(LambdaKey key) {
-    // For lambdas, the field type is the functional interface
-    // Convert class name to descriptor format: Ljava/util/function/Predicate;
     return "L" + key.getFunctionalInterfaceType().replace('.', '/') + ";";
   }
 
-  /**
-   * Gets the field name assigned to a lambda key.
-   *
-   * @param key lambda key
-   * @return field name, or null if no field assigned
-   */
   public String getFieldName(LambdaKey key) {
     return fieldNames.get(key);
   }
 
-  /**
-   * Gets the field descriptor for a lambda key.
-   *
-   * @param key lambda key
-   * @return field descriptor, or null if no field assigned
-   */
   public String getFieldDescriptor(LambdaKey key) {
     return fieldDescriptors.get(key);
   }
 
-  /**
-   * Gets the analysis this deduplicator is based on.
-   *
-   * @return lambda analysis
-   */
   public LambdaAnalysis getAnalysis() {
     return analysis;
   }

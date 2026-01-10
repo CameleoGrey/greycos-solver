@@ -4,10 +4,11 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Information about a lambda expression found in a ConstraintProvider class.
+ * Metadata about a lambda expression found in ConstraintProvider bytecode.
  *
- * <p>This captures metadata needed to identify identical lambdas across different method
- * invocations in same class.
+ * <p>Why: Need to capture lambda properties to identify which can be deduplicated.
+ * How: Extracts functional interface, implementation method, and captured arguments.
+ * What: Provides data for grouping identical lambdas during analysis.
  */
 public final class LambdaInfo {
 
@@ -57,15 +58,6 @@ public final class LambdaInfo {
     return capturedArguments;
   }
 
-  /**
-   * Creates a key that uniquely identifies this lambda for deduplication purposes. Lambdas with
-   * same key are functionally equivalent and can be shared.
-   *
-   * <p>Note: We don't include implementationMethod (synthetic method name) in the key because the
-   * Java compiler generates different synthetic method names for identical lambdas. We instead rely
-   * on functionalInterfaceType, implementationMethodType, and capturedArguments to identify
-   * functionally equivalent lambdas.
-   */
   public LambdaKey getKey() {
     return new LambdaKey(
         functionalInterfaceType, implementationMethod, implementationMethodType, capturedArguments);

@@ -17,19 +17,11 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
 /**
- * Transforms a ConstraintProvider class to enable automatic node sharing.
+ * Transforms ConstraintProvider bytecode to enable automatic lambda node sharing.
  *
- * <p>The transformation:
- *
- * <ol>
- *   <li>Analyzes class to find lambda expressions
- *   <li>Groups identical lambdas together
- *   <li>Adds static final fields for each lambda group
- *   <li>Keeps first occurrence of each lambda and stores it in a field
- *   <li>Replaces subsequent occurrences with field references
- * </ol>
- *
- * <p>This enables node sharing by ensuring identical lambdas use the same reference.
+ * <p>Why: Identical lambdas should be deduplicated to reduce memory and improve performance.
+ * How: Adds static fields for shared lambdas and replaces lambda creation with field references.
+ * What: Orchestrates bytecode transformation via ASM visitors.
  */
 public final class NodeSharingTransformer {
 
@@ -39,32 +31,21 @@ public final class NodeSharingTransformer {
     this.constraintProviderClass = constraintProviderClass;
   }
 
-  /**
-   * Transforms the ConstraintProvider class bytecode.
-   *
-   * @return transformed bytecode, or original if no shareable lambdas found
-   */
   public byte[] transform() {
-    // Read original class bytecode
     byte[] originalBytecode = readOriginalBytecode();
 
-    // Analyze for lambdas
     ConstraintProviderAnalyzer analyzer = new ConstraintProviderAnalyzer(constraintProviderClass);
     LambdaAnalysis analysis = analyzer.analyze();
 
-    // If no shareable lambdas, return original bytecode
     if (!analysis.hasShareableLambdas()) {
       return originalBytecode;
     }
 
-    // Create deduplicator
     LambdaDeduplicator deduplicator = new LambdaDeduplicator(analysis);
 
-    // Transform bytecode
     return transformBytecode(originalBytecode, deduplicator);
   }
 
-  /** Reads the original class bytecode from classpath. */
   private byte[] readOriginalBytecode() {
     String className = constraintProviderClass.getName().replace('.', '/');
     String classFileName = className + ".class";
@@ -83,7 +64,6 @@ public final class NodeSharingTransformer {
     }
   }
 
-  /** Transforms bytecode by adding fields and replacing lambda references. */
   private byte[] transformBytecode(byte[] originalBytecode, LambdaDeduplicator deduplicator) {
 
     String className = constraintProviderClass.getName().replace('.', '/');
@@ -92,16 +72,12 @@ public final class NodeSharingTransformer {
     ClassWriter writer =
         new ClassWriter(reader, ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 
-    // Chain visitors: field adding & lambda replacing -> writer
-    // Track lambda initializations for static initializer
     List<LambdaInitialization> lambdaInitializations = new ArrayList<>();
     ClassVisitor transformer =
         new NodeSharingClassVisitor(writer, className, deduplicator, lambdaInitializations);
 
-    // Visit and transform
     reader.accept(transformer, 0);
 
-    // Add static initializer if we have lambdas to initialize
     if (!lambdaInitializations.isEmpty()) {
       addStaticInitializer(writer, className, lambdaInitializations, deduplicator);
     }
@@ -109,7 +85,6 @@ public final class NodeSharingTransformer {
     return writer.toByteArray();
   }
 
-  /** Adds a static initializer that initializes all shared lambda fields. */
   private void addStaticInitializer(
       ClassWriter writer,
       String className,
@@ -119,15 +94,12 @@ public final class NodeSharingTransformer {
     MethodVisitor mv = writer.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
     mv.visitCode();
 
-    // Initialize each lambda field
     for (LambdaInitialization init : lambdaInitializations) {
-      // Generate the lambda creation instruction
       mv.visitInvokeDynamicInsn(
           init.name(),
           init.descriptor(),
           init.bootstrapMethodHandle(),
           init.bootstrapMethodArguments());
-      // Store it in the static field
       mv.visitFieldInsn(
           Opcodes.PUTSTATIC,
           className,
@@ -136,11 +108,10 @@ public final class NodeSharingTransformer {
     }
 
     mv.visitInsn(Opcodes.RETURN);
-    mv.visitMaxs(0, 0); // COMPUTE_MAXS will calculate these
+    mv.visitMaxs(0, 0);
     mv.visitEnd();
   }
 
-  /** Record of a lambda that needs to be initialized in the static initializer. */
   private record LambdaInitialization(
       LambdaKey key,
       String name,
@@ -148,10 +119,6 @@ public final class NodeSharingTransformer {
       Handle bootstrapMethodHandle,
       Object[] bootstrapMethodArguments) {}
 
-  /**
-   * Class visitor that adds static final fields for shared lambdas and replaces lambda creation
-   * with field references.
-   */
   private static class NodeSharingClassVisitor extends ClassVisitor {
 
     private final String className;
@@ -173,14 +140,12 @@ public final class NodeSharingTransformer {
 
     @Override
     public void visitEnd() {
-      // Add static final fields for each lambda group
       for (var entry : deduplicator.getAnalysis().getShareableLambdas().entrySet()) {
         LambdaKey key = entry.getKey();
         String fieldName = deduplicator.getFieldName(key);
         String fieldDescriptor = deduplicator.getFieldDescriptor(key);
 
         if (fieldName != null && fieldDescriptor != null) {
-          // Create field: private static final Predicate<String> $predicate1;
           var fv =
               cv.visitField(
                   Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL,
@@ -204,7 +169,6 @@ public final class NodeSharingTransformer {
       MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
 
       if (mv != null && !"<clinit>".equals(name) && !"<init>".equals(name)) {
-        // Wrap method visitor with lambda replacing visitor
         return new LambdaReplacingMethodVisitor(
             mv, className, name, descriptor, deduplicator, seenLambdas, lambdaInitializations);
       }
@@ -213,12 +177,6 @@ public final class NodeSharingTransformer {
     }
   }
 
-  /**
-   * Method visitor that replaces lambda creation with field references.
-   *
-   * <p>All lambda occurrences are replaced with GETSTATIC instructions. The first occurrence of
-   * each lambda group is recorded for initialization in the static initializer.
-   */
   private static class LambdaReplacingMethodVisitor extends MethodVisitor {
 
     private final String className;
@@ -250,7 +208,6 @@ public final class NodeSharingTransformer {
         Handle bootstrapMethodHandle,
         Object... bootstrapMethodArguments) {
 
-      // Check if this is a lambda metafactory call
       if (isLambdaMetafactory(bootstrapMethodHandle)) {
         LambdaKey key = extractLambdaKey(bootstrapMethodArguments, descriptor);
         if (key != null) {
@@ -258,13 +215,11 @@ public final class NodeSharingTransformer {
           if (fieldName != null) {
             String fieldDescriptor = deduplicator.getFieldDescriptor(key);
             if (fieldDescriptor != null) {
-              // Record first occurrence for initialization in static initializer
               if (seenLambdas.add(key)) {
                 lambdaInitializations.add(
                     new LambdaInitialization(
                         key, name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments));
               }
-              // Replace with field reference
               mv.visitFieldInsn(Opcodes.GETSTATIC, className, fieldName, fieldDescriptor);
               return;
             }
@@ -272,7 +227,6 @@ public final class NodeSharingTransformer {
         }
       }
 
-      // Not a shareable lambda, keep original instruction
       super.visitInvokeDynamicInsn(
           name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments);
     }
@@ -292,11 +246,9 @@ public final class NodeSharingTransformer {
       Handle implementationMethodHandle = (Handle) bootstrapMethodArguments[1];
       Type implementationMethodType = (Type) bootstrapMethodArguments[2];
 
-      // Extract functional interface class from invokedynamic descriptor
       Type returnType = Type.getReturnType(invokedynamicDescriptor);
       String functionalInterfaceClass = returnType.getClassName();
 
-      // Extract captured arguments
       List<Object> capturedArgs = new ArrayList<>();
       for (int i = 3; i < bootstrapMethodArguments.length; i++) {
         Object arg = bootstrapMethodArguments[i];

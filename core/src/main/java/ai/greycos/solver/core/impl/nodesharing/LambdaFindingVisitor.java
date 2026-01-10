@@ -11,10 +11,11 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
 /**
- * ASM visitor that finds lambda expressions in ConstraintProvider methods.
+ * ASM visitor that extracts lambda metadata from ConstraintProvider bytecode.
  *
- * <p>Scans for {@code invokedynamic} instructions with lambda metafactory bootstrap method,
- * capturing metadata needed to identify identical lambdas.
+ * <p>Why: Need to identify lambdas and their properties to determine which can be shared.
+ * How: Scans for invokedynamic instructions with lambda metafactory bootstrap method.
+ * What: Captures lambda metadata (functional interface, implementation method, captured args).
  */
 public class LambdaFindingVisitor extends MethodVisitor {
 
@@ -39,7 +40,6 @@ public class LambdaFindingVisitor extends MethodVisitor {
       Handle bootstrapMethodHandle,
       Object... bootstrapMethodArguments) {
 
-    // Check if this is a lambda metafactory call
     if (isLambdaMetafactory(bootstrapMethodHandle)) {
       LambdaInfo lambdaInfo = extractLambdaInfo(name, descriptor, bootstrapMethodArguments);
       if (lambdaInfo != null) {
@@ -57,12 +57,6 @@ public class LambdaFindingVisitor extends MethodVisitor {
   private LambdaInfo extractLambdaInfo(
       String invokedynamicName, String invokedynamicDescriptor, Object[] bootstrapMethodArguments) {
 
-    // Lambda metafactory arguments:
-    // [0] - MethodType of functional interface
-    // [1] - MethodHandle of implementation method
-    // [2] - MethodType of implementation method
-    // [3+] - Captured arguments (for altMetafactory)
-
     if (bootstrapMethodArguments.length < 3) {
       return null;
     }
@@ -70,18 +64,13 @@ public class LambdaFindingVisitor extends MethodVisitor {
     Handle implementationMethodHandle = (Handle) bootstrapMethodArguments[1];
     Type implementationMethodType = (Type) bootstrapMethodArguments[2];
 
-    // Extract functional interface class from invokedynamic descriptor
-    // The descriptor is something like "(Ljava/lang/String;)Z" for Predicate<String>
-    // The return type of invokedynamic tells us the functional interface
     Type returnType = Type.getReturnType(invokedynamicDescriptor);
     String functionalInterfaceClass = returnType.getClassName();
 
-    // Extract captured arguments
     List<Object> capturedArgs = new ArrayList<>();
     for (int i = 3; i < bootstrapMethodArguments.length; i++) {
       Object arg = bootstrapMethodArguments[i];
       if (!(arg instanceof ConstantDynamic)) {
-        // Skip Condys for now - they're dynamic constants
         capturedArgs.add(arg);
       }
     }
@@ -96,7 +85,6 @@ public class LambdaFindingVisitor extends MethodVisitor {
   }
 
   private String getImplementationMethodName(Handle methodHandle) {
-    // Handle format: owner.name.descriptor
     return methodHandle.getOwner() + "." + methodHandle.getName() + methodHandle.getDesc();
   }
 
