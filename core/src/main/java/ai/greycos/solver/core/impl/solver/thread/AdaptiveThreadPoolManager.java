@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.solver.thread;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -83,7 +84,7 @@ public class AdaptiveThreadPoolManager {
         if (executorService != null) {
           executorService.shutdown();
           try {
-            if (!executorService.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+            if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
               executorService.shutdownNow();
             }
           } catch (InterruptedException e) {
@@ -158,7 +159,7 @@ public class AdaptiveThreadPoolManager {
     if (executorService != null) {
       executorService.shutdown();
       try {
-        if (!executorService.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS)) {
+        if (!executorService.awaitTermination(10, TimeUnit.SECONDS)) {
           executorService.shutdownNow();
         }
       } catch (InterruptedException e) {

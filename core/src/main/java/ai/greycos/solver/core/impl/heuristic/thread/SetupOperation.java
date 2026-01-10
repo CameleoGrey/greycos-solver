@@ -1,5 +1,6 @@
 package ai.greycos.solver.core.impl.heuristic.thread;
 
+import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 
 /**
@@ -10,8 +11,7 @@ import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
  *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
  * @param <Score_> the score type to go with the solution
  */
-public class SetupOperation<
-        Solution_, Score_ extends ai.greycos.solver.core.api.score.Score<Score_>>
+public class SetupOperation<Solution_, Score_ extends Score<Score_>>
     extends MoveThreadOperation<Solution_> {
 
   private final InnerScoreDirector<Solution_, Score_> scoreDirector;

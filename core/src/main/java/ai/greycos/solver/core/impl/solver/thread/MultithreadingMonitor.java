@@ -1,5 +1,7 @@
 package ai.greycos.solver.core.impl.solver.thread;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -438,7 +440,7 @@ public class MultithreadingMonitor {
     }
 
     public static class Builder {
-      private final java.util.List<String> suggestions = new java.util.ArrayList<>();
+      private final List<String> suggestions = new ArrayList<>();
 
       public Builder addSuggestion(String suggestion) {
         suggestions.add(suggestion);

@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.thread;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -150,7 +151,7 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
             lastStepScore = scoreDirector.calculateScore().raw();
             try {
               moveThreadBarrier.await();
-            } catch (InterruptedException | java.util.concurrent.BrokenBarrierException e) {
+            } catch (InterruptedException | BrokenBarrierException e) {
               Thread.currentThread().interrupt();
               break;
             }
@@ -200,7 +201,7 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           lastStepScore = score;
           try {
             moveThreadBarrier.await();
-          } catch (InterruptedException | java.util.concurrent.BrokenBarrierException e) {
+          } catch (InterruptedException | BrokenBarrierException e) {
             Thread.currentThread().interrupt();
             break;
           }

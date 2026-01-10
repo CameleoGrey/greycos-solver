@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.constructionheuristic.decider.forager.ConstructionHeuristicForager;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicMoveScope;
@@ -286,8 +287,8 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
           foragingMove);
     } else {
       @SuppressWarnings("unchecked")
-      var score = (ai.greycos.solver.core.api.score.Score<?>) result.getScore();
-      moveScope.setScore(InnerScore.fullyAssigned((ai.greycos.solver.core.api.score.Score) score));
+      var score = (Score<?>) result.getScore();
+      moveScope.setScore(InnerScore.fullyAssigned((Score) score));
       moveScope.getScoreDirector().incrementCalculationCount();
       forager.addMove(moveScope);
       if (forager.isQuitEarly()) {
