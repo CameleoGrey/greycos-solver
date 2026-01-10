@@ -11,6 +11,7 @@ import java.util.function.IntFunction;
 
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
@@ -35,6 +36,8 @@ import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 import ai.greycos.solver.core.impl.solver.thread.ThreadUtils;
 
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,8 +53,7 @@ import org.slf4j.LoggerFactory;
  * <p>Why: Enables parallel solving for large problems; improves CPU utilization; reduces solving
  * time for partitionable domains.
  *
- * @param <Solution_> solution type, class with {@link
- *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
+ * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
 public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solution_>
     implements PartitionedSearchPhase<Solution_>,
@@ -341,7 +343,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
 
     @Override
     public DefaultPartitionedSearchPhase.Builder<Solution_> enableAssertions(
-        ai.greycos.solver.core.config.solver.EnvironmentMode environmentMode) {
+        EnvironmentMode environmentMode) {
       super.enableAssertions(environmentMode);
       return this;
     }

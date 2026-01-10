@@ -12,6 +12,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.partitionedsearch.scope.PartitionChangeMove;
 
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,8 +23,7 @@ import org.slf4j.LoggerFactory;
  * <p>Multiple producers (partition threads) add events; single consumer (parent) iterates moves.
  * Deduplicates superseded events via atomic indexing.
  *
- * @param <Solution_> solution type, class with {@link
- *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
+ * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
 public class PartitionQueue<Solution_> implements Iterable<PartitionChangeMove<Solution_>> {
 

@@ -7,16 +7,17 @@
  * <p>Key components:
  *
  * <ul>
- *   <li>{@link ai.greycos.solver.core.impl.partitionedsearch.PartitionedSearchPhase} - Main phase
- *       implementation
- *   <li>{@link ai.greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner} -
- *       Partitioning strategy interface
- *   <li>{@link ai.greycos.solver.core.impl.partitionedsearch.PartitionSolver} - Sub-solver for
- *       partitions
- *   <li>{@link ai.greycos.solver.core.impl.partitionedsearch.queue.PartitionQueue} - Thread-safe
- *       communication queue
- *   <li>{@link ai.greycos.solver.core.impl.partitionedsearch.scope.PartitionChangeMove} -
- *       Encapsulates partition improvements
+ *   <li>{@link PartitionedSearchPhase} - Main phase implementation
+ *   <li>{@link SolutionPartitioner} - Partitioning strategy interface
+ *   <li>{@link PartitionSolver} - Sub-solver for partitions
+ *   <li>{@link PartitionQueue} - Thread-safe communication queue
+ *   <li>{@link PartitionChangeMove} - Encapsulates partition improvements
  * </ul>
  */
 package ai.greycos.solver.core.impl.partitionedsearch;
+
+import ai.greycos.solver.core.impl.partitionedsearch.PartitionedSearchPhase;
+import ai.greycos.solver.core.impl.partitionedsearch.PartitionSolver;
+import ai.greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
+import ai.greycos.solver.core.impl.partitionedsearch.queue.PartitionQueue;
+import ai.greycos.solver.core.impl.partitionedsearch.scope.PartitionChangeMove;

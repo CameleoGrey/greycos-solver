@@ -10,6 +10,8 @@ import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.solver.AbstractSolver;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 
 import org.jspecify.annotations.NonNull;
@@ -21,8 +23,7 @@ import org.jspecify.annotations.NullMarked;
  * <p>Executes configured phases on a partition; notifies parent of best solution changes.
  * No support for problem changes or early termination.
  *
- * @param <Solution_> solution type, class with {@link
- *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
+ * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
 @NullMarked
 public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {

@@ -17,6 +17,8 @@ import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.impl.solver.termination.SolverTermination;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -28,8 +30,7 @@ import org.slf4j.LoggerFactory;
  * <p>Constructs DefaultPartitionedSearchPhase with configured partitioner, thread pool,
  * and child phase configurations.
  *
- * @param <Solution_> solution type, class with {@link
- *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
+ * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
 public class DefaultPartitionedSearchPhaseFactory<Solution_>
     extends AbstractPhaseFactory<Solution_, PartitionedSearchPhaseConfig> {

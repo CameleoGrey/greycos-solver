@@ -2,13 +2,14 @@ package ai.greycos.solver.core.impl.partitionedsearch.scope;
 
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+
 /**
  * Scope for partitioned search step execution.
  *
  * <p>Tracks partition change move applied during a single step.
  *
- * @param <Solution_> solution type, class with {@link
- *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
+ * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
 public final class PartitionedSearchStepScope<Solution_> extends AbstractStepScope<Solution_> {
 
