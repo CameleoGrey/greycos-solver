@@ -671,6 +671,9 @@
         <xs:sequence>
                               
           
+          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
+                              
+          
           <xs:element minOccurs="0" name="constructionHeuristicType" type="tns:constructionHeuristicType"/>
                               
           
@@ -678,9 +681,6 @@
                               
           
           <xs:element minOccurs="0" name="valueSorterManner" type="tns:valueSorterManner"/>
-                              
-          
-          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
                               
           
           <xs:choice minOccurs="0">
@@ -1008,6 +1008,12 @@
                               
           
           <xs:element minOccurs="0" name="betaDistributionBeta" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="maxNearbySortSize" type="xs:int"/>
+                              
+          
+          <xs:element minOccurs="0" name="eagerInitialization" type="xs:boolean"/>
                             
         
         </xs:sequence>
@@ -2474,6 +2480,9 @@
           <xs:element minOccurs="0" name="islandCount" type="xs:int"/>
                               
           
+          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
+                              
+          
           <xs:element minOccurs="0" name="migrationFrequency" type="xs:int"/>
                               
           
@@ -2490,6 +2499,12 @@
                               
           
           <xs:element minOccurs="0" name="localSearchType" type="tns:localSearchType"/>
+                              
+          
+          <xs:element minOccurs="0" name="acceptor" type="tns:localSearchAcceptorConfig"/>
+                              
+          
+          <xs:element minOccurs="0" name="forager" type="tns:localSearchForagerConfig"/>
                               
           
           <xs:choice minOccurs="0">
@@ -2553,15 +2568,6 @@
                                   
           
           </xs:choice>
-                              
-          
-          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
-                              
-          
-          <xs:element minOccurs="0" name="acceptor" type="tns:localSearchAcceptorConfig"/>
-                              
-          
-          <xs:element minOccurs="0" name="forager" type="tns:localSearchForagerConfig"/>
                               
           
           <xs:choice maxOccurs="unbounded" minOccurs="0">
