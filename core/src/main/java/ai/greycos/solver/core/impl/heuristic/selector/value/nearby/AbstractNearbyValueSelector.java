@@ -6,6 +6,7 @@ import java.util.Objects;
 import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMatrix;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
@@ -26,10 +27,7 @@ abstract class AbstractNearbyValueSelector<
   protected final @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter;
   protected final @Nullable NearbyRandom nearbyRandom;
   protected final boolean randomSelection;
-  protected final ai.greycos.solver.core.impl.heuristic.selector.common.nearby.@NonNull
-          NearbyDistanceMatrix<
-          Object, Object>
-      distanceMatrix;
+  protected final @NonNull NearbyDistanceMatrix<Object, Object> distanceMatrix;
 
   protected AbstractNearbyValueSelector(
       @NonNull IterableValueSelector<Solution_> childValueSelector,
@@ -55,11 +53,9 @@ abstract class AbstractNearbyValueSelector<
     // Create distance matrix for caching sorted destinations
     @SuppressWarnings("unchecked")
     var castedDistanceMeter =
-        (ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter<
-                Object, Object>)
-            nearbyDistanceMeter;
+        (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
     this.distanceMatrix =
-        new ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMatrix<>(
+        new NearbyDistanceMatrix<>(
             castedDistanceMeter,
             100, // Initial capacity estimate
             origin -> childValueSelector.iterator(origin),

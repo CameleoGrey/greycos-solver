@@ -13,7 +13,10 @@ import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.common.ValueRangeRecorderId;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDestinationSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
+import ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory;
@@ -158,10 +161,8 @@ public final class DestinationSelectorFactory<Solution_>
                   false);
 
       // Build origin selector from nearby selection config
-      ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector<Solution_>
-          originEntitySelector = null;
-      ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector<Solution_>
-          originSubListSelector = null;
+      EntitySelector<Solution_> originEntitySelector = null;
+      SubListSelector<Solution_> originSubListSelector = null;
       IterableValueSelector<Solution_> originValueSelector = null;
 
       if (nearbySelectionConfig.getOriginEntitySelectorConfig() != null) {
@@ -171,7 +172,7 @@ public final class DestinationSelectorFactory<Solution_>
                 .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
       } else if (nearbySelectionConfig.getOriginSubListSelectorConfig() != null) {
         originSubListSelector =
-            ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelectorFactory
+            SubListSelectorFactory
                 .<Solution_>create(nearbySelectionConfig.getOriginSubListSelectorConfig())
                 .buildSubListSelector(
                     configPolicy, entitySelector, minimumCacheType, selectionOrder);
@@ -229,10 +230,8 @@ public final class DestinationSelectorFactory<Solution_>
                   false);
 
       // Build origin selector from nearby selection config
-      ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector<Solution_>
-          originEntitySelector = null;
-      ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector<Solution_>
-          originSubListSelector = null;
+      EntitySelector<Solution_> originEntitySelector = null;
+      SubListSelector<Solution_> originSubListSelector = null;
       IterableValueSelector<Solution_> originValueSelector = null;
 
       if (nearbySelectionConfig.getOriginEntitySelectorConfig() != null) {
@@ -242,7 +241,7 @@ public final class DestinationSelectorFactory<Solution_>
                 .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
       } else if (nearbySelectionConfig.getOriginSubListSelectorConfig() != null) {
         originSubListSelector =
-            ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelectorFactory
+            SubListSelectorFactory
                 .<Solution_>create(nearbySelectionConfig.getOriginSubListSelectorConfig())
                 .buildSubListSelector(
                     configPolicy, entitySelector, minimumCacheType, selectionOrder);

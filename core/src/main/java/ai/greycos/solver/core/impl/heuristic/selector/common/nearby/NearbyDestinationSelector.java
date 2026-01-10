@@ -12,7 +12,9 @@ import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescri
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
+import ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.ElementDestinationSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.preview.api.domain.metamodel.ElementPosition;
@@ -26,13 +28,12 @@ import org.jspecify.annotations.Nullable;
  * probability distributions for random selection.
  */
 public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledSelector<Solution_>
-    implements ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelector<Solution_> {
+    implements DestinationSelector<Solution_> {
 
   private final @NonNull EntitySelector<Solution_> entitySelector;
   private final @NonNull IterableValueSelector<Solution_> valueSelector;
   private final EntitySelector<Solution_> originEntitySelector;
-  private final ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector<Solution_>
-      originSubListSelector;
+  private final SubListSelector<Solution_> originSubListSelector;
   private final IterableValueSelector<Solution_> originValueSelector;
   private final @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter;
   private final @Nullable NearbyRandom nearbyRandom;
@@ -57,8 +58,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
       @NonNull EntitySelector<Solution_> entitySelector,
       @NonNull IterableValueSelector<Solution_> valueSelector,
       EntitySelector<Solution_> originEntitySelector,
-      ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector<Solution_>
-          originSubListSelector,
+      SubListSelector<Solution_> originSubListSelector,
       IterableValueSelector<Solution_> originValueSelector) {
     this.entitySelector = entitySelector;
     this.valueSelector = valueSelector;

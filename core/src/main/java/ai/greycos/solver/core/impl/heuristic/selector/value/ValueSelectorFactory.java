@@ -713,8 +713,7 @@ public class ValueSelectorFactory<Solution_>
           EntitySelectorFactory.<Solution_>create(
                   nearbySelectionConfig.getOriginEntitySelectorConfig())
               .buildEntitySelector(configPolicy, minimumCacheType, resolvedSelectionOrder);
-      if (!(valueSelector
-          instanceof ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector)) {
+      if (!(valueSelector instanceof IterableValueSelector)) {
         throw new IllegalArgumentException(
             "The valueSelectorConfig ("
                 + config
@@ -723,8 +722,7 @@ public class ValueSelectorFactory<Solution_>
                 + ").");
       }
       return new NearEntityNearbyValueSelector<>(
-          (ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector<Solution_>)
-              valueSelector,
+          (IterableValueSelector<Solution_>) valueSelector,
           originEntitySelector,
           nearbyDistanceMeter,
           nearbyRandom,
@@ -735,8 +733,7 @@ public class ValueSelectorFactory<Solution_>
                   nearbySelectionConfig.getOriginValueSelectorConfig())
               .buildValueSelector(
                   configPolicy, entityDescriptor, minimumCacheType, resolvedSelectionOrder);
-      if (!(valueSelector
-          instanceof ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector)) {
+      if (!(valueSelector instanceof IterableValueSelector)) {
         throw new IllegalArgumentException(
             "The valueSelectorConfig ("
                 + config
@@ -744,8 +741,7 @@ public class ValueSelectorFactory<Solution_>
                 + valueSelector
                 + ").");
       }
-      if (!(originValueSelector
-          instanceof ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector)) {
+      if (!(originValueSelector instanceof IterableValueSelector)) {
         throw new IllegalArgumentException(
             "The originValueSelectorConfig ("
                 + nearbySelectionConfig.getOriginValueSelectorConfig()
@@ -754,10 +750,8 @@ public class ValueSelectorFactory<Solution_>
                 + ").");
       }
       return new NearValueNearbyValueSelector<>(
-          (ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector<Solution_>)
-              valueSelector,
-          (ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector<Solution_>)
-              originValueSelector,
+          (IterableValueSelector<Solution_>) valueSelector,
+          (IterableValueSelector<Solution_>) originValueSelector,
           nearbyDistanceMeter,
           nearbyRandom,
           randomSelection);

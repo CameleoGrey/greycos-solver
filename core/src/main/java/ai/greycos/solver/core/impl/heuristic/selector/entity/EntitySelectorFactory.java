@@ -369,8 +369,7 @@ public class EntitySelectorFactory<Solution_>
                   entitySelector.getEntityDescriptor(),
                   minimumCacheType,
                   resolvedSelectionOrder);
-      if (!(originValueSelector
-          instanceof ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector)) {
+      if (!(originValueSelector instanceof IterableValueSelector)) {
         throw new IllegalArgumentException(
             "The originValueSelectorConfig ("
                 + nearbySelectionConfig.getOriginValueSelectorConfig()
@@ -380,8 +379,7 @@ public class EntitySelectorFactory<Solution_>
       }
       return new NearValueNearbyEntitySelector<>(
           entitySelector,
-          (ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector<Solution_>)
-              originValueSelector,
+          (IterableValueSelector<Solution_>) originValueSelector,
           nearbyDistanceMeter,
           nearbyRandom,
           randomSelection);
