@@ -36,7 +36,6 @@ public class MultistageMoveSelectorFactory<Solution_>
       @NonNull SelectionCacheType minimumCacheType,
       boolean randomSelection) {
 
-    // Instantiate the stage provider
     Class<?> stageProviderClass = config.getStageProviderClass();
     if (stageProviderClass == null) {
       throw new IllegalArgumentException(
@@ -48,10 +47,8 @@ public class MultistageMoveSelectorFactory<Solution_>
         (StageProvider<Solution_>)
             ConfigUtils.newInstance(config, "stageProviderClass", stageProviderClass);
 
-    // Create stage selectors
     List<MoveSelector<Solution_>> stageSelectors = stageProvider.createStages(configPolicy);
 
-    // Validate stage count
     if (stageSelectors.isEmpty()) {
       throw new IllegalStateException(
           "StageProvider "
@@ -59,7 +56,6 @@ public class MultistageMoveSelectorFactory<Solution_>
               + " returned empty stage list. At least one stage is required.");
     }
 
-    // Validate stage count matches provider's getStageCount()
     int expectedStageCount = stageProvider.getStageCount();
     if (expectedStageCount != stageSelectors.size()) {
       throw new IllegalStateException(
@@ -86,8 +82,6 @@ public class MultistageMoveSelectorFactory<Solution_>
 
   @Override
   protected boolean isBaseInherentlyCached() {
-    // Multistage move selector cannot be cached because stage selectors
-    // may change during solving
     return false;
   }
 }

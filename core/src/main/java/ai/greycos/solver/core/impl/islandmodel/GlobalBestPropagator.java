@@ -33,10 +33,10 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
   private volatile Score<?> lastKnownBestScore;
 
   public GlobalBestPropagator(
-          SharedGlobalState<Solution_> globalState,
-          SolverScope<Solution_> mainSolverScope,
-          SolverEventSupport<Solution_> solverEventSupport,
-          EventProducerId eventProducerId) {
+      SharedGlobalState<Solution_> globalState,
+      SolverScope<Solution_> mainSolverScope,
+      SolverEventSupport<Solution_> solverEventSupport,
+      EventProducerId eventProducerId) {
     this.globalState = Objects.requireNonNull(globalState);
     this.mainSolverScope = Objects.requireNonNull(mainSolverScope);
     this.solverEventSupport = Objects.requireNonNull(solverEventSupport);

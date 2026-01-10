@@ -111,8 +111,8 @@ public class ConfigUtils {
   }
 
   /**
-   * Applies custom properties to a bean via setter methods.
-   * Supports String, Boolean, Integer, Long, Float, Double, BigDecimal, and Enum types.
+   * Applies custom properties to a bean via setter methods. Supports String, Boolean, Integer,
+   * Long, Float, Double, BigDecimal, and Enum types.
    */
   public static void applyCustomProperties(
       @NonNull Object bean,

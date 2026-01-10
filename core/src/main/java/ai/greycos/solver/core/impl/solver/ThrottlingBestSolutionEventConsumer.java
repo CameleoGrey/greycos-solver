@@ -14,9 +14,9 @@ import ai.greycos.solver.core.api.solver.event.NewBestSolutionEvent;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Throttles new best solution events to limit delivery rate.
- * Delivers at most one event per throttle duration, with the last event taking precedence.
- * Ensures final best solution is always delivered on termination.
+ * Throttles new best solution events to limit delivery rate. Delivers at most one event per
+ * throttle duration, with the last event taking precedence. Ensures final best solution is always
+ * delivered on termination.
  */
 public final class ThrottlingBestSolutionEventConsumer<Solution_>
     implements Consumer<NewBestSolutionEvent<Solution_>>, AutoCloseable {

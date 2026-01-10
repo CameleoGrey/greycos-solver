@@ -62,81 +62,81 @@ import org.jspecify.annotations.Nullable;
  * configuration, but with independent random seeds and solution states.
  */
 @XmlType(
-        propOrder = {
-                "islandCount",
-                "moveThreadCount",
-                "migrationFrequency",
-                "compareGlobalEnabled",
-                "receiveGlobalUpdateFrequency",
-                "compareGlobalFrequency",
-                "migrationTimeout",
-                "localSearchType",
-                "acceptorConfig",
-                "foragerConfig",
-                "moveSelectorConfig",
-                "phaseConfigList",
-        })
+    propOrder = {
+      "islandCount",
+      "moveThreadCount",
+      "migrationFrequency",
+      "compareGlobalEnabled",
+      "receiveGlobalUpdateFrequency",
+      "compareGlobalFrequency",
+      "migrationTimeout",
+      "localSearchType",
+      "acceptorConfig",
+      "foragerConfig",
+      "moveSelectorConfig",
+      "phaseConfigList",
+    })
 public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> {
 
   @XmlElement(name = "localSearchType")
   protected LocalSearchType localSearchType = null;
 
   @XmlElements({
-          @XmlElement(
-                  name = CartesianProductMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = CartesianProductMoveSelectorConfig.class),
-          @XmlElement(
-                  name = ChangeMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = ChangeMoveSelectorConfig.class),
-          @XmlElement(
-                  name = ListChangeMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = ListChangeMoveSelectorConfig.class),
-          @XmlElement(
-                  name = ListSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = ListSwapMoveSelectorConfig.class),
-          @XmlElement(
-                  name = MoveIteratorFactoryConfig.XML_ELEMENT_NAME,
-                  type = MoveIteratorFactoryConfig.class),
-          @XmlElement(name = MoveListFactoryConfig.XML_ELEMENT_NAME, type = MoveListFactoryConfig.class),
-          @XmlElement(
-                  name = PillarChangeMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = PillarChangeMoveSelectorConfig.class),
-          @XmlElement(
-                  name = PillarSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = PillarSwapMoveSelectorConfig.class),
-          @XmlElement(
-                  name = RuinRecreateMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = RuinRecreateMoveSelectorConfig.class),
-          @XmlElement(
-                  name = ListRuinRecreateMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = ListRuinRecreateMoveSelectorConfig.class),
-          @XmlElement(
-                  name = MultistageMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = MultistageMoveSelectorConfig.class),
-          @XmlElement(
-                  name = ListMultistageMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = ListMultistageMoveSelectorConfig.class),
-          @XmlElement(
-                  name = SubChainChangeMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = SubChainChangeMoveSelectorConfig.class),
-          @XmlElement(
-                  name = SubChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = SubChainSwapMoveSelectorConfig.class),
-          @XmlElement(
-                  name = SubListChangeMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = SubListChangeMoveSelectorConfig.class),
-          @XmlElement(
-                  name = SubListSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = SubListSwapMoveSelectorConfig.class),
-          @XmlElement(
-                  name = SwapMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = SwapMoveSelectorConfig.class),
-          @XmlElement(
-                  name = TailChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = TailChainSwapMoveSelectorConfig.class),
-          @XmlElement(
-                  name = UnionMoveSelectorConfig.XML_ELEMENT_NAME,
-                  type = UnionMoveSelectorConfig.class)
+    @XmlElement(
+        name = CartesianProductMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = CartesianProductMoveSelectorConfig.class),
+    @XmlElement(
+        name = ChangeMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = ChangeMoveSelectorConfig.class),
+    @XmlElement(
+        name = ListChangeMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = ListChangeMoveSelectorConfig.class),
+    @XmlElement(
+        name = ListSwapMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = ListSwapMoveSelectorConfig.class),
+    @XmlElement(
+        name = MoveIteratorFactoryConfig.XML_ELEMENT_NAME,
+        type = MoveIteratorFactoryConfig.class),
+    @XmlElement(name = MoveListFactoryConfig.XML_ELEMENT_NAME, type = MoveListFactoryConfig.class),
+    @XmlElement(
+        name = PillarChangeMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = PillarChangeMoveSelectorConfig.class),
+    @XmlElement(
+        name = PillarSwapMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = PillarSwapMoveSelectorConfig.class),
+    @XmlElement(
+        name = RuinRecreateMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = RuinRecreateMoveSelectorConfig.class),
+    @XmlElement(
+        name = ListRuinRecreateMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = ListRuinRecreateMoveSelectorConfig.class),
+    @XmlElement(
+        name = MultistageMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = MultistageMoveSelectorConfig.class),
+    @XmlElement(
+        name = ListMultistageMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = ListMultistageMoveSelectorConfig.class),
+    @XmlElement(
+        name = SubChainChangeMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = SubChainChangeMoveSelectorConfig.class),
+    @XmlElement(
+        name = SubChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = SubChainSwapMoveSelectorConfig.class),
+    @XmlElement(
+        name = SubListChangeMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = SubListChangeMoveSelectorConfig.class),
+    @XmlElement(
+        name = SubListSwapMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = SubListSwapMoveSelectorConfig.class),
+    @XmlElement(
+        name = SwapMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = SwapMoveSelectorConfig.class),
+    @XmlElement(
+        name = TailChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = TailChainSwapMoveSelectorConfig.class),
+    @XmlElement(
+        name = UnionMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = UnionMoveSelectorConfig.class)
   })
   private MoveSelectorConfig moveSelectorConfig = null;
 
@@ -150,19 +150,20 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   protected String moveThreadCount = null;
 
   @XmlElements({
-          @XmlElement(
-                  name = ConstructionHeuristicPhaseConfig.XML_ELEMENT_NAME,
-                  type = ConstructionHeuristicPhaseConfig.class),
-          @XmlElement(name = CustomPhaseConfig.XML_ELEMENT_NAME, type = CustomPhaseConfig.class),
-          @XmlElement(
-                  name = ExhaustiveSearchPhaseConfig.XML_ELEMENT_NAME,
-                  type = ExhaustiveSearchPhaseConfig.class),
-          @XmlElement(
-                  name = LocalSearchPhaseConfig.XML_ELEMENT_NAME,
-                  type = LocalSearchPhaseConfig.class),
-          @XmlElement(name = NoChangePhaseConfig.XML_ELEMENT_NAME, type = NoChangePhaseConfig.class)
+    @XmlElement(
+        name = ConstructionHeuristicPhaseConfig.XML_ELEMENT_NAME,
+        type = ConstructionHeuristicPhaseConfig.class),
+    @XmlElement(name = CustomPhaseConfig.XML_ELEMENT_NAME, type = CustomPhaseConfig.class),
+    @XmlElement(
+        name = ExhaustiveSearchPhaseConfig.XML_ELEMENT_NAME,
+        type = ExhaustiveSearchPhaseConfig.class),
+    @XmlElement(
+        name = LocalSearchPhaseConfig.XML_ELEMENT_NAME,
+        type = LocalSearchPhaseConfig.class),
+    @XmlElement(name = NoChangePhaseConfig.XML_ELEMENT_NAME, type = NoChangePhaseConfig.class)
   })
   private List<PhaseConfig<?>> phaseConfigList = null;
+
   public static final String XML_ELEMENT_NAME = "islandModel";
   public static final int DEFAULT_ISLAND_COUNT = 4;
   public static final int DEFAULT_MIGRATION_FREQUENCY = Integer.MAX_VALUE;
@@ -302,7 +303,7 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   }
 
   public @NonNull IslandModelPhaseConfig withReceiveGlobalUpdateFrequency(
-          int receiveGlobalUpdateFrequency) {
+      int receiveGlobalUpdateFrequency) {
     this.receiveGlobalUpdateFrequency = receiveGlobalUpdateFrequency;
     return this;
   }
@@ -319,25 +320,25 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   }
 
   public @NonNull IslandModelPhaseConfig withLocalSearchType(
-          @NonNull LocalSearchType localSearchType) {
+      @NonNull LocalSearchType localSearchType) {
     this.localSearchType = localSearchType;
     return this;
   }
 
   public @NonNull IslandModelPhaseConfig withMoveSelectorConfig(
-          @NonNull MoveSelectorConfig moveSelectorConfig) {
+      @NonNull MoveSelectorConfig moveSelectorConfig) {
     this.moveSelectorConfig = moveSelectorConfig;
     return this;
   }
 
   public @NonNull IslandModelPhaseConfig withAcceptorConfig(
-          @NonNull LocalSearchAcceptorConfig acceptorConfig) {
+      @NonNull LocalSearchAcceptorConfig acceptorConfig) {
     this.acceptorConfig = acceptorConfig;
     return this;
   }
 
   public @NonNull IslandModelPhaseConfig withForagerConfig(
-          @NonNull LocalSearchForagerConfig foragerConfig) {
+      @NonNull LocalSearchForagerConfig foragerConfig) {
     this.foragerConfig = foragerConfig;
     return this;
   }
@@ -348,7 +349,7 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   }
 
   public @NonNull IslandModelPhaseConfig withPhaseConfigList(
-          @NonNull List<PhaseConfig<?>> phaseConfigList) {
+      @NonNull List<PhaseConfig<?>> phaseConfigList) {
     this.phaseConfigList = phaseConfigList;
     return this;
   }
@@ -358,37 +359,37 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     super.inherit(inheritedConfig);
 
     localSearchType =
-            ConfigUtils.inheritOverwritableProperty(
-                    localSearchType, inheritedConfig.getLocalSearchType());
+        ConfigUtils.inheritOverwritableProperty(
+            localSearchType, inheritedConfig.getLocalSearchType());
     setMoveSelectorConfig(
-            ConfigUtils.inheritOverwritableProperty(
-                    getMoveSelectorConfig(), inheritedConfig.getMoveSelectorConfig()));
+        ConfigUtils.inheritOverwritableProperty(
+            getMoveSelectorConfig(), inheritedConfig.getMoveSelectorConfig()));
     acceptorConfig = ConfigUtils.inheritConfig(acceptorConfig, inheritedConfig.getAcceptorConfig());
     foragerConfig = ConfigUtils.inheritConfig(foragerConfig, inheritedConfig.getForagerConfig());
     moveThreadCount =
-            ConfigUtils.inheritOverwritableProperty(
-                    moveThreadCount, inheritedConfig.getMoveThreadCount());
+        ConfigUtils.inheritOverwritableProperty(
+            moveThreadCount, inheritedConfig.getMoveThreadCount());
 
     islandCount =
-            ConfigUtils.inheritOverwritableProperty(islandCount, inheritedConfig.getIslandCount());
+        ConfigUtils.inheritOverwritableProperty(islandCount, inheritedConfig.getIslandCount());
     migrationFrequency =
-            ConfigUtils.inheritOverwritableProperty(
-                    migrationFrequency, inheritedConfig.getMigrationFrequency());
+        ConfigUtils.inheritOverwritableProperty(
+            migrationFrequency, inheritedConfig.getMigrationFrequency());
     compareGlobalEnabled =
-            ConfigUtils.inheritOverwritableProperty(
-                    compareGlobalEnabled, inheritedConfig.getCompareGlobalEnabled());
+        ConfigUtils.inheritOverwritableProperty(
+            compareGlobalEnabled, inheritedConfig.getCompareGlobalEnabled());
 
     receiveGlobalUpdateFrequency =
-            ConfigUtils.inheritOverwritableProperty(
-                    receiveGlobalUpdateFrequency, inheritedConfig.getReceiveGlobalUpdateFrequency());
+        ConfigUtils.inheritOverwritableProperty(
+            receiveGlobalUpdateFrequency, inheritedConfig.getReceiveGlobalUpdateFrequency());
 
     compareGlobalFrequency =
-            ConfigUtils.inheritOverwritableProperty(
-                    compareGlobalFrequency, inheritedConfig.getCompareGlobalFrequency());
+        ConfigUtils.inheritOverwritableProperty(
+            compareGlobalFrequency, inheritedConfig.getCompareGlobalFrequency());
 
     migrationTimeout =
-            ConfigUtils.inheritOverwritableProperty(
-                    migrationTimeout, inheritedConfig.getMigrationTimeout());
+        ConfigUtils.inheritOverwritableProperty(
+            migrationTimeout, inheritedConfig.getMigrationTimeout());
 
     if (inheritedConfig.getPhaseConfigList() != null && phaseConfigList == null) {
 

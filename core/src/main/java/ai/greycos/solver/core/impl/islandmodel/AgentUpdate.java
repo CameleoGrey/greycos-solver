@@ -3,10 +3,9 @@ package ai.greycos.solver.core.impl.islandmodel;
 import java.util.BitSet;
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-
 /**
- * Message sent between island agents during migration. Contains agent's best solution (migrant) and status vector of all agents.
+ * Message sent between island agents during migration. Contains agent's best solution (migrant) and
+ * status vector of all agents.
  */
 public class AgentUpdate<Solution_> {
 

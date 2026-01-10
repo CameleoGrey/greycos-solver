@@ -8,9 +8,9 @@ import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchFora
 import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchPickEarlyType;
 
 /**
- * Factory for creating local search foragers.
- * Supports built-in foragers via pickEarlyType and custom foragers via foragerClass.
- * Custom properties are injected via setter methods on forager instances.
+ * Factory for creating local search foragers. Supports built-in foragers via pickEarlyType and
+ * custom foragers via foragerClass. Custom properties are injected via setter methods on forager
+ * instances.
  */
 public class LocalSearchForagerFactory<Solution_> {
 

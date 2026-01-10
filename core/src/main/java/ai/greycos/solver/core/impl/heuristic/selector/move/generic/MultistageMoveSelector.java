@@ -50,14 +50,6 @@ public class MultistageMoveSelector<Solution_> extends GenericMoveSelector<Solut
   private final List<MoveSelector<Solution_>> stageSelectors;
   private final boolean randomSelection;
 
-  /**
-   * Constructs a multistage move selector.
-   *
-   * @param stageProvider provider that created the stage selectors, never null
-   * @param stageSelectors list of move selectors, one per stage, never null, never empty
-   * @param randomSelection true for random selection, false for sequential
-   * @throws IllegalArgumentException if stageSelectors is empty
-   */
   public MultistageMoveSelector(
       @NonNull StageProvider<Solution_> stageProvider,
       @NonNull List<MoveSelector<Solution_>> stageSelectors,
@@ -77,7 +69,6 @@ public class MultistageMoveSelector<Solution_> extends GenericMoveSelector<Solut
           randomSelection ? "random" : "sequential");
     }
 
-    // Register all stage selectors for lifecycle events
     for (MoveSelector<Solution_> stageSelector : stageSelectors) {
       phaseLifecycleSupport.addEventListener(stageSelector);
     }
@@ -85,14 +76,12 @@ public class MultistageMoveSelector<Solution_> extends GenericMoveSelector<Solut
 
   @Override
   public boolean supportsPhaseAndSolverCaching() {
-    // Cannot cache because stage selectors may change during solving
     return false;
   }
 
   @Override
   public void stepStarted(@NonNull AbstractStepScope<Solution_> stepScope) {
     super.stepStarted(stepScope);
-    // Stage selectors receive stepStarted through phaseLifecycleSupport
 
     if (LOGGER.isTraceEnabled()) {
       LOGGER.trace("Step started for multistage move selector");
@@ -101,24 +90,16 @@ public class MultistageMoveSelector<Solution_> extends GenericMoveSelector<Solut
 
   @Override
   public void stepEnded(@NonNull AbstractStepScope<Solution_> stepScope) {
-    // Stage selectors receive stepEnded through phaseLifecycleSupport
     super.stepEnded(stepScope);
   }
 
-  // ************************************************************************
-  // Worker methods
-  // ************************************************************************
-
   @Override
   public boolean isCountable() {
-    // Countable if all stages are countable
     return stageSelectors.stream().allMatch(MoveSelector::isCountable);
   }
 
   @Override
   public long getSize() {
-    // Size is product of all stage sizes (Cartesian product)
-    // Use long multiplication to avoid overflow
     long size = 1L;
     for (int i = 0; i < stageSelectors.size(); i++) {
       MoveSelector<Solution_> stageSelector = stageSelectors.get(i);
@@ -141,7 +122,6 @@ public class MultistageMoveSelector<Solution_> extends GenericMoveSelector<Solut
 
   @Override
   public boolean isNeverEnding() {
-    // Never ending if any stage is never ending
     return stageSelectors.stream().anyMatch(MoveSelector::isNeverEnding);
   }
 
@@ -159,28 +139,10 @@ public class MultistageMoveSelector<Solution_> extends GenericMoveSelector<Solut
     }
   }
 
-  // ************************************************************************
-  // Getters for testing
-  // ************************************************************************
-
-  /**
-   * Gets the stage provider.
-   *
-   * <p>Primarily for testing purposes.
-   *
-   * @return the stage provider, never null
-   */
   StageProvider<Solution_> getStageProvider() {
     return stageProvider;
   }
 
-  /**
-   * Gets the list of stage selectors.
-   *
-   * <p>Primarily for testing purposes. Returns an unmodifiable list.
-   *
-   * @return list of stage selectors, never null
-   */
   List<MoveSelector<Solution_>> getStageSelectors() {
     return stageSelectors;
   }

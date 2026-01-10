@@ -15,8 +15,7 @@ import org.jspecify.annotations.NonNull;
 /**
  * Factory for creating {@link ListMultistageMoveSelector}.
  *
- * <p>This factory follows the same pattern as the basic {@link
- * ai.greycos.solver.core.impl.heuristic.selector.move.generic.MultistageMoveSelectorFactory} but is
+ * <p>This factory follows same pattern as basic {@link MultistageMoveSelectorFactory} but is
  * specialized for list planning variables.
  *
  * <p>The factory instantiates the user-provided {@link StageProvider} and uses it to create move
@@ -37,7 +36,6 @@ public class ListMultistageMoveSelectorFactory<Solution_>
       @NonNull SelectionCacheType minimumCacheType,
       boolean randomSelection) {
 
-    // Instantiate stage provider
     Class<?> stageProviderClass = config.getStageProviderClass();
     if (stageProviderClass == null) {
       throw new IllegalArgumentException(
@@ -49,10 +47,8 @@ public class ListMultistageMoveSelectorFactory<Solution_>
         (StageProvider<Solution_>)
             ConfigUtils.newInstance(config, "stageProviderClass", stageProviderClass);
 
-    // Create stage selectors
     List<MoveSelector<Solution_>> stageSelectors = stageProvider.createStages(configPolicy);
 
-    // Validate stage count
     if (stageSelectors.isEmpty()) {
       throw new IllegalStateException(
           "StageProvider "
@@ -60,7 +56,6 @@ public class ListMultistageMoveSelectorFactory<Solution_>
               + " returned empty stage list. At least one stage is required.");
     }
 
-    // Validate stage count matches provider's getStageCount()
     int expectedStageCount = stageProvider.getStageCount();
     if (expectedStageCount != stageSelectors.size()) {
       throw new IllegalStateException(
@@ -87,8 +82,6 @@ public class ListMultistageMoveSelectorFactory<Solution_>
 
   @Override
   protected boolean isBaseInherentlyCached() {
-    // List multistage move selector cannot be cached because stage selectors
-    // may change during solving
     return false;
   }
 }

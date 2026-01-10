@@ -7,7 +7,6 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.localsearch.LocalSearchPhase;
 import ai.greycos.solver.core.impl.phase.Phase;
@@ -18,8 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Island agent that runs phases independently and participates in periodic migration.
- * Maintains its own solution state and exchanges best solutions with neighboring agents.
+ * Island agent that runs phases independently and participates in periodic migration. Maintains its
+ * own solution state and exchanges best solutions with neighboring agents.
  */
 public class IslandAgent<Solution_> implements Runnable {
 

@@ -12,9 +12,7 @@ import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 
-/**
- * Minimal solver implementation for island agents. Does not support solve() or problem changes.
- */
+/** Minimal solver implementation for island agents. Does not support solve() or problem changes. */
 @NullMarked
 final class IslandSolver<Solution_> extends AbstractSolver<Solution_> {
 

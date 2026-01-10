@@ -5,8 +5,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Bounded channel for agent-to-agent communication in island model. Wraps a BlockingQueue with capacity 1.
- * Capacity of 1 ensures only the latest migration data is retained, preventing memory buildup.
+ * Bounded channel for agent-to-agent communication in island model. Wraps a BlockingQueue with
+ * capacity 1. Capacity of 1 ensures only the latest migration data is retained, preventing memory
+ * buildup.
  */
 public class BoundedChannel<T> {
 

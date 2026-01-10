@@ -39,8 +39,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Island model phase that coordinates multiple independent island agents.
- * Agents run same phases independently and exchange best solutions through migration in a ring topology.
+ * Island model phase that coordinates multiple independent island agents. Agents run same phases
+ * independently and exchange best solutions through migration in a ring topology.
  */
 public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_> {
 
@@ -260,8 +260,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     var moveSelectorConfig = islandModelConfig.getMoveSelectorConfig();
     if (moveSelectorConfig != null) {
       @SuppressWarnings("unchecked")
-      var copiedConfig =
-          (MoveSelectorConfig) moveSelectorConfig.copyConfig();
+      var copiedConfig = (MoveSelectorConfig) moveSelectorConfig.copyConfig();
       localSearchConfig.setMoveSelectorConfig(copiedConfig);
     }
 

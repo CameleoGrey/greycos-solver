@@ -7,9 +7,9 @@ import ai.greycos.solver.core.config.constructionheuristic.decider.forager.Const
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 
 /**
- * Factory for creating construction heuristic foragers.
- * Supports built-in foragers via pickEarlyType and custom foragers via foragerClass.
- * Custom properties are injected via setter methods on forager instances.
+ * Factory for creating construction heuristic foragers. Supports built-in foragers via
+ * pickEarlyType and custom foragers via foragerClass. Custom properties are injected via setter
+ * methods on forager instances.
  */
 public class ConstructionHeuristicForagerFactory<Solution_> {
 

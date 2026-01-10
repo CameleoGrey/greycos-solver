@@ -6,18 +6,11 @@ import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.impl.score.director.InnerScore;
-import ai.greycos.solver.core.impl.solver.event.SolverEventSupport;
-import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * Thread-safe shared state for island model, tracking global best solution across all islands.
- * Uses double-checked locking with volatile for thread-safe updates with minimal contention.
+ * Thread-safe shared state for island model, tracking global best solution across all islands. Uses
+ * double-checked locking with volatile for thread-safe updates with minimal contention.
  */
 public class SharedGlobalState<Solution_> {
 

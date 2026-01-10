@@ -308,7 +308,10 @@ public final class NodeSharingTransformer {
       String implementationMethod = getImplementationMethodName(implementationMethodHandle);
 
       return new LambdaKey(
-          functionalInterfaceClass, implementationMethod, implementationMethodType.getDescriptor(), capturedArgs);
+          functionalInterfaceClass,
+          implementationMethod,
+          implementationMethodType.getDescriptor(),
+          capturedArgs);
     }
 
     private String getImplementationMethodName(Handle methodHandle) {

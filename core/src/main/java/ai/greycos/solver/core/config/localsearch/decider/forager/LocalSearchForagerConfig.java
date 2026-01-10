@@ -13,9 +13,8 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Configuration for local search forager.
- * Supports built-in foragers via pickEarlyType and custom foragers via foragerClass.
- * Custom properties can be injected via setter methods on forager class.
+ * Configuration for local search forager. Supports built-in foragers via pickEarlyType and custom
+ * foragers via foragerClass. Custom properties can be injected via setter methods on forager class.
  */
 @XmlType(
     propOrder = {

@@ -16,9 +16,9 @@ import java.util.Objects;
  * </ul>
  *
  * <p>The implementation method is included to distinguish between lambdas that have the same type
- * signature but different implementations. For example, two lambdas with signature (Vehicle, Integer)
- * -> long could have different implementations like (v,d) -> d - v.getCapacity() vs (v,d) ->
- * Math.max(0,d).
+ * signature but different implementations. For example, two lambdas with signature (Vehicle,
+ * Integer) -> long could have different implementations like (v,d) -> d - v.getCapacity() vs (v,d)
+ * -> Math.max(0,d).
  */
 public final class LambdaKey {
 
@@ -71,7 +71,8 @@ public final class LambdaKey {
 
   @Override
   public int hashCode() {
-    return Objects.hash(functionalInterfaceType, implementationMethod, implementationMethodType, capturedArguments);
+    return Objects.hash(
+        functionalInterfaceType, implementationMethod, implementationMethodType, capturedArguments);
   }
 
   @Override

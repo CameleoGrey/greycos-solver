@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;

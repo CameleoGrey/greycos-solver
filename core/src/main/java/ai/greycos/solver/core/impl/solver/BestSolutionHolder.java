@@ -36,10 +36,10 @@ import org.jspecify.annotations.Nullable;
 final class BestSolutionHolder<Solution_> {
 
   private final AtomicReference<BigInteger> lastProcessedVersion =
-          new AtomicReference<>(BigInteger.valueOf(-1));
+      new AtomicReference<>(BigInteger.valueOf(-1));
 
   private volatile SortedMap<BigInteger, List<CompletableFuture<Void>>>
-          problemChangesPerVersionMap = createNewProblemChangesMap();
+      problemChangesPerVersionMap = createNewProblemChangesMap();
   private volatile @Nullable VersionedBestSolution<Solution_> versionedBestSolution = null;
   private volatile BigInteger currentVersion = BigInteger.ZERO;
 
@@ -48,7 +48,7 @@ final class BestSolutionHolder<Solution_> {
   }
 
   private static SortedMap<BigInteger, List<CompletableFuture<Void>>> createNewProblemChangesMap(
-          SortedMap<BigInteger, List<CompletableFuture<Void>>> map) {
+      SortedMap<BigInteger, List<CompletableFuture<Void>>> map) {
     return new TreeMap<>(map);
   }
 
@@ -69,15 +69,15 @@ final class BestSolutionHolder<Solution_> {
     }
     var boundaryVersion = bestSolutionVersion.add(BigInteger.ONE);
     var oldProblemChangesPerVersion =
-            replaceMapSynchronized(map -> createNewProblemChangesMap(map.tailMap(boundaryVersion)));
+        replaceMapSynchronized(map -> createNewProblemChangesMap(map.tailMap(boundaryVersion)));
     var containedProblemChanges =
-            oldProblemChangesPerVersion.headMap(boundaryVersion).values().stream()
-                    .flatMap(Collection::stream)
-                    .toList();
+        oldProblemChangesPerVersion.headMap(boundaryVersion).values().stream()
+            .flatMap(Collection::stream)
+            .toList();
     return new BestSolutionContainingProblemChanges<>(
-            latestVersionedBestSolution.bestSolution(),
-            latestVersionedBestSolution.producerId(),
-            containedProblemChanges);
+        latestVersionedBestSolution.bestSolution(),
+        latestVersionedBestSolution.producerId(),
+        containedProblemChanges);
   }
 
   private synchronized @Nullable VersionedBestSolution<Solution_> resetVersionedBestSolution() {
@@ -87,31 +87,31 @@ final class BestSolutionHolder<Solution_> {
   }
 
   private synchronized SortedMap<BigInteger, List<CompletableFuture<Void>>> replaceMapSynchronized(
-          UnaryOperator<SortedMap<BigInteger, List<CompletableFuture<Void>>>> replaceFunction) {
+      UnaryOperator<SortedMap<BigInteger, List<CompletableFuture<Void>>>> replaceFunction) {
     var oldMap = problemChangesPerVersionMap;
     problemChangesPerVersionMap = replaceFunction.apply(oldMap);
     return oldMap;
   }
 
   void set(
-          Solution_ bestSolution,
-          EventProducerId producerId,
-          BooleanSupplier isEveryProblemChangeProcessed) {
+      Solution_ bestSolution,
+      EventProducerId producerId,
+      BooleanSupplier isEveryProblemChangeProcessed) {
     if (isEveryProblemChangeProcessed.getAsBoolean()) {
       synchronized (this) {
         versionedBestSolution =
-                new VersionedBestSolution<>(bestSolution, producerId, currentVersion);
+            new VersionedBestSolution<>(bestSolution, producerId, currentVersion);
         currentVersion = currentVersion.add(BigInteger.ONE);
       }
     }
   }
 
   @NonNull CompletableFuture<Void> addProblemChange(
-          Solver<Solution_> solver, List<ProblemChange<Solution_>> problemChangeList) {
+      Solver<Solution_> solver, List<ProblemChange<Solution_>> problemChangeList) {
     var futureProblemChange = new CompletableFuture<Void>();
     synchronized (this) {
       var futureProblemChangeList =
-              problemChangesPerVersionMap.computeIfAbsent(currentVersion, version -> new ArrayList<>());
+          problemChangesPerVersionMap.computeIfAbsent(currentVersion, version -> new ArrayList<>());
       futureProblemChangeList.add(futureProblemChange);
       solver.addProblemChanges(problemChangeList);
     }
@@ -120,10 +120,10 @@ final class BestSolutionHolder<Solution_> {
 
   void cancelPendingChanges() {
     replaceMapSynchronized(map -> createNewProblemChangesMap()).values().stream()
-            .flatMap(Collection::stream)
-            .forEach(pendingProblemChange -> pendingProblemChange.cancel(false));
+        .flatMap(Collection::stream)
+        .forEach(pendingProblemChange -> pendingProblemChange.cancel(false));
   }
 
   private record VersionedBestSolution<Solution_>(
-          Solution_ bestSolution, EventProducerId producerId, BigInteger version) {}
+      Solution_ bestSolution, EventProducerId producerId, BigInteger version) {}
 }

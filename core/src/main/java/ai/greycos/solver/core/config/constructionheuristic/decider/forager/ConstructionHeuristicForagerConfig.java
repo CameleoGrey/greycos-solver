@@ -13,9 +13,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Configuration for construction heuristic forager.
- * Supports built-in foragers via pickEarlyType and custom foragers via foragerClass.
- * Custom properties can be injected via setter methods on forager class.
+ * Configuration for construction heuristic forager. Supports built-in foragers via pickEarlyType
+ * and custom foragers via foragerClass. Custom properties can be injected via setter methods on
+ * forager class.
  */
 @XmlType(propOrder = {"pickEarlyType", "foragerClass", "customProperties"})
 public class ConstructionHeuristicForagerConfig

@@ -9,8 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Lifecycle listener that pushes local improvements to global state when an agent finds a better solution.
- * Updates only when local best improves to reduce lock contention on SharedGlobalState.
+ * Lifecycle listener that pushes local improvements to global state when an agent finds a better
+ * solution. Updates only when local best improves to reduce lock contention on SharedGlobalState.
  */
 public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<Solution_> {
 

@@ -9,8 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Lifecycle listener that periodically checks and adopts global best solution from SharedGlobalState.
- * Attached to local search phases to enable compare-to-global functionality.
+ * Lifecycle listener that periodically checks and adopts global best solution from
+ * SharedGlobalState. Attached to local search phases to enable compare-to-global functionality.
  */
 public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdapter<Solution_> {
 

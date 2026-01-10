@@ -15,8 +15,9 @@ import ai.greycos.solver.core.api.solver.event.NewBestSolutionEvent;
 import ai.greycos.solver.core.api.solver.event.SolverJobStartedEvent;
 
 /**
- * Manages asynchronous consumption of solver events including best solutions, first initialized solutions,
- * and solver job started events. Coordinates with throttling consumers and ensures proper event ordering.
+ * Manages asynchronous consumption of solver events including best solutions, first initialized
+ * solutions, and solver job started events. Coordinates with throttling consumers and ensures
+ * proper event ordering.
  */
 final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
 
@@ -130,8 +131,7 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
   }
 
   private void tryConsumeWaitingIntermediateBestSolution() {
-    if (bestSolutionHolder.isEmpty()) {
-    }
+    if (bestSolutionHolder.isEmpty()) {}
     if (activeConsumption.tryAcquire()) {
       scheduleIntermediateBestSolutionConsumption()
           .thenRunAsync(this::tryConsumeWaitingIntermediateBestSolution, consumerExecutor);

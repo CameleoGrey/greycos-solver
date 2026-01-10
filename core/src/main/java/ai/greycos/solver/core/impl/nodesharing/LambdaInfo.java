@@ -67,7 +67,8 @@ public final class LambdaInfo {
    * functionally equivalent lambdas.
    */
   public LambdaKey getKey() {
-    return new LambdaKey(functionalInterfaceType, implementationMethod, implementationMethodType, capturedArguments);
+    return new LambdaKey(
+        functionalInterfaceType, implementationMethod, implementationMethodType, capturedArguments);
   }
 
   @Override

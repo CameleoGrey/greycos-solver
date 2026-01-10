@@ -23,7 +23,7 @@ import org.jspecify.annotations.NonNull;
  *
  * <p>The order of stages matters: they are executed sequentially in the order returned by {@link
  * #createStages(HeuristicConfigPolicy)}. Each stage's move selector generates moves that contribute
- * to the overall multistage move.
+ * to overall multistage move.
  *
  * @param <Solution_> the solution type
  */
@@ -33,7 +33,7 @@ public interface StageProvider<Solution_> {
    * Creates the move selectors for each stage.
    *
    * <p>The order of the list matters: stages are executed sequentially. Each stage's move selector
-   * generates moves that contribute to the overall multistage move.
+   * generates moves that contribute to overall multistage move.
    *
    * <p>This method is called once during factory construction, not per-solve. The returned
    * selectors are reused across multiple solving phases.
