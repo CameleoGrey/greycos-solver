@@ -7,6 +7,11 @@ import ai.greycos.solver.core.config.localsearch.decider.forager.FinalistPodiumT
 import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchForagerConfig;
 import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchPickEarlyType;
 
+/**
+ * Factory for creating local search foragers.
+ * Supports built-in foragers via pickEarlyType and custom foragers via foragerClass.
+ * Custom properties are injected via setter methods on forager instances.
+ */
 public class LocalSearchForagerFactory<Solution_> {
 
   public static <Solution_> LocalSearchForagerFactory<Solution_> create(
@@ -21,12 +26,10 @@ public class LocalSearchForagerFactory<Solution_> {
   }
 
   public LocalSearchForager<Solution_> buildForager() {
-    // Check if custom forager is configured
     if (foragerConfig.getForagerClass() != null) {
       return buildCustomForager();
     }
 
-    // Default behavior for built-in foragers
     var pickEarlyType_ =
         Objects.requireNonNullElse(
             foragerConfig.getPickEarlyType(), LocalSearchPickEarlyType.NEVER);
@@ -35,7 +38,6 @@ public class LocalSearchForagerFactory<Solution_> {
     var finalistPodiumType_ =
         Objects.requireNonNullElse(
             foragerConfig.getFinalistPodiumType(), FinalistPodiumType.HIGHEST_SCORE);
-    // Breaking ties randomly leads to better results statistically
     boolean breakTieRandomly_ =
         Objects.requireNonNullElse(foragerConfig.getBreakTieRandomly(), true);
     return new AcceptedLocalSearchForager<>(
@@ -49,22 +51,17 @@ public class LocalSearchForagerFactory<Solution_> {
   private LocalSearchForager<Solution_> buildCustomForager() {
     var foragerClass = foragerConfig.getForagerClass();
 
-    // Validate custom forager class
     validateCustomForagerClass(foragerClass);
 
-    // Instantiate custom forager
     var customProperties = foragerConfig.getCustomProperties();
     try {
-      // Try constructor with LocalSearchForagerConfig
       try {
         var constructor = foragerClass.getConstructor(LocalSearchForagerConfig.class);
         return (LocalSearchForager<Solution_>) constructor.newInstance(foragerConfig);
       } catch (NoSuchMethodException e) {
-        // Try no-arg constructor
         var constructor = foragerClass.getConstructor();
         var forager = (LocalSearchForager<Solution_>) constructor.newInstance();
 
-        // Inject custom properties if available
         if (customProperties != null && !customProperties.isEmpty()) {
           injectCustomProperties(forager, customProperties);
         }
@@ -85,7 +82,6 @@ public class LocalSearchForagerFactory<Solution_> {
               + ") is a built-in forager. Use foragerConfig properties instead.");
     }
 
-    // Check for required constructor
     boolean hasConfigConstructor = false;
     boolean hasNoArgConstructor = false;
     for (var constructor : foragerClass.getConstructors()) {
@@ -108,7 +104,6 @@ public class LocalSearchForagerFactory<Solution_> {
 
   private void injectCustomProperties(
       LocalSearchForager<?> forager, Map<String, String> customProperties) {
-    // Use reflection to inject properties if setter methods exist
     for (var entry : customProperties.entrySet()) {
       var propertyName = entry.getKey();
       var propertyValue = entry.getValue();
@@ -119,8 +114,6 @@ public class LocalSearchForagerFactory<Solution_> {
         var setter = forager.getClass().getMethod(setterName, String.class);
         setter.invoke(forager, propertyValue);
       } catch (Exception e) {
-        // Silently ignore if setter doesn't exist or fails
-        // Could log a warning in debug mode
       }
     }
   }

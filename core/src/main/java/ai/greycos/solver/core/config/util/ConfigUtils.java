@@ -110,6 +110,10 @@ public class ConfigUtils {
     }
   }
 
+  /**
+   * Applies custom properties to a bean via setter methods.
+   * Supports String, Boolean, Integer, Long, Float, Double, BigDecimal, and Enum types.
+   */
   public static void applyCustomProperties(
       @NonNull Object bean,
       @NonNull String beanClassPropertyName,
@@ -352,8 +356,8 @@ public class ConfigUtils {
    * {@link Math#floorDiv(long, long)}.
    *
    * @throws ArithmeticException if {@code divisor == 0}
-   * @param dividend the dividend
-   * @param divisor the divisor
+   * @param dividend dividend
+   * @param divisor divisor
    * @return dividend / divisor, ceiled
    */
   public static int ceilDivide(int dividend, int divisor) {
@@ -668,8 +672,8 @@ public class ConfigUtils {
     if (clazz.isRecord()) {
       /*
        * A record has a field and a getter for each record component.
-       * When the component is annotated with @PlanningId,
-       * the annotation ends up both on the field and on the getter.
+       * When component is annotated with @PlanningId,
+       * annotation ends up both on field and on the getter.
        */
       if (size == 2) { // The getter is used to retrieve the value of the record component.
         var methodMembers = getMembers(memberList, true);

@@ -13,20 +13,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Configuration for a construction heuristic forager.
- *
- * <p>A forager is responsible for collecting evaluated moves during a step, deciding when to stop
- * evaluating moves (early termination), and selecting the best move to apply.
- *
- * <p>This configuration supports:
- *
- * <ul>
- *   <li>Built-in foragers configured via {@link #pickEarlyType}
- *   <li>Custom foragers configured via {@link #foragerClass}
- * </ul>
- *
- * <p>When using custom foragers, you can inject properties via {@link #customProperties}. Custom
- * properties are set using setter methods on the forager class (e.g., {@code setTopK("5")}).
+ * Configuration for construction heuristic forager.
+ * Supports built-in foragers via pickEarlyType and custom foragers via foragerClass.
+ * Custom properties can be injected via setter methods on forager class.
  */
 @XmlType(propOrder = {"pickEarlyType", "foragerClass", "customProperties"})
 public class ConstructionHeuristicForagerConfig

@@ -6,6 +6,11 @@ import ai.greycos.solver.core.config.constructionheuristic.decider.forager.Const
 import ai.greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicPickEarlyType;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 
+/**
+ * Factory for creating construction heuristic foragers.
+ * Supports built-in foragers via pickEarlyType and custom foragers via foragerClass.
+ * Custom properties are injected via setter methods on forager instances.
+ */
 public class ConstructionHeuristicForagerFactory<Solution_> {
 
   public static <Solution_> ConstructionHeuristicForagerFactory<Solution_> create(
@@ -21,12 +26,10 @@ public class ConstructionHeuristicForagerFactory<Solution_> {
 
   public ConstructionHeuristicForager<Solution_> buildForager(
       HeuristicConfigPolicy<Solution_> configPolicy) {
-    // Check if custom forager is configured
     if (foragerConfig.getForagerClass() != null) {
       return buildCustomForager(configPolicy);
     }
 
-    // Default behavior for built-in foragers
     ConstructionHeuristicPickEarlyType pickEarlyType_;
     if (foragerConfig.getPickEarlyType() == null) {
       pickEarlyType_ =
@@ -44,22 +47,17 @@ public class ConstructionHeuristicForagerFactory<Solution_> {
       HeuristicConfigPolicy<Solution_> configPolicy) {
     var foragerClass = foragerConfig.getForagerClass();
 
-    // Validate custom forager class
     validateCustomForagerClass(foragerClass);
 
-    // Instantiate custom forager
     var customProperties = foragerConfig.getCustomProperties();
     try {
-      // Try constructor with HeuristicConfigPolicy
       try {
         var constructor = foragerClass.getConstructor(HeuristicConfigPolicy.class);
         return (ConstructionHeuristicForager<Solution_>) constructor.newInstance(configPolicy);
       } catch (NoSuchMethodException e) {
-        // Try no-arg constructor
         var constructor = foragerClass.getConstructor();
         var forager = (ConstructionHeuristicForager<Solution_>) constructor.newInstance();
 
-        // Inject custom properties if available
         if (customProperties != null && !customProperties.isEmpty()) {
           injectCustomProperties(forager, customProperties);
         }
@@ -81,7 +79,6 @@ public class ConstructionHeuristicForagerFactory<Solution_> {
               + ") is a built-in forager. Use pickEarlyType configuration instead.");
     }
 
-    // Check for required constructor
     boolean hasConfigPolicyConstructor = false;
     boolean hasNoArgConstructor = false;
     for (var constructor : foragerClass.getConstructors()) {
@@ -104,7 +101,6 @@ public class ConstructionHeuristicForagerFactory<Solution_> {
 
   private void injectCustomProperties(
       ConstructionHeuristicForager<?> forager, Map<String, String> customProperties) {
-    // Use reflection to inject properties if setter methods exist
     for (var entry : customProperties.entrySet()) {
       var propertyName = entry.getKey();
       var propertyValue = entry.getValue();
@@ -115,8 +111,6 @@ public class ConstructionHeuristicForagerFactory<Solution_> {
         var setter = forager.getClass().getMethod(setterName, String.class);
         setter.invoke(forager, propertyValue);
       } catch (Exception e) {
-        // Silently ignore if setter doesn't exist or fails
-        // Could log a warning in debug mode
       }
     }
   }
