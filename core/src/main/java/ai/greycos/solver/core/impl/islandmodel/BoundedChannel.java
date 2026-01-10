@@ -5,13 +5,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A bounded channel for agent-to-agent communication in the island model. Wraps a BlockingQueue
- * with capacity 1 (as per GreyJack design).
- *
- * <p>Capacity of 1 ensures only the latest migration data is retained, preventing memory buildup
- * and ensuring fresh data exchange.
- *
- * @param <T> the type of messages sent through this channel
+ * Bounded channel for agent-to-agent communication in island model. Wraps a BlockingQueue with capacity 1.
+ * Capacity of 1 ensures only the latest migration data is retained, preventing memory buildup.
  */
 public class BoundedChannel<T> {
 

@@ -8,20 +8,16 @@ import java.util.function.Consumer;
 
 import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.impl.score.director.InnerScore;
+import ai.greycos.solver.core.impl.solver.event.SolverEventSupport;
+import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Thread-safe shared state for island model, tracking the global best solution across all islands.
+ * Thread-safe shared state for island model, tracking global best solution across all islands.
  * Uses double-checked locking with volatile for thread-safe updates with minimal contention.
- *
- * <p>Optimizations:
- *
- * <ul>
- *   <li>Fast path: check without lock for most failed updates (60-80% reduction in contention)
- *   <li>Slow path: acquire lock only for potential improvements
- *   <li>No cloning in critical section - observers clone when needed
- * </ul>
- *
- * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
 public class SharedGlobalState<Solution_> {
 
@@ -29,38 +25,32 @@ public class SharedGlobalState<Solution_> {
   private volatile Score<?> bestScore;
   private final Object lock = new Object();
 
-  // Observers for best solution changes (for GreyCOS event system integration)
   private final List<Consumer<Solution_>> observers = new CopyOnWriteArrayList<>();
 
   public boolean tryUpdate(Solution_ candidate, Score<?> candidateScore) {
     Objects.requireNonNull(candidate, "Candidate solution cannot be null");
     Objects.requireNonNull(candidateScore, "Candidate score cannot be null");
 
-    // Fast path: check if update is needed without lock
-    // Volatile read ensures visibility of latest bestScore
     Score<?> currentBest = bestScore;
     if (currentBest != null) {
       @SuppressWarnings("unchecked")
       int comparison = ((Score) candidateScore).compareTo((Score) currentBest);
       if (comparison <= 0) {
-        return false; // Not better, skip entirely
+        return false;
       }
     }
 
-    // Slow path: acquire lock and double-check
     Solution_ updatedSolution = null;
     synchronized (lock) {
-      // Double-check in case another thread updated while waiting
       currentBest = bestScore;
       if (currentBest != null) {
         @SuppressWarnings("unchecked")
         int comparison = ((Score) candidateScore).compareTo((Score) currentBest);
         if (comparison <= 0) {
-          return false; // Lost race, not better anymore
+          return false;
         }
       }
 
-      // Update - store reference, don't clone (observers clone when needed)
       bestScore = candidateScore;
       bestSolution = candidate;
       updatedSolution = candidate;

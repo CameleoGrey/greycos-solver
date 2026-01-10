@@ -10,12 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Factory for creating island model phases.
- *
- * <p>This factory builds {@link DefaultIslandModelPhase} instances that run multiple independent
- * island agents in parallel.
- *
- * @param <Solution_> solution type
+ * Factory for creating island model phases that run multiple independent island agents in parallel.
  */
 public class DefaultIslandModelPhaseFactory<Solution_>
     extends AbstractPhaseFactory<Solution_, IslandModelPhaseConfig> {
@@ -50,13 +45,11 @@ public class DefaultIslandModelPhaseFactory<Solution_>
             ? phaseConfig.getCompareGlobalEnabled()
             : true;
 
-    // Read receive global update frequency
     int receiveGlobalUpdateFrequency =
         phaseConfig.getReceiveGlobalUpdateFrequency() != null
             ? phaseConfig.getReceiveGlobalUpdateFrequency()
             : IslandModelPhaseConfig.DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY;
 
-    // Fall back to deprecated parameter if new parameter is not set
     if (phaseConfig.getReceiveGlobalUpdateFrequency() == null
         && phaseConfig.getCompareGlobalFrequency() != null) {
       receiveGlobalUpdateFrequency = phaseConfig.getCompareGlobalFrequency();
@@ -65,7 +58,6 @@ public class DefaultIslandModelPhaseFactory<Solution_>
               + "Please use 'receiveGlobalUpdateFrequency' instead.");
     }
 
-    // Read migration timeout
     long migrationTimeout =
         phaseConfig.getMigrationTimeout() != null
             ? phaseConfig.getMigrationTimeout()

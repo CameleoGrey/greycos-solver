@@ -37,19 +37,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Island model phase that coordinates multiple independent island agents.
- *
- * <p>This phase creates and manages multiple island agents, each running same phases independently.
- * Agents periodically exchange their best solutions through migration in a ring topology.
- *
- * <p>The island model is an opt-in feature that provides:
- *
- * <ul>
- *   <li>Enhanced solution quality through migration
- *   <li>Near-linear horizontal scaling
- *   <li>Fault tolerance (if one island fails, others continue)
- * </ul>
- *
- * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
+ * Agents run same phases independently and exchange best solutions through migration in a ring topology.
  */
 public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_> {
 
@@ -118,7 +106,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       }
       globalState.tryUpdate(initialSolution, innerScore.raw());
 
-      // Start propagating global best updates to main solver scope
       globalBestPropagator =
           new GlobalBestPropagator<>(
               globalState,
@@ -153,7 +140,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           e);
       throw e;
     } finally {
-      // Ensure propagator is stopped even on exception
       if (globalBestPropagator != null) {
         globalBestPropagator.stop();
       }
@@ -265,15 +251,9 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       HeuristicConfigPolicy<Solution_> agentConfigPolicy,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
-    // IslandModelPhaseConfig includes all local search configuration fields,
-    // so each island runs the same local search configuration with independent random seeds
-    // Create a LocalSearchPhaseConfig from the island model's local search fields
     var localSearchConfig = new ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig();
     localSearchConfig.setLocalSearchType(islandModelConfig.getLocalSearchType());
 
-    // CRITICAL: Deep copy the move selector config so each island gets its own independent copy
-    // Otherwise all islands share the same config instance, causing nearbySelectionConfig to be
-    // lost
     var moveSelectorConfig = islandModelConfig.getMoveSelectorConfig();
     if (moveSelectorConfig != null) {
       @SuppressWarnings("unchecked")
@@ -283,7 +263,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       localSearchConfig.setMoveSelectorConfig(copiedConfig);
     }
 
-    // Deep copy acceptor and forager configs as well for consistency
     var acceptorConfig = islandModelConfig.getAcceptorConfig();
     if (acceptorConfig != null) {
       localSearchConfig.setAcceptorConfig(acceptorConfig.copyConfig());
@@ -301,7 +280,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
     localSearchConfig.setMoveThreadCount(islandModelConfig.getMoveThreadCount());
 
-    // Build a single LocalSearchPhase from the local search config
     return PhaseFactory.buildPhases(
         List.of(localSearchConfig), agentConfigPolicy, bestSolutionRecaller, solverTermination);
   }
@@ -468,9 +446,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       return this;
     }
 
-    /**
-     * @deprecated Use {@link #withReceiveGlobalUpdateFrequency(int)} instead.
-     */
     @Deprecated
     public Builder<Solution_> withCompareGlobalFrequency(int compareGlobalFrequency) {
       this.receiveGlobalUpdateFrequency = compareGlobalFrequency;

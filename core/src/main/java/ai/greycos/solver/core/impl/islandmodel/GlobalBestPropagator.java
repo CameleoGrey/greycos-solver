@@ -33,22 +33,20 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
   private volatile Score<?> lastKnownBestScore;
 
   public GlobalBestPropagator(
-      SharedGlobalState<Solution_> globalState,
-      SolverScope<Solution_> mainSolverScope,
-      SolverEventSupport<Solution_> solverEventSupport,
-      EventProducerId eventProducerId) {
+          SharedGlobalState<Solution_> globalState,
+          SolverScope<Solution_> mainSolverScope,
+          SolverEventSupport<Solution_> solverEventSupport,
+          EventProducerId eventProducerId) {
     this.globalState = Objects.requireNonNull(globalState);
     this.mainSolverScope = Objects.requireNonNull(mainSolverScope);
     this.solverEventSupport = Objects.requireNonNull(solverEventSupport);
     this.eventProducerId = Objects.requireNonNull(eventProducerId);
   }
 
-  /** Start observing global best changes. Must be called before island agents start solving. */
   public void start() {
     globalState.addObserver(this);
   }
 
-  /** Stop observing global best changes. Must be called after island agents complete. */
   public void stop() {
     globalState.removeObserver(this);
   }
@@ -64,7 +62,6 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
       return;
     }
 
-    // Only update if score actually improved
     boolean shouldUpdate = shouldUpdateMainSolverScope(newGlobalBestScore);
 
     if (shouldUpdate) {
@@ -78,7 +75,7 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
 
   private boolean shouldUpdateMainSolverScope(Score<?> newGlobalBestScore) {
     if (lastKnownBestScore == null) {
-      return true; // First update
+      return true;
     }
 
     @SuppressWarnings("unchecked")
@@ -87,7 +84,6 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
   }
 
   private Solution_ updateMainSolverScope(Solution_ newBestSolution, Score<?> newBestScore) {
-    // Clone to avoid sharing references with island agents
     var clonedSolution = mainSolverScope.getScoreDirector().cloneSolution(newBestSolution);
 
     // Update main solver scope

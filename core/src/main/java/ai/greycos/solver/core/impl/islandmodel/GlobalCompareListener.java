@@ -9,29 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Lifecycle listener that checks and adopts global best solution periodically. Attached to local
- * search phases to enable compare-to-global functionality.
- *
- * <p>This listener provides "receive global update" mechanism where agents periodically check the
- * shared global best solution (the best solution found across ALL islands) and adopt it if it's
- * better than their current best. This provides:
- *
- * <ul>
- *   <li>Faster convergence - Global best is immediately available to all agents
- *   <li>Better solution quality - Prevents getting stuck in local optima
- *   <li>Complementary to migration - Migration provides diversity, global comparison provides
- *       intensification
- * </ul>
- *
- * <p>The frequency of checking the global best is controlled by the {@code
- * receiveGlobalUpdateFrequency} parameter. Islands will check the global best every N steps and
- * adopt it if it's better than their local best.
- *
- * <p>This listener only performs meaningful work when attached to local search phases, as it
- * requires access to {@link LocalSearchStepScope}. When attached to other phase types, it will
- * simply do nothing.
- *
- * @param <Solution_> solution type
+ * Lifecycle listener that periodically checks and adopts global best solution from SharedGlobalState.
+ * Attached to local search phases to enable compare-to-global functionality.
  */
 public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdapter<Solution_> {
 
@@ -47,11 +26,9 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
     this.globalState = globalState;
     this.config = config;
     this.agentId = agentId;
-    // Use receiveGlobalUpdateFrequency (or fall back to deprecated compareGlobalFrequency)
     this.stepsUntilNextReceive = getReceiveFrequency(config);
   }
 
-  /** Gets the receive frequency from config. */
   private int getReceiveFrequency(IslandModelConfig config) {
     return config.getReceiveGlobalUpdateFrequency();
   }

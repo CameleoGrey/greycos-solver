@@ -6,11 +6,7 @@ import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 
 /**
  * Triggers migration for island model agents during phase execution.
- *
- * <p>This listener is attached to phases running on island agents. After each step, it decrements
- * the step counter and triggers migration when the counter reaches zero.
- *
- * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
+ * Attached to phases running on island agents, decrements step counter and triggers migration when counter reaches zero.
  */
 class MigrationTrigger<Solution_> extends PhaseLifecycleListenerAdapter<Solution_> {
 

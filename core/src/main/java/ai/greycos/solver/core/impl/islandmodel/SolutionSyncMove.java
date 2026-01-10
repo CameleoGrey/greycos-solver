@@ -23,11 +23,7 @@ import org.jspecify.annotations.NullMarked;
 
 /**
  * Applies a full solution state to the current working solution without replacing entity instances.
- *
- * <p>This move is used by island model to adopt migrants or global bests while keeping move threads
- * and move selectors in sync.
- *
- * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
+ * Used by island model to adopt migrants or global bests while keeping move threads in sync.
  */
 @NullMarked
 final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
