@@ -5,7 +5,6 @@ import java.util.Objects;
 
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
-import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.spatial.SpatialNearbyDistanceMatrix;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.mimic.MimicReplayingEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
@@ -14,9 +13,8 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Nearby value selector using an entity as origin.
- * Filters and reorders destination values by distance from an origin entity.
- * Supports standard and spatial-indexed distance matrices.
+ * Nearby value selector using an entity as origin. Filters and reorders destination values by
+ * distance from an origin entity.
  */
 public final class NearEntityNearbyValueSelector<Solution_>
     extends AbstractNearbyValueSelector<Solution_, EntitySelector<Solution_>> {
@@ -29,39 +27,12 @@ public final class NearEntityNearbyValueSelector<Solution_>
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
       @Nullable NearbyRandom nearbyRandom,
       boolean randomSelection) {
-    this(
-        childValueSelector,
-        originEntitySelector,
-        nearbyDistanceMeter,
-        nearbyRandom,
-        randomSelection,
-        null);
-  }
-
-  /**
-   * Creates a nearby value selector with spatial indexing support.
-   *
-   * @param childValueSelector child value selector
-   * @param originEntitySelector origin entity selector (must be a MimicReplayingEntitySelector)
-   * @param nearbyDistanceMeter distance meter
-   * @param nearbyRandom nearby random distribution
-   * @param randomSelection whether to use random selection
-   * @param spatialDistanceMatrix optional spatial distance matrix for performance
-   */
-  public NearEntityNearbyValueSelector(
-      @NonNull IterableValueSelector<Solution_> childValueSelector,
-      @NonNull EntitySelector<Solution_> originEntitySelector,
-      @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
-      @Nullable NearbyRandom nearbyRandom,
-      boolean randomSelection,
-      @Nullable SpatialNearbyDistanceMatrix<?, ?> spatialDistanceMatrix) {
     super(
         childValueSelector,
         castToMimicReplayingEntitySelector(originEntitySelector),
         nearbyDistanceMeter,
         nearbyRandom,
-        randomSelection,
-        spatialDistanceMatrix);
+        randomSelection);
     // Compute discardNearbyIndexZero: if value type is assignable from entity type,
     // the origin entity may appear in the value list, so we should discard it
     this.discardNearbyIndexZero =
@@ -206,15 +177,7 @@ public final class NearEntityNearbyValueSelector<Solution_>
         nearbyIndex++;
       }
 
-      // Use spatial distance matrix if available for O(1) lookup
-      if (isSpatialIndexingEnabled() && spatialDistanceMatrix != null) {
-        @SuppressWarnings("unchecked")
-        SpatialNearbyDistanceMatrix<Object, Object> castMatrix =
-            (SpatialNearbyDistanceMatrix<Object, Object>) spatialDistanceMatrix;
-        return castMatrix.getDestination(origin, nearbyIndex);
-      }
-
-      // Use standard distance matrix for sorted destinations
+      // Use distance matrix for sorted destinations
       return distanceMatrix.getDestination(origin, nearbyIndex);
     }
   }

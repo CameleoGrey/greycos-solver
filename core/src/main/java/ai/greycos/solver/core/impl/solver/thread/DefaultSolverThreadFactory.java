@@ -1,12 +1,9 @@
 package ai.greycos.solver.core.impl.solver.thread;
 
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Thread factory for creating solver threads with custom naming.
- */
+/** Thread factory for creating solver threads with custom naming. */
 public class DefaultSolverThreadFactory implements ThreadFactory {
 
   private static final AtomicInteger poolNumber = new AtomicInteger(1);

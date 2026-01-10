@@ -6,8 +6,8 @@ import java.util.Random;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Parabolic distribution for nearby selection (default recommended).
- * Strongly favors nearby items using quadratic probability curve: P(x) = 3(m - x)²/m³
+ * Parabolic distribution for nearby selection (default recommended). Strongly favors nearby items
+ * using quadratic probability curve: P(x) = 3(m - x)²/m³
  */
 public final class ParabolicDistributionNearbyRandom implements NearbyRandom {
 

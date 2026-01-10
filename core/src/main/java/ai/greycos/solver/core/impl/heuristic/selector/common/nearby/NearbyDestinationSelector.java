@@ -21,9 +21,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Selects element positions for list variables based on proximity to an origin.
- * Filters and reorders destinations (entities or values) by distance using a cached distance matrix.
- * Supports probability distributions for random selection.
+ * Selects element positions for list variables based on proximity to an origin. Filters and
+ * reorders destinations (entities or values) by distance using a cached distance matrix. Supports
+ * probability distributions for random selection.
  */
 public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledSelector<Solution_>
     implements ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelector<Solution_> {

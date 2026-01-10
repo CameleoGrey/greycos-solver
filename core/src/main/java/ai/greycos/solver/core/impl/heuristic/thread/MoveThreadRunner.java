@@ -170,11 +170,11 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
             try {
               parentScoreDirector.close();
             } catch (Exception e) {
-                LOGGER.warn(
-                    "{}            Move thread ({}) failed to close parent score director during setup.",
-                    logIndentation,
-                    moveThreadIndex,
-                    e);
+              LOGGER.warn(
+                  "{}            Move thread ({}) failed to close parent score director during setup.",
+                  logIndentation,
+                  moveThreadIndex,
+                  e);
             }
             throw throwable;
           }

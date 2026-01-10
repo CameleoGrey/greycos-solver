@@ -6,8 +6,8 @@ import java.util.Random;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Block distribution for nearby selection.
- * Selects uniformly from first k elements where k = max(sizeMinimum, min(sizeMaximum, nearbySize * sizeRatio)).
+ * Block distribution for nearby selection. Selects uniformly from first k elements where k =
+ * max(sizeMinimum, min(sizeMaximum, nearbySize * sizeRatio)).
  */
 public final class BlockDistributionNearbyRandom implements NearbyRandom {
 

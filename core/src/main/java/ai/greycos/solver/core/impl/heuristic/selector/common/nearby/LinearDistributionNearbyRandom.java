@@ -6,9 +6,8 @@ import java.util.Random;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Linear distribution for nearby selection.
- * Balanced preference for nearby items with more exploration than parabolic.
- * Probability decreases linearly: P(x) = 2(m - x)/(m²)
+ * Linear distribution for nearby selection. Balanced preference for nearby items with more
+ * exploration than parabolic. Probability decreases linearly: P(x) = 2(m - x)/(m²)
  */
 public final class LinearDistributionNearbyRandom implements NearbyRandom {
 

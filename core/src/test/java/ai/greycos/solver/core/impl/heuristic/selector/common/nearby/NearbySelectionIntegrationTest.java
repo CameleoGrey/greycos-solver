@@ -13,7 +13,6 @@ import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorCon
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
-import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.spatial.SpatialNearbyDistanceMatrix;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.nearby.NearEntityNearbyEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.nearby.NearEntityNearbyValueSelector;
@@ -348,32 +347,6 @@ class NearbySelectionIntegrationTest {
         inherited.getNearbySelectionDistributionType());
     assertEquals(5, inherited.getBlockDistributionSizeMinimum());
     assertEquals(20, inherited.getBlockDistributionSizeMaximum());
-  }
-
-  @Test
-  void testSpatialNearbyDistanceMatrix() {
-    var distanceMeter = new TestDistanceMeter();
-    var destinations =
-        java.util.List.of(new TestEntity("A"), new TestEntity("B"), new TestEntity("C"));
-
-    // Test with spatial index threshold (should use standard sorting)
-    var matrixWithLowThreshold =
-        new SpatialNearbyDistanceMatrix<>(distanceMeter, 3, destinations, o -> 3);
-
-    // Test with high threshold (would use spatial if available)
-    var matrixWithHighThreshold =
-        new SpatialNearbyDistanceMatrix<>(distanceMeter, 3, destinations, o -> 3);
-
-    // Both should work correctly
-    var originA = new TestEntity("A");
-    var resultA = matrixWithLowThreshold.getDestination(originA, 0);
-    var resultB = matrixWithLowThreshold.getDestination(originA, 1);
-    var resultC = matrixWithLowThreshold.getDestination(originA, 2);
-
-    // Compare by name since these are different instances
-    assertEquals("A", ((TestEntity) resultA).getName());
-    assertEquals("B", ((TestEntity) resultB).getName());
-    assertEquals("C", ((TestEntity) resultC).getName());
   }
 
   @Test

@@ -19,9 +19,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Selects values based on proximity to an origin value.
- * Wraps a value selector and filters/reorders values by distance using a cached distance matrix.
- * Supports probability distributions (parabolic, linear, block, beta) for random selection.
+ * Selects values based on proximity to an origin value. Wraps a value selector and filters/reorders
+ * values by distance using a cached distance matrix. Supports probability distributions (parabolic,
+ * linear, block, beta) for random selection.
  */
 public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
     implements ValueSelector<Solution_> {

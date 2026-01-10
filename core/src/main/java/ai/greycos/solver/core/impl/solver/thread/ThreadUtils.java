@@ -6,9 +6,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Utility class for managing thread pool shutdown in multithreaded solving.
- */
+/** Utility class for managing thread pool shutdown in multithreaded solving. */
 public class ThreadUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ThreadUtils.class);

@@ -22,10 +22,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Configuration for nearby selection to prioritize spatially proximate items.
- * Supports entity, sub-list, and value origin selectors with probability distributions.
+ * Configuration for nearby selection to prioritize spatially proximate items. Supports entity,
+ * sub-list, and value origin selectors with probability distributions.
  */
-
 @XmlType(
     propOrder = {
       "originEntitySelectorConfig",

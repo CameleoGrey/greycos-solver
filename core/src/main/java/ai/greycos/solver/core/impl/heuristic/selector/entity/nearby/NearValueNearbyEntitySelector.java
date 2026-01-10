@@ -10,8 +10,8 @@ import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelecto
 import org.jspecify.annotations.NonNull;
 
 /**
- * Nearby entity selector using a value as origin.
- * Filters and reorders destination entities by distance from an origin value.
+ * Nearby entity selector using a value as origin. Filters and reorders destination entities by
+ * distance from an origin value.
  */
 public final class NearValueNearbyEntitySelector<Solution_>
     extends AbstractNearbyEntitySelector<Solution_> {

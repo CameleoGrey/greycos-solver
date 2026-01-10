@@ -1,8 +1,6 @@
 package ai.greycos.solver.core.impl.solver;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverConfigOverride;
@@ -82,5 +80,4 @@ class DefaultSolverFactoryTest {
         .hasMessageContaining("The solverConfig with randomFactoryClass ")
         .hasMessageContaining("has a non-null randomType (null) or a non-null randomSeed (1000).");
   }
-
 }

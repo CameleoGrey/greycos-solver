@@ -9,8 +9,8 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Factory for creating NearbyRandom distribution instances from configuration.
- * Supports block, linear, parabolic, and beta distributions.
+ * Factory for creating NearbyRandom distribution instances from configuration. Supports block,
+ * linear, parabolic, and beta distributions.
  */
 public class NearbyRandomFactory {
 

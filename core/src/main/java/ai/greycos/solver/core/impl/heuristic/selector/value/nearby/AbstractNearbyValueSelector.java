@@ -7,7 +7,6 @@ import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDes
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
-import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.spatial.SpatialNearbyDistanceMatrix;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
 
@@ -15,9 +14,8 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Abstract base for nearby value selectors.
- * Supports standard and spatial-indexed distance matrices (O(log n) queries with KD-tree).
- * Uses replaying selector pattern for consistent origin during distance calculation.
+ * Abstract base for nearby value selectors. Uses replaying selector pattern for consistent origin
+ * during distance calculation.
  */
 abstract class AbstractNearbyValueSelector<
         Solution_, ReplayingSelector_ extends PhaseLifecycleListener<Solution_>>
@@ -28,7 +26,6 @@ abstract class AbstractNearbyValueSelector<
   protected final @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter;
   protected final @Nullable NearbyRandom nearbyRandom;
   protected final boolean randomSelection;
-  protected final @Nullable SpatialNearbyDistanceMatrix<?, ?> spatialDistanceMatrix;
   protected final ai.greycos.solver.core.impl.heuristic.selector.common.nearby.@NonNull
           NearbyDistanceMatrix<
           Object, Object>
@@ -40,22 +37,6 @@ abstract class AbstractNearbyValueSelector<
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
       @Nullable NearbyRandom nearbyRandom,
       boolean randomSelection) {
-    this(
-        childValueSelector,
-        replayingSelector,
-        nearbyDistanceMeter,
-        nearbyRandom,
-        randomSelection,
-        null);
-  }
-
-  protected AbstractNearbyValueSelector(
-      @NonNull IterableValueSelector<Solution_> childValueSelector,
-      @NonNull ReplayingSelector_ replayingSelector,
-      @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
-      @Nullable NearbyRandom nearbyRandom,
-      boolean randomSelection,
-      @Nullable SpatialNearbyDistanceMatrix<?, ?> spatialDistanceMatrix) {
     this.childValueSelector = childValueSelector;
     this.replayingSelector = replayingSelector;
     this.nearbyDistanceMeter = nearbyDistanceMeter;
@@ -71,7 +52,6 @@ abstract class AbstractNearbyValueSelector<
     }
     this.nearbyRandom = nearbyRandom;
     this.randomSelection = randomSelection;
-    this.spatialDistanceMatrix = spatialDistanceMatrix;
     // Create distance matrix for caching sorted destinations
     @SuppressWarnings("unchecked")
     var castedDistanceMeter =
@@ -86,15 +66,6 @@ abstract class AbstractNearbyValueSelector<
             origin -> (int) childValueSelector.getSize(origin));
     phaseLifecycleSupport.addEventListener(childValueSelector);
     phaseLifecycleSupport.addEventListener(replayingSelector);
-  }
-
-  /**
-   * Checks if this selector uses spatial indexing.
-   *
-   * @return true if spatial indexing is enabled, false otherwise
-   */
-  protected boolean isSpatialIndexingEnabled() {
-    return spatialDistanceMatrix != null;
   }
 
   @Override
@@ -135,18 +106,12 @@ abstract class AbstractNearbyValueSelector<
         && Objects.equals(replayingSelector, that.replayingSelector)
         && Objects.equals(nearbyDistanceMeter, that.nearbyDistanceMeter)
         && Objects.equals(nearbyRandom, that.nearbyRandom)
-        && randomSelection == that.randomSelection
-        && Objects.equals(spatialDistanceMatrix, that.spatialDistanceMatrix);
+        && randomSelection == that.randomSelection;
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        childValueSelector,
-        replayingSelector,
-        nearbyDistanceMeter,
-        nearbyRandom,
-        randomSelection,
-        spatialDistanceMatrix);
+        childValueSelector, replayingSelector, nearbyDistanceMeter, nearbyRandom, randomSelection);
   }
 }

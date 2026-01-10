@@ -2,12 +2,10 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.score.trend.InitializingScoreTrendLevel;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
-import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.trend.InitializingScoreTrend;
 import ai.greycos.solver.core.testdomain.TestdataSolution;
 
@@ -35,5 +33,4 @@ class RuinRecreateConstructionHeuristicPhaseBuilderTest {
     var phase = builder.build();
     assertThat(phase.getEntityPlacer()).isSameAs(builder.getEntityPlacer());
   }
-
 }

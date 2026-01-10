@@ -16,9 +16,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-/**
- * Nearby sub-list selector filtering and reordering sub-lists by distance from origin.
- */
+/** Nearby sub-list selector filtering and reordering sub-lists by distance from origin. */
 public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_>
     implements SubListSelector<Solution_> {
 

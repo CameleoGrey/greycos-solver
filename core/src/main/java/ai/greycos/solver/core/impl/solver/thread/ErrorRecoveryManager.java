@@ -37,8 +37,7 @@ public class ErrorRecoveryManager {
 
   private volatile ErrorRecoveryListener recoveryListener;
 
-  public ErrorRecoveryManager() {
-  }
+  public ErrorRecoveryManager() {}
 
   public boolean recordError(Throwable error, int threadIndex) {
     long currentTime = System.currentTimeMillis();

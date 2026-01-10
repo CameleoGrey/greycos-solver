@@ -7,5 +7,4 @@ package ai.greycos.solver.core.impl.heuristic.thread;
  * @param <Solution_> the solution type, the class with the {@link
  *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
  */
-public class DestroyOperation<Solution_> extends MoveThreadOperation<Solution_> {
-}
+public class DestroyOperation<Solution_> extends MoveThreadOperation<Solution_> {}

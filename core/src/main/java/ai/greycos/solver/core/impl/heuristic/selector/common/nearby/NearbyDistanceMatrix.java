@@ -15,9 +15,9 @@ import ai.greycos.solver.core.impl.domain.variable.supply.Supply;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Caches destinations sorted by distance from each origin for nearby selection.
- * Uses lazy initialization and thread-safe ConcurrentHashMap for parallel solving.
- * Supports full sorting (O(n log n)) or partial k-nearest sorting (O(n log k)).
+ * Caches destinations sorted by distance from each origin for nearby selection. Uses lazy
+ * initialization and thread-safe ConcurrentHashMap for parallel solving. Supports full sorting (O(n
+ * log n)) or partial k-nearest sorting (O(n log k)).
  */
 public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
 
