@@ -5,6 +5,10 @@ import java.util.concurrent.CompletableFuture;
 
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 
+/**
+ * Holds a best solution together with its associated problem changes.
+ * Used to coordinate completion of problem change futures when the solution is consumed.
+ */
 final class BestSolutionContainingProblemChanges<Solution_> {
   private final Solution_ bestSolution;
   private final EventProducerId producerId;
