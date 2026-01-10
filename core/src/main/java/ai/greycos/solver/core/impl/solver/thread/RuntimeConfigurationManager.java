@@ -18,19 +18,16 @@ public class RuntimeConfigurationManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RuntimeConfigurationManager.class);
 
-  // Configuration components
   private final MemoryMonitor memoryMonitor;
   private final PerformanceMetrics performanceMetrics;
   private final AdaptiveThreadPoolManager threadPoolManager;
   private final ErrorRecoveryManager errorRecoveryManager;
   private final MultithreadingMonitor monitor;
 
-  // Runtime state
   private final AtomicBoolean configurationEnabled = new AtomicBoolean(true);
   private final AtomicLong lastConfigurationUpdate = new AtomicLong(0);
   private final AtomicInteger configurationUpdateCount = new AtomicInteger(0);
 
-  // Configuration listeners
   private volatile Consumer<ConfigurationChangeEvent> configurationChangeListener;
 
   public RuntimeConfigurationManager(
@@ -328,11 +325,6 @@ public class RuntimeConfigurationManager {
     }
   }
 
-  /**
-   * Gets current runtime configuration.
-   *
-   * @return RuntimeConfiguration with current settings
-   */
   public RuntimeConfiguration getCurrentConfiguration() {
     return new RuntimeConfiguration(
         threadPoolManager.getCurrentThreadCount(),
@@ -348,11 +340,6 @@ public class RuntimeConfigurationManager {
         lastConfigurationUpdate.get());
   }
 
-  /**
-   * Enables or disables runtime configuration updates.
-   *
-   * @param enabled true to enable configuration updates
-   */
   public void setConfigurationEnabled(boolean enabled) {
     boolean previous = configurationEnabled.getAndSet(enabled);
     if (previous != enabled) {
@@ -369,7 +356,6 @@ public class RuntimeConfigurationManager {
     this.configurationChangeListener = listener;
   }
 
-  /** Resets all configuration statistics. */
   public void resetConfigurationStatistics() {
     configurationUpdateCount.set(0);
     lastConfigurationUpdate.set(0);
@@ -394,7 +380,6 @@ public class RuntimeConfigurationManager {
     }
   }
 
-  /** Runtime configuration container. */
   public static class RuntimeConfiguration {
     private final int currentThreadCount;
     private final String currentBufferSize;
@@ -433,7 +418,6 @@ public class RuntimeConfigurationManager {
       this.lastConfigurationUpdate = lastConfigurationUpdate;
     }
 
-    // Getters
     public int getCurrentThreadCount() {
       return currentThreadCount;
     }
@@ -499,7 +483,6 @@ public class RuntimeConfigurationManager {
     }
   }
 
-  /** Configuration change event. */
   public static class ConfigurationChangeEvent {
     private final String setting;
     private final Object oldValue;

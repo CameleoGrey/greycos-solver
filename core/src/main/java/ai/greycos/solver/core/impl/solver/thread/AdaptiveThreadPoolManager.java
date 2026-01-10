@@ -19,28 +19,24 @@ public class AdaptiveThreadPoolManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AdaptiveThreadPoolManager.class);
 
-  // Configuration constants
   private static final int MIN_THREAD_COUNT = 1;
   private static final int MAX_THREAD_COUNT = 16;
-  private static final long ADJUSTMENT_INTERVAL = 30000; // 30 seconds
-  private static final double PERFORMANCE_THRESHOLD = 0.8; // 80% efficiency threshold
-  private static final double MEMORY_PRESSURE_THRESHOLD = 0.8; // 80% memory usage
+  private static final long ADJUSTMENT_INTERVAL = 30000;
+  private static final double PERFORMANCE_THRESHOLD = 0.8;
+  private static final double MEMORY_PRESSURE_THRESHOLD = 0.8;
 
-  // State
   private final ThreadFactory threadFactory;
   private final MemoryMonitor memoryMonitor;
   private final PerformanceMetrics performanceMetrics;
   private final AtomicInteger currentThreadCount;
   private final AtomicLong lastAdjustmentTime = new AtomicLong(0);
 
-  // Configuration
   private volatile int minThreadCount = MIN_THREAD_COUNT;
   private volatile int maxThreadCount = MAX_THREAD_COUNT;
   private volatile long adjustmentInterval = ADJUSTMENT_INTERVAL;
   private volatile double performanceThreshold = PERFORMANCE_THRESHOLD;
   private volatile double memoryPressureThreshold = MEMORY_PRESSURE_THRESHOLD;
 
-  // Thread pool
   private volatile ExecutorService executorService;
   private volatile boolean isShutdown = false;
 
@@ -57,7 +53,6 @@ public class AdaptiveThreadPoolManager {
     executorService = Executors.newFixedThreadPool(initialThreadCount, threadFactory);
   }
 
-  /** Checks if thread adjustment is needed and performs it if necessary. */
   public void checkAndAdjustThreadPool() {
     if (isShutdown) {
       return;
@@ -73,7 +68,6 @@ public class AdaptiveThreadPoolManager {
     }
   }
 
-  /** Performs the actual thread adjustment based on current conditions. */
   private void performThreadAdjustment() {
     try {
       int currentThreads = currentThreadCount.get();
@@ -109,11 +103,6 @@ public class AdaptiveThreadPoolManager {
     }
   }
 
-  /**
-   * Determines the optimal number of threads based on current conditions.
-   *
-   * @return optimal thread count
-   */
   private int determineOptimalThreadCount() {
     int currentThreads = currentThreadCount.get();
     int targetThreads = currentThreads;
@@ -157,11 +146,6 @@ public class AdaptiveThreadPoolManager {
     return Math.max(minThreadCount, Math.min(maxThreadCount, targetThreads));
   }
 
-  /**
-   * Submits a task to the thread pool.
-   *
-   * @param task the task to execute
-   */
   public void submit(Runnable task) {
     if (isShutdown) {
       throw new IllegalStateException("Thread pool manager is shutdown");
@@ -169,7 +153,6 @@ public class AdaptiveThreadPoolManager {
     executorService.submit(task);
   }
 
-  /** Shuts down the thread pool manager. */
   public void shutdown() {
     isShutdown = true;
     if (executorService != null) {
@@ -185,31 +168,19 @@ public class AdaptiveThreadPoolManager {
     }
   }
 
-  /**
-   * Gets the current thread count.
-   *
-   * @return current number of threads
-   */
   public int getCurrentThreadCount() {
     return currentThreadCount.get();
   }
 
-  /**
-   * Gets the target thread count based on current conditions.
-   *
-   * @return target number of threads
-   */
   public int getTargetThreadCount() {
     return determineOptimalThreadCount();
   }
 
-  /** Forces an immediate thread adjustment. */
   public void forceAdjustment() {
     lastAdjustmentTime.set(System.currentTimeMillis() - adjustmentInterval - 1);
     checkAndAdjustThreadPool();
   }
 
-  // Configuration setters
   public void setMinThreadCount(int minThreadCount) {
     if (minThreadCount < 1) {
       throw new IllegalArgumentException("Minimum thread count must be at least 1");
@@ -255,7 +226,6 @@ public class AdaptiveThreadPoolManager {
     return adjustmentInterval;
   }
 
-  /** Thread adjustment statistics. */
   public static class AdjustmentStatistics {
     private final int currentThreads;
     private final int targetThreads;
@@ -305,11 +275,6 @@ public class AdaptiveThreadPoolManager {
     }
   }
 
-  /**
-   * Gets adjustment statistics for monitoring purposes.
-   *
-   * @return AdjustmentStatistics with current adjustment state
-   */
   public AdjustmentStatistics getAdjustmentStatistics() {
     int currentThreads = currentThreadCount.get();
     int targetThreads = determineOptimalThreadCount();

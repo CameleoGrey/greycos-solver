@@ -43,7 +43,6 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
   private InnerScoreDirector<Solution_, Score_> scoreDirector = null;
   private AtomicLong calculationCount = new AtomicLong(-1);
 
-  // Optional monitoring components
   private final MemoryMonitor memoryMonitor;
   private final PerformanceMetrics performanceMetrics;
   private final boolean enableMemoryMonitoring;
@@ -79,7 +78,6 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
         false);
   }
 
-  /** Extended constructor with optional monitoring support. */
   public MoveThreadRunner(
       String logIndentation,
       int moveThreadIndex,
@@ -128,7 +126,6 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           break;
         }
 
-        // Check memory pressure if enabled
         if (enableMemoryMonitoring && memoryMonitor != null) {
           MemoryMonitor.MemoryPressureLevel pressure = memoryMonitor.checkMemoryUsage();
           if (pressure == MemoryMonitor.MemoryPressureLevel.CRITICAL
@@ -158,7 +155,6 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
               break;
             }
           } catch (RuntimeException | Error throwable) {
-            // Close the score director if setup fails
             if (scoreDirector != null) {
               try {
                 scoreDirector.close();
@@ -170,15 +166,14 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
                     e);
               }
             }
-            // Also close the parent score director if child creation failed
             try {
               parentScoreDirector.close();
             } catch (Exception e) {
-              LOGGER.warn(
-                  "{}            Move thread ({}) failed to close parent score director during setup.",
-                  logIndentation,
-                  moveThreadIndex,
-                  e);
+                LOGGER.warn(
+                    "{}            Move thread ({}) failed to close parent score director during setup.",
+                    logIndentation,
+                    moveThreadIndex,
+                    e);
             }
             throw throwable;
           }
@@ -238,12 +233,7 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
             } else {
               var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
               if (score == null) {
-                // Fallback to a default score if mock returns null
                 score = scoreDirector.calculateScore();
-              }
-              if (assertExpectedUndoMoveScore) {
-                // Note: assertExpectedUndoMoveScore is not applicable in move threads
-                // as they don't have access to the proper lifecycle context
               }
               resultQueue.addMove(moveThreadIndex, stepIndex, moveIndex, move, score.raw());
               accepted = true;
@@ -251,7 +241,6 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           } finally {
             long evaluationTime = System.nanoTime() - evaluationStartTime;
 
-            // Record performance metrics if enabled
             if (enablePerformanceMetrics && performanceMetrics != null) {
               performanceMetrics.recordMoveEvaluation(moveThreadIndex, evaluationTime, accepted);
             }
@@ -268,7 +257,6 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           throwable);
       resultQueue.addExceptionThrown(moveThreadIndex, throwable);
     } finally {
-      // Close child score director
       if (scoreDirector != null) {
         try {
           scoreDirector.close();

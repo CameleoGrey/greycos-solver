@@ -18,13 +18,11 @@ public class ErrorRecoveryManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ErrorRecoveryManager.class);
 
-  // Error thresholds and recovery parameters
   private static final int MAX_ERROR_COUNT = 10;
-  private static final long ERROR_RESET_INTERVAL = 60000; // 60 seconds
-  private static final long RECOVERY_DELAY = 1000; // 1 second
+  private static final long ERROR_RESET_INTERVAL = 60000;
+  private static final long RECOVERY_DELAY = 1000;
   private static final int MAX_RECOVERY_ATTEMPTS = 3;
 
-  // State
   private final AtomicInteger errorCount = new AtomicInteger(0);
   private final AtomicLong lastErrorTime = new AtomicLong(0);
   private final AtomicLong lastRecoveryTime = new AtomicLong(0);
@@ -32,26 +30,16 @@ public class ErrorRecoveryManager {
   private final AtomicReference<RecoveryState> recoveryState =
       new AtomicReference<>(RecoveryState.NORMAL);
 
-  // Configuration
   private volatile int maxErrorCount = MAX_ERROR_COUNT;
   private volatile long errorResetInterval = ERROR_RESET_INTERVAL;
   private volatile long recoveryDelay = RECOVERY_DELAY;
   private volatile int maxRecoveryAttempts = MAX_RECOVERY_ATTEMPTS;
 
-  // Recovery listeners
   private volatile ErrorRecoveryListener recoveryListener;
 
   public ErrorRecoveryManager() {
-    // Initialize with default values
   }
 
-  /**
-   * Records an error occurrence and determines if recovery is needed.
-   *
-   * @param error the error that occurred
-   * @param threadIndex index of the thread where the error occurred
-   * @return true if recovery action is needed
-   */
   public boolean recordError(Throwable error, int threadIndex) {
     long currentTime = System.currentTimeMillis();
     lastErrorTime.set(currentTime);
@@ -73,13 +61,6 @@ public class ErrorRecoveryManager {
     return false;
   }
 
-  /**
-   * Triggers the recovery process.
-   *
-   * @param error the triggering error
-   * @param threadIndex index of the thread where the error occurred
-   * @return true if recovery was triggered
-   */
   private boolean triggerRecovery(Throwable error, int threadIndex) {
     RecoveryState currentState = recoveryState.get();
 
@@ -110,7 +91,6 @@ public class ErrorRecoveryManager {
     return true;
   }
 
-  /** Schedules the actual recovery process. */
   private void scheduleRecovery(Throwable error, int threadIndex) {
     try {
       Thread.sleep(recoveryDelay);
@@ -123,7 +103,6 @@ public class ErrorRecoveryManager {
     performRecovery(error, threadIndex);
   }
 
-  /** Performs the actual recovery process. */
   private void performRecovery(Throwable error, int threadIndex) {
     try {
       lastRecoveryTime.set(System.currentTimeMillis());
@@ -156,11 +135,6 @@ public class ErrorRecoveryManager {
     }
   }
 
-  /**
-   * Checks if the system is in a recoverable state.
-   *
-   * @return true if the system can attempt recovery
-   */
   public boolean isRecoverable() {
     RecoveryState state = recoveryState.get();
     if (state == RecoveryState.FAILED) {
@@ -172,7 +146,6 @@ public class ErrorRecoveryManager {
     return timeSinceLastRecovery > errorResetInterval;
   }
 
-  /** Resets the error count if enough time has passed since the last error. */
   public void checkAndResetErrorCount() {
     long timeSinceLastError = System.currentTimeMillis() - lastErrorTime.get();
     if (timeSinceLastError > errorResetInterval) {
@@ -183,7 +156,6 @@ public class ErrorRecoveryManager {
     }
   }
 
-  /** Forces a recovery state reset. */
   public void resetRecoveryState() {
     errorCount.set(0);
     recoveryAttempts.set(0);
@@ -194,11 +166,6 @@ public class ErrorRecoveryManager {
     LOGGER.info("Recovery state reset");
   }
 
-  /**
-   * Gets current recovery statistics.
-   *
-   * @return RecoveryStatistics with current state information
-   */
   public RecoveryStatistics getRecoveryStatistics() {
     return new RecoveryStatistics(
         errorCount.get(),
@@ -209,7 +176,6 @@ public class ErrorRecoveryManager {
         System.currentTimeMillis());
   }
 
-  // Configuration setters
   public void setMaxErrorCount(int maxErrorCount) {
     if (maxErrorCount < 1) {
       throw new IllegalArgumentException("Max error count must be positive");
@@ -238,11 +204,6 @@ public class ErrorRecoveryManager {
     this.maxRecoveryAttempts = maxRecoveryAttempts;
   }
 
-  /**
-   * Sets the recovery listener for notifications.
-   *
-   * @param listener the recovery listener
-   */
   public void setRecoveryListener(ErrorRecoveryListener listener) {
     this.recoveryListener = listener;
   }
@@ -255,14 +216,12 @@ public class ErrorRecoveryManager {
     return recoveryDelay;
   }
 
-  /** Recovery state enumeration. */
   public enum RecoveryState {
     NORMAL,
     RECOVERING,
     FAILED
   }
 
-  /** Recovery statistics container. */
   public static class RecoveryStatistics {
     private final int errorCount;
     private final int recoveryAttempts;
@@ -286,7 +245,6 @@ public class ErrorRecoveryManager {
       this.currentTime = currentTime;
     }
 
-    // Getters
     public int getErrorCount() {
       return errorCount;
     }
@@ -332,29 +290,11 @@ public class ErrorRecoveryManager {
     }
   }
 
-  /** Recovery listener interface for notifications. */
   public interface ErrorRecoveryListener {
-    /**
-     * Called when recovery process starts.
-     *
-     * @param error the error that triggered recovery
-     * @param threadIndex index of the affected thread
-     */
     void onRecoveryStarted(Throwable error, int threadIndex);
 
-    /**
-     * Called when recovery process completes successfully.
-     *
-     * @param threadIndex index of the thread that was recovered
-     */
     void onRecoveryCompleted(int threadIndex);
 
-    /**
-     * Called when recovery process fails.
-     *
-     * @param error the error that caused recovery failure
-     * @param threadIndex index of the affected thread
-     */
     void onRecoveryFailed(Throwable error, int threadIndex);
   }
 }

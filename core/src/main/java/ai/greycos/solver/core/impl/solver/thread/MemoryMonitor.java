@@ -18,13 +18,10 @@ public class MemoryMonitor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MemoryMonitor.class);
 
-  // Memory thresholds (as percentages of max memory)
-  private static final double MEMORY_WARNING_THRESHOLD = 0.8; // 80%
-  private static final double MEMORY_CRITICAL_THRESHOLD = 0.9; // 90%
-  private static final double MEMORY_EMERGENCY_THRESHOLD = 0.95; // 95%
-
-  // Memory pressure detection
-  private static final long MEMORY_PRESSURE_CHECK_INTERVAL = 5000; // 5 seconds
+  private static final double MEMORY_WARNING_THRESHOLD = 0.8;
+  private static final double MEMORY_CRITICAL_THRESHOLD = 0.9;
+  private static final double MEMORY_EMERGENCY_THRESHOLD = 0.95;
+  private static final long MEMORY_PRESSURE_CHECK_INTERVAL = 5000;
 
   private final MemoryMXBean memoryBean;
   private final AtomicLong lastPressureCheckTime = new AtomicLong(0);
@@ -32,7 +29,6 @@ public class MemoryMonitor {
   private final AtomicLong memoryPressureCriticals = new AtomicLong(0);
   private final AtomicLong memoryPressureEmergencies = new AtomicLong(0);
 
-  // Configuration
   private volatile double warningThreshold = MEMORY_WARNING_THRESHOLD;
   private volatile double criticalThreshold = MEMORY_CRITICAL_THRESHOLD;
   private volatile double emergencyThreshold = MEMORY_EMERGENCY_THRESHOLD;
@@ -60,7 +56,6 @@ public class MemoryMonitor {
     long maxMemory = heapUsage.getMax();
 
     if (maxMemory <= 0) {
-      // If max memory is not set (unlimited), we can't calculate percentages
       return MemoryPressureLevel.NORMAL;
     }
 
@@ -89,18 +84,12 @@ public class MemoryMonitor {
     return MemoryPressureLevel.NORMAL;
   }
 
-  /**
-   * Forces garbage collection and returns memory statistics.
-   *
-   * @return MemoryStatistics containing memory usage before and after GC
-   */
   public MemoryStatistics forceGarbageCollection() {
     MemoryUsage beforeGC = memoryBean.getHeapMemoryUsage();
 
     System.gc();
     System.runFinalization();
 
-    // Give GC some time to work
     try {
       Thread.sleep(100);
     } catch (InterruptedException e) {
@@ -113,18 +102,9 @@ public class MemoryMonitor {
         beforeGC.getUsed(), afterGC.getUsed(), beforeGC.getMax(), System.currentTimeMillis());
   }
 
-  /**
-   * Estimates memory usage for a given number of move threads and buffer size.
-   *
-   * @param threadCount number of move threads
-   * @param bufferSize size of move buffer per thread
-   * @return estimated memory usage in bytes
-   */
   public long estimateMemoryUsage(int threadCount, int bufferSize) {
-    // Rough estimation: each move evaluation requires score calculation context
-    // This is a simplified estimation and should be calibrated based on actual usage
-    long baseMemoryPerThread = 1024 * 1024; // 1MB base per thread
-    long bufferMemoryPerThread = bufferSize * 1024; // 1KB per buffer entry
+    long baseMemoryPerThread = 1024 * 1024;
+    long bufferMemoryPerThread = bufferSize * 1024;
 
     return threadCount * (baseMemoryPerThread + bufferMemoryPerThread);
   }
@@ -145,7 +125,6 @@ public class MemoryMonitor {
     long estimatedAdditionalMemory = estimateMemoryUsage(additionalThreads, bufferSize);
     long availableMemory = getAvailableMemory();
 
-    // Leave 20% headroom for safety
     return estimatedAdditionalMemory < (availableMemory * 0.8);
   }
 
@@ -159,11 +138,6 @@ public class MemoryMonitor {
     return heapUsage.getMax() - heapUsage.getUsed();
   }
 
-  /**
-   * Gets current memory statistics.
-   *
-   * @return MemoryStatistics with current memory usage
-   */
   public MemoryStatistics getCurrentMemoryStatistics() {
     MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
     return new MemoryStatistics(
@@ -173,11 +147,6 @@ public class MemoryMonitor {
         System.currentTimeMillis());
   }
 
-  /**
-   * Gets memory pressure statistics.
-   *
-   * @return MemoryPressureStatistics with pressure event counts
-   */
   public MemoryPressureStatistics getMemoryPressureStatistics() {
     return new MemoryPressureStatistics(
         memoryPressureWarnings.get(),
@@ -185,14 +154,12 @@ public class MemoryMonitor {
         memoryPressureEmergencies.get());
   }
 
-  /** Resets memory pressure statistics. */
   public void resetStatistics() {
     memoryPressureWarnings.set(0);
     memoryPressureCriticals.set(0);
     memoryPressureEmergencies.set(0);
   }
 
-  // Configuration setters
   public void setWarningThreshold(double warningThreshold) {
     if (warningThreshold < 0.0 || warningThreshold > 1.0) {
       throw new IllegalArgumentException("Warning threshold must be between 0.0 and 1.0");
@@ -221,7 +188,6 @@ public class MemoryMonitor {
     this.pressureCheckInterval = pressureCheckInterval;
   }
 
-  /** Memory pressure levels for monitoring. */
   public enum MemoryPressureLevel {
     NORMAL,
     WARNING,
@@ -229,7 +195,6 @@ public class MemoryMonitor {
     EMERGENCY
   }
 
-  /** Memory statistics container. */
   public static class MemoryStatistics {
     private final long usedMemoryBeforeGC;
     private final long usedMemoryAfterGC;
@@ -269,7 +234,6 @@ public class MemoryMonitor {
     }
   }
 
-  /** Memory pressure statistics container. */
   public static class MemoryPressureStatistics {
     private final long warningCount;
     private final long criticalCount;

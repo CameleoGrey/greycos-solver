@@ -8,5 +8,4 @@ package ai.greycos.solver.core.impl.heuristic.thread;
  *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
  */
 public class DestroyOperation<Solution_> extends MoveThreadOperation<Solution_> {
-  // Empty implementation - this operation is just a signal to destroy the thread
 }

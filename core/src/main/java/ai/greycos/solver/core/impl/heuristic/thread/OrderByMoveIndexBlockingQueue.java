@@ -22,7 +22,6 @@ public class OrderByMoveIndexBlockingQueue<Solution_> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OrderByMoveIndexBlockingQueue.class);
 
-  /** Result class that encapsulates move evaluation results. */
   public static class MoveResult<Solution_> {
     private final int moveThreadIndex;
     private final int stepIndex;
@@ -119,7 +118,6 @@ public class OrderByMoveIndexBlockingQueue<Solution_> {
       }
       filterStepIndex = stepIndex;
 
-      // Check for exceptions from previous step before clearing
       MoveResult<Solution_> exceptionResult =
           innerQueue.stream().filter(MoveResult::hasThrownException).findFirst().orElse(null);
       if (exceptionResult != null) {
@@ -140,7 +138,6 @@ public class OrderByMoveIndexBlockingQueue<Solution_> {
         new MoveResult<>(moveThreadIndex, stepIndex, moveIndex, move, score);
     synchronized (this) {
       if (result.getStepIndex() != filterStepIndex) {
-        // Discard stale result from previous step
         return;
       }
       innerQueue.add(result);
@@ -152,7 +149,6 @@ public class OrderByMoveIndexBlockingQueue<Solution_> {
     MoveResult<Solution_> result = new MoveResult<>(moveThreadIndex, stepIndex, moveIndex, move);
     synchronized (this) {
       if (result.getStepIndex() != filterStepIndex) {
-        // Discard stale result from previous step
         return;
       }
       innerQueue.add(result);
@@ -169,13 +165,11 @@ public class OrderByMoveIndexBlockingQueue<Solution_> {
   public MoveResult<Solution_> take() throws InterruptedException {
     final int moveIndex = nextMoveIndex++;
 
-    // Check backlog first
     MoveResult<Solution_> cached = backlog.remove(moveIndex);
     if (cached != null) {
       return cached;
     }
 
-    // Wait for expected moveIndex with ordering logic
     while (true) {
       MoveResult<Solution_> result = innerQueue.take();
 
@@ -186,8 +180,6 @@ public class OrderByMoveIndexBlockingQueue<Solution_> {
       }
 
       if (result.getStepIndex() != filterStepIndex) {
-        // Discard stale result from previous step
-        // IMPORTANT: Do NOT store stale results in backlog
         continue;
       }
 
@@ -195,7 +187,6 @@ public class OrderByMoveIndexBlockingQueue<Solution_> {
         return result;
       }
 
-      // Store future result in backlog (only for current step)
       backlog.put(result.getMoveIndex(), result);
     }
   }

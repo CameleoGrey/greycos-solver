@@ -4,7 +4,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Similar to {@link Executors}'s DefaultThreadFactory, but allows settings a namePrefix. */
+/**
+ * Thread factory for creating solver threads with custom naming.
+ */
 public class DefaultSolverThreadFactory implements ThreadFactory {
 
   private static final AtomicInteger poolNumber = new AtomicInteger(1);

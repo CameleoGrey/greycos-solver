@@ -16,7 +16,6 @@ public class PerformanceMetrics {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PerformanceMetrics.class);
 
-  // Metrics counters
   private final AtomicLong totalCalculations = new AtomicLong(0);
   private final AtomicLong totalMovesEvaluated = new AtomicLong(0);
   private final AtomicLong totalMovesAccepted = new AtomicLong(0);
@@ -24,21 +23,17 @@ public class PerformanceMetrics {
   private final AtomicLong startTime = new AtomicLong(0);
   private final AtomicLong endTime = new AtomicLong(0);
 
-  // Timing metrics
   private final DoubleAdder totalEvaluationTime = new DoubleAdder();
   private final DoubleAdder totalStepTime = new DoubleAdder();
   private final DoubleAdder totalBarrierWaitTime = new DoubleAdder();
 
-  // Efficiency metrics
   private final AtomicLong bestScoreCalculationCount = new AtomicLong(0);
   private final AtomicLong lastBestScoreCalculationCount = new AtomicLong(0);
 
-  // Thread-specific metrics
   private final ThreadMetrics[] threadMetrics;
 
-  // Configuration
   private volatile boolean metricsEnabled = true;
-  private volatile long reportingInterval = 10000; // 10 seconds
+  private volatile long reportingInterval = 10000;
   private volatile long lastReportTime = 0;
 
   public PerformanceMetrics(int threadCount) {
@@ -73,12 +68,6 @@ public class PerformanceMetrics {
     checkAndReportMetrics();
   }
 
-  /**
-   * Records a step completion.
-   *
-   * @param stepTime time taken for step in nanoseconds
-   * @param barrierWaitTime time spent waiting at barriers in nanoseconds
-   */
   public void recordStepCompletion(long stepTime, long barrierWaitTime) {
     if (!metricsEnabled) return;
 
@@ -105,11 +94,6 @@ public class PerformanceMetrics {
     }
   }
 
-  /**
-   * Records best score calculation count.
-   *
-   * @param calculationCount calculation count when best score was found
-   */
   public void recordBestScoreCalculationCount(long calculationCount) {
     if (!metricsEnabled) return;
 
@@ -117,11 +101,6 @@ public class PerformanceMetrics {
     bestScoreCalculationCount.set(calculationCount);
   }
 
-  /**
-   * Gets current performance statistics.
-   *
-   * @return PerformanceStatistics with current metrics
-   */
   public PerformanceStatistics getStatistics() {
     if (!metricsEnabled) {
       return new PerformanceStatistics(
@@ -165,7 +144,6 @@ public class PerformanceMetrics {
         getOverallEfficiency());
   }
 
-  /** Resets all metrics. */
   public void reset() {
     totalCalculations.set(0);
     totalMovesEvaluated.set(0);
@@ -193,20 +171,10 @@ public class PerformanceMetrics {
     }
   }
 
-  /**
-   * Enables or disables metrics collection.
-   *
-   * @param enabled true to enable metrics collection
-   */
   public void setMetricsEnabled(boolean enabled) {
     this.metricsEnabled = enabled;
   }
 
-  /**
-   * Sets the reporting interval for periodic metric reports.
-   *
-   * @param interval reporting interval in milliseconds
-   */
   public void setReportingInterval(long interval) {
     if (interval <= 0) {
       throw new IllegalArgumentException("Reporting interval must be positive");
@@ -244,7 +212,6 @@ public class PerformanceMetrics {
     return stats;
   }
 
-  /** Thread-specific metrics container. */
   private static class ThreadMetrics {
     private final int threadIndex;
     private final AtomicLong movesEvaluated = new AtomicLong(0);
@@ -295,7 +262,6 @@ public class PerformanceMetrics {
     }
   }
 
-  /** Performance statistics container. */
   public static class PerformanceStatistics {
     private final long totalCalculations;
     private final long totalMovesEvaluated;
@@ -349,7 +315,6 @@ public class PerformanceMetrics {
       this.overallEfficiency = overallEfficiency;
     }
 
-    // Getters
     public long getTotalCalculations() {
       return totalCalculations;
     }
@@ -438,7 +403,6 @@ public class PerformanceMetrics {
     }
   }
 
-  /** Thread-specific statistics container. */
   public static class ThreadStatistics {
     private final int threadIndex;
     private final long movesEvaluated;

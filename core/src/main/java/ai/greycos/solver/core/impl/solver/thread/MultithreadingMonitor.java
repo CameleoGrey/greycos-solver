@@ -17,20 +17,17 @@ public class MultithreadingMonitor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MultithreadingMonitor.class);
 
-  // Monitoring components
   private final MemoryMonitor memoryMonitor;
   private final PerformanceMetrics performanceMetrics;
   private final AdaptiveThreadPoolManager threadPoolManager;
   private final ErrorRecoveryManager errorRecoveryManager;
 
-  // Monitoring state
   private final AtomicBoolean monitoringEnabled = new AtomicBoolean(true);
   private final AtomicLong lastHealthCheck = new AtomicLong(0);
   private final AtomicLong lastDetailedReport = new AtomicLong(0);
 
-  // Configuration
-  private volatile long healthCheckInterval = 5000; // 5 seconds
-  private volatile long detailedReportInterval = 30000; // 30 seconds
+  private volatile long healthCheckInterval = 5000;
+  private volatile long detailedReportInterval = 30000;
   private volatile boolean logHealthStatus = true;
   private volatile boolean logDetailedReports = true;
 
@@ -45,7 +42,6 @@ public class MultithreadingMonitor {
     this.errorRecoveryManager = errorRecoveryManager;
   }
 
-  /** Performs a health check of all monitoring components. */
   public void performHealthCheck() {
     if (!monitoringEnabled.get()) {
       return;
@@ -75,7 +71,6 @@ public class MultithreadingMonitor {
     }
   }
 
-  /** Generates a detailed monitoring report. */
   public void generateDetailedReport() {
     if (!monitoringEnabled.get()) {
       return;
@@ -130,11 +125,6 @@ public class MultithreadingMonitor {
         adjustmentStats.isAdjustmentNeeded());
   }
 
-  /**
-   * Gets a detailed monitoring report.
-   *
-   * @return MonitoringReport with comprehensive system status
-   */
   public MonitoringReport getDetailedReport() {
     MemoryMonitor.MemoryStatistics memoryStats = memoryMonitor.getCurrentMemoryStatistics();
     MemoryMonitor.MemoryPressureStatistics pressureStats =
@@ -154,11 +144,6 @@ public class MultithreadingMonitor {
         System.currentTimeMillis());
   }
 
-  /**
-   * Provides performance optimization suggestions based on current metrics.
-   *
-   * @return PerformanceSuggestions with optimization recommendations
-   */
   public PerformanceSuggestions getPerformanceSuggestions() {
     PerformanceMetrics.PerformanceStatistics perfStats = performanceMetrics.getStatistics();
     MemoryMonitor.MemoryPressureLevel memoryPressure = memoryMonitor.checkMemoryUsage();
@@ -203,24 +188,20 @@ public class MultithreadingMonitor {
     return builder.build();
   }
 
-  /** Resets all monitoring statistics. */
   public void resetStatistics() {
     memoryMonitor.resetStatistics();
     performanceMetrics.reset();
     errorRecoveryManager.resetRecoveryState();
   }
 
-  /** Disables monitoring. */
   public void disableMonitoring() {
     monitoringEnabled.set(false);
   }
 
-  /** Enables monitoring. */
   public void enableMonitoring() {
     monitoringEnabled.set(true);
   }
 
-  // Configuration setters
   public void setHealthCheckInterval(long healthCheckInterval) {
     if (healthCheckInterval <= 0) {
       throw new IllegalArgumentException("Health check interval must be positive");
@@ -312,7 +293,6 @@ public class MultithreadingMonitor {
     EMERGENCY
   }
 
-  /** Health status container. */
   public static class HealthStatus {
     private final HealthLevel overallHealth;
     private final MemoryMonitor.MemoryPressureLevel memoryPressure;
@@ -380,7 +360,6 @@ public class MultithreadingMonitor {
     }
   }
 
-  /** Monitoring report container. */
   public static class MonitoringReport {
     private final MemoryMonitor.MemoryStatistics memoryStatistics;
     private final MemoryMonitor.MemoryPressureStatistics pressureStatistics;
@@ -430,7 +409,6 @@ public class MultithreadingMonitor {
     }
   }
 
-  /** Performance suggestions container. */
   public static class PerformanceSuggestions {
     private final String[] suggestions;
 

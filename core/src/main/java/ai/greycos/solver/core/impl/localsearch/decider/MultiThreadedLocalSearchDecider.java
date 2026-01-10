@@ -154,7 +154,6 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   public void phaseEnded(LocalSearchPhaseScope<Solution_> phaseScope) {
     super.phaseEnded(phaseScope);
 
-    // Signal all threads to shutdown
     DestroyOperation<Solution_> destroyOperation = new DestroyOperation<>();
     for (int i = 0; i < moveThreadCount; i++) {
       enqueueOperation(destroyOperation);
@@ -162,14 +161,12 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
 
     shutdownMoveThreads();
 
-    // Collect calculation counts from all threads
     long childThreadsScoreCalculationCount = 0;
     for (MoveThreadRunner<Solution_, ?> moveThreadRunner : moveThreadRunnerList) {
       childThreadsScoreCalculationCount += moveThreadRunner.getCalculationCount();
     }
     phaseScope.addChildThreadsScoreCalculationCount(childThreadsScoreCalculationCount);
 
-    // Clean up resources
     operationQueue = null;
     resultQueue = null;
     moveThreadRunnerList = null;
@@ -189,7 +186,6 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
 
   @Override
   public void decideNextStep(LocalSearchStepScope<Solution_> stepScope) {
-    // If we've fallen back to single-threaded mode, delegate to parent
     if (fallbackToSingleThreaded) {
       LOGGER.debug("{}            Falling back to single-threaded mode", logIndentation);
       super.decideNextStep(stepScope);
@@ -267,7 +263,6 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       return true;
     }
 
-    // Check for exceptions from move threads
     if (result.getThrowable() != null) {
       consecutiveFailures++;
       LOGGER.error(
@@ -276,7 +271,6 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
           result.getMoveThreadIndex(),
           result.getThrowable());
 
-      // If too many consecutive failures, fall back to single-threaded mode
       if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
         LOGGER.warn(
             "{}            Too many consecutive failures ({}), "
@@ -289,7 +283,6 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       return false;
     }
 
-    // Reset failure counter on successful result
     consecutiveFailures = 0;
 
     // Step index must match exactly
@@ -364,7 +357,6 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     operationQueue.removeIf(operation -> operation instanceof MoveEvaluationOperation);
   }
 
-  // Override assertion setters to support child thread assertions
   @Override
   public void enableAssertions(EnvironmentMode environmentMode) {
     super.enableAssertions(environmentMode);
@@ -378,7 +370,6 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     }
   }
 
-  // Getters for testing
   public int getMoveThreadCount() {
     return moveThreadCount;
   }

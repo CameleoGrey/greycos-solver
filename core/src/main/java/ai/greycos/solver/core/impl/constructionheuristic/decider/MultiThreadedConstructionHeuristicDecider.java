@@ -60,7 +60,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   protected ExecutorService executor;
   protected List<MoveThreadRunner<Solution_, ?>> moveThreadRunnerList;
 
-  // Error recovery state
   protected volatile boolean fallbackToSingleThreaded = false;
   protected volatile int consecutiveFailures = 0;
   protected static final int MAX_CONSECUTIVE_FAILURES = 3;
@@ -82,17 +81,14 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   public void phaseStarted(ConstructionHeuristicPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
 
-    // Reset error recovery state for the new phase
     fallbackToSingleThreaded = false;
     consecutiveFailures = 0;
 
-    // Initialize thread-safe queues and barriers
     operationQueue =
         new ArrayBlockingQueue<>(selectedMoveBufferSize + moveThreadCount + moveThreadCount);
     resultQueue = new OrderByMoveIndexBlockingQueue<>(selectedMoveBufferSize + moveThreadCount);
     moveThreadBarrier = new CyclicBarrier(moveThreadCount);
 
-    // Create and start move threads
     var scoreDirector = phaseScope.getScoreDirector();
     executor = createThreadPoolExecutor();
     moveThreadRunnerList = new ArrayList<>(moveThreadCount);
@@ -114,12 +110,9 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
                 assertShadowVariablesAreNotStaleAfterStep);
         moveThreadRunnerList.add(moveThreadRunner);
         executor.submit(moveThreadRunner);
-
-        // Send setup operation to initialize the thread
         operationQueue.add(new SetupOperation<>(scoreDirector));
       }
     } catch (RuntimeException | Error e) {
-      // Clean up resources if thread initialization fails
       LOGGER.error(
           "{}            Failed to initialize move threads, falling back to single-threaded mode: {}",
           logIndentation,
@@ -128,8 +121,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
       shutdownMoveThreads();
       fallbackToSingleThreaded = true;
 
-      // Clean up resources to avoid hanging
-      // IMPORTANT: Break the barrier to release any waiting threads
       if (moveThreadBarrier != null) {
         try {
           moveThreadBarrier.reset();
@@ -150,7 +141,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   public void phaseEnded(ConstructionHeuristicPhaseScope<Solution_> phaseScope) {
     super.phaseEnded(phaseScope);
 
-    // Signal all threads to shutdown
     DestroyOperation<Solution_> destroyOperation = new DestroyOperation<>();
     for (int i = 0; i < moveThreadCount; i++) {
       operationQueue.add(destroyOperation);
@@ -158,14 +148,12 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
 
     shutdownMoveThreads();
 
-    // Collect calculation counts from all threads
     long childThreadsScoreCalculationCount = 0;
     for (MoveThreadRunner<Solution_, ?> moveThreadRunner : moveThreadRunnerList) {
       childThreadsScoreCalculationCount += moveThreadRunner.getCalculationCount();
     }
     phaseScope.addChildThreadsScoreCalculationCount(childThreadsScoreCalculationCount);
 
-    // Clean up resources
     operationQueue = null;
     resultQueue = null;
     moveThreadRunnerList = null;
@@ -186,7 +174,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   @Override
   public void decideNextStep(
       ConstructionHeuristicStepScope<Solution_> stepScope, Iterator<Move<Solution_>> moveIterator) {
-    // If we've fallen back to single-threaded mode, delegate to parent
     if (fallbackToSingleThreaded) {
       LOGGER.debug("{}            Falling back to single-threaded mode", logIndentation);
       super.decideNextStep(stepScope, moveIterator);
@@ -218,20 +205,16 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
       }
     } while (movesInPlay > 0);
 
-    // Clear any remaining operations in the queue
     operationQueue.clear();
 
-    // Pick the best move from the results
     pickMove(stepScope);
 
-    // If we have a step, apply it to all threads
     if (stepScope.getStep() != null) {
       var scoreDirector = stepScope.getScoreDirector();
       var legacyStep = MoveAdapters.toLegacyMove(stepScope.getStep());
       var stepOperation =
           new ApplyStepOperation<>(stepIndex + 1, legacyStep, stepScope.getScore().raw());
 
-      // Send the step operation to all move threads
       for (int i = 0; i < moveThreadCount; i++) {
         operationQueue.add(stepOperation);
       }
@@ -250,7 +233,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
       return true;
     }
 
-    // Check for exceptions from move threads
     if (result.getThrowable() != null) {
       consecutiveFailures++;
       LOGGER.error(
@@ -259,7 +241,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
           result.getMoveThreadIndex(),
           result.getThrowable());
 
-      // If too many consecutive failures, fall back to single-threaded mode
       if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
         LOGGER.warn(
             "{}            Too many consecutive failures ({}), "
@@ -272,7 +253,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
       return false;
     }
 
-    // Reset failure counter on successful result
     consecutiveFailures = 0;
 
     // Step index must match exactly
@@ -326,7 +306,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     }
   }
 
-  // Override assertion setters to support child thread assertions
   @Override
   public void enableAssertions(EnvironmentMode environmentMode) {
     super.enableAssertions(environmentMode);
@@ -340,7 +319,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     }
   }
 
-  // Getters for testing
   public int getMoveThreadCount() {
     return moveThreadCount;
   }
