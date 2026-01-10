@@ -391,8 +391,6 @@ class MoveDirectorTest {
         .thenReturn(ruinRecreateConstructionHeuristicPhaseBuilder);
     when(ruinRecreateConstructionHeuristicPhaseBuilder.withElementsToRuin(any()))
         .thenReturn(ruinRecreateConstructionHeuristicPhaseBuilder);
-    when(ruinRecreateConstructionHeuristicPhaseBuilder.ensureThreadSafe(any()))
-        .thenReturn(ruinRecreateConstructionHeuristicPhaseBuilder);
     when(ruinRecreateConstructionHeuristicPhaseBuilder.build())
         .thenReturn(constructionHeuristicPhase);
     when(constructionHeuristicPhase.getMissingUpdatedElementsMap())
@@ -468,8 +466,6 @@ class MoveDirectorTest {
     when(innerScoreDirector.isDerived()).thenReturn(false);
     when(innerScoreDirector.getSupplyManager()).thenReturn(supplyManager);
     when(ruinRecreateConstructionHeuristicPhaseBuilder.withElementsToRecreate(any()))
-        .thenReturn(ruinRecreateConstructionHeuristicPhaseBuilder);
-    when(ruinRecreateConstructionHeuristicPhaseBuilder.ensureThreadSafe(any()))
         .thenReturn(ruinRecreateConstructionHeuristicPhaseBuilder);
     when(ruinRecreateConstructionHeuristicPhaseBuilder.build())
         .thenReturn(constructionHeuristicPhase);

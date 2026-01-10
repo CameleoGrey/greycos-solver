@@ -19,64 +19,6 @@ import org.junit.jupiter.api.Test;
 class DefaultSolverFactoryTest {
 
   @Test
-  void moveThreadCountAutoIsCorrectlyResolvedWhenCpuCountIsPositive() {
-    assertThat(mockMoveThreadCountResolverAuto(1)).isNull();
-    assertThat(mockMoveThreadCountResolverAuto(2)).isNull();
-    assertThat(mockMoveThreadCountResolverAuto(4)).isEqualTo(2);
-    assertThat(mockMoveThreadCountResolverAuto(5)).isEqualTo(3);
-    assertThat(mockMoveThreadCountResolverAuto(6)).isEqualTo(4);
-    assertThat(mockMoveThreadCountResolverAuto(100)).isEqualTo(4);
-  }
-
-  @Test
-  void moveThreadCountAutoIsResolvedToNullWhenCpuCountIsNegative() {
-    assertThat(mockMoveThreadCountResolverAuto(-1)).isNull();
-  }
-
-  private Integer mockMoveThreadCountResolverAuto(int mockCpuCount) {
-    DefaultSolverFactory.MoveThreadCountResolver moveThreadCountResolverMock =
-        new DefaultSolverFactory.MoveThreadCountResolver() {
-          @Override
-          protected int getAvailableProcessors() {
-            return mockCpuCount;
-          }
-        };
-    var maybeCount =
-        moveThreadCountResolverMock.resolveMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_AUTO);
-    if (maybeCount.isPresent()) {
-      return maybeCount.getAsInt();
-    } else {
-      return null;
-    }
-  }
-
-  @Test
-  void moveThreadCountIsCorrectlyResolvedWhenValueIsPositive() {
-    assertThat(resolveMoveThreadCount("2")).isEqualTo(2);
-  }
-
-  @Test
-  void moveThreadCountThrowsExceptionWhenValueIsNegative() {
-    assertThatIllegalArgumentException().isThrownBy(() -> resolveMoveThreadCount("-1"));
-  }
-
-  @Test
-  void moveThreadCountIsResolvedToNullWhenValueIsNone() {
-    assertThat(resolveMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_NONE)).isNull();
-  }
-
-  private Integer resolveMoveThreadCount(String moveThreadCountString) {
-    DefaultSolverFactory.MoveThreadCountResolver moveThreadCountResolver =
-        new DefaultSolverFactory.MoveThreadCountResolver();
-    var maybeCount = moveThreadCountResolver.resolveMoveThreadCount(moveThreadCountString);
-    if (maybeCount.isPresent()) {
-      return maybeCount.getAsInt();
-    } else {
-      return null;
-    }
-  }
-
-  @Test
   void cachesScoreDirectorFactory() {
     SolverConfig solverConfig =
         SolverConfig.createFromXmlResource(
@@ -141,17 +83,4 @@ class DefaultSolverFactoryTest {
         .hasMessageContaining("has a non-null randomType (null) or a non-null randomSeed (1000).");
   }
 
-  @Test
-  void testInvalidMoveThreadCountConfiguration() {
-    SolverConfig solverConfig =
-        SolverConfig.createFromXmlResource(
-                "ai/greycos/solver/core/config/solver/testdataSolverConfig.xml")
-            .withMoveThreadCount("-1");
-    assertThatCode(
-            () ->
-                new DefaultSolverFactory<>(solverConfig).buildSolver(new SolverConfigOverride<>()))
-        .hasMessageContaining("The moveThreadCount")
-        .hasMessageContaining("resulted in a resolvedMoveThreadCount")
-        .hasMessageContaining("that is lower than 1.");
-  }
 }

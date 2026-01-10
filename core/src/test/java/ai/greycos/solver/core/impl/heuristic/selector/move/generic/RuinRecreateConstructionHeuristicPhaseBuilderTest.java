@@ -36,27 +36,4 @@ class RuinRecreateConstructionHeuristicPhaseBuilderTest {
     assertThat(phase.getEntityPlacer()).isSameAs(builder.getEntityPlacer());
   }
 
-  @Test
-  void buildMultiThreaded() {
-    var solverConfigPolicy =
-        new HeuristicConfigPolicy.Builder<TestdataSolution>()
-            .withSolutionDescriptor(TestdataSolution.buildSolutionDescriptor())
-            .withMoveThreadCount(2)
-            .withInitializingScoreTrend(
-                new InitializingScoreTrend(
-                    new InitializingScoreTrendLevel[] {
-                      InitializingScoreTrendLevel.ANY,
-                      InitializingScoreTrendLevel.ANY,
-                      InitializingScoreTrendLevel.ANY
-                    }))
-            .build();
-    var constructionHeuristicConfig = mock(ConstructionHeuristicPhaseConfig.class);
-    var builder =
-        RuinRecreateConstructionHeuristicPhaseBuilder.create(
-            solverConfigPolicy, constructionHeuristicConfig);
-    var scoreDirector = mock(InnerScoreDirector.class);
-    when(scoreDirector.isDerived()).thenReturn(true);
-    var phase = builder.ensureThreadSafe(scoreDirector).build();
-    assertThat(phase.getEntityPlacer()).isNotSameAs(builder.getEntityPlacer());
-  }
 }
