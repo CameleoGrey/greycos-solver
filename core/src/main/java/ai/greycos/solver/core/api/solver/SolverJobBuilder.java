@@ -11,6 +11,7 @@ import ai.greycos.solver.core.api.solver.event.FinalBestSolutionEvent;
 import ai.greycos.solver.core.api.solver.event.FirstInitializedSolutionEvent;
 import ai.greycos.solver.core.api.solver.event.NewBestSolutionEvent;
 import ai.greycos.solver.core.api.solver.event.SolverJobStartedEvent;
+import ai.greycos.solver.core.impl.solver.ThrottlingBestSolutionEventConsumer;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
@@ -120,10 +121,8 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
   default SolverJobBuilder<Solution_, ProblemId_> withThrottledBestSolutionEventConsumer(
       @NonNull Consumer<NewBestSolutionEvent<Solution_>> delegate,
       @NonNull Duration throttleDuration) {
-    ai.greycos.solver.core.impl.solver.ThrottlingBestSolutionEventConsumer<Solution_>
-        throttledConsumer =
-            ai.greycos.solver.core.impl.solver.ThrottlingBestSolutionEventConsumer.of(
-                delegate, throttleDuration);
+    ThrottlingBestSolutionEventConsumer<Solution_> throttledConsumer =
+        ThrottlingBestSolutionEventConsumer.of(delegate, throttleDuration);
     return withBestSolutionEventConsumer(throttledConsumer);
   }
 
