@@ -7,9 +7,7 @@ import org.jspecify.annotations.NonNull;
 
 /**
  * Block distribution for nearby selection.
- *
- * <p>Formula: Selects from the first {@code size} elements uniformly, where {@code size} is
- * calculated as: {@code size = max(sizeMinimum, min(sizeMaximum, nearbySize * sizeRatio))}
+ * Selects uniformly from first k elements where k = max(sizeMinimum, min(sizeMaximum, nearbySize * sizeRatio)).
  */
 public final class BlockDistributionNearbyRandom implements NearbyRandom {
 

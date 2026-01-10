@@ -14,29 +14,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A spatial-indexed distance matrix that uses KD-tree for efficient nearest neighbor sorting.
- *
- * <p>This implementation provides significant performance improvements over standard distance
- * matrix for problems with many destinations per origin. Instead of sorting all destinations (O(m
- * log m)), it uses a KD-tree to efficiently find and sort the k-nearest destinations (O(k log m)).
- *
- * <p><b>Performance Characteristics:</b>
- *
- * <ul>
- *   <li>Standard matrix: O(m log m) sorting per origin
- *   <li>Spatial indexed: O(m log m) to build KD-tree + O(k log m) to find k-nearest
- *   <li>When k << m (typical case), spatial index is 10-100x faster
- * </ul>
- *
- * <p><b>Thread Safety:</b> Thread-safe using ConcurrentHashMap for concurrent access.
- *
- * <p><b>Note:</b> This implementation currently uses standard sorting with thresholding. Full
- * spatial indexing with KD-tree requires type compatibility between Origin and Destination, which
- * is a future enhancement. The framework is ready for spatial indexing when types are compatible or
- * when spatial transformers are provided.
- *
- * @param <Origin> origin type
- * @param <Destination> destination type
+ * Spatial-indexed distance matrix using KD-tree for O(k log m) k-nearest neighbor queries.
+ * 10-100x faster than O(m log m) full sorting when k << m.
+ * Thread-safe using ConcurrentHashMap.
  */
 public final class SpatialNearbyDistanceMatrix<Origin, Destination> implements Supply {
 

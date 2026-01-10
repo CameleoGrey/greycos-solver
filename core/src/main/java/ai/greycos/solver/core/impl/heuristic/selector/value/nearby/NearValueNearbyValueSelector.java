@@ -11,13 +11,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Nearby value selector that uses a value as origin.
- *
- * <p>Filters and reorders the selection of destination values based on distance from an origin
- * value.
- *
- * <p><b>Replaying Selector:</b> This selector requires a {@link MimicReplayingValueSelector} as the
- * origin selector to ensure all nearby values are selected relative to the same origin value.
+ * Nearby value selector using a value as origin.
+ * Filters and reorders destination values by distance from an origin value.
+ * Requires MimicReplayingValueSelector for consistent origin.
  */
 public final class NearValueNearbyValueSelector<Solution_>
     extends AbstractNearbyValueSelector<Solution_, IterableValueSelector<Solution_>> {

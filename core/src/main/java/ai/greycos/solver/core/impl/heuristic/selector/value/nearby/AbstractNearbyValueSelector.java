@@ -15,21 +15,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Abstract base class for nearby value selectors.
- *
- * <p>This class provides the foundation for nearby selection with support for both standard
- * distance matrix and spatial-indexed distance matrix for improved performance.
- *
- * <p><b>Spatial Indexing:</b> When configured with a spatial-indexed distance matrix, the selector
- * can efficiently find nearby destinations using KD-tree queries instead of linear scans, providing
- * O(log n) performance instead of O(n) for large datasets.
- *
- * <p><b>Replaying Selector Pattern:</b> Nearby selectors require a replaying selector to provide a
- * consistent origin for distance calculation. The replaying selector ensures that all nearby values
- * are selected relative to the same origin entity/value.
- *
- * @param <Solution_> the solution type
- * @param <ReplayingSelector_> the type of the replaying selector (entity or value selector)
+ * Abstract base for nearby value selectors.
+ * Supports standard and spatial-indexed distance matrices (O(log n) queries with KD-tree).
+ * Uses replaying selector pattern for consistent origin during distance calculation.
  */
 abstract class AbstractNearbyValueSelector<
         Solution_, ReplayingSelector_ extends PhaseLifecycleListener<Solution_>>

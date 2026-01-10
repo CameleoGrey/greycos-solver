@@ -8,7 +8,10 @@ import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySele
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-/** Factory for creating {@link NearbyRandom} instances based on configuration. */
+/**
+ * Factory for creating NearbyRandom distribution instances from configuration.
+ * Supports block, linear, parabolic, and beta distributions.
+ */
 public class NearbyRandomFactory {
 
   private final @NonNull NearbySelectionConfig nearbySelectionConfig;

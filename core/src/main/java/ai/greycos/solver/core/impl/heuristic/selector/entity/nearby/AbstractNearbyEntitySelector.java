@@ -14,9 +14,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Abstract base class for nearby entity selectors.
- *
- * @param <Solution_> solution type
+ * Abstract base for nearby entity selectors.
  */
 abstract class AbstractNearbyEntitySelector<Solution_>
     extends AbstractDemandEnabledSelector<Solution_> implements EntitySelector<Solution_> {

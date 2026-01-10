@@ -14,14 +14,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Nearby value selector that uses an entity as the origin.
- *
- * <p>Filters and reorders the selection of destination values based on distance from an origin
- * entity. Supports both standard distance matrix and spatial-indexed distance matrix for improved
- * performance on large datasets.
- *
- * <p><b>Replaying Selector:</b> This selector requires a {@link MimicReplayingEntitySelector} as
- * the origin selector to ensure all nearby values are selected relative to the same origin entity.
+ * Nearby value selector using an entity as origin.
+ * Filters and reorders destination values by distance from an origin entity.
+ * Supports standard and spatial-indexed distance matrices.
  */
 public final class NearEntityNearbyValueSelector<Solution_>
     extends AbstractNearbyValueSelector<Solution_, EntitySelector<Solution_>> {

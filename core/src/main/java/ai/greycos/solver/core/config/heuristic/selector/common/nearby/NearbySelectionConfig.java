@@ -21,6 +21,11 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistan
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+/**
+ * Configuration for nearby selection to prioritize spatially proximate items.
+ * Supports entity, sub-list, and value origin selectors with probability distributions.
+ */
+
 @XmlType(
     propOrder = {
       "originEntitySelectorConfig",

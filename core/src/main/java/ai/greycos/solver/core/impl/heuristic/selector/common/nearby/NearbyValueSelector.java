@@ -19,22 +19,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Nearby value selector that applies nearby selection to value selectors.
- *
- * <p>This selector wraps a value selector and applies nearby selection logic based on an origin
- * value selector. Destinations are filtered and reordered based on distance from origin value using
- * a distance matrix that caches sorted destinations.
- *
- * <p><b>Key Features:</b>
- *
- * <ul>
- *   <li>Distance-based selection: Prefers values near origin value
- *   <li>Distance matrix caching: Pre-computes and sorts values by distance
- *   <li>Probability distributions: Supports parabolic, linear, block, and beta distributions
- *   <li>Thread-safe: Uses concurrent distance matrix for parallel solving
- * </ul>
- *
- * @param <Solution_> solution type
+ * Selects values based on proximity to an origin value.
+ * Wraps a value selector and filters/reorders values by distance using a cached distance matrix.
+ * Supports probability distributions (parabolic, linear, block, beta) for random selection.
  */
 public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
     implements ValueSelector<Solution_> {

@@ -21,21 +21,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Nearby destination selector that applies nearby selection to destination selectors.
- *
- * <p>This selector filters and reorders element positions based on distance from an origin value.
- * It uses a distance matrix to cache sorted destinations by distance from each origin.
- *
- * <p><b>Key Features:</b>
- *
- * <ul>
- *   <li>Distance-based selection: Prefers destinations near the origin value
- *   <li>Distance matrix caching: Pre-computes and sorts destinations by distance
- *   <li>Probability distributions: Supports parabolic, linear, block, and beta distributions
- *   <li>Thread-safe: Uses concurrent distance matrix for parallel solving
- * </ul>
- *
- * @param <Solution_> solution type
+ * Selects element positions for list variables based on proximity to an origin.
+ * Filters and reorders destinations (entities or values) by distance using a cached distance matrix.
+ * Supports probability distributions for random selection.
  */
 public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledSelector<Solution_>
     implements ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelector<Solution_> {

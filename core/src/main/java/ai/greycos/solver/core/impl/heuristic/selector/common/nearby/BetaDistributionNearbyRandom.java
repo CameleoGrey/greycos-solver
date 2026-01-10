@@ -7,11 +7,8 @@ import org.apache.commons.math3.distribution.BetaDistribution;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Beta distribution for nearby selection.
- *
- * <p>Uses Apache Commons Math {@link BetaDistribution} for flexible probability curves.
- *
- * <p>Selection according to a beta distribution. Slows down the solver significantly.
+ * Beta distribution for nearby selection using Apache Commons Math.
+ * Flexible probability curves but slower than other distributions.
  */
 public final class BetaDistributionNearbyRandom implements NearbyRandom {
 

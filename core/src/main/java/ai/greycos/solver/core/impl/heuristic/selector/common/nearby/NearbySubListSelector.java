@@ -17,12 +17,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Nearby sub-list selector that applies nearby selection to sub-list selectors.
- *
- * <p>This selector filters and reorders sub-lists based on distance from an origin sub-list. It
- * supports both random and original selection orders.
- *
- * @param <Solution_> solution type
+ * Nearby sub-list selector filtering and reordering sub-lists by distance from origin.
  */
 public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_>
     implements SubListSelector<Solution_> {
