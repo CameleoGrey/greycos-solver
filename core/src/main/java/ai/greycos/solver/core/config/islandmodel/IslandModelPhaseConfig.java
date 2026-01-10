@@ -165,9 +165,9 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   private List<PhaseConfig<?>> phaseConfigList = null;
   public static final String XML_ELEMENT_NAME = "islandModel";
   public static final int DEFAULT_ISLAND_COUNT = 4;
-  public static final int DEFAULT_MIGRATION_FREQUENCY = 100;
-  public static final int DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY = 50;
-  public static final long DEFAULT_MIGRATION_TIMEOUT = 100L;
+  public static final int DEFAULT_MIGRATION_FREQUENCY = Integer.MAX_VALUE;
+  public static final int DEFAULT_RECEIVE_GLOBAL_UPDATE_FREQUENCY = 400;
+  public static final long DEFAULT_MIGRATION_TIMEOUT = 1000L;
 
   @XmlElement(name = "islandCount")
   private Integer islandCount = null;
