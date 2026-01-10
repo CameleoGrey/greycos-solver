@@ -39,10 +39,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Default implementation of partitioned search phase.
+ * Default partitioned search phase implementation.
  *
- * <p>Orchestrates partitioned solving process, managing lifecycle of sub-solvers and aggregating
- * results.
+ * <p>Splits problem using SolutionPartitioner, creates thread pool of PartitionSolver instances,
+ * consumes improvements via PartitionQueue, and applies best solutions to main solution.
+ *
+ * <p>How: Partitions run in parallel threads; improvements queue to parent; parent applies
+ * latest changes from each partition; terminates all threads before phase ends.
+ *
+ * <p>Why: Enables parallel solving for large problems; improves CPU utilization; reduces solving
+ * time for partitionable domains.
  *
  * @param <Solution_> solution type, class with {@link
  *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
@@ -96,7 +102,6 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     phaseScope.setPartCount(null);
     phaseStarted(phaseScope);
 
-    // Create partition queue
     List<Solution_> partList =
         solutionPartitioner.splitWorkingSolution(
             phaseScope.getScoreDirector(), runnablePartThreadLimit);
@@ -120,19 +125,15 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
 
     PartitionQueue<Solution_> partitionQueue = new PartitionQueue<>(partCount);
 
-    // Create thread pool
     ExecutorService executor = createThreadPoolExecutor(partCount);
 
-    // Create child thread plumbing termination for immediate stop
     ChildThreadPlumbingTermination<Solution_> childThreadPlumbingTermination =
         new ChildThreadPlumbingTermination<>();
 
-    // Create semaphore for thread limit
     Semaphore runnablePartThreadSemaphore =
         runnablePartThreadLimit == null ? null : new Semaphore(runnablePartThreadLimit, true);
 
     try {
-      // Submit partition solver tasks
       submitPartitionSolverTasks(
           executor,
           partList,
@@ -141,7 +142,6 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
           runnablePartThreadSemaphore,
           partitionQueue);
 
-      // Consume and apply partition improvements
       for (PartitionChangeMove<Solution_> step : partitionQueue) {
         PartitionedSearchStepScope<Solution_> stepScope =
             new PartitionedSearchStepScope<>(phaseScope);
@@ -152,20 +152,12 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
         phaseScope.setLastCompletedStepScope(stepScope);
       }
 
-      // Terminate all partition threads BEFORE exiting the queue consumption loop
-      // to ensure no best solution events are fired after phase ends
       childThreadPlumbingTermination.terminateChildren();
 
-      // Wait for all partition threads to finish terminating
-      // This ensures no more events will be fired before we proceed
       ThreadUtils.shutdownAwaitOrKill(executor, logIndentation, "Partitioned Search");
-
-      // Exceptions from child threads are thrown during iteration above,
-      // so no need to check here
 
       phaseScope.addChildThreadsScoreCalculationCount(partitionQueue.getPartsCalculationCount());
 
-      // Mark the phase as ended before logging metrics
       phaseScope.endingNow();
 
       logger.info(
@@ -179,7 +171,6 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
           phaseScope.getNextStepIndex());
 
     } finally {
-      // Executor already shut down above, but keep in finally for safety in case of exceptions
       if (!executor.isTerminated()) {
         childThreadPlumbingTermination.terminateChildren();
         ThreadUtils.shutdownAwaitOrKill(executor, logIndentation, "Partitioned Search");
@@ -189,12 +180,6 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     phaseEnded(phaseScope);
   }
 
-  /**
-   * Creates thread pool for partition threads with validation.
-   *
-   * @param partCount number of partitions
-   * @return configured thread pool executor
-   */
   private ExecutorService createThreadPoolExecutor(int partCount) {
     ThreadPoolExecutor threadPoolExecutor =
         (ThreadPoolExecutor) Executors.newFixedThreadPool(partCount, threadFactory);
@@ -253,30 +238,22 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
       Semaphore runnablePartThreadSemaphore,
       PartitionQueue<Solution_> partitionQueue) {
 
-    // Create best solution recaller for this partition
     BestSolutionRecaller<Solution_> bestSolutionRecaller =
         BestSolutionRecallerFactory.create()
             .buildBestSolutionRecaller(configPolicy.getEnvironmentMode());
 
-    // Create termination (bridged to parent)
-    // According to spec, must be OrCompositeTermination combining:
-    // 1. ChildThreadPlumbingTermination (immediate stop signal)
-    // 2. PhaseTermination.createChildThreadTermination() (bridged to parent)
     UniversalTermination<Solution_> partTermination =
         UniversalTermination.or(
             childThreadPlumbingTermination,
             phaseTermination.createChildThreadTermination(
                 solverScope, ChildThreadType.PART_THREAD));
 
-    // Build phase list (default: CH + LS)
     List<PhaseConfig> effectivePhaseConfigList = phaseConfigList;
     if (effectivePhaseConfigList == null || effectivePhaseConfigList.isEmpty()) {
-      // Use default phases if not configured: CH + LS
       effectivePhaseConfigList =
           Arrays.asList(new ConstructionHeuristicPhaseConfig(), new LocalSearchPhaseConfig());
     }
 
-    // Use PhaseFactory.buildPhases() to build phases with partTermination
     List<Phase<Solution_>> phaseList =
         PhaseFactory.buildPhases(
             effectivePhaseConfigList,
@@ -284,7 +261,6 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
             bestSolutionRecaller,
             partTermination);
 
-    // Create child thread solver scope
     SolverScope<Solution_> partSolverScope =
         solverScope.createChildThreadSolverScope(ChildThreadType.PART_THREAD);
     partSolverScope.setRunnableThreadSemaphore(runnablePartThreadSemaphore);
@@ -293,21 +269,15 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
         new PartitionSolver<>(
             bestSolutionRecaller, partTermination, phaseList, partSolverScope, partIndex);
 
-    // Set up event listener to queue best solution changes
     partitionSolver.setBestSolutionChangedListener(
         (eventProducerId, newBestSolution) -> {
-          // Create move from partition's best solution
           InnerScoreDirector<Solution_, ?> childScoreDirector = partSolverScope.getScoreDirector();
           PartitionChangeMove<Solution_> move =
               PartitionChangeMove.createMove(childScoreDirector, partIndex);
 
-          // Rebase move from partition to parent solution context
-          // This translates entity and value references from partition's cloned solution
-          // to main solver's solution
           InnerScoreDirector<Solution_, ?> parentScoreDirector = solverScope.getScoreDirector();
           move = move.rebase(parentScoreDirector);
 
-          // Queue for application
           partitionQueue.addMove(partIndex, move);
         });
     return partitionSolver;
@@ -321,7 +291,6 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     solver.getBestSolutionRecaller().processWorkingSolutionDuringStep(stepScope);
   }
 
-  // Lifecycle methods from PartitionedSearchPhaseLifecycleListener
   @Override
   public void phaseStarted(PartitionedSearchPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);

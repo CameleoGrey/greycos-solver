@@ -11,13 +11,10 @@ import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import org.jspecify.annotations.NullMarked;
 
 /**
- * Simple round-robin partitioner that distributes entities across partitions.
+ * Simple round-robin partitioner for testing (not production-ready).
  *
- * <p>This is a basic example implementation for testing. For production use, implement a
- * partitioner specific to your domain that considers entity relationships and constraints.
- *
- * <p>Each planning entity is assigned to exactly one partition in round-robin order. Problem facts
- * are cloned to all partitions.
+ * <p>Distributes entities round-robin across partitions; clones facts to all partitions.
+ * For production, implement domain-specific partitioner considering entity relationships.
  *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
@@ -26,11 +23,6 @@ public class RoundRobinPartitioner<Solution_> implements SolutionPartitioner<Sol
 
   private final int partCount;
 
-  /**
-   * Creates a round-robin partitioner with the specified number of partitions.
-   *
-   * @param partCount Number of partitions to create
-   */
   public RoundRobinPartitioner(int partCount) {
     if (partCount < 1) {
       throw new IllegalArgumentException(
@@ -48,38 +40,27 @@ public class RoundRobinPartitioner<Solution_> implements SolutionPartitioner<Sol
     SolutionDescriptor<Solution_> solutionDescriptor = innerScoreDirector.getSolutionDescriptor();
     Solution_ workingSolution = innerScoreDirector.getWorkingSolution();
 
-    // Adjust partition count based on thread limit
     int actualPartCount =
         runnablePartThreadLimit != null ? Math.min(partCount, runnablePartThreadLimit) : partCount;
 
-    // Collect all entities
     final List<Object> allEntities = new ArrayList<>();
     solutionDescriptor.visitAllEntities(workingSolution, entity -> allEntities.add(entity));
 
-    // Create partitions
     List<Solution_> partList = new ArrayList<>(actualPartCount);
     for (int i = 0; i < actualPartCount; i++) {
       Solution_ partSolution = innerScoreDirector.cloneSolution(workingSolution);
       partList.add(partSolution);
     }
 
-    // Distribute entities round-robin, preserving their variable assignments
     int partIndex = 0;
     for (Object entity : allEntities) {
       Solution_ part = partList.get(partIndex);
-      // Entity is already in the partition from the clone
-      // with its variable assignments preserved
       partIndex = (partIndex + 1) % actualPartCount;
     }
 
     return partList;
   }
 
-  /**
-   * Gets the configured partition count.
-   *
-   * @return Number of partitions
-   */
   public int getPartCount() {
     return partCount;
   }

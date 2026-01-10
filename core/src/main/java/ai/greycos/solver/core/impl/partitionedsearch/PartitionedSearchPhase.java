@@ -4,13 +4,12 @@ import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.phase.Phase;
 
 /**
- * A {@link PartitionedSearchPhase} is a {@link Phase} which uses a Partition Search algorithm. It
- * splits the {@link PlanningSolution} into pieces and solves those separately with other {@link
- * Phase}s.
+ * Partitioned search phase - splits problem into parallel sub-solvers.
+ *
+ * <p>Divides planning problem into independent partitions, solves them concurrently with
+ * configured phases, and aggregates improvements back into the main solution.
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
- * @see Phase
  */
 public interface PartitionedSearchPhase<Solution_> extends Phase<Solution_> {
-  // Marker interface for partitioned search phase
 }

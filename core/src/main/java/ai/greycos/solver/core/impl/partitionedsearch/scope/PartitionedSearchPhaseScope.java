@@ -7,6 +7,8 @@ import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 /**
  * Scope for partitioned search phase execution.
  *
+ * <p>Maintains partition count and tracks completed steps during phase lifetime.
+ *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
 public final class PartitionedSearchPhaseScope<Solution_> extends AbstractPhaseScope<Solution_> {
@@ -37,12 +39,6 @@ public final class PartitionedSearchPhaseScope<Solution_> extends AbstractPhaseS
     this.lastCompletedStepScope = lastCompletedStepScope;
   }
 
-  /**
-   * Adds the score calculation count from child threads to the phase scope. This method is used to
-   * track the total score calculation count across all partition threads.
-   *
-   * @param addition the number of score calculations to add
-   */
   public void addChildThreadsScoreCalculationCount(long addition) {
     super.addChildThreadsScoreCalculationCount(addition);
   }

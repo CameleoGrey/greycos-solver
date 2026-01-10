@@ -19,32 +19,22 @@ import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 /**
  * Encapsulates planning variable changes from a partition's best solution.
  *
- * <p>Used to transfer changes from a partition's best solution to the main solution. The move
- * captures entity-variable value pairs that need to be applied.
+ * <p>Captures entity-variable value pairs; rebase translates partition references to parent.
  *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */
 public final class PartitionChangeMove<Solution_> extends AbstractMove<Solution_> {
 
-  /** Mapping of variable descriptors to entity-value change pairs */
   private final Map<GenuineVariableDescriptor<Solution_>, List<EntityValuePair>> changeMap;
 
-  /** Partition index this move originated from */
   private final int partIndex;
 
-  /**
-   * Creates a new partition change move.
-   *
-   * @param changeMap mapping of variable descriptors to change records
-   * @param partIndex partition index
-   */
   private PartitionChangeMove(
       Map<GenuineVariableDescriptor<Solution_>, List<EntityValuePair>> changeMap, int partIndex) {
     this.changeMap = changeMap;
     this.partIndex = partIndex;
   }
 
-  /** Record of a single entity-value change. */
   private static final class EntityValuePair {
     private final Object entity;
     private final Object value;
@@ -63,16 +53,6 @@ public final class PartitionChangeMove<Solution_> extends AbstractMove<Solution_
     }
   }
 
-  /**
-   * Creates a move from a partition's best solution.
-   *
-   * <p>Collects all entity-variable value pairs from the partition's working solution. Each
-   * planning entity's genuine variable values are captured.
-   *
-   * @param scoreDirector the score director from the partition's solver
-   * @param partIndex the partition index
-   * @return a new PartitionChangeMove
-   */
   public static <Solution_> PartitionChangeMove<Solution_> createMove(
       InnerScoreDirector<Solution_, ?> scoreDirector, int partIndex) {
     SolutionDescriptor<Solution_> solutionDescriptor = scoreDirector.getSolutionDescriptor();

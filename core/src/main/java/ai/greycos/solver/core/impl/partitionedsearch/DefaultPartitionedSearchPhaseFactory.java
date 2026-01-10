@@ -25,6 +25,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Factory for building partitioned search phases.
  *
+ * <p>Constructs DefaultPartitionedSearchPhase with configured partitioner, thread pool,
+ * and child phase configurations.
+ *
  * @param <Solution_> solution type, class with {@link
  *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
  */
@@ -94,7 +97,6 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
                 + phaseConfig.getSolutionPartitionerCustomProperties()
                 + ") either.");
       }
-      // TODO Implement generic partitioner
       throw new UnsupportedOperationException(
           "A solutionPartitionerClass must be specified. Generic partitioner is not yet implemented.");
     }
@@ -117,7 +119,6 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
             || runnablePartThreadLimit.equals(
                 PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_AUTO);
     if (threadLimitNullOrAuto) {
-      // Leave one for the Operating System and 1 for the solver thread, take the rest
       resolvedActiveThreadCount = Math.max(1, availableProcessorCount - 2);
     } else if (runnablePartThreadLimit.equals(
         PartitionedSearchPhaseConfig.ACTIVE_THREAD_COUNT_UNLIMITED)) {

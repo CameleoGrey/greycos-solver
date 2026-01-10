@@ -16,16 +16,10 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 
 /**
- * Lightweight solver instance that executes configured phases on a partition.
+ * Lightweight solver for partition threads with restricted API.
  *
- * <p>Key characteristics:
- *
- * <ul>
- *   <li>Extends AbstractSolver but with restricted API
- *   <li>No support for problem fact changes or early termination
- *   <li>Dedicated SolverScope for child thread context
- *   <li>Terminates when parent phase termination is signaled
- * </ul>
+ * <p>Executes configured phases on a partition; notifies parent of best solution changes.
+ * No support for problem changes or early termination.
  *
  * @param <Solution_> solution type, class with {@link
  *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
@@ -58,12 +52,6 @@ public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
     this.bestSolutionChangedListener = listener;
   }
 
-  /**
-   * Solves the partition.
-   *
-   * @param initialSolution The initial solution for this partition
-   * @return The best solution found
-   */
   @Override
   public Solution_ solve(Solution_ initialSolution) {
     solverScope.initializeYielding();
@@ -135,47 +123,28 @@ public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
     for (Phase<Solution_> phase : phaseList) {
       phase.solve(solverScope);
 
-      // After each phase, update best solution
       Solution_ newBestSolution = solverScope.getBestSolution();
       if (newBestSolution != null && bestSolutionChangedListener != null) {
         bestSolutionChangedListener.accept(
             phase.getEventProducerIdSupplier().apply(0), newBestSolution);
       }
 
-      // Set working solution from best for next phase
       solverScope.setWorkingSolutionFromBestSolution();
 
-      // Check termination - PhaseTermination has phase methods
-      // According to spec, partitions should terminate when parent phase termination is signaled
       if (globalTermination.isSolverTerminated(solverScope)) {
         break;
       }
     }
   }
 
-  /**
-   * Gets score calculation count.
-   *
-   * @return The calculation count
-   */
   public long getScoreCalculationCount() {
     return solverScope.getScoreCalculationCount();
   }
 
-  /**
-   * Gets the solver scope.
-   *
-   * @return The solver scope
-   */
   public SolverScope<Solution_> getSolverScope() {
     return solverScope;
   }
 
-  /**
-   * Gets the partition index.
-   *
-   * @return The partition index
-   */
   public int getPartIndex() {
     return partIndex;
   }
