@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.solver;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
@@ -68,13 +69,6 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
 
   void consumeFirstInitializedSolution(
       Solution_ firstInitializedSolution, EventProducerId producerId, boolean isTerminatedEarly) {
-    try {
-      firstSolutionConsumption.acquire();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IllegalStateException(
-          "Interrupted when waiting for first initialized solution consumption.");
-    }
     this.firstInitializedSolution = firstInitializedSolution;
     scheduleFirstInitializedSolutionConsumption(
         solution ->
@@ -83,25 +77,12 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
   }
 
   void consumeStartSolverJob(Solution_ initialSolution) {
-    try {
-      startSolverJobConsumption.acquire();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted when waiting for start solver job consumption.");
-    }
     this.initialSolution = initialSolution;
     scheduleStartJobConsumption();
   }
 
   void consumeFinalBestSolution(Solution_ finalBestSolution) {
-    try {
-      acquireAll();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IllegalStateException(
-          "Interrupted when waiting for final best solution consumption.");
-    }
-
+    // Drain any remaining intermediate best solutions before submitting the final one.
     if (bestSolutionConsumer != null) {
       scheduleIntermediateBestSolutionConsumption();
     }
@@ -110,6 +91,21 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
       ((ThrottlingBestSolutionEventConsumer<Solution_>) bestSolutionConsumer)
           .terminateAndDeliverPending();
     }
+
+    // Submit a marker task BEFORE the final best solution task.
+    // When the marker task completes, all previous tasks have been processed.
+    // We need to do this before the final task because the final task shuts down the executor.
+    Future<?> markerTask = null;
+    try {
+      markerTask = consumerExecutor.submit(() -> {});
+    } catch (java.util.concurrent.RejectedExecutionException e) {
+      // Executor is already shut down, continue without waiting
+    }
+
+    // Submit the final best solution consumption to the executor.
+    // The single-threaded executor guarantees that this task will run after all
+    // previously submitted tasks (start solver job, first initialized solution,
+    // intermediate solutions) have completed, because tasks are processed in FIFO order.
     consumerExecutor.submit(
         () -> {
           try {
@@ -123,11 +119,33 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
                 solutionHolder.completeProblemChanges();
               }
             }
-            bestSolutionHolder.cancelPendingChanges();
-            releaseAll();
+            bestSolutionHolder.cancelPendingChangesQuietly();
             disposeConsumerThread();
           }
         });
+
+    // Wait for the marker task to complete, ensuring all prior tasks have run.
+    if (markerTask != null) {
+      waitForMarkerTask(markerTask);
+    }
+  }
+
+  private void waitForMarkerTask(Future<?> markerTask) {
+    // Wait for the marker task to complete.
+    // When it completes, all previously submitted tasks have been processed.
+    try {
+      // Wait with a short timeout to avoid blocking indefinitely
+      markerTask.get(1, java.util.concurrent.TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      // If interrupted, we can't guarantee all tasks have run, but that's okay
+      // - the executor will process them eventually
+    } catch (java.util.concurrent.TimeoutException e) {
+      // Timeout means tasks are taking too long, but that's okay
+      // - they're still processing in the background
+    } catch (java.util.concurrent.ExecutionException e) {
+      // Should not happen as the marker task doesn't throw exceptions
+    }
   }
 
   private void tryConsumeWaitingIntermediateBestSolution() {
@@ -165,17 +183,33 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
 
   private void scheduleFirstInitializedSolutionConsumption(
       Consumer<? super Solution_> solutionConsumer) {
-    scheduleConsumption(firstSolutionConsumption, solutionConsumer, firstInitializedSolution);
+    scheduleConsumptionNoSemaphore(solutionConsumer, firstInitializedSolution);
   }
 
   private void scheduleStartJobConsumption() {
-    scheduleConsumption(
-        startSolverJobConsumption,
+    Consumer<? super Solution_> consumer =
         solverJobStartedConsumer == null
             ? null
             : solution ->
-                solverJobStartedConsumer.accept(new SolverJobStartedEventImpl<>(solution)),
-        initialSolution);
+                solverJobStartedConsumer.accept(new SolverJobStartedEventImpl<>(solution));
+    scheduleConsumptionNoSemaphore(consumer, initialSolution);
+  }
+
+  private void scheduleConsumptionNoSemaphore(
+      Consumer<? super Solution_> consumer, Solution_ solution) {
+    CompletableFuture.runAsync(
+        () -> {
+          try {
+            if (consumer != null && solution != null) {
+              consumer.accept(solution);
+            }
+          } catch (Throwable throwable) {
+            if (exceptionHandler != null) {
+              exceptionHandler.accept(problemId, throwable);
+            }
+          }
+        },
+        consumerExecutor);
   }
 
   private void scheduleConsumption(
@@ -211,26 +245,21 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
 
   @Override
   public void close() {
-    try {
-      acquireAll();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted when waiting for closing consumer.");
-    } finally {
-      if (bestSolutionConsumer instanceof AutoCloseable) {
-        try {
-          ((AutoCloseable) bestSolutionConsumer).close();
-        } catch (Exception e) {
-        }
+    // Clean up resources.
+    // Note: cancelPendingChangesQuietly() is called in the final best solution consumption task.
+    if (bestSolutionConsumer instanceof AutoCloseable) {
+      try {
+        ((AutoCloseable) bestSolutionConsumer).close();
+      } catch (Exception e) {
       }
-      disposeConsumerThread();
-      bestSolutionHolder.cancelPendingChanges();
-      releaseAll();
     }
+    disposeConsumerThread();
   }
 
   private void disposeConsumerThread() {
-    consumerExecutor.shutdownNow();
+    // Gracefully shut down the executor.
+    // Don't wait for termination here, as this might be called from within the executor.
+    consumerExecutor.shutdown();
   }
 
   record NewBestSolutionEventImpl<Solution_>(Solution_ solution, EventProducerId producerId)

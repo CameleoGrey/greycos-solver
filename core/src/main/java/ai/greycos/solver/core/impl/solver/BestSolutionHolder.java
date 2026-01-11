@@ -124,6 +124,19 @@ final class BestSolutionHolder<Solution_> {
         .forEach(pendingProblemChange -> pendingProblemChange.cancel(false));
   }
 
+  void cancelPendingChangesQuietly() {
+    replaceMapSynchronized(map -> createNewProblemChangesMap()).values().stream()
+        .flatMap(Collection::stream)
+        .forEach(
+            pendingProblemChange -> {
+              try {
+                pendingProblemChange.cancel(false);
+              } catch (java.util.concurrent.CancellationException e) {
+                // Ignore - future was already completed
+              }
+            });
+  }
+
   private record VersionedBestSolution<Solution_>(
       Solution_ bestSolution, EventProducerId producerId, BigInteger version) {}
 }
