@@ -16,9 +16,7 @@ public final class WebsiteResourceUtils {
     copyWebjarResource(benchmarkReportDirectory, "css/greycos-webui.css");
     copyWebjarResource(benchmarkReportDirectory, "js/greycos-webui.js");
     copyWebjarResource(benchmarkReportDirectory, "img/greycos-favicon.svg");
-    copyWebjarResource(benchmarkReportDirectory, "img/greycos-logo-horizontal-negative.svg");
-    copyWebjarResource(benchmarkReportDirectory, "img/greycos-logo-horizontal-positive.svg");
-    copyWebjarResource(benchmarkReportDirectory, "img/greycos-logo-stacked-positive.svg");
+    copyWebjarResource(benchmarkReportDirectory, "img/GreyCOS_logo_no_background_480.png");
     // Manually copy some other resources.
     copyResource(benchmarkReportDirectory, "website/css/prettify.css");
     copyResource(benchmarkReportDirectory, "website/css/app.css");

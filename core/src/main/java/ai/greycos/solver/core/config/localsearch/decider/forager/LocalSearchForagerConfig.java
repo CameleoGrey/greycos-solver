@@ -4,9 +4,11 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import jakarta.xml.bind.annotation.XmlType;
+import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import ai.greycos.solver.core.config.AbstractConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
+import ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbCustomPropertiesAdapter;
 import ai.greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 
 import org.jspecify.annotations.NonNull;
@@ -32,6 +34,8 @@ public class LocalSearchForagerConfig extends AbstractConfig<LocalSearchForagerC
   protected FinalistPodiumType finalistPodiumType = null;
   protected Boolean breakTieRandomly = null;
   protected Class<? extends LocalSearchForager> foragerClass = null;
+
+  @XmlJavaTypeAdapter(JaxbCustomPropertiesAdapter.class)
   protected Map<String, String> customProperties = null;
 
   public @Nullable LocalSearchPickEarlyType getPickEarlyType() {

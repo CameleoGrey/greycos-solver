@@ -4,10 +4,12 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import jakarta.xml.bind.annotation.XmlType;
+import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import ai.greycos.solver.core.config.AbstractConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.constructionheuristic.decider.forager.ConstructionHeuristicForager;
+import ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbCustomPropertiesAdapter;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -23,6 +25,8 @@ public class ConstructionHeuristicForagerConfig
 
   private ConstructionHeuristicPickEarlyType pickEarlyType = null;
   private Class<? extends ConstructionHeuristicForager> foragerClass = null;
+
+  @XmlJavaTypeAdapter(JaxbCustomPropertiesAdapter.class)
   private Map<String, String> customProperties = null;
 
   public @Nullable ConstructionHeuristicPickEarlyType getPickEarlyType() {

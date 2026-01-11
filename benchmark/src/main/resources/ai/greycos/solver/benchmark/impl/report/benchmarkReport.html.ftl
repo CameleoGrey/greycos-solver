@@ -92,7 +92,7 @@
         <div class="container">
             <div class="text-white">
                 <a href="#" class="navbar-brand">
-                    <img src="website/img/greycos-logo-horizontal-negative.svg" alt="GreyCOS Logo (horizontal, negative)">
+                    <img src="website/img/GreyCOS_logo_no_background_480.png" alt="GreyCOS Logo">
                 </a>
                 <br />
                 Benchmark Report
