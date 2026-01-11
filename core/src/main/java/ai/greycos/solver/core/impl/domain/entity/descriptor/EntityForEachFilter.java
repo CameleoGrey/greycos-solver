@@ -33,6 +33,13 @@ public class EntityForEachFilter<Solution_> {
     }
     var entityConsistencyState =
         consistencyTracker.getDeclarativeEntityConsistencyState(entityDescriptor);
+    // When the tracker is frozen (ConstraintVerifier mode), use a more lenient predicate
+    // that only checks consistency, not the hasNoNullVariables requirement.
+    // This allows ConstraintVerifier to work with entities that have manually set shadow variables,
+    // including intentionally null shadow variables.
+    if (consistencyTracker.isFrozen()) {
+      return entityConsistencyState::isEntityConsistent;
+    }
     return assignedPredicate.and(entityConsistencyState::isEntityConsistent);
   }
 

@@ -90,7 +90,11 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
   public void setWorkingSolutionWithoutUpdatingShadows(Solution_ workingSolution) {
     // Reset consistency tracker to clear old entity references (e.g., from island model adoption)
     // and prevent tracking both old and new entities, which would corrupt scores.
-    variableListenerSupport.setConsistencyTracker(new ConsistencyTracker<>());
+    // However, if the tracker is already frozen (set by ConstraintVerifier), preserve it.
+    var currentTracker = variableListenerSupport.getConsistencyTracker();
+    if (!currentTracker.isFrozen()) {
+      variableListenerSupport.setConsistencyTracker(new ConsistencyTracker<>());
+    }
     session =
         scoreDirectorFactory.newSession(
             workingSolution,
@@ -98,7 +102,9 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
             constraintMatchPolicy,
             derived);
     // Track inserted entities to detect stale references from old solutions.
-    // Only entities with genuine planning variables are tracked initially; value entities
+    // When the consistency tracker is frozen (ConstraintVerifier mode), track all entities
+    // to support constraint verification on solutions with manually set shadow variables.
+    // Otherwise, only track entities with genuine planning variables initially; value entities
     // in ranges are added later when assigned, preventing premature insertion before
     // shadow variable initialization.
     //
@@ -106,16 +112,20 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
     // because shadow variable initialization during that call triggers afterVariableChanged.
     var entityTracker = Collections.newSetFromMap(new IdentityHashMap<>());
     insertedEntities = entityTracker;
+    var trackerIsFrozen = variableListenerSupport.getConsistencyTracker().isFrozen();
     super.setWorkingSolutionWithoutUpdatingShadows(
         workingSolution,
         entity -> {
           session.insert(entity);
-          // Only track entities with genuine planning variables. Value entities without them
-          // (only in value ranges) will be tracked later when assigned.
+          // Track all entities when frozen (ConstraintVerifier mode),
+          // otherwise only track entities with genuine planning variables.
+          // Value entities without genuine variables (only in value ranges) will be tracked
+          // later when assigned, except in frozen mode where we need them immediately.
           var entityDescriptor = getSolutionDescriptor().findEntityDescriptor(entity.getClass());
-          if (entityDescriptor != null
-              && !entityDescriptor.getGenuineVariableDescriptorList().isEmpty()) {
-            entityTracker.add(entity);
+          if (entityDescriptor != null) {
+            if (trackerIsFrozen || !entityDescriptor.getGenuineVariableDescriptorList().isEmpty()) {
+              entityTracker.add(entity);
+            }
           }
         });
   }
