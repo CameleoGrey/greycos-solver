@@ -2,7 +2,7 @@ package ai.greycos.solver.jackson.preview.api.domain.solution.diff;
 
 import java.io.IOException;
 
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningSolutionDiff;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;

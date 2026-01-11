@@ -3,7 +3,7 @@ package ai.greycos.solver.jackson.preview.api.domain.solution.diff;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningEntityDiff;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningEntityDiff;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

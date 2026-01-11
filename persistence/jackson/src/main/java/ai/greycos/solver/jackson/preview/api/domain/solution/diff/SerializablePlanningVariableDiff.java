@@ -1,6 +1,6 @@
 package ai.greycos.solver.jackson.preview.api.domain.solution.diff;
 
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningVariableDiff;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningVariableDiff;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

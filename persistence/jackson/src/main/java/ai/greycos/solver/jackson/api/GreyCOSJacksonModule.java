@@ -1,6 +1,9 @@
 package ai.greycos.solver.jackson.api;
 
 import ai.greycos.solver.core.api.domain.solution.ConstraintWeightOverrides;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningEntityDiff;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
+import ai.greycos.solver.core.api.domain.solution.diff.PlanningVariableDiff;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
@@ -24,9 +27,6 @@ import ai.greycos.solver.core.api.solver.RecommendedAssignment;
 import ai.greycos.solver.core.api.solver.RecommendedFit;
 import ai.greycos.solver.core.impl.domain.solution.DefaultConstraintWeightOverrides;
 import ai.greycos.solver.core.impl.solver.DefaultRecommendedAssignment;
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningEntityDiff;
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningSolutionDiff;
-import ai.greycos.solver.core.preview.api.domain.solution.diff.PlanningVariableDiff;
 import ai.greycos.solver.jackson.api.domain.solution.ConstraintWeightOverridesSerializer;
 import ai.greycos.solver.jackson.api.score.PolymorphicScoreJacksonDeserializer;
 import ai.greycos.solver.jackson.api.score.PolymorphicScoreJacksonSerializer;
