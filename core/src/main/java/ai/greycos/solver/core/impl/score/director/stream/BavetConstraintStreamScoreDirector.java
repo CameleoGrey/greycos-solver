@@ -38,18 +38,13 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
   private BavetConstraintSession<Score_> session;
 
   /**
-   * Tracks entities that were inserted into the current session during
-   * setWorkingSolutionWithoutUpdatingShadows or later when their shadow variables trigger updates.
-   * Uses identity comparison to detect when an entity reference from an old solution is passed to
-   * update methods. When an entity is not in this set and is not a valid entity from the current
-   * solution, it means it's from an old solution (e.g., cached in a move from before solution
-   * adoption) and should NOT be updated in the session to prevent score corruption.
+   * Tracks entities inserted into the current session. Uses identity comparison to detect stale
+   * entity references from old solutions (e.g., cached in moves before solution adoption) to
+   * prevent score corruption.
    *
-   * <p>IMPORTANT: During setWorkingSolutionWithoutUpdatingShadows, we only track entities that have
-   * genuine planning variables. Value entities that exist only in value ranges (without genuine
-   * variables) are NOT tracked initially to prevent them from being inserted into Bavet before
-   * their shadow variables are initialized. They are added to this set later when they are assigned
-   * to planning variables and their shadow variables trigger updates.
+   * <p>During setWorkingSolutionWithoutUpdatingShadows, only entities with genuine planning
+   * variables are tracked. Value entities in value ranges are added later when assigned and their
+   * shadow variables trigger updates, preventing premature insertion before initialization.
    */
   private Set<Object> insertedEntities = Collections.emptySet();
 
@@ -93,12 +88,8 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
 
   @Override
   public void setWorkingSolutionWithoutUpdatingShadows(Solution_ workingSolution) {
-    // Reset the consistency tracker to clear any references to old entities.
-    // When a new working solution is set (e.g., during island model global best adoption),
-    // the new solution contains cloned entities with the same planning IDs but different
-    // Java object references. The old consistency tracker may still contain references to
-    // old entities, causing the Bavet session to track both old and new entities,
-    // resulting in score corruption (doubled scores).
+    // Reset consistency tracker to clear old entity references (e.g., from island model adoption)
+    // and prevent tracking both old and new entities, which would corrupt scores.
     variableListenerSupport.setConsistencyTracker(new ConsistencyTracker<>());
     session =
         scoreDirectorFactory.newSession(
@@ -106,30 +97,21 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
             variableListenerSupport.getConsistencyTracker(),
             constraintMatchPolicy,
             derived);
-    // Track which entities are inserted into the session to detect stale entity references.
-    // When solution is replaced (e.g., island model adoption), cached moves may hold references
-    // to old entities. We track inserted entities using identity to detect and skip updates
-    // for entities not in the current session, preventing score corruption.
+    // Track inserted entities to detect stale references from old solutions.
+    // Only entities with genuine planning variables are tracked initially; value entities
+    // in ranges are added later when assigned, preventing premature insertion before
+    // shadow variable initialization.
     //
-    // IMPORTANT: We only track entities that have genuine planning variables. Value entities
-    // that exist only in value ranges (without genuine variables) should NOT be tracked here.
-    // They will be added to the tracker when they are assigned to planning variables and their
-    // shadow variables trigger updates. This prevents value entities from being inserted into
-    // Bavet before their shadow variables are initialized.
-    //
-    // NOTE: Create and assign the entityTracker BEFORE calling
-    // super.setWorkingSolutionWithoutUpdatingShadows
-    // because shadow variable initialization during that call may trigger afterVariableChanged,
-    // which will try to add entities to this set.
+    // NOTE: entityTracker must be assigned BEFORE super.setWorkingSolutionWithoutUpdatingShadows
+    // because shadow variable initialization during that call triggers afterVariableChanged.
     var entityTracker = Collections.newSetFromMap(new IdentityHashMap<>());
     insertedEntities = entityTracker;
     super.setWorkingSolutionWithoutUpdatingShadows(
         workingSolution,
         entity -> {
           session.insert(entity);
-          // Only track entities with genuine planning variables.
-          // Value entities without genuine variables (only in value ranges) will be tracked
-          // later when they're assigned and their shadow variables trigger updates.
+          // Only track entities with genuine planning variables. Value entities without them
+          // (only in value ranges) will be tracked later when assigned.
           var entityDescriptor = getSolutionDescriptor().findEntityDescriptor(entity.getClass());
           if (entityDescriptor != null
               && !entityDescriptor.getGenuineVariableDescriptorList().isEmpty()) {
@@ -217,24 +199,20 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
   @Override
   public void afterVariableChanged(
       VariableDescriptor<Solution_> variableDescriptor, Object entity) {
-    // Only update if entity is from current solution, not from cached moves with old references.
-    // Old entity references would be inserted as new tuples, corrupting the score.
-    //
-    // Value entities that are not yet in insertedEntities (because they were in value ranges
-    // during initialization) will be added now when their shadow variables trigger updates.
+    // Only update entities from current solution, not stale references from cached moves.
+    // Value entities not yet tracked (from value ranges during initialization) are added now
+    // when their shadow variables trigger updates.
     if (insertedEntities.contains(entity)) {
       session.update(entity);
     } else {
-      // Entity not yet tracked - check if it's a valid entity from the current solution
+      // Entity not yet tracked - check if valid from current solution
       var entityDescriptor = getSolutionDescriptor().findEntityDescriptor(entity.getClass());
       if (entityDescriptor != null) {
-        // This is a valid entity from the current solution (not a stale reference).
-        // Add it to the tracker and update it in Bavet.
+        // Valid entity from current solution - add to tracker and update in Bavet
         insertedEntities.add(entity);
         session.update(entity);
       }
-      // If entityDescriptor is null, this is not an entity (e.g., a problem fact),
-      // or it's a stale reference from an old solution, so we skip the update.
+      // If entityDescriptor is null, not an entity or stale reference - skip update
     }
     super.afterVariableChanged(variableDescriptor, entity);
   }
