@@ -19,9 +19,9 @@ import org.objectweb.asm.Type;
 /**
  * Transforms ConstraintProvider bytecode to enable automatic lambda node sharing.
  *
- * <p>Why: Identical lambdas should be deduplicated to reduce memory and improve performance.
- * How: Adds static fields for shared lambdas and replaces lambda creation with field references.
- * What: Orchestrates bytecode transformation via ASM visitors.
+ * <p>Why: Identical lambdas should be deduplicated to reduce memory and improve performance. How:
+ * Adds static fields for shared lambdas and replaces lambda creation with field references. What:
+ * Orchestrates bytecode transformation via ASM visitors.
  */
 public final class NodeSharingTransformer {
 

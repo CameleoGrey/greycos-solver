@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.partitionedsearch;
 import java.util.List;
 import java.util.function.BiConsumer;
 
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.solver.ProblemFactChange;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
@@ -10,8 +11,6 @@ import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.solver.AbstractSolver;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 
 import org.jspecify.annotations.NonNull;
@@ -20,8 +19,8 @@ import org.jspecify.annotations.NullMarked;
 /**
  * Lightweight solver for partition threads with restricted API.
  *
- * <p>Executes configured phases on a partition; notifies parent of best solution changes.
- * No support for problem changes or early termination.
+ * <p>Executes configured phases on a partition; notifies parent of best solution changes. No
+ * support for problem changes or early termination.
  *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */

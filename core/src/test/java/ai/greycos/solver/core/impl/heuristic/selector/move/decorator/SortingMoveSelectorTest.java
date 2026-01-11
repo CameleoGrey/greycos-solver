@@ -5,6 +5,7 @@ import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfMove
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
 import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockScoreDirector;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -95,16 +96,18 @@ class SortingMoveSelectorTest {
             buildHeuristicConfigPolicy(), SelectionCacheType.PHASE, false);
 
     var scoreDirector = mockScoreDirector(TestdataSolution.buildSolutionDescriptor());
-    var solverScope = mock(SolverScope.class);
-    when(solverScope.getScoreDirector()).thenReturn(scoreDirector);
-    moveSelector.solvingStarted(solverScope);
+    when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
+    when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
+    var solverScope = SelectorTestUtils.solvingStarted(moveSelector, scoreDirector);
 
     var phaseScope = mock(AbstractPhaseScope.class);
     when(phaseScope.getSolverScope()).thenReturn(solverScope);
+    when(phaseScope.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.phaseStarted(phaseScope);
 
     var stepScopeA = mock(AbstractStepScope.class);
     when(stepScopeA.getPhaseScope()).thenReturn(phaseScope);
+    when(stepScopeA.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeA);
     assertAllCodesOfMoveSelector(moveSelector, "apr", "feb", "jan", "jun", "mar", "may");
   }
@@ -123,24 +126,27 @@ class SortingMoveSelectorTest {
         new SortingMoveSelector(
             childMoveSelector, cacheType, new CodeAssertableSorter<DummyMove>());
 
-    SolverScope solverScope = mock(SolverScope.class);
     InnerScoreDirector<?, ?> scoreDirector = mock(InnerScoreDirector.class);
-    doReturn(scoreDirector).when(solverScope).getScoreDirector();
     doReturn(new TestdataSolution()).when(scoreDirector).getWorkingSolution();
-    moveSelector.solvingStarted(solverScope);
+    when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
+    when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
+    SolverScope solverScope = SelectorTestUtils.solvingStarted(moveSelector, scoreDirector);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
     when(phaseScopeA.getSolverScope()).thenReturn(solverScope);
+    when(phaseScopeA.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.phaseStarted(phaseScopeA);
 
     AbstractStepScope stepScopeA1 = mock(AbstractStepScope.class);
     when(stepScopeA1.getPhaseScope()).thenReturn(phaseScopeA);
+    when(stepScopeA1.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeA1);
     assertAllCodesOfMoveSelector(moveSelector, "apr", "feb", "jan", "jun", "mar", "may");
     moveSelector.stepEnded(stepScopeA1);
 
     AbstractStepScope stepScopeA2 = mock(AbstractStepScope.class);
     when(stepScopeA2.getPhaseScope()).thenReturn(phaseScopeA);
+    when(stepScopeA2.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeA2);
     assertAllCodesOfMoveSelector(moveSelector, "apr", "feb", "jan", "jun", "mar", "may");
     moveSelector.stepEnded(stepScopeA2);
@@ -149,22 +155,26 @@ class SortingMoveSelectorTest {
 
     AbstractPhaseScope phaseScopeB = mock(AbstractPhaseScope.class);
     when(phaseScopeB.getSolverScope()).thenReturn(solverScope);
+    when(phaseScopeB.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.phaseStarted(phaseScopeB);
 
     AbstractStepScope stepScopeB1 = mock(AbstractStepScope.class);
     when(stepScopeB1.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB1.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeB1);
     assertAllCodesOfMoveSelector(moveSelector, "apr", "feb", "jan", "jun", "mar", "may");
     moveSelector.stepEnded(stepScopeB1);
 
     AbstractStepScope stepScopeB2 = mock(AbstractStepScope.class);
     when(stepScopeB2.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB2.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeB2);
     assertAllCodesOfMoveSelector(moveSelector, "apr", "feb", "jan", "jun", "mar", "may");
     moveSelector.stepEnded(stepScopeB2);
 
     AbstractStepScope stepScopeB3 = mock(AbstractStepScope.class);
     when(stepScopeB3.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB3.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeB3);
     assertAllCodesOfMoveSelector(moveSelector, "apr", "feb", "jan", "jun", "mar", "may");
     moveSelector.stepEnded(stepScopeB3);

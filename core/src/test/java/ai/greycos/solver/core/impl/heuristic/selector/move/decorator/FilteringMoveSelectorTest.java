@@ -4,6 +4,7 @@ import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfMove
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -18,6 +19,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.Selection
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.BasicPlumbingTermination;
 import ai.greycos.solver.core.testdomain.TestdataSolution;
@@ -79,15 +81,19 @@ class FilteringMoveSelectorTest {
       moveSelector = new CachingMoveSelector(moveSelector, cacheType, false);
     }
 
-    SolverScope solverScope = mock(SolverScope.class);
-    moveSelector.solvingStarted(solverScope);
+    InnerScoreDirector scoreDirector = mock(InnerScoreDirector.class);
+    when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
+    when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
+    SolverScope solverScope = SelectorTestUtils.solvingStarted(moveSelector, scoreDirector);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
     when(phaseScopeA.getSolverScope()).thenReturn(solverScope);
+    when(phaseScopeA.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.phaseStarted(phaseScopeA);
 
     AbstractStepScope stepScopeA1 = mock(AbstractStepScope.class);
     when(stepScopeA1.getPhaseScope()).thenReturn(phaseScopeA);
+    when(stepScopeA1.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeA1);
     assertAllCodesOfMoveSelector(
         moveSelector, (cacheType.isNotCached() ? 4L : 3L), "a1", "a2", "a4");
@@ -95,6 +101,7 @@ class FilteringMoveSelectorTest {
 
     AbstractStepScope stepScopeA2 = mock(AbstractStepScope.class);
     when(stepScopeA2.getPhaseScope()).thenReturn(phaseScopeA);
+    when(stepScopeA2.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeA2);
     assertAllCodesOfMoveSelector(
         moveSelector, (cacheType.isNotCached() ? 4L : 3L), "a1", "a2", "a4");
@@ -104,10 +111,12 @@ class FilteringMoveSelectorTest {
 
     AbstractPhaseScope phaseScopeB = mock(AbstractPhaseScope.class);
     when(phaseScopeB.getSolverScope()).thenReturn(solverScope);
+    when(phaseScopeB.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.phaseStarted(phaseScopeB);
 
     AbstractStepScope stepScopeB1 = mock(AbstractStepScope.class);
     when(stepScopeB1.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB1.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeB1);
     assertAllCodesOfMoveSelector(
         moveSelector, (cacheType.isNotCached() ? 4L : 3L), "a1", "a2", "a4");
@@ -115,6 +124,7 @@ class FilteringMoveSelectorTest {
 
     AbstractStepScope stepScopeB2 = mock(AbstractStepScope.class);
     when(stepScopeB2.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB2.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeB2);
     assertAllCodesOfMoveSelector(
         moveSelector, (cacheType.isNotCached() ? 4L : 3L), "a1", "a2", "a4");
@@ -122,6 +132,7 @@ class FilteringMoveSelectorTest {
 
     AbstractStepScope stepScopeB3 = mock(AbstractStepScope.class);
     when(stepScopeB3.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB3.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeB3);
     assertAllCodesOfMoveSelector(
         moveSelector, (cacheType.isNotCached() ? 4L : 3L), "a1", "a2", "a4");

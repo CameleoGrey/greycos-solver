@@ -6,9 +6,9 @@ import java.util.Map;
 /**
  * Assigns unique field names to groups of identical lambdas for bytecode transformation.
  *
- * <p>Why: Identical lambdas need shared fields with consistent naming.
- * How: Maps each lambda group to a unique field name (e.g., $predicate1).
- * What: Provides field metadata for ASM bytecode transformation.
+ * <p>Why: Identical lambdas need shared fields with consistent naming. How: Maps each lambda group
+ * to a unique field name (e.g., $predicate1). What: Provides field metadata for ASM bytecode
+ * transformation.
  */
 public final class LambdaDeduplicator {
 

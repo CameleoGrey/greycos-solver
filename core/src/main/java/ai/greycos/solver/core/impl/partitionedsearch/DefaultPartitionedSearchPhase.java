@@ -9,11 +9,12 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.IntFunction;
 
+import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
-import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.partitionedsearch.event.PartitionedSearchPhaseLifecycleListener;
 import ai.greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
@@ -36,8 +37,6 @@ import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 import ai.greycos.solver.core.impl.solver.thread.ThreadUtils;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,8 +46,8 @@ import org.slf4j.LoggerFactory;
  * <p>Splits problem using SolutionPartitioner, creates thread pool of PartitionSolver instances,
  * consumes improvements via PartitionQueue, and applies best solutions to main solution.
  *
- * <p>How: Partitions run in parallel threads; improvements queue to parent; parent applies
- * latest changes from each partition; terminates all threads before phase ends.
+ * <p>How: Partitions run in parallel threads; improvements queue to parent; parent applies latest
+ * changes from each partition; terminates all threads before phase ends.
  *
  * <p>Why: Enables parallel solving for large problems; improves CPU utilization; reduces solving
  * time for partitionable domains.

@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.decorator;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfMoveSelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertCodesOfNeverEndingMoveSelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -14,6 +15,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 import ai.greycos.solver.core.testutil.TestRandom;
@@ -45,21 +47,26 @@ class CachingMoveSelectorTest {
     CachingMoveSelector moveSelector = new CachingMoveSelector(childMoveSelector, cacheType, false);
     verify(childMoveSelector, times(1)).isNeverEnding();
 
-    SolverScope solverScope = mock(SolverScope.class);
-    moveSelector.solvingStarted(solverScope);
+    InnerScoreDirector scoreDirector = mock(InnerScoreDirector.class);
+    when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
+    when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
+    SolverScope solverScope = SelectorTestUtils.solvingStarted(moveSelector, scoreDirector);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
     when(phaseScopeA.getSolverScope()).thenReturn(solverScope);
+    when(phaseScopeA.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.phaseStarted(phaseScopeA);
 
     AbstractStepScope stepScopeA1 = mock(AbstractStepScope.class);
     when(stepScopeA1.getPhaseScope()).thenReturn(phaseScopeA);
+    when(stepScopeA1.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeA1);
     assertAllCodesOfMoveSelector(moveSelector, "a1", "a2", "a3");
     moveSelector.stepEnded(stepScopeA1);
 
     AbstractStepScope stepScopeA2 = mock(AbstractStepScope.class);
     when(stepScopeA2.getPhaseScope()).thenReturn(phaseScopeA);
+    when(stepScopeA2.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeA2);
     assertAllCodesOfMoveSelector(moveSelector, "a1", "a2", "a3");
     moveSelector.stepEnded(stepScopeA2);
@@ -68,22 +75,26 @@ class CachingMoveSelectorTest {
 
     AbstractPhaseScope phaseScopeB = mock(AbstractPhaseScope.class);
     when(phaseScopeB.getSolverScope()).thenReturn(solverScope);
+    when(phaseScopeB.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.phaseStarted(phaseScopeB);
 
     AbstractStepScope stepScopeB1 = mock(AbstractStepScope.class);
     when(stepScopeB1.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB1.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeB1);
     assertAllCodesOfMoveSelector(moveSelector, "a1", "a2", "a3");
     moveSelector.stepEnded(stepScopeB1);
 
     AbstractStepScope stepScopeB2 = mock(AbstractStepScope.class);
     when(stepScopeB2.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB2.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeB2);
     assertAllCodesOfMoveSelector(moveSelector, "a1", "a2", "a3");
     moveSelector.stepEnded(stepScopeB2);
 
     AbstractStepScope stepScopeB3 = mock(AbstractStepScope.class);
     when(stepScopeB3.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB3.getScoreDirector()).thenReturn(scoreDirector);
     moveSelector.stepStarted(stepScopeB3);
     assertAllCodesOfMoveSelector(moveSelector, "a1", "a2", "a3");
     moveSelector.stepEnded(stepScopeB3);
@@ -122,9 +133,11 @@ class CachingMoveSelectorTest {
 
     TestRandom workingRandom = new TestRandom(1, 0, 2);
 
-    SolverScope solverScope = mock(SolverScope.class);
-    when(solverScope.getWorkingRandom()).thenReturn(workingRandom);
-    moveSelector.solvingStarted(solverScope);
+    InnerScoreDirector scoreDirector = mock(InnerScoreDirector.class);
+    when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
+    when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
+    SolverScope solverScope =
+        SelectorTestUtils.solvingStarted(moveSelector, scoreDirector, workingRandom);
 
     AbstractPhaseScope phaseScopeA = PlannerTestUtils.delegatingPhaseScope(solverScope);
     moveSelector.phaseStarted(phaseScopeA);

@@ -15,8 +15,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.ValueRangeRecorderI
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
-import ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
-import ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory;
@@ -172,8 +170,8 @@ public final class DestinationSelectorFactory<Solution_>
                 .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
       } else if (nearbySelectionConfig.getOriginSubListSelectorConfig() != null) {
         originSubListSelector =
-            SubListSelectorFactory
-                .<Solution_>create(nearbySelectionConfig.getOriginSubListSelectorConfig())
+            SubListSelectorFactory.<Solution_>create(
+                    nearbySelectionConfig.getOriginSubListSelectorConfig())
                 .buildSubListSelector(
                     configPolicy, entitySelector, minimumCacheType, selectionOrder);
       } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {
@@ -241,8 +239,8 @@ public final class DestinationSelectorFactory<Solution_>
                 .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
       } else if (nearbySelectionConfig.getOriginSubListSelectorConfig() != null) {
         originSubListSelector =
-            SubListSelectorFactory
-                .<Solution_>create(nearbySelectionConfig.getOriginSubListSelectorConfig())
+            SubListSelectorFactory.<Solution_>create(
+                    nearbySelectionConfig.getOriginSubListSelectorConfig())
                 .buildSubListSelector(
                     configPolicy, entitySelector, minimumCacheType, selectionOrder);
       } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {

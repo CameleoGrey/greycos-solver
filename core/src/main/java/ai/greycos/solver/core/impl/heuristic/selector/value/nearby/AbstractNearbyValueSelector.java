@@ -5,8 +5,8 @@ import java.util.Objects;
 
 import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
-import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMatrix;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
@@ -52,8 +52,7 @@ abstract class AbstractNearbyValueSelector<
     this.randomSelection = randomSelection;
     // Create distance matrix for caching sorted destinations
     @SuppressWarnings("unchecked")
-    var castedDistanceMeter =
-        (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
+    var castedDistanceMeter = (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
     this.distanceMatrix =
         new NearbyDistanceMatrix<>(
             castedDistanceMeter,

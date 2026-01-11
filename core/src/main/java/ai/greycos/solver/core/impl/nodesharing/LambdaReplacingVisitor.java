@@ -15,9 +15,9 @@ import org.objectweb.asm.Type;
 /**
  * ASM visitor that replaces lambda creation with field references in transformed bytecode.
  *
- * <p>Why: Identical lambdas should reference shared static fields instead of creating new instances.
- * How: Replaces invokedynamic instructions with GETSTATIC instructions for shareable lambdas.
- * What: Transforms method bytecode to use shared lambda fields.
+ * <p>Why: Identical lambdas should reference shared static fields instead of creating new
+ * instances. How: Replaces invokedynamic instructions with GETSTATIC instructions for shareable
+ * lambdas. What: Transforms method bytecode to use shared lambda fields.
  */
 public class LambdaReplacingVisitor extends MethodVisitor {
 

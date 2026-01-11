@@ -7,9 +7,9 @@ import java.util.Map;
 /**
  * Analysis result containing lambdas suitable for sharing in a ConstraintProvider class.
  *
- * <p>Why: Transformation needs metadata about which lambdas can be deduplicated.
- * How: Groups lambdas by functional equivalence and filters single-occurrence lambdas.
- * What: Provides access to shareable lambda groups for bytecode transformation.
+ * <p>Why: Transformation needs metadata about which lambdas can be deduplicated. How: Groups
+ * lambdas by functional equivalence and filters single-occurrence lambdas. What: Provides access to
+ * shareable lambda groups for bytecode transformation.
  */
 public final class LambdaAnalysis {
 

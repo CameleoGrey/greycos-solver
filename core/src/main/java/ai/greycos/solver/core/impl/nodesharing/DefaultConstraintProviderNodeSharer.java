@@ -8,9 +8,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Transforms ConstraintProvider classes to enable automatic lambda node sharing.
  *
- * <p>Why: Sharing identical lambdas across constraint streams reduces memory and improves performance.
- * How: Validates class requirements, transforms bytecode using ASM, loads transformed class.
- * What: Public API for creating node-shared ConstraintProvider instances.
+ * <p>Why: Sharing identical lambdas across constraint streams reduces memory and improves
+ * performance. How: Validates class requirements, transforms bytecode using ASM, loads transformed
+ * class. What: Public API for creating node-shared ConstraintProvider instances.
  */
 public final class DefaultConstraintProviderNodeSharer {
 

@@ -4,6 +4,7 @@ import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfEnti
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -15,6 +16,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.CachedList
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testdomain.TestdataEntity;
 
@@ -49,21 +51,26 @@ class CachingEntitySelectorTest {
         new CachingEntitySelector(childEntitySelector, cacheType, false);
     verify(childEntitySelector, times(1)).isNeverEnding();
 
-    SolverScope solverScope = mock(SolverScope.class);
-    entitySelector.solvingStarted(solverScope);
+    InnerScoreDirector scoreDirector = mock(InnerScoreDirector.class);
+    when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
+    when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
+    SolverScope solverScope = SelectorTestUtils.solvingStarted(entitySelector, scoreDirector);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
     when(phaseScopeA.getSolverScope()).thenReturn(solverScope);
+    when(phaseScopeA.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.phaseStarted(phaseScopeA);
 
     AbstractStepScope stepScopeA1 = mock(AbstractStepScope.class);
     when(stepScopeA1.getPhaseScope()).thenReturn(phaseScopeA);
+    when(stepScopeA1.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.stepStarted(stepScopeA1);
     assertAllCodesOfEntitySelector(entitySelector, "e1", "e2", "e3");
     entitySelector.stepEnded(stepScopeA1);
 
     AbstractStepScope stepScopeA2 = mock(AbstractStepScope.class);
     when(stepScopeA2.getPhaseScope()).thenReturn(phaseScopeA);
+    when(stepScopeA2.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.stepStarted(stepScopeA2);
     assertAllCodesOfEntitySelector(entitySelector, "e1", "e2", "e3");
     entitySelector.stepEnded(stepScopeA2);
@@ -72,22 +79,26 @@ class CachingEntitySelectorTest {
 
     AbstractPhaseScope phaseScopeB = mock(AbstractPhaseScope.class);
     when(phaseScopeB.getSolverScope()).thenReturn(solverScope);
+    when(phaseScopeB.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.phaseStarted(phaseScopeB);
 
     AbstractStepScope stepScopeB1 = mock(AbstractStepScope.class);
     when(stepScopeB1.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB1.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.stepStarted(stepScopeB1);
     assertAllCodesOfEntitySelector(entitySelector, "e1", "e2", "e3");
     entitySelector.stepEnded(stepScopeB1);
 
     AbstractStepScope stepScopeB2 = mock(AbstractStepScope.class);
     when(stepScopeB2.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB2.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.stepStarted(stepScopeB2);
     assertAllCodesOfEntitySelector(entitySelector, "e1", "e2", "e3");
     entitySelector.stepEnded(stepScopeB2);
 
     AbstractStepScope stepScopeB3 = mock(AbstractStepScope.class);
     when(stepScopeB3.getPhaseScope()).thenReturn(phaseScopeB);
+    when(stepScopeB3.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.stepStarted(stepScopeB3);
     assertAllCodesOfEntitySelector(entitySelector, "e1", "e2", "e3");
     entitySelector.stepEnded(stepScopeB3);

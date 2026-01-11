@@ -7,9 +7,9 @@ import org.objectweb.asm.Opcodes;
 /**
  * ASM visitor that adds static final fields for shared lambdas to transformed classes.
  *
- * <p>Why: Identical lambdas need shared static fields to enable node sharing.
- * How: Adds private static final fields via ASM after analyzing lambda groups.
- * What: Inserts field declarations into bytecode before methods.
+ * <p>Why: Identical lambdas need shared static fields to enable node sharing. How: Adds private
+ * static final fields via ASM after analyzing lambda groups. What: Inserts field declarations into
+ * bytecode before methods.
  */
 public class FieldAddingVisitor extends ClassVisitor {
 

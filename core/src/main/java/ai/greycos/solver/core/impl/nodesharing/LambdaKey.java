@@ -6,9 +6,9 @@ import java.util.Objects;
 /**
  * Key for identifying functionally equivalent lambdas to enable deduplication.
  *
- * <p>Why: Need to determine which lambdas are identical and can be shared.
- * How: Combines functional interface type, implementation method, and captured arguments.
- * What: Used as map key to group identical lambdas for node sharing.
+ * <p>Why: Need to determine which lambdas are identical and can be shared. How: Combines functional
+ * interface type, implementation method, and captured arguments. What: Used as map key to group
+ * identical lambdas for node sharing.
  */
 public final class LambdaKey {
 

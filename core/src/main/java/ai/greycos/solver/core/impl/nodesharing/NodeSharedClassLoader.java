@@ -1,16 +1,16 @@
 package ai.greycos.solver.core.impl.nodesharing;
 
-import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 
 /**
  * Loads transformed ConstraintProvider classes with node sharing enabled.
  *
- * <p>Why: Must load transformed bytecode without conflicting with original class.
- * How: Uses separate class loader with system class loader as parent.
- * What: Defines classes with same name but different bytecode (shared lambda fields).
+ * <p>Why: Must load transformed bytecode without conflicting with original class. How: Uses
+ * separate class loader with system class loader as parent. What: Defines classes with same name
+ * but different bytecode (shared lambda fields).
  */
 public final class NodeSharedClassLoader extends ClassLoader {
 

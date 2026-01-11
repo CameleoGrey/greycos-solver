@@ -15,9 +15,9 @@ import org.objectweb.asm.Opcodes;
 /**
  * Analyzes ConstraintProvider bytecode to find lambdas suitable for node sharing.
  *
- * <p>Why: Need to identify which lambdas can be deduplicated before transformation.
- * How: Scans bytecode for invokedynamic instructions and groups identical lambdas.
- * What: Produces LambdaAnalysis with metadata for bytecode transformation.
+ * <p>Why: Need to identify which lambdas can be deduplicated before transformation. How: Scans
+ * bytecode for invokedynamic instructions and groups identical lambdas. What: Produces
+ * LambdaAnalysis with metadata for bytecode transformation.
  */
 public final class ConstraintProviderAnalyzer {
 

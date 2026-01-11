@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.decorator;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfMoveSelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -13,6 +14,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 import ai.greycos.solver.core.testutil.TestRandom;
@@ -45,9 +47,11 @@ class ShufflingMoveSelectorTest {
     verify(childMoveSelector, times(1)).isNeverEnding();
 
     TestRandom workingRandom = new TestRandom(2, 0);
-    SolverScope solverScope = mock(SolverScope.class);
-    when(solverScope.getWorkingRandom()).thenReturn(workingRandom);
-    moveSelector.solvingStarted(solverScope);
+    InnerScoreDirector scoreDirector = mock(InnerScoreDirector.class);
+    when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
+    when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
+    SolverScope solverScope =
+        SelectorTestUtils.solvingStarted(moveSelector, scoreDirector, workingRandom);
 
     AbstractPhaseScope phaseScopeA = PlannerTestUtils.delegatingPhaseScope(solverScope);
     moveSelector.phaseStarted(phaseScopeA);

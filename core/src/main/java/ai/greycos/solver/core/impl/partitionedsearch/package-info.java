@@ -16,8 +16,6 @@
  */
 package ai.greycos.solver.core.impl.partitionedsearch;
 
-import ai.greycos.solver.core.impl.partitionedsearch.PartitionedSearchPhase;
-import ai.greycos.solver.core.impl.partitionedsearch.PartitionSolver;
 import ai.greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
 import ai.greycos.solver.core.impl.partitionedsearch.queue.PartitionQueue;
 import ai.greycos.solver.core.impl.partitionedsearch.scope.PartitionChangeMove;

@@ -13,6 +13,7 @@ import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorCon
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.nearby.NearEntityNearbyEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.nearby.NearEntityNearbyValueSelector;
@@ -178,13 +179,8 @@ class NearbySelectionIntegrationTest {
             .withLinearDistributionSizeMaximum(10);
 
     var originEntitySelector =
-        mock(ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector.class);
-    when(originEntitySelector.getEntityDescriptor()).thenReturn(entityDescriptor);
-    when(originEntitySelector.iterator())
-        .thenReturn(
-            java.util.List.of(new TestEntity("A"), new TestEntity("B"), new TestEntity("C"))
-                .iterator());
-    when(originEntitySelector.getSize()).thenReturn(3L);
+        SelectorTestUtils.mockReplayingEntitySelector(
+            entityDescriptor, new TestEntity("A"), new TestEntity("B"), new TestEntity("C"));
 
     var childValueSelector = mock(IterableValueSelector.class);
     when(childValueSelector.iterator(any()))
@@ -192,6 +188,7 @@ class NearbySelectionIntegrationTest {
     when(childValueSelector.getSize(any())).thenReturn(3L);
     when(childValueSelector.getVariableDescriptor()).thenReturn(variableDescriptor);
     when(variableDescriptor.getVariableName()).thenReturn("testVariable");
+    when(variableDescriptor.getVariablePropertyType()).thenReturn((Class) String.class);
 
     var nearbyValueSelectorRandom =
         new NearEntityNearbyValueSelector<>(
@@ -250,13 +247,8 @@ class NearbySelectionIntegrationTest {
             .withLinearDistributionSizeMaximum(10);
 
     var originEntitySelector =
-        mock(ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector.class);
-    when(originEntitySelector.getEntityDescriptor()).thenReturn(entityDescriptor);
-    when(originEntitySelector.iterator())
-        .thenReturn(
-            java.util.List.of(new TestEntity("A"), new TestEntity("B"), new TestEntity("C"))
-                .iterator());
-    when(originEntitySelector.getSize()).thenReturn(3L);
+        SelectorTestUtils.mockReplayingEntitySelector(
+            entityDescriptor, new TestEntity("A"), new TestEntity("B"), new TestEntity("C"));
 
     var childEntitySelector =
         mock(ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector.class);

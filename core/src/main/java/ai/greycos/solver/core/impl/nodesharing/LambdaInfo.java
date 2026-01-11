@@ -6,9 +6,9 @@ import java.util.Objects;
 /**
  * Metadata about a lambda expression found in ConstraintProvider bytecode.
  *
- * <p>Why: Need to capture lambda properties to identify which can be deduplicated.
- * How: Extracts functional interface, implementation method, and captured arguments.
- * What: Provides data for grouping identical lambdas during analysis.
+ * <p>Why: Need to capture lambda properties to identify which can be deduplicated. How: Extracts
+ * functional interface, implementation method, and captured arguments. What: Provides data for
+ * grouping identical lambdas during analysis.
  */
 public final class LambdaInfo {
 

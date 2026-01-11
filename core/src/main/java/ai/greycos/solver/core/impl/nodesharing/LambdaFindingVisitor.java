@@ -13,9 +13,9 @@ import org.objectweb.asm.Type;
 /**
  * ASM visitor that extracts lambda metadata from ConstraintProvider bytecode.
  *
- * <p>Why: Need to identify lambdas and their properties to determine which can be shared.
- * How: Scans for invokedynamic instructions with lambda metafactory bootstrap method.
- * What: Captures lambda metadata (functional interface, implementation method, captured args).
+ * <p>Why: Need to identify lambdas and their properties to determine which can be shared. How:
+ * Scans for invokedynamic instructions with lambda metafactory bootstrap method. What: Captures
+ * lambda metadata (functional interface, implementation method, captured args).
  */
 public class LambdaFindingVisitor extends MethodVisitor {
 

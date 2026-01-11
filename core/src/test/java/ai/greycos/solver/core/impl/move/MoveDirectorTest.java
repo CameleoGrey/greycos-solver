@@ -387,6 +387,8 @@ class MoveDirectorTest {
     when(listVariableDescriptor.getListSize(any())).thenReturn(1);
     when(listVariableDescriptor.getValue(any())).thenReturn(e1.getValueList(), e2.getValueList());
     // Ignore the nested phase but simulates v1 moving to e2
+    when(ruinRecreateConstructionHeuristicPhaseBuilder.ensureThreadSafe(any()))
+        .thenReturn(ruinRecreateConstructionHeuristicPhaseBuilder);
     when(ruinRecreateConstructionHeuristicPhaseBuilder.withElementsToRecreate(any()))
         .thenReturn(ruinRecreateConstructionHeuristicPhaseBuilder);
     when(ruinRecreateConstructionHeuristicPhaseBuilder.withElementsToRuin(any()))
@@ -465,6 +467,8 @@ class MoveDirectorTest {
     when(innerScoreDirector.getWorkingSolution()).thenReturn(s1);
     when(innerScoreDirector.isDerived()).thenReturn(false);
     when(innerScoreDirector.getSupplyManager()).thenReturn(supplyManager);
+    when(ruinRecreateConstructionHeuristicPhaseBuilder.ensureThreadSafe(any()))
+        .thenReturn(ruinRecreateConstructionHeuristicPhaseBuilder);
     when(ruinRecreateConstructionHeuristicPhaseBuilder.withElementsToRecreate(any()))
         .thenReturn(ruinRecreateConstructionHeuristicPhaseBuilder);
     when(ruinRecreateConstructionHeuristicPhaseBuilder.build())

@@ -13,8 +13,8 @@ import org.jspecify.annotations.NullMarked;
 /**
  * Simple round-robin partitioner for testing (not production-ready).
  *
- * <p>Distributes entities round-robin across partitions; clones facts to all partitions.
- * For production, implement domain-specific partitioner considering entity relationships.
+ * <p>Distributes entities round-robin across partitions; clones facts to all partitions. For
+ * production, implement domain-specific partitioner considering entity relationships.
  *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */

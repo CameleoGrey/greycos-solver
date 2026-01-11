@@ -6,9 +6,9 @@ import java.lang.reflect.Modifier;
 /**
  * Validates ConstraintProvider classes for automatic node sharing compatibility.
  *
- * <p>Why: Node sharing requires bytecode transformation, which has prerequisites.
- * How: Validates class is not final and has no final methods.
- * What: Ensures transformation can succeed before attempting bytecode modification.
+ * <p>Why: Node sharing requires bytecode transformation, which has prerequisites. How: Validates
+ * class is not final and has no final methods. What: Ensures transformation can succeed before
+ * attempting bytecode modification.
  */
 public final class NodeSharingValidator {
 
@@ -32,6 +32,5 @@ public final class NodeSharingValidator {
     }
   }
 
-  private NodeSharingValidator() {
-  }
+  private NodeSharingValidator() {}
 }

@@ -10,8 +10,8 @@ import org.jspecify.annotations.NullMarked;
 /**
  * Strategy for splitting planning problems into independent partitions.
  *
- * <p>Each entity must appear in exactly one partition. Facts can be shared or cloned.
- * Partitions must be independently solvable.
+ * <p>Each entity must appear in exactly one partition. Facts can be shared or cloned. Partitions
+ * must be independently solvable.
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
