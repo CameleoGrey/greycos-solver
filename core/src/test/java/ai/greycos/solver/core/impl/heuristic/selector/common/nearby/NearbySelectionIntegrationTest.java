@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.common.nearby;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.util.Iterator;
 import java.util.Random;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
@@ -297,8 +298,12 @@ class NearbySelectionIntegrationTest {
     var distanceMeter = new TestDistanceMeter();
     var destinations =
         java.util.List.of(new TestEntity("A"), new TestEntity("B"), new TestEntity("C"));
-    var matrix =
-        new NearbyDistanceMatrix<>(distanceMeter, 3, origin -> destinations.iterator(), o -> 3);
+    NearbyDistanceMatrix<TestEntity, Object> matrix =
+        new NearbyDistanceMatrix<>(
+            distanceMeter,
+            3,
+            origin -> (Iterator<Object>) (Iterator<?>) destinations.iterator(),
+            o -> 3);
 
     // Test distance calculations
     var originA = new TestEntity("A");
@@ -384,15 +389,24 @@ class NearbySelectionIntegrationTest {
   }
 
   // Test distance meter for testing
-  static class TestDistanceMeter implements NearbyDistanceMeter<TestEntity, TestEntity> {
+  static class TestDistanceMeter implements NearbyDistanceMeter<TestEntity, Object> {
 
     @Override
-    public double getNearbyDistance(TestEntity origin, TestEntity destination) {
+    public double getNearbyDistance(TestEntity origin, Object destination) {
       if (origin == null || destination == null) {
         return Double.MAX_VALUE;
       }
+      // Get the name string from destination (could be TestEntity or String)
+      String destinationName;
+      if (destination instanceof TestEntity) {
+        destinationName = ((TestEntity) destination).getName();
+      } else if (destination instanceof String) {
+        destinationName = (String) destination;
+      } else {
+        return Double.MAX_VALUE;
+      }
       // Simple distance based on name difference
-      int diff = Math.abs(origin.getName().charAt(0) - destination.getName().charAt(0));
+      int diff = Math.abs(origin.getName().charAt(0) - destinationName.charAt(0));
       return (double) diff;
     }
   }
