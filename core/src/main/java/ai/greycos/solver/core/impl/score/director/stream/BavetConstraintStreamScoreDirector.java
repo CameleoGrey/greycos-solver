@@ -39,10 +39,17 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
 
   /**
    * Tracks entities that were inserted into the current session during
-   * setWorkingSolutionWithoutUpdatingShadows. Uses identity comparison to detect when an entity
-   * reference from an old solution is passed to update methods. When an entity is not in this set,
-   * it means it's from an old solution (e.g., cached in a move from before solution adoption) and
-   * should NOT be updated in the session to prevent score corruption.
+   * setWorkingSolutionWithoutUpdatingShadows or later when their shadow variables trigger updates.
+   * Uses identity comparison to detect when an entity reference from an old solution is passed to
+   * update methods. When an entity is not in this set and is not a valid entity from the current
+   * solution, it means it's from an old solution (e.g., cached in a move from before solution
+   * adoption) and should NOT be updated in the session to prevent score corruption.
+   *
+   * <p>IMPORTANT: During setWorkingSolutionWithoutUpdatingShadows, we only track entities that have
+   * genuine planning variables. Value entities that exist only in value ranges (without genuine
+   * variables) are NOT tracked initially to prevent them from being inserted into Bavet before
+   * their shadow variables are initialized. They are added to this set later when they are assigned
+   * to planning variables and their shadow variables trigger updates.
    */
   private Set<Object> insertedEntities = Collections.emptySet();
 
@@ -103,14 +110,32 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
     // When solution is replaced (e.g., island model adoption), cached moves may hold references
     // to old entities. We track inserted entities using identity to detect and skip updates
     // for entities not in the current session, preventing score corruption.
+    //
+    // IMPORTANT: We only track entities that have genuine planning variables. Value entities
+    // that exist only in value ranges (without genuine variables) should NOT be tracked here.
+    // They will be added to the tracker when they are assigned to planning variables and their
+    // shadow variables trigger updates. This prevents value entities from being inserted into
+    // Bavet before their shadow variables are initialized.
+    //
+    // NOTE: Create and assign the entityTracker BEFORE calling
+    // super.setWorkingSolutionWithoutUpdatingShadows
+    // because shadow variable initialization during that call may trigger afterVariableChanged,
+    // which will try to add entities to this set.
     var entityTracker = Collections.newSetFromMap(new IdentityHashMap<>());
+    insertedEntities = entityTracker;
     super.setWorkingSolutionWithoutUpdatingShadows(
         workingSolution,
         entity -> {
           session.insert(entity);
-          entityTracker.add(entity);
+          // Only track entities with genuine planning variables.
+          // Value entities without genuine variables (only in value ranges) will be tracked
+          // later when they're assigned and their shadow variables trigger updates.
+          var entityDescriptor = getSolutionDescriptor().findEntityDescriptor(entity.getClass());
+          if (entityDescriptor != null
+              && !entityDescriptor.getGenuineVariableDescriptorList().isEmpty()) {
+            entityTracker.add(entity);
+          }
         });
-    insertedEntities = entityTracker;
   }
 
   @Override
@@ -194,8 +219,22 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
       VariableDescriptor<Solution_> variableDescriptor, Object entity) {
     // Only update if entity is from current solution, not from cached moves with old references.
     // Old entity references would be inserted as new tuples, corrupting the score.
+    //
+    // Value entities that are not yet in insertedEntities (because they were in value ranges
+    // during initialization) will be added now when their shadow variables trigger updates.
     if (insertedEntities.contains(entity)) {
       session.update(entity);
+    } else {
+      // Entity not yet tracked - check if it's a valid entity from the current solution
+      var entityDescriptor = getSolutionDescriptor().findEntityDescriptor(entity.getClass());
+      if (entityDescriptor != null) {
+        // This is a valid entity from the current solution (not a stale reference).
+        // Add it to the tracker and update it in Bavet.
+        insertedEntities.add(entity);
+        session.update(entity);
+      }
+      // If entityDescriptor is null, this is not an entity (e.g., a problem fact),
+      // or it's a stale reference from an old solution, so we skip the update.
     }
     super.afterVariableChanged(variableDescriptor, entity);
   }
@@ -208,8 +247,22 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
       int toIndex) {
     // Only update if entity is from current solution, not from cached moves with old references.
     // Old entity references would be inserted as new tuples, corrupting the score.
+    //
+    // Value entities that are not yet in insertedEntities (because they were in value ranges
+    // during initialization) will be added now when their shadow variables trigger updates.
     if (insertedEntities.contains(entity)) {
       session.update(entity);
+    } else {
+      // Entity not yet tracked - check if it's a valid entity from the current solution
+      var entityDescriptor = getSolutionDescriptor().findEntityDescriptor(entity.getClass());
+      if (entityDescriptor != null) {
+        // This is a valid entity from the current solution (not a stale reference).
+        // Add it to the tracker and update it in Bavet.
+        insertedEntities.add(entity);
+        session.update(entity);
+      }
+      // If entityDescriptor is null, this is not an entity (e.g., a problem fact),
+      // or it's a stale reference from an old solution, so we skip the update.
     }
     super.afterListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
   }
