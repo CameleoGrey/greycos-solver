@@ -16,7 +16,7 @@
 
     This module is just the multiproject parent. The planning engine itself is in greycos-solver-core.
   </description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
   <inceptionYear>2006</inceptionYear>
   <licenses>
     <license>
@@ -50,9 +50,9 @@
   </issueManagement>
   <developers>
     <developer>
-      <name>GreyCOS Community</name>
-      <organization>GreyCOS</organization>
-      <organizationUrl>https://greycos.ai</organizationUrl>
+      <name>CameleoGrey</name>
+      <organization>CameleoGrey</organization>
+      <organizationUrl>https://github.com/CameleoGrey</organizationUrl>
     </developer>
   </developers>
 
@@ -67,7 +67,6 @@
     <module>spring-integration</module>
     <module>quarkus-integration</module>
     <module>tools</module>
-    <module>examples</module>
   </modules>
 
   <build>

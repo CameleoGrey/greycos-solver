@@ -12,7 +12,7 @@ local
 /optaplanner
 /examples
 /data
-/docs/examples
+/llm_utils
 *.ipr
 *.iws
 *.iml
