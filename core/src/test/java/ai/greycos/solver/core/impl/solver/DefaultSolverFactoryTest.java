@@ -1,6 +1,10 @@
 package ai.greycos.solver.core.impl.solver;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+
+import java.util.OptionalInt;
 
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverConfigOverride;
@@ -79,5 +83,58 @@ class DefaultSolverFactoryTest {
                 new DefaultSolverFactory<>(solverConfig).buildSolver(new SolverConfigOverride<>()))
         .hasMessageContaining("The solverConfig with randomFactoryClass ")
         .hasMessageContaining("has a non-null randomType (null) or a non-null randomSeed (1000).");
+  }
+
+  // ************************************************************************
+  // MoveThreadCount resolution tests
+  // ************************************************************************
+
+  @Test
+  void moveThreadCountAutoIsCorrectlyResolvedWhenCpuCountIsPositive() {
+    assertThat(mockMoveThreadCountResolverAuto(1)).isEqualTo(OptionalInt.empty());
+    assertThat(mockMoveThreadCountResolverAuto(2)).isEqualTo(OptionalInt.empty());
+    assertThat(mockMoveThreadCountResolverAuto(4)).isEqualTo(OptionalInt.of(2));
+    assertThat(mockMoveThreadCountResolverAuto(5)).isEqualTo(OptionalInt.of(3));
+    assertThat(mockMoveThreadCountResolverAuto(6)).isEqualTo(OptionalInt.of(4));
+    assertThat(mockMoveThreadCountResolverAuto(100)).isEqualTo(OptionalInt.of(4));
+  }
+
+  @Test
+  void moveThreadCountAutoIsResolvedToEmptyWhenCpuCountIsNegative() {
+    assertThat(mockMoveThreadCountResolverAuto(-1)).isEqualTo(OptionalInt.empty());
+  }
+
+  private OptionalInt mockMoveThreadCountResolverAuto(int mockCpuCount) {
+    DefaultSolverFactory.MoveThreadCountResolver moveThreadCountResolverMock =
+        new DefaultSolverFactory.MoveThreadCountResolver() {
+          @Override
+          protected int getAvailableProcessors() {
+            return mockCpuCount;
+          }
+        };
+
+    return moveThreadCountResolverMock.resolveMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_AUTO);
+  }
+
+  @Test
+  void moveThreadCountIsCorrectlyResolvedWhenValueIsPositive() {
+    assertThat(resolveMoveThreadCount("2")).isEqualTo(OptionalInt.of(2));
+  }
+
+  @Test
+  void moveThreadCountThrowsExceptionWhenValueIsNegative() {
+    assertThatIllegalArgumentException().isThrownBy(() -> resolveMoveThreadCount("-1"));
+  }
+
+  @Test
+  void moveThreadCountIsResolvedToEmptyWhenValueIsNone() {
+    assertThat(resolveMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_NONE))
+        .isEqualTo(OptionalInt.empty());
+  }
+
+  private OptionalInt resolveMoveThreadCount(String moveThreadCountString) {
+    DefaultSolverFactory.MoveThreadCountResolver moveThreadCountResolver =
+        new DefaultSolverFactory.MoveThreadCountResolver();
+    return moveThreadCountResolver.resolveMoveThreadCount(moveThreadCountString);
   }
 }

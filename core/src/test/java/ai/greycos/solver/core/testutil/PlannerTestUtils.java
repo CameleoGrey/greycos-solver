@@ -244,6 +244,13 @@ public final class PlannerTestUtils {
       public AbstractStepScope<Solution_> getLastCompletedStepScope() {
         return null;
       }
+
+      @Override
+      public <Score_ extends ai.greycos.solver.core.api.score.Score<Score_>>
+          ai.greycos.solver.core.impl.score.director.InnerScoreDirector<Solution_, Score_>
+              getScoreDirector() {
+        return getSolverScope().getScoreDirector();
+      }
     };
   }
 
