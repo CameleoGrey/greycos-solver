@@ -51,16 +51,67 @@ abstract class AbstractNearbyValueSelector<
     this.nearbyRandom = nearbyRandom;
     this.randomSelection = randomSelection;
     // Create distance matrix for caching sorted destinations
+    // Excludes anchors from distance-based sorting (they will be appended at the end)
     @SuppressWarnings("unchecked")
     var castedDistanceMeter = (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
+    var variableDescriptor = childValueSelector.getVariableDescriptor();
     this.distanceMatrix =
         new NearbyDistanceMatrix<>(
             castedDistanceMeter,
             100, // Initial capacity estimate
-            origin -> childValueSelector.iterator(origin),
-            origin -> (int) childValueSelector.getSize(origin));
+            origin -> filterAnchors(childValueSelector.iterator(origin), variableDescriptor),
+            origin -> countNonAnchors(childValueSelector.iterator(origin), variableDescriptor));
     phaseLifecycleSupport.addEventListener(childValueSelector);
     phaseLifecycleSupport.addEventListener(replayingSelector);
+  }
+
+  private static Iterator<Object> filterAnchors(
+      Iterator<Object> iterator, GenuineVariableDescriptor<?> variableDescriptor) {
+    return new Iterator<Object>() {
+      private Object next = null;
+      private boolean hasNext = false;
+
+      private void advance() {
+        while (iterator.hasNext()) {
+          Object candidate = iterator.next();
+          if (!variableDescriptor.isValuePotentialAnchor(candidate)) {
+            next = candidate;
+            hasNext = true;
+            return;
+          }
+        }
+        hasNext = false;
+      }
+
+      @Override
+      public boolean hasNext() {
+        if (!hasNext) {
+          advance();
+        }
+        return hasNext;
+      }
+
+      @Override
+      public Object next() {
+        if (!hasNext()) {
+          throw new java.util.NoSuchElementException();
+        }
+        hasNext = false;
+        return next;
+      }
+    };
+  }
+
+  private static int countNonAnchors(
+      Iterator<Object> iterator, GenuineVariableDescriptor<?> variableDescriptor) {
+    int count = 0;
+    while (iterator.hasNext()) {
+      Object value = iterator.next();
+      if (!variableDescriptor.isValuePotentialAnchor(value)) {
+        count++;
+      }
+    }
+    return count;
   }
 
   @Override

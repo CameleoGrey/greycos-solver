@@ -184,7 +184,8 @@ public final class NearEntityNearbyValueSelector<Solution_>
 
   /**
    * Iterator for deterministic nearby value selection in distance order. Caches the origin entity
-   * from the replaying iterator and uses it for all nearby value selections.
+   * from the replaying iterator and uses it for all nearby value selections. Returns sorted
+   * non-anchors first (from distance matrix), then unsorted anchors.
    */
   private class OriginalNearbyValueIterator implements Iterator<Object> {
 
@@ -196,6 +197,11 @@ public final class NearEntityNearbyValueSelector<Solution_>
     private boolean originSelected = false;
     private boolean originIsNotEmpty;
     private Object origin = null;
+
+    // Anchor handling
+    private java.util.List<Object> anchors = null;
+    private int nextAnchorIndex = 0;
+    private int nonAnchorCount = 0;
 
     public OriginalNearbyValueIterator(Iterator<Object> replayingOriginIterator, long childSize) {
       this.replayingOriginIterator = replayingOriginIterator;
@@ -222,6 +228,21 @@ public final class NearEntityNearbyValueSelector<Solution_>
       originIsNotEmpty = replayingOriginIterator.hasNext();
       if (originIsNotEmpty) {
         origin = replayingOriginIterator.next();
+        // Collect anchors to append after sorted non-anchors
+        anchors = new java.util.ArrayList<>();
+        Iterator<Object> valueIterator = childValueSelector.iterator(origin);
+        int count = 0;
+        while (valueIterator.hasNext()) {
+          Object value = valueIterator.next();
+          if (getVariableDescriptor().isValuePotentialAnchor(value)) {
+            anchors.add(value);
+          } else {
+            count++;
+          }
+        }
+        nonAnchorCount = count;
+        // Note: Don't decrement count here when discardNearbyIndexZero is true
+        // because nextNearbyIndex already starts at 1 to skip index 0
       }
       originSelected = true;
     }
@@ -229,15 +250,29 @@ public final class NearEntityNearbyValueSelector<Solution_>
     @Override
     public boolean hasNext() {
       selectOrigin();
-      return originIsNotEmpty && nextNearbyIndex < childSize;
+      if (!originIsNotEmpty) {
+        return false;
+      }
+      // First return sorted non-anchors, then unsorted anchors
+      return nextNearbyIndex < nonAnchorCount || nextAnchorIndex < anchors.size();
     }
 
     @Override
     public Object next() {
       selectOrigin(); // Ensure origin is selected and cached
-      Object result = distanceMatrix.getDestination(origin, nextNearbyIndex);
-      nextNearbyIndex++;
-      return result;
+      // Return non-anchors from distance matrix first
+      if (nextNearbyIndex < nonAnchorCount) {
+        Object result = distanceMatrix.getDestination(origin, nextNearbyIndex);
+        nextNearbyIndex++;
+        return result;
+      }
+      // Then return anchors in original order
+      if (nextAnchorIndex < anchors.size()) {
+        Object result = anchors.get(nextAnchorIndex);
+        nextAnchorIndex++;
+        return result;
+      }
+      throw new java.util.NoSuchElementException();
     }
   }
 

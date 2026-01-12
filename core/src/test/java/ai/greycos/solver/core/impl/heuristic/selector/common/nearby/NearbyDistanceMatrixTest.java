@@ -39,13 +39,12 @@ class NearbyDistanceMatrixTest {
 
   @Test
   void testAddAllDestinations_SortsByDistance() {
-    List<Point> destinations =
-        Arrays.asList(
-            new Point(3, 4), // Distance 5 from origin (0,0)
-            new Point(1, 1), // Distance sqrt(2) ≈ 1.414
-            new Point(2, 0), // Distance 2
-            new Point(0, 3) // Distance 3
-            );
+    Point p1_1 = new Point(1, 1); // Distance sqrt(2) ≈ 1.414
+    Point p2_0 = new Point(2, 0); // Distance 2
+    Point p0_3 = new Point(0, 3); // Distance 3
+    Point p3_4 = new Point(3, 4); // Distance 5
+
+    List<Point> destinations = Arrays.asList(p3_4, p1_1, p2_0, p0_3);
 
     NearbyDistanceMatrix<Point, Point> matrix =
         new NearbyDistanceMatrix<>(
@@ -54,15 +53,12 @@ class NearbyDistanceMatrixTest {
     Point origin = new Point(0, 0);
     matrix.addAllDestinations(origin);
 
-    // Verify destinations can be retrieved
-    Object dest = matrix.getDestination(origin, 0);
-    assertThat(dest).isNotNull();
-    assertThat(dest).isInstanceOf(Point.class);
-
-    // Verify all destinations are accessible
-    for (int i = 0; i < destinations.size(); i++) {
-      assertThat(matrix.getDestination(origin, i)).isNotNull();
-    }
+    // Verify exact sorting order by distance (closest first)
+    // Order should be: p1_1 (1.414), p2_0 (2), p0_3 (3), p3_4 (5)
+    assertThat(matrix.getDestination(origin, 0)).isSameAs(p1_1);
+    assertThat(matrix.getDestination(origin, 1)).isSameAs(p2_0);
+    assertThat(matrix.getDestination(origin, 2)).isSameAs(p0_3);
+    assertThat(matrix.getDestination(origin, 3)).isSameAs(p3_4);
   }
 
   @Test
@@ -82,6 +78,42 @@ class NearbyDistanceMatrixTest {
     // Second access should use cached data
     Object dest2 = matrix.getDestination(origin, 1);
     assertThat(dest2).isNotNull();
+  }
+
+  @Test
+  void testAddAllDestinationsWithSameDistance() {
+    // Test tie handling (equal distances)
+    Point p1_0 = new Point(1, 0); // Distance 1
+    Point p0_1 = new Point(0, 1); // Distance 1
+    Point pn1_0 = new Point(-1, 0); // Distance 1
+    Point p0_2 = new Point(0, 2); // Distance 2
+
+    List<Point> destinations = Arrays.asList(p1_0, p0_1, pn1_0, p0_2);
+
+    NearbyDistanceMatrix<Point, Point> matrix =
+        new NearbyDistanceMatrix<>(
+            new EuclideanDistanceMeter(), 1, destinations, origin -> destinations.size());
+
+    Point origin = new Point(0, 0);
+    matrix.addAllDestinations(origin);
+
+    // All points with distance 1 should come first (order among them may vary)
+    // The point with distance 2 should come last
+    Object dest0 = matrix.getDestination(origin, 0);
+    Object dest1 = matrix.getDestination(origin, 1);
+    Object dest2 = matrix.getDestination(origin, 2);
+    Object dest3 = matrix.getDestination(origin, 3);
+
+    // All first three should be distance 1
+    assertThat(new EuclideanDistanceMeter().getNearbyDistance(origin, (Point) dest0))
+        .isEqualTo(1.0);
+    assertThat(new EuclideanDistanceMeter().getNearbyDistance(origin, (Point) dest1))
+        .isEqualTo(1.0);
+    assertThat(new EuclideanDistanceMeter().getNearbyDistance(origin, (Point) dest2))
+        .isEqualTo(1.0);
+
+    // Last should be distance 2
+    assertThat(matrix.getDestination(origin, 3)).isSameAs(p0_2);
   }
 
   @Test

@@ -190,6 +190,7 @@ class NearbySelectionIntegrationTest {
     when(childValueSelector.getVariableDescriptor()).thenReturn(variableDescriptor);
     when(variableDescriptor.getVariableName()).thenReturn("testVariable");
     when(variableDescriptor.getVariablePropertyType()).thenReturn((Class) String.class);
+    when(variableDescriptor.isValuePotentialAnchor(any())).thenReturn(false);
 
     var nearbyValueSelectorRandom =
         new NearEntityNearbyValueSelector<>(
