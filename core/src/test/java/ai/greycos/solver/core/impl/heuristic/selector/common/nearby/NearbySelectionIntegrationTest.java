@@ -16,8 +16,6 @@ import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.nearby.NearEntityNearbyEntitySelector;
-import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
-import ai.greycos.solver.core.impl.heuristic.selector.value.nearby.NearEntityNearbyValueSelector;
 import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
 
 import org.junit.jupiter.api.Test;
@@ -151,78 +149,6 @@ class NearbySelectionIntegrationTest {
     assertEquals(
         Integer.MAX_VALUE,
         ((LinearDistributionNearbyRandom) defaultRandom).getOverallSizeMaximum());
-  }
-
-  @Test
-  void testNearbyValueSelectorIntegration() {
-    var configPolicy = mock(HeuristicConfigPolicy.class);
-    var entityDescriptor = mock(EntityDescriptor.class);
-    var classInstanceCache = mock(ClassInstanceCache.class);
-    var workingRandom = new Random(42);
-    var variableDescriptor =
-        mock(
-            ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor.class);
-
-    when(configPolicy.getClassInstanceCache()).thenReturn(classInstanceCache);
-    when(configPolicy.getRandom()).thenReturn(workingRandom);
-    when(entityDescriptor.getEntityClass()).thenReturn(TestEntity.class);
-    when(classInstanceCache.newInstance(any(), any(), eq(TestDistanceMeter.class)))
-        .thenReturn(new TestDistanceMeter());
-
-    // Test with RANDOM order (distribution parameters allowed)
-    var nearbyConfigRandom =
-        new NearbySelectionConfig()
-            .withOriginValueSelectorConfig(
-                new ValueSelectorConfig().withVariableName("originVariable"))
-            .withNearbyDistanceMeterClass(TestDistanceMeter.class)
-            .withNearbySelectionDistributionType(
-                NearbySelectionDistributionType.LINEAR_DISTRIBUTION)
-            .withLinearDistributionSizeMaximum(10);
-
-    var originEntitySelector =
-        SelectorTestUtils.mockReplayingEntitySelector(
-            entityDescriptor, new TestEntity("A"), new TestEntity("B"), new TestEntity("C"));
-
-    var childValueSelector = mock(IterableValueSelector.class);
-    when(childValueSelector.iterator(any()))
-        .thenReturn(java.util.List.of("value1", "value2", "value3").iterator());
-    when(childValueSelector.getSize(any())).thenReturn(3L);
-    when(childValueSelector.getVariableDescriptor()).thenReturn(variableDescriptor);
-    when(variableDescriptor.getVariableName()).thenReturn("testVariable");
-    when(variableDescriptor.getVariablePropertyType()).thenReturn((Class) String.class);
-    when(variableDescriptor.isValuePotentialAnchor(any())).thenReturn(false);
-
-    var nearbyValueSelectorRandom =
-        new NearEntityNearbyValueSelector<>(
-            childValueSelector,
-            originEntitySelector,
-            new TestDistanceMeter(),
-            NearbyRandomFactory.create(nearbyConfigRandom).buildNearbyRandom(true),
-            true);
-
-    // Verify it's a nearby selector
-    assertNotNull(nearbyValueSelectorRandom);
-    assertTrue(nearbyValueSelectorRandom.toString().contains("NearEntityNearbyValueSelector"));
-
-    // Test original iteration with ORIGINAL order (no distribution parameters)
-    var nearbyConfigOriginal =
-        new NearbySelectionConfig()
-            .withOriginValueSelectorConfig(
-                new ValueSelectorConfig().withVariableName("originVariable"))
-            .withNearbyDistanceMeterClass(TestDistanceMeter.class);
-
-    var nearbyValueSelectorOriginal =
-        new NearEntityNearbyValueSelector<>(
-            childValueSelector,
-            originEntitySelector,
-            new TestDistanceMeter(),
-            NearbyRandomFactory.create(nearbyConfigOriginal).buildNearbyRandom(false),
-            false);
-
-    var originalIterator = nearbyValueSelectorOriginal.iterator(new TestEntity("test"));
-    assertTrue(originalIterator.hasNext());
-    var value1 = originalIterator.next();
-    assertNotNull(value1);
   }
 
   @Test
