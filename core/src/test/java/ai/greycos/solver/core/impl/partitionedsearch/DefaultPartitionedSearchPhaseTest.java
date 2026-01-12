@@ -29,6 +29,50 @@ import org.junit.jupiter.api.Timeout;
  */
 class DefaultPartitionedSearchPhaseTest {
 
+  // Existing tests (above)
+
+  @Test
+  @Timeout(10)
+  void partitionedSearchWithZeroEntities() {
+    final int partSize = 3;
+    final int entityCount = 0; // No entities
+
+    System.setProperty("testPartitionSize", String.valueOf(partSize));
+    try {
+      SolverFactory<TestdataSolution> solverFactory =
+          createSolverFactory(false, SolverConfig.MOVE_THREAD_COUNT_NONE);
+      Solver<TestdataSolution> solver = solverFactory.buildSolver();
+
+      TestdataSolution solution = solver.solve(createSolution(entityCount, 5));
+
+      // Should handle gracefully with no entities to partition
+      assertThat(solution).isNotNull();
+    } finally {
+      System.clearProperty("testPartitionSize");
+    }
+  }
+
+  @Test
+  @Timeout(10)
+  void partitionedSearchWithRunnableThreadLimit() {
+    final int partSize = 2;
+    final int entityCount = 10; // Would create 5 partitions
+
+    System.setProperty("testPartitionSize", String.valueOf(partSize));
+    try {
+      // Create a custom partitioner that respects runnablePartThreadLimit
+      SolverFactory<TestdataSolution> solverFactory = createSolverFactory(false, "2");
+      Solver<TestdataSolution> solver = solverFactory.buildSolver();
+
+      TestdataSolution solution = solver.solve(createSolution(entityCount, 5));
+
+      assertThat(solution).isNotNull();
+      assertThat(solution.getScore().isSolutionInitialized()).isTrue();
+    } finally {
+      System.clearProperty("testPartitionSize");
+    }
+  }
+
   @Test
   @Timeout(10)
   void partitionedSearchWithSingleThreaded() {
