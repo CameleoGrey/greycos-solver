@@ -8,7 +8,7 @@ import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
  * thread with a child thread score director.
  *
  * @param <Solution_> the solution type, the class with the {@link
- *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
+ *     ai.greycos.solver.core.api.cotwin.solution.PlanningSolution} annotation
  * @param <Score_> the score type to go with the solution
  */
 public class SetupOperation<Solution_, Score_ extends Score<Score_>>

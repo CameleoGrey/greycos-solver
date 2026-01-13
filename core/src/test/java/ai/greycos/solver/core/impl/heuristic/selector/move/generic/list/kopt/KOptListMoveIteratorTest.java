@@ -18,11 +18,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
-import ai.greycos.solver.core.preview.api.domain.metamodel.ElementPosition;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 
 import org.junit.jupiter.api.Test;
 

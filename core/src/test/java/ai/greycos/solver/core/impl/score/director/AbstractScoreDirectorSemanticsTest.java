@@ -6,11 +6,11 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import java.util.List;
 
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
-import ai.greycos.solver.core.testdomain.constraintconfiguration.TestdataConstraintConfigurationSolution;
-import ai.greycos.solver.core.testdomain.list.pinned.TestdataPinnedListSolution;
-import ai.greycos.solver.core.testdomain.list.pinned.index.TestdataPinnedWithIndexListSolution;
+import ai.greycos.solver.core.testcotwin.constraintconfiguration.TestdataConstraintConfigurationSolution;
+import ai.greycos.solver.core.testcotwin.list.pinned.TestdataPinnedListSolution;
+import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListSolution;
 
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -157,7 +157,7 @@ public abstract class AbstractScoreDirectorSemanticsTest {
             softly
                 .assertThat(scoreDirector.getConstraintMatchTotalMap())
                 .containsOnlyKeys(
-                    "ai.greycos.solver.core.testdomain.constraintconfiguration/First weight");
+                    "ai.greycos.solver.core.testcotwin.constraintconfiguration/First weight");
           });
 
       // Make sure nothing matches, but the constraint is still present.
@@ -173,7 +173,7 @@ public abstract class AbstractScoreDirectorSemanticsTest {
             softly
                 .assertThat(scoreDirector.getConstraintMatchTotalMap())
                 .containsOnlyKeys(
-                    "ai.greycos.solver.core.testdomain.constraintconfiguration/First weight");
+                    "ai.greycos.solver.core.testcotwin.constraintconfiguration/First weight");
           });
     }
   }

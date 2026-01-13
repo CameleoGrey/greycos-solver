@@ -1,9 +1,9 @@
 package ai.greycos.solver.core.config.solver.testutil.corruptedundoshadow;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.lookup.PlanningId;
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
-import ai.greycos.solver.core.api.domain.variable.ShadowVariable;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 
 @PlanningEntity
 public class CorruptedUndoShadowEntity {

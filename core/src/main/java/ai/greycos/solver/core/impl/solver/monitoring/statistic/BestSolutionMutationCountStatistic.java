@@ -7,8 +7,8 @@ import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.event.BestSolutionChangedEvent;
 import ai.greycos.solver.core.api.solver.event.SolverEventListener;
 import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.impl.domain.solution.mutation.MutationCounter;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.mutation.MutationCounter;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 import ai.greycos.solver.core.impl.solver.DefaultSolver;
 

@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.phase.custom;
 import java.util.List;
 import java.util.function.IntFunction;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.api.solver.phase.PhaseCommand;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;

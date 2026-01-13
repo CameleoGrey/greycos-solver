@@ -3,7 +3,7 @@ package ai.greycos.solver.benchmark.impl.ranking;
 import java.util.Comparator;
 
 import ai.greycos.solver.benchmark.impl.result.SolverBenchmarkResult;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
 

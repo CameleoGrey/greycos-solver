@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 import java.util.Collections;
 import java.util.List;
 
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 
 /**
  * Flips a sublist of a list variable, (the same thing as a {@link TwoOptListMove}, but no shift to

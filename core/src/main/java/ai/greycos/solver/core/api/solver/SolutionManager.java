@@ -8,16 +8,16 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.ScoreExplanation;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.api.score.constraint.Indictment;
-import ai.greycos.solver.core.impl.domain.variable.ShadowVariableUpdateHelper;
+import ai.greycos.solver.core.impl.cotwin.variable.ShadowVariableUpdateHelper;
 import ai.greycos.solver.core.impl.solver.DefaultSolutionManager;
 
 import org.jspecify.annotations.NullMarked;

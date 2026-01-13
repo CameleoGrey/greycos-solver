@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testutil.MockThreadFactory;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 

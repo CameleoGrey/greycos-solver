@@ -19,10 +19,10 @@ import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.impl.solver.DefaultSolutionManager;
 import ai.greycos.solver.core.impl.solver.DefaultSolverFactory;
 import ai.greycos.solver.core.impl.solver.DefaultSolverManager;
-import ai.greycos.solver.quarkus.testdomain.gizmo.DummyConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.gizmo.DummyVariableListener;
-import ai.greycos.solver.quarkus.testdomain.gizmo.TestDataKitchenSinkEntity;
-import ai.greycos.solver.quarkus.testdomain.gizmo.TestDataKitchenSinkSolution;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.DummyConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.DummyVariableListener;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.TestDataKitchenSinkEntity;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.TestDataKitchenSinkSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

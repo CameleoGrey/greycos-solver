@@ -1,8 +1,8 @@
 package ai.greycos.solver.core.api.score.calculator;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.score.Score;
 
 import org.jspecify.annotations.NonNull;

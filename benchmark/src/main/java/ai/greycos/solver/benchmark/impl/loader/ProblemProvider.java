@@ -3,7 +3,7 @@ package ai.greycos.solver.benchmark.impl.loader;
 import jakarta.xml.bind.annotation.XmlSeeAlso;
 
 import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 
 /**
  * Subclasses need to implement {@link Object#equals(Object) equals()} and {@link Object#hashCode()

@@ -32,9 +32,9 @@ import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.DefaultSolver;
 import ai.greycos.solver.core.impl.solver.random.RandomFactory;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.BeforeAll;

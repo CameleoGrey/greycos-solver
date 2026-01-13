@@ -8,7 +8,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.api.solver.event.BestSolutionChangedEvent;
@@ -20,7 +20,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A SolverManager solves multiple planning problems of the same domain, asynchronously without
+ * A SolverManager solves multiple planning problems of the same cotwin, asynchronously without
  * blocking the calling thread.
  *
  * <p>To create a SolverManager, use {@link #create(SolverFactory, SolverManagerConfig)}. To solve a

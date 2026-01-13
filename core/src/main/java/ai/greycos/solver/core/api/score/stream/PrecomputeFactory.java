@@ -2,7 +2,7 @@ package ai.greycos.solver.core.api.score.stream;
 
 import java.util.function.Function;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.score.stream.bi.BiConstraintStream;
 import ai.greycos.solver.core.api.score.stream.bi.BiJoiner;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintStream;

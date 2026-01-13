@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.move;
 import java.util.Collection;
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
 
 /**

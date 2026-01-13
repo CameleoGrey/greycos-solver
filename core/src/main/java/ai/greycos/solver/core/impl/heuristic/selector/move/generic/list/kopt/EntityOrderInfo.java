@@ -5,7 +5,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 
 record EntityOrderInfo(Object[] entities, Map<Object, Integer> entityToEntityIndex, int[] offsets) {
 

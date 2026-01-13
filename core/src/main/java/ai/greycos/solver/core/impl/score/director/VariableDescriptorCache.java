@@ -2,9 +2,9 @@ package ai.greycos.solver.core.impl.score.director;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.VariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 
 /**
  * Each before/after event needs to look up a variable descriptor. These operations are not cheap,

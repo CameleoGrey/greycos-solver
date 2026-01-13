@@ -19,17 +19,17 @@ import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfi
 import ai.greycos.solver.core.impl.constructionheuristic.placer.Placement;
 import ai.greycos.solver.core.impl.constructionheuristic.placer.QueuedEntityPlacer;
 import ai.greycos.solver.core.impl.constructionheuristic.placer.QueuedEntityPlacerFactory;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.difficultyweight.TestdataDifficultyWeightSolution;
-import ai.greycos.solver.core.testdomain.multivar.TestdataMultiVarEntity;
-import ai.greycos.solver.core.testdomain.multivar.TestdataMultiVarSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.difficultyweight.TestdataDifficultyWeightSolution;
+import ai.greycos.solver.core.testcotwin.multivar.TestdataMultiVarEntity;
+import ai.greycos.solver.core.testcotwin.multivar.TestdataMultiVarSolution;
 
 import org.junit.jupiter.api.Test;
 

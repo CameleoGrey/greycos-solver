@@ -5,15 +5,15 @@ import java.util.List;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.entity.pillar.SubPillarConfigPolicy;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.FromSolutionEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntitySelector;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;

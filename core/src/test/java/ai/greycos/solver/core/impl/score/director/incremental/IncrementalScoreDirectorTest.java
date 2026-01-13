@@ -14,12 +14,12 @@ import java.util.List;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.ConstraintMatchAwareIncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.buildin.SimpleScoreDefinition;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
-import ai.greycos.solver.core.testdomain.chained.shadow.TestdataShadowingChainedAnchor;
-import ai.greycos.solver.core.testdomain.chained.shadow.TestdataShadowingChainedEntity;
-import ai.greycos.solver.core.testdomain.chained.shadow.TestdataShadowingChainedSolution;
+import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedAnchor;
+import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedEntity;
+import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedSolution;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;

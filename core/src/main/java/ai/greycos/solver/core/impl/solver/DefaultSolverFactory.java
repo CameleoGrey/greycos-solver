@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.OptionalInt;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.SolverConfigOverride;
@@ -26,8 +26,8 @@ import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.AbstractFromConfigFactory;
 import ai.greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhaseFactory;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.phase.PhaseFactory;
@@ -207,7 +207,7 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
     }
     return SolutionDescriptor.buildSolutionDescriptor(
         solverConfig.getEnablePreviewFeatureSet(),
-        solverConfig.determineDomainAccessType(),
+        solverConfig.determineCotwinAccessType(),
         (Class<Solution_>) solverConfig.getSolutionClass(),
         solverConfig.getGizmoMemberAccessorMap(),
         solverConfig.getGizmoSolutionClonerMap(),

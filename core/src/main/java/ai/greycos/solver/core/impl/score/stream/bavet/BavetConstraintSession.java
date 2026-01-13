@@ -8,7 +8,7 @@ import ai.greycos.solver.core.api.score.constraint.Indictment;
 import ai.greycos.solver.core.impl.bavet.AbstractSession;
 import ai.greycos.solver.core.impl.bavet.NodeNetwork;
 import ai.greycos.solver.core.impl.bavet.common.PropagationQueue;
-import ai.greycos.solver.core.impl.domain.variable.declarative.ConsistencyTracker;
+import ai.greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;

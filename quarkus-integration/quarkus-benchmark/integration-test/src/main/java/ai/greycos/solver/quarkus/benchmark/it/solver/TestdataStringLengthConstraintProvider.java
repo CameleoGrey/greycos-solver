@@ -4,8 +4,8 @@ import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
-import ai.greycos.solver.quarkus.benchmark.it.domain.TestdataListValueShadowEntity;
-import ai.greycos.solver.quarkus.benchmark.it.domain.TestdataStringLengthShadowEntity;
+import ai.greycos.solver.quarkus.benchmark.it.cotwin.TestdataListValueShadowEntity;
+import ai.greycos.solver.quarkus.benchmark.it.cotwin.TestdataStringLengthShadowEntity;
 
 import org.jspecify.annotations.NonNull;
 

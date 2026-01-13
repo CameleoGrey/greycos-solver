@@ -10,11 +10,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
 
 import org.junit.jupiter.api.Test;
 

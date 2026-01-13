@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.constructionheuristic.placer;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.preview.api.move.Move;
 
 /**

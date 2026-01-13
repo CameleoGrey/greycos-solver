@@ -1,13 +1,13 @@
 package ai.greycos.solver.core.preview.api.neighborhood.stream;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.entity.PlanningPin;
-import ai.greycos.solver.core.api.domain.entity.PlanningPinToIndex;
-import ai.greycos.solver.core.api.domain.solution.ProblemFactCollectionProperty;
-import ai.greycos.solver.core.api.domain.variable.PlanningListVariable;
-import ai.greycos.solver.core.preview.api.domain.metamodel.ElementPosition;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningListVariableMetaModel;
-import ai.greycos.solver.core.preview.api.domain.metamodel.UnassignedElement;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningPinToIndex;
+import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.UnassignedElement;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.EnumeratingStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.UniEnumeratingFilter;

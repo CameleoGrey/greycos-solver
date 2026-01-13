@@ -9,12 +9,12 @@ import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.event.SolverEventSupport;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
 

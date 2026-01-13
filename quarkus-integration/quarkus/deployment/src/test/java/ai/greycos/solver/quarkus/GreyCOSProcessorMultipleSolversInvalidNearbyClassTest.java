@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import ai.greycos.solver.quarkus.rest.TestdataQuarkusSolutionConfigResource;
-import ai.greycos.solver.quarkus.testdomain.dummy.DummyDistanceMeter;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.dummy.DummyDistanceMeter;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
@@ -26,7 +26,7 @@ class GreyCOSProcessorMultipleSolversInvalidNearbyClassTest {
           .overrideConfigKey("quarkus.greycos.solver.\"solver1\".termination.spent-limit", "8s")
           .overrideConfigKey(
               "quarkus.greycos.solver.\"solver1\".nearby-distance-meter-class",
-              "ai.greycos.solver.quarkus.testdomain.dummy.DummyDistanceMeter")
+              "ai.greycos.solver.quarkus.testcotwin.dummy.DummyDistanceMeter")
           .overrideConfigKey("quarkus.greycos.solver.\"solver2\".termination.spent-limit", "4s")
           .setArchiveProducer(
               () ->

@@ -15,7 +15,7 @@ import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testutil.MockClock;
 
 import org.junit.jupiter.api.Test;

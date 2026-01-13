@@ -8,16 +8,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.multivar.TestdataMultiVarEntity;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.multivar.TestdataMultiVarEntity;
 
 import org.junit.jupiter.api.Test;
 

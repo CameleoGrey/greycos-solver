@@ -17,7 +17,7 @@ import ai.greycos.solver.core.impl.bavet.common.BavetAbstractConstraintStream;
 import ai.greycos.solver.core.impl.bavet.common.BavetRootNode;
 import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.RecordingTupleLifecycle;
-import ai.greycos.solver.core.impl.domain.variable.declarative.ConsistencyTracker;
+import ai.greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import ai.greycos.solver.core.impl.score.buildin.SimpleScoreDefinition;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.stream.common.RetrievalSemantics;

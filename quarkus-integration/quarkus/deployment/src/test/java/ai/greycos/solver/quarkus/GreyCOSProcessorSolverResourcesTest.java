@@ -7,7 +7,7 @@ import java.time.Duration;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
-import ai.greycos.solver.core.api.domain.common.DomainAccessType;
+import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.score.ScoreManager;
 import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
 import ai.greycos.solver.core.api.score.buildin.bendablebigdecimal.BendableBigDecimalScore;
@@ -27,9 +27,9 @@ import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
@@ -45,7 +45,7 @@ class GreyCOSProcessorSolverResourcesTest {
       new QuarkusUnitTest()
           .overrideConfigKey("quarkus.greycos.solver.\"solver1\".environment-mode", "FULL_ASSERT")
           .overrideConfigKey("quarkus.greycos.solver.\"solver1\".daemon", "true")
-          .overrideConfigKey("quarkus.greycos.solver.\"solver1\".domain-access-type", "REFLECTION")
+          .overrideConfigKey("quarkus.greycos.solver.\"solver1\".cotwin-access-type", "REFLECTION")
           .overrideConfigKey("quarkus.greycos.solver.\"solver1\".termination.spent-limit", "4h")
           .overrideConfigKey(
               "quarkus.greycos.solver.\"solver1\".termination.unimproved-spent-limit", "5h")
@@ -137,7 +137,7 @@ class GreyCOSProcessorSolverResourcesTest {
     assertThat((Object) solverConfig.getEnvironmentMode()).isEqualTo(EnvironmentMode.FULL_ASSERT);
     assertThat(solverConfig.getNearbyDistanceMeterClass()).isNull();
     assertThat(solverConfig.getDaemon()).isTrue();
-    assertThat(solverConfig.getDomainAccessType()).isEqualTo(DomainAccessType.REFLECTION);
+    assertThat(solverConfig.getCotwinAccessType()).isEqualTo(CotwinAccessType.REFLECTION);
     assertThat(solverConfig.getScoreDirectorFactoryConfig().getConstraintStreamImplType()).isNull();
     assertThat(solver1Factory).isNotNull();
     assertThat(solverConfig.getTerminationConfig().getSpentLimit()).isEqualTo(Duration.ofHours(4));

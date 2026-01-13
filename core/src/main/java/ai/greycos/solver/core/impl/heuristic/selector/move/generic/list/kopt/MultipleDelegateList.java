@@ -12,8 +12,8 @@ import java.util.RandomAccess;
 import java.util.stream.Stream;
 
 import ai.greycos.solver.core.api.function.TriConsumer;
-import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 
 /**

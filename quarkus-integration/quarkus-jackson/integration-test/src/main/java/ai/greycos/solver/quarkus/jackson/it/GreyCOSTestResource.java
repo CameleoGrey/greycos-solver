@@ -8,7 +8,7 @@ import jakarta.ws.rs.Path;
 
 import ai.greycos.solver.core.api.solver.SolverJob;
 import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.quarkus.jackson.it.domain.ITestdataPlanningSolution;
+import ai.greycos.solver.quarkus.jackson.it.cotwin.ITestdataPlanningSolution;
 
 @Path("/greycos/test")
 public class GreyCOSTestResource {

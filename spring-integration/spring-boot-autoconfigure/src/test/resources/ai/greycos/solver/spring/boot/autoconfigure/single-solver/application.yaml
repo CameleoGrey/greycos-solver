@@ -4,7 +4,7 @@ greycos:
     environment-mode: FULL_ASSERT
     daemon: true
     move-thread-count: 2
-    domain-access-type: REFLECTION
+    cotwin-access-type: REFLECTION
     nearby-distance-meter-class: ai.greycos.solver.spring.boot.autoconfigure.dummy.DummyDistanceMeter
     termination:
       spent-limit: 4h

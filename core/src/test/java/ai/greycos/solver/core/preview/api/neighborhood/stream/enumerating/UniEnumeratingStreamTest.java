@@ -14,13 +14,13 @@ import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniLeftDa
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniLeftDatasetInstance;
 import ai.greycos.solver.core.impl.score.director.SessionContext;
 import ai.greycos.solver.core.impl.score.director.easy.EasyScoreDirectorFactory;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
-import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
-import ai.greycos.solver.core.testdomain.list.pinned.index.TestdataPinnedWithIndexListEntity;
-import ai.greycos.solver.core.testdomain.list.pinned.index.TestdataPinnedWithIndexListSolution;
-import ai.greycos.solver.core.testdomain.list.pinned.index.TestdataPinnedWithIndexListValue;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
+import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
+import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListEntity;
+import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListSolution;
+import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListValue;
 
 import org.junit.jupiter.api.Test;
 

@@ -30,20 +30,20 @@ import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
-import ai.greycos.solver.core.api.domain.solution.cloner.SolutionCloner;
-import ai.greycos.solver.core.impl.domain.common.ReflectionHelper;
-import ai.greycos.solver.core.impl.domain.common.accessor.MemberAccessor;
-import ai.greycos.solver.core.impl.domain.common.accessor.gizmo.AccessorInfo;
-import ai.greycos.solver.core.impl.domain.common.accessor.gizmo.GizmoMemberAccessorFactory;
-import ai.greycos.solver.core.impl.domain.common.accessor.gizmo.GizmoMemberAccessorImplementor;
-import ai.greycos.solver.core.impl.domain.common.accessor.gizmo.GizmoMemberDescriptor;
-import ai.greycos.solver.core.impl.domain.common.accessor.gizmo.GizmoMemberInfo;
-import ai.greycos.solver.core.impl.domain.solution.cloner.gizmo.GizmoCloningUtils;
-import ai.greycos.solver.core.impl.domain.solution.cloner.gizmo.GizmoSolutionCloner;
-import ai.greycos.solver.core.impl.domain.solution.cloner.gizmo.GizmoSolutionClonerFactory;
-import ai.greycos.solver.core.impl.domain.solution.cloner.gizmo.GizmoSolutionClonerImplementor;
-import ai.greycos.solver.core.impl.domain.solution.cloner.gizmo.GizmoSolutionOrEntityDescriptor;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
+import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.AccessorInfo;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberAccessorFactory;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberAccessorImplementor;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberDescriptor;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberInfo;
+import ai.greycos.solver.core.impl.cotwin.solution.cloner.gizmo.GizmoCloningUtils;
+import ai.greycos.solver.core.impl.cotwin.solution.cloner.gizmo.GizmoSolutionCloner;
+import ai.greycos.solver.core.impl.cotwin.solution.cloner.gizmo.GizmoSolutionClonerFactory;
+import ai.greycos.solver.core.impl.cotwin.solution.cloner.gizmo.GizmoSolutionClonerImplementor;
+import ai.greycos.solver.core.impl.cotwin.solution.cloner.gizmo.GizmoSolutionOrEntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.quarkus.gizmo.GreyCOSGizmoBeanFactory;
 
 import org.jboss.jandex.AnnotationInstance;

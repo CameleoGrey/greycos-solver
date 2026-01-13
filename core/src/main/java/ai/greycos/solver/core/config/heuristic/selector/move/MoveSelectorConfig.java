@@ -7,7 +7,7 @@ import java.util.function.Consumer;
 import jakarta.xml.bind.annotation.XmlSeeAlso;
 import jakarta.xml.bind.annotation.XmlType;
 
-import ai.greycos.solver.core.api.domain.common.ComparatorFactory;
+import ai.greycos.solver.core.api.cotwin.common.ComparatorFactory;
 import ai.greycos.solver.core.config.heuristic.selector.SelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;

@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.solver;
 import java.util.function.Consumer;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirector;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirectorFactory;
 

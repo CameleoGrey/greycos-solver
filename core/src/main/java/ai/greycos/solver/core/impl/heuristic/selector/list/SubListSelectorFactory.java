@@ -7,7 +7,7 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.impl.AbstractFromConfigFactory;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;

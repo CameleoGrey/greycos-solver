@@ -10,13 +10,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateConstructionHeuristicPhaseBuilder;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ruin.ListRuinRecreateMove;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
-import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
-import ai.greycos.solver.core.testdomain.list.TestdataListValue;
+import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
+import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
+import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
 
 import org.junit.jupiter.api.Test;
 

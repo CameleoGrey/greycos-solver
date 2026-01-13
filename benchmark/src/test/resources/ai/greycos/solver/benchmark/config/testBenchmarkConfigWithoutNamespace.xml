@@ -29,10 +29,10 @@
   <solverBenchmark>
     <name>Entity Tabu Search</name>
     <solver>
-      <solutionClass>ai.greycos.solver.core.testdomain.TestdataSolution</solutionClass>
-      <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
+      <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+      <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <constraintProviderClass>ai.greycos.solver.core.testdomain.TestdataConstraintProvider</constraintProviderClass>
+        <constraintProviderClass>ai.greycos.solver.core.testcotwin.TestdataConstraintProvider</constraintProviderClass>
       </scoreDirectorFactory>
       <constructionHeuristic>
         <constructionHeuristicType>FIRST_FIT_DECREASING</constructionHeuristicType>
@@ -59,10 +59,10 @@
   <solverBenchmark>
     <name>Late Acceptance</name>
     <solver>
-      <solutionClass>ai.greycos.solver.core.testdomain.TestdataSolution</solutionClass>
-      <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
+      <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+      <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <constraintProviderClass>ai.greycos.solver.core.testdomain.TestdataConstraintProvider</constraintProviderClass>
+        <constraintProviderClass>ai.greycos.solver.core.testcotwin.TestdataConstraintProvider</constraintProviderClass>
       </scoreDirectorFactory>
       <constructionHeuristic>
         <constructionHeuristicType>FIRST_FIT</constructionHeuristicType>

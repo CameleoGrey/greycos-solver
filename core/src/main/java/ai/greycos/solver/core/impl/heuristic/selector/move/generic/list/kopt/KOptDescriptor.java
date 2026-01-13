@@ -10,10 +10,10 @@ import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import ai.greycos.solver.core.api.function.TriPredicate;
-import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.index.IndexVariableSupply;
-import ai.greycos.solver.core.impl.domain.variable.inverserelation.SingletonInverseVariableSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.index.IndexVariableSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableSupply;
 
 /**
  * @param k the number of edges being added

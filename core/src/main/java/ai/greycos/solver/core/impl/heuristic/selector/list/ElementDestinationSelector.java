@@ -9,17 +9,17 @@ import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.preview.api.domain.metamodel.ElementPosition;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PositionInList;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 
 /**
  * Selects destinations for list variable change moves. The destination specifies a future position

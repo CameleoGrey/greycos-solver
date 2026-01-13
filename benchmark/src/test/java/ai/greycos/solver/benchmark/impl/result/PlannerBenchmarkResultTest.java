@@ -22,8 +22,8 @@ import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.random.RandomType;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedEntity;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedSolution;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution;
 
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Test;

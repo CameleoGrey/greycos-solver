@@ -4,12 +4,12 @@ import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-import ai.greycos.solver.core.api.domain.constraintweight.ConstraintConfiguration;
+import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfiguration;
 import ai.greycos.solver.core.api.score.IBendableScore;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.Constraint;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.definition.AbstractBendableScoreDefinition;
 
 import org.jspecify.annotations.NonNull;

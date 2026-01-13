@@ -4,11 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseanot.TestdataOnlyAnnotatedBaseEntity;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseanot.TestdataOnlyChildAnnotatedChildEntity;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseanot.TestdataOnlyChildAnnotatedExtendedSolution;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseanot.TestdataOnlyChildAnnotatedSolution;
-import ai.greycos.solver.quarkus.testdomain.superclass.DummyConstraintProvider;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseanot.TestdataOnlyAnnotatedBaseEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseanot.TestdataOnlyChildAnnotatedChildEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseanot.TestdataOnlyChildAnnotatedExtendedSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseanot.TestdataOnlyChildAnnotatedSolution;
+import ai.greycos.solver.quarkus.testcotwin.superclass.DummyConstraintProvider;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

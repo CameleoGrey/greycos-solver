@@ -2,7 +2,7 @@ package ai.greycos.solver.core.api.score;
 
 import java.io.Serializable;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.score.buildin.simplebigdecimal.SimpleBigDecimalScore;

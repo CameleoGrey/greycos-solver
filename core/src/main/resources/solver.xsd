@@ -35,7 +35,7 @@
                     
           <xs:element maxOccurs="unbounded" minOccurs="0" name="entityClass" type="xs:string"/>
                     
-          <xs:element minOccurs="0" name="domainAccessType" type="tns:domainAccessType"/>
+          <xs:element minOccurs="0" name="cotwinAccessType" type="tns:cotwinAccessType"/>
                     
           <xs:element minOccurs="0" name="scoreDirectorFactory" type="tns:scoreDirectorFactoryConfig"/>
                     
@@ -1847,7 +1847,7 @@
       
   </xs:simpleType>
     
-  <xs:simpleType name="domainAccessType">
+  <xs:simpleType name="cotwinAccessType">
         
     <xs:restriction base="xs:string">
             

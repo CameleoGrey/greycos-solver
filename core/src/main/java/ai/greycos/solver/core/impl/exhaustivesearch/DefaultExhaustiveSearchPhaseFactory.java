@@ -20,9 +20,9 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveS
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.exhaustivesearch.decider.ExhaustiveSearchDecider;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.bounder.ScoreBounder;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.bounder.TrendBasedScoreBounder;

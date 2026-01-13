@@ -13,7 +13,7 @@ import ai.greycos.solver.core.impl.heuristic.move.CompositeMove;
 import ai.greycos.solver.core.impl.heuristic.move.DummyMove;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testutil.TestRandom;
 
 import org.junit.jupiter.api.Test;

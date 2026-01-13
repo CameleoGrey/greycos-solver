@@ -10,9 +10,9 @@ import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.BeforeEach;

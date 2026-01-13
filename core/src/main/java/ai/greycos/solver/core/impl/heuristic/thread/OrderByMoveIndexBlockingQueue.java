@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
  * queue handles result aggregation from multiple move threads and provides exception propagation.
  *
  * @param <Solution_> the solution type, the class with the {@link
- *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
+ *     ai.greycos.solver.core.api.cotwin.solution.PlanningSolution} annotation
  */
 public class OrderByMoveIndexBlockingQueue<Solution_> {
 

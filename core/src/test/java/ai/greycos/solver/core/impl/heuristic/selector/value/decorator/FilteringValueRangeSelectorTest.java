@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.heuristic.selector.common.TestdataObjectSorter;
 import ai.greycos.solver.core.impl.heuristic.selector.value.FromEntityPropertyValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.mimic.ManualValueMimicRecorder;
@@ -19,9 +19,9 @@ import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingSolution;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingValue;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingValue;
 
 import org.junit.jupiter.api.Test;
 

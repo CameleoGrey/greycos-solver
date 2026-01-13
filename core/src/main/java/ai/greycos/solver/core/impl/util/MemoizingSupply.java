@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.util;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import ai.greycos.solver.core.impl.domain.variable.supply.Supply;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.Supply;
 
 /**
  * Supply whose value is pre-computed and cached the first time {@link #read()} is called.

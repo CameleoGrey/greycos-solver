@@ -5,8 +5,8 @@ import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.api.score.stream.Joiners;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringAnchor;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringEntity;
+import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringAnchor;
+import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringEntity;
 
 import org.jspecify.annotations.NonNull;
 

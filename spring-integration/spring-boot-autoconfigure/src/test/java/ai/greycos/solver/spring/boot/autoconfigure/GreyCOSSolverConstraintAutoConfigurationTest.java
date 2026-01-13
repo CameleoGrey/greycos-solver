@@ -14,8 +14,8 @@ import ai.greycos.solver.spring.boot.autoconfigure.config.SolverProperty;
 import ai.greycos.solver.spring.boot.autoconfigure.multiple.MultipleConstraintSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.NormalSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.constraints.TestdataSpringConstraintProvider;
-import ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringEntity;
-import ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringEntity;
+import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution;
 import ai.greycos.solver.test.api.score.stream.ConstraintVerifier;
 
 import org.assertj.core.api.AssertionsForClassTypes;

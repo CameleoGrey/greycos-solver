@@ -14,9 +14,9 @@ import ai.greycos.solver.core.config.heuristic.selector.list.SubListSelectorConf
 import ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.VariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelectorFactory;

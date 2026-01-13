@@ -14,7 +14,7 @@
   <solutionClass>java.lang.Object</solutionClass>
   <!--Zero or more repetitions:-->
   <entityClass>java.lang.Object</entityClass>
-  <domainAccessType>GIZMO</domainAccessType>
+  <cotwinAccessType>GIZMO</cotwinAccessType>
   <scoreDirectorFactory>
     <easyScoreCalculatorClass>java.lang.Object</easyScoreCalculatorClass>
     <easyScoreCalculatorCustomProperties>

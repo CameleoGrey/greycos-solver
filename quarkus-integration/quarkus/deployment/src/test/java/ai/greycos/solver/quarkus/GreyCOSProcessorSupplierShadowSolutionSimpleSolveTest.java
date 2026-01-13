@@ -10,9 +10,9 @@ import java.util.concurrent.ExecutionException;
 import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.quarkus.testdomain.declarative.simple.TestdataQuarkusSupplierVariableSimpleConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.declarative.simple.TestdataQuarkusSupplierVariableSimpleEntity;
-import ai.greycos.solver.quarkus.testdomain.declarative.simple.TestdataQuarkusSupplierVariableSimpleSolution;
+import ai.greycos.solver.quarkus.testcotwin.declarative.simple.TestdataQuarkusSupplierVariableSimpleConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.declarative.simple.TestdataQuarkusSupplierVariableSimpleEntity;
+import ai.greycos.solver.quarkus.testcotwin.declarative.simple.TestdataQuarkusSupplierVariableSimpleSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

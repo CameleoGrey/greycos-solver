@@ -11,9 +11,9 @@ import java.util.Objects;
 import java.util.Set;
 
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;

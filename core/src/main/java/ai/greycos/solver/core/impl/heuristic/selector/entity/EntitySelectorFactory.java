@@ -6,15 +6,15 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.domain.common.ComparatorFactory;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.common.ComparatorFactory;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.common.ValueRangeRecorderId;

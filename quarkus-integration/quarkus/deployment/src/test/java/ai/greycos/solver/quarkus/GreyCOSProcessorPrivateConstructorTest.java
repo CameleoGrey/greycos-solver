@@ -8,9 +8,9 @@ import java.util.concurrent.ExecutionException;
 import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.quarkus.testdomain.gizmo.PrivateNoArgsConstructorConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.gizmo.PrivateNoArgsConstructorEntity;
-import ai.greycos.solver.quarkus.testdomain.gizmo.PrivateNoArgsConstructorSolution;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.PrivateNoArgsConstructorConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.PrivateNoArgsConstructorEntity;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.PrivateNoArgsConstructorSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

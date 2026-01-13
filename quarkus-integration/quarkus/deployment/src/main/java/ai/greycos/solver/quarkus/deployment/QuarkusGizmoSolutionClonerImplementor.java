@@ -4,9 +4,9 @@ import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import ai.greycos.solver.core.impl.domain.solution.cloner.gizmo.GizmoSolutionClonerImplementor;
-import ai.greycos.solver.core.impl.domain.solution.cloner.gizmo.GizmoSolutionOrEntityDescriptor;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.cloner.gizmo.GizmoSolutionClonerImplementor;
+import ai.greycos.solver.core.impl.cotwin.solution.cloner.gizmo.GizmoSolutionOrEntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 
 import io.quarkus.gizmo2.Const;
 import io.quarkus.gizmo2.Var;

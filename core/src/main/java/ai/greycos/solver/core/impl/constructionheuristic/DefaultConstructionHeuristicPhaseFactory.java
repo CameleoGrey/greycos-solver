@@ -28,8 +28,8 @@ import ai.greycos.solver.core.impl.constructionheuristic.placer.EntityPlacerFact
 import ai.greycos.solver.core.impl.constructionheuristic.placer.PooledEntityPlacerFactory;
 import ai.greycos.solver.core.impl.constructionheuristic.placer.QueuedEntityPlacerFactory;
 import ai.greycos.solver.core.impl.constructionheuristic.placer.QueuedValuePlacerFactory;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.phase.AbstractPhaseFactory;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;

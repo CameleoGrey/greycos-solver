@@ -1,9 +1,9 @@
 package ai.greycos.solver.jackson.api;
 
-import ai.greycos.solver.core.api.domain.solution.ConstraintWeightOverrides;
-import ai.greycos.solver.core.api.domain.solution.diff.PlanningEntityDiff;
-import ai.greycos.solver.core.api.domain.solution.diff.PlanningSolutionDiff;
-import ai.greycos.solver.core.api.domain.solution.diff.PlanningVariableDiff;
+import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
+import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningEntityDiff;
+import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningSolutionDiff;
+import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningVariableDiff;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
@@ -25,9 +25,9 @@ import ai.greycos.solver.core.api.score.stream.common.Sequence;
 import ai.greycos.solver.core.api.score.stream.common.SequenceChain;
 import ai.greycos.solver.core.api.solver.RecommendedAssignment;
 import ai.greycos.solver.core.api.solver.RecommendedFit;
-import ai.greycos.solver.core.impl.domain.solution.DefaultConstraintWeightOverrides;
+import ai.greycos.solver.core.impl.cotwin.solution.DefaultConstraintWeightOverrides;
 import ai.greycos.solver.core.impl.solver.DefaultRecommendedAssignment;
-import ai.greycos.solver.jackson.api.domain.solution.ConstraintWeightOverridesSerializer;
+import ai.greycos.solver.jackson.api.cotwin.solution.ConstraintWeightOverridesSerializer;
 import ai.greycos.solver.jackson.api.score.PolymorphicScoreJacksonDeserializer;
 import ai.greycos.solver.jackson.api.score.PolymorphicScoreJacksonSerializer;
 import ai.greycos.solver.jackson.api.score.analysis.ScoreAnalysisJacksonSerializer;
@@ -67,10 +67,10 @@ import ai.greycos.solver.jackson.api.score.stream.common.SequenceJacksonDeserial
 import ai.greycos.solver.jackson.api.score.stream.common.SequenceJacksonSerializer;
 import ai.greycos.solver.jackson.api.solver.RecommendedAssignmentJacksonSerializer;
 import ai.greycos.solver.jackson.api.solver.RecommendedFitJacksonSerializer;
-import ai.greycos.solver.jackson.impl.domain.solution.JacksonSolutionFileIO;
-import ai.greycos.solver.jackson.preview.api.domain.solution.diff.PlanningEntityDiffJacksonSerializer;
-import ai.greycos.solver.jackson.preview.api.domain.solution.diff.PlanningSolutionDiffJacksonSerializer;
-import ai.greycos.solver.jackson.preview.api.domain.solution.diff.PlanningVariableDiffJacksonSerializer;
+import ai.greycos.solver.jackson.impl.cotwin.solution.JacksonSolutionFileIO;
+import ai.greycos.solver.jackson.preview.api.cotwin.solution.diff.PlanningEntityDiffJacksonSerializer;
+import ai.greycos.solver.jackson.preview.api.cotwin.solution.diff.PlanningSolutionDiffJacksonSerializer;
+import ai.greycos.solver.jackson.preview.api.cotwin.solution.diff.PlanningVariableDiffJacksonSerializer;
 
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.Module;

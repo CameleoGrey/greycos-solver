@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.api.solver.event;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 
 /**
  * Delivered in a consumer thread at the end of the solving process and contains the final {@link

@@ -21,8 +21,8 @@ import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.solver.DefaultSolverJob;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.quarkus.it.domain.TestdataStringLengthShadowEntity;
-import ai.greycos.solver.quarkus.it.domain.TestdataStringLengthShadowSolution;
+import ai.greycos.solver.quarkus.it.cotwin.TestdataStringLengthShadowEntity;
+import ai.greycos.solver.quarkus.it.cotwin.TestdataStringLengthShadowSolution;
 
 @Path("/greycos/test")
 public class GreyCOSTestResource {

@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.entity.mimic;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 
 public interface EntityMimicRecorder<Solution_> {

@@ -14,8 +14,8 @@
   <solverBenchmark>
     <name>Entity Tabu Search</name>
     <solver>
-      <solutionClass>ai.greycos.solver.core.testdomain.TestdataSolution</solutionClass>
-      <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
+      <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+      <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
     </solver>
     <problemBenchmarks>
       <solutionFileIOClass>ai.greycos.solver.benchmark.config.PlannerBenchmarkConfigTest$TestdataSolutionFileIO</solutionFileIOClass>

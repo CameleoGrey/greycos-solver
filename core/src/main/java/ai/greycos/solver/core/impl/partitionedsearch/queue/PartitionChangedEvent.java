@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.partitionedsearch.queue;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.partitionedsearch.scope.PartitionChangeMove;
 
 import org.jspecify.annotations.NullMarked;

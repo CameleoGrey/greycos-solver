@@ -8,8 +8,8 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import ai.greycos.solver.core.api.domain.common.ComparatorFactory;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.common.ComparatorFactory;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
 
 import org.jspecify.annotations.NullMarked;

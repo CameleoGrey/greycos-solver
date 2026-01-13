@@ -20,8 +20,8 @@ import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.Probabili
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.ShufflingEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.SortingEntitySelector;
 import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
 

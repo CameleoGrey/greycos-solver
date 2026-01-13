@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import ai.greycos.solver.core.api.domain.lookup.PlanningId;
+import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
@@ -21,8 +21,8 @@ import ai.greycos.solver.core.api.score.stream.bi.BiJoiner;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintStream;
 import ai.greycos.solver.core.impl.bavet.bi.joiner.BiJoinerComber;
 import ai.greycos.solver.core.impl.bavet.bi.joiner.DefaultBiJoiner;
-import ai.greycos.solver.core.impl.domain.common.accessor.MemberAccessor;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.stream.common.uni.InnerUniConstraintStream;
 
 import org.jspecify.annotations.NonNull;

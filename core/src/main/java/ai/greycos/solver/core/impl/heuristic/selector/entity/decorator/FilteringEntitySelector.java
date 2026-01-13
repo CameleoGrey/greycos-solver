@@ -5,7 +5,7 @@ import java.util.ListIterator;
 import java.util.Objects;
 
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;

@@ -4,8 +4,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import ai.greycos.solver.core.impl.domain.variable.descriptor.BasicVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.pillar.PillarSelector;

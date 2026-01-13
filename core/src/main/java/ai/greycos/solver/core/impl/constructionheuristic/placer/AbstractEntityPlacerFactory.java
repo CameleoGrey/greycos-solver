@@ -9,7 +9,7 @@ import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorCon
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.impl.AbstractFromConfigFactory;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 
 abstract class AbstractEntityPlacerFactory<

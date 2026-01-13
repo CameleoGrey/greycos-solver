@@ -8,9 +8,9 @@ import java.util.concurrent.ExecutionException;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
-import ai.greycos.solver.benchmark.quarkus.testdomain.normal.constraints.TestdataQuarkusConstraintProvider;
-import ai.greycos.solver.benchmark.quarkus.testdomain.normal.domain.TestdataQuarkusEntity;
-import ai.greycos.solver.benchmark.quarkus.testdomain.normal.domain.TestdataQuarkusSolution;
+import ai.greycos.solver.benchmark.quarkus.testcotwin.normal.constraints.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.benchmark.quarkus.testcotwin.normal.cotwin.TestdataQuarkusEntity;
+import ai.greycos.solver.benchmark.quarkus.testcotwin.normal.cotwin.TestdataQuarkusSolution;
 import ai.greycos.solver.core.api.solver.SolverManager;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;

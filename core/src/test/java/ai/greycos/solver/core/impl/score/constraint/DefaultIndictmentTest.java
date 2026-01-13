@@ -11,7 +11,7 @@ import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
 import ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testutil.PlannerAssert;
 
 import org.junit.jupiter.api.Test;

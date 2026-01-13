@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.value.decorator;
 
 import ai.greycos.solver.core.impl.heuristic.selector.list.ElementDestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PositionInList;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 
 /**
  * Only selects values from the child value selector that are initialized. This is used for {@link

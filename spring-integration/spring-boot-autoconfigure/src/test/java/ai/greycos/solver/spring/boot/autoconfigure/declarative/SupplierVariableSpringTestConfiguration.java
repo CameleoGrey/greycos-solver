@@ -1,7 +1,7 @@
 package ai.greycos.solver.spring.boot.autoconfigure.declarative;
 
 import ai.greycos.solver.spring.boot.autoconfigure.declarative.constraints.TestdataSpringSupplierVariableConstraintProvider;
-import ai.greycos.solver.spring.boot.autoconfigure.declarative.domain.TestdataSpringSupplierVariableSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.declarative.cotwin.TestdataSpringSupplierVariableSolution;
 
 import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
 import org.springframework.boot.autoconfigure.domain.EntityScan;

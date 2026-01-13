@@ -5,15 +5,15 @@ import static java.util.Objects.requireNonNull;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.api.score.stream.ConstraintStreamImplType;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.test.impl.score.stream.DefaultConstraintVerifier;
 
 import org.jspecify.annotations.NonNull;

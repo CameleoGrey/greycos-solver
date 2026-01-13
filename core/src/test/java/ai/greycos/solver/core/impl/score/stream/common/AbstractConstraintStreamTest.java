@@ -20,9 +20,9 @@ import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishSolution;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishSolution;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.extension.ExtendWith;

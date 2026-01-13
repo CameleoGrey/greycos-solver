@@ -3,8 +3,8 @@ package ai.greycos.solver.core.impl.heuristic.selector.value.decorator;
 import java.util.Iterator;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import ai.greycos.solver.core.impl.domain.valuerange.descriptor.ValueRangeDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import ai.greycos.solver.core.impl.heuristic.selector.value.FromEntityPropertyValueSelector;

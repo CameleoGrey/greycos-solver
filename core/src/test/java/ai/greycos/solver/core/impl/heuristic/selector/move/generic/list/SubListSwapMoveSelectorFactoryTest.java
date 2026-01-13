@@ -12,9 +12,9 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubListSwapMoveSelectorConfig;
 import ai.greycos.solver.core.impl.heuristic.selector.list.RandomSubListSelector;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
-import ai.greycos.solver.core.testdomain.mixed.multientity.TestdataMixedMultiEntitySolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
+import ai.greycos.solver.core.testcotwin.mixed.multientity.TestdataMixedMultiEntitySolution;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

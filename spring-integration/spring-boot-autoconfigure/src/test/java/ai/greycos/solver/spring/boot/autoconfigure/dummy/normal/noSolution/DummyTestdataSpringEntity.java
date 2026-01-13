@@ -1,7 +1,7 @@
 package ai.greycos.solver.spring.boot.autoconfigure.dummy.normal.noSolution;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 
 @PlanningEntity
 public class DummyTestdataSpringEntity {

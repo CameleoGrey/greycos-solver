@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.list.mimic;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 
 public interface SubListMimicRecorder<Solution_> {
 

@@ -13,9 +13,9 @@ import ai.greycos.solver.core.config.heuristic.selector.entity.pillar.SubPillarC
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.pillar.DefaultPillarSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.Test;

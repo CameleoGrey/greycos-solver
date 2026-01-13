@@ -5,14 +5,14 @@
 <#list ['FIRST_FIT', 'CHEAPEST_INSERTION'] as constructionHeuristicType>
   <solverBenchmark>
     <problemBenchmarks>
-      <solutionFileIOClass>ai.greycos.solver.persistence.common.api.domain.solution.RigidTestdataSolutionFileIO</solutionFileIOClass>
+      <solutionFileIOClass>ai.greycos.solver.persistence.common.api.cotwin.solution.RigidTestdataSolutionFileIO</solutionFileIOClass>
       <inputSolutionFile>target/test/benchmarkTest/input.xml</inputSolutionFile>
     </problemBenchmarks>
     <solver>
-      <solutionClass>ai.greycos.solver.core.testdomain.TestdataSolution</solutionClass>
-      <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
+      <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+      <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <easyScoreCalculatorClass>ai.greycos.solver.core.testdomain.TestdataEasyScoreCalculator</easyScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.core.testcotwin.TestdataEasyScoreCalculator</easyScoreCalculatorClass>
       </scoreDirectorFactory>
       <termination>
         <secondsSpentLimit>0</secondsSpentLimit>

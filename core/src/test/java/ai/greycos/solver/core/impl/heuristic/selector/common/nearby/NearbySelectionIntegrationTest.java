@@ -12,7 +12,7 @@ import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySele
 import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionDistributionType;
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.nearby.NearEntityNearbyEntitySelector;

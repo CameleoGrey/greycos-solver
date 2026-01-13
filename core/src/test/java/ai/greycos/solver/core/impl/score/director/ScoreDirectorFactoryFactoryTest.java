@@ -15,7 +15,7 @@ import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.score.director.incremental.IncrementalScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;

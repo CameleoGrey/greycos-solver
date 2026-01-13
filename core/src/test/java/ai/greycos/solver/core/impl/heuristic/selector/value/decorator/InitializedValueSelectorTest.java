@@ -12,10 +12,10 @@ import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedAnchor;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedEntity;
-import ai.greycos.solver.core.testdomain.unassignedvar.TestdataAllowsUnassignedEntity;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedAnchor;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity;
+import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEntity;
 import ai.greycos.solver.core.testutil.PlannerAssert;
 
 import org.junit.jupiter.api.Test;

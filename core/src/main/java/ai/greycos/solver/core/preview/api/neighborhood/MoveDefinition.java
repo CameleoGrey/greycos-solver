@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.preview.api.neighborhood;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.MoveStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.MoveStreamFactory;
 

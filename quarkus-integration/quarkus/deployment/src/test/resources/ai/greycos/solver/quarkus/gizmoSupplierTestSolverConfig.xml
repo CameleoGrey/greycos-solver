@@ -2,10 +2,10 @@
 <solver>
     <environmentMode>FULL_ASSERT</environmentMode>
     <moveThreadCount>AUTO</moveThreadCount>
-    <solutionClass>ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedExtendedSolution</solutionClass>
-    <solutionClass>ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedSolution</solutionClass>
-    <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
-    <entityClass>ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedChildEntity</entityClass>
+    <solutionClass>ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedExtendedSolution</solutionClass>
+    <solutionClass>ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedSolution</solutionClass>
+    <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
+    <entityClass>ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedChildEntity</entityClass>
     <entityClass>ai.greycos.solver.quarkus.GreyCOSProcessorGeneratedGizmoSupplierTest$DummyInterfaceEntity</entityClass>
     <entityClass>ai.greycos.solver.quarkus.GreyCOSProcessorGeneratedGizmoSupplierTest$DummyAbstractEntity</entityClass>
     <scoreDirectorFactory>
@@ -18,7 +18,7 @@
         <constructionHeuristicType>FIRST_FIT_DECREASING</constructionHeuristicType>
         <queuedEntityPlacer>
             <entitySelector id="placerEntitySelector">
-                <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
+                <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
                 <cacheType>PHASE</cacheType>
                 <selectionOrder>SORTED</selectionOrder>
                 <filterClass>ai.greycos.solver.quarkus.GreyCOSProcessorGeneratedGizmoSupplierTest$DummyEntityFilter</filterClass>
@@ -28,7 +28,7 @@
                 <changeMoveSelector>
                     <entitySelector mimicSelectorRef="placerEntitySelector"/>
                     <valueSelector variableName="subValue">
-                        <downcastEntityClass>ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedChildEntity</downcastEntityClass>
+                        <downcastEntityClass>ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedChildEntity</downcastEntityClass>
                         <cacheType>PHASE</cacheType>
                         <selectionOrder>SORTED</selectionOrder>
                         <sorterManner>INCREASING_STRENGTH</sorterManner>

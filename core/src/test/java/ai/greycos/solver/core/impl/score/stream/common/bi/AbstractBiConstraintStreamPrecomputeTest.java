@@ -12,11 +12,11 @@ import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamT
 import ai.greycos.solver.core.impl.score.stream.common.ConstraintStreamImplSupport;
 import ai.greycos.solver.core.impl.score.stream.common.ConstraintStreamPrecomputeTest;
 import ai.greycos.solver.core.impl.util.Pair;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishEntity;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishEntityGroup;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishSolution;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishValue;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishValueGroup;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishEntity;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishEntityGroup;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishSolution;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishValue;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishValueGroup;
 
 import org.junit.jupiter.api.TestTemplate;
 import org.mockito.Mockito;

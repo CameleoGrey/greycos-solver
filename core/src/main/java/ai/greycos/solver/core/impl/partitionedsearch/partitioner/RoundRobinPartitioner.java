@@ -3,9 +3,9 @@ package ai.greycos.solver.core.impl.partitionedsearch.partitioner;
 import java.util.ArrayList;
 import java.util.List;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 
 import org.jspecify.annotations.NullMarked;
@@ -14,7 +14,7 @@ import org.jspecify.annotations.NullMarked;
  * Simple round-robin partitioner for testing (not production-ready).
  *
  * <p>Distributes entities round-robin across partitions; clones facts to all partitions. For
- * production, implement domain-specific partitioner considering entity relationships.
+ * production, implement cotwin-specific partitioner considering entity relationships.
  *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */

@@ -3,10 +3,10 @@ package ai.greycos.solver.quarkus;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import ai.greycos.solver.quarkus.testdomain.gizmo.DummyConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.gizmo.DummyVariableListener;
-import ai.greycos.solver.quarkus.testdomain.gizmo.TestDataKitchenSinkAutoDiscoverFieldSolution;
-import ai.greycos.solver.quarkus.testdomain.gizmo.TestDataKitchenSinkEntity;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.DummyConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.DummyVariableListener;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.TestDataKitchenSinkAutoDiscoverFieldSolution;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.TestDataKitchenSinkEntity;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

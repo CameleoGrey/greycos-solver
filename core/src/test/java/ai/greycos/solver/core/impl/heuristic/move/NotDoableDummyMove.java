@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.move;
 
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 public class NotDoableDummyMove extends DummyMove {
 

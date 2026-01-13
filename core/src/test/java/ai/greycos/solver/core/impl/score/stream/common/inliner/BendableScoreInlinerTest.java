@@ -7,9 +7,9 @@ import java.util.Map;
 
 import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
-import ai.greycos.solver.core.testdomain.score.TestdataBendableScoreSolution;
+import ai.greycos.solver.core.testcotwin.score.TestdataBendableScoreSolution;
 
 import org.junit.jupiter.api.Test;
 

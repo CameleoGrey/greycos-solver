@@ -10,15 +10,15 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheTyp
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.mimic.MimicRecordingSubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.mimic.MimicReplayingSubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.mimic.SubListMimicRecorder;
-import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
-import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
-import ai.greycos.solver.core.testdomain.list.TestdataListUtils;
+import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
+import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
+import ai.greycos.solver.core.testcotwin.list.TestdataListUtils;
 
 import org.junit.jupiter.api.Test;
 

@@ -7,9 +7,9 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheTyp
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.chained.SubChainSelectorConfig;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedEntity;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity;
 
 import org.junit.jupiter.api.Test;
 

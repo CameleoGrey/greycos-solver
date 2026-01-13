@@ -7,7 +7,7 @@ import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristic
 import ai.greycos.solver.core.config.score.trend.InitializingScoreTrendLevel;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.score.trend.InitializingScoreTrend;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
 

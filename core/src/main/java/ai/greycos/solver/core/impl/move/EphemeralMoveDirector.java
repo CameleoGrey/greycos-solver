@@ -2,8 +2,8 @@ package ai.greycos.solver.core.impl.move;
 
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
-import ai.greycos.solver.core.preview.api.domain.metamodel.ElementPosition;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningListVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.NullMarked;

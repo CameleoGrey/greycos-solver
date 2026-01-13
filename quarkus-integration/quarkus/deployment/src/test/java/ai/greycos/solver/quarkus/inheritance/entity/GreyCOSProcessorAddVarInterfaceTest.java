@@ -7,10 +7,10 @@ import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.interfaces.addvar.TestAddVarInterfaceConstraintProvider;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.interfaces.addvar.TestdataAddVarInterfaceBaseEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.interfaces.addvar.TestdataAddVarInterfaceChildEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.interfaces.addvar.TestdataAddVarInterfaceSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.interfaces.addvar.TestAddVarInterfaceConstraintProvider;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.interfaces.addvar.TestdataAddVarInterfaceBaseEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.interfaces.addvar.TestdataAddVarInterfaceChildEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.interfaces.addvar.TestdataAddVarInterfaceSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

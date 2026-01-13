@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.localsearch;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.lateacceptance.LateAcceptanceAcceptor;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.simulatedannealing.SimulatedAnnealingAcceptor;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.tabu.AbstractTabuAcceptor;

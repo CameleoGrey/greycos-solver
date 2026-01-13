@@ -2,17 +2,17 @@ package ai.greycos.solver.spring.boot.autoconfigure.invalid.type;
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningPin;
-import ai.greycos.solver.core.api.domain.variable.AnchorShadowVariable;
-import ai.greycos.solver.core.api.domain.variable.CustomShadowVariable;
-import ai.greycos.solver.core.api.domain.variable.IndexShadowVariable;
-import ai.greycos.solver.core.api.domain.variable.InverseRelationShadowVariable;
-import ai.greycos.solver.core.api.domain.variable.NextElementShadowVariable;
-import ai.greycos.solver.core.api.domain.variable.PiggybackShadowVariable;
-import ai.greycos.solver.core.api.domain.variable.PlanningListVariable;
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
-import ai.greycos.solver.core.api.domain.variable.PreviousElementShadowVariable;
-import ai.greycos.solver.core.api.domain.variable.ShadowVariable;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
+import ai.greycos.solver.core.api.cotwin.variable.AnchorShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.CustomShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PiggybackShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.spring.boot.autoconfigure.invalid.VariableListener;
 
 public class InvalidFieldTestdataSpringEntity {

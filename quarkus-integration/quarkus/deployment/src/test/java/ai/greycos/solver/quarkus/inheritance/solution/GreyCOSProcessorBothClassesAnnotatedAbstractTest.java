@@ -7,12 +7,12 @@ import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractBaseEntity;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractChildEntity;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractConstraintProvider;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractExtendedConstraintProvider;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractExtendedSolution;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractBaseEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractChildEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractConstraintProvider;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractExtendedConstraintProvider;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractExtendedSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

@@ -34,9 +34,9 @@ import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.solver.DefaultSolver;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.comparable.TestdataDifficultyComparingEntity;
-import ai.greycos.solver.core.testdomain.comparable.TestdataDifficultyComparingSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.comparable.TestdataDifficultyComparingEntity;
+import ai.greycos.solver.core.testcotwin.comparable.TestdataDifficultyComparingSolution;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.jspecify.annotations.NonNull;

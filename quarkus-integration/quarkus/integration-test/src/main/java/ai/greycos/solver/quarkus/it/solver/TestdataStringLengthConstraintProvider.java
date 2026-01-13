@@ -5,7 +5,7 @@ import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.api.score.stream.Joiners;
-import ai.greycos.solver.quarkus.it.domain.TestdataStringLengthShadowEntity;
+import ai.greycos.solver.quarkus.it.cotwin.TestdataStringLengthShadowEntity;
 
 import org.jspecify.annotations.NonNull;
 

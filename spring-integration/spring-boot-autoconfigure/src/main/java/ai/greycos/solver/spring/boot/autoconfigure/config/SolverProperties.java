@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
-import ai.greycos.solver.core.api.domain.common.DomainAccessType;
+import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.score.stream.ConstraintStreamImplType;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
@@ -40,12 +40,12 @@ public class SolverProperties {
   private String moveThreadCount;
 
   /**
-   * Determines how to access the fields and methods of domain classes. Defaults to REFLECTION.
+   * Determines how to access the fields and methods of cotwin classes. Defaults to REFLECTION.
    *
    * <p>To use GIZMO, io.quarkus.gizmo:gizmo must be in your classpath, and all planning annotations
    * must be on public members.
    */
-  private DomainAccessType domainAccessType;
+  private CotwinAccessType cotwinAccessType;
 
   private List<PreviewFeature> enabledPreviewFeatures;
 
@@ -109,12 +109,12 @@ public class SolverProperties {
     this.moveThreadCount = moveThreadCount;
   }
 
-  public DomainAccessType getDomainAccessType() {
-    return domainAccessType;
+  public CotwinAccessType getCotwinAccessType() {
+    return cotwinAccessType;
   }
 
-  public void setDomainAccessType(DomainAccessType domainAccessType) {
-    this.domainAccessType = domainAccessType;
+  public void setCotwinAccessType(CotwinAccessType cotwinAccessType) {
+    this.cotwinAccessType = cotwinAccessType;
   }
 
   public List<PreviewFeature> getEnabledPreviewFeatures() {

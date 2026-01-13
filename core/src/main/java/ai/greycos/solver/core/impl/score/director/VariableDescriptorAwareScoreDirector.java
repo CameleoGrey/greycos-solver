@@ -1,9 +1,9 @@
 package ai.greycos.solver.core.impl.score.director;
 
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.VariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 
 public interface VariableDescriptorAwareScoreDirector<Solution_> extends ScoreDirector<Solution_> {
 

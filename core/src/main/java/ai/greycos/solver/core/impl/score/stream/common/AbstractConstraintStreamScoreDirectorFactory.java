@@ -1,9 +1,9 @@
 package ai.greycos.solver.core.impl.score.stream.common;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.stream.ConstraintMetaModel;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;

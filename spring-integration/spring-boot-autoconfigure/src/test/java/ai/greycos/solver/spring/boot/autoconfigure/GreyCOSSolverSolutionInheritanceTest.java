@@ -6,9 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedExtendedSolution;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedExtendedSolution;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractExtendedSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedExtendedSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedExtendedSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtooabstract.TestdataBothAnnotatedAbstractExtendedSolution;
 import ai.greycos.solver.spring.boot.autoconfigure.inheritance.solution.BothAnnotatedAbstractSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.inheritance.solution.BothAnnotatedSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.inheritance.solution.MultipleInheritanceSpringTestConfiguration;

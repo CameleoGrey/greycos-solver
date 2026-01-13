@@ -17,9 +17,9 @@ import ai.greycos.solver.core.api.score.stream.tri.TriConstraintStream;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamTest;
 import ai.greycos.solver.core.impl.score.stream.common.ConstraintStreamImplSupport;
 import ai.greycos.solver.core.impl.score.stream.common.ConstraintStreamNodeSharingTest;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;

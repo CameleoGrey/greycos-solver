@@ -6,7 +6,7 @@ import java.util.Objects;
 
 import ai.greycos.solver.benchmark.impl.result.SingleBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.result.SolverBenchmarkResult;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 
 /**

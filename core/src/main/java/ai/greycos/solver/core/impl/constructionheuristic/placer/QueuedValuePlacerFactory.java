@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.constructionheuristic.placer;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.domain.valuerange.ValueRangeProvider;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.config.constructionheuristic.placer.QueuedValuePlacerConfig;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
@@ -10,8 +10,8 @@ import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorCon
 import ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory;

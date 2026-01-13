@@ -19,10 +19,10 @@ import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.impl.solver.DefaultSolutionManager;
 import ai.greycos.solver.core.impl.solver.DefaultSolverFactory;
 import ai.greycos.solver.core.impl.solver.DefaultSolverManager;
-import ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableEntity;
-import ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableListener;
-import ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableSolution;
+import ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableEntity;
+import ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableListener;
+import ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

@@ -2,7 +2,7 @@ package ai.greycos.solver.core.config.heuristic.selector.value;
 
 import jakarta.xml.bind.annotation.XmlEnum;
 
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 
 /** The manner of sorting values for a {@link PlanningVariable}. */
 @XmlEnum

@@ -19,7 +19,7 @@ import ai.greycos.solver.core.impl.solver.DefaultSolverJob;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.spring.boot.autoconfigure.chained.ChainedSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.chained.constraints.TestdataChainedSpringConstraintProvider;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringSolution;
 import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleConstraintProviderSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleEasyScoreConstraintSpringTestConfiguration;
@@ -39,8 +39,8 @@ import ai.greycos.solver.spring.boot.autoconfigure.normal.EmptySpringTestConfigu
 import ai.greycos.solver.spring.boot.autoconfigure.normal.NoConstraintsSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.NormalSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.constraints.TestdataSpringConstraintProvider;
-import ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringEntity;
-import ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringEntity;
+import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution;
 import ai.greycos.solver.test.api.score.stream.ConstraintVerifier;
 
 import org.junit.jupiter.api.Test;
@@ -270,7 +270,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
                     .withPropertyValues("greycos.solver.solver1.daemon=true")
                     .withPropertyValues("greycos.solver.solver2.daemon=false")
                     .withPropertyValues(
-                        "greycos.solver.solver2.nearby-distance-meter-class=ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringSolution")
+                        "greycos.solver.solver2.nearby-distance-meter-class=ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution")
                     .run(
                         context -> {
                           var solverConfig = context.getBean(SolverConfig.class);
@@ -281,7 +281,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
         .message()
         .contains(
             "The Nearby Selection Meter class",
-            "ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringSolution");
+            "ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution");
   }
 
   @Test
@@ -363,7 +363,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solverConfigXml",
             "environmentMode",
             "moveThreadCount",
-            "domainAccessType",
+            "cotwinAccessType",
             "are not valid",
             "Maybe try changing the property name to kebab-case");
     assertThatCode(
@@ -579,7 +579,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
         .cause()
         .message()
         .contains(
-            "Unused classes ([ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringSolution]) found with a @PlanningSolution annotation.");
+            "Unused classes ([ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringSolution]) found with a @PlanningSolution annotation.");
   }
 
   @Test

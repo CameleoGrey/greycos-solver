@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.constructionheuristic.event;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
 import ai.greycos.solver.core.impl.solver.event.SolverLifecycleListenerAdapter;

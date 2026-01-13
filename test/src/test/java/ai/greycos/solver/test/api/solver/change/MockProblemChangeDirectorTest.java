@@ -1,11 +1,11 @@
 package ai.greycos.solver.test.api.solver.change;
 
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishEntity;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishEntityGroup;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishSolution;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishValue;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishValueGroup;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishEntity;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishEntityGroup;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishSolution;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishValue;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishValueGroup;
 
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;

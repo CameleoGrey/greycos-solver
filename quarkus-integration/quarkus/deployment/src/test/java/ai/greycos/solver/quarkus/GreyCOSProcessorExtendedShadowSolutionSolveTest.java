@@ -9,15 +9,15 @@ import java.util.concurrent.ExecutionException;
 import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataObject;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowExtendedShadowEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowShadowEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowSolution;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowVariable;
-import ai.greycos.solver.quarkus.testdomain.inheritance.solution.TestdataExtendedShadowSolutionConstraintProvider;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataObject;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowExtendedShadowEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowShadowEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowVariable;
+import ai.greycos.solver.quarkus.testcotwin.inheritance.solution.TestdataExtendedShadowSolutionConstraintProvider;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

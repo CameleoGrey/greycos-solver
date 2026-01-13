@@ -5,11 +5,11 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.lookup.PlanningId;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.solution.ProblemFactProperty;
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.ProblemFactProperty;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NullMarked;

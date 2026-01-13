@@ -8,15 +8,15 @@ import java.time.Duration;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.domain.common.DomainAccessType;
+import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.quarkus.testdomain.dummy.DummyDistanceMeter;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.dummy.DummyDistanceMeter;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
@@ -51,7 +51,7 @@ class GreyCOSProcessorNearbySolverYamlTest {
     assertNotNull(solverConfig.getNearbyDistanceMeterClass());
     assertTrue(solverConfig.getDaemon());
     assertEquals("2", solverConfig.getMoveThreadCount());
-    assertEquals(DomainAccessType.REFLECTION, solverConfig.getDomainAccessType());
+    assertEquals(CotwinAccessType.REFLECTION, solverConfig.getCotwinAccessType());
     assertEquals(null, solverConfig.getScoreDirectorFactoryConfig().getConstraintStreamImplType());
 
     assertNotNull(solverFactory);

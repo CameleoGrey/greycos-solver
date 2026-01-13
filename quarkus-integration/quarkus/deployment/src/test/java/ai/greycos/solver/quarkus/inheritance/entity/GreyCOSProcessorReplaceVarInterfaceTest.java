@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import ai.greycos.solver.core.testconstraint.DummyConstraintProvider;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.interfaces.replacevar.TestdataReplaceVarInterfaceChildEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.interfaces.replacevar.TestdataReplaceVarInterfaceSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.interfaces.replacevar.TestdataReplaceVarInterfaceChildEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.interfaces.replacevar.TestdataReplaceVarInterfaceSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

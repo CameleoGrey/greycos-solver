@@ -3,9 +3,9 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.chained;
 import java.util.Collections;
 import java.util.Iterator;
 
-import ai.greycos.solver.core.impl.domain.variable.inverserelation.SingletonInverseVariableDemand;
-import ai.greycos.solver.core.impl.domain.variable.inverserelation.SingletonInverseVariableSupply;
-import ai.greycos.solver.core.impl.domain.variable.supply.SupplyManager;
+import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableDemand;
+import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;

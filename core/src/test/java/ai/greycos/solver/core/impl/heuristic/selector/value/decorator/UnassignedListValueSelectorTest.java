@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.value.decorator;
 
 import static ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.mockIterableValueSelector;
-import static ai.greycos.solver.core.testdomain.list.TestdataListUtils.getListVariableDescriptor;
+import static ai.greycos.solver.core.testcotwin.list.TestdataListUtils.getListVariableDescriptor;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfIterator;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfValueSelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfValueSelectorForEntity;
@@ -17,9 +17,9 @@ import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelecto
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
-import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
-import ai.greycos.solver.core.testdomain.list.TestdataListValue;
+import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
+import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
+import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
 
 import org.junit.jupiter.api.Test;
 

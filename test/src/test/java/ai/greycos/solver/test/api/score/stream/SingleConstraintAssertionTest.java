@@ -16,32 +16,32 @@ import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
-import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
-import ai.greycos.solver.core.testdomain.list.TestdataListValue;
-import ai.greycos.solver.core.testdomain.list.pinned.noshadows.TestdataPinnedNoShadowsListEntity;
-import ai.greycos.solver.core.testdomain.list.pinned.noshadows.TestdataPinnedNoShadowsListSolution;
-import ai.greycos.solver.core.testdomain.list.pinned.noshadows.TestdataPinnedNoShadowsListValue;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
-import ai.greycos.solver.core.testdomain.shadow.dependency.TestdataDependencyConstraintProvider;
-import ai.greycos.solver.core.testdomain.shadow.dependency.TestdataDependencyEntity;
-import ai.greycos.solver.core.testdomain.shadow.dependency.TestdataDependencySolution;
-import ai.greycos.solver.core.testdomain.shadow.dependency.TestdataDependencyValue;
-import ai.greycos.solver.core.testdomain.shadow.multiplelistener.TestdataListMultipleShadowVariableConstraintProvider;
-import ai.greycos.solver.core.testdomain.shadow.multiplelistener.TestdataListMultipleShadowVariableEntity;
-import ai.greycos.solver.core.testdomain.shadow.multiplelistener.TestdataListMultipleShadowVariableSolution;
-import ai.greycos.solver.core.testdomain.shadow.multiplelistener.TestdataListMultipleShadowVariableValue;
-import ai.greycos.solver.test.api.testdomain.TestdataConstraintVerifierConstraintProvider;
-import ai.greycos.solver.test.api.testdomain.TestdataConstraintVerifierExtendedSolution;
-import ai.greycos.solver.test.api.testdomain.TestdataConstraintVerifierFirstEntity;
-import ai.greycos.solver.test.api.testdomain.TestdataConstraintVerifierJustificationProvider;
-import ai.greycos.solver.test.api.testdomain.TestdataConstraintVerifierSecondEntity;
-import ai.greycos.solver.test.api.testdomain.TestdataConstraintVerifierSolution;
-import ai.greycos.solver.test.api.testdomain.justification.TestFirstJustification;
-import ai.greycos.solver.test.api.testdomain.justification.TestSecondJustification;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
+import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
+import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
+import ai.greycos.solver.core.testcotwin.list.pinned.noshadows.TestdataPinnedNoShadowsListEntity;
+import ai.greycos.solver.core.testcotwin.list.pinned.noshadows.TestdataPinnedNoShadowsListSolution;
+import ai.greycos.solver.core.testcotwin.list.pinned.noshadows.TestdataPinnedNoShadowsListValue;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
+import ai.greycos.solver.core.testcotwin.shadow.dependency.TestdataDependencyConstraintProvider;
+import ai.greycos.solver.core.testcotwin.shadow.dependency.TestdataDependencyEntity;
+import ai.greycos.solver.core.testcotwin.shadow.dependency.TestdataDependencySolution;
+import ai.greycos.solver.core.testcotwin.shadow.dependency.TestdataDependencyValue;
+import ai.greycos.solver.core.testcotwin.shadow.multiplelistener.TestdataListMultipleShadowVariableConstraintProvider;
+import ai.greycos.solver.core.testcotwin.shadow.multiplelistener.TestdataListMultipleShadowVariableEntity;
+import ai.greycos.solver.core.testcotwin.shadow.multiplelistener.TestdataListMultipleShadowVariableSolution;
+import ai.greycos.solver.core.testcotwin.shadow.multiplelistener.TestdataListMultipleShadowVariableValue;
+import ai.greycos.solver.test.api.testcotwin.TestdataConstraintVerifierConstraintProvider;
+import ai.greycos.solver.test.api.testcotwin.TestdataConstraintVerifierExtendedSolution;
+import ai.greycos.solver.test.api.testcotwin.TestdataConstraintVerifierFirstEntity;
+import ai.greycos.solver.test.api.testcotwin.TestdataConstraintVerifierJustificationProvider;
+import ai.greycos.solver.test.api.testcotwin.TestdataConstraintVerifierSecondEntity;
+import ai.greycos.solver.test.api.testcotwin.TestdataConstraintVerifierSolution;
+import ai.greycos.solver.test.api.testcotwin.justification.TestFirstJustification;
+import ai.greycos.solver.test.api.testcotwin.justification.TestSecondJustification;
 
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
@@ -1236,7 +1236,7 @@ class SingleConstraintAssertionTest {
                     .justifiesWith(new TestFirstJustification("2")))
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining(
-            "Justification: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Justification: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1255,7 +1255,7 @@ class SingleConstraintAssertionTest {
                     .justifiesWith(new TestFirstJustification("2")))
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining(
-            "Justification: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Justification: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1277,7 +1277,7 @@ class SingleConstraintAssertionTest {
                         new TestFirstJustification("2")))
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining(
-            "Justification: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Justification: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("TestFirstJustification[id=Generated Entity 0]")
@@ -1301,7 +1301,7 @@ class SingleConstraintAssertionTest {
                         new TestSecondJustification("1")))
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining(
-            "Justification: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Justification: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("TestFirstJustification[id=Generated Entity 0]")
@@ -1329,7 +1329,7 @@ class SingleConstraintAssertionTest {
                     .justifiesWith("Custom Message", new TestFirstJustification("2")))
         .hasMessageContaining("Custom Message")
         .hasMessageContaining(
-            "Justification: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Justification: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1348,7 +1348,7 @@ class SingleConstraintAssertionTest {
                     .justifiesWith("Custom Message", new TestFirstJustification("2")))
         .hasMessageContaining("Custom Message")
         .hasMessageContaining(
-            "Justification: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Justification: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1447,7 +1447,7 @@ class SingleConstraintAssertionTest {
                     .justifiesWithExactly(new TestFirstJustification("2")))
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining(
-            "Justification: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Justification: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1472,7 +1472,7 @@ class SingleConstraintAssertionTest {
                     .justifiesWithExactly("Custom Message", new TestFirstJustification("2")))
         .hasMessageContaining("Custom Message")
         .hasMessageContaining(
-            "Justification: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Justification: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1492,7 +1492,7 @@ class SingleConstraintAssertionTest {
                     .justifiesWithExactly("Custom Message", new TestFirstJustification("2")))
         .hasMessageContaining("Custom Message")
         .hasMessageContaining(
-            "Justification: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Justification: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1588,7 +1588,7 @@ class SingleConstraintAssertionTest {
                     .indictsWith(badEntity))
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining(
-            "Indictment: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Indictment: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining(badEntity.toString())
         .hasMessageContaining("Actual")
@@ -1607,7 +1607,7 @@ class SingleConstraintAssertionTest {
                     .indictsWith(badEntity))
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining(
-            "Indictment: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Indictment: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining(badEntity.toString())
         .hasMessageContaining("Actual")
@@ -1627,7 +1627,7 @@ class SingleConstraintAssertionTest {
                     .indictsWith(solution.getEntityList().get(0), badEntity))
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining(
-            "Indictment: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Indictment: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining(solution.getEntityList().get(0).toString())
         .hasMessageContaining(badEntity.toString())
@@ -1648,7 +1648,7 @@ class SingleConstraintAssertionTest {
                     .indictsWith(solution.getEntityList().get(0), badEntity, "bad indictment"))
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining(
-            "Indictment: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Indictment: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='Generated Entity 0')")
         .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='bad code')")
@@ -1678,7 +1678,7 @@ class SingleConstraintAssertionTest {
                     .indictsWith("Custom Message", badEntity))
         .hasMessageContaining("Custom Message")
         .hasMessageContaining(
-            "Indictment: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Indictment: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining(badEntity.toString())
         .hasMessageContaining("Actual")
@@ -1697,7 +1697,7 @@ class SingleConstraintAssertionTest {
                     .indictsWith("Custom Message", badEntity))
         .hasMessageContaining("Custom Message")
         .hasMessageContaining(
-            "Indictment: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Indictment: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining(badEntity.toString())
         .hasMessageContaining("Actual")
@@ -1792,7 +1792,7 @@ class SingleConstraintAssertionTest {
                     .indictsWithExactly(badEntity))
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining(
-            "Indictment: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Indictment: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining(badEntity.toString())
         .hasMessageContaining("Actual")
@@ -1811,7 +1811,7 @@ class SingleConstraintAssertionTest {
                     .indictsWithExactly(badEntity))
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining(
-            "Indictment: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Indictment: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining(badEntity.toString())
         .hasMessageContaining("Actual")
@@ -1838,7 +1838,7 @@ class SingleConstraintAssertionTest {
                     .indictsWithExactly("Custom Message", badEntity))
         .hasMessageContaining("Custom Message")
         .hasMessageContaining(
-            "Indictment: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Indictment: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining(badEntity.toString())
         .hasMessageContaining("Actual")
@@ -1858,7 +1858,7 @@ class SingleConstraintAssertionTest {
                     .indictsWithExactly("Custom Message", badEntity))
         .hasMessageContaining("Custom Message")
         .hasMessageContaining(
-            "Indictment: ai.greycos.solver.test.api.testdomain/Justify with first justification")
+            "Indictment: ai.greycos.solver.test.api.testcotwin/Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining(badEntity.toString())
         .hasMessageContaining("Actual")

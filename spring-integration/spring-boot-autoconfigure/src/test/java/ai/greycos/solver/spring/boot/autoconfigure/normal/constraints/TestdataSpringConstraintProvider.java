@@ -5,7 +5,7 @@ import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.api.score.stream.Joiners;
-import ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringEntity;
+import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringEntity;
 
 import org.jspecify.annotations.NonNull;
 

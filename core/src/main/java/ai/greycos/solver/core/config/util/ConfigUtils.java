@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.config.util;
 
-import static ai.greycos.solver.core.impl.domain.common.accessor.MemberAccessorFactory.MemberAccessorType.FIELD_OR_READ_METHOD;
-import static ai.greycos.solver.core.impl.domain.solution.cloner.DeepCloningUtils.IMMUTABLE_CLASSES;
+import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory.MemberAccessorType.FIELD_OR_READ_METHOD;
+import static ai.greycos.solver.core.impl.cotwin.solution.cloner.DeepCloningUtils.IMMUTABLE_CLASSES;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -31,13 +31,13 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.domain.common.DomainAccessType;
-import ai.greycos.solver.core.api.domain.lookup.PlanningId;
+import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
+import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.config.AbstractConfig;
-import ai.greycos.solver.core.impl.domain.common.AlphabeticMemberComparator;
-import ai.greycos.solver.core.impl.domain.common.ReflectionHelper;
-import ai.greycos.solver.core.impl.domain.common.accessor.MemberAccessor;
-import ai.greycos.solver.core.impl.domain.common.accessor.MemberAccessorFactory;
+import ai.greycos.solver.core.impl.cotwin.common.AlphabeticMemberComparator;
+import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -631,14 +631,14 @@ public class ConfigUtils {
   public static <C> @Nullable MemberAccessor findPlanningIdMemberAccessor(
       @NonNull Class<C> clazz,
       @NonNull MemberAccessorFactory memberAccessorFactory,
-      @NonNull DomainAccessType domainAccessType) {
+      @NonNull CotwinAccessType cotwinAccessType) {
     var member = getSingleMember(clazz, PlanningId.class);
     if (member == null) {
       return null;
     }
     var memberAccessor =
         memberAccessorFactory.buildAndCacheMemberAccessor(
-            member, FIELD_OR_READ_METHOD, PlanningId.class, domainAccessType);
+            member, FIELD_OR_READ_METHOD, PlanningId.class, cotwinAccessType);
     assertPlanningIdMemberIsComparable(clazz, member, memberAccessor);
     return memberAccessor;
   }

@@ -26,9 +26,9 @@ import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.DiminishedReturnsTerminationConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationCompositionStyle;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
-import ai.greycos.solver.core.testdomain.TestdataEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testutil.MockClock;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 

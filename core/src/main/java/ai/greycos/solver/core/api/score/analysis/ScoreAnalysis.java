@@ -36,7 +36,7 @@ import org.jspecify.annotations.Nullable;
  * <p>For deserialization from JSON, the user needs to provide the deserializer themselves. This is
  * due to the fact that, once the {@link ScoreAnalysis} is received over the wire, we no longer know
  * which {@link Score} type or {@link ConstraintJustification} type was used. The user has all of
- * that information in their domain model, and so they are the correct party to provide the
+ * that information in their cotwin model, and so they are the correct party to provide the
  * deserializer.
  *
  * <p>Note: the constructors of this record are off-limits. We ask users to use exclusively {@link
@@ -254,7 +254,7 @@ public record ScoreAnalysis<Score_ extends Score<Score_>>(
    *
    * <p>Do not parse the return value, its format may change without warning. Instead, provide this
    * information in a UI or a service, use {@link ScoreAnalysis#constraintAnalyses()} and convert
-   * those into a domain-specific API.
+   * those into a cotwin-specific API.
    */
   @SuppressWarnings("java:S3457")
   public @NonNull String summarize() {

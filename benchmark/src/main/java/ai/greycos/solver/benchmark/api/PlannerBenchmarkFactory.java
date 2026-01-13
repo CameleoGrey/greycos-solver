@@ -5,7 +5,7 @@ import java.util.List;
 
 import ai.greycos.solver.benchmark.config.PlannerBenchmarkConfig;
 import ai.greycos.solver.benchmark.impl.DefaultPlannerBenchmarkFactory;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 
 import org.jspecify.annotations.NonNull;

@@ -16,7 +16,7 @@ import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.score.buildin.HardSoftScoreDefinition;
 import ai.greycos.solver.core.impl.score.buildin.SimpleScoreDefinition;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
 

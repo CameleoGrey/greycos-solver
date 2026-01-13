@@ -12,12 +12,12 @@ import ai.greycos.solver.core.impl.exhaustivesearch.scope.ExhaustiveSearchStepSc
 import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.solver.DefaultSolver;
-import ai.greycos.solver.core.testdomain.TestdataEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.unassignedvar.TestdataAllowsUnassignedEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.unassignedvar.TestdataAllowsUnassignedEntity;
-import ai.greycos.solver.core.testdomain.unassignedvar.TestdataAllowsUnassignedSolution;
+import ai.greycos.solver.core.testcotwin.TestdataEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEntity;
+import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedSolution;
 
 import org.junit.jupiter.api.Test;
 

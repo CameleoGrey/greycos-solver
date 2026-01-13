@@ -1,0 +1,33 @@
+package ai.greycos.solver.core.impl.cotwin.variable.listener.support;
+
+import ai.greycos.solver.core.impl.cotwin.variable.InnerListVariableListener;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+
+final class ElementUnassignedNotification<Solution_>
+    implements ListVariableNotification<Solution_> {
+
+  private final Object element;
+
+  ElementUnassignedNotification(Object element) {
+    this.element = element;
+  }
+
+  @Override
+  public void triggerBefore(
+      InnerListVariableListener<Solution_, Object, Object> variableListener,
+      InnerScoreDirector<Solution_, ?> scoreDirector) {
+    throw new UnsupportedOperationException("ListVariableListeners do not listen for this event.");
+  }
+
+  @Override
+  public void triggerAfter(
+      InnerListVariableListener<Solution_, Object, Object> variableListener,
+      InnerScoreDirector<Solution_, ?> scoreDirector) {
+    variableListener.afterListElementUnassigned(scoreDirector, element);
+  }
+
+  @Override
+  public String toString() {
+    return "ElementUnassigned(" + element + ")";
+  }
+}

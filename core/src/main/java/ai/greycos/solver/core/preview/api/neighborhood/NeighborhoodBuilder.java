@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.preview.api.neighborhood;
 
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningSolutionMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 
 import org.jspecify.annotations.NullMarked;
 

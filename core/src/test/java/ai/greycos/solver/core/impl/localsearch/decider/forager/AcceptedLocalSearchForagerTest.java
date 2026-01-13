@@ -18,7 +18,7 @@ import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import ai.greycos.solver.core.impl.score.buildin.SimpleScoreDefinition;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testutil.TestRandom;
 
 import org.junit.jupiter.api.Test;

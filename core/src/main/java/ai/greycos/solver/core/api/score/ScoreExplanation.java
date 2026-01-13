@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.solution.ProblemFactCollectionProperty;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import ai.greycos.solver.core.api.score.calculator.ConstraintMatchAwareIncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
@@ -57,7 +57,7 @@ public interface ScoreExplanation<Solution_, Score_ extends Score<Score_>> {
    * <p>Do not parse the return value, its format may change without warning. Instead, to provide
    * this information in a UI or a service, use {@link
    * ScoreExplanation#getConstraintMatchTotalMap()} and {@link ScoreExplanation#getIndictmentMap()}
-   * and convert those into a domain-specific API.
+   * and convert those into a cotwin-specific API.
    */
   @NonNull String getSummary();
 

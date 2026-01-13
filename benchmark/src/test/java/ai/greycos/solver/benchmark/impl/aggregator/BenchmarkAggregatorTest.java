@@ -17,11 +17,11 @@ import ai.greycos.solver.benchmark.config.report.BenchmarkReportConfig;
 import ai.greycos.solver.benchmark.impl.DefaultPlannerBenchmark;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
-import ai.greycos.solver.core.testdomain.TestdataConstraintProvider;
-import ai.greycos.solver.core.testdomain.TestdataEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
+import ai.greycos.solver.core.testcotwin.TestdataConstraintProvider;
+import ai.greycos.solver.core.testcotwin.TestdataEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -62,14 +62,14 @@ class BenchmarkAggregatorTest {
                             </benchmarkReport>
                             <solverBenchmark>
                                 <problemBenchmarks>
-                                    <solutionFileIOClass>ai.greycos.solver.persistence.common.api.domain.solution.RigidTestdataSolutionFileIO</solutionFileIOClass>
+                                    <solutionFileIOClass>ai.greycos.solver.persistence.common.api.cotwin.solution.RigidTestdataSolutionFileIO</solutionFileIOClass>
                                     <inputSolutionFile>%s</inputSolutionFile>
                                 </problemBenchmarks>
                                 <solver>
-                                    <solutionClass>ai.greycos.solver.core.testdomain.TestdataSolution</solutionClass>
-                                    <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
+                                    <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+                                    <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
                                     <scoreDirectorFactory>
-                                        <constraintProviderClass>ai.greycos.solver.core.testdomain.TestdataConstraintProvider</constraintProviderClass>
+                                        <constraintProviderClass>ai.greycos.solver.core.testcotwin.TestdataConstraintProvider</constraintProviderClass>
                                     </scoreDirectorFactory>
                                     <termination>
                                         <millisecondsSpentLimit>10</millisecondsSpentLimit>

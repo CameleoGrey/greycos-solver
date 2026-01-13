@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.exhaustivesearch.node.bounder;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;

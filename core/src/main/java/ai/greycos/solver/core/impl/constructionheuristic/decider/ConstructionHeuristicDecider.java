@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.constructionheuristic.decider;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.constructionheuristic.decider.forager.ConstructionHeuristicForager;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicMoveScope;

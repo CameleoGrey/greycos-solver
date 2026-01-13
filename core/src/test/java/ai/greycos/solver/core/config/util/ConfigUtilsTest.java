@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningScore;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 
 import org.junit.jupiter.api.Test;
 

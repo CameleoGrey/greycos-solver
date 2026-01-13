@@ -3,7 +3,7 @@ package ai.greycos.solver.core.config.heuristic.selector.move.generic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
 
 import org.junit.jupiter.api.Test;
 

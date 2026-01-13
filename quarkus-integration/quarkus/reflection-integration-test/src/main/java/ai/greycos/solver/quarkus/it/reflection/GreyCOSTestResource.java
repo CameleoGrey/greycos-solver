@@ -11,8 +11,8 @@ import jakarta.ws.rs.core.MediaType;
 
 import ai.greycos.solver.core.api.solver.SolverJob;
 import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.quarkus.it.reflection.domain.TestdataReflectionEntity;
-import ai.greycos.solver.quarkus.it.reflection.domain.TestdataReflectionSolution;
+import ai.greycos.solver.quarkus.it.reflection.cotwin.TestdataReflectionEntity;
+import ai.greycos.solver.quarkus.it.reflection.cotwin.TestdataReflectionSolution;
 
 @Path("/greycos/test")
 public class GreyCOSTestResource {

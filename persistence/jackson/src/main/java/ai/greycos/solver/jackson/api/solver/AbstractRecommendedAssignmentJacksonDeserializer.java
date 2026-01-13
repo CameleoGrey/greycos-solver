@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Extend this to implement {@link RecommendedAssignment} deserialization specific for your domain.
+ * Extend this to implement {@link RecommendedAssignment} deserialization specific for your cotwin.
  * Make sure to also:
  *
  * <ul>

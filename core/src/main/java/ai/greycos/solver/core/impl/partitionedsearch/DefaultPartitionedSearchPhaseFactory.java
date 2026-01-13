@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ThreadFactory;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;

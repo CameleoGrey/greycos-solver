@@ -1,0 +1,19 @@
+package ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo;
+
+import java.util.function.Function;
+
+public abstract class AbstractReadOnlyExtendedGizmoMemberAccessor
+    extends AbstractReadOnlyGizmoMemberAccessor {
+
+  @Override
+  public Object executeGetter(Object bean) {
+    throw new UnsupportedOperationException(
+        "Impossible state: the method executeGetter(Object) without parameter is not supported.");
+  }
+
+  @Override
+  public <Fact_, Result_> Function<Fact_, Result_> getGetterFunction() {
+    throw new UnsupportedOperationException(
+        "Impossible state: the method getGetterFunction() is not supported.");
+  }
+}

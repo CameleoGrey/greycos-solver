@@ -37,7 +37,7 @@ import ai.greycos.solver.benchmark.impl.statistic.movecountpertype.MoveCountPerT
 import ai.greycos.solver.benchmark.impl.statistic.moveevaluationspeed.MoveEvaluationSpeedProblemStatisticTime;
 import ai.greycos.solver.benchmark.impl.statistic.scorecalculationspeed.ScoreCalculationSpeedProblemStatistic;
 import ai.greycos.solver.benchmark.impl.statistic.stepscore.StepScoreProblemStatistic;
-import ai.greycos.solver.core.api.domain.solution.PlanningScore;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.solver.ProblemSizeStatistics;
 import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.config.util.ConfigUtils;

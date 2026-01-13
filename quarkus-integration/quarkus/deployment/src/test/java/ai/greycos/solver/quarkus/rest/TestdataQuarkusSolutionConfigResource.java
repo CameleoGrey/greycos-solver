@@ -18,8 +18,8 @@ import jakarta.ws.rs.core.MediaType;
 import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.impl.solver.DefaultSolverJob;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
 
 @Path("/solver-config")
 @ApplicationScoped

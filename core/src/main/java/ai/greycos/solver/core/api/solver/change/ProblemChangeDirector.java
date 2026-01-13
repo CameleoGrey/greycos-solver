@@ -3,12 +3,12 @@ package ai.greycos.solver.core.api.solver.change;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.lookup.LookUpStrategyType;
-import ai.greycos.solver.core.api.domain.lookup.PlanningId;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
-import ai.greycos.solver.core.api.domain.variable.ShadowVariable;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.lookup.LookUpStrategyType;
+import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;

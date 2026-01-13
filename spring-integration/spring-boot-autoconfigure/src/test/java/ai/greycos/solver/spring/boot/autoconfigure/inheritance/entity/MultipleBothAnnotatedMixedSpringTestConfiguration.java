@@ -1,6 +1,6 @@
 package ai.greycos.solver.spring.boot.autoconfigure.inheritance.entity;
 
-import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.classes.mixed.TestdataMultipleMixedSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.mixed.TestdataMultipleMixedSolution;
 
 import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
 import org.springframework.boot.autoconfigure.domain.EntityScan;

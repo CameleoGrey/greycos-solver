@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.partitionedsearch.partitioner;
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NullMarked;

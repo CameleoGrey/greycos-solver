@@ -2,9 +2,9 @@
 <solver>
   <environmentMode>FULL_ASSERT</environmentMode>
   <moveThreadCount>AUTO</moveThreadCount>
-  <solutionClass>ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.childtoo.TestdataBothAnnotatedSolution</solutionClass>
-  <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
-  <entityClass>ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.childtoo.TestdataBothAnnotatedChildEntity</entityClass>
+  <solutionClass>ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.childtoo.TestdataBothAnnotatedSolution</solutionClass>
+  <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
+  <entityClass>ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.childtoo.TestdataBothAnnotatedChildEntity</entityClass>
   <scoreDirectorFactory>
     <easyScoreCalculatorClass>ai.greycos.solver.core.config.solver.SolverConfigTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
     <constraintProviderClass>ai.greycos.solver.core.config.solver.SolverConfigTest$DummyConstraintProvider</constraintProviderClass>
@@ -16,7 +16,7 @@
     <constructionHeuristicType>FIRST_FIT_DECREASING</constructionHeuristicType>
     <queuedEntityPlacer>
       <entitySelector id="placerEntitySelector">
-        <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>
+        <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
         <cacheType>PHASE</cacheType>
         <selectionOrder>SORTED</selectionOrder>
         <filterClass>ai.greycos.solver.core.config.solver.SolverConfigTest$DummyEntityFilter</filterClass>
@@ -26,7 +26,7 @@
         <changeMoveSelector>
           <entitySelector mimicSelectorRef="placerEntitySelector"/>
           <valueSelector variableName="subValue">
-            <downcastEntityClass>ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.childtoo.TestdataBothAnnotatedChildEntity</downcastEntityClass>
+            <downcastEntityClass>ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.childtoo.TestdataBothAnnotatedChildEntity</downcastEntityClass>
             <cacheType>PHASE</cacheType>
             <selectionOrder>SORTED</selectionOrder>
             <sorterManner>INCREASING_STRENGTH</sorterManner>

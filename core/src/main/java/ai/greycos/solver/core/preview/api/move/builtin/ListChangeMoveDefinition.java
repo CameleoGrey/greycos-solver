@@ -2,10 +2,10 @@ package ai.greycos.solver.core.preview.api.move.builtin;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.preview.api.domain.metamodel.ElementPosition;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningListVariableMetaModel;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PositionInList;
-import ai.greycos.solver.core.preview.api.domain.metamodel.UnassignedElement;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.UnassignedElement;
 import ai.greycos.solver.core.preview.api.move.SolutionView;
 import ai.greycos.solver.core.preview.api.neighborhood.MoveDefinition;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.MoveStream;
@@ -32,7 +32,7 @@ import org.jspecify.annotations.NullMarked;
  * </ul>
  *
  * This is a generic move provider that works with any list variable; user-defined change move
- * providers needn't be this complex, as they understand the specifics of the domain.
+ * providers needn't be this complex, as they understand the specifics of the cotwin.
  */
 @NullMarked
 public class ListChangeMoveDefinition<Solution_, Entity_, Value_>

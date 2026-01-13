@@ -14,17 +14,17 @@ import ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.composite.UnionMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelector;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
-import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
-import ai.greycos.solver.core.testdomain.multientity.TestdataHerdEntity;
-import ai.greycos.solver.core.testdomain.multientity.TestdataMultiEntitySolution;
-import ai.greycos.solver.core.testdomain.multivar.TestdataMultiVarSolution;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
+import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
+import ai.greycos.solver.core.testcotwin.multientity.TestdataHerdEntity;
+import ai.greycos.solver.core.testcotwin.multientity.TestdataMultiEntitySolution;
+import ai.greycos.solver.core.testcotwin.multivar.TestdataMultiVarSolution;
 
 import org.junit.jupiter.api.Test;
 

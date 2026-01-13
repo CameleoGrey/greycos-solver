@@ -24,15 +24,15 @@ import java.util.stream.Collectors;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Singleton;
 
-import ai.greycos.solver.core.api.domain.autodiscover.AutoDiscoverMemberType;
-import ai.greycos.solver.core.api.domain.common.DomainAccessType;
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.solution.PlanningEntityCollectionProperty;
-import ai.greycos.solver.core.api.domain.solution.PlanningScore;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.solution.ProblemFactCollectionProperty;
-import ai.greycos.solver.core.api.domain.variable.ShadowSources;
-import ai.greycos.solver.core.api.domain.variable.ShadowVariable;
+import ai.greycos.solver.core.api.cotwin.autodiscover.AutoDiscoverMemberType;
+import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.stream.ConstraintMetaModel;
@@ -43,10 +43,10 @@ import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.SolverManagerConfig;
-import ai.greycos.solver.core.impl.domain.common.ReflectionHelper;
-import ai.greycos.solver.core.impl.domain.common.accessor.gizmo.AccessorInfo;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.declarative.RootVariableSource;
+import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.AccessorInfo;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.declarative.RootVariableSource;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import ai.greycos.solver.quarkus.GreyCOSRecorder;
 import ai.greycos.solver.quarkus.bean.BeanUtil;
@@ -235,7 +235,7 @@ class GreyCOSProcessor {
       log.warn(
           """
                             Skipping GreyCOS extension because there are no @%s or @%s annotated classes.
-                            If your domain classes are located in a dependency of this project, maybe try generating the \
+                            If your cotwin classes are located in a dependency of this project, maybe try generating the \
                             Jandex index by using the jandex-maven-plugin in that dependency, or by addingapplication.properties entries \
                             (quarkus.index-dependency.<name>.group-id and quarkus.index-dependency.<name>.artifact-id)."""
               .formatted(
@@ -278,7 +278,7 @@ class GreyCOSProcessor {
             loadSolverConfig(
                 indexView, reflectiveHierarchyClass, solverConfig, solverName, reflectiveClassSet));
 
-    // Register all annotated domain model classes
+    // Register all annotated cotwin model classes
     registerClassesFromAnnotations(indexView, reflectiveClassSet);
 
     // Register only distinct constraint providers
@@ -307,7 +307,7 @@ class GreyCOSProcessor {
                     entryConfig.getValue(), syntheticBeanBuildItemBuildProducer));
 
     GeneratedGizmoClasses generatedGizmoClasses =
-        generateDomainAccessors(
+        generateCotwinAccessors(
             solverConfigMap,
             indexView,
             generatedBeans,
@@ -757,13 +757,13 @@ class GreyCOSProcessor {
         .forEach(
             (solverName, solverConfig) -> {
               // Gizmo-generated member accessors are not yet available at build time.
-              var originalDomainAccessType = solverConfig.getDomainAccessType();
-              solverConfig.setDomainAccessType(DomainAccessType.REFLECTION);
+              var originalCotwinAccessType = solverConfig.getCotwinAccessType();
+              solverConfig.setCotwinAccessType(CotwinAccessType.REFLECTION);
 
               var solverFactory = SolverFactory.create(solverConfig);
               var constraintMetaModel = BeanUtil.buildConstraintMetaModel(solverFactory);
               // Avoid changing the original solver config.
-              solverConfig.setDomainAccessType(originalDomainAccessType);
+              solverConfig.setCotwinAccessType(originalCotwinAccessType);
               constraintMetaModelsBySolverNames.put(solverName, constraintMetaModel);
             });
 
@@ -1013,11 +1013,11 @@ class GreyCOSProcessor {
     // Override the current configuration with values from the solver properties
     greycosBuildTimeConfig
         .getSolverConfig(solverName)
-        .flatMap(SolverBuildTimeConfig::domainAccessType)
-        .ifPresent(solverConfig::setDomainAccessType);
+        .flatMap(SolverBuildTimeConfig::cotwinAccessType)
+        .ifPresent(solverConfig::setCotwinAccessType);
 
-    if (solverConfig.getDomainAccessType() == null) {
-      solverConfig.setDomainAccessType(DomainAccessType.GIZMO);
+    if (solverConfig.getCotwinAccessType() == null) {
+      solverConfig.setCotwinAccessType(CotwinAccessType.GIZMO);
     }
 
     greycosBuildTimeConfig
@@ -1193,7 +1193,7 @@ class GreyCOSProcessor {
     }
   }
 
-  private GeneratedGizmoClasses generateDomainAccessors(
+  private GeneratedGizmoClasses generateCotwinAccessors(
       Map<String, SolverConfig> solverConfigMap,
       IndexView indexView,
       BuildProducer<GeneratedBeanBuildItem> generatedBeans,
@@ -1214,10 +1214,10 @@ class GreyCOSProcessor {
      * "entity" in this context means both "planning solution",
      * "planning entity" and other things as well.
      */
-    assertSolverDomainAccessType(solverConfigMap);
+    assertSolverCotwinAccessType(solverConfigMap);
     var entityEnhancer = new GizmoMemberAccessorEntityEnhancer();
     if (solverConfigMap.values().stream()
-        .anyMatch(c -> c.getDomainAccessType() == DomainAccessType.GIZMO)) {
+        .anyMatch(c -> c.getCotwinAccessType() == CotwinAccessType.GIZMO)) {
       var membersToGeneratedAccessorsForCollection = new ArrayList<AnnotationInstance>();
 
       // Every entity and solution gets scanned for annotations.
@@ -1226,7 +1226,7 @@ class GreyCOSProcessor {
         membersToGeneratedAccessorsForCollection.addAll(
             indexView.getAnnotationsWithRepeatable(dotName, indexView));
       }
-      generateDomainAccessorsForShadowSources(indexView, membersToGeneratedAccessorsForCollection);
+      generateCotwinAccessorsForShadowSources(indexView, membersToGeneratedAccessorsForCollection);
       membersToGeneratedAccessorsForCollection.removeIf(this::shouldIgnoreMember);
 
       // Fail fast on auto-discovery.
@@ -1407,7 +1407,7 @@ class GreyCOSProcessor {
               transformers);
         }
       }
-      // Using REFLECTION domain access type so GreyCOS doesn't try to generate GIZMO code
+      // Using REFLECTION cotwin access type so GreyCOS doesn't try to generate GIZMO code
       solverConfigMap
           .values()
           .forEach(
@@ -1415,7 +1415,7 @@ class GreyCOSProcessor {
                 var solutionDescriptor =
                     SolutionDescriptor.buildSolutionDescriptor(
                         c.getEnablePreviewFeatureSet(),
-                        DomainAccessType.REFLECTION,
+                        CotwinAccessType.REFLECTION,
                         c.getSolutionClass(),
                         null,
                         null,
@@ -1431,7 +1431,7 @@ class GreyCOSProcessor {
         generatedMemberAccessorsClassNameSet, gizmoSolutionClonerClassNameSet);
   }
 
-  private static void generateDomainAccessorsForShadowSources(
+  private static void generateCotwinAccessorsForShadowSources(
       IndexView indexView, List<AnnotationInstance> membersToGeneratedAccessorsForCollection) {
     for (var shadowSources : indexView.getAnnotations(DotNames.SHADOW_SOURCES)) {
       Class<?> rootType;
@@ -1451,17 +1451,17 @@ class GreyCOSProcessor {
       var alignmentKey = shadowSources.value("alignmentKey");
 
       if (alignmentKey != null && !alignmentKey.asString().isEmpty()) {
-        generateDomainAccessorsForSourcePath(
+        generateCotwinAccessorsForSourcePath(
             indexView, rootType, alignmentKey.asString(), membersToGeneratedAccessorsForCollection);
       }
       for (var source : sources) {
-        generateDomainAccessorsForSourcePath(
+        generateCotwinAccessorsForSourcePath(
             indexView, rootType, source, membersToGeneratedAccessorsForCollection);
       }
     }
   }
 
-  private static void generateDomainAccessorsForSourcePath(
+  private static void generateCotwinAccessorsForSourcePath(
       IndexView indexView,
       Class<?> rootType,
       String source,
@@ -1527,21 +1527,21 @@ class GreyCOSProcessor {
     }
   }
 
-  private void assertSolverDomainAccessType(Map<String, SolverConfig> solverConfigMap) {
-    // All solver must use the same domain access type
-    if (solverConfigMap.values().stream().map(SolverConfig::getDomainAccessType).distinct().count()
+  private void assertSolverCotwinAccessType(Map<String, SolverConfig> solverConfigMap) {
+    // All solver must use the same cotwin access type
+    if (solverConfigMap.values().stream().map(SolverConfig::getCotwinAccessType).distinct().count()
         > 1) {
       throw new ConfigurationException(
           """
-                            The domain access type must be unique across all Solver configurations.
+                            The cotwin access type must be unique across all Solver configurations.
                             %s"""
               .formatted(
                   solverConfigMap.entrySet().stream()
                       .map(
                           e ->
                               format(
-                                  "quarkus.greycos.\"%s\".domain-access-type=%s",
-                                  e.getKey(), e.getValue().getDomainAccessType()))
+                                  "quarkus.greycos.\"%s\".cotwin-access-type=%s",
+                                  e.getKey(), e.getValue().getCotwinAccessType()))
                       .collect(Collectors.joining("\n"))));
     }
   }

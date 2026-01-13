@@ -15,8 +15,8 @@ import ai.greycos.solver.benchmark.impl.report.BenchmarkReport;
 import ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.result.SolverBenchmarkResult;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.Test;

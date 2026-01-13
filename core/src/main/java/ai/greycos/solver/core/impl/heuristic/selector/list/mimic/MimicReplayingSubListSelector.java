@@ -4,7 +4,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.list.SubList;

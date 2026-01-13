@@ -30,88 +30,88 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveS
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.common.DummyHardSoftEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.common.TestdataObjectSortableDescendingComparator;
-import ai.greycos.solver.core.testdomain.common.TestdataObjectSortableDescendingFactory;
-import ai.greycos.solver.core.testdomain.list.TestDistanceMeter;
-import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
-import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
-import ai.greycos.solver.core.testdomain.list.TestdataListValue;
-import ai.greycos.solver.core.testdomain.list.sort.comparator.ListOneValuePerEntityEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.list.sort.comparator.TestdataListSortableEntity;
-import ai.greycos.solver.core.testdomain.list.sort.comparator.TestdataListSortableSolution;
-import ai.greycos.solver.core.testdomain.list.sort.factory.ListOneValuePerEntityFactoryEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.list.sort.factory.TestdataListFactorySortableEntity;
-import ai.greycos.solver.core.testdomain.list.sort.factory.TestdataListFactorySortableSolution;
-import ai.greycos.solver.core.testdomain.list.sort.invalid.TestdataInvalidListSortableEntity;
-import ai.greycos.solver.core.testdomain.list.sort.invalid.TestdataInvalidListSortableSolution;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingScoreCalculator;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingSolution;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingValue;
-import ai.greycos.solver.core.testdomain.list.valuerange.sort.comparator.ListOneValuePerEntityRangeEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.list.valuerange.sort.comparator.TestdataListSortableEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.list.valuerange.sort.comparator.TestdataListSortableEntityProvidingSolution;
-import ai.greycos.solver.core.testdomain.list.valuerange.sort.factory.ListOneValuePerEntityRangeFactoryEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.list.valuerange.sort.factory.TestdataListFactorySortableEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.list.valuerange.sort.factory.TestdataListFactorySortableEntityProvidingSolution;
-import ai.greycos.solver.core.testdomain.mixed.singleentity.TestdataMixedEntity;
-import ai.greycos.solver.core.testdomain.mixed.singleentity.TestdataMixedOtherValue;
-import ai.greycos.solver.core.testdomain.mixed.singleentity.TestdataMixedSolution;
-import ai.greycos.solver.core.testdomain.mixed.singleentity.TestdataMixedValue;
-import ai.greycos.solver.core.testdomain.pinned.TestdataPinnedEntity;
-import ai.greycos.solver.core.testdomain.pinned.TestdataPinnedSolution;
-import ai.greycos.solver.core.testdomain.pinned.unassignedvar.TestdataPinnedAllowsUnassignedEntity;
-import ai.greycos.solver.core.testdomain.pinned.unassignedvar.TestdataPinnedAllowsUnassignedSolution;
-import ai.greycos.solver.core.testdomain.sort.comparator.OneValuePerEntityComparatorEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.sort.comparator.TestdataComparatorSortableEntity;
-import ai.greycos.solver.core.testdomain.sort.comparator.TestdataComparatorSortableSolution;
-import ai.greycos.solver.core.testdomain.sort.comparatordifficulty.OneValuePerEntityDifficultyEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.sort.comparatordifficulty.TestdataDifficultySortableEntity;
-import ai.greycos.solver.core.testdomain.sort.comparatordifficulty.TestdataDifficultySortableSolution;
-import ai.greycos.solver.core.testdomain.sort.factory.OneValuePerEntityFactoryEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.sort.factory.TestdataFactorySortableEntity;
-import ai.greycos.solver.core.testdomain.sort.factory.TestdataFactorySortableSolution;
-import ai.greycos.solver.core.testdomain.sort.factorydifficulty.OneValuePerEntityDifficultyFactoryEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.sort.factorydifficulty.TestdataDifficultyFactorySortableEntity;
-import ai.greycos.solver.core.testdomain.sort.factorydifficulty.TestdataDifficultyFactorySortableSolution;
-import ai.greycos.solver.core.testdomain.sort.invalid.mixed.comparator.TestdataInvalidMixedComparatorSortableEntity;
-import ai.greycos.solver.core.testdomain.sort.invalid.mixed.comparator.TestdataInvalidMixedComparatorSortableSolution;
-import ai.greycos.solver.core.testdomain.sort.invalid.mixed.strength.TestdataInvalidMixedStrengthSortableEntity;
-import ai.greycos.solver.core.testdomain.sort.invalid.mixed.strength.TestdataInvalidMixedStrengthSortableSolution;
-import ai.greycos.solver.core.testdomain.sort.invalid.twocomparator.entity.TestdataInvalidTwoEntityComparatorSortableEntity;
-import ai.greycos.solver.core.testdomain.sort.invalid.twocomparator.entity.TestdataInvalidTwoEntityComparatorSortableSolution;
-import ai.greycos.solver.core.testdomain.sort.invalid.twocomparator.value.TestdataInvalidTwoValueComparatorSortableEntity;
-import ai.greycos.solver.core.testdomain.sort.invalid.twocomparator.value.TestdataInvalidTwoValueComparatorSortableSolution;
-import ai.greycos.solver.core.testdomain.sort.invalid.twofactory.entity.TestdataInvalidTwoEntityFactorySortableEntity;
-import ai.greycos.solver.core.testdomain.sort.invalid.twofactory.entity.TestdataInvalidTwoEntityFactorySortableSolution;
-import ai.greycos.solver.core.testdomain.sort.invalid.twofactory.value.TestdataInvalidTwoValueFactorySortableEntity;
-import ai.greycos.solver.core.testdomain.sort.invalid.twofactory.value.TestdataInvalidTwoValueFactorySortableSolution;
-import ai.greycos.solver.core.testdomain.unassignedvar.TestdataAllowsUnassignedEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.unassignedvar.TestdataAllowsUnassignedEntity;
-import ai.greycos.solver.core.testdomain.unassignedvar.TestdataAllowsUnassignedSolution;
-import ai.greycos.solver.core.testdomain.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingScoreCalculator;
-import ai.greycos.solver.core.testdomain.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingSolution;
-import ai.greycos.solver.core.testdomain.valuerange.sort.comparator.OneValuePerEntityComparatorRangeEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.valuerange.sort.comparator.TestdataComparatorSortableEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.valuerange.sort.comparator.TestdataComparatorSortableEntityProvidingSolution;
-import ai.greycos.solver.core.testdomain.valuerange.sort.comparatorstrength.OneValuePerEntityStrengthRangeEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.valuerange.sort.comparatorstrength.TestdataStrengthSortableEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.valuerange.sort.comparatorstrength.TestdataStrengthSortableEntityProvidingSolution;
-import ai.greycos.solver.core.testdomain.valuerange.sort.factory.OneValuePerEntityFactoryRangeEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.valuerange.sort.factory.TestdataFactorySortableEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.valuerange.sort.factory.TestdataFactorySortableEntityProvidingSolution;
-import ai.greycos.solver.core.testdomain.valuerange.sort.factorystrength.OneValuePerEntityStrengthFactoryRangeEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.valuerange.sort.factorystrength.TestdataStrengthFactorySortableEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.valuerange.sort.factorystrength.TestdataStrengthFactorySortableEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.common.DummyHardSoftEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.common.TestdataObjectSortableDescendingComparator;
+import ai.greycos.solver.core.testcotwin.common.TestdataObjectSortableDescendingFactory;
+import ai.greycos.solver.core.testcotwin.list.TestDistanceMeter;
+import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
+import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
+import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
+import ai.greycos.solver.core.testcotwin.list.sort.comparator.ListOneValuePerEntityEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.list.sort.comparator.TestdataListSortableEntity;
+import ai.greycos.solver.core.testcotwin.list.sort.comparator.TestdataListSortableSolution;
+import ai.greycos.solver.core.testcotwin.list.sort.factory.ListOneValuePerEntityFactoryEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.list.sort.factory.TestdataListFactorySortableEntity;
+import ai.greycos.solver.core.testcotwin.list.sort.factory.TestdataListFactorySortableSolution;
+import ai.greycos.solver.core.testcotwin.list.sort.invalid.TestdataInvalidListSortableEntity;
+import ai.greycos.solver.core.testcotwin.list.sort.invalid.TestdataInvalidListSortableSolution;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingScoreCalculator;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingValue;
+import ai.greycos.solver.core.testcotwin.list.valuerange.sort.comparator.ListOneValuePerEntityRangeEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.list.valuerange.sort.comparator.TestdataListSortableEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.list.valuerange.sort.comparator.TestdataListSortableEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.list.valuerange.sort.factory.ListOneValuePerEntityRangeFactoryEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.list.valuerange.sort.factory.TestdataListFactorySortableEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.list.valuerange.sort.factory.TestdataListFactorySortableEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedEntity;
+import ai.greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedOtherValue;
+import ai.greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedSolution;
+import ai.greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedValue;
+import ai.greycos.solver.core.testcotwin.pinned.TestdataPinnedEntity;
+import ai.greycos.solver.core.testcotwin.pinned.TestdataPinnedSolution;
+import ai.greycos.solver.core.testcotwin.pinned.unassignedvar.TestdataPinnedAllowsUnassignedEntity;
+import ai.greycos.solver.core.testcotwin.pinned.unassignedvar.TestdataPinnedAllowsUnassignedSolution;
+import ai.greycos.solver.core.testcotwin.sort.comparator.OneValuePerEntityComparatorEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.sort.comparator.TestdataComparatorSortableEntity;
+import ai.greycos.solver.core.testcotwin.sort.comparator.TestdataComparatorSortableSolution;
+import ai.greycos.solver.core.testcotwin.sort.comparatordifficulty.OneValuePerEntityDifficultyEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.sort.comparatordifficulty.TestdataDifficultySortableEntity;
+import ai.greycos.solver.core.testcotwin.sort.comparatordifficulty.TestdataDifficultySortableSolution;
+import ai.greycos.solver.core.testcotwin.sort.factory.OneValuePerEntityFactoryEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.sort.factory.TestdataFactorySortableEntity;
+import ai.greycos.solver.core.testcotwin.sort.factory.TestdataFactorySortableSolution;
+import ai.greycos.solver.core.testcotwin.sort.factorydifficulty.OneValuePerEntityDifficultyFactoryEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.sort.factorydifficulty.TestdataDifficultyFactorySortableEntity;
+import ai.greycos.solver.core.testcotwin.sort.factorydifficulty.TestdataDifficultyFactorySortableSolution;
+import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.comparator.TestdataInvalidMixedComparatorSortableEntity;
+import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.comparator.TestdataInvalidMixedComparatorSortableSolution;
+import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.strength.TestdataInvalidMixedStrengthSortableEntity;
+import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.strength.TestdataInvalidMixedStrengthSortableSolution;
+import ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.entity.TestdataInvalidTwoEntityComparatorSortableEntity;
+import ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.entity.TestdataInvalidTwoEntityComparatorSortableSolution;
+import ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.value.TestdataInvalidTwoValueComparatorSortableEntity;
+import ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.value.TestdataInvalidTwoValueComparatorSortableSolution;
+import ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.entity.TestdataInvalidTwoEntityFactorySortableEntity;
+import ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.entity.TestdataInvalidTwoEntityFactorySortableSolution;
+import ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.value.TestdataInvalidTwoValueFactorySortableEntity;
+import ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.value.TestdataInvalidTwoValueFactorySortableSolution;
+import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEntity;
+import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedSolution;
+import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingScoreCalculator;
+import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.comparator.OneValuePerEntityComparatorRangeEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.comparator.TestdataComparatorSortableEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.comparator.TestdataComparatorSortableEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.comparatorstrength.OneValuePerEntityStrengthRangeEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.comparatorstrength.TestdataStrengthSortableEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.comparatorstrength.TestdataStrengthSortableEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.factory.OneValuePerEntityFactoryRangeEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.factory.TestdataFactorySortableEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.factory.TestdataFactorySortableEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.factorystrength.OneValuePerEntityStrengthFactoryRangeEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.factorystrength.TestdataStrengthFactorySortableEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.valuerange.sort.factorystrength.TestdataStrengthFactorySortableEntityProvidingSolution;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.jspecify.annotations.NonNull;
@@ -1850,11 +1850,11 @@ class DefaultConstructionHeuristicPhaseTest {
     var solution = new TestdataInvalidListSortableSolution();
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, solution))
         .hasMessageContaining(
-            "The entityClass (class ai.greycos.solver.core.testdomain.list.sort.invalid.TestdataInvalidListSortableEntity) property (valueList)")
+            "The entityClass (class ai.greycos.solver.core.testcotwin.list.sort.invalid.TestdataInvalidListSortableEntity) property (valueList)")
         .hasMessageContaining(
-            "cannot have a comparatorClass (ai.greycos.solver.core.testdomain.common.DummyValueComparator)")
+            "cannot have a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
         .hasMessageContaining(
-            "comparatorFactoryClass (ai.greycos.solver.core.testdomain.common.DummyValueFactory) at the same time.");
+            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueFactory) at the same time.");
   }
 
   @Test
@@ -1868,11 +1868,11 @@ class DefaultConstructionHeuristicPhaseTest {
     var solution = new TestdataInvalidMixedStrengthSortableSolution();
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, solution))
         .hasMessageContaining(
-            "The entityClass (class ai.greycos.solver.core.testdomain.sort.invalid.mixed.strength.TestdataInvalidMixedStrengthSortableEntity) property (value)")
+            "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.mixed.strength.TestdataInvalidMixedStrengthSortableEntity) property (value)")
         .hasMessageContaining(
-            "cannot have a strengthComparatorClass (ai.greycos.solver.core.testdomain.common.DummyValueComparator)")
+            "cannot have a strengthComparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
         .hasMessageContaining(
-            "strengthWeightFactoryClass (ai.greycos.solver.core.testdomain.common.DummyWeightValueFactory) at the same time.");
+            "strengthWeightFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyWeightValueFactory) at the same time.");
 
     // Comparator and Factory properties
     var otherSolverConfig =
@@ -1883,11 +1883,11 @@ class DefaultConstructionHeuristicPhaseTest {
     var otherSolution = new TestdataInvalidMixedComparatorSortableSolution();
     assertThatCode(() -> PlannerTestUtils.solve(otherSolverConfig, otherSolution))
         .hasMessageContaining(
-            "The entityClass (class ai.greycos.solver.core.testdomain.sort.invalid.mixed.comparator.TestdataInvalidMixedComparatorSortableEntity) property (value)")
+            "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.mixed.comparator.TestdataInvalidMixedComparatorSortableEntity) property (value)")
         .hasMessageContaining(
-            "cannot have a comparatorClass (ai.greycos.solver.core.testdomain.common.DummyValueComparator)")
+            "cannot have a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
         .hasMessageContaining(
-            "comparatorFactoryClass (ai.greycos.solver.core.testdomain.common.DummyValueFactory) at the same time.");
+            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueFactory) at the same time.");
   }
 
   @Test
@@ -1903,11 +1903,11 @@ class DefaultConstructionHeuristicPhaseTest {
       var solution = new TestdataInvalidTwoValueComparatorSortableSolution();
       assertThatCode(() -> PlannerTestUtils.solve(solverConfig, solution))
           .hasMessageContaining(
-              "The entityClass (class ai.greycos.solver.core.testdomain.sort.invalid.twocomparator.value.TestdataInvalidTwoValueComparatorSortableEntity) property (value)")
+              "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.value.TestdataInvalidTwoValueComparatorSortableEntity) property (value)")
           .hasMessageContaining(
-              "cannot have a strengthComparatorClass (ai.greycos.solver.core.testdomain.common.DummyValueComparator)")
+              "cannot have a strengthComparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
           .hasMessageContaining(
-              "and a comparatorClass (ai.greycos.solver.core.testdomain.common.DummyValueComparator) at the same time.");
+              "and a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator) at the same time.");
 
       // Comparator and Factory properties
       var otherSolverConfig =
@@ -1918,11 +1918,11 @@ class DefaultConstructionHeuristicPhaseTest {
       var otherSolution = new TestdataInvalidTwoValueFactorySortableSolution();
       assertThatCode(() -> PlannerTestUtils.solve(otherSolverConfig, otherSolution))
           .hasMessageContaining(
-              "The entityClass (class ai.greycos.solver.core.testdomain.sort.invalid.twofactory.value.TestdataInvalidTwoValueFactorySortableEntity) property (value)")
+              "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.value.TestdataInvalidTwoValueFactorySortableEntity) property (value)")
           .hasMessageContaining(
-              "cannot have a strengthWeightFactoryClass (ai.greycos.solver.core.testdomain.common.DummyWeightValueFactory)")
+              "cannot have a strengthWeightFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyWeightValueFactory)")
           .hasMessageContaining(
-              "comparatorFactoryClass (ai.greycos.solver.core.testdomain.common.DummyValueFactory) at the same time.");
+              "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueFactory) at the same time.");
     }
     // Entity
     {
@@ -1935,11 +1935,11 @@ class DefaultConstructionHeuristicPhaseTest {
       var solution = new TestdataInvalidTwoEntityComparatorSortableSolution();
       assertThatCode(() -> PlannerTestUtils.solve(solverConfig, solution))
           .hasMessageContaining(
-              "The entityClass (class ai.greycos.solver.core.testdomain.sort.invalid.twocomparator.entity.TestdataInvalidTwoEntityComparatorSortableEntity)")
+              "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.entity.TestdataInvalidTwoEntityComparatorSortableEntity)")
           .hasMessageContaining(
-              "cannot have a difficultyComparatorClass (ai.greycos.solver.core.testdomain.common.DummyValueComparator)")
+              "cannot have a difficultyComparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
           .hasMessageContaining(
-              "and a comparatorClass (ai.greycos.solver.core.testdomain.common.DummyValueComparator) at the same time.");
+              "and a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator) at the same time.");
 
       // Comparator and Factory properties
       var otherSolverConfig =
@@ -1950,11 +1950,11 @@ class DefaultConstructionHeuristicPhaseTest {
       var otherSolution = new TestdataInvalidTwoEntityFactorySortableSolution();
       assertThatCode(() -> PlannerTestUtils.solve(otherSolverConfig, otherSolution))
           .hasMessageContaining(
-              "The entityClass (class ai.greycos.solver.core.testdomain.sort.invalid.twofactory.entity.TestdataInvalidTwoEntityFactorySortableEntity)")
+              "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.entity.TestdataInvalidTwoEntityFactorySortableEntity)")
           .hasMessageContaining(
-              "cannot have a difficultyWeightFactoryClass (ai.greycos.solver.core.testdomain.common.DummyValueFactory)")
+              "cannot have a difficultyWeightFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueFactory)")
           .hasMessageContaining(
-              "comparatorFactoryClass (ai.greycos.solver.core.testdomain.common.DummyValueFactory) at the same time.");
+              "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueFactory) at the same time.");
     }
   }
 

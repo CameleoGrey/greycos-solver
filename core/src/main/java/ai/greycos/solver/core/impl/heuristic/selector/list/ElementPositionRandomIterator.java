@@ -3,13 +3,13 @@ package ai.greycos.solver.core.impl.heuristic.selector.list;
 import java.util.Iterator;
 import java.util.Random;
 
-import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.solver.random.RandomUtils;
-import ai.greycos.solver.core.preview.api.domain.metamodel.ElementPosition;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PositionInList;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 
 final class ElementPositionRandomIterator<Solution_> implements Iterator<ElementPosition> {
 

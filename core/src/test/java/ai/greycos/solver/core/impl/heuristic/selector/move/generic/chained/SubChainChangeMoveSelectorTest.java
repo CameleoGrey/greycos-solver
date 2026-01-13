@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.chained.DefaultSubChainSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.chained.SubChainSelector;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
 
 import org.junit.jupiter.api.Test;
 

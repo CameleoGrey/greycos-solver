@@ -14,9 +14,9 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import ai.greycos.solver.core.config.heuristic.selector.entity.pillar.SubPillarConfigPolicy;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.supply.Demand;
-import ai.greycos.solver.core.impl.domain.variable.supply.SupplyManager;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.Demand;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.util.MemoizingSupply;
 

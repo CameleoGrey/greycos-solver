@@ -2,9 +2,9 @@ package ai.greycos.solver.core.impl.score.director;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.variable.PlanningListVariable;
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.score.Score;
 
 import org.jspecify.annotations.NullMarked;

@@ -1,8 +1,8 @@
 package ai.greycos.solver.core.preview.api.move;
 
-import ai.greycos.solver.core.api.domain.lookup.LookUpStrategyType;
-import ai.greycos.solver.core.api.domain.lookup.PlanningId;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.lookup.LookUpStrategyType;
+import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 

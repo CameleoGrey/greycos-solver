@@ -8,7 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
 

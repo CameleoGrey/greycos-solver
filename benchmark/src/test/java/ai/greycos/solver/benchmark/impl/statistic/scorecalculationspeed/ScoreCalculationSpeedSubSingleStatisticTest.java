@@ -18,7 +18,7 @@ import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.statistic.AbstractSubSingleStatisticTest;
 import ai.greycos.solver.benchmark.impl.statistic.SubSingleStatistic;
 import ai.greycos.solver.benchmark.impl.statistic.common.LongStatisticPoint;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;

@@ -6,7 +6,7 @@ import java.util.Objects;
 import jakarta.xml.bind.annotation.XmlTransient;
 
 import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
-import ai.greycos.solver.persistence.common.api.domain.solution.SolutionFileIO;
+import ai.greycos.solver.persistence.common.api.cotwin.solution.SolutionFileIO;
 
 public class FileProblemProvider<Solution_> implements ProblemProvider<Solution_> {
 

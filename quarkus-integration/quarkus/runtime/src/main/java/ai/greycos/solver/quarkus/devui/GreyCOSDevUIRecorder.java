@@ -5,10 +5,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import ai.greycos.solver.core.api.domain.solution.cloner.SolutionCloner;
+import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.core.impl.domain.common.accessor.MemberAccessor;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import ai.greycos.solver.core.impl.io.jaxb.SolverConfigIO;
 import ai.greycos.solver.quarkus.GreyCOSRecorder;
 import ai.greycos.solver.quarkus.config.GreyCOSRuntimeConfig;

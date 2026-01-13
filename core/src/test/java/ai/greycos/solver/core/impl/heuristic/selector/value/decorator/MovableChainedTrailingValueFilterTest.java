@@ -4,15 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.BasicVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.VariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.inverserelation.SingletonInverseVariableDemand;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableDemand;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedAnchor;
-import ai.greycos.solver.core.testdomain.pinned.chained.TestdataPinnedChainedEntity;
-import ai.greycos.solver.core.testdomain.pinned.chained.TestdataPinnedChainedSolution;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedAnchor;
+import ai.greycos.solver.core.testcotwin.pinned.chained.TestdataPinnedChainedEntity;
+import ai.greycos.solver.core.testcotwin.pinned.chained.TestdataPinnedChainedSolution;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.Test;

@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.constructionheuristic.scope;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.phase.scope.AbstractMoveScope;
 import ai.greycos.solver.core.preview.api.move.Move;
 

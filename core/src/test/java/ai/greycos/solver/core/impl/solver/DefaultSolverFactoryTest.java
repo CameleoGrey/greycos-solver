@@ -9,11 +9,11 @@ import java.util.OptionalInt;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverConfigOverride;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 import ai.greycos.solver.core.impl.solver.random.RandomFactory;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.invalid.noentity.TestdataNoEntitySolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.invalid.noentity.TestdataNoEntitySolution;
 
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;

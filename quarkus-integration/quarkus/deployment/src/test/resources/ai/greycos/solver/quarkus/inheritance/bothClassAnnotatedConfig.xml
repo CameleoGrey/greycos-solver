@@ -2,17 +2,17 @@
 <solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
     <solutionClass>
-        ai.greycos.solver.quarkus.testdomain.inheritance.solution.TestdataBothAnnotatedNoRawListExtendedSolution
+        ai.greycos.solver.quarkus.testcotwin.inheritance.solution.TestdataBothAnnotatedNoRawListExtendedSolution
     </solutionClass>
     <entityClass>
-        ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedChildEntity
+        ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedChildEntity
     </entityClass>
     <entityClass>
-        ai.greycos.solver.core.testdomain.TestdataEntity
+        ai.greycos.solver.core.testcotwin.TestdataEntity
     </entityClass>
     <scoreDirectorFactory>
         <constraintProviderClass>
-            ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedExtendedConstraintProvider
+            ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedExtendedConstraintProvider
         </constraintProviderClass>
     </scoreDirectorFactory>
 </solver>

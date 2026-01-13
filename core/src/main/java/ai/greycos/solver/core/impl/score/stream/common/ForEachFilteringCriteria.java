@@ -3,8 +3,8 @@ package ai.greycos.solver.core.impl.score.stream.common;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.declarative.ConsistencyTracker;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

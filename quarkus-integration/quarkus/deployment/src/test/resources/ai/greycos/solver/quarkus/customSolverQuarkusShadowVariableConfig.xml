@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
-  <solutionClass>ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableSolution
+  <solutionClass>ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableSolution
   </solutionClass>
-  <entityClass>ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableEntity</entityClass>
+  <entityClass>ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableEntity</entityClass>
   <scoreDirectorFactory>
     <constraintProviderClass>
-      ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableConstraintProvider
+      ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableConstraintProvider
     </constraintProviderClass>
   </scoreDirectorFactory>
   <termination>

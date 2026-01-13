@@ -120,7 +120,7 @@
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <dc:source>http://jimmac.musichall.cz</dc:source>
         <cc:license
-           rdf:resource="http://creativecommons.org/licenses/publicdomain/" />
+           rdf:resource="http://creativecommons.org/licenses/publiccotwin/" />
         <dc:title>Go Up</dc:title>
         <dc:subject>
           <rdf:Bag>
@@ -139,7 +139,7 @@
         </dc:contributor>
       </cc:Work>
       <cc:License
-         rdf:about="http://creativecommons.org/licenses/publicdomain/">
+         rdf:about="http://creativecommons.org/licenses/publiccotwin/">
         <cc:permits
            rdf:resource="http://creativecommons.org/ns#Reproduction" />
         <cc:permits

@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractDataset;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractEnumeratingStream;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.TerminalEnumeratingStream;

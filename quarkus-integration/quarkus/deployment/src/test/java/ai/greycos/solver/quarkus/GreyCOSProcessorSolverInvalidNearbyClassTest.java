@@ -3,10 +3,10 @@ package ai.greycos.solver.quarkus;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import ai.greycos.solver.quarkus.testdomain.dummy.DummyDistanceMeter;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.dummy.DummyDistanceMeter;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
@@ -28,7 +28,7 @@ class GreyCOSProcessorSolverInvalidNearbyClassTest {
               "quarkus.greycos.solver.nearby-distance-meter-class",
               DummyDistanceMeter.class.getName())
           .overrideConfigKey("quarkus.greycos.solver.move-thread-count", "2")
-          .overrideConfigKey("quarkus.greycos.solver.domain-access-type", "REFLECTION")
+          .overrideConfigKey("quarkus.greycos.solver.cotwin-access-type", "REFLECTION")
           .overrideConfigKey("quarkus.greycos.solver.termination.spent-limit", "4h")
           .overrideConfigKey("quarkus.greycos.solver.termination.unimproved-spent-limit", "5h")
           .overrideConfigKey("quarkus.greycos.solver.termination.best-score-limit", "0")
@@ -58,7 +58,7 @@ class GreyCOSProcessorSolverInvalidNearbyClassTest {
               "quarkus.greycos.solver.nearby-distance-meter-class",
               TestdataQuarkusSolution.class.getName())
           .overrideConfigKey("quarkus.greycos.solver.move-thread-count", "2")
-          .overrideConfigKey("quarkus.greycos.solver.domain-access-type", "REFLECTION")
+          .overrideConfigKey("quarkus.greycos.solver.cotwin-access-type", "REFLECTION")
           .overrideConfigKey("quarkus.greycos.solver.termination.spent-limit", "4h")
           .overrideConfigKey("quarkus.greycos.solver.termination.unimproved-spent-limit", "5h")
           .overrideConfigKey("quarkus.greycos.solver.termination.best-score-limit", "0")

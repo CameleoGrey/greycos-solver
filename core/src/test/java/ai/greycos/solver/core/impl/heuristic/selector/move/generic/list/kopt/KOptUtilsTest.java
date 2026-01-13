@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import ai.greycos.solver.core.impl.util.Pair;
-import ai.greycos.solver.core.testdomain.list.TestdataListValue;
+import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
 
 import org.junit.jupiter.api.Test;
 

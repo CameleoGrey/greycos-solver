@@ -1,7 +1,7 @@
 package ai.greycos.solver.spring.boot.autoconfigure.missingsuppliervariable;
 
 import ai.greycos.solver.spring.boot.autoconfigure.missingsuppliervariable.constraints.TestdataSpringMissingSupplierVariableConstraintProvider;
-import ai.greycos.solver.spring.boot.autoconfigure.missingsuppliervariable.domain.TestdataSpringMissingSupplierVariableSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.missingsuppliervariable.cotwin.TestdataSpringMissingSupplierVariableSolution;
 
 import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
 import org.springframework.boot.autoconfigure.domain.EntityScan;

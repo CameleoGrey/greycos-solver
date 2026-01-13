@@ -6,7 +6,7 @@ import static ai.greycos.solver.core.impl.score.ScoreUtil.SOFT_LABEL;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.score.ScoreUtil;
 

@@ -8,9 +8,9 @@ import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.config.score.trend.InitializingScoreTrendLevel;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.trend.InitializingScoreTrend;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.shadow.corrupted.TestdataCorruptedShadowedEntity;
-import ai.greycos.solver.core.testdomain.shadow.corrupted.TestdataCorruptedShadowedSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.shadow.corrupted.TestdataCorruptedShadowedEntity;
+import ai.greycos.solver.core.testcotwin.shadow.corrupted.TestdataCorruptedShadowedSolution;
 
 import org.junit.jupiter.api.Test;
 

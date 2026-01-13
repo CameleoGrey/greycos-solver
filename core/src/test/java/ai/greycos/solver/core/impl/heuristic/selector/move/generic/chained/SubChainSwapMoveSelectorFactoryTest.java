@@ -8,7 +8,7 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.Sub
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.chained.SubChainSelectorConfig;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedSolution;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution;
 
 import org.junit.jupiter.api.Test;
 

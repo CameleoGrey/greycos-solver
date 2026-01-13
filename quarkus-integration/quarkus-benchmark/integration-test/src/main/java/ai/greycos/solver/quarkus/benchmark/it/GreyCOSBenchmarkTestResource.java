@@ -12,9 +12,9 @@ import ai.greycos.solver.benchmark.api.PlannerBenchmark;
 import ai.greycos.solver.benchmark.api.PlannerBenchmarkException;
 import ai.greycos.solver.benchmark.api.PlannerBenchmarkFactory;
 import ai.greycos.solver.benchmark.impl.DefaultPlannerBenchmark;
-import ai.greycos.solver.quarkus.benchmark.it.domain.TestdataListValueShadowEntity;
-import ai.greycos.solver.quarkus.benchmark.it.domain.TestdataStringLengthShadowEntity;
-import ai.greycos.solver.quarkus.benchmark.it.domain.TestdataStringLengthShadowSolution;
+import ai.greycos.solver.quarkus.benchmark.it.cotwin.TestdataListValueShadowEntity;
+import ai.greycos.solver.quarkus.benchmark.it.cotwin.TestdataStringLengthShadowEntity;
+import ai.greycos.solver.quarkus.benchmark.it.cotwin.TestdataStringLengthShadowSolution;
 
 @Path("/greycos/test")
 public class GreyCOSBenchmarkTestResource {

@@ -10,7 +10,7 @@ import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorCon
 import ai.greycos.solver.core.config.heuristic.selector.entity.pillar.PillarSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.entity.pillar.SubPillarConfigPolicy;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SubPillarType;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;

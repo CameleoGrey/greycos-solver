@@ -7,14 +7,14 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.quarkus.testdomain.chained.TestdataChainedQuarkusSolution;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
-import ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableEntity;
-import ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableListener;
-import ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableSolution;
+import ai.greycos.solver.quarkus.testcotwin.chained.TestdataChainedQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableEntity;
+import ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableListener;
+import ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

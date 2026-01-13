@@ -21,8 +21,8 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.FilteringMo
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.ProbabilityMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.ShufflingMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.SortingMoveSelector;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.common.DummyValueFactory;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.common.DummyValueFactory;
 
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
@@ -392,9 +392,9 @@ class MoveSelectorFactoryTest {
                     SelectionCacheType.PHASE, SelectionOrder.SORTED, baseMoveSelector))
         .withMessageContaining("The moveSelectorConfig")
         .withMessageContaining(
-            "cannot have a sorterWeightFactoryClass (class ai.greycos.solver.core.testdomain.common.DummyValueFactory)")
+            "cannot have a sorterWeightFactoryClass (class ai.greycos.solver.core.testcotwin.common.DummyValueFactory)")
         .withMessageContaining(
-            "and comparatorFactoryClass (class ai.greycos.solver.core.testdomain.common.DummyValueFactory) at the same time");
+            "and comparatorFactoryClass (class ai.greycos.solver.core.testcotwin.common.DummyValueFactory) at the same time");
   }
 
   static class DummyMoveSelectorConfig extends MoveSelectorConfig<DummyMoveSelectorConfig> {

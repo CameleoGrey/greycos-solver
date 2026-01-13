@@ -4,9 +4,9 @@ import java.util.Random;
 
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 public final class HeuristicConfigPolicyTestUtils {
 

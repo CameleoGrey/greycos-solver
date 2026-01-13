@@ -1,8 +1,8 @@
 package ai.greycos.solver.core.impl.score.director;
 
-import ai.greycos.solver.core.api.domain.valuerange.CountableValueRange;
-import ai.greycos.solver.core.impl.domain.valuerange.descriptor.ValueRangeDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.supply.SupplyManager;
+import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
+import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.preview.api.move.SolutionView;
 
 import org.jspecify.annotations.NullMarked;

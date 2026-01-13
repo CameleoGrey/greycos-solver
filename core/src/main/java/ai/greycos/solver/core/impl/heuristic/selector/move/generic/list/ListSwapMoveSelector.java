@@ -5,8 +5,8 @@ import static ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.L
 import java.util.Iterator;
 import java.util.Objects;
 
-import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;

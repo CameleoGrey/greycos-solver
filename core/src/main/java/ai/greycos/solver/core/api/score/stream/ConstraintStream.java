@@ -2,13 +2,13 @@ package ai.greycos.solver.core.api.score.stream;
 
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.domain.constraintweight.ConstraintConfiguration;
-import ai.greycos.solver.core.api.domain.constraintweight.ConstraintWeight;
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.solution.ConstraintWeightOverrides;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.solution.ProblemFactCollectionProperty;
-import ai.greycos.solver.core.api.domain.solution.ProblemFactProperty;
+import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfiguration;
+import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintWeight;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
+import ai.greycos.solver.core.api.cotwin.solution.ProblemFactProperty;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;

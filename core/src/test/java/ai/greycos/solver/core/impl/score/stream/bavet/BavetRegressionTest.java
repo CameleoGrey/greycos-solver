@@ -12,10 +12,10 @@ import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirector;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamTest;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.shadow.multiplelistener.TestdataListMultipleShadowVariableSolution;
-import ai.greycos.solver.core.testdomain.shadow.multiplelistener.TestdataListMultipleShadowVariableValue;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.shadow.multiplelistener.TestdataListMultipleShadowVariableSolution;
+import ai.greycos.solver.core.testcotwin.shadow.multiplelistener.TestdataListMultipleShadowVariableValue;
 
 import org.junit.jupiter.api.TestTemplate;
 

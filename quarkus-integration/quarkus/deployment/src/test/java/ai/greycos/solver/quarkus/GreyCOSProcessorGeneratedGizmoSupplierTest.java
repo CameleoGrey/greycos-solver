@@ -9,9 +9,9 @@ import java.util.Random;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.domain.common.ComparatorFactory;
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.variable.ShadowVariable;
+import ai.greycos.solver.core.api.cotwin.common.ComparatorFactory;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
@@ -26,12 +26,12 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorF
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveListFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
 import ai.greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedChildEntity;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedChildEntity;
 import ai.greycos.solver.quarkus.gizmo.GreyCOSGizmoBeanFactory;
-import ai.greycos.solver.quarkus.testdomain.gizmo.DummyVariableListener;
+import ai.greycos.solver.quarkus.testcotwin.gizmo.DummyVariableListener;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

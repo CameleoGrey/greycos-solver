@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.heuristic.selector;
 
-import ai.greycos.solver.core.impl.domain.variable.supply.Demand;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.Demand;
 
 /**
  * It is expected that if two instances share the same properties, they are {@link

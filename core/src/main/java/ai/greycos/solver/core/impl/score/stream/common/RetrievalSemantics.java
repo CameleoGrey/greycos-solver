@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.score.stream.common;
 
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.PrecomputeFactory;
 

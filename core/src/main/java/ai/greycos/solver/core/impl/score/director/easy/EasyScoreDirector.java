@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.score.director.easy;
 import java.util.Map;
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.ScoreExplanation;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;

@@ -3,7 +3,7 @@ package ai.greycos.solver.quarkus.deployment.config;
 import java.util.Optional;
 import java.util.Set;
 
-import ai.greycos.solver.core.api.domain.common.DomainAccessType;
+import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.score.stream.ConstraintStreamImplType;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.solver.SolverConfig;
@@ -29,12 +29,12 @@ public interface SolverBuildTimeConfig {
   Optional<String> solverConfigXml();
 
   /**
-   * Determines how to access the fields and methods of domain classes. Defaults to {@link
-   * DomainAccessType#GIZMO}.
+   * Determines how to access the fields and methods of cotwin classes. Defaults to {@link
+   * CotwinAccessType#GIZMO}.
    */
   // Build time - GIZMO classes are only generated if at least one solver
-  // has domain access type GIZMO
-  Optional<DomainAccessType> domainAccessType();
+  // has cotwin access type GIZMO
+  Optional<CotwinAccessType> cotwinAccessType();
 
   /** Enable the Nearby Selection quick configuration. */
   // Build time - visited by SolverConfig.visitReferencedClasses

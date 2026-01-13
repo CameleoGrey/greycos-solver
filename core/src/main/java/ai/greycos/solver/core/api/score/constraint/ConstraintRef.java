@@ -2,8 +2,8 @@ package ai.greycos.solver.core.api.score.constraint;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.domain.constraintweight.ConstraintConfiguration;
-import ai.greycos.solver.core.api.domain.constraintweight.ConstraintWeight;
+import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfiguration;
+import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintWeight;
 
 import org.jspecify.annotations.NonNull;
 

@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import ai.greycos.solver.core.api.domain.solution.ConstraintWeightOverrides;
+import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.analysis.ConstraintAnalysis;
 import ai.greycos.solver.core.api.score.analysis.MatchAnalysis;
@@ -22,7 +22,7 @@ import ai.greycos.solver.core.api.solver.RecommendedFit;
 import ai.greycos.solver.core.impl.solver.DefaultRecommendedAssignment;
 import ai.greycos.solver.core.impl.solver.DefaultRecommendedFit;
 import ai.greycos.solver.core.impl.util.Pair;
-import ai.greycos.solver.jackson.api.domain.solution.AbstractConstraintWeightOverridesDeserializer;
+import ai.greycos.solver.jackson.api.cotwin.solution.AbstractConstraintWeightOverridesDeserializer;
 import ai.greycos.solver.jackson.api.score.analysis.AbstractScoreAnalysisJacksonDeserializer;
 import ai.greycos.solver.jackson.api.solver.AbstractRecommendedAssignmentJacksonDeserializer;
 import ai.greycos.solver.jackson.api.solver.AbstractRecommendedFitJacksonDeserializer;

@@ -9,7 +9,7 @@ import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.statistic.AbstractSubSingleStatisticTest;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.assertj.core.api.SoftAssertions;
 

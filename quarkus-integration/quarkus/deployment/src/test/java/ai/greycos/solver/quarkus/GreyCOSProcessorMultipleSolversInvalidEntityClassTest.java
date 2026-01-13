@@ -7,7 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

@@ -3,8 +3,8 @@ package ai.greycos.solver.quarkus.bean;
 import jakarta.enterprise.context.Dependent;
 import jakarta.enterprise.inject.Produces;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.ScoreManager;
 import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
 import ai.greycos.solver.core.api.score.buildin.bendablebigdecimal.BendableBigDecimalScore;
@@ -26,7 +26,7 @@ import io.quarkus.arc.DefaultBean;
 
 /**
  * Throws an exception if an application tries to inject beans and the GreyCOS Quarkus extension is
- * skipped due to missing domain classes.
+ * skipped due to missing cotwin classes.
  */
 public class UnavailableGreyCOSBeanProvider {
 
@@ -261,7 +261,7 @@ public class UnavailableGreyCOSBeanProvider {
             + " or @"
             + PlanningEntity.class.getSimpleName()
             + " annotated classes."
-            + "\nIf your domain classes are located in a dependency of this project, maybe try generating"
+            + "\nIf your cotwin classes are located in a dependency of this project, maybe try generating"
             + " the Jandex index by using the jandex-maven-plugin in that dependency, or by adding"
             + "application.properties entries (quarkus.index-dependency.<name>.group-id"
             + " and quarkus.index-dependency.<name>.artifact-id).");

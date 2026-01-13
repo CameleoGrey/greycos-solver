@@ -9,8 +9,8 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheTyp
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 import ai.greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.list.RandomSubListSelector;
@@ -19,9 +19,9 @@ import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
-import ai.greycos.solver.core.testdomain.list.TestdataListValue;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
+import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 import ai.greycos.solver.core.testutil.TestRandom;
 
@@ -84,9 +84,9 @@ class NearbySubListSelectorTest {
 
     InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
     var supplyManager =
-        mock(ai.greycos.solver.core.impl.domain.variable.supply.SupplyManager.class);
+        mock(ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager.class);
     var listVariableStateSupply =
-        mock(ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply.class);
+        mock(ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply.class);
     when(scoreDirector.getSupplyManager()).thenReturn(supplyManager);
     when(supplyManager.demand(any())).thenReturn(listVariableStateSupply);
 

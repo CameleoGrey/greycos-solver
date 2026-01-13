@@ -1,0 +1,67 @@
+package ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.interfaces.replacevar;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
+import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+
+@PlanningSolution
+public class TestdataReplaceVarInterfaceSolution {
+
+  public static TestdataReplaceVarInterfaceSolution generateSolution(
+      int valueListSize, int entityListSize, boolean initialize) {
+    var solution = new TestdataReplaceVarInterfaceSolution();
+    var valueList = new ArrayList<String>(valueListSize);
+    for (int i = 0; i < valueListSize; i++) {
+      valueList.add("Generated Value " + i);
+    }
+    solution.setValueList(valueList);
+    var entityList = new ArrayList<TestdataReplaceVarInterfaceChildEntity>(entityListSize);
+    for (int i = 0; i < entityListSize; i++) {
+      var entity = new TestdataReplaceVarInterfaceChildEntity(i);
+      if (initialize) {
+        var value = valueList.get(i % valueListSize);
+        entity.setValue(value);
+      }
+      entityList.add(entity);
+    }
+    solution.setEntityList(entityList);
+    return solution;
+  }
+
+  @ValueRangeProvider(id = "valueRange")
+  @ProblemFactCollectionProperty
+  private List<String> valueList;
+
+  @PlanningEntityCollectionProperty private List<TestdataReplaceVarInterfaceChildEntity> entityList;
+  @PlanningScore private SimpleScore score;
+
+  public List<String> getValueList() {
+    return valueList;
+  }
+
+  public void setValueList(List<String> valueList) {
+    this.valueList = valueList;
+  }
+
+  public List<TestdataReplaceVarInterfaceChildEntity> getEntityList() {
+    return entityList;
+  }
+
+  public void setEntityList(List<TestdataReplaceVarInterfaceChildEntity> entityList) {
+    this.entityList = entityList;
+  }
+
+  public SimpleScore getScore() {
+    return score;
+  }
+
+  public void setScore(SimpleScore score) {
+    this.score = score;
+  }
+}

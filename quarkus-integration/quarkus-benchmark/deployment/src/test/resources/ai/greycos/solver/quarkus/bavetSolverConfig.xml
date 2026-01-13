@@ -1,6 +1,6 @@
 <solver>
   <scoreDirectorFactory>
-    <constraintProviderClass>ai.greycos.solver.benchmark.quarkus.testdomain.normal.constraints.TestdataQuarkusConstraintProvider</constraintProviderClass>
+    <constraintProviderClass>ai.greycos.solver.benchmark.quarkus.testcotwin.normal.constraints.TestdataQuarkusConstraintProvider</constraintProviderClass>
   </scoreDirectorFactory>
   <termination>
     <scoreCalculationCountLimit>50</scoreCalculationCountLimit>

@@ -5,7 +5,7 @@ import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.api.score.stream.Joiners;
-import ai.greycos.solver.quarkus.jsonb.it.domain.ITestdataPlanningEntity;
+import ai.greycos.solver.quarkus.jsonb.it.cotwin.ITestdataPlanningEntity;
 
 import org.jspecify.annotations.NonNull;
 

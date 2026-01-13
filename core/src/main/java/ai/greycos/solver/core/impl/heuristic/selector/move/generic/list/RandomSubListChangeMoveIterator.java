@@ -3,14 +3,14 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list;
 import java.util.Iterator;
 import java.util.Random;
 
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.SubList;
 import ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
-import ai.greycos.solver.core.preview.api.domain.metamodel.ElementPosition;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PositionInList;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 
 class RandomSubListChangeMoveIterator<Solution_>
     extends UpcomingSelectionIterator<Move<Solution_>> {

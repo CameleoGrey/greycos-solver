@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.localsearch.event;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import ai.greycos.solver.core.impl.solver.event.SolverLifecycleListener;

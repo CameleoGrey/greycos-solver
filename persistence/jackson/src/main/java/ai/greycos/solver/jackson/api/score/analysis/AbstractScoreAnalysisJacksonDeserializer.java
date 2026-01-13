@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 
 /**
- * Extend this to implement {@link ScoreAnalysis} deserialization specific for your domain.
+ * Extend this to implement {@link ScoreAnalysis} deserialization specific for your cotwin.
  *
  * @param <Score_>
  */
@@ -83,7 +83,7 @@ public abstract class AbstractScoreAnalysisJacksonDeserializer<Score_ extends Sc
   }
 
   /**
-   * The domain is based on a single {@link Score} subtype. This method is responsible for parsing
+   * The cotwin is based on a single {@link Score} subtype. This method is responsible for parsing
    * the score string into that subtype.
    *
    * @param scoreString never null
@@ -99,7 +99,7 @@ public abstract class AbstractScoreAnalysisJacksonDeserializer<Score_ extends Sc
    * @param constraintRef never null
    * @return null if fallback {@link #parseConstraintJustification(ConstraintRef, String, Score)}
    *     should be used instead.
-   * @param <ConstraintJustification_> Domain-specific custom implementation, typically
+   * @param <ConstraintJustification_> Cotwin-specific custom implementation, typically
    *     constraint-specific.
    */
   protected <ConstraintJustification_ extends ConstraintJustification>
@@ -117,7 +117,7 @@ public abstract class AbstractScoreAnalysisJacksonDeserializer<Score_ extends Sc
    * @param constraintJustificationString never null
    * @param score never null
    * @return never null
-   * @param <ConstraintJustification_> Domain-specific custom implementation, typically
+   * @param <ConstraintJustification_> Cotwin-specific custom implementation, typically
    *     constraint-specific.
    */
   protected <ConstraintJustification_ extends ConstraintJustification>

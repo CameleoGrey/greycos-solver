@@ -5,7 +5,7 @@ import jakarta.xml.bind.annotation.XmlEnum;
 import ai.greycos.solver.benchmark.impl.ranking.TotalRankSolverRankingWeightFactory;
 import ai.greycos.solver.benchmark.impl.ranking.TotalScoreSolverRankingComparator;
 import ai.greycos.solver.benchmark.impl.ranking.WorstScoreSolverRankingComparator;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 
 @XmlEnum
 public enum SolverRankingType {

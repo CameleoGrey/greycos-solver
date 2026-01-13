@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.Collections;
 
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testutil.CodeAssertable;
 
 public class DummyMove extends AbstractMove<TestdataSolution> implements CodeAssertable {

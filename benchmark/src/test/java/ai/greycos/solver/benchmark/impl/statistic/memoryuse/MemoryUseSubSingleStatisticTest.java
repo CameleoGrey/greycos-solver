@@ -6,7 +6,7 @@ import java.util.function.Function;
 
 import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.statistic.AbstractSubSingleStatisticTest;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.assertj.core.api.SoftAssertions;
 

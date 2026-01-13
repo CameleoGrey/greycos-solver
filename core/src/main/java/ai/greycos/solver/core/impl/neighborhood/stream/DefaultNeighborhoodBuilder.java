@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningSolutionMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 import ai.greycos.solver.core.preview.api.neighborhood.MoveDefinition;
 import ai.greycos.solver.core.preview.api.neighborhood.NeighborhoodBuilder;
 

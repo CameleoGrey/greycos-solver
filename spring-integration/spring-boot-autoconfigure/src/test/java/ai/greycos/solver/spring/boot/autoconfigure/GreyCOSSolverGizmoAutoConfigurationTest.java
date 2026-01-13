@@ -3,13 +3,13 @@ package ai.greycos.solver.spring.boot.autoconfigure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-import ai.greycos.solver.core.api.domain.common.DomainAccessType;
+import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.gizmo.GizmoSpringTestConfiguration;
-import ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -44,16 +44,16 @@ class GreyCOSSolverGizmoAutoConfigurationTest {
   @Test
   void solverProperties() {
     gizmoContextRunner
-        .withPropertyValues("greycos.solver.domain-access-type=GIZMO")
+        .withPropertyValues("greycos.solver.cotwin-access-type=GIZMO")
         .run(
             context -> {
               var solverConfig = context.getBean(SolverConfig.class);
-              assertThat(solverConfig.getDomainAccessType()).isEqualTo(DomainAccessType.GIZMO);
+              assertThat(solverConfig.getCotwinAccessType()).isEqualTo(CotwinAccessType.GIZMO);
               assertThat(context.getBean(SolverFactory.class)).isNotNull();
             });
     gizmoContextRunner
-        .withPropertyValues("greycos.solver.solver1.domain-access-type=GIZMO")
-        .withPropertyValues("greycos.solver.solver2.domain-access-type=REFLECTION")
+        .withPropertyValues("greycos.solver.solver1.cotwin-access-type=GIZMO")
+        .withPropertyValues("greycos.solver.solver2.cotwin-access-type=REFLECTION")
         .run(
             context -> {
               var solver1 =
@@ -75,8 +75,8 @@ class GreyCOSSolverGizmoAutoConfigurationTest {
                         "greycos.solver-config-xml=ai/greycos/solver/spring/boot/autoconfigure/gizmoSpringBootSolverConfig.xml")
                     .run(context -> context.getBean(SolverFactory.class)))
         .hasRootCauseMessage(
-            "When using the domainAccessType ("
-                + DomainAccessType.GIZMO
+            "When using the cotwinAccessType ("
+                + CotwinAccessType.GIZMO
                 + ") the classpath or modulepath must contain io.quarkus.gizmo:gizmo2.\n"
                 + "Maybe add a dependency to io.quarkus.gizmo:gizmo2.");
   }

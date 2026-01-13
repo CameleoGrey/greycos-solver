@@ -16,17 +16,17 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import ai.greycos.solver.core.impl.domain.variable.descriptor.BasicVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedAnchor;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedEntity;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedSolution;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedAnchor;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.Test;

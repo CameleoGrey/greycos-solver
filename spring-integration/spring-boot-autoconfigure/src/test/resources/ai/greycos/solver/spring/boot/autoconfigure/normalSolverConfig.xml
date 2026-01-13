@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
-    <solutionClass>ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringSolution</solutionClass>
-    <entityClass>ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringEntity</entityClass>
+    <solutionClass>ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution</solutionClass>
+    <entityClass>ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringEntity</entityClass>
     <scoreDirectorFactory>
         <constraintProviderClass>
             ai.greycos.solver.spring.boot.autoconfigure.normal.constraints.TestdataSpringConstraintProvider

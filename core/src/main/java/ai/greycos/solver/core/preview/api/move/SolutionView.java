@@ -1,15 +1,15 @@
 package ai.greycos.solver.core.preview.api.move;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.entity.PlanningPin;
-import ai.greycos.solver.core.api.domain.entity.PlanningPinToIndex;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.variable.PlanningListVariable;
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
-import ai.greycos.solver.core.preview.api.domain.metamodel.ElementPosition;
-import ai.greycos.solver.core.preview.api.domain.metamodel.GenuineVariableMetaModel;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningListVariableMetaModel;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningVariableMetaModel;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningPinToIndex;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.GenuineVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

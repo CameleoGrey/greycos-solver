@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.partitionedsearch;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.solver.ProblemFactChange;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;

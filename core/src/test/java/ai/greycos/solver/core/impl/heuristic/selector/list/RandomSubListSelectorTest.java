@@ -4,11 +4,11 @@ import static ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.p
 import static ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.solvingStarted;
 import static ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.stepStarted;
 import static ai.greycos.solver.core.impl.heuristic.selector.list.TriangularNumbers.nthTriangle;
-import static ai.greycos.solver.core.testdomain.list.TestdataListUtils.getAllowsUnassignedvaluesListVariableDescriptor;
-import static ai.greycos.solver.core.testdomain.list.TestdataListUtils.getListVariableDescriptor;
-import static ai.greycos.solver.core.testdomain.list.TestdataListUtils.getPinnedListVariableDescriptor;
-import static ai.greycos.solver.core.testdomain.list.TestdataListUtils.listSize;
-import static ai.greycos.solver.core.testdomain.list.TestdataListUtils.mockEntitySelector;
+import static ai.greycos.solver.core.testcotwin.list.TestdataListUtils.getAllowsUnassignedvaluesListVariableDescriptor;
+import static ai.greycos.solver.core.testcotwin.list.TestdataListUtils.getListVariableDescriptor;
+import static ai.greycos.solver.core.testcotwin.list.TestdataListUtils.getPinnedListVariableDescriptor;
+import static ai.greycos.solver.core.testcotwin.list.TestdataListUtils.listSize;
+import static ai.greycos.solver.core.testcotwin.list.TestdataListUtils.mockEntitySelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertCodesOfNeverEndingIterableSelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertEmptyNeverEndingIterableSelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
@@ -19,16 +19,16 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import java.util.List;
 
-import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
-import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
-import ai.greycos.solver.core.testdomain.list.TestdataListUtils;
-import ai.greycos.solver.core.testdomain.list.TestdataListValue;
-import ai.greycos.solver.core.testdomain.list.pinned.index.TestdataPinnedWithIndexListEntity;
-import ai.greycos.solver.core.testdomain.list.pinned.index.TestdataPinnedWithIndexListSolution;
-import ai.greycos.solver.core.testdomain.list.pinned.index.TestdataPinnedWithIndexListValue;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
+import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
+import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
+import ai.greycos.solver.core.testcotwin.list.TestdataListUtils;
+import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
+import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListEntity;
+import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListSolution;
+import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListValue;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
 import ai.greycos.solver.core.testutil.TestRandom;
 
 import org.junit.jupiter.api.Test;

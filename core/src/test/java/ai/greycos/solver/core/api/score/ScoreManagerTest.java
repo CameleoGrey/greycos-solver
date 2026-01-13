@@ -7,7 +7,7 @@ import java.util.function.Function;
 
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -46,7 +46,7 @@ public class ScoreManagerTest {
           softly.assertThat(scoreExplanation.getSummary()).isNotBlank();
           softly
               .assertThat(scoreExplanation.getConstraintMatchTotalMap())
-              .containsOnlyKeys("ai.greycos.solver.core.testdomain/testConstraint");
+              .containsOnlyKeys("ai.greycos.solver.core.testcotwin/testConstraint");
           softly
               .assertThat(scoreExplanation.getIndictmentMap())
               .containsOnlyKeys(solution.getEntityList().toArray());

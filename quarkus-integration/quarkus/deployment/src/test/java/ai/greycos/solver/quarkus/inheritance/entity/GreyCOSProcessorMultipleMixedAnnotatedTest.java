@@ -4,10 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.classes.mixed.TestMultipleMixedConstraintProvider;
-import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.classes.mixed.TestdataMultipleMixedBaseEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.classes.mixed.TestdataMultipleMixedChildEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.classes.mixed.TestdataMultipleMixedSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.mixed.TestMultipleMixedConstraintProvider;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.mixed.TestdataMultipleMixedBaseEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.mixed.TestdataMultipleMixedChildEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.mixed.TestdataMultipleMixedSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

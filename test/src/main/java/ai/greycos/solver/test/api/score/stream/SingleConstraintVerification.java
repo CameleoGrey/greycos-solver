@@ -1,7 +1,7 @@
 package ai.greycos.solver.test.api.score.stream;
 
-import ai.greycos.solver.core.api.domain.variable.InverseRelationShadowVariable;
-import ai.greycos.solver.core.api.domain.variable.PlanningListVariable;
+import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 
 import org.jspecify.annotations.NonNull;

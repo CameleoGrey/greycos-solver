@@ -10,15 +10,15 @@ import java.util.List;
 
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.inverserelation.SingletonInverseVariableSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableSupply;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.value.chained.SubChain;
 import ai.greycos.solver.core.impl.move.MoveDirector;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedAnchor;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedEntity;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedSolution;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedAnchor;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.Test;

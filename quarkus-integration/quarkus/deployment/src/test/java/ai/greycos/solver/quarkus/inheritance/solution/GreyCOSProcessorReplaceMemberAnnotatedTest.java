@@ -4,10 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.replacemember.TestdataReplaceMemberEntity;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.replacemember.TestdataReplaceMemberExtendedSolution;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.replacemember.TestdataReplaceMemberSolution;
-import ai.greycos.solver.quarkus.testdomain.superclass.DummyConstraintProvider;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.replacemember.TestdataReplaceMemberEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.replacemember.TestdataReplaceMemberExtendedSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.replacemember.TestdataReplaceMemberSolution;
+import ai.greycos.solver.quarkus.testcotwin.superclass.DummyConstraintProvider;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

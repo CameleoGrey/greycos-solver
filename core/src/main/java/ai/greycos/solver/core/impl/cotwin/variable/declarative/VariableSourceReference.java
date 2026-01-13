@@ -1,0 +1,31 @@
+package ai.greycos.solver.core.impl.cotwin.variable.declarative;
+
+import java.util.List;
+import java.util.function.Function;
+
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
+public record VariableSourceReference(
+    VariableMetaModel<?, ?, ?> variableMetaModel,
+    List<MemberAccessor> chainFromRootEntityToVariableEntity,
+    boolean onRootEntity,
+    boolean isTopLevel,
+    boolean isBottomLevel,
+    boolean isDeclarative,
+    VariableMetaModel<?, ?, ?> targetVariableMetamodel,
+    @Nullable VariableMetaModel<?, ?, ?> downstreamDeclarativeVariableMetamodel,
+    Function<Object, @Nullable Object> targetEntityFunctionStartingFromVariableEntity) {
+
+  public boolean affectGraphEdges() {
+    return downstreamDeclarativeVariableMetamodel != null;
+  }
+
+  public @Nullable Object findTargetEntity(Object entity) {
+    return targetEntityFunctionStartingFromVariableEntity.apply(entity);
+  }
+}

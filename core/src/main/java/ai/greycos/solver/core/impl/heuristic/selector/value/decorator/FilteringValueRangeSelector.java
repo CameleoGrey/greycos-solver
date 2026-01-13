@@ -9,9 +9,9 @@ import java.util.Random;
 import java.util.function.Supplier;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.ReachableValues;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
@@ -24,7 +24,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelecto
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PositionInList;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

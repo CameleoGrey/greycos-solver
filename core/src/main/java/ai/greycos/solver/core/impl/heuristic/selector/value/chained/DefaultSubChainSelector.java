@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.ListIterator;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.BasicVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.inverserelation.SingletonInverseVariableDemand;
-import ai.greycos.solver.core.impl.domain.variable.inverserelation.SingletonInverseVariableSupply;
-import ai.greycos.solver.core.impl.domain.variable.supply.SupplyManager;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableDemand;
+import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
 import ai.greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleListener;

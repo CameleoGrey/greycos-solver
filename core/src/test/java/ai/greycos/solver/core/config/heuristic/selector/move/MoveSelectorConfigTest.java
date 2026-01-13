@@ -25,7 +25,7 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubLis
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubListSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.testdomain.list.TestDistanceMeter;
+import ai.greycos.solver.core.testcotwin.list.TestDistanceMeter;
 
 import org.junit.jupiter.api.Test;
 

@@ -40,17 +40,17 @@ import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamTest;
 import ai.greycos.solver.core.impl.score.stream.common.ConstraintStreamFunctionalTest;
 import ai.greycos.solver.core.impl.score.stream.common.ConstraintStreamImplSupport;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataObject;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.score.TestdataSimpleBigDecimalScoreSolution;
-import ai.greycos.solver.core.testdomain.score.TestdataSimpleLongScoreSolution;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishEntity;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishEntityGroup;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishExtra;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishSolution;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishValue;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishValueGroup;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataObject;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.score.TestdataSimpleBigDecimalScoreSolution;
+import ai.greycos.solver.core.testcotwin.score.TestdataSimpleLongScoreSolution;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishEntity;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishEntityGroup;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishExtra;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishSolution;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishValue;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishValueGroup;
 
 import org.junit.jupiter.api.TestTemplate;
 

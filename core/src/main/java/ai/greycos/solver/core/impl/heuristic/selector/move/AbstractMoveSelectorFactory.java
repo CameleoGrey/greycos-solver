@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.move;
 
 import java.util.Comparator;
 
-import ai.greycos.solver.core.api.domain.common.ComparatorFactory;
+import ai.greycos.solver.core.api.cotwin.common.ComparatorFactory;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;

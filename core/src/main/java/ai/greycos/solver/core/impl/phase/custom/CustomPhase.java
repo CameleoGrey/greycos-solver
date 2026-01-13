@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.phase.custom;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.solver.phase.PhaseCommand;
 import ai.greycos.solver.core.impl.phase.AbstractPhase;
 import ai.greycos.solver.core.impl.phase.Phase;

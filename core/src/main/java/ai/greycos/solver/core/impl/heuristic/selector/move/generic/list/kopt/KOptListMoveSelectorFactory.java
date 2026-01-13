@@ -2,13 +2,13 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.variable.PlanningListVariable;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
@@ -34,7 +34,7 @@ public final class KOptListMoveSelectorFactory<Solution_>
     if (listVariableDescriptor == null) {
       throw new IllegalArgumentException(
           """
-                    The kOptListMoveSelector (%s) can only be used when the domain model has a list variable.
+                    The kOptListMoveSelector (%s) can only be used when the cotwin model has a list variable.
                     Check your @%s and make sure it has a @%s."""
               .formatted(
                   config,

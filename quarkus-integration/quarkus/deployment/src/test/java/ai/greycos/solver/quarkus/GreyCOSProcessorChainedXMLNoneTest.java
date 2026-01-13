@@ -6,11 +6,11 @@ import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.quarkus.testdomain.chained.TestdataChainedQuarkusAnchor;
-import ai.greycos.solver.quarkus.testdomain.chained.TestdataChainedQuarkusConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.chained.TestdataChainedQuarkusEntity;
-import ai.greycos.solver.quarkus.testdomain.chained.TestdataChainedQuarkusObject;
-import ai.greycos.solver.quarkus.testdomain.chained.TestdataChainedQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.chained.TestdataChainedQuarkusAnchor;
+import ai.greycos.solver.quarkus.testcotwin.chained.TestdataChainedQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.chained.TestdataChainedQuarkusEntity;
+import ai.greycos.solver.quarkus.testcotwin.chained.TestdataChainedQuarkusObject;
+import ai.greycos.solver.quarkus.testcotwin.chained.TestdataChainedQuarkusSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

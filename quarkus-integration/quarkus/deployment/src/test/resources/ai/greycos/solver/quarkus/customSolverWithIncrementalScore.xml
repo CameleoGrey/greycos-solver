@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
-  <solutionClass>ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution</solutionClass>
-  <entityClass>ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity</entityClass>
+  <solutionClass>ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution</solutionClass>
+  <entityClass>ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity</entityClass>
   <scoreDirectorFactory>
-    <incrementalScoreCalculatorClass>ai.greycos.solver.quarkus.testdomain.dummy.DummyTestdataQuarkusIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+    <incrementalScoreCalculatorClass>ai.greycos.solver.quarkus.testcotwin.dummy.DummyTestdataQuarkusIncrementalScoreCalculator</incrementalScoreCalculatorClass>
   </scoreDirectorFactory>
   <termination>
     <secondsSpentLimit>1</secondsSpentLimit>

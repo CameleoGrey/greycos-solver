@@ -16,9 +16,9 @@ import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.valuerange.entityproviding.TestdataEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.valuerange.entityproviding.TestdataEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.TestdataEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.TestdataEntityProvidingSolution;
 
 import org.junit.jupiter.api.Test;
 

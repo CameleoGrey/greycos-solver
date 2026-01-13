@@ -5,12 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingSolution;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingValue;
-import ai.greycos.solver.core.testdomain.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingValue;
+import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingSolution;
 
 import org.junit.jupiter.api.Test;
 

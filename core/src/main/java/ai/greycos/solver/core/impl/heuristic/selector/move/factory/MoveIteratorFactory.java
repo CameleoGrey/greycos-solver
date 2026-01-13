@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.factory;
 import java.util.Iterator;
 import java.util.Random;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;

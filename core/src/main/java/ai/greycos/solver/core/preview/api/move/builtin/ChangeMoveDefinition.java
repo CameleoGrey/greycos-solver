@@ -3,7 +3,7 @@ package ai.greycos.solver.core.preview.api.move.builtin;
 import java.util.Objects;
 
 import ai.greycos.solver.core.impl.neighborhood.stream.DefaultMoveStreamFactory;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
 import ai.greycos.solver.core.preview.api.neighborhood.MoveDefinition;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.MoveStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.MoveStreamFactory;

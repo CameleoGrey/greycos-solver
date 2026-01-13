@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.generic.chained;
 
-import static ai.greycos.solver.core.testdomain.chained.TestdataChainedSolution.buildSolutionDescriptor;
+import static ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution.buildSolutionDescriptor;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
@@ -9,7 +9,7 @@ import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfi
 import ai.greycos.solver.core.config.heuristic.selector.value.chained.SubChainSelectorConfig;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicyTestUtils;
-import ai.greycos.solver.core.testdomain.chained.TestdataChainedSolution;
+import ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution;
 
 import org.junit.jupiter.api.Test;
 

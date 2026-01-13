@@ -3,9 +3,9 @@ package ai.greycos.solver.core.config.solver.testutil.corruptedundoshadow;
 import java.util.ArrayList;
 import java.util.List;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.lookup.PlanningId;
-import ai.greycos.solver.core.api.domain.variable.InverseRelationShadowVariable;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
+import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 
 @PlanningEntity
 public class CorruptedUndoShadowValue {

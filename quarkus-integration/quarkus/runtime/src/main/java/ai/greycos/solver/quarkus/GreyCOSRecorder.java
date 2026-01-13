@@ -10,14 +10,14 @@ import java.util.function.Supplier;
 
 import jakarta.inject.Named;
 
-import ai.greycos.solver.core.api.domain.solution.cloner.SolutionCloner;
+import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.SolverManagerConfig;
 import ai.greycos.solver.core.config.solver.termination.DiminishedReturnsTerminationConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
-import ai.greycos.solver.core.impl.domain.common.accessor.MemberAccessor;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import ai.greycos.solver.quarkus.config.DiminishedReturnsRuntimeConfig;
 import ai.greycos.solver.quarkus.config.GreyCOSRuntimeConfig;
 import ai.greycos.solver.quarkus.config.SolverRuntimeConfig;

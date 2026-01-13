@@ -29,7 +29,7 @@ import ai.greycos.solver.benchmark.impl.result.ProblemBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.result.SingleBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.result.SolverBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;

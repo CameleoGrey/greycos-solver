@@ -17,10 +17,10 @@ import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchFora
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.parallel.Execution;

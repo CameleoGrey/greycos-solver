@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.exhaustivesearch.scope;
 import java.util.List;
 import java.util.SortedSet;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.ExhaustiveSearchLayer;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.ExhaustiveSearchNode;

@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.bavet.common.BavetRootNode;
 import ai.greycos.solver.core.impl.bavet.common.Propagator;
 

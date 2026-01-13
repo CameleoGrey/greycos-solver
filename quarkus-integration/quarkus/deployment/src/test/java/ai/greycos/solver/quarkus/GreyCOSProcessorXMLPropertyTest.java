@@ -7,12 +7,12 @@ import java.util.Collections;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.domain.common.DomainAccessType;
+import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
@@ -44,7 +44,7 @@ class GreyCOSProcessorXMLPropertyTest {
   @Test
   void solverConfigXml_property() {
     assertNotNull(solverConfig);
-    assertEquals(DomainAccessType.GIZMO, solverConfig.getDomainAccessType());
+    assertEquals(CotwinAccessType.GIZMO, solverConfig.getCotwinAccessType());
     assertEquals(TestdataQuarkusSolution.class, solverConfig.getSolutionClass());
     assertEquals(
         Collections.singletonList(TestdataQuarkusEntity.class), solverConfig.getEntityClassList());

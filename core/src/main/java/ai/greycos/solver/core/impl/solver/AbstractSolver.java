@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.solver;
 import java.util.Iterator;
 import java.util.List;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.event.SolverEventListener;
 import ai.greycos.solver.core.impl.phase.Phase;

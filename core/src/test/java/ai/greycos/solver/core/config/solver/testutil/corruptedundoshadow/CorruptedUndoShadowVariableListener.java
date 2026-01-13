@@ -2,7 +2,7 @@ package ai.greycos.solver.core.config.solver.testutil.corruptedundoshadow;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.domain.variable.VariableListener;
+import ai.greycos.solver.core.api.cotwin.variable.VariableListener;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NonNull;

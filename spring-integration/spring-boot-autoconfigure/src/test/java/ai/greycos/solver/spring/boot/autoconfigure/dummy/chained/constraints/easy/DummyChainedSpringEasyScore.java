@@ -2,7 +2,7 @@ package ai.greycos.solver.spring.boot.autoconfigure.dummy.chained.constraints.ea
 
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringSolution;
 
 import org.jspecify.annotations.NonNull;
 

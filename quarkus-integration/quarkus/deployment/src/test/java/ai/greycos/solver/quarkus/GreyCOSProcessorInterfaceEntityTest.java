@@ -11,9 +11,9 @@ import java.util.stream.IntStream;
 import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.quarkus.testdomain.interfaceentity.TestdataInterfaceEntity;
-import ai.greycos.solver.quarkus.testdomain.interfaceentity.TestdataInterfaceEntityImplementation;
-import ai.greycos.solver.quarkus.testdomain.interfaceentity.TestdataInterfaceEntitySolution;
+import ai.greycos.solver.quarkus.testcotwin.interfaceentity.TestdataInterfaceEntity;
+import ai.greycos.solver.quarkus.testcotwin.interfaceentity.TestdataInterfaceEntityImplementation;
+import ai.greycos.solver.quarkus.testcotwin.interfaceentity.TestdataInterfaceEntitySolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
@@ -31,7 +31,7 @@ class GreyCOSProcessorInterfaceEntityTest {
           .setArchiveProducer(
               () ->
                   ShrinkWrap.create(JavaArchive.class)
-                      .addPackages(true, "ai.greycos.solver.quarkus.testdomain.interfaceentity"));
+                      .addPackages(true, "ai.greycos.solver.quarkus.testcotwin.interfaceentity"));
 
   @Inject SolverFactory<TestdataInterfaceEntitySolution> solverFactory;
 

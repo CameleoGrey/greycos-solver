@@ -3,7 +3,7 @@ package ai.greycos.solver.core.api.solver;
 import java.io.File;
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.impl.solver.DefaultSolverFactory;
 

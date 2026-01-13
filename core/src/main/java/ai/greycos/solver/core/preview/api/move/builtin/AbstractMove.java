@@ -2,16 +2,16 @@ package ai.greycos.solver.core.preview.api.move.builtin;
 
 import java.util.List;
 
-import ai.greycos.solver.core.impl.domain.solution.descriptor.DefaultPlanningListVariableMetaModel;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.DefaultPlanningVariableMetaModel;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.InnerVariableMetaModel;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.VariableDescriptor;
-import ai.greycos.solver.core.preview.api.domain.metamodel.GenuineVariableMetaModel;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningListVariableMetaModel;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningVariableMetaModel;
-import ai.greycos.solver.core.preview.api.domain.metamodel.VariableMetaModel;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.DefaultPlanningListVariableMetaModel;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.DefaultPlanningVariableMetaModel;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.InnerVariableMetaModel;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.GenuineVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
 import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.NullMarked;

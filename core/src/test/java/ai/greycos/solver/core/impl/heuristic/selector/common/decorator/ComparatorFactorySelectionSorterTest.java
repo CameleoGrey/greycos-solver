@@ -6,10 +6,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import ai.greycos.solver.core.api.domain.common.ComparatorFactory;
+import ai.greycos.solver.core.api.cotwin.common.ComparatorFactory;
 import ai.greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
 

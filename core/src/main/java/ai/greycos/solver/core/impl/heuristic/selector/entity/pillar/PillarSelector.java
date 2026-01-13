@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.entity.pillar;
 
 import java.util.List;
 
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.ListIterableSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 

@@ -23,9 +23,9 @@ import ai.greycos.solver.core.impl.phase.PossiblyInitializingPhase;
 import ai.greycos.solver.core.impl.score.DummySimpleScoreEasyScoreCalculator;
 import ai.greycos.solver.core.impl.solver.DefaultSolver;
 import ai.greycos.solver.core.impl.solver.DefaultSolverFactory;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testutil.NoChangeCustomPhaseCommand;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 

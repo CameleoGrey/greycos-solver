@@ -10,16 +10,16 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.move.MoveDirector;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
-import ai.greycos.solver.core.testdomain.list.TestdataListEntity;
-import ai.greycos.solver.core.testdomain.list.TestdataListSolution;
-import ai.greycos.solver.core.testdomain.list.TestdataListValue;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingEntity;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingSolution;
-import ai.greycos.solver.core.testdomain.list.valuerange.TestdataListEntityProvidingValue;
+import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
+import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
+import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingValue;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

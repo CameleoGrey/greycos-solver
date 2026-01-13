@@ -13,10 +13,10 @@ import java.nio.charset.StandardCharsets;
 
 import ai.greycos.solver.benchmark.impl.io.PlannerBenchmarkConfigIO;
 import ai.greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.jackson.impl.domain.solution.JacksonSolutionFileIO;
-import ai.greycos.solver.persistence.common.api.domain.solution.RigidTestdataSolutionFileIO;
-import ai.greycos.solver.persistence.common.api.domain.solution.SolutionFileIO;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.jackson.impl.cotwin.solution.JacksonSolutionFileIO;
+import ai.greycos.solver.persistence.common.api.cotwin.solution.RigidTestdataSolutionFileIO;
+import ai.greycos.solver.persistence.common.api.cotwin.solution.SolutionFileIO;
 
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Test;
@@ -84,8 +84,8 @@ class PlannerBenchmarkConfigTest {
             + "    <name>Entity Tabu Search</name>\n"
             + "    <solver>\n"
             // Intentionally wrong to simulate a typo.
-            + "      <solutionKlazz>ai.greycos.solver.core.testdomain.TestdataSolution</solutionKlazz>\n"
-            + "      <entityClass>ai.greycos.solver.core.testdomain.TestdataEntity</entityClass>\n"
+            + "      <solutionKlazz>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionKlazz>\n"
+            + "      <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>\n"
             + "    </solver>\n"
             + "    <problemBenchmarks>\n"
             + "      <solutionFileIOClass>"

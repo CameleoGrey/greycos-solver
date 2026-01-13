@@ -7,7 +7,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
-import ai.greycos.solver.core.testdomain.TestdataObject;
+import ai.greycos.solver.core.testcotwin.TestdataObject;
 
 public class TestdataObjectSorter<S, T> implements SelectionSorter<S, T> {
 

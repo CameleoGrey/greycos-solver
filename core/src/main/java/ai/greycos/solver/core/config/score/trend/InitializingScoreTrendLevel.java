@@ -2,7 +2,7 @@ package ai.greycos.solver.core.config.score.trend;
 
 import jakarta.xml.bind.annotation.XmlEnum;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.score.trend.InitializingScoreTrend;
 

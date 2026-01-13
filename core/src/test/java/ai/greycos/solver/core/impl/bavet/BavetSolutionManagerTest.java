@@ -2,8 +2,8 @@ package ai.greycos.solver.core.impl.bavet;
 
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractSolutionManagerTest;
-import ai.greycos.solver.core.testdomain.TestdataConstraintProvider;
-import ai.greycos.solver.core.testdomain.list.unassignedvar.pinned.TestdataPinnedUnassignedValuesListConstraintProvider;
+import ai.greycos.solver.core.testcotwin.TestdataConstraintProvider;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.pinned.TestdataPinnedUnassignedValuesListConstraintProvider;
 
 final class BavetSolutionManagerTest extends AbstractSolutionManagerTest {
 

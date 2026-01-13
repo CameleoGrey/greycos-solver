@@ -2,7 +2,7 @@ package ai.greycos.solver.core.api.solver.phase;
 
 import java.util.function.BooleanSupplier;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.solver.Solver;

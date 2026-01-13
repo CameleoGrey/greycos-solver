@@ -1,7 +1,7 @@
 package ai.greycos.solver.spring.boot.autoconfigure.chained;
 
 import ai.greycos.solver.spring.boot.autoconfigure.chained.constraints.TestdataChainedSpringConstraintProvider;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringSolution;
 
 import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
 import org.springframework.boot.autoconfigure.domain.EntityScan;

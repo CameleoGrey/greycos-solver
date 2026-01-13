@@ -9,7 +9,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.IntFunction;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
  * changes from each partition; terminates all threads before phase ends.
  *
  * <p>Why: Enables parallel solving for large problems; improves CPU utilization; reduces solving
- * time for partitionable domains.
+ * time for partitionable cotwins.
  *
  * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
  */

@@ -4,8 +4,8 @@ import static ai.greycos.solver.core.api.solver.SolutionUpdatePolicy.UPDATE_ALL;
 
 import java.util.UUID;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningScore;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
@@ -87,7 +87,7 @@ public interface ScoreManager<Solution_, Score_ extends Score<Score_>> {
    *
    * <p>Don't parse this string. Instead, to provide this information in a UI or a service, use
    * {@link #explainScore(Object)} to retrieve {@link ScoreExplanation#getConstraintMatchTotalMap()}
-   * and {@link ScoreExplanation#getIndictmentMap()} and convert those into a domain specific API.
+   * and {@link ScoreExplanation#getIndictmentMap()} and convert those into a cotwin specific API.
    *
    * @param solution never null
    * @return null if {@link #updateScore(Object)} returns null with the same solution

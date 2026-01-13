@@ -3,8 +3,8 @@ package ai.greycos.solver.core.preview.api.move.builtin;
 import java.util.Objects;
 import java.util.function.Function;
 
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningListVariableMetaModel;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PositionInList;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 import ai.greycos.solver.core.preview.api.move.Move;
 import ai.greycos.solver.core.preview.api.move.SolutionView;
 import ai.greycos.solver.core.preview.api.neighborhood.MoveDefinition;

@@ -6,10 +6,10 @@ import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.variable.PlanningListVariable;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 
@@ -129,7 +129,7 @@ public class ListChangeMove<Solution_> extends AbstractMove<Solution_> {
   @Override
   public boolean isMoveDoable(ScoreDirector<Solution_> scoreDirector) {
     // TODO maybe remove this because no such move should be generated
-    // Do not use Object#equals on user-provided domain objects. Relying on user's implementation of
+    // Do not use Object#equals on user-provided cotwin objects. Relying on user's implementation of
     // Object#equals
     // opens the opportunity to shoot themselves in the foot if different entities can be equal.
     var sameEntity = destinationEntity == sourceEntity;

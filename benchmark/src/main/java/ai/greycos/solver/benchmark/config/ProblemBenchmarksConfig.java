@@ -13,7 +13,7 @@ import ai.greycos.solver.benchmark.config.statistic.ProblemStatisticType;
 import ai.greycos.solver.benchmark.config.statistic.SingleStatisticType;
 import ai.greycos.solver.core.config.AbstractConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
-import ai.greycos.solver.persistence.common.api.domain.solution.SolutionFileIO;
+import ai.greycos.solver.persistence.common.api.cotwin.solution.SolutionFileIO;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;

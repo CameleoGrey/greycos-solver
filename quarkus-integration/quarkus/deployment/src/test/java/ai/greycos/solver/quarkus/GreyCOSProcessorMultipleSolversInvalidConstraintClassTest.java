@@ -7,14 +7,14 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.quarkus.testdomain.dummy.DummyTestdataQuarkusEasyScoreCalculator;
-import ai.greycos.solver.quarkus.testdomain.dummy.DummyTestdataQuarkusIncrementalScoreCalculator;
-import ai.greycos.solver.quarkus.testdomain.dummy.DummyTestdataQuarkusShadowVariableEasyScoreCalculator;
-import ai.greycos.solver.quarkus.testdomain.dummy.DummyTestdataQuarkusShadowVariableIncrementalScoreCalculator;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
-import ai.greycos.solver.quarkus.testdomain.shadowvariable.TestdataQuarkusShadowVariableConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.dummy.DummyTestdataQuarkusEasyScoreCalculator;
+import ai.greycos.solver.quarkus.testcotwin.dummy.DummyTestdataQuarkusIncrementalScoreCalculator;
+import ai.greycos.solver.quarkus.testcotwin.dummy.DummyTestdataQuarkusShadowVariableEasyScoreCalculator;
+import ai.greycos.solver.quarkus.testcotwin.dummy.DummyTestdataQuarkusShadowVariableIncrementalScoreCalculator;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadowVariableConstraintProvider;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
@@ -66,9 +66,9 @@ class GreyCOSProcessorMultipleSolversInvalidConstraintClassTest {
                       .hasMessageContaining(
                           "don't specify a EasyScoreCalculator score class, yet there are multiple available")
                       .hasMessageContaining(
-                          "ai.greycos.solver.quarkus.testdomain.dummy.DummyTestdataQuarkusEasyScoreCalculator")
+                          "ai.greycos.solver.quarkus.testcotwin.dummy.DummyTestdataQuarkusEasyScoreCalculator")
                       .hasMessageContaining(
-                          "ai.greycos.solver.quarkus.testdomain.dummy.DummyTestdataQuarkusShadowVariableEasyScoreCalculator")
+                          "ai.greycos.solver.quarkus.testcotwin.dummy.DummyTestdataQuarkusShadowVariableEasyScoreCalculator")
                       .hasMessageContaining("on the classpath."));
 
   // Multiple classes - EasyScoreCalculator with XML
@@ -101,9 +101,9 @@ class GreyCOSProcessorMultipleSolversInvalidConstraintClassTest {
                       .hasMessageContaining(
                           "don't specify a EasyScoreCalculator score class, yet there are multiple available")
                       .hasMessageContaining(
-                          "ai.greycos.solver.quarkus.testdomain.dummy.DummyTestdataQuarkusEasyScoreCalculator")
+                          "ai.greycos.solver.quarkus.testcotwin.dummy.DummyTestdataQuarkusEasyScoreCalculator")
                       .hasMessageContaining(
-                          "ai.greycos.solver.quarkus.testdomain.dummy.DummyTestdataQuarkusShadowVariableEasyScoreCalculator")
+                          "ai.greycos.solver.quarkus.testcotwin.dummy.DummyTestdataQuarkusShadowVariableEasyScoreCalculator")
                       .hasMessageContaining("on the classpath."));
 
   // Multiple classes - ConstraintProvider

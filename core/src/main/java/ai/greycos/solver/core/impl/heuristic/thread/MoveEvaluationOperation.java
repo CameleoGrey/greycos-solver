@@ -7,7 +7,7 @@ import ai.greycos.solver.core.impl.heuristic.move.Move;
  * and the indices for ordering.
  *
  * @param <Solution_> the solution type, the class with the {@link
- *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
+ *     ai.greycos.solver.core.api.cotwin.solution.PlanningSolution} annotation
  */
 public class MoveEvaluationOperation<Solution_> extends MoveThreadOperation<Solution_> {
 

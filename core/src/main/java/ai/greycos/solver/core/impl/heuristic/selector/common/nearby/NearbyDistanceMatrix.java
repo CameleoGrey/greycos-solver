@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
-import ai.greycos.solver.core.impl.domain.variable.supply.Supply;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.Supply;
 
 import org.jspecify.annotations.NonNull;
 

@@ -1,0 +1,49 @@
+package ai.greycos.solver.quarkus.benchmark.it.cotwin;
+
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
+
+@PlanningEntity
+public class TestdataListValueShadowEntity {
+
+  private String value;
+
+  @InverseRelationShadowVariable(sourceVariableName = "values")
+  private TestdataStringLengthShadowEntity entity;
+
+  @ShadowVariable(
+      variableListenerClass = StringLengthVariableListener.class,
+      sourceVariableName = "entity")
+  private Integer length;
+
+  public TestdataListValueShadowEntity() {}
+
+  public TestdataListValueShadowEntity(String value) {
+    this.value = value;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public void setValue(String value) {
+    this.value = value;
+  }
+
+  public TestdataStringLengthShadowEntity getEntity() {
+    return entity;
+  }
+
+  public void setEntity(TestdataStringLengthShadowEntity entity) {
+    this.entity = entity;
+  }
+
+  public Integer getLength() {
+    return length;
+  }
+
+  public void setLength(Integer length) {
+    this.length = length;
+  }
+}

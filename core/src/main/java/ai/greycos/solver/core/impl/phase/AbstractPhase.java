@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.phase;
 
 import java.util.Map;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
@@ -245,7 +245,7 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
             """
                                 %s phase (%d) needs to start from an initialized solution, but there are (%d) uninitialized entities.
                                 Maybe there is no Construction Heuristic configured before this phase to initialize the solution.
-                                Or maybe the getter/setters of your planning variables in your domain classes aren't implemented correctly."""
+                                Or maybe the getter/setters of your planning variables in your cotwin classes aren't implemented correctly."""
                 .formatted(getPhaseType(), phaseIndex, uninitializedEntityCount));
       }
       var unassignedValueCount = initializationStatistics.unassignedValueCount();

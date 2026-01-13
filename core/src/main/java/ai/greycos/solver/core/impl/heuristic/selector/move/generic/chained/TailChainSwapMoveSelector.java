@@ -2,13 +2,13 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.chained;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.impl.domain.variable.anchor.AnchorVariableDemand;
-import ai.greycos.solver.core.impl.domain.variable.anchor.AnchorVariableSupply;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.BasicVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.inverserelation.SingletonInverseVariableDemand;
-import ai.greycos.solver.core.impl.domain.variable.inverserelation.SingletonInverseVariableSupply;
-import ai.greycos.solver.core.impl.domain.variable.supply.SupplyManager;
+import ai.greycos.solver.core.impl.cotwin.variable.anchor.AnchorVariableDemand;
+import ai.greycos.solver.core.impl.cotwin.variable.anchor.AnchorVariableSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableDemand;
+import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.IterableSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractOriginalChangeIterator;

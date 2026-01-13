@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import java.util.concurrent.ExecutionException;
 
 import ai.greycos.solver.benchmark.config.PlannerBenchmarkConfig;
-import ai.greycos.solver.benchmark.quarkus.testdomain.normal.constraints.TestdataQuarkusConstraintProvider;
-import ai.greycos.solver.benchmark.quarkus.testdomain.normal.domain.TestdataQuarkusEntity;
-import ai.greycos.solver.benchmark.quarkus.testdomain.normal.domain.TestdataQuarkusSolution;
+import ai.greycos.solver.benchmark.quarkus.testcotwin.normal.constraints.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.benchmark.quarkus.testcotwin.normal.cotwin.TestdataQuarkusEntity;
+import ai.greycos.solver.benchmark.quarkus.testcotwin.normal.cotwin.TestdataQuarkusSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

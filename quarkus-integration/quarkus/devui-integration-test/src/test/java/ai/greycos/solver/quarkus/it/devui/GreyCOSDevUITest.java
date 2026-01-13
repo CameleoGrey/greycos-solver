@@ -13,9 +13,9 @@ import jakarta.ws.rs.core.MediaType;
 
 import ai.greycos.solver.core.api.solver.SolverJob;
 import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.quarkus.it.devui.domain.StringLengthVariableListener;
-import ai.greycos.solver.quarkus.it.devui.domain.TestdataStringLengthShadowEntity;
-import ai.greycos.solver.quarkus.it.devui.domain.TestdataStringLengthShadowSolution;
+import ai.greycos.solver.quarkus.it.devui.cotwin.StringLengthVariableListener;
+import ai.greycos.solver.quarkus.it.devui.cotwin.TestdataStringLengthShadowEntity;
+import ai.greycos.solver.quarkus.it.devui.cotwin.TestdataStringLengthShadowSolution;
 import ai.greycos.solver.quarkus.it.devui.solver.TestdataStringLengthConstraintProvider;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
@@ -90,7 +90,7 @@ public class GreyCOSDevUITest extends DevUIJsonRPCTest {
                 + "  <entityClass>"
                 + TestdataStringLengthShadowEntity.class.getCanonicalName()
                 + "</entityClass>\n"
-                + "  <domainAccessType>GIZMO</domainAccessType>\n"
+                + "  <cotwinAccessType>GIZMO</cotwinAccessType>\n"
                 + "  <scoreDirectorFactory>\n"
                 + "    <constraintProviderClass>"
                 + TestdataStringLengthConstraintProvider.class.getCanonicalName()

@@ -7,9 +7,9 @@ import java.util.Map;
 
 import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
-import ai.greycos.solver.core.testdomain.score.TestdataHardSoftLongScoreSolution;
+import ai.greycos.solver.core.testcotwin.score.TestdataHardSoftLongScoreSolution;
 
 import org.junit.jupiter.api.Test;
 

@@ -1,0 +1,48 @@
+package ai.greycos.solver.core.testcotwin.shadow.extended;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
+import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.solver.SolverFactory;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
+import ai.greycos.solver.core.config.solver.SolverConfig;
+import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
+
+import org.junit.jupiter.api.Test;
+
+class DeclarativeShadowVariablesExtendedValuesTest {
+
+  @Test
+  void extendedValues() {
+    var solverConfig =
+        new SolverConfig()
+            .withEnvironmentMode(EnvironmentMode.TRACKED_FULL_ASSERT)
+            .withSolutionClass(TestdataDeclarativeExtendedSolution.class)
+            .withEntityClasses(
+                TestdataDeclarativeExtendedEntity.class,
+                TestdataDeclarativeExtendedBaseValue.class,
+                TestdataDeclarativeExtendedSubclassValue.class)
+            .withConstraintProviderClass(TestdataDeclarativeExtendedConstraintProvider.class)
+            .withTerminationConfig(new TerminationConfig().withScoreCalculationCountLimit(1000L));
+
+    var solverFactory = SolverFactory.<TestdataDeclarativeExtendedSolution>create(solverConfig);
+    var solver = solverFactory.buildSolver();
+
+    var problem = new TestdataDeclarativeExtendedSolution();
+    var entityA = new TestdataDeclarativeExtendedEntity("A");
+    var entityB = new TestdataDeclarativeExtendedEntity("B");
+
+    var value1 = new TestdataDeclarativeExtendedSubclassValue("1");
+    var value2 = new TestdataDeclarativeExtendedSubclassValue("2");
+    var value31 = new TestdataDeclarativeExtendedSubclassValue("31");
+
+    problem.setEntities(List.of(entityA, entityB));
+    problem.setValues(List.of(value1, value2, value31));
+
+    var solution = solver.solve(problem);
+
+    assertThat(solution.getScore()).isEqualTo(HardSoftScore.of(0, 6));
+  }
+}

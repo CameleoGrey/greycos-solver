@@ -7,7 +7,7 @@ import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.stream.ConstraintStream;
 import ai.greycos.solver.core.api.score.stream.PrecomputeFactory;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintStream;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.stream.common.InnerConstraintFactory;
 
 import org.jspecify.annotations.NonNull;

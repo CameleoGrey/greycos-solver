@@ -25,9 +25,9 @@ import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractAdvancedGroupByConstraintStreamTest;
 import ai.greycos.solver.core.impl.util.Pair;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishEntity;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishEntityGroup;
-import ai.greycos.solver.core.testdomain.score.lavish.TestdataLavishSolution;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishEntity;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishEntityGroup;
+import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishSolution;
 
 import org.junit.jupiter.api.TestTemplate;
 

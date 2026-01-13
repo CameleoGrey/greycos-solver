@@ -5,7 +5,7 @@ package ai.greycos.solver.core.impl.heuristic.thread;
  * main solver thread and move threads.
  *
  * @param <Solution_> the solution type, the class with the {@link
- *     ai.greycos.solver.core.api.domain.solution.PlanningSolution} annotation
+ *     ai.greycos.solver.core.api.cotwin.solution.PlanningSolution} annotation
  */
 public abstract class MoveThreadOperation<Solution_> {
 

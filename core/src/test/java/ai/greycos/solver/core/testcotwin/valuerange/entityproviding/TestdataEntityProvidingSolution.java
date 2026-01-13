@@ -1,0 +1,120 @@
+package ai.greycos.solver.core.testcotwin.valuerange.entityproviding;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
+import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.testcotwin.TestdataObject;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+
+@PlanningSolution
+public class TestdataEntityProvidingSolution extends TestdataObject {
+
+  public static SolutionDescriptor<TestdataEntityProvidingSolution> buildSolutionDescriptor() {
+    return SolutionDescriptor.buildSolutionDescriptor(
+        TestdataEntityProvidingSolution.class, TestdataEntityProvidingEntity.class);
+  }
+
+  public static TestdataEntityProvidingSolution generateSolution() {
+    var solution = new TestdataEntityProvidingSolution("s1");
+    var value1 = new TestdataValue("1");
+    var value2 = new TestdataValue("2");
+    var value3 = new TestdataValue("3");
+    var entity1 = new TestdataEntityProvidingEntity("1", List.of(value1, value2));
+    var entity2 = new TestdataEntityProvidingEntity("2", List.of(value1, value3));
+    solution.setEntityList(List.of(entity1, entity2));
+    return solution;
+  }
+
+  public static TestdataEntityProvidingSolution generateSolution(
+      int valueListSize, int entityListSize) {
+    return generateSolution(valueListSize, entityListSize, true);
+  }
+
+  public static TestdataEntityProvidingSolution generateUninitializedSolution(
+      int valueListSize, int entityListSize) {
+    return generateSolution(valueListSize, entityListSize, false);
+  }
+
+  private static TestdataEntityProvidingSolution generateSolution(
+      int valueListSize, int entityListSize, boolean initialized) {
+    var solution = new TestdataEntityProvidingSolution("Generated Solution 0");
+    var valueList = new ArrayList<TestdataValue>(valueListSize);
+    for (var i = 0; i < valueListSize; i++) {
+      var value = new TestdataValue("Generated Value " + i);
+      valueList.add(value);
+    }
+    var entityList = new ArrayList<TestdataEntityProvidingEntity>(entityListSize);
+    var idx = 0;
+    for (var i = 0; i < entityListSize; i++) {
+      var expectedCount = Math.max(1, valueListSize / entityListSize);
+      var valueRange = new ArrayList<TestdataValue>();
+      for (var j = 0; j < expectedCount; j++) {
+        if (initialized) {
+          valueRange.add(valueList.get((i * j) % valueListSize));
+        } else {
+          if (idx >= valueListSize) {
+            break;
+          }
+          valueRange.add(valueList.get(idx++));
+        }
+      }
+      var entity = new TestdataEntityProvidingEntity("Generated Entity " + i, valueRange);
+      entity.setValue(initialized ? valueList.get(i % valueListSize) : null);
+      entityList.add(entity);
+    }
+    solution.setEntityList(entityList);
+    return solution;
+  }
+
+  private List<TestdataEntityProvidingEntity> entityList;
+
+  private SimpleScore score;
+
+  public TestdataEntityProvidingSolution() {
+    // Required for cloning
+  }
+
+  public TestdataEntityProvidingSolution(String code) {
+    super(code);
+  }
+
+  @PlanningEntityCollectionProperty
+  public List<TestdataEntityProvidingEntity> getEntityList() {
+    return entityList;
+  }
+
+  public void setEntityList(List<TestdataEntityProvidingEntity> entityList) {
+    this.entityList = entityList;
+  }
+
+  @PlanningScore
+  public SimpleScore getScore() {
+    return score;
+  }
+
+  public void setScore(SimpleScore score) {
+    this.score = score;
+  }
+
+  // ************************************************************************
+  // Complex methods
+  // ************************************************************************
+
+  @ProblemFactCollectionProperty
+  public Collection<TestdataValue> getProblemFacts() {
+    Set<TestdataValue> valueSet = new HashSet<>();
+    for (TestdataEntityProvidingEntity entity : entityList) {
+      valueSet.addAll(entity.getValueRange());
+    }
+    return valueSet;
+  }
+}

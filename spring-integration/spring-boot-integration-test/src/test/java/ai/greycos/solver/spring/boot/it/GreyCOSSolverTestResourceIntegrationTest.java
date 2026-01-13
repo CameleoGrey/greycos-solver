@@ -8,9 +8,9 @@ import java.util.List;
 
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.impl.io.jaxb.SolverConfigIO;
-import ai.greycos.solver.spring.boot.it.domain.IntegrationTestEntity;
-import ai.greycos.solver.spring.boot.it.domain.IntegrationTestSolution;
-import ai.greycos.solver.spring.boot.it.domain.IntegrationTestValue;
+import ai.greycos.solver.spring.boot.it.cotwin.IntegrationTestEntity;
+import ai.greycos.solver.spring.boot.it.cotwin.IntegrationTestSolution;
+import ai.greycos.solver.spring.boot.it.cotwin.IntegrationTestValue;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;

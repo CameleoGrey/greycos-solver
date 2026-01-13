@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.move;
 
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 import ai.greycos.solver.core.preview.api.move.Rebaser;
 

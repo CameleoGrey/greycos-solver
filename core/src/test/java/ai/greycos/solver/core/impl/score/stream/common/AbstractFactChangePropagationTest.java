@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
@@ -13,9 +13,9 @@ import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.core.testdomain.chained.shadow.TestdataShadowingChainedAnchor;
-import ai.greycos.solver.core.testdomain.chained.shadow.TestdataShadowingChainedEntity;
-import ai.greycos.solver.core.testdomain.chained.shadow.TestdataShadowingChainedSolution;
+import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedAnchor;
+import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedEntity;
+import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedSolution;
 
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;

@@ -10,8 +10,8 @@
           "new": "class ai.greycos.solver.core.config.solver.SolverConfig",
           "annotationType": "jakarta.xml.bind.annotation.XmlType",
           "attribute": "propOrder",
-          "oldValue": "{\"environmentMode\", \"daemon\", \"randomType\", \"randomSeed\", \"randomFactoryClass\", \"moveThreadCount\", \"moveThreadBufferSize\", \"threadFactoryClass\", \"monitoringConfig\", \"solutionClass\", \"entityClassList\", \"domainAccessType\", \"scoreDirectorFactoryConfig\", \"terminationConfig\", \"phaseConfigList\"}",
-          "newValue": "{\"environmentMode\", \"daemon\", \"randomType\", \"randomSeed\", \"randomFactoryClass\", \"moveThreadCount\", \"moveThreadBufferSize\", \"threadFactoryClass\", \"monitoringConfig\", \"solutionClass\", \"entityClassList\", \"domainAccessType\", \"scoreDirectorFactoryConfig\", \"terminationConfig\", \"nearbyDistanceMeterClass\", \"phaseConfigList\"}",
+          "oldValue": "{\"environmentMode\", \"daemon\", \"randomType\", \"randomSeed\", \"randomFactoryClass\", \"moveThreadCount\", \"moveThreadBufferSize\", \"threadFactoryClass\", \"monitoringConfig\", \"solutionClass\", \"entityClassList\", \"cotwinAccessType\", \"scoreDirectorFactoryConfig\", \"terminationConfig\", \"phaseConfigList\"}",
+          "newValue": "{\"environmentMode\", \"daemon\", \"randomType\", \"randomSeed\", \"randomFactoryClass\", \"moveThreadCount\", \"moveThreadBufferSize\", \"threadFactoryClass\", \"monitoringConfig\", \"solutionClass\", \"entityClassList\", \"cotwinAccessType\", \"scoreDirectorFactoryConfig\", \"terminationConfig\", \"nearbyDistanceMeterClass\", \"phaseConfigList\"}",
           "justification": "Adding new Nearby root property"
         },
         {
@@ -61,16 +61,16 @@
         {
           "ignore": true,
           "code": "java.method.parameterTypeParameterChanged",
-          "old": "parameter <Temporal_ extends java.time.temporal.Temporal & java.lang.Comparable<? super Temporal_>> ai.greycos.solver.core.api.domain.valuerange.CountableValueRange<Temporal_> ai.greycos.solver.core.api.domain.valuerange.ValueRangeFactory::createTemporalValueRange(===Temporal_===, Temporal_, long, java.time.temporal.TemporalUnit)",
-          "new": "parameter <Temporal_ extends java.time.temporal.Temporal & java.lang.Comparable<? super Temporal_>> ai.greycos.solver.core.api.domain.valuerange.CountableValueRange<Temporal_> ai.greycos.solver.core.api.domain.valuerange.ValueRangeFactory::createTemporalValueRange(===Temporal_===, Temporal_, long, java.time.temporal.TemporalUnit)",
+          "old": "parameter <Temporal_ extends java.time.temporal.Temporal & java.lang.Comparable<? super Temporal_>> ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange<Temporal_> ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeFactory::createTemporalValueRange(===Temporal_===, Temporal_, long, java.time.temporal.TemporalUnit)",
+          "new": "parameter <Temporal_ extends java.time.temporal.Temporal & java.lang.Comparable<? super Temporal_>> ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange<Temporal_> ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeFactory::createTemporalValueRange(===Temporal_===, Temporal_, long, java.time.temporal.TemporalUnit)",
           "parameterIndex": "0",
           "justification": "False positive after addition of @NonNull annotation"
         },
         {
           "ignore": true,
           "code": "java.method.parameterTypeParameterChanged",
-          "old": "parameter <Temporal_ extends java.time.temporal.Temporal & java.lang.Comparable<? super Temporal_>> ai.greycos.solver.core.api.domain.valuerange.CountableValueRange<Temporal_> ai.greycos.solver.core.api.domain.valuerange.ValueRangeFactory::createTemporalValueRange(Temporal_, ===Temporal_===, long, java.time.temporal.TemporalUnit)",
-          "new": "parameter <Temporal_ extends java.time.temporal.Temporal & java.lang.Comparable<? super Temporal_>> ai.greycos.solver.core.api.domain.valuerange.CountableValueRange<Temporal_> ai.greycos.solver.core.api.domain.valuerange.ValueRangeFactory::createTemporalValueRange(Temporal_, ===Temporal_===, long, java.time.temporal.TemporalUnit)",
+          "old": "parameter <Temporal_ extends java.time.temporal.Temporal & java.lang.Comparable<? super Temporal_>> ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange<Temporal_> ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeFactory::createTemporalValueRange(Temporal_, ===Temporal_===, long, java.time.temporal.TemporalUnit)",
+          "new": "parameter <Temporal_ extends java.time.temporal.Temporal & java.lang.Comparable<? super Temporal_>> ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange<Temporal_> ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeFactory::createTemporalValueRange(Temporal_, ===Temporal_===, long, java.time.temporal.TemporalUnit)",
           "parameterIndex": "1",
           "justification": "False positive after addition of @NonNull annotation"
         },
@@ -88,8 +88,8 @@
           "new": "class ai.greycos.solver.core.config.solver.SolverConfig",
           "annotationType": "jakarta.xml.bind.annotation.XmlType",
           "attribute": "propOrder",
-          "oldValue": "{\"environmentMode\", \"daemon\", \"randomType\", \"randomSeed\", \"randomFactoryClass\", \"moveThreadCount\", \"moveThreadBufferSize\", \"threadFactoryClass\", \"monitoringConfig\", \"solutionClass\", \"entityClassList\", \"domainAccessType\", \"scoreDirectorFactoryConfig\", \"terminationConfig\", \"phaseConfigList\"}",
-          "newValue": "{\"enablePreviewFeatureSet\", \"environmentMode\", \"daemon\", \"randomType\", \"randomSeed\", \"randomFactoryClass\", \"moveThreadCount\", \"moveThreadBufferSize\", \"threadFactoryClass\", \"monitoringConfig\", \"solutionClass\", \"entityClassList\", \"domainAccessType\", \"scoreDirectorFactoryConfig\", \"terminationConfig\", \"nearbyDistanceMeterClass\", \"phaseConfigList\"}",
+          "oldValue": "{\"environmentMode\", \"daemon\", \"randomType\", \"randomSeed\", \"randomFactoryClass\", \"moveThreadCount\", \"moveThreadBufferSize\", \"threadFactoryClass\", \"monitoringConfig\", \"solutionClass\", \"entityClassList\", \"cotwinAccessType\", \"scoreDirectorFactoryConfig\", \"terminationConfig\", \"phaseConfigList\"}",
+          "newValue": "{\"enablePreviewFeatureSet\", \"environmentMode\", \"daemon\", \"randomType\", \"randomSeed\", \"randomFactoryClass\", \"moveThreadCount\", \"moveThreadBufferSize\", \"threadFactoryClass\", \"monitoringConfig\", \"solutionClass\", \"entityClassList\", \"cotwinAccessType\", \"scoreDirectorFactoryConfig\", \"terminationConfig\", \"nearbyDistanceMeterClass\", \"phaseConfigList\"}",
           "justification": "Enable features preview config"
         },
         {
@@ -353,14 +353,14 @@
           "ignore": true,
           "code": "java.method.returnTypeTypeParametersChanged",
           "old": "method java.lang.Class<? extends ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorterWeightFactory> ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig::getSorterWeightFactoryClass()",
-          "new": "method java.lang.Class<? extends ai.greycos.solver.core.api.domain.common.ComparatorFactory> ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig::getSorterWeightFactoryClass()",
+          "new": "method java.lang.Class<? extends ai.greycos.solver.core.api.cotwin.common.ComparatorFactory> ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig::getSorterWeightFactoryClass()",
           "justification": "New comparator factory class"
         },
         {
           "ignore": true,
           "code": "java.method.parameterTypeParameterChanged",
           "old": "parameter void ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig::setSorterWeightFactoryClass(===java.lang.Class<? extends ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorterWeightFactory>===)",
-          "new": "parameter void ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig::setSorterWeightFactoryClass(===java.lang.Class<? extends ai.greycos.solver.core.api.domain.common.ComparatorFactory>===)",
+          "new": "parameter void ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig::setSorterWeightFactoryClass(===java.lang.Class<? extends ai.greycos.solver.core.api.cotwin.common.ComparatorFactory>===)",
           "parameterIndex": "0",
           "justification": "New comparator factory class"
         },
@@ -379,14 +379,14 @@
           "ignore": true,
           "code": "java.method.returnTypeTypeParametersChanged",
           "old": "method java.lang.Class<? extends ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorterWeightFactory> ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_ extends ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_>>::getSorterWeightFactoryClass()",
-          "new": "method java.lang.Class<? extends ai.greycos.solver.core.api.domain.common.ComparatorFactory> ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_ extends ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_>>::getSorterWeightFactoryClass()",
+          "new": "method java.lang.Class<? extends ai.greycos.solver.core.api.cotwin.common.ComparatorFactory> ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_ extends ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_>>::getSorterWeightFactoryClass()",
           "justification": "New comparator factory class"
         },
         {
           "ignore": true,
           "code": "java.method.parameterTypeParameterChanged",
           "old": "parameter void ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_ extends ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_>>::setSorterWeightFactoryClass(===java.lang.Class<? extends ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorterWeightFactory>===)",
-          "new": "parameter void ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_ extends ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_>>::setSorterWeightFactoryClass(===java.lang.Class<? extends ai.greycos.solver.core.api.domain.common.ComparatorFactory>===)",
+          "new": "parameter void ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_ extends ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig<Config_>>::setSorterWeightFactoryClass(===java.lang.Class<? extends ai.greycos.solver.core.api.cotwin.common.ComparatorFactory>===)",
           "parameterIndex": "0",
           "justification": "New comparator factory class"
         },
@@ -405,14 +405,14 @@
           "ignore": true,
           "code": "java.method.returnTypeTypeParametersChanged",
           "old": "method java.lang.Class<? extends ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorterWeightFactory> ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig::getSorterWeightFactoryClass()",
-          "new": "method java.lang.Class<? extends ai.greycos.solver.core.api.domain.common.ComparatorFactory> ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig::getSorterWeightFactoryClass()",
+          "new": "method java.lang.Class<? extends ai.greycos.solver.core.api.cotwin.common.ComparatorFactory> ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig::getSorterWeightFactoryClass()",
           "justification": "New comparator factory class"
         },
         {
           "ignore": true,
           "code": "java.method.parameterTypeParameterChanged",
           "old": "parameter void ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig::setSorterWeightFactoryClass(===java.lang.Class<? extends ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorterWeightFactory>===)",
-          "new": "parameter void ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig::setSorterWeightFactoryClass(===java.lang.Class<? extends ai.greycos.solver.core.api.domain.common.ComparatorFactory>===)",
+          "new": "parameter void ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig::setSorterWeightFactoryClass(===java.lang.Class<? extends ai.greycos.solver.core.api.cotwin.common.ComparatorFactory>===)",
           "parameterIndex": "0",
           "justification": "New comparator factory class"
         },

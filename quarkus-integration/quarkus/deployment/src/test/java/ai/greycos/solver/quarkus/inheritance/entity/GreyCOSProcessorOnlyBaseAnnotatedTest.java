@@ -7,10 +7,10 @@ import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.childnot.TestChildNotAnnotatedConstraintProvider;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.childnot.TestdataChildNotAnnotatedBaseEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.childnot.TestdataChildNotAnnotatedChildEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.childnot.TestdataChildNotAnnotatedSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.childnot.TestChildNotAnnotatedConstraintProvider;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.childnot.TestdataChildNotAnnotatedBaseEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.childnot.TestdataChildNotAnnotatedChildEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.childnot.TestdataChildNotAnnotatedSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

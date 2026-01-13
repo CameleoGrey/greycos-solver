@@ -12,11 +12,11 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import ai.greycos.solver.core.api.domain.constraintweight.ConstraintConfiguration;
-import ai.greycos.solver.core.api.domain.constraintweight.ConstraintWeight;
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.solution.ConstraintWeightOverrides;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfiguration;
+import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintWeight;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.function.QuadFunction;
 import ai.greycos.solver.core.api.function.QuadPredicate;
 import ai.greycos.solver.core.api.function.ToIntQuadFunction;

@@ -4,11 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.multiple.TestdataMultipleInheritanceBaseSolution;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.multiple.TestdataMultipleInheritanceChildSolution;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.multiple.TestdataMultipleInheritanceEntity;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.multiple.TestdataMultipleInheritanceExtendedSolution;
-import ai.greycos.solver.quarkus.testdomain.superclass.DummyConstraintProvider;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.multiple.TestdataMultipleInheritanceBaseSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.multiple.TestdataMultipleInheritanceChildSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.multiple.TestdataMultipleInheritanceEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.multiple.TestdataMultipleInheritanceExtendedSolution;
+import ai.greycos.solver.quarkus.testcotwin.superclass.DummyConstraintProvider;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

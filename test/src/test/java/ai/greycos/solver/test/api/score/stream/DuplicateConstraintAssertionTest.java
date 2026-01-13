@@ -2,10 +2,10 @@ package ai.greycos.solver.test.api.score.stream;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import ai.greycos.solver.test.api.testdomain.TestdataConstraintVerifierDuplicateConstraintProvider;
-import ai.greycos.solver.test.api.testdomain.TestdataConstraintVerifierExtendedSolution;
-import ai.greycos.solver.test.api.testdomain.TestdataConstraintVerifierFirstEntity;
-import ai.greycos.solver.test.api.testdomain.TestdataConstraintVerifierSecondEntity;
+import ai.greycos.solver.test.api.testcotwin.TestdataConstraintVerifierDuplicateConstraintProvider;
+import ai.greycos.solver.test.api.testcotwin.TestdataConstraintVerifierExtendedSolution;
+import ai.greycos.solver.test.api.testcotwin.TestdataConstraintVerifierFirstEntity;
+import ai.greycos.solver.test.api.testcotwin.TestdataConstraintVerifierSecondEntity;
 
 import org.junit.jupiter.api.Test;
 

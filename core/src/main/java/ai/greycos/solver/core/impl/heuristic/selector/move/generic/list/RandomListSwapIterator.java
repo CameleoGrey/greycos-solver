@@ -4,8 +4,8 @@ import static ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.O
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.impl.domain.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;

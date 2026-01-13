@@ -4,14 +4,14 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import ai.greycos.solver.core.api.domain.valuerange.CountableValueRange;
-import ai.greycos.solver.core.api.domain.valuerange.ValueRangeProvider;
+import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.solver.ProblemSizeStatistics;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.impl.domain.valuerange.descriptor.ValueRangeDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.common.ReachableValues;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 

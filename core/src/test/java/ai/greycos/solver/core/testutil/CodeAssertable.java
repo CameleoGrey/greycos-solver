@@ -18,8 +18,8 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListC
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListSwapMove;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListUnassignMove;
 import ai.greycos.solver.core.impl.heuristic.selector.value.chained.SubChain;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PositionInList;
-import ai.greycos.solver.core.preview.api.domain.metamodel.UnassignedElement;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.UnassignedElement;
 
 public interface CodeAssertable {
 

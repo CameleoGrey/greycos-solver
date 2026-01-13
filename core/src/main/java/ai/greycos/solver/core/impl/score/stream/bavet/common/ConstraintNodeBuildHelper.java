@@ -8,8 +8,8 @@ import java.util.function.Predicate;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.bavet.common.AbstractNodeBuildHelper;
 import ai.greycos.solver.core.impl.bavet.common.BavetAbstractConstraintStream;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.domain.variable.declarative.ConsistencyTracker;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import ai.greycos.solver.core.impl.score.stream.common.ForEachFilteringCriteria;
 import ai.greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;
 

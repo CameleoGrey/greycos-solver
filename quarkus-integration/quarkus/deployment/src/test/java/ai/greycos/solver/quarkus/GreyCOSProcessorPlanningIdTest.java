@@ -8,8 +8,8 @@ import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.testconstraint.DummyConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.superclass.TestdataEntity;
-import ai.greycos.solver.quarkus.testdomain.superclass.TestdataSolution;
+import ai.greycos.solver.quarkus.testcotwin.superclass.TestdataEntity;
+import ai.greycos.solver.quarkus.testcotwin.superclass.TestdataSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
@@ -28,10 +28,10 @@ class GreyCOSProcessorPlanningIdTest {
               () ->
                   ShrinkWrap.create(JavaArchive.class)
                       .addPackage(
-                          "ai.greycos.solver.quarkus.testdomain.superclass") // Cannot reference a
+                          "ai.greycos.solver.quarkus.testcotwin.superclass") // Cannot reference a
                       // non-public class.
                       .deleteClass(
-                          ai.greycos.solver.quarkus.testdomain.superclass.DummyConstraintProvider
+                          ai.greycos.solver.quarkus.testcotwin.superclass.DummyConstraintProvider
                               .class) // duplicate class otherwise
                       .addClasses(
                           DummyConstraintProvider

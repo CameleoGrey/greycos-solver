@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.quarkus.testdomain.multiple.constraintprovider.TestdataMultipleConstraintSolution;
+import ai.greycos.solver.quarkus.testcotwin.multiple.constraintprovider.TestdataMultipleConstraintSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
@@ -25,7 +25,7 @@ class GreyCOSProcessorMultipleConstraintProviderTest {
                   ShrinkWrap.create(JavaArchive.class)
                       .addPackages(
                           true,
-                          "ai.greycos.solver.quarkus.testdomain.multiple.constraintprovider"));
+                          "ai.greycos.solver.quarkus.testcotwin.multiple.constraintprovider"));
 
   @Inject SolverFactory<TestdataMultipleConstraintSolution> solverFactory;
 

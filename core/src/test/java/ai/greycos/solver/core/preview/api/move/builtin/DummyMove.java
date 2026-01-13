@@ -7,7 +7,7 @@ import java.util.Objects;
 import ai.greycos.solver.core.preview.api.move.Move;
 import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
 import ai.greycos.solver.core.preview.api.move.Rebaser;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testutil.CodeAssertable;
 
 import org.jspecify.annotations.NullMarked;

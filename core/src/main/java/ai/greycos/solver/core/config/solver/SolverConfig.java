@@ -26,8 +26,8 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.XmlTransient;
 import jakarta.xml.bind.annotation.XmlType;
 
-import ai.greycos.solver.core.api.domain.common.DomainAccessType;
-import ai.greycos.solver.core.api.domain.solution.cloner.SolutionCloner;
+import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
+import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.api.score.stream.ConstraintStreamImplType;
@@ -48,7 +48,7 @@ import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
 import ai.greycos.solver.core.config.solver.random.RandomType;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
-import ai.greycos.solver.core.impl.domain.common.accessor.MemberAccessor;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import ai.greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 import ai.greycos.solver.core.impl.io.jaxb.SolverConfigIO;
@@ -81,7 +81,7 @@ import org.slf4j.LoggerFactory;
       "monitoringConfig",
       "solutionClass",
       "entityClassList",
-      "domainAccessType",
+      "cotwinAccessType",
       "scoreDirectorFactoryConfig",
       "terminationConfig",
       "nearbyDistanceMeterClass",
@@ -253,7 +253,7 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
   @XmlElement(name = "entityClass")
   protected List<Class<?>> entityClassList = null;
 
-  protected DomainAccessType domainAccessType = null;
+  protected CotwinAccessType cotwinAccessType = null;
   @XmlTransient protected Map<String, MemberAccessor> gizmoMemberAccessorMap = null;
   @XmlTransient protected Map<String, SolutionCloner> gizmoSolutionClonerMap = null;
 
@@ -475,12 +475,12 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     this.entityClassList = entityClassList;
   }
 
-  public @Nullable DomainAccessType getDomainAccessType() {
-    return domainAccessType;
+  public @Nullable CotwinAccessType getCotwinAccessType() {
+    return cotwinAccessType;
   }
 
-  public void setDomainAccessType(@Nullable DomainAccessType domainAccessType) {
-    this.domainAccessType = domainAccessType;
+  public void setCotwinAccessType(@Nullable CotwinAccessType cotwinAccessType) {
+    this.cotwinAccessType = cotwinAccessType;
   }
 
   public @Nullable Map<@NonNull String, @NonNull MemberAccessor> getGizmoMemberAccessorMap() {
@@ -615,8 +615,8 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     return this;
   }
 
-  public @NonNull SolverConfig withDomainAccessType(@NonNull DomainAccessType domainAccessType) {
-    this.domainAccessType = domainAccessType;
+  public @NonNull SolverConfig withCotwinAccessType(@NonNull CotwinAccessType cotwinAccessType) {
+    this.cotwinAccessType = cotwinAccessType;
     return this;
   }
 
@@ -748,8 +748,8 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     return Objects.requireNonNullElse(environmentMode, EnvironmentMode.PHASE_ASSERT);
   }
 
-  public @NonNull DomainAccessType determineDomainAccessType() {
-    return Objects.requireNonNullElse(domainAccessType, DomainAccessType.REFLECTION);
+  public @NonNull CotwinAccessType determineCotwinAccessType() {
+    return Objects.requireNonNullElse(cotwinAccessType, CotwinAccessType.REFLECTION);
   }
 
   public @NonNull MonitoringConfig determineMetricConfig() {
@@ -817,9 +817,9 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     entityClassList =
         ConfigUtils.inheritMergeableListProperty(
             entityClassList, inheritedConfig.getEntityClassList());
-    domainAccessType =
+    cotwinAccessType =
         ConfigUtils.inheritOverwritableProperty(
-            domainAccessType, inheritedConfig.getDomainAccessType());
+            cotwinAccessType, inheritedConfig.getCotwinAccessType());
     gizmoMemberAccessorMap =
         ConfigUtils.inheritMergeableMapProperty(
             gizmoMemberAccessorMap, inheritedConfig.getGizmoMemberAccessorMap());

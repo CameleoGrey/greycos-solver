@@ -17,9 +17,9 @@ import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.api.solver.change.ProblemChangeDirector;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.SolverManagerConfig;
-import ai.greycos.solver.core.testdomain.TestdataEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.awaitility.pollinterval.FibonacciPollInterval;
 import org.jspecify.annotations.NullMarked;

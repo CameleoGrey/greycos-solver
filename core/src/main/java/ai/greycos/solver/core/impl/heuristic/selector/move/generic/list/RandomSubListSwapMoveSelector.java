@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.impl.domain.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractRandomSwapIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.list.SubList;

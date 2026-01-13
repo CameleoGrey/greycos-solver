@@ -2,9 +2,9 @@ package ai.greycos.solver.core.impl.heuristic.selector.value;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.api.domain.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
-import ai.greycos.solver.core.impl.domain.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.IterableSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.Selector;

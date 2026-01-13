@@ -18,14 +18,14 @@ import java.time.Duration;
 import java.util.List;
 import java.util.function.Consumer;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.solution.PlanningEntityCollectionProperty;
-import ai.greycos.solver.core.api.domain.solution.PlanningScore;
-import ai.greycos.solver.core.api.domain.solution.PlanningSolution;
-import ai.greycos.solver.core.api.domain.valuerange.ValueRange;
-import ai.greycos.solver.core.api.domain.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.domain.variable.PlanningListVariable;
-import ai.greycos.solver.core.api.domain.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
@@ -43,16 +43,16 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
 import ai.greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 import ai.greycos.solver.core.impl.io.jaxb.SolverConfigIO;
 import ai.greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.childtoo.TestdataBothAnnotatedChildEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.single.baseannotated.classes.childtoo.TestdataBothAnnotatedSolution;
-import ai.greycos.solver.core.testdomain.interfaces.TestdataInterfaceConstraintProvider;
-import ai.greycos.solver.core.testdomain.interfaces.TestdataInterfaceEntity;
-import ai.greycos.solver.core.testdomain.interfaces.TestdataInterfaceSolution;
-import ai.greycos.solver.core.testdomain.record.TestdataRecordEntity;
-import ai.greycos.solver.core.testdomain.record.TestdataRecordSolution;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.childtoo.TestdataBothAnnotatedChildEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.childtoo.TestdataBothAnnotatedSolution;
+import ai.greycos.solver.core.testcotwin.interfaces.TestdataInterfaceConstraintProvider;
+import ai.greycos.solver.core.testcotwin.interfaces.TestdataInterfaceEntity;
+import ai.greycos.solver.core.testcotwin.interfaces.TestdataInterfaceSolution;
+import ai.greycos.solver.core.testcotwin.record.TestdataRecordEntity;
+import ai.greycos.solver.core.testcotwin.record.TestdataRecordSolution;
 
 import org.apache.commons.io.IOUtils;
 import org.jspecify.annotations.NonNull;
@@ -123,7 +123,7 @@ class SolverConfigTest {
 
   @Test
   void whiteCharsInClassName() {
-    var solutionClassName = "ai.greycos.solver.core.testdomain.TestdataSolution";
+    var solutionClassName = "ai.greycos.solver.core.testcotwin.TestdataSolution";
     // Intentionally included white chars around the class name.
     var xmlFragment =
         """
@@ -274,7 +274,7 @@ class SolverConfigTest {
   }
 
   @Test
-  void domainClassesAreInterfaces() {
+  void cotwinClassesAreInterfaces() {
     var solverConfig =
         new SolverConfig()
             .withSolutionClass(TestdataInterfaceSolution.class)

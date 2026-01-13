@@ -5,8 +5,8 @@ import java.util.Objects;
 import jakarta.xml.bind.annotation.XmlTransient;
 
 import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
-import ai.greycos.solver.core.api.domain.solution.cloner.SolutionCloner;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 
 public class InstanceProblemProvider<Solution_> implements ProblemProvider<Solution_> {
 

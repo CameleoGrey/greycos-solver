@@ -8,7 +8,7 @@ import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.testconstraint.TestConstraint;
 import ai.greycos.solver.core.testconstraint.TestConstraintFactory;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;

@@ -1,7 +1,7 @@
 package ai.greycos.solver.spring.boot.autoconfigure.inheritance.solution;
 
 import ai.greycos.solver.core.testconstraint.DummyConstraintProvider;
-import ai.greycos.solver.core.testdomain.inheritance.solution.baseannotated.replacemember.TestdataReplaceMemberExtendedSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.replacemember.TestdataReplaceMemberExtendedSolution;
 
 import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
 import org.springframework.boot.autoconfigure.domain.EntityScan;

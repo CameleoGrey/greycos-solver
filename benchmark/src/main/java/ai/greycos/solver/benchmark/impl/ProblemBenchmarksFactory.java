@@ -19,9 +19,9 @@ import ai.greycos.solver.benchmark.impl.result.SolverBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.statistic.ProblemStatistic;
 import ai.greycos.solver.core.config.util.ConfigUtils;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.solver.DefaultSolverFactory;
-import ai.greycos.solver.persistence.common.api.domain.solution.SolutionFileIO;
+import ai.greycos.solver.persistence.common.api.cotwin.solution.SolutionFileIO;
 
 public class ProblemBenchmarksFactory {
   private final ProblemBenchmarksConfig config;

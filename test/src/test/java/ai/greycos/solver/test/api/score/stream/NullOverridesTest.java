@@ -1,8 +1,8 @@
 package ai.greycos.solver.test.api.score.stream;
 
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.constraintweightoverrides.TestdataConstraintWeightOverridesConstraintProvider;
-import ai.greycos.solver.core.testdomain.constraintweightoverrides.TestdataConstraintWeightOverridesSolution;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.constraintweightoverrides.TestdataConstraintWeightOverridesConstraintProvider;
+import ai.greycos.solver.core.testcotwin.constraintweightoverrides.TestdataConstraintWeightOverridesSolution;
 
 import org.junit.jupiter.api.Test;
 

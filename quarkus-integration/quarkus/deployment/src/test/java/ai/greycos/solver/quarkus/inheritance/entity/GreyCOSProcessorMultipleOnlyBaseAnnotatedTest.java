@@ -4,11 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.classes.childnot.TestMultipleChildNotAnnotatedConstraintProvider;
-import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.classes.childnot.TestdataMultipleChildNotAnnotatedBaseEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.classes.childnot.TestdataMultipleChildNotAnnotatedChildEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.classes.childnot.TestdataMultipleChildNotAnnotatedSecondChildEntity;
-import ai.greycos.solver.core.testdomain.inheritance.entity.multiple.baseannotated.classes.childnot.TestdataMultipleChildNotAnnotatedSolution;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.childnot.TestMultipleChildNotAnnotatedConstraintProvider;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.childnot.TestdataMultipleChildNotAnnotatedBaseEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.childnot.TestdataMultipleChildNotAnnotatedChildEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.childnot.TestdataMultipleChildNotAnnotatedSecondChildEntity;
+import ai.greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.childnot.TestdataMultipleChildNotAnnotatedSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

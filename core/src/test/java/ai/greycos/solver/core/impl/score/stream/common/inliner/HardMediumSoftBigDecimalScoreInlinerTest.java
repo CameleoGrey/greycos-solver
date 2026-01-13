@@ -8,9 +8,9 @@ import java.util.Map;
 
 import ai.greycos.solver.core.api.score.buildin.hardmediumsoftbigdecimal.HardMediumSoftBigDecimalScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
-import ai.greycos.solver.core.testdomain.score.TestdataHardMediumSoftBigDecimalScoreSolution;
+import ai.greycos.solver.core.testcotwin.score.TestdataHardMediumSoftBigDecimalScoreSolution;
 
 import org.junit.jupiter.api.Test;
 

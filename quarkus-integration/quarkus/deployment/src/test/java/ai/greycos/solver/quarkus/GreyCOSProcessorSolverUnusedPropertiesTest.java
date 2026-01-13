@@ -8,10 +8,10 @@ import jakarta.inject.Named;
 
 import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.quarkus.testdomain.dummy.DummyDistanceMeter;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusConstraintProvider;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusEntity;
-import ai.greycos.solver.quarkus.testdomain.normal.TestdataQuarkusSolution;
+import ai.greycos.solver.quarkus.testcotwin.dummy.DummyDistanceMeter;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
@@ -29,9 +29,9 @@ class GreyCOSProcessorSolverUnusedPropertiesTest {
           .overrideConfigKey("quarkus.greycos.solver.\"solver1\".daemon", "true")
           .overrideConfigKey(
               "quarkus.greycos.solver.\"solver1\".nearby-distance-meter-class",
-              "ai.greycos.solver.quarkus.testdomain.dummy.DummyDistanceMeter")
+              "ai.greycos.solver.quarkus.testcotwin.dummy.DummyDistanceMeter")
           .overrideConfigKey("quarkus.greycos.solver.\"solver2\".move-thread-count", "2")
-          .overrideConfigKey("quarkus.greycos.solver.\"solver2\".domain-access-type", "REFLECTION")
+          .overrideConfigKey("quarkus.greycos.solver.\"solver2\".cotwin-access-type", "REFLECTION")
           .overrideConfigKey("quarkus.greycos.solver.\"solver2\".termination.spent-limit", "4h")
           .overrideConfigKey(
               "quarkus.greycos.solver.\"solver3\".termination.unimproved-spent-limit", "5h")
@@ -65,7 +65,7 @@ class GreyCOSProcessorSolverUnusedPropertiesTest {
           .overrideConfigKey("quarkus.greycos.solver.\"solver1\".daemon", "true")
           .overrideConfigKey(
               "quarkus.greycos.solver.\"solver1\".nearby-distance-meter-class",
-              "ai.greycos.solver.quarkus.testdomain.dummy.DummyDistanceMeter")
+              "ai.greycos.solver.quarkus.testcotwin.dummy.DummyDistanceMeter")
           .overrideConfigKey(
               "quarkus.greycos.solver.\"solver2\".termination.unimproved-spent-limit", "5h")
           .overrideConfigKey("quarkus.greycos.solver.\"solver2\".termination.best-score-limit", "0")

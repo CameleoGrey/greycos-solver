@@ -10,8 +10,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
-import ai.greycos.solver.core.impl.domain.valuerange.descriptor.FromEntityPropertyValueRangeDescriptor;
-import ai.greycos.solver.core.impl.domain.valuerange.sort.ValueRangeSorter;
+import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.FromEntityPropertyValueRangeDescriptor;
+import ai.greycos.solver.core.impl.cotwin.valuerange.sort.ValueRangeSorter;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

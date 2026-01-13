@@ -5,11 +5,11 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.impl.domain.solution.descriptor.DefaultPlanningSolutionMetaModel;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.DefaultPlanningVariableMetaModel;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningEntityMetaModel;
-import ai.greycos.solver.core.preview.api.domain.metamodel.PlanningVariableMetaModel;
-import ai.greycos.solver.core.preview.api.domain.metamodel.VariableMetaModel;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.DefaultPlanningSolutionMetaModel;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.DefaultPlanningVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningEntityMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
 import ai.greycos.solver.core.preview.api.move.Move;
 import ai.greycos.solver.core.preview.api.move.SolutionView;
 import ai.greycos.solver.core.preview.api.neighborhood.BiMoveConstructor;

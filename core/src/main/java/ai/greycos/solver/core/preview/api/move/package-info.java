@@ -1,6 +1,6 @@
 /**
  * This package contains classes and interfaces that are used to write moves to explore the
- * neighborhood of a {@link ai.greycos.solver.core.api.domain.solution.PlanningSolution}. It will
+ * neighborhood of a {@link ai.greycos.solver.core.api.cotwin.solution.PlanningSolution}. It will
  * eventually replace the move selector framework.
  *
  * <p><strong>This package and all of its contents are part of the Neighborhoods API, which is under

@@ -5,7 +5,7 @@ import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import org.jspecify.annotations.NonNull;
 
 public class VariableListener
-    implements ai.greycos.solver.core.api.domain.variable.VariableListener {
+    implements ai.greycos.solver.core.api.cotwin.variable.VariableListener {
   @Override
   public void beforeEntityAdded(@NonNull ScoreDirector scoreDirector, @NonNull Object o) {}
 

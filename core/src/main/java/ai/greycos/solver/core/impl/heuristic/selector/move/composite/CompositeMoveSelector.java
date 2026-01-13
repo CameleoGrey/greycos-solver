@@ -3,9 +3,9 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.composite;
 import java.util.Collection;
 import java.util.List;
 
-import ai.greycos.solver.core.api.domain.valuerange.CountableValueRange;
-import ai.greycos.solver.core.api.domain.valuerange.ValueRange;
-import ai.greycos.solver.core.api.domain.valuerange.ValueRangeProvider;
+import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 

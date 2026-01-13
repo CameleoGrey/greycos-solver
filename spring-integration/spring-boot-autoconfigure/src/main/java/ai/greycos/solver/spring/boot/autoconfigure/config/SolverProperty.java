@@ -10,7 +10,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.domain.common.DomainAccessType;
+import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.score.stream.ConstraintStreamImplType;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
@@ -25,9 +25,9 @@ public enum SolverProperty {
   DAEMON("daemon", SolverProperties::setDaemon, value -> Boolean.valueOf(value.toString())),
   MOVE_THREAD_COUNT("move-thread-count", SolverProperties::setMoveThreadCount, Object::toString),
   DOMAIN_ACCESS_TYPE(
-      "domain-access-type",
-      SolverProperties::setDomainAccessType,
-      value -> DomainAccessType.valueOf(value.toString())),
+      "cotwin-access-type",
+      SolverProperties::setCotwinAccessType,
+      value -> CotwinAccessType.valueOf(value.toString())),
   ENABLED_PREVIEW_FEATURES(
       "enabled-preview-features",
       SolverProperties::setEnabledPreviewFeatures,

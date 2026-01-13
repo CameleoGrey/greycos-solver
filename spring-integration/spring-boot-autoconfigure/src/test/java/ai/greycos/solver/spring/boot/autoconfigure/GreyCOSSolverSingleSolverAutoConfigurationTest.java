@@ -19,20 +19,20 @@ import ai.greycos.solver.core.impl.solver.DefaultSolverJob;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.spring.boot.autoconfigure.chained.ChainedSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.chained.constraints.TestdataChainedSpringConstraintProvider;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringAnchor;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringEntity;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringObject;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.domain.TestdataChainedSpringSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringAnchor;
+import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringEntity;
+import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringObject;
+import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringSolution;
 import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.declarative.SupplierVariableSpringTestConfiguration;
-import ai.greycos.solver.spring.boot.autoconfigure.declarative.domain.TestdataSpringSupplierVariableEntity;
-import ai.greycos.solver.spring.boot.autoconfigure.declarative.domain.TestdataSpringSupplierVariableSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.declarative.cotwin.TestdataSpringSupplierVariableEntity;
+import ai.greycos.solver.spring.boot.autoconfigure.declarative.cotwin.TestdataSpringSupplierVariableSolution;
 import ai.greycos.solver.spring.boot.autoconfigure.missingsuppliervariable.MissingSupplierVariableSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.multimodule.MultiModuleSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.NormalSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.constraints.TestdataSpringConstraintProvider;
-import ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringEntity;
-import ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringEntity;
+import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -277,7 +277,7 @@ class GreyCOSSolverSingleSolverAutoConfigurationTest {
         .hasMessageContainingAll(
             "@ShadowVariable (value1AndValue2)",
             "supplierMethod (value1AndValue2Supplier) that does not exist",
-            "inside its declaring class (ai.greycos.solver.spring.boot.autoconfigure.missingsuppliervariable.domain.TestdataSpringMissingSupplierVariableEntity).",
+            "inside its declaring class (ai.greycos.solver.spring.boot.autoconfigure.missingsuppliervariable.cotwin.TestdataSpringMissingSupplierVariableEntity).",
             "Maybe you misspelled the supplierMethod name?");
   }
 

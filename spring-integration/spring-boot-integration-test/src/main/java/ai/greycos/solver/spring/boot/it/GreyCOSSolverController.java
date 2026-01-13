@@ -1,7 +1,7 @@
 package ai.greycos.solver.spring.boot.it;
 
 import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.spring.boot.it.domain.IntegrationTestSolution;
+import ai.greycos.solver.spring.boot.it.cotwin.IntegrationTestSolution;
 
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;

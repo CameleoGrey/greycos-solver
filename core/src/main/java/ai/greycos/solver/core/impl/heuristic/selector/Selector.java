@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.api.domain.valuerange.ValueRange;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;

@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 
 import ai.greycos.solver.core.impl.constructionheuristic.placer.EntityPlacerFactory;
 import ai.greycos.solver.core.impl.constructionheuristic.placer.QueuedValuePlacer;
-import ai.greycos.solver.core.impl.domain.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.ReachableValues;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;

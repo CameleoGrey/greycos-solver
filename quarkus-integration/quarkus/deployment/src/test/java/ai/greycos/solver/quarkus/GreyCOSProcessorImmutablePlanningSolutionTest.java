@@ -5,9 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import ai.greycos.solver.core.testconstraint.DummyConstraintProvider;
-import ai.greycos.solver.core.testdomain.immutable.record.TestdataRecordEntity;
-import ai.greycos.solver.core.testdomain.immutable.record.TestdataRecordSolution;
-import ai.greycos.solver.core.testdomain.immutable.record.TestdataRecordValue;
+import ai.greycos.solver.core.testcotwin.immutable.record.TestdataRecordEntity;
+import ai.greycos.solver.core.testcotwin.immutable.record.TestdataRecordSolution;
+import ai.greycos.solver.core.testcotwin.immutable.record.TestdataRecordValue;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

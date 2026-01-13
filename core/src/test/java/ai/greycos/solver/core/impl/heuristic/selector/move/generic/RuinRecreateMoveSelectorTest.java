@@ -13,12 +13,12 @@ import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
-import ai.greycos.solver.core.testdomain.TestdataConstraintProvider;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.unassignedvar.TestdataAllowsUnassignedEasyScoreCalculator;
-import ai.greycos.solver.core.testdomain.unassignedvar.TestdataAllowsUnassignedEntity;
-import ai.greycos.solver.core.testdomain.unassignedvar.TestdataAllowsUnassignedSolution;
+import ai.greycos.solver.core.testcotwin.TestdataConstraintProvider;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEntity;
+import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedSolution;
 import ai.greycos.solver.core.testutil.AbstractMeterTest;
 
 import org.junit.jupiter.api.Test;

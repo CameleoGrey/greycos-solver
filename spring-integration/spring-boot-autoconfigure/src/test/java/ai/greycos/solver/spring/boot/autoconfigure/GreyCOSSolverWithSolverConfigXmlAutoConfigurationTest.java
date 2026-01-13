@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import java.util.Collections;
 
-import ai.greycos.solver.core.api.domain.common.DomainAccessType;
+import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.score.ScoreManager;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolutionManager;
@@ -31,8 +31,8 @@ import ai.greycos.solver.spring.boot.autoconfigure.invalid.type.InvalidEntityTyp
 import ai.greycos.solver.spring.boot.autoconfigure.normal.EmptySpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.NormalSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.constraints.TestdataSpringConstraintProvider;
-import ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringEntity;
-import ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringSolution;
+import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringEntity;
+import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution;
 import ai.greycos.solver.test.api.score.stream.ConstraintVerifier;
 
 import org.junit.jupiter.api.Test;
@@ -234,7 +234,7 @@ class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
             () ->
                 contextRunner
                     .withPropertyValues(
-                        "greycos.solver.nearby-distance-meter-class=ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringSolution")
+                        "greycos.solver.nearby-distance-meter-class=ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution")
                     .run(
                         context -> {
                           var solverConfig = context.getBean(SolverConfig.class);
@@ -245,7 +245,7 @@ class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
         .message()
         .contains(
             "The Nearby Selection Meter class",
-            "ai.greycos.solver.spring.boot.autoconfigure.normal.domain.TestdataSpringSolution");
+            "ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution");
   }
 
   @Test
@@ -262,7 +262,7 @@ class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
               assertEquals(EnvironmentMode.FULL_ASSERT, solverConfig.getEnvironmentMode());
               assertTrue(solverConfig.getDaemon());
               assertEquals("2", solverConfig.getMoveThreadCount());
-              assertEquals(DomainAccessType.REFLECTION, solverConfig.getDomainAccessType());
+              assertEquals(CotwinAccessType.REFLECTION, solverConfig.getCotwinAccessType());
               assertNull(
                   solverConfig.getScoreDirectorFactoryConfig().getConstraintStreamImplType());
               assertEquals(
@@ -288,7 +288,7 @@ class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
             "solverConfigXml",
             "environmentMode",
             "moveThreadCount",
-            "domainAccessType",
+            "cotwinAccessType",
             "Expected all values to be maps, but values for key(s)",
             "Maybe try changing the property name to kebab-case");
     assertThatCode(

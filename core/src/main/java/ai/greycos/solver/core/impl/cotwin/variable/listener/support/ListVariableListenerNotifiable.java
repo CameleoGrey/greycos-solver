@@ -1,0 +1,42 @@
+package ai.greycos.solver.core.impl.cotwin.variable.listener.support;
+
+import java.util.Collection;
+
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.impl.cotwin.variable.InnerListVariableListener;
+import ai.greycos.solver.core.impl.cotwin.variable.ListElementsChangeEvent;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+
+import org.jspecify.annotations.NullMarked;
+
+/**
+ * A notifiable specialized to receive {@link ListVariableNotification}s and trigger them on a given
+ * {@link InnerListVariableListener}.
+ *
+ * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
+ */
+@NullMarked
+final class ListVariableListenerNotifiable<
+        Solution_, Listener_ extends InnerListVariableListener<Solution_, Object, Object>>
+    extends AbstractNotifiable<
+        Solution_,
+        ListElementsChangeEvent<Object>,
+        InnerListVariableListener<Solution_, Object, Object>> {
+
+  ListVariableListenerNotifiable(
+      InnerScoreDirector<Solution_, ?> scoreDirector,
+      Listener_ variableListener,
+      Collection<Notification<Solution_, ListElementsChangeEvent<Object>, Listener_>>
+          notificationQueue,
+      int globalOrder) {
+    super(scoreDirector, variableListener, (Collection) notificationQueue, globalOrder);
+  }
+
+  public void notifyBefore(ListVariableNotification<Solution_> notification) {
+    triggerBefore(notification);
+  }
+
+  public void notifyAfter(ListVariableNotification<Solution_> notification) {
+    storeForLater(notification);
+  }
+}

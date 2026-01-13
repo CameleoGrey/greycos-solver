@@ -5,17 +5,17 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.domain.entity.PlanningEntity;
-import ai.greycos.solver.core.api.domain.variable.InverseRelationShadowVariable;
+import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.score.ScoreManager;
 import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.quarkus.testdomain.invalid.inverserelation.TestdataInvalidInverseRelationEntity;
-import ai.greycos.solver.quarkus.testdomain.invalid.inverserelation.TestdataInvalidInverseRelationSolution;
-import ai.greycos.solver.quarkus.testdomain.invalid.inverserelation.TestdataInvalidInverseRelationValue;
-import ai.greycos.solver.quarkus.testdomain.invalid.inverserelation.TestdataInvalidQuarkusConstraintProvider;
+import ai.greycos.solver.quarkus.testcotwin.invalid.inverserelation.TestdataInvalidInverseRelationEntity;
+import ai.greycos.solver.quarkus.testcotwin.invalid.inverserelation.TestdataInvalidInverseRelationSolution;
+import ai.greycos.solver.quarkus.testcotwin.invalid.inverserelation.TestdataInvalidInverseRelationValue;
+import ai.greycos.solver.quarkus.testcotwin.invalid.inverserelation.TestdataInvalidQuarkusConstraintProvider;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

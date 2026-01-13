@@ -9,7 +9,7 @@ import ai.greycos.solver.core.impl.exhaustivesearch.node.comparator.AbstractNode
 import ai.greycos.solver.core.impl.exhaustivesearch.node.comparator.ScoreFirstNodeComparator;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
 

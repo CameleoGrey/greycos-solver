@@ -14,7 +14,7 @@ import org.jspecify.annotations.NullMarked;
  * <p>In order to be fully serializable to JSON, propositions must be fully serializable to JSON.
  * For deserialization from JSON, the user needs to provide the deserializer themselves. This is due
  * to the fact that, once the proposition is received over the wire, we no longer know which type
- * was used. The user has all of that information in their domain model, and so they are the correct
+ * was used. The user has all of that information in their cotwin model, and so they are the correct
  * party to provide the deserializer. See also {@link ScoreAnalysis} Javadoc for additional notes on
  * serializing and deserializing that type.
  *

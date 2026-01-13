@@ -1,0 +1,54 @@
+package ai.greycos.solver.core.testcotwin.shadow.mixed;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
+import ai.greycos.solver.core.impl.solver.MoveAsserter;
+
+import org.junit.jupiter.api.Test;
+
+class TestdataMixedTest {
+  @Test
+  void changingVariableOfParentShouldChangeDependentVariableOfChildren() {
+    var problem = new TestdataMixedSolution();
+
+    var entity = new TestdataMixedEntity("a");
+
+    var value1 = new TestdataMixedValue("v1");
+    var value2 = new TestdataMixedValue("v2");
+
+    problem.setMixedEntityList(List.of(entity));
+    problem.setMixedValueList(List.of(value1, value2));
+    problem.setDelayList(List.of(1, 2));
+
+    entity.setValueList(List.of(value1, value2));
+
+    value1.setDelay(1);
+    value1.setEntity(entity);
+
+    value2.setDelay(2);
+    value2.setPrevious(value1);
+    value2.setEntity(entity);
+    value2.setPreviousDelay(1);
+
+    var solutionDescriptor =
+        SolutionDescriptor.buildSolutionDescriptor(
+            TestdataMixedSolution.class, TestdataMixedEntity.class, TestdataMixedValue.class);
+    var delayDescriptor =
+        solutionDescriptor
+            .getEntityDescriptorStrict(TestdataMixedValue.class)
+            .getGenuineVariableDescriptor("delay");
+    var moveAsserter = MoveAsserter.create(solutionDescriptor);
+
+    moveAsserter.assertMoveAndUndo(
+        problem,
+        new ChangeMove<>(delayDescriptor, value1, 2),
+        newSolution -> {
+          assertThat(value1.getDelay()).isEqualTo(2);
+          assertThat(value2.getPreviousDelay()).isEqualTo(2);
+        });
+  }
+}

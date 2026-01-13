@@ -14,7 +14,7 @@ import ai.greycos.solver.core.config.localsearch.decider.acceptor.LocalSearchAcc
 import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchForagerConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
-import ai.greycos.solver.core.impl.domain.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.localsearch.DefaultLocalSearchPhase;
 import ai.greycos.solver.core.impl.localsearch.decider.LocalSearchDecider;
@@ -29,9 +29,9 @@ import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.impl.solver.termination.TerminationFactory;
 import ai.greycos.solver.core.preview.api.move.builtin.ChangeMoveDefinition;
-import ai.greycos.solver.core.testdomain.TestdataEntity;
-import ai.greycos.solver.core.testdomain.TestdataSolution;
-import ai.greycos.solver.core.testdomain.TestdataValue;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
 
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
