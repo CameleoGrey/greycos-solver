@@ -21,7 +21,7 @@
 
     This module contains the tools modules.
   </description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <modules>
     <module>webui</module>

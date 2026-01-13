@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<solver xmlns="https://greycos.ai/xsd/solver">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   <enablePreviewFeature>NEIGHBORHOODS</enablePreviewFeature>
   <environmentMode>FULL_ASSERT</environmentMode>
   <moveThreadCount>AUTO</moveThreadCount>

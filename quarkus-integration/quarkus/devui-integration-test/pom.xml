@@ -12,7 +12,7 @@
   <artifactId>greycos-solver-quarkus-devui-integration-test</artifactId>
   <name>GreyCOS Solver Quarkus - Dev UI Integration tests</name>
   <description>Quarkus Dev UI integration tests for GreyCOS</description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <properties>
     <java.module.name>ai.greycos.solver.quarkus</java.module.name>

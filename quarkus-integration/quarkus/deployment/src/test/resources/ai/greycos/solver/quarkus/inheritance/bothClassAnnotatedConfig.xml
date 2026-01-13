@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://github.com/CameleoGrey/greycos-solver/xsd/solver https://github.com/CameleoGrey/greycos-solver/xsd/solver/solver.xsd">
     <solutionClass>
         ai.greycos.solver.quarkus.testcotwin.inheritance.solution.TestdataBothAnnotatedNoRawListExtendedSolution
     </solutionClass>

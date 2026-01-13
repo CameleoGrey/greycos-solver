@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark"
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark"
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                  xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+                  xsi:schemaLocation="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark https://github.com/CameleoGrey/greycos-solver/xsd/benchmark/benchmark.xsd">
     <parallelBenchmarkCount>AUTO</parallelBenchmarkCount>
 
     <inheritedSolverBenchmark>

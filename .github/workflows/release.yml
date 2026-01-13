@@ -48,7 +48,7 @@ jobs:
       - name: Create release branch and switch to it
         run: |
           git config user.name "GreyCOS Release Bot"
-          git config user.email "release@greycos.ai"
+          git config user.email "cameleogrey@yandex.ru"
           git checkout -b $RELEASE_BRANCH_NAME
 
       - uses: actions/setup-java@v5

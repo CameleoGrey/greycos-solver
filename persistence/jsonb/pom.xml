@@ -20,7 +20,7 @@
     This module contains the JSON-B integration.
     This module is deprecated and will be removed in a future major version of GreyCOS Solver.
   </description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <properties>
     <java.module.name>ai.greycos.solver.jsonb</java.module.name>

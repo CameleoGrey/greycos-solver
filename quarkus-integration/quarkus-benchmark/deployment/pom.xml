@@ -11,7 +11,7 @@
   <artifactId>greycos-solver-quarkus-benchmark-deployment</artifactId>
   <name>GreyCOS Solver Quarkus Benchmark - Deployment</name>
   <description>Quarkus deployment module for greycos-solver-quarkus-benchmark.</description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <properties>
     <java.module.name>ai.greycos.solver.quarkus.benchmark.deployment</java.module.name>

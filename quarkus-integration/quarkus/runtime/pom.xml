@@ -12,7 +12,7 @@
   <artifactId>greycos-solver-quarkus</artifactId>
   <name>GreyCOS Solver Quarkus - Runtime</name>
   <description>Solve planning and scheduling with AI constraint optimization of vehicle routes, employee rosters, maintenance, tasks, lessons, conferences, ...</description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <properties>
     <java.module.name>ai.greycos.solver.quarkus</java.module.name>

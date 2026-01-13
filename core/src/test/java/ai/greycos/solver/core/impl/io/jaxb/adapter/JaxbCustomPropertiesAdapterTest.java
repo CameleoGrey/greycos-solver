@@ -30,8 +30,8 @@ class JaxbCustomPropertiesAdapterTest {
     String xmlFragment =
         "<testBean>"
             + "  <customProperties>"
-            + "    <property xmlns=\"https://greycos.ai/xsd/solver\" name=\"firstKey\" value=\"firstValue\"/>"
-            + "    <property xmlns=\"https://greycos.ai/xsd/solver\" name=\"secondKey\" value=\"secondValue\"/>"
+            + "    <property xmlns=\"https://github.com/CameleoGrey/greycos-solver/xsd/solver\" name=\"firstKey\" value=\"firstValue\"/>"
+            + "    <property xmlns=\"https://github.com/CameleoGrey/greycos-solver/xsd/solver\" name=\"secondKey\" value=\"secondValue\"/>"
             + "  </customProperties>"
             + "</testBean>";
     Reader stringReader = new StringReader(xmlFragment);

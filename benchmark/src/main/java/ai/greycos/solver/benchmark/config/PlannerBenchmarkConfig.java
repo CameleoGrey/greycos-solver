@@ -63,7 +63,7 @@ import freemarker.template.TemplateException;
 public class PlannerBenchmarkConfig {
   public static final String SOLVER_NAMESPACE_PREFIX = "solver";
   public static final String XML_ELEMENT_NAME = "plannerBenchmark";
-  public static final String XML_NAMESPACE = "https://greycos.ai/xsd/benchmark";
+  public static final String XML_NAMESPACE = "https://github.com/CameleoGrey/greycos-solver/xsd/benchmark";
 
   // ************************************************************************
   // Static creation methods: SolverConfig

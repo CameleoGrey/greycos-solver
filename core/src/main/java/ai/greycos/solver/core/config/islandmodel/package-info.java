@@ -3,6 +3,6 @@
  * island uses same local search configuration with independent random seeds and solution states.
  */
 @jakarta.xml.bind.annotation.XmlSchema(
-    namespace = "https://greycos.ai/xsd/solver",
+    namespace = "https://github.com/CameleoGrey/greycos-solver/xsd/solver",
     elementFormDefault = jakarta.xml.bind.annotation.XmlNsForm.QUALIFIED)
 package ai.greycos.solver.core.config.islandmodel;

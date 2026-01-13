@@ -1,4 +1,4 @@
-<solver xmlns="https://greycos.ai/xsd/solver">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   <environmentMode>TRACKED_FULL_ASSERT</environmentMode>
   <daemon>false</daemon>
   <randomType>WELL1024A</randomType>

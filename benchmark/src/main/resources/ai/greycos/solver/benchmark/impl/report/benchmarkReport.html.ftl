@@ -132,7 +132,7 @@
                         <a class="mx-1" href="https://stackoverflow.com/questions/tagged/greycos"><i class="fa-brands fa-stack-overflow text-white"></i></a>
                         <a class="mx-1" href="https://youtube.com/@greycos"><i class="fa-brands fa-youtube text-white"></i></a>
                         <a class="mx-1" href="https://twitter.com/CameleoGrey"><i class="fa-brands fa-twitter text-white"></i></a>
-                        <a role="button" class="btn btn-sm tf-btn-contact btn-outline-light mx-1" href="https://greycos.ai/contact">Contact</a>
+                        <a role="button" class="btn btn-sm tf-btn-contact btn-outline-light mx-1" href="https://github.com/CameleoGrey/greycos-solver/contact">Contact</a>
                     </li>
                 </ul>
             </div>
@@ -927,13 +927,13 @@
     <footer class="bg-black text-white-50">
         <div class="container">
             <div class="hstack gap-3 p-4">
-                <div class="ms-auto"><a class="text-white" href="https://greycos.ai">GreyCOS</a></div>
+                <div class="ms-auto"><a class="text-white" href="https://github.com/CameleoGrey/greycos-solver">GreyCOS</a></div>
                 <div class="vr"></div>
-                <div><a class="text-white" href="https://docs.greycos.ai/greycos-solver/latest/">Documentation</a></div>
+                <div><a class="text-white" href="https://github.com/CameleoGrey/greycos-solver">Documentation</a></div>
                 <div class="vr"></div>
                 <div><a class="text-white" href="https://github.com/CameleoGrey/greycos-solver">Code</a></div>
                 <div class="vr"></div>
-                <div class="me-auto"><a class="text-white" href="https://greycos.ai/support">Support</a></div>
+                <div class="me-auto"><a class="text-white" href="https://github.com/CameleoGrey/greycos-solver/support">Support</a></div>
             </div>
         </div>
     </footer>

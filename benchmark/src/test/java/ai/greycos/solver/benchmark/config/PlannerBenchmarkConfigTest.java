@@ -77,7 +77,7 @@ class PlannerBenchmarkConfigTest {
   void readAndValidateInvalidBenchmarkConfig_failsIndicatingTheIssue() {
     PlannerBenchmarkConfigIO xmlIO = new PlannerBenchmarkConfigIO();
     String benchmarkConfigXml =
-        "<plannerBenchmark xmlns=\"https://greycos.ai/xsd/benchmark\">\n"
+        "<plannerBenchmark xmlns=\"https://github.com/CameleoGrey/greycos-solver/xsd/benchmark\">\n"
             + "  <benchmarkDirectory>data</benchmarkDirectory>\n"
             + "  <parallelBenchmarkCount>AUTO</parallelBenchmarkCount>\n"
             + "  <solverBenchmark>\n"

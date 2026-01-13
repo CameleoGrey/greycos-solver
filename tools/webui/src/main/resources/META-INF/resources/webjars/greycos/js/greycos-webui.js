@@ -5,7 +5,7 @@ function replaceGreyCOSAutoHeaderFooter() {
     greycosHeader.append(
       $(`<div class="container-fluid">
         <nav class="navbar sticky-top navbar-expand-lg navbar-dark shadow mb-3">
-          <a class="navbar-brand" href="https://greycos.ai">
+          <a class="navbar-brand" href="https://github.com/CameleoGrey/greycos-solver">
             <img src="webjars/greycos/img/greycos-logo-horizontal-negative.svg" alt="GreyCOS logo" width="200">
           </a>
         </nav>
@@ -17,13 +17,13 @@ function replaceGreyCOSAutoHeaderFooter() {
       $(`<footer class="bg-dark-cyber text-cyan-light">
            <div class="container">
              <div class="hstack gap-3 p-4">
-               <div class="ms-auto"><a class="text-cyan" href="https://greycos.ai">GreyCOS</a></div>
+               <div class="ms-auto"><a class="text-cyan" href="https://github.com/CameleoGrey/greycos-solver">GreyCOS</a></div>
                <div class="vr"></div>
-               <div><a class="text-cyan" href="https://greycos.ai/docs">Documentation</a></div>
+               <div><a class="text-cyan" href="https://github.com/CameleoGrey/greycos-solver/docs">Documentation</a></div>
                <div class="vr"></div>
                <div><a class="text-cyan" href="https://github.com/CameleoGrey/greycos-quickstarts">Code</a></div>
                <div class="vr"></div>
-               <div class="me-auto"><a class="text-cyan" href="https://greycos.ai/product/support/">Support</a></div>
+               <div class="me-auto"><a class="text-cyan" href="https://github.com/CameleoGrey/greycos-solver/product/support/">Support</a></div>
              </div>
            </div>
            <div id="applicationInfo" class="container text-center"></div>

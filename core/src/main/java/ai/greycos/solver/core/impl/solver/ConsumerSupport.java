@@ -149,7 +149,9 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
   }
 
   private void tryConsumeWaitingIntermediateBestSolution() {
-    if (bestSolutionHolder.isEmpty()) {}
+    if (bestSolutionHolder.isEmpty()) {
+      return;
+    }
     if (activeConsumption.tryAcquire()) {
       scheduleIntermediateBestSolutionConsumption()
           .thenRunAsync(this::tryConsumeWaitingIntermediateBestSolution, consumerExecutor);
@@ -173,10 +175,9 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
                 exceptionHandler.accept(problemId, throwable);
               }
               bestSolutionContainingProblemChanges.completeProblemChangesExceptionally(throwable);
-            } finally {
-              activeConsumption.release();
             }
           }
+          activeConsumption.release();
         },
         consumerExecutor);
   }

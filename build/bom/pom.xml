@@ -21,7 +21,7 @@
   <description>
     Import this BOM in your dependencyManagement if you want to depend on multiple GreyCOS artifacts.
   </description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <dependencyManagement>
     <dependencies>

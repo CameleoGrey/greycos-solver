@@ -11,8 +11,8 @@ metadata:
     - "rostering"
     - "routing"
     - "ai"
-  guide: "https://docs.greycos.ai/greycos-solver/latest/quickstart/quarkus/quarkus-quickstart"
-  icon-url: "https://greycos.ai/uploads/images/Brand-Assets/Icon.svg"
+  guide: "https://github.com/CameleoGrey/greycos-solverquickstart/quarkus/quarkus-quickstart"
+  icon-url: "https://github.com/CameleoGrey/greycos-solver/uploads/images/Brand-Assets/Icon.svg"
   categories:
     - "ai"
     - "business-automation"

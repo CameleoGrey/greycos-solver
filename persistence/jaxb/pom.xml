@@ -19,7 +19,7 @@
 
     This module contains the JAXB integration.
   </description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <properties>
     <java.module.name>ai.greycos.solver.jaxb</java.module.name>

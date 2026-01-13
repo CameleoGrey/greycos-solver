@@ -10,7 +10,7 @@ release:
   github:
     commitAuthor:
       name: "GreyCOS Release Bot"
-      email: "release@greycos.ai"
+      email: "cameleogrey@yandex.ru"
     releaseName: "GreyCOS Solver {{projectVersion}}"
     draft: true
     overwrite: false

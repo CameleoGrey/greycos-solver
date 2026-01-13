@@ -14,7 +14,7 @@
   <packaging>pom</packaging>
 
   <name>GreyCOS Solver build parent</name>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <properties>
     <!-- ************************************************************************ -->
@@ -523,11 +523,11 @@
             <outputDirectory>${project.build.outputDirectory}</outputDirectory>
             <transformSchemas>
               <transformSchema>
-                <uri>https://greycos.ai/xsd/solver</uri>
+                <uri>https://github.com/CameleoGrey/greycos-solver/xsd/solver</uri>
                 <toFile>solver.xsd</toFile>
               </transformSchema>
               <transformSchema>
-                <uri>https://greycos.ai/xsd/benchmark</uri>
+                <uri>https://github.com/CameleoGrey/greycos-solver/xsd/benchmark</uri>
                 <toFile>${schema.filename.benchmark}</toFile>
               </transformSchema>
             </transformSchemas>

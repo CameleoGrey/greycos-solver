@@ -12,7 +12,7 @@
   <artifactId>greycos-solver-quarkus-benchmark</artifactId>
   <name>GreyCOS Solver Quarkus Benchmark - Runtime</name>
   <description>Benchmark an GreyCOS project to power tweak the solver configuration for speed and scalability.</description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <properties>
     <java.module.name>ai.greycos.solver.quarkus.benchmark</java.module.name>

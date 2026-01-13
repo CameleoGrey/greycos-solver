@@ -18,7 +18,7 @@
     This module contains the IDE configuration files used for formatting GreyCOS's
     source code.
   </description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <properties>
     <java.module.name>ai.greycos.solver.ide.config</java.module.name>

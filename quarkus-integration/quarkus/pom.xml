@@ -13,7 +13,7 @@
   <packaging>pom</packaging>
 
   <name>GreyCOS Solver Quarkus</name>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <modules>
     <module>runtime</module>

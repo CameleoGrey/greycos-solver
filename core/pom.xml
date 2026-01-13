@@ -20,7 +20,7 @@
 
     This module contains the planning engine itself.
   </description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <properties>
     <java.module.name>ai.greycos.solver.core</java.module.name>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tns="https://greycos.ai/xsd/benchmark" elementFormDefault="qualified" targetNamespace="https://greycos.ai/xsd/benchmark" version="1.0">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark" elementFormDefault="qualified" targetNamespace="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark" version="1.0">
       
   
     

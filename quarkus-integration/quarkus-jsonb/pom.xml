@@ -22,7 +22,7 @@
     This module is deprecated and will be removed in a future major version of GreyCOS Solver.
     Please use the Jackson integration instead.
   </description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <modules>
     <module>runtime</module>

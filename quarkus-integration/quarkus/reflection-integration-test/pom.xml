@@ -12,7 +12,7 @@
   <artifactId>greycos-solver-quarkus-reflection-integration-test</artifactId>
   <name>GreyCOS Solver Quarkus - Reflection Integration tests</name>
   <description>Quarkus reflection integration tests for GreyCOS</description>
-  <url>https://solver.greycos.ai</url>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <properties>
     <java.module.name>ai.greycos.solver.quarkus</java.module.name>

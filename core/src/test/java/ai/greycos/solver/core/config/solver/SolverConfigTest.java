@@ -127,7 +127,7 @@ class SolverConfigTest {
     // Intentionally included white chars around the class name.
     var xmlFragment =
         """
-                <solver xmlns="https://greycos.ai/xsd/solver">
+                <solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
                     <solutionClass>  %s\s
                     </solutionClass>
                 </solver>"""
@@ -141,7 +141,7 @@ class SolverConfigTest {
     // Intentionally wrong: variableName should be an attribute of the <valueSelector/>
     var solverConfigXml =
         """
-                <solver xmlns="https://greycos.ai/xsd/solver">
+                <solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
                     <constructionHeuristic>
                         <changeMoveSelector>
                             <valueSelector>
