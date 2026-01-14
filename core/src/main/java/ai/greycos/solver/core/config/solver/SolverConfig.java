@@ -92,7 +92,8 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
   private static final Logger LOGGER = LoggerFactory.getLogger(SolverConfig.class);
 
   public static final String XML_ELEMENT_NAME = "solver";
-  public static final String XML_NAMESPACE = "https://github.com/CameleoGrey/greycos-solver/xsd/solver";
+  public static final String XML_NAMESPACE =
+      "https://github.com/CameleoGrey/greycos-solver/xsd/solver";
   public static final String XML_TYPE_NAME = "solverConfig";
 
   /**

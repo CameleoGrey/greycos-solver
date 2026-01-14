@@ -1,0 +1,21 @@
+= FAQ
+:doctype: book
+:icons: font
+
+== How is GreyCOS Solver Licensed?
+
+GreyCOS Solver is _open source_ software,
+released under http://www.apache.org/licenses/LICENSE-2.0.html[the Apache License 2.0].
+This license is very liberal and allows reuse for commercial purposes.
+Read http://www.apache.org/foundation/licence-FAQ.html#WhatDoesItMEAN[the layman's explanation].
+
+GreyCOS Solver includes xref:advanced-features/advanced-features.adoc#advancedFeaturesList[advanced features]
+for scaling out to very large datasets and maximizing performance on multi-core hardware.
+
+== Can GreyCOS Solver be included in a (GraalVM) native application?
+
+Yes. GreyCOS Solver has been tested with Quarkus and Spring Boot plugins to create native executables.
+Native executables typically have a fast startup time and reduced memory consumption.
+However, given the nature of the workloads running with the solver, these benefits are often overshadowed by slower solving speeds due to lack of JIT optimizations.
+
+Read more about this in https://github.com/CameleoGrey/greycos-solver[our blog post].
