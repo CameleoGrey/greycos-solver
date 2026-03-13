@@ -70,6 +70,7 @@ import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorFactory;
+import ai.greycos.solver.core.impl.neighborhood.DefaultNeighborhoodProvider;
 import ai.greycos.solver.core.impl.score.DummySimpleScoreEasyScoreCalculator;
 import ai.greycos.solver.core.impl.score.constraint.DefaultConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.constraint.DefaultIndictment;
@@ -268,7 +269,7 @@ class DefaultSolverTest {
                 new TerminationConfig().withBestScoreLimit("0")) // Should get there quickly.
             .withPhases(
                 new LocalSearchPhaseConfig()
-                    .withMoveProviderClass(TestingNeighborhoodProvider.class));
+                    .withMoveProviderClass((Class) TestingNeighborhoodProvider.class));
 
     var solution = TestdataSolution.generateSolution(3, 2);
     assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution))
@@ -277,6 +278,7 @@ class DefaultSolverTest {
   }
 
   @Test
+  @SuppressWarnings("rawtypes")
   void solveWithNeighborhoodsAndMoveSelectors() {
     var solverConfig =
         new SolverConfig()
@@ -289,7 +291,9 @@ class DefaultSolverTest {
             // Swaps are coming from move selectors, other moves are coming from default
             // Neighborhood provider.
             .withPhases(
-                new LocalSearchPhaseConfig().withMoveSelectorConfig(new SwapMoveSelectorConfig()));
+                new LocalSearchPhaseConfig()
+                    .withMoveProviderClass((Class) DefaultNeighborhoodProvider.class)
+                    .withMoveSelectorConfig(new SwapMoveSelectorConfig()));
 
     var solution = TestdataSolution.generateSolution(3, 2);
     var result = PlannerTestUtils.solve(solverConfig, solution);
