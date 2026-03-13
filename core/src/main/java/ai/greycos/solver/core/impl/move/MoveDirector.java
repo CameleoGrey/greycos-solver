@@ -52,7 +52,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
   }
 
   @Override
-  public final <Entity_, Value_> void assignValueAndInsert(
+  public final <Entity_, Value_> void assignValueAndAdd(
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
       Value_ planningValue,
       Entity_ destinationEntity,
@@ -75,13 +75,40 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
   }
 
   @Override
+  public <Entity_, Value_> void assignValuesAndAdd(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      List<Value_> values,
+      Entity_ destinationEntity,
+      int destinationIndex) {
+    var variableDescriptor =
+        ((DefaultPlanningListVariableMetaModel<Solution_, Entity_, Value_>) variableMetaModel)
+            .variableDescriptor();
+    for (var value : values) {
+      if (!(getPositionOf(variableMetaModel, value) instanceof UnassignedElement)) {
+        throw new IllegalStateException(
+            "Cannot assign an already assigned value (%s).".formatted(value));
+      }
+      externalScoreDirector.beforeListVariableElementAssigned(variableDescriptor, value);
+    }
+    externalScoreDirector.beforeListVariableChanged(
+        variableDescriptor, destinationEntity, destinationIndex, destinationIndex);
+    variableDescriptor.getValue(destinationEntity).addAll(destinationIndex, values);
+    externalScoreDirector.afterListVariableChanged(
+        variableDescriptor, destinationEntity, destinationIndex, destinationIndex + values.size());
+    for (var value : values) {
+      externalScoreDirector.afterListVariableElementAssigned(variableDescriptor, value);
+    }
+    externalScoreDirector.triggerVariableListeners();
+  }
+
+  @Override
   public final <Entity_, Value_> void assignValueAndSet(
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
       Value_ planningValue,
       Entity_ destinationEntity,
       int destinationIndex) {
     if (destinationIndex == countValues(variableMetaModel, destinationEntity)) {
-      assignValueAndInsert(variableMetaModel, planningValue, destinationEntity, destinationIndex);
+      assignValueAndAdd(variableMetaModel, planningValue, destinationEntity, destinationIndex);
       return;
     }
     if (!(getPositionOf(variableMetaModel, planningValue) instanceof UnassignedElement)) {

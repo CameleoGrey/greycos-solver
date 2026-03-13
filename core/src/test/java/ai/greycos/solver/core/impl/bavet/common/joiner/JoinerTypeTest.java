@@ -1,6 +1,8 @@
 package ai.greycos.solver.core.impl.bavet.common.joiner;
 
+import static ai.greycos.solver.core.impl.bavet.common.joiner.JoinerType.CONTAINED_IN;
 import static ai.greycos.solver.core.impl.bavet.common.joiner.JoinerType.CONTAINING;
+import static ai.greycos.solver.core.impl.bavet.common.joiner.JoinerType.CONTAINING_ANY_OF;
 import static ai.greycos.solver.core.impl.bavet.common.joiner.JoinerType.DISJOINT;
 import static ai.greycos.solver.core.impl.bavet.common.joiner.JoinerType.EQUAL;
 import static ai.greycos.solver.core.impl.bavet.common.joiner.JoinerType.GREATER_THAN;
@@ -55,10 +57,30 @@ class JoinerTypeTest {
   }
 
   @Test
-  void containing() {
+  void contain() {
     Collection<Integer> collection = Arrays.asList(1);
     assertThat(CONTAINING.matches(collection, 1)).isTrue();
     assertThat(CONTAINING.matches(collection, 2)).isFalse();
+  }
+
+  @Test
+  void containedIn() {
+    assertThat(CONTAINED_IN.matches(1, Arrays.asList(1, 3))).isTrue();
+    assertThat(CONTAINED_IN.matches(2, Arrays.asList(1, 3))).isFalse();
+  }
+
+  @Test
+  void containsAny() {
+    assertThat(CONTAINING_ANY_OF.matches(Arrays.asList(1, 2, 3), Arrays.asList(2))).isTrue();
+    assertThat(CONTAINING_ANY_OF.matches(Arrays.asList(1, 2, 3), Arrays.asList(6))).isFalse();
+    assertThat(CONTAINING_ANY_OF.matches(Arrays.asList(1, 2, 3), Arrays.asList(3, 4, 5))).isTrue();
+    assertThat(CONTAINING_ANY_OF.matches(Arrays.asList(3, 4, 5), Arrays.asList(1, 2, 3))).isTrue();
+    assertThat(CONTAINING_ANY_OF.matches(Arrays.asList(1, 2, 3), Arrays.asList(4, 5, 6))).isFalse();
+    assertThat(CONTAINING_ANY_OF.matches(Arrays.asList(1, 2, 3), Collections.emptyList()))
+        .isFalse();
+    assertThat(CONTAINING_ANY_OF.matches(Collections.emptyList(), Arrays.asList(1))).isFalse();
+    assertThat(CONTAINING_ANY_OF.matches(Collections.emptyList(), Collections.emptyList()))
+        .isFalse();
   }
 
   @Test

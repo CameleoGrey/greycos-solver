@@ -48,7 +48,10 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
   protected void doMoveOnGenuineVariables(ScoreDirector<Solution_> scoreDirector) {
     entityToNewPositionMap.clear();
     var variableChangeRecordingScoreDirector =
-        (VariableChangeRecordingScoreDirector<Solution_, ?>) scoreDirector;
+        scoreDirector
+                instanceof VariableChangeRecordingScoreDirector<Solution_, ?> recordingScoreDirector
+            ? recordingScoreDirector
+            : new VariableChangeRecordingScoreDirector<>(scoreDirector);
     try (var listVariableStateSupply =
         variableChangeRecordingScoreDirector
             .getBacking()

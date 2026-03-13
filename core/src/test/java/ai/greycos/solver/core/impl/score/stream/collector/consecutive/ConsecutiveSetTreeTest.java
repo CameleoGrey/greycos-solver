@@ -149,6 +149,56 @@ class ConsecutiveSetTreeTest {
   }
 
   @Test
+  void testDuplicateIndexes() {
+    var a = atomic(0);
+    var b = atomic(1);
+    var c = atomic(2);
+
+    var tree = getIntegerConsecutiveSetTree();
+    tree.add(a, 3);
+    tree.add(b, 3);
+    tree.add(c, 3);
+
+    var sequenceList = new IterableList<>(tree.getConsecutiveSequences());
+    assertSoftly(
+        softly -> {
+          softly.assertThat(sequenceList).hasSize(1);
+          softly
+              .assertThat(tree.getFirstSequence())
+              .usingRecursiveComparison()
+              .isEqualTo(sequenceList.get(0));
+          softly
+              .assertThat(tree.getLastSequence())
+              .usingRecursiveComparison()
+              .isEqualTo(sequenceList.get(0));
+          softly.assertThat(sequenceList).first().matches(sequence -> sequence.getCount() == 3);
+        });
+
+    var breakList = new IterableList<>(tree.getBreaks());
+    assertSoftly(
+        softly -> {
+          softly.assertThat(breakList).isEmpty();
+          softly.assertThat(tree.getBreaks()).isEmpty();
+          softly.assertThat(tree.getFirstBreak()).isNull();
+          softly.assertThat(tree.getLastBreak()).isNull();
+        });
+
+    tree.remove(a);
+    assertThat(sequenceList).hasSize(1);
+    assertThat(sequenceList.get(0).getCount()).isEqualTo(2);
+    assertThat(breakList).isEmpty();
+
+    tree.remove(b);
+    assertThat(sequenceList).hasSize(1);
+    assertThat(sequenceList.get(0).getCount()).isEqualTo(1);
+    assertThat(breakList).isEmpty();
+
+    tree.remove(c);
+    assertThat(sequenceList).isEmpty();
+    assertThat(tree.getBreaks()).isEmpty();
+  }
+
+  @Test
   void testConsecutiveReverseNumbers() {
     ConsecutiveSetTree<AtomicInteger, Integer, Integer> tree = getIntegerConsecutiveSetTree();
     AtomicInteger breakStart3 = atomic(3);

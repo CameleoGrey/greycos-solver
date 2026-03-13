@@ -23,7 +23,7 @@ class HardSoftScoreDefinitionTest {
   }
 
   @Test
-  void getLevelsSize() {
+  void getLevelSize() {
     assertThat(new HardSoftScoreDefinition().getLevelsSize()).isEqualTo(2);
   }
 
@@ -44,7 +44,7 @@ class HardSoftScoreDefinitionTest {
     var optimisticBound =
         scoreDefinition.buildOptimisticBound(
             InitializingScoreTrend.buildUniformTrend(InitializingScoreTrendLevel.ONLY_UP, 2),
-            HardSoftScore.of(-1, -2));
+            HardSoftScore.of(-1L, -2L));
     assertThat(optimisticBound.hardScore()).isEqualTo(Long.MAX_VALUE);
     assertThat(optimisticBound.softScore()).isEqualTo(Long.MAX_VALUE);
   }
@@ -56,8 +56,8 @@ class HardSoftScoreDefinitionTest {
         scoreDefinition.buildOptimisticBound(
             InitializingScoreTrend.buildUniformTrend(InitializingScoreTrendLevel.ONLY_DOWN, 2),
             HardSoftScore.of(-1, -2));
-    assertThat(optimisticBound.hardScore()).isEqualTo(-1);
-    assertThat(optimisticBound.softScore()).isEqualTo(-2);
+    assertThat(optimisticBound.hardScore()).isEqualTo(-1L);
+    assertThat(optimisticBound.softScore()).isEqualTo(-2L);
   }
 
   @Test
@@ -66,9 +66,9 @@ class HardSoftScoreDefinitionTest {
     var pessimisticBound =
         scoreDefinition.buildPessimisticBound(
             InitializingScoreTrend.buildUniformTrend(InitializingScoreTrendLevel.ONLY_UP, 2),
-            HardSoftScore.of(-1, -2));
-    assertThat(pessimisticBound.hardScore()).isEqualTo(-1);
-    assertThat(pessimisticBound.softScore()).isEqualTo(-2);
+            HardSoftScore.of(-1L, -2L));
+    assertThat(pessimisticBound.hardScore()).isEqualTo(-1L);
+    assertThat(pessimisticBound.softScore()).isEqualTo(-2L);
   }
 
   @Test
@@ -77,7 +77,7 @@ class HardSoftScoreDefinitionTest {
     var pessimisticBound =
         scoreDefinition.buildPessimisticBound(
             InitializingScoreTrend.buildUniformTrend(InitializingScoreTrendLevel.ONLY_DOWN, 2),
-            HardSoftScore.of(-1, -2));
+            HardSoftScore.of(-1L, -2L));
     assertThat(pessimisticBound.hardScore()).isEqualTo(Long.MIN_VALUE);
     assertThat(pessimisticBound.softScore()).isEqualTo(Long.MIN_VALUE);
   }
@@ -85,13 +85,13 @@ class HardSoftScoreDefinitionTest {
   @Test
   void divideBySanitizedDivisor() {
     var scoreDefinition = new HardSoftScoreDefinition();
-    var dividend = scoreDefinition.fromLevelNumbers(new Number[] {0, 10});
+    var dividend = scoreDefinition.fromLevelNumbers(new Number[] {0L, 10L});
     var zeroDivisor = scoreDefinition.getZeroScore();
     assertThat(scoreDefinition.divideBySanitizedDivisor(dividend, zeroDivisor)).isEqualTo(dividend);
     var oneDivisor = scoreDefinition.getOneSoftestScore();
     assertThat(scoreDefinition.divideBySanitizedDivisor(dividend, oneDivisor)).isEqualTo(dividend);
-    var tenDivisor = scoreDefinition.fromLevelNumbers(new Number[] {10, 10});
+    var tenDivisor = scoreDefinition.fromLevelNumbers(new Number[] {10L, 10L});
     assertThat(scoreDefinition.divideBySanitizedDivisor(dividend, tenDivisor))
-        .isEqualTo(scoreDefinition.fromLevelNumbers(new Number[] {0, 1}));
+        .isEqualTo(scoreDefinition.fromLevelNumbers(new Number[] {0L, 1L}));
   }
 }

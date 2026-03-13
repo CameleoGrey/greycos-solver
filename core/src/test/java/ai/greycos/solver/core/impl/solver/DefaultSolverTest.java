@@ -273,7 +273,7 @@ class DefaultSolverTest {
 
     var solution = TestdataSolution.generateSolution(3, 2);
     assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution))
-        .isInstanceOf(UnsupportedOperationException.class)
+        .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("NEIGHBORHOODS");
   }
 
@@ -529,7 +529,7 @@ class DefaultSolverTest {
     solution.setValueList(Arrays.asList(v1, v2));
     solution.setEntityList(
         Arrays.asList(
-            new TestdataPinnedEntity("e1", v1, true, false),
+            new TestdataPinnedEntity("e1", v1, false, true),
             new TestdataPinnedEntity("e2", v2, false, true)));
 
     solution = PlannerTestUtils.solve(solverConfig, solution, true);

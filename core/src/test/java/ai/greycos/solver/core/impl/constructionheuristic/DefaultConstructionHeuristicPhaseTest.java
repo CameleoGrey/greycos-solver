@@ -1914,9 +1914,9 @@ class DefaultConstructionHeuristicPhaseTest {
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, solution))
         .hasMessageContaining("The nearbySelectorConfig")
         .hasMessageContaining(
-            "Maybe remove comparatorClass or comparatorFactoryClass from your @PlanningEntity annotation.")
+            "Maybe remove difficultyComparatorClass or difficultyWeightFactoryClass from your @PlanningEntity annotation.")
         .hasMessageContaining(
-            "Maybe remove comparatorClass or comparatorFactoryClass from your @PlanningVariable annotation.")
+            "Maybe remove strengthComparatorClass or strengthWeightFactoryClass from your @PlanningVariable annotation.")
         .hasMessageContaining("Maybe disable nearby selection.");
   }
 

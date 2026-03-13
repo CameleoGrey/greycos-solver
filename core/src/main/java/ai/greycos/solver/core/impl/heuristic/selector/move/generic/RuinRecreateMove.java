@@ -41,25 +41,34 @@ public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
   @Override
   protected void doMoveOnGenuineVariables(ScoreDirector<Solution_> scoreDirector) {
     recordedNewValues = new Object[ruinedEntityList.size()];
+    var variableName = genuineVariableDescriptor.getVariableName();
 
-    var recordingScoreDirector = (VariableChangeRecordingScoreDirector<Solution_, ?>) scoreDirector;
     for (var ruinedEntity : ruinedEntityList) {
-      recordingScoreDirector.beforeVariableChanged(genuineVariableDescriptor, ruinedEntity);
+      scoreDirector.beforeVariableChanged(ruinedEntity, variableName);
       genuineVariableDescriptor.setValue(ruinedEntity, null);
-      recordingScoreDirector.afterVariableChanged(genuineVariableDescriptor, ruinedEntity);
+      scoreDirector.afterVariableChanged(ruinedEntity, variableName);
     }
-    recordingScoreDirector.triggerVariableListeners();
+    scoreDirector.triggerVariableListeners();
+
+    var backingScoreDirector =
+        scoreDirector
+                instanceof
+                VariableChangeRecordingScoreDirector<Solution_, ?>
+                    variableChangeRecordingScoreDirector
+            ? variableChangeRecordingScoreDirector.getBacking()
+            : (ai.greycos.solver.core.impl.score.director.InnerScoreDirector<Solution_, ?>)
+                scoreDirector;
 
     var constructionHeuristicPhase =
         (RuinRecreateConstructionHeuristicPhase<Solution_>)
             constructionHeuristicPhaseBuilder
-                .ensureThreadSafe(recordingScoreDirector.getBacking())
+                .ensureThreadSafe(backingScoreDirector)
                 .withElementsToRecreate(ruinedEntityList)
                 .build();
 
     var nestedSolverScope = new SolverScope<Solution_>(solverScope.getClock());
     nestedSolverScope.setSolver(solverScope.getSolver());
-    nestedSolverScope.setScoreDirector(recordingScoreDirector.getBacking());
+    nestedSolverScope.setScoreDirector(backingScoreDirector);
     constructionHeuristicPhase.solvingStarted(nestedSolverScope);
     constructionHeuristicPhase.solve(nestedSolverScope);
     constructionHeuristicPhase.solvingEnded(nestedSolverScope);

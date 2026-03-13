@@ -37,7 +37,7 @@ public class ListAssignMove<Solution_, Entity_, Value_> extends AbstractMove<Sol
 
   @Override
   public void execute(MutableSolutionView<Solution_> mutableSolutionView) {
-    mutableSolutionView.assignValue(
+    mutableSolutionView.assignValueAndAdd(
         variableMetaModel, planningValue, destinationEntity, destinationIndex);
   }
 

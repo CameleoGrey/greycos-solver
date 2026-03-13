@@ -1,5 +1,7 @@
 package ai.greycos.solver.core.preview.api.move;
 
+import java.util.List;
+
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
@@ -31,24 +33,9 @@ import org.jspecify.annotations.Nullable;
 public interface MutableSolutionView<Solution_> extends SolutionView<Solution_> {
 
   /**
-   * As defined by {@link #assignValueAndInsert(PlanningListVariableMetaModel, Object, Object,
-   * int)}.
-   *
-   * @deprecated Use {@link #assignValueAndInsert(PlanningListVariableMetaModel, Object, Object,
-   *     int)} instead.
-   */
-  @Deprecated(forRemoval = true)
-  default <Entity_, Value_> void assignValue(
-      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
-      Value_ value,
-      Entity_ destinationEntity,
-      int destinationIndex) {
-    assignValueAndInsert(variableMetaModel, value, destinationEntity, destinationIndex);
-  }
-
-  /**
    * Puts a given value at a particular index in a given entity's {@link PlanningListVariable
-   * planning list variable}. Moves all values at or after the index to the right.
+   * planning list variable}. Moves all values at or after the index to the right, much like {@link
+   * List#add(int, Object)}.
    *
    * @param variableMetaModel Describes the variable to be changed.
    * @param value The value to be assigned to a list variable.
@@ -57,17 +44,42 @@ public interface MutableSolutionView<Solution_> extends SolutionView<Solution_> 
    *     moving the pre-existing value at that index and all subsequent values to the right.
    * @throws IllegalStateException if the value is already assigned to a list variable
    */
-  <Entity_, Value_> void assignValueAndInsert(
+  <Entity_, Value_> void assignValueAndAdd(
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
       Value_ value,
       Entity_ destinationEntity,
       int destinationIndex);
 
-  default <Entity_, Value_> void assignValueAndInsert(
+  default <Entity_, Value_> void assignValueAndAdd(
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
       Value_ value,
       PositionInList destination) {
-    assignValueAndInsert(variableMetaModel, value, destination.entity(), destination.index());
+    assignValueAndAdd(variableMetaModel, value, destination.entity(), destination.index());
+  }
+
+  /**
+   * Puts given sequence of values at a particular index in a given entity's {@link
+   * PlanningListVariable planning list variable}. Moves all values at or after the index to the
+   * right, much like {@link List#addAll(int, java.util.Collection)}.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param values The sequence of values to be assigned to a list variable.
+   * @param destinationEntity The entity whose list variable is to be changed.
+   * @param destinationIndex The index in the list variable at which the value is to be assigned,
+   *     moving the pre-existing value at that index and all subsequent values to the right.
+   * @throws IllegalStateException if any of the values is already assigned to a list variable
+   */
+  <Entity_, Value_> void assignValuesAndAdd(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      List<Value_> values,
+      Entity_ destinationEntity,
+      int destinationIndex);
+
+  default <Entity_, Value_> void assignValuesAndAdd(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      List<Value_> values,
+      PositionInList destination) {
+    assignValuesAndAdd(variableMetaModel, values, destination.entity(), destination.index());
   }
 
   /**

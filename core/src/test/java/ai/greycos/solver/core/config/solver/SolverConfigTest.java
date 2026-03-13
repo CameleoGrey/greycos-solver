@@ -257,7 +257,7 @@ class SolverConfigTest {
   }
 
   @Test
-  void cotwinClassesAreInterfaces() {
+  void domainClassesAreInterfaces() {
     var solverConfig =
         new SolverConfig()
             .withSolutionClass(TestdataInterfaceSolution.class)
