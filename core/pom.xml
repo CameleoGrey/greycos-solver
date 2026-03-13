@@ -21,11 +21,6 @@
     This module contains the planning engine itself.
   </description>
   <url>https://github.com/CameleoGrey/greycos-solver</url>
-
-  <properties>
-    <java.module.name>ai.greycos.solver.core</java.module.name>
-  </properties>
-
   <dependencies>
 
     <!-- Gizmo dependencies -->
@@ -148,26 +143,32 @@
         </configuration>
       </plugin>
       <plugin>
-        <artifactId>maven-resources-plugin</artifactId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>${version.antrun.plugin}</version>
         <executions>
           <execution>
-            <!-- Copy the solver.xsd to make sure it's available from the IDE without running maven first. -->
-            <id>copy-solver-xsd</id>
+            <id>check-solver-xsd-exists</id>
             <phase>process-resources</phase>
             <goals>
-              <goal>copy-resources</goal>
+              <goal>run</goal>
             </goals>
             <configuration>
-              <outputDirectory>${project.basedir}/src/main/resources</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${project.build.outputDirectory}</directory>
-                  <includes>
-                    <include>solver.xsd</include>
-                  </includes>
-                  <targetPath>${project.basedir}/src/main/resources</targetPath>
-                </resource>
-              </resources>
+              <target>
+                <available file="${project.build.outputDirectory}/${schema.filename.solver.intermediary}" property="solverXSDExists"/>
+              </target>
+              <exportAntProperties>true</exportAntProperties>
+            </configuration>
+          </execution>
+          <execution>
+            <id>move-solver-xsd</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target if="solverXSDExists">
+                <move file="${project.build.outputDirectory}/${schema.filename.solver.intermediary}" tofile="${project.basedir}/src/main/resources/${schema.filename.solver}"/>
+              </target>
             </configuration>
           </execution>
         </executions>

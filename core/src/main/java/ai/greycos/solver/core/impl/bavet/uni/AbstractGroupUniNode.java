@@ -6,12 +6,12 @@ import java.util.function.Function;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.bavet.common.AbstractGroupNode;
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 
 abstract class AbstractGroupUniNode<
-        OldA, OutTuple_ extends AbstractTuple, GroupKey_, ResultContainer_, Result_>
+        OldA, OutTuple_ extends Tuple, GroupKey_, ResultContainer_, Result_>
     extends AbstractGroupNode<UniTuple<OldA>, OutTuple_, GroupKey_, ResultContainer_, Result_> {
 
   private final BiFunction<ResultContainer_, OldA, Runnable> accumulator;
@@ -45,6 +45,6 @@ abstract class AbstractGroupUniNode<
 
   @Override
   protected final Runnable accumulate(ResultContainer_ resultContainer, UniTuple<OldA> tuple) {
-    return accumulator.apply(resultContainer, tuple.factA);
+    return accumulator.apply(resultContainer, tuple.getA());
   }
 }

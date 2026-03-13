@@ -4,11 +4,11 @@ import java.util.Arrays;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
+import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier;
 import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
 import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
 import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
-import ai.greycos.solver.test.api.score.stream.ConstraintVerifier;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;

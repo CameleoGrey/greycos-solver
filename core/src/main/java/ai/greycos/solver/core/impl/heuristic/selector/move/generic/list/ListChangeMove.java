@@ -8,9 +8,9 @@ import java.util.Set;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 
 /**

@@ -20,7 +20,7 @@ public record BavetConstraintStreamImplSupport(ConstraintMatchPolicy constraintM
           ConstraintProvider constraintProvider) {
     var scoreDirectorFactory =
         new BavetConstraintStreamScoreDirectorFactory<Solution_, Score_>(
-            solutionDescriptorSupplier, constraintProvider, EnvironmentMode.PHASE_ASSERT);
+            solutionDescriptorSupplier, constraintProvider, EnvironmentMode.PHASE_ASSERT, false);
     return scoreDirectorFactory
         .createScoreDirectorBuilder()
         .withConstraintMatchPolicy(constraintMatchPolicy)

@@ -12,12 +12,12 @@ import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 
-@PlanningEntity(difficultyComparatorClass = TestdataMixedEntityComparator.class)
+@PlanningEntity(comparatorClass = TestdataMixedEntityComparator.class)
 public class TestdataMixedEntity extends TestdataObject {
 
   @PlanningVariable(
       valueRangeProviderRefs = "otherValueRange",
-      strengthComparatorClass = TestdataMixedOtherValueComparator.class)
+      comparatorClass = TestdataMixedOtherValueComparator.class)
   private TestdataMixedOtherValue basicValue;
 
   @PlanningVariable(valueRangeProviderRefs = "otherValueRange")

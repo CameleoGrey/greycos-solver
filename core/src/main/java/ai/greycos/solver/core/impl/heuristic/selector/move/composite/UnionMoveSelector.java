@@ -5,11 +5,11 @@ import java.util.List;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * A {@link CompositeMoveSelector} that unions 2 or more {@link MoveSelector}s.

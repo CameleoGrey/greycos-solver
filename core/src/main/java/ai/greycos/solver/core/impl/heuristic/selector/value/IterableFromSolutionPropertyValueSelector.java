@@ -3,10 +3,8 @@ package ai.greycos.solver.core.impl.heuristic.selector.value;
 import java.util.Iterator;
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
@@ -114,12 +112,12 @@ public final class IterableFromSolutionPropertyValueSelector<Solution_>
 
   @Override
   public boolean isCountable() {
-    return valueRangeDescriptor.isCountable();
+    return true;
   }
 
   @Override
   public boolean isNeverEnding() {
-    return randomSelection || !isCountable();
+    return randomSelection;
   }
 
   @Override
@@ -129,7 +127,7 @@ public final class IterableFromSolutionPropertyValueSelector<Solution_>
 
   @Override
   public long getSize() {
-    return ((CountableValueRange<?>) cachedValueRange).getSize();
+    return cachedValueRange.getSize();
   }
 
   @Override
@@ -143,25 +141,7 @@ public final class IterableFromSolutionPropertyValueSelector<Solution_>
     if (randomSelection) {
       return cachedValueRange.createRandomIterator(workingRandom);
     }
-    if (cachedValueRange instanceof CountableValueRange<Object> range) {
-      return range.createOriginalIterator();
-    }
-    throw new IllegalStateException(
-        "Value range's class ("
-            + cachedValueRange.getClass().getCanonicalName()
-            + ") "
-            + "does not implement "
-            + CountableValueRange.class
-            + ", "
-            + "yet selectionOrder is not "
-            + SelectionOrder.RANDOM
-            + ".\n"
-            + "Maybe switch selectors' selectionOrder to "
-            + SelectionOrder.RANDOM
-            + "?\n"
-            + "Maybe switch selectors' cacheType to "
-            + SelectionCacheType.JUST_IN_TIME
-            + "?");
+    return cachedValueRange.createOriginalIterator();
   }
 
   @Override
@@ -170,7 +150,7 @@ public final class IterableFromSolutionPropertyValueSelector<Solution_>
   }
 
   public Iterator<Object> endingIterator() {
-    return ((CountableValueRange<Object>) cachedValueRange).createOriginalIterator();
+    return cachedValueRange.createOriginalIterator();
   }
 
   private void checkCachedEntityListIsDirty() {

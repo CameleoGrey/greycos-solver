@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.testcotwin.invalid.nosolution;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 

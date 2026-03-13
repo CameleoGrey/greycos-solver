@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;

@@ -3,10 +3,10 @@ package ai.greycos.solver.core.impl.exhaustivesearch.node.comparator;
 import java.util.Comparator;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.ExhaustiveSearchNode;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.bounder.ScoreBounder;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * Investigate nodes layer by layer: investigate shallower nodes first. This results in horrible

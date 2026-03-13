@@ -9,8 +9,8 @@ import static org.mockito.Mockito.mock;
 import java.util.Arrays;
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.api.score.SimpleScore;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 import ai.greycos.solver.core.impl.score.director.easy.EasyScoreDirectorFactory;

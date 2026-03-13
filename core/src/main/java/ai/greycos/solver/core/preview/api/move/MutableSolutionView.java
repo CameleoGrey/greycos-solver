@@ -5,6 +5,7 @@ import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -30,6 +31,22 @@ import org.jspecify.annotations.Nullable;
 public interface MutableSolutionView<Solution_> extends SolutionView<Solution_> {
 
   /**
+   * As defined by {@link #assignValueAndInsert(PlanningListVariableMetaModel, Object, Object,
+   * int)}.
+   *
+   * @deprecated Use {@link #assignValueAndInsert(PlanningListVariableMetaModel, Object, Object,
+   *     int)} instead.
+   */
+  @Deprecated(forRemoval = true)
+  default <Entity_, Value_> void assignValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Value_ value,
+      Entity_ destinationEntity,
+      int destinationIndex) {
+    assignValueAndInsert(variableMetaModel, value, destinationEntity, destinationIndex);
+  }
+
+  /**
    * Puts a given value at a particular index in a given entity's {@link PlanningListVariable
    * planning list variable}. Moves all values at or after the index to the right.
    *
@@ -38,12 +55,41 @@ public interface MutableSolutionView<Solution_> extends SolutionView<Solution_> 
    * @param destinationEntity The entity whose list variable is to be changed.
    * @param destinationIndex The index in the list variable at which the value is to be assigned,
    *     moving the pre-existing value at that index and all subsequent values to the right.
+   * @throws IllegalStateException if the value is already assigned to a list variable
    */
-  <Entity_, Value_> void assignValue(
+  <Entity_, Value_> void assignValueAndInsert(
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
       Value_ value,
       Entity_ destinationEntity,
       int destinationIndex);
+
+  default <Entity_, Value_> void assignValueAndInsert(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Value_ value,
+      PositionInList destination) {
+    assignValueAndInsert(variableMetaModel, value, destination.entity(), destination.index());
+  }
+
+  /**
+   * Puts a given value at a particular index in a given entity's {@link PlanningListVariable
+   * planning list variable}. The original value at that index becomes unassigned. If the
+   * destination index is equal to the list size, the value is appended to the end of the list
+   * without unassigning any value.
+   *
+   * @throws IllegalStateException if the value is already assigned to a list variable
+   */
+  <Entity_, Value_> void assignValueAndSet(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Value_ value,
+      Entity_ destinationEntity,
+      int destinationIndex);
+
+  default <Entity_, Value_> void assignValueAndSet(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Value_ value,
+      PositionInList destination) {
+    assignValueAndSet(variableMetaModel, value, destination.entity(), destination.index());
+  }
 
   /**
    * Removes a given value from the {@link PlanningListVariable planning list variable} that it's
@@ -66,15 +112,21 @@ public interface MutableSolutionView<Solution_> extends SolutionView<Solution_> 
    *     Acceptable values range from zero to one less than list size. All values after the index
    *     are shifted to the left.
    * @return the removed value
-   * @throws IllegalArgumentException if the index is out of bounds
+   * @throws IndexOutOfBoundsException if the index is out of bounds
    */
   <Entity_, Value_> Value_ unassignValue(
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
       Entity_ entity,
       int index);
 
+  default <Entity_, Value_> Value_ unassignValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      PositionInList destination) {
+    return unassignValue(variableMetaModel, destination.entity(), destination.index());
+  }
+
   /**
-   * Reads the value of a @{@link PlanningVariable basic planning variable} of a given entity.
+   * Changes the value of a @{@link PlanningVariable basic planning variable} of a given entity.
    *
    * @param variableMetaModel Describes the variable to be changed.
    * @param entity The entity whose variable value is to be changed.
@@ -87,6 +139,8 @@ public interface MutableSolutionView<Solution_> extends SolutionView<Solution_> 
 
   /**
    * Moves a value from one entity's {@link PlanningListVariable planning list variable} to another.
+   * To move values within the same entity, use {@link
+   * #moveValueInList(PlanningListVariableMetaModel, Object, int, int)} instead.
    *
    * @param variableMetaModel Describes the variable to be changed.
    * @param sourceEntity The entity from which the value will be removed.
@@ -95,17 +149,30 @@ public interface MutableSolutionView<Solution_> extends SolutionView<Solution_> 
    *     the index are shifted to the left.
    * @param destinationEntity The entity to which the value will be added.
    * @param destinationIndex The index in the destination entity's list variable to which the value
-   *     will be moved; Acceptable values range from zero to one less than list size. All values at
-   *     or after the index are shifted to the right.
-   * @return the value that was moved; null if nothing was moved
+   *     will be moved; acceptable values range from zero to equal to list size. All values at or
+   *     after the index are shifted to the right. To append to the end of the list, use the list
+   *     size as index.
+   * @return the value that was moved
    * @throws IndexOutOfBoundsException if the index is out of bounds
    */
-  <Entity_, Value_> @Nullable Value_ moveValueBetweenLists(
+  <Entity_, Value_> Value_ moveValueBetweenLists(
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
       Entity_ sourceEntity,
       int sourceIndex,
       Entity_ destinationEntity,
       int destinationIndex);
+
+  default <Entity_, Value_> Value_ moveValueBetweenLists(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      PositionInList source,
+      PositionInList destination) {
+    return moveValueBetweenLists(
+        variableMetaModel,
+        source.entity(),
+        source.index(),
+        destination.entity(),
+        destination.index());
+  }
 
   /**
    * Moves a value within one entity's {@link PlanningListVariable planning list variable}.
@@ -118,14 +185,27 @@ public interface MutableSolutionView<Solution_> extends SolutionView<Solution_> 
    * @param destinationIndex The index in the source entity's list variable to which the value will
    *     be moved; Acceptable values range from zero to one less than list size. All values at or
    *     after the index are shifted to the right.
-   * @return the value that was moved; null if nothing was moved
+   * @return the value that was moved
    * @throws IndexOutOfBoundsException if the index is out of bounds
    */
-  <Entity_, Value_> @Nullable Value_ moveValueInList(
+  <Entity_, Value_> Value_ moveValueInList(
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
       Entity_ sourceEntity,
       int sourceIndex,
       int destinationIndex);
+
+  <Entity_, Value_> Value_ shiftValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ sourceEntity,
+      int sourceIndex,
+      int offset);
+
+  default <Entity_, Value_> Value_ shiftValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      PositionInList positionInList,
+      int offset) {
+    return shiftValue(variableMetaModel, positionInList.entity(), positionInList.index(), offset);
+  }
 
   /**
    * Swaps two values between two entities' {@link PlanningListVariable planning list variable}.

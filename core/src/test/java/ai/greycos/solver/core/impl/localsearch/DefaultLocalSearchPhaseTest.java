@@ -7,15 +7,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.Arrays;
 import java.util.Collections;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchType;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
 import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
 import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
@@ -272,18 +270,6 @@ class DefaultLocalSearchPhaseTest {
             TestdataListSolution.class, TestdataListEntity.class, TestdataListValue.class);
 
     var solution = TestdataListSolution.generateUninitializedSolution(6, 2);
-
-    solution = PlannerTestUtils.solve(solverConfig, solution);
-    assertThat(solution).isNotNull();
-  }
-
-  @Test
-  void solveMultiVarChainedVariable() {
-    var solverConfig =
-        PlannerTestUtils.buildSolverConfig(
-            TestdataChainedSolution.class, TestdataChainedEntity.class);
-
-    var solution = TestdataChainedSolution.generateUninitializedSolution(6, 2);
 
     solution = PlannerTestUtils.solve(solverConfig, solution);
     assertThat(solution).isNotNull();

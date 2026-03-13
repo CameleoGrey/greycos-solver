@@ -7,7 +7,6 @@ import java.util.function.Function;
 
 import ai.greycos.solver.core.api.function.TriPredicate;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
-import ai.greycos.solver.core.impl.cotwin.variable.index.IndexVariableSupply;
 import ai.greycos.solver.core.impl.util.Pair;
 
 import org.apache.commons.math3.util.CombinatoricsUtils;
@@ -119,11 +118,11 @@ final class KOptUtils {
   }
 
   public static <Node_> TriPredicate<Node_, Node_, Node_> getBetweenPredicate(
-      IndexVariableSupply indexVariableSupply) {
+      ListVariableStateSupply<?, Object, Object> listVariableStateSupply) {
     return (start, middle, end) -> {
-      int startIndex = indexVariableSupply.getIndex(start);
-      int middleIndex = indexVariableSupply.getIndex(middle);
-      int endIndex = indexVariableSupply.getIndex(end);
+      int startIndex = listVariableStateSupply.getIndexOrElse(start, -1);
+      int middleIndex = listVariableStateSupply.getIndexOrElse(middle, -1);
+      int endIndex = listVariableStateSupply.getIndexOrElse(end, -1);
 
       if (startIndex <= endIndex) {
         // test middleIndex in [startIndex, endIndex]

@@ -10,10 +10,10 @@ import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.api.score.constraint.Indictment;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirector;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

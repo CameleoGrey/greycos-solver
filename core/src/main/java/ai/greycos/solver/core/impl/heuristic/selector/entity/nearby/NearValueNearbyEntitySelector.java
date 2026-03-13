@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.entity.nearby;
 
 import java.util.Iterator;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
@@ -74,11 +75,11 @@ public final class NearValueNearbyEntitySelector<Solution_>
 
   private class RandomNearbyEntityIterator implements Iterator<Object> {
 
-    private final java.util.Random workingRandom;
+    private final RandomGenerator workingRandom;
     private final int nearbySize;
     private int count = 0;
 
-    public RandomNearbyEntityIterator(java.util.Random workingRandom) {
+    public RandomNearbyEntityIterator(RandomGenerator workingRandom) {
       this.workingRandom = workingRandom;
       this.nearbySize = (int) childEntitySelector.getSize();
     }

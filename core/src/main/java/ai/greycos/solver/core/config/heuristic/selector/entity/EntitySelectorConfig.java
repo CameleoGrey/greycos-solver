@@ -19,7 +19,6 @@ import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
-import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorterWeightFactory;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -34,9 +33,7 @@ import org.jspecify.annotations.Nullable;
       "nearbySelectionConfig",
       "filterClass",
       "sorterManner",
-      "sorterComparatorClass",
       "comparatorClass",
-      "sorterWeightFactoryClass",
       "comparatorFactoryClass",
       "sorterOrder",
       "sorterClass",
@@ -65,21 +62,7 @@ public class EntitySelectorConfig extends SelectorConfig<EntitySelectorConfig> {
 
   @Nullable protected EntitySorterManner sorterManner = null;
 
-  /**
-   * @deprecated Deprecated in favor of {@link #comparatorClass}.
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  @Nullable
-  protected Class<? extends Comparator> sorterComparatorClass = null;
-
   @Nullable protected Class<? extends Comparator> comparatorClass = null;
-
-  /**
-   * @deprecated Deprecated in favor of {@link #comparatorFactoryClass}.
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  @Nullable
-  protected Class<? extends SelectionSorterWeightFactory> sorterWeightFactoryClass = null;
 
   @Nullable protected Class<? extends ComparatorFactory> comparatorFactoryClass = null;
   @Nullable protected SelectionSorterOrder sorterOrder = null;
@@ -166,47 +149,12 @@ public class EntitySelectorConfig extends SelectorConfig<EntitySelectorConfig> {
     this.sorterManner = sorterManner;
   }
 
-  /**
-   * @deprecated Deprecated in favor of {@link #getComparatorClass()}
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  public @Nullable Class<? extends Comparator> getSorterComparatorClass() {
-    return sorterComparatorClass;
-  }
-
-  /**
-   * @deprecated Deprecated in favor of {@link #setComparatorClass(Class)}
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  public void setSorterComparatorClass(
-      @Nullable Class<? extends Comparator> sorterComparatorClass) {
-    this.sorterComparatorClass = sorterComparatorClass;
-  }
-
   public @Nullable Class<? extends Comparator> getComparatorClass() {
     return comparatorClass;
   }
 
   public void setComparatorClass(@Nullable Class<? extends Comparator> comparatorClass) {
     this.comparatorClass = comparatorClass;
-  }
-
-  /**
-   * @deprecated Deprecated in favor of {@link #getComparatorFactoryClass()}
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  public @Nullable Class<? extends SelectionSorterWeightFactory> getSorterWeightFactoryClass() {
-    return sorterWeightFactoryClass;
-  }
-
-  /**
-   * @deprecated Deprecated in favor of {@link #setComparatorFactoryClass(Class)}
-   * @param sorterWeightFactoryClass the class
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  public void setSorterWeightFactoryClass(
-      @Nullable Class<? extends SelectionSorterWeightFactory> sorterWeightFactoryClass) {
-    this.sorterWeightFactoryClass = sorterWeightFactoryClass;
   }
 
   public @Nullable Class<? extends ComparatorFactory> getComparatorFactoryClass() {
@@ -297,29 +245,8 @@ public class EntitySelectorConfig extends SelectorConfig<EntitySelectorConfig> {
     return this;
   }
 
-  /**
-   * @deprecated Deprecated in favor of {@link #withComparatorClass(Class)}
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  public EntitySelectorConfig withSorterComparatorClass(
-      Class<? extends Comparator> comparatorClass) {
-    this.setSorterComparatorClass(comparatorClass);
-    return this;
-  }
-
   public EntitySelectorConfig withComparatorClass(Class<? extends Comparator> comparatorClass) {
     this.setComparatorClass(comparatorClass);
-    return this;
-  }
-
-  /**
-   * @deprecated Deprecated in favor of {@link #withComparatorFactoryClass(Class)}
-   * @param weightFactoryClass the factory class
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  public EntitySelectorConfig withSorterWeightFactoryClass(
-      Class<? extends SelectionSorterWeightFactory> weightFactoryClass) {
-    this.setSorterWeightFactoryClass(weightFactoryClass);
     return this;
   }
 
@@ -373,15 +300,9 @@ public class EntitySelectorConfig extends SelectorConfig<EntitySelectorConfig> {
         ConfigUtils.inheritOverwritableProperty(filterClass, inheritedConfig.getFilterClass());
     sorterManner =
         ConfigUtils.inheritOverwritableProperty(sorterManner, inheritedConfig.getSorterManner());
-    sorterComparatorClass =
-        ConfigUtils.inheritOverwritableProperty(
-            sorterComparatorClass, inheritedConfig.getSorterComparatorClass());
     comparatorClass =
         ConfigUtils.inheritOverwritableProperty(
             comparatorClass, inheritedConfig.getComparatorClass());
-    sorterWeightFactoryClass =
-        ConfigUtils.inheritOverwritableProperty(
-            sorterWeightFactoryClass, inheritedConfig.getSorterWeightFactoryClass());
     comparatorFactoryClass =
         ConfigUtils.inheritOverwritableProperty(
             comparatorFactoryClass, inheritedConfig.getComparatorFactoryClass());
@@ -410,9 +331,7 @@ public class EntitySelectorConfig extends SelectorConfig<EntitySelectorConfig> {
       nearbySelectionConfig.visitReferencedClasses(classVisitor);
     }
     classVisitor.accept(filterClass);
-    classVisitor.accept(sorterComparatorClass);
     classVisitor.accept(comparatorClass);
-    classVisitor.accept(sorterWeightFactoryClass);
     classVisitor.accept(comparatorFactoryClass);
     classVisitor.accept(sorterClass);
     classVisitor.accept(probabilityWeightFactoryClass);
@@ -427,21 +346,18 @@ public class EntitySelectorConfig extends SelectorConfig<EntitySelectorConfig> {
       EntitySorterManner entitySorterManner, EntityDescriptor<Solution_> entityDescriptor) {
     return switch (entitySorterManner) {
       case NONE -> false;
-      case DECREASING_DIFFICULTY, DESCENDING -> true;
-      case DECREASING_DIFFICULTY_IF_AVAILABLE, DESCENDING_IF_AVAILABLE ->
-          entityDescriptor.getDescendingSorter() != null;
+      case DESCENDING -> true;
+      case DESCENDING_IF_AVAILABLE -> entityDescriptor.getDescendingSorter() != null;
     };
   }
 
   public static <Solution_, T> SelectionSorter<Solution_, T> determineSorter(
       EntitySorterManner entitySorterManner, EntityDescriptor<Solution_> entityDescriptor) {
     return switch (entitySorterManner) {
-      case NONE:
-        throw new IllegalStateException("Impossible state: hasSorter() should have returned null.");
-      case DECREASING_DIFFICULTY,
-      DECREASING_DIFFICULTY_IF_AVAILABLE,
-      DESCENDING,
-      DESCENDING_IF_AVAILABLE:
+      case NONE ->
+          throw new IllegalStateException(
+              "Impossible state: hasSorter() should have returned null.");
+      case DESCENDING, DESCENDING_IF_AVAILABLE -> {
         var sorter = (SelectionSorter<Solution_, T>) entityDescriptor.getDescendingSorter();
         if (sorter == null) {
           throw new IllegalArgumentException(
@@ -452,6 +368,7 @@ public class EntitySelectorConfig extends SelectorConfig<EntitySelectorConfig> {
                       PlanningEntity.class.getSimpleName()));
         }
         yield sorter;
+      }
     };
   }
 

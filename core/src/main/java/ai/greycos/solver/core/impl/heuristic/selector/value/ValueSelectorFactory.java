@@ -7,7 +7,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
-import ai.greycos.solver.core.api.cotwin.common.ComparatorFactory;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
@@ -15,7 +14,6 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelectorFactory;
@@ -32,7 +30,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.CachingVal
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.DowncastingValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueRangeSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
-import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.InitializedValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.IterableFromEntityPropertyValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.ProbabilityValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.ReinitializeVariableValueSelector;
@@ -194,8 +191,6 @@ public class ValueSelectorFactory<Solution_>
     }
     valueSelector = applyFiltering(valueSelector, instanceCache);
     valueSelector =
-        applyInitializedChainedValueFilter(configPolicy, variableDescriptor, valueSelector);
-    valueSelector =
         applyProbability(resolvedCacheType, resolvedSelectionOrder, valueSelector, instanceCache);
     valueSelector = applyShuffling(resolvedCacheType, resolvedSelectionOrder, valueSelector);
     valueSelector = applyCaching(resolvedCacheType, resolvedSelectionOrder, valueSelector);
@@ -219,8 +214,8 @@ public class ValueSelectorFactory<Solution_>
         || config.getNearbySelectionConfig() != null
         || config.getFilterClass() != null
         || config.getSorterManner() != null
-        || determineComparatorClass(config) != null
-        || determineComparatorFactoryClass(config) != null
+        || config.getComparatorClass() != null
+        || config.getComparatorFactoryClass() != null
         || config.getSorterOrder() != null
         || config.getSorterClass() != null
         || config.getProbabilityWeightFactoryClass() != null
@@ -286,59 +281,6 @@ public class ValueSelectorFactory<Solution_>
     };
   }
 
-  private static String determineComparatorPropertyName(ValueSelectorConfig valueSelectorConfig) {
-    var sorterComparatorClass = valueSelectorConfig.getSorterComparatorClass();
-    var comparatorClass = valueSelectorConfig.getComparatorClass();
-    if (sorterComparatorClass != null && comparatorClass != null) {
-      throw new IllegalArgumentException(
-          "The valueSelectorConfig (%s) cannot have a %s (%s) and %s (%s) at the same time."
-              .formatted(
-                  valueSelectorConfig,
-                  "sorterComparatorClass",
-                  sorterComparatorClass,
-                  "comparatorClass",
-                  comparatorClass));
-    }
-    return sorterComparatorClass != null ? "sorterComparatorClass" : "comparatorClass";
-  }
-
-  private static Class<? extends Comparator> determineComparatorClass(
-      ValueSelectorConfig valueSelectorConfig) {
-    var propertyName = determineComparatorPropertyName(valueSelectorConfig);
-    if (propertyName.equals("sorterComparatorClass")) {
-      return valueSelectorConfig.getSorterComparatorClass();
-    } else {
-      return valueSelectorConfig.getComparatorClass();
-    }
-  }
-
-  private static String determineComparatorFactoryPropertyName(
-      ValueSelectorConfig valueSelectorConfig) {
-    var weightFactoryClass = valueSelectorConfig.getSorterWeightFactoryClass();
-    var comparatorFactoryClass = valueSelectorConfig.getComparatorFactoryClass();
-    if (weightFactoryClass != null && comparatorFactoryClass != null) {
-      throw new IllegalArgumentException(
-          "The valueSelectorConfig (%s) cannot have a %s (%s) and %s (%s) at the same time."
-              .formatted(
-                  valueSelectorConfig,
-                  "sorterWeightFactoryClass",
-                  weightFactoryClass,
-                  "comparatorFactoryClass",
-                  comparatorFactoryClass));
-    }
-    return weightFactoryClass != null ? "sorterWeightFactoryClass" : "comparatorFactoryClass";
-  }
-
-  private static Class<? extends ComparatorFactory> determineComparatorFactoryClass(
-      ValueSelectorConfig valueSelectorConfig) {
-    var propertyName = determineComparatorFactoryPropertyName(valueSelectorConfig);
-    if (propertyName.equals("sorterWeightFactoryClass")) {
-      return valueSelectorConfig.getSorterWeightFactoryClass();
-    } else {
-      return valueSelectorConfig.getComparatorFactoryClass();
-    }
-  }
-
   private SelectionSorter<Solution_, Object> determineSorter(
       GenuineVariableDescriptor<Solution_> variableDescriptor,
       SelectionOrder resolvedSelectionOrder,
@@ -348,8 +290,8 @@ public class ValueSelectorFactory<Solution_>
     }
     SelectionSorter<Solution_, Object> sorter;
     var sorterManner = config.getSorterManner();
-    var comparatorClass = determineComparatorClass(config);
-    var comparatorFactoryClass = determineComparatorFactoryClass(config);
+    var comparatorClass = config.getComparatorClass();
+    var comparatorFactoryClass = config.getComparatorFactoryClass();
     if (sorterManner != null) {
       if (!ValueSelectorConfig.hasSorter(sorterManner, variableDescriptor)) {
         return null;
@@ -357,15 +299,13 @@ public class ValueSelectorFactory<Solution_>
       sorter = ValueSelectorConfig.determineSorter(sorterManner, variableDescriptor);
     } else if (comparatorClass != null) {
       Comparator<Object> sorterComparator =
-          instanceCache.newInstance(
-              config, determineComparatorPropertyName(config), comparatorClass);
+          instanceCache.newInstance(config, "comparatorClass", comparatorClass);
       sorter =
           new ComparatorSelectionSorter<>(
               sorterComparator, SelectionSorterOrder.resolve(config.getSorterOrder()));
     } else if (comparatorFactoryClass != null) {
       var comparatorFactory =
-          instanceCache.newInstance(
-              config, determineComparatorFactoryPropertyName(config), comparatorFactoryClass);
+          instanceCache.newInstance(config, "comparatorFactoryClass", comparatorFactoryClass);
       sorter =
           new ComparatorFactorySelectionSorter<>(
               comparatorFactory, SelectionSorterOrder.resolve(config.getSorterOrder()));
@@ -375,15 +315,13 @@ public class ValueSelectorFactory<Solution_>
       throw new IllegalArgumentException(
           """
                     The valueSelectorConfig (%s) with resolvedSelectionOrder (%s) needs \
-                    a sorterManner (%s) or a %s (%s) or a %s (%s) \
+                    a sorterManner (%s) or a comparatorClass (%s) or a comparatorFactoryClass (%s) \
                     or a sorterClass (%s)."""
               .formatted(
                   config,
                   resolvedSelectionOrder,
                   sorterManner,
-                  determineComparatorPropertyName(config),
                   comparatorClass,
-                  determineComparatorFactoryPropertyName(config),
                   comparatorFactoryClass,
                   config.getSorterClass()));
     }
@@ -423,9 +361,7 @@ public class ValueSelectorFactory<Solution_>
   }
 
   private boolean hasFiltering(GenuineVariableDescriptor<Solution_> variableDescriptor) {
-    return config.getFilterClass() != null
-        || (variableDescriptor instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor
-            && basicVariableDescriptor.hasMovableChainedTrailingValueFilter());
+    return config.getFilterClass() != null;
   }
 
   protected ValueSelector<Solution_> applyFiltering(
@@ -437,35 +373,15 @@ public class ValueSelectorFactory<Solution_>
       if (config.getFilterClass() != null) {
         filterList.add(instanceCache.newInstance(config, "filterClass", config.getFilterClass()));
       }
-      // Filter out pinned entities
-      if (variableDescriptor instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor
-          && basicVariableDescriptor.hasMovableChainedTrailingValueFilter()) {
-        filterList.add(basicVariableDescriptor.getMovableChainedTrailingValueFilter());
-      }
       valueSelector = FilteringValueSelector.of(valueSelector, SelectionFilter.compose(filterList));
-    }
-    return valueSelector;
-  }
-
-  protected ValueSelector<Solution_> applyInitializedChainedValueFilter(
-      HeuristicConfigPolicy<Solution_> configPolicy,
-      GenuineVariableDescriptor<Solution_> variableDescriptor,
-      ValueSelector<Solution_> valueSelector) {
-    var isChained =
-        variableDescriptor instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor
-            && basicVariableDescriptor.isChained();
-    if (configPolicy.isInitializedChainedValueFilterEnabled() && isChained) {
-      valueSelector = InitializedValueSelector.create(valueSelector);
     }
     return valueSelector;
   }
 
   protected void validateSorting(SelectionOrder resolvedSelectionOrder) {
     var sorterManner = config.getSorterManner();
-    var comparatorPropertyName = determineComparatorPropertyName(config);
-    var comparatorClass = determineComparatorClass(config);
-    var comparatorFactoryPropertyName = determineComparatorFactoryPropertyName(config);
-    var comparatorFactoryClass = determineComparatorFactoryClass(config);
+    var comparatorClass = config.getComparatorClass();
+    var comparatorFactoryClass = config.getComparatorFactoryClass();
     var sorterOrder = config.getSorterOrder();
     var sorterClass = config.getSorterClass();
     if ((sorterManner != null
@@ -477,44 +393,31 @@ public class ValueSelectorFactory<Solution_>
       throw new IllegalArgumentException(
           """
                     The valueSelectorConfig (%s) with sorterManner (%s) \
-                    and %s (%s) and %s (%s) and sorterOrder (%s) and sorterClass (%s) \
+                    and comparatorClass (%s) and comparatorFactoryClass (%s) and sorterOrder (%s) and sorterClass (%s) \
                     has a resolvedSelectionOrder (%s) that is not %s."""
               .formatted(
                   config,
                   sorterManner,
-                  comparatorPropertyName,
                   comparatorClass,
-                  comparatorFactoryPropertyName,
                   comparatorFactoryClass,
                   sorterOrder,
                   sorterClass,
                   resolvedSelectionOrder,
                   SORTED));
     }
+    assertNotSorterMannerAnd(config, "comparatorClass", ValueSelectorConfig::getComparatorClass);
+    assertNotSorterClassAnd(config, "comparatorClass", ValueSelectorConfig::getComparatorClass);
     assertNotSorterMannerAnd(
-        config, comparatorPropertyName, ValueSelectorFactory::determineComparatorClass);
-    assertNotSorterMannerAnd(
-        config,
-        comparatorFactoryPropertyName,
-        ValueSelectorFactory::determineComparatorFactoryClass);
+        config, "comparatorFactoryClass", ValueSelectorConfig::getComparatorFactoryClass);
+    assertNotSorterClassAnd(
+        config, "comparatorFactoryClass", ValueSelectorConfig::getComparatorFactoryClass);
     assertNotSorterMannerAnd(config, "sorterClass", ValueSelectorConfig::getSorterClass);
     assertNotSorterMannerAnd(config, "sorterOrder", ValueSelectorConfig::getSorterOrder);
-    assertNotSorterClassAnd(
-        config, comparatorPropertyName, ValueSelectorFactory::determineComparatorClass);
-    assertNotSorterClassAnd(
-        config,
-        comparatorFactoryPropertyName,
-        ValueSelectorFactory::determineComparatorFactoryClass);
     assertNotSorterClassAnd(config, "sorterOrder", ValueSelectorConfig::getSorterOrder);
     if (comparatorClass != null && comparatorFactoryClass != null) {
       throw new IllegalArgumentException(
-          "The valueSelectorConfig (%s) has both a %s (%s) and a %s (%s)."
-              .formatted(
-                  config,
-                  comparatorPropertyName,
-                  comparatorClass,
-                  comparatorFactoryPropertyName,
-                  comparatorFactoryClass));
+          "The valueSelectorConfig (%s) has both a comparatorClass (%s) and a comparatorFactoryClass (%s)."
+              .formatted(config, comparatorClass, comparatorFactoryClass));
     }
   }
 

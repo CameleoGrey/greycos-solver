@@ -10,13 +10,12 @@ import java.lang.annotation.Target;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 
 /**
  * Specifies that a bean property (or a field) is the id to match when {@link
- * ScoreDirector#lookUpWorkingObject(Object) locating} an externalObject (often from another {@link
+ * Lookup#lookUpWorkingObject(Object) looking up} an externalObject (often from another {@link
  * Thread} or JVM). Used during {@link Move} rebasing and in a {@link ProblemChange}.
  *
  * <p>It is specified on a getter of a java bean property (or directly on a field) of a {@link

@@ -28,16 +28,13 @@ import org.jspecify.annotations.NonNull;
  * iteration order. It is recommended to use a {@link List}, {@link LinkedHashSet} or {@link
  * SortedSet}.
  *
- * <p>Value ranges are not allowed to contain {@code null} values. When {@link
+ * <p>Value ranges are not allowed to contain multiple copies of the same object, as defined by
+ * {@link Object#equals(Object)}. Having duplicates in a value range can lead to unexpected
+ * behavior, and skews selection probabilities in random selection algorithms.
+ *
+ * <p>Value ranges are also not allowed to contain {@code null} values. When {@link
  * PlanningVariable#allowsUnassigned()} or {@link PlanningListVariable#allowsUnassignedValues()} is
  * true, the solver will handle {@code null} values on its own.
- *
- * <p>Value ranges are not allowed to contain multiple copies of the same object, as defined by
- * {@code ==}. It is recommended that the value range never contains two objects that are equal
- * according to {@link Object#equals(Object)}, but this is not enforced to not depend on
- * user-defined {@link Object#equals(Object)} implementations. Having duplicates in a value range
- * can lead to unexpected behavior, and skews selection probabilities in random selection
- * algorithms.
  *
  * <p>Value ranges are not allowed to change during solving. This is especially important for value
  * ranges defined on {@link PlanningEntity}-annotated classes; these must never depend on any of

@@ -12,10 +12,10 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;

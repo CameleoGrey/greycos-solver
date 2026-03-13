@@ -13,10 +13,6 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarChang
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.KOptMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainChangeMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainSwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.TailChainSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
@@ -35,10 +31,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.generic.PillarChangeM
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.PillarSwapMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.SwapMoveSelectorFactory;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.chained.KOptMoveSelectorFactory;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.chained.SubChainChangeMoveSelectorFactory;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.chained.SubChainSwapMoveSelectorFactory;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.chained.TailChainSwapMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ListSwapMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListChangeMoveSelectorFactory;
@@ -67,22 +59,11 @@ public interface MoveSelectorFactory<Solution_> {
         instanceof PillarSwapMoveSelectorConfig pillarSwapMoveSelectorConfig) {
       return new PillarSwapMoveSelectorFactory<>(pillarSwapMoveSelectorConfig);
     } else if (moveSelectorConfig
-        instanceof SubChainChangeMoveSelectorConfig subChainChangeMoveSelectorConfig) {
-      return new SubChainChangeMoveSelectorFactory<>(subChainChangeMoveSelectorConfig);
-    } else if (moveSelectorConfig
         instanceof SubListChangeMoveSelectorConfig subListChangeMoveSelectorConfig) {
       return new SubListChangeMoveSelectorFactory<>(subListChangeMoveSelectorConfig);
     } else if (moveSelectorConfig
-        instanceof SubChainSwapMoveSelectorConfig subChainSwapMoveSelectorConfig) {
-      return new SubChainSwapMoveSelectorFactory<>(subChainSwapMoveSelectorConfig);
-    } else if (moveSelectorConfig
         instanceof SubListSwapMoveSelectorConfig subListSwapMoveSelectorConfig) {
       return new SubListSwapMoveSelectorFactory<>(subListSwapMoveSelectorConfig);
-    } else if (moveSelectorConfig
-        instanceof TailChainSwapMoveSelectorConfig tailChainSwapMoveSelectorConfig) {
-      return new TailChainSwapMoveSelectorFactory<>(tailChainSwapMoveSelectorConfig);
-    } else if (KOptMoveSelectorConfig.class.isAssignableFrom(moveSelectorConfig.getClass())) {
-      return new KOptMoveSelectorFactory<>((KOptMoveSelectorConfig) moveSelectorConfig);
     } else if (KOptListMoveSelectorConfig.class.isAssignableFrom(moveSelectorConfig.getClass())) {
       return new KOptListMoveSelectorFactory<>((KOptListMoveSelectorConfig) moveSelectorConfig);
     } else if (moveSelectorConfig
@@ -113,6 +94,14 @@ public interface MoveSelectorFactory<Solution_> {
               "Unknown %s type: (%s).",
               MoveSelectorConfig.class.getSimpleName(), moveSelectorConfig.getClass().getName()));
     }
+  }
+
+  static <Solution_> AbstractMoveSelectorFactory<Solution_, ?> createForExhaustiveSearch(
+      MoveSelectorConfig<?> moveSelectorConfig) {
+    if (moveSelectorConfig instanceof ListChangeMoveSelectorConfig listChangeMoveSelectorConfig) {
+      return new ListChangeMoveSelectorFactory<>(listChangeMoveSelectorConfig, true);
+    }
+    return create(moveSelectorConfig);
   }
 
   /**

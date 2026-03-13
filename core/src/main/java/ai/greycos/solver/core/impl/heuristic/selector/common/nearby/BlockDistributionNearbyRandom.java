@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import java.util.Objects;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import org.jspecify.annotations.NonNull;
 
@@ -47,7 +47,7 @@ public final class BlockDistributionNearbyRandom implements NearbyRandom {
   }
 
   @Override
-  public int nextInt(@NonNull Random random, int nearbySize) {
+  public int nextInt(@NonNull RandomGenerator random, int nearbySize) {
     if (uniformDistributionProbability > 0.0) {
       if (random.nextDouble() < uniformDistributionProbability) {
         return random.nextInt(nearbySize);

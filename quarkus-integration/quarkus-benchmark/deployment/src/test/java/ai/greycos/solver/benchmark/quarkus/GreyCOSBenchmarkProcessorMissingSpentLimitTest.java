@@ -34,8 +34,8 @@ class GreyCOSBenchmarkProcessorMissingSpentLimitTest {
   void benchmark() throws ExecutionException, InterruptedException {
     assertThatCode(
             () ->
-                new GreyCOSBenchmarkRecorder()
-                    .benchmarkConfigSupplier(new PlannerBenchmarkConfig(), null)
+                new GreyCOSBenchmarkRecorder(null)
+                    .benchmarkConfigSupplier(new PlannerBenchmarkConfig())
                     .get())
         .hasMessageContaining(
             "At least one of the properties quarkus.greycos.benchmark.solver.termination.spent-limit, quarkus.greycos.benchmark.solver.termination.best-score-limit, quarkus.greycos.benchmark.solver.termination.unimproved-spent-limit is required if termination is not configured in the inherited solver benchmark config and solverBenchmarkBluePrint is used.");

@@ -48,32 +48,6 @@ public class SubListSwapMoveSelectorFactory<Solution_>
         Objects.requireNonNullElse(
             config.getSecondarySubListSelectorConfig(), subListSelectorConfig);
 
-    // minimum -> subListSelector
-    SubListConfigUtil.transferDeprecatedMinimumSubListSize(
-        config,
-        SubListSwapMoveSelectorConfig::getMinimumSubListSize,
-        "subListSelector",
-        subListSelectorConfig);
-    // maximum -> subListSelector
-    SubListConfigUtil.transferDeprecatedMaximumSubListSize(
-        config,
-        SubListSwapMoveSelectorConfig::getMaximumSubListSize,
-        "subListSelector",
-        subListSelectorConfig);
-    if (subListSelectorConfig != secondarySubListSelectorConfig) {
-      // minimum -> secondarySubListSelector
-      SubListConfigUtil.transferDeprecatedMinimumSubListSize(
-          config,
-          SubListSwapMoveSelectorConfig::getMinimumSubListSize,
-          "secondarySubListSelector",
-          secondarySubListSelectorConfig);
-      // maximum -> secondarySubListSelector
-      SubListConfigUtil.transferDeprecatedMaximumSubListSize(
-          config,
-          SubListSwapMoveSelectorConfig::getMaximumSubListSize,
-          "secondarySubListSelector",
-          secondarySubListSelectorConfig);
-    }
     var leftSubListSelector =
         SubListSelectorFactory.<Solution_>create(subListSelectorConfig)
             .buildSubListSelector(configPolicy, entitySelector, minimumCacheType, selectionOrder);

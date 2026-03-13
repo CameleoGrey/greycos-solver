@@ -66,7 +66,7 @@ public final class SingleDirectionalParentVariableReferenceGraph<Solution_>
               variableDescriptor,
               entityConsistencyState,
               variableDescriptor.getMemberAccessor(),
-              variableDescriptor.getCalculator()::executeGetter);
+              variableDescriptor.getCalculator());
       sortedVariableUpdaterInfos[updaterIndex++] = variableUpdaterInfo;
 
       for (var source : variableDescriptor.getSources()) {

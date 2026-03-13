@@ -2,12 +2,14 @@ package ai.greycos.solver.core.impl.bavet.tri;
 
 import java.util.function.Function;
 
-import ai.greycos.solver.core.impl.bavet.common.AbstractFlattenLastNode;
+import ai.greycos.solver.core.impl.bavet.common.AbstractFlattenNode;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TriTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 
 public final class FlattenLastTriNode<A, B, C, NewC>
-    extends AbstractFlattenLastNode<TriTuple<A, B, C>, TriTuple<A, B, NewC>, C, NewC> {
+    extends AbstractFlattenNode<TriTuple<A, B, C>, TriTuple<A, B, NewC>, NewC> {
+
+  private final Function<C, Iterable<NewC>> mappingFunction;
 
   private final int outputStoreSize;
 
@@ -16,17 +18,18 @@ public final class FlattenLastTriNode<A, B, C, NewC>
       Function<C, Iterable<NewC>> mappingFunction,
       TupleLifecycle<TriTuple<A, B, NewC>> nextNodesTupleLifecycle,
       int outputStoreSize) {
-    super(flattenLastStoreIndex, mappingFunction, nextNodesTupleLifecycle);
+    super(flattenLastStoreIndex, nextNodesTupleLifecycle);
+    this.mappingFunction = mappingFunction;
     this.outputStoreSize = outputStoreSize;
   }
 
   @Override
   protected TriTuple<A, B, NewC> createTuple(TriTuple<A, B, C> originalTuple, NewC newC) {
-    return new TriTuple<>(originalTuple.factA, originalTuple.factB, newC, outputStoreSize);
+    return TriTuple.of(originalTuple.getA(), originalTuple.getB(), newC, outputStoreSize);
   }
 
   @Override
-  protected C getEffectiveFactIn(TriTuple<A, B, C> tuple) {
-    return tuple.factC;
+  protected Iterable<NewC> extractIterable(TriTuple<A, B, C> tuple) {
+    return mappingFunction.apply(tuple.getC());
   }
 }

@@ -10,8 +10,7 @@ import java.util.stream.IntStream;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.score.ScoreManager;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverJob;
@@ -47,8 +46,7 @@ class GreyCOSProcessorShadowVariableSolveTest {
                           TestdataQuarkusShadowVariableListener.class));
 
   @Inject SolverFactory<TestdataQuarkusShadowVariableSolution> solverFactory;
-  @Inject SolverManager<TestdataQuarkusShadowVariableSolution, Long> solverManager;
-  @Inject ScoreManager<TestdataQuarkusShadowVariableSolution, SimpleScore> scoreManager;
+  @Inject SolverManager<TestdataQuarkusShadowVariableSolution> solverManager;
   @Inject SolutionManager<TestdataQuarkusShadowVariableSolution, SimpleScore> solutionManager;
 
   @Test
@@ -64,7 +62,7 @@ class GreyCOSProcessorShadowVariableSolveTest {
     // There is only one SolverFactory instance
     assertSame(
         solverFactory,
-        ((DefaultSolverManager<TestdataQuarkusShadowVariableSolution, Long>) solverManager)
+        ((DefaultSolverManager<TestdataQuarkusShadowVariableSolution>) solverManager)
             .getSolverFactory());
     assertNotNull(solutionManager);
   }
@@ -77,8 +75,7 @@ class GreyCOSProcessorShadowVariableSolveTest {
         IntStream.range(1, 3)
             .mapToObj(i -> new TestdataQuarkusShadowVariableEntity())
             .collect(Collectors.toList()));
-    SolverJob<TestdataQuarkusShadowVariableSolution, Long> solverJob =
-        solverManager.solve(1L, problem);
+    SolverJob<TestdataQuarkusShadowVariableSolution> solverJob = solverManager.solve(1L, problem);
     TestdataQuarkusShadowVariableSolution solution = solverJob.getFinalBestSolution();
     assertNotNull(solution);
     assertTrue(solution.getScore().score() >= 0);

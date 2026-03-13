@@ -1,39 +1,36 @@
 package ai.greycos.solver.core.impl.cotwin.common.accessor;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.solver.SolverFactory;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.AccessorInfo;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoClassLoader;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberAccessorFactory;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@NullMarked
 public final class MemberAccessorFactory {
 
-  // exists only so that the various member accessors can share the same text in their exception
-  // messages
+  static final Logger LOGGER = LoggerFactory.getLogger(MemberAccessorFactory.class);
   static final String CLASSLOADER_NUDGE_MESSAGE =
       "Maybe add getClass().getClassLoader() as a parameter to the %s.create...() method call."
           .formatted(SolverFactory.class.getSimpleName());
 
-  /**
-   * Creates a new member accessor based on the given parameters.
-   *
-   * @param member never null, method or field to access
-   * @param memberAccessorType never null
-   * @param cotwinAccessType never null
-   * @param classLoader null or {@link GizmoClassLoader} if cotwinAccessType is {@link
-   *     CotwinAccessType#GIZMO}.
-   * @return never null, new instance of the member accessor
-   */
-  public static MemberAccessor buildMemberAccessor(
+  private static MemberAccessor buildMemberAccessor(
       Member member,
       MemberAccessorType memberAccessorType,
       CotwinAccessType cotwinAccessType,
@@ -41,45 +38,85 @@ public final class MemberAccessorFactory {
     return buildMemberAccessor(member, memberAccessorType, null, cotwinAccessType, classLoader);
   }
 
-  /**
-   * Creates a new member accessor based on the given parameters.
-   *
-   * @param member never null, method or field to access
-   * @param memberAccessorType never null
-   * @param annotationClass the annotation the member was annotated with (used for error reporting)
-   * @param cotwinAccessType never null
-   * @param classLoader null or {@link GizmoClassLoader} if cotwinAccessType is {@link
-   *     CotwinAccessType#GIZMO}.
-   * @return never null, new instance of the member accessor
-   */
-  public static MemberAccessor buildMemberAccessor(
+  static MemberAccessor buildMemberAccessor(
       Member member,
       MemberAccessorType memberAccessorType,
-      Class<? extends Annotation> annotationClass,
+      @Nullable Class<? extends Annotation> annotationClass,
       CotwinAccessType cotwinAccessType,
       ClassLoader classLoader) {
+    MemberAccessorValidator.verifyIsValidMember(annotationClass, member, memberAccessorType);
     return switch (cotwinAccessType) {
-      case GIZMO ->
+      case AUTO ->
+          throw new IllegalStateException(
+              "Impossible state: called with %s (AUTO) instead of a resolved cotwin access type"
+                  .formatted(CotwinAccessType.class.getSimpleName()));
+      case FORCE_GIZMO ->
           GizmoMemberAccessorFactory.buildGizmoMemberAccessor(
               member,
               annotationClass,
-              AccessorInfo.of(
-                  memberAccessorType != MemberAccessorType.VOID_METHOD,
-                  memberAccessorType
-                      == MemberAccessorType.FIELD_OR_READ_METHOD_WITH_OPTIONAL_PARAMETER),
+              AccessorInfo.of(memberAccessorType),
               (GizmoClassLoader) Objects.requireNonNull(classLoader));
-      case REFLECTION -> buildReflectiveMemberAccessor(member, memberAccessorType, annotationClass);
+      case FORCE_REFLECTION ->
+          buildReflectiveMemberAccessor(member, memberAccessorType, annotationClass);
     };
   }
 
   private static MemberAccessor buildReflectiveMemberAccessor(
       Member member,
       MemberAccessorType memberAccessorType,
-      Class<? extends Annotation> annotationClass) {
+      @Nullable Class<? extends Annotation> annotationClass) {
+    return buildReflectiveMemberAccessor(
+        member, memberAccessorType, annotationClass, (AnnotatedElement) member);
+  }
+
+  private static MemberAccessor buildReflectiveMemberAccessor(
+      Member member,
+      MemberAccessorType memberAccessorType,
+      @Nullable Class<? extends Annotation> annotationClass,
+      AnnotatedElement annotatedElement) {
+    var messagePrefix =
+        (annotationClass == null)
+            ? "The"
+            : "The @%s annotated".formatted(annotationClass.getSimpleName());
     if (member instanceof Field field) {
-      return new ReflectionFieldMemberAccessor(field);
+      var getter = ReflectionHelper.getGetterMethod(field.getDeclaringClass(), field.getName());
+      if (getter == null) {
+        var setter =
+            ReflectionHelper.getSetterMethod(
+                field.getDeclaringClass(), field.getType(), field.getName());
+        if (setter != null) {
+          throw new IllegalArgumentException(
+              "%s field (%s) on class (%s) has a setter (%s) but no getter."
+                  .formatted(
+                      messagePrefix,
+                      field.getName(),
+                      field.getDeclaringClass().getCanonicalName(),
+                      setter));
+        }
+        if (Modifier.isFinal(field.getModifiers()) && memberAccessorType.isSetterRequired()) {
+          throw new IllegalArgumentException(
+              "%s field (%s) on class (%s) is final but requires a setter."
+                  .formatted(
+                      messagePrefix,
+                      field.getName(),
+                      field.getDeclaringClass().getCanonicalName()));
+        }
+        if (Modifier.isPublic(field.getModifiers())) {
+          return new ReflectionFieldMemberAccessor(field);
+        } else {
+          throw new IllegalArgumentException(
+              "%s field (%s) on class (%s) is not public and does not have a public getter method."
+                  .formatted(messagePrefix, field.getName(), field.getDeclaringClass().getName()));
+        }
+      }
+      return buildReflectiveMemberAccessor(getter, memberAccessorType, annotationClass, field);
     } else if (member instanceof Method method) {
       MemberAccessor memberAccessor;
+      if (!Modifier.isPublic(method.getModifiers())) {
+        throw new IllegalStateException(
+            "%s method (%s) on class (%s) is not public."
+                .formatted(messagePrefix, method.getName(), method.getDeclaringClass().getName()));
+      }
       switch (memberAccessorType) {
         case FIELD_OR_READ_METHOD, FIELD_OR_READ_METHOD_WITH_OPTIONAL_PARAMETER:
           if (!ReflectionHelper.isGetterMethod(method)) {
@@ -98,19 +135,18 @@ public final class MemberAccessorFactory {
                     : new ReflectionMethodMemberAccessor(method);
             break;
           }
-        // Intentionally fall through (no break)
         case FIELD_OR_GETTER_METHOD, FIELD_OR_GETTER_METHOD_WITH_SETTER:
-          boolean getterOnly =
-              memberAccessorType != MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER;
+          boolean getterOnly = !memberAccessorType.isSetterRequired();
           if (annotationClass == null) {
             ReflectionHelper.assertGetterMethod(method);
           } else {
             ReflectionHelper.assertGetterMethod(method, annotationClass);
           }
-          memberAccessor = new ReflectionBeanPropertyMemberAccessor(method, getterOnly);
+          memberAccessor =
+              new ReflectionBeanPropertyMemberAccessor(method, annotatedElement, getterOnly);
           break;
         case VOID_METHOD:
-          memberAccessor = new ReflectionMethodMemberAccessor(method, false, false);
+          memberAccessor = new ReflectionMethodMemberAccessor(method);
           break;
         default:
           throw new IllegalStateException(
@@ -142,76 +178,63 @@ public final class MemberAccessorFactory {
 
   private final Map<String, MemberAccessor> memberAccessorCache;
   private final GizmoClassLoader gizmoClassLoader = new GizmoClassLoader();
+  private final boolean isGizmoSupported;
 
   public MemberAccessorFactory() {
     this(null);
   }
 
-  /**
-   * Prefills the member accessor cache.
-   *
-   * @param memberAccessorMap key is the fully qualified member name
-   */
-  public MemberAccessorFactory(Map<String, MemberAccessor> memberAccessorMap) {
-    // The MemberAccessorFactory may be accessed, and this cache both read and updated, by multiple
-    // threads.
+  public MemberAccessorFactory(@Nullable Map<String, MemberAccessor> memberAccessorMap) {
     this.memberAccessorCache =
         memberAccessorMap == null
             ? new ConcurrentHashMap<>()
             : new ConcurrentHashMap<>(memberAccessorMap);
+    this.isGizmoSupported =
+        (memberAccessorMap != null && !memberAccessorMap.isEmpty())
+            || gizmoClassLoader.isGizmoSupported();
+    LOGGER.trace(
+        "Using cotwin access type {} for member accessors.",
+        isGizmoSupported ? CotwinAccessType.FORCE_GIZMO : CotwinAccessType.FORCE_REFLECTION);
   }
 
-  /**
-   * Creates a new member accessor based on the given parameters. Caches the result.
-   *
-   * @param member never null, method or field to access
-   * @param memberAccessorType never null
-   * @param annotationClass the annotation the member was annotated with (used for error reporting)
-   * @param cotwinAccessType never null
-   * @return never null, new {@link MemberAccessor} instance unless already found in
-   *     memberAccessorMap
-   */
   public MemberAccessor buildAndCacheMemberAccessor(
       Member member,
       MemberAccessorType memberAccessorType,
-      Class<? extends Annotation> annotationClass,
+      @Nullable Class<? extends Annotation> annotationClass,
       CotwinAccessType cotwinAccessType) {
     String generatedClassName = GizmoMemberAccessorFactory.getGeneratedClassName(member);
+    if (cotwinAccessType == CotwinAccessType.AUTO) {
+      cotwinAccessType =
+          isGizmoSupported ? CotwinAccessType.FORCE_GIZMO : CotwinAccessType.FORCE_REFLECTION;
+    }
+    var finalCotwinAccessType = cotwinAccessType;
     return memberAccessorCache.computeIfAbsent(
         generatedClassName,
         k ->
             MemberAccessorFactory.buildMemberAccessor(
-                member, memberAccessorType, annotationClass, cotwinAccessType, gizmoClassLoader));
+                member,
+                memberAccessorType,
+                annotationClass,
+                finalCotwinAccessType,
+                gizmoClassLoader));
   }
 
-  /**
-   * Creates a new member accessor based on the given parameters. Caches the result.
-   *
-   * @param member never null, method or field to access
-   * @param memberAccessorType never null
-   * @param cotwinAccessType never null
-   * @return never null, new {@link MemberAccessor} instance unless already found in
-   *     memberAccessorMap
-   */
   public MemberAccessor buildAndCacheMemberAccessor(
       Member member, MemberAccessorType memberAccessorType, CotwinAccessType cotwinAccessType) {
     String generatedClassName = GizmoMemberAccessorFactory.getGeneratedClassName(member);
+    if (cotwinAccessType == CotwinAccessType.AUTO) {
+      cotwinAccessType =
+          isGizmoSupported ? CotwinAccessType.FORCE_GIZMO : CotwinAccessType.FORCE_REFLECTION;
+    }
+    var finalCotwinAccessType = cotwinAccessType;
     return memberAccessorCache.computeIfAbsent(
         generatedClassName,
         k ->
             MemberAccessorFactory.buildMemberAccessor(
-                member, memberAccessorType, cotwinAccessType, gizmoClassLoader));
+                member, memberAccessorType, finalCotwinAccessType, gizmoClassLoader));
   }
 
   public GizmoClassLoader getGizmoClassLoader() {
     return gizmoClassLoader;
-  }
-
-  public enum MemberAccessorType {
-    FIELD_OR_READ_METHOD,
-    FIELD_OR_READ_METHOD_WITH_OPTIONAL_PARAMETER,
-    FIELD_OR_GETTER_METHOD,
-    FIELD_OR_GETTER_METHOD_WITH_SETTER,
-    VOID_METHOD
   }
 }

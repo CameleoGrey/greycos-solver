@@ -21,9 +21,6 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarChang
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainChangeMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainSwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.TailChainSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
@@ -34,7 +31,6 @@ import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchType;
 import ai.greycos.solver.core.config.localsearch.decider.acceptor.LocalSearchAcceptorConfig;
 import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchForagerConfig;
-import ai.greycos.solver.core.config.phase.NoChangePhaseConfig;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
 import ai.greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
@@ -117,12 +113,6 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
         name = ListMultistageMoveSelectorConfig.XML_ELEMENT_NAME,
         type = ListMultistageMoveSelectorConfig.class),
     @XmlElement(
-        name = SubChainChangeMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = SubChainChangeMoveSelectorConfig.class),
-    @XmlElement(
-        name = SubChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = SubChainSwapMoveSelectorConfig.class),
-    @XmlElement(
         name = SubListChangeMoveSelectorConfig.XML_ELEMENT_NAME,
         type = SubListChangeMoveSelectorConfig.class),
     @XmlElement(
@@ -131,9 +121,6 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     @XmlElement(
         name = SwapMoveSelectorConfig.XML_ELEMENT_NAME,
         type = SwapMoveSelectorConfig.class),
-    @XmlElement(
-        name = TailChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = TailChainSwapMoveSelectorConfig.class),
     @XmlElement(
         name = UnionMoveSelectorConfig.XML_ELEMENT_NAME,
         type = UnionMoveSelectorConfig.class)
@@ -160,7 +147,6 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     @XmlElement(
         name = LocalSearchPhaseConfig.XML_ELEMENT_NAME,
         type = LocalSearchPhaseConfig.class),
-    @XmlElement(name = NoChangePhaseConfig.XML_ELEMENT_NAME, type = NoChangePhaseConfig.class)
   })
   private List<PhaseConfig<?>> phaseConfigList = null;
 

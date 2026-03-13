@@ -6,11 +6,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactProperty;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -34,11 +34,10 @@ import org.jspecify.annotations.NullMarked;
  *
  * <p>We encourage you to try the API and give us feedback on your experience with it, before we
  * finalize the API. Please direct your feedback to <a
- * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver Github</a> or to
- * <a href="https://discord.com/channels/1413420192213631086/1414521616955605003">GreyCOS
- * Discord</a>.
+ * href="https://github.com/CameleoGrey/greycos-solver">GreyCOS Solver GitHub</a>.
  *
  * @param <Solution_>
+ * @see MoveTester How to test {@link Move}s.
  */
 @NullMarked
 public interface Move<Solution_> {
@@ -53,23 +52,22 @@ public interface Move<Solution_> {
   void execute(MutableSolutionView<Solution_> solutionView);
 
   /**
-   * Rebases a move from an origin {@link ScoreDirector} to another destination {@link
-   * ScoreDirector} which is usually on another {@link Thread}. It is necessary for multithreaded
-   * solving to function.
+   * Rebases a move from an origin working solution to another destination working solution which is
+   * usually on another {@link Thread}. It is necessary for multithreaded solving to function.
    *
    * <p>The new move returned by this method translates the entities and problem facts to the
-   * destination {@link PlanningSolution} of the destination {@link ScoreDirector}, That destination
-   * {@link PlanningSolution} is a deep planning clone (or an even deeper clone) of the origin
-   * {@link PlanningSolution} that this move has been generated from.
+   * destination {@link PlanningSolution} of the destination. That destination {@link
+   * PlanningSolution} is a deep planning clone (or an even deeper clone) of the origin {@link
+   * PlanningSolution} that this move has been generated from.
    *
    * <p>That new move does the exact same change as this move, resulting in the same {@link
    * PlanningSolution} state, presuming that destination {@link PlanningSolution} was in the same
    * state as the original {@link PlanningSolution} to begin with.
    *
    * <p>An implementation of this method typically iterates through every entity and fact instance
-   * in this move, translates each one to the destination {@link ScoreDirector} with {@link
-   * Rebaser#rebase(Object)} and creates a new move instance of the same move type, using those
-   * translated instances.
+   * in this move, translates each one to the destination with {@link
+   * Lookup#lookUpWorkingObject(Object)} and creates a new move instance of the same move type,
+   * using those translated instances.
    *
    * <p>The destination {@link PlanningSolution} can be in a different state than the original
    * {@link PlanningSolution}. So, rebasing can only depend on the identity of {@link PlanningEntity
@@ -78,12 +76,17 @@ public interface Move<Solution_> {
    * PlanningVariable planning variables}. One thread might rebase a move before, amid or after
    * another thread does that same move instance.
    *
-   * <p>This method is thread-safe.
+   * <p>The default implementation throws an {@link UnsupportedOperationException}, making
+   * multithreaded solving impossible unless the move class implements this method.
    *
-   * @param rebaser Do not store this parameter in a field
+   * @param lookup Do not store this parameter in a field
    * @return New move that does the same change as this move on another solution instance
    */
-  Move<Solution_> rebase(Rebaser rebaser);
+  default Move<Solution_> rebase(Lookup lookup) {
+    throw new UnsupportedOperationException(
+        "Move class (%s) doesn't implement the rebase() method, so multithreaded solving is impossible."
+            .formatted(getClass()));
+  }
 
   /**
    * Returns all planning entities that this move is changing. Required for entity tabu.
@@ -94,6 +97,9 @@ public interface Move<Solution_> {
    * <p>Duplicate entries in the returned {@link Collection} are best avoided. The returned {@link
    * Collection} is recommended to be in a stable order. For example, use {@link List} or {@link
    * LinkedHashSet}, but not {@link HashSet}.
+   *
+   * <p>The default implementation throws an {@link UnsupportedOperationException}, making tabu
+   * search impossible unless the move class implements this method.
    *
    * @return Each entity only once.
    */
@@ -113,6 +119,9 @@ public interface Move<Solution_> {
    * <p>Duplicate entries in the returned {@link Collection} are best avoided. The returned {@link
    * Collection} is recommended to be in a stable order. For example, use {@link List} or {@link
    * LinkedHashSet}, but not {@link HashSet}.
+   *
+   * <p>The default implementation throws an {@link UnsupportedOperationException}, making tabu
+   * search impossible unless the move class implements this method.
    *
    * @return Each value only once. May contain null.
    */
@@ -135,14 +144,4 @@ public interface Move<Solution_> {
   default String describe() {
     return getClass().getSimpleName();
   }
-
-  /**
-   * The solver will make sure to only call this when the move is actually printed out during debug
-   * logging.
-   *
-   * @return A description of the move, ideally including the state of the planning entities being
-   *     changed.
-   */
-  @Override
-  String toString();
 }

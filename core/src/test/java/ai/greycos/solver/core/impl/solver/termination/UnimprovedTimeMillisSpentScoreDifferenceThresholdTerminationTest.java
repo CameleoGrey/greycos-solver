@@ -9,7 +9,7 @@ import static org.mockito.Mockito.spy;
 
 import java.time.Clock;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;

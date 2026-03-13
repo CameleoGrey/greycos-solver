@@ -6,12 +6,13 @@ import java.util.List;
 import java.util.Objects;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.impl.move.AbstractMove;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -103,13 +104,13 @@ public class ListChangeMove<Solution_, Entity_, Value_> extends AbstractMove<Sol
     this.sourceEntity = Objects.requireNonNull(sourceEntity);
     if (sourceIndex < 0) {
       throw new IllegalArgumentException(
-          "The sourceIndex (" + sourceIndex + ") must be greater than 0.");
+          "The sourceIndex (%d) must be >= 0.".formatted(sourceIndex));
     }
     this.sourceIndex = sourceIndex;
     this.destinationEntity = Objects.requireNonNull(destinationEntity);
     if (destinationIndex < 0) {
       throw new IllegalArgumentException(
-          "The destinationIndex (" + destinationIndex + ") must be greater than 0.");
+          "The destinationIndex (%d) must be >= 0.".formatted(destinationIndex));
     }
     this.destinationIndex = destinationIndex;
   }
@@ -135,12 +136,12 @@ public class ListChangeMove<Solution_, Entity_, Value_> extends AbstractMove<Sol
   }
 
   @Override
-  public ListChangeMove<Solution_, Entity_, Value_> rebase(Rebaser rebaser) {
+  public ListChangeMove<Solution_, Entity_, Value_> rebase(Lookup lookup) {
     return new ListChangeMove<>(
         variableMetaModel,
-        Objects.requireNonNull(rebaser.rebase(sourceEntity)),
+        Objects.requireNonNull(lookup.lookUpWorkingObject(sourceEntity)),
         sourceIndex,
-        Objects.requireNonNull(rebaser.rebase(destinationEntity)),
+        Objects.requireNonNull(lookup.lookUpWorkingObject(destinationEntity)),
         destinationIndex);
   }
 

@@ -6,7 +6,7 @@ import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.DataNodeBuildHelper;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.UniEnumeratingFilter;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.function.UniNeighborhoodsPredicate;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -14,12 +14,12 @@ import org.jspecify.annotations.NullMarked;
 final class FilterUniEnumeratingStream<Solution_, A>
     extends AbstractUniEnumeratingStream<Solution_, A> {
 
-  private final UniEnumeratingFilter<Solution_, A> filter;
+  private final UniNeighborhoodsPredicate<Solution_, A> filter;
 
   public FilterUniEnumeratingStream(
       EnumeratingStreamFactory<Solution_> enumeratingStreamFactory,
       AbstractUniEnumeratingStream<Solution_, A> parent,
-      UniEnumeratingFilter<Solution_, A> filter) {
+      UniNeighborhoodsPredicate<Solution_, A> filter) {
     super(enumeratingStreamFactory, parent);
     this.filter = Objects.requireNonNull(filter, "The filter cannot be null.");
   }

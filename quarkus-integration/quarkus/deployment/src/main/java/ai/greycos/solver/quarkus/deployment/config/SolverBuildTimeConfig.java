@@ -3,8 +3,6 @@ package ai.greycos.solver.quarkus.deployment.config;
 import java.util.Optional;
 import java.util.Set;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
-import ai.greycos.solver.core.api.score.stream.ConstraintStreamImplType;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.quarkus.config.SolverRuntimeConfig;
@@ -28,14 +26,6 @@ public interface SolverBuildTimeConfig {
   // which generates the constructor of classes used by Quarkus
   Optional<String> solverConfigXml();
 
-  /**
-   * Determines how to access the fields and methods of cotwin classes. Defaults to {@link
-   * CotwinAccessType#GIZMO}.
-   */
-  // Build time - GIZMO classes are only generated if at least one solver
-  // has cotwin access type GIZMO
-  Optional<CotwinAccessType> cotwinAccessType();
-
   /** Enable the Nearby Selection quick configuration. */
   // Build time - visited by SolverConfig.visitReferencedClasses
   // which generates the constructor used by Quarkus
@@ -46,15 +36,6 @@ public interface SolverBuildTimeConfig {
    * considered stable and may change between releases.
    */
   Optional<Set<PreviewFeature>> enabledPreviewFeatures();
-
-  /**
-   * What constraint stream implementation to use. Defaults to {@link
-   * ConstraintStreamImplType#BAVET}.
-   *
-   * @deprecated Not used anymore.
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  Optional<ConstraintStreamImplType> constraintStreamImplType();
 
   /**
    * Enable rewriting the {@link ai.greycos.solver.core.api.score.stream.ConstraintProvider} class

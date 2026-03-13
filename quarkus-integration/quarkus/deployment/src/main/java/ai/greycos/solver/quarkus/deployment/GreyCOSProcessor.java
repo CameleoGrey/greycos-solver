@@ -1,9 +1,7 @@
 package ai.greycos.solver.quarkus.deployment;
 
 import static io.quarkus.deployment.annotations.ExecutionTime.RUNTIME_INIT;
-import static java.lang.String.format;
 
-import java.lang.constant.ClassDesc;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -24,13 +22,8 @@ import java.util.stream.Collectors;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Singleton;
 
-import ai.greycos.solver.core.api.cotwin.autodiscover.AutoDiscoverMemberType;
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
-import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
-import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
@@ -43,11 +36,15 @@ import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.SolverManagerConfig;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.AccessorInfo;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.RootVariableSource;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
+import ai.greycos.solver.core.impl.score.stream.test.DefaultConstraintVerifier;
+import ai.greycos.solver.core.impl.solver.DefaultSolverFactory;
 import ai.greycos.solver.quarkus.GreyCOSRecorder;
 import ai.greycos.solver.quarkus.bean.BeanUtil;
 import ai.greycos.solver.quarkus.bean.DefaultGreyCOSBeanProvider;
@@ -55,6 +52,8 @@ import ai.greycos.solver.quarkus.bean.GreyCOSSolverBannerBean;
 import ai.greycos.solver.quarkus.bean.UnavailableGreyCOSBeanProvider;
 import ai.greycos.solver.quarkus.config.GreyCOSRuntimeConfig;
 import ai.greycos.solver.quarkus.deployment.api.ConstraintMetaModelBuildItem;
+import ai.greycos.solver.quarkus.deployment.api.GeneratedGizmoClasses;
+import ai.greycos.solver.quarkus.deployment.api.SolverConfigBuildItem;
 import ai.greycos.solver.quarkus.deployment.config.GreyCOSBuildTimeConfig;
 import ai.greycos.solver.quarkus.deployment.config.SolverBuildTimeConfig;
 import ai.greycos.solver.quarkus.devui.DevUISolverConfig;
@@ -64,7 +63,6 @@ import ai.greycos.solver.quarkus.gizmo.GreyCOSGizmoBeanFactory;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationTarget;
-import org.jboss.jandex.AnnotationValue;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.FieldInfo;
@@ -92,6 +90,7 @@ import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
 import io.quarkus.deployment.builditem.HotDeploymentWatchedFileBuildItem;
 import io.quarkus.deployment.builditem.IndexDependencyBuildItem;
+import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveHierarchyBuildItem;
 import io.quarkus.deployment.pkg.steps.NativeBuild;
 import io.quarkus.deployment.recording.RecorderContext;
@@ -205,6 +204,7 @@ class GreyCOSProcessor {
       BuildProducer<GeneratedBeanBuildItem> generatedBeans,
       BuildProducer<GeneratedClassBuildItem> generatedClasses,
       BuildProducer<GeneratedResourceBuildItem> generatedResources,
+      BuildProducer<ReflectiveClassBuildItem> registerReflectiveClasses,
       BuildProducer<BytecodeTransformerBuildItem> transformers) {
     var indexView = combinedIndex.getIndex();
 
@@ -322,6 +322,15 @@ class GreyCOSProcessor {
       additionalBeans.produce(new AdditionalBeanBuildItem(DefaultGreyCOSBeanProvider.class));
     }
     unremovableBeans.produce(UnremovableBeanBuildItem.beanTypes(GreyCOSRuntimeConfig.class));
+
+    for (var reflectiveClass : reflectiveClassSet) {
+      registerReflectiveClasses.produce(
+          ReflectiveClassBuildItem.builder(reflectiveClass)
+              .fields()
+              .queryMethods()
+              .reason("Need to read annotations at runtime")
+              .build());
+    }
     return new SolverConfigBuildItem(solverConfigMap, generatedGizmoClasses);
   }
 
@@ -756,14 +765,9 @@ class GreyCOSProcessor {
         .getSolverConfigMap()
         .forEach(
             (solverName, solverConfig) -> {
-              // Gizmo-generated member accessors are not yet available at build time.
-              var originalCotwinAccessType = solverConfig.getCotwinAccessType();
-              solverConfig.setCotwinAccessType(CotwinAccessType.REFLECTION);
-
-              var solverFactory = SolverFactory.create(solverConfig);
+              var solverFactory =
+                  new DefaultSolverFactory<>(solverConfig, CotwinAccessType.FORCE_REFLECTION);
               var constraintMetaModel = BeanUtil.buildConstraintMetaModel(solverFactory);
-              // Avoid changing the original solver config.
-              solverConfig.setCotwinAccessType(originalCotwinAccessType);
               constraintMetaModelsBySolverNames.put(solverName, constraintMetaModel);
             });
 
@@ -805,12 +809,14 @@ class GreyCOSProcessor {
                                 GizmoMemberAccessorEntityEnhancer
                                     .getGeneratedGizmoMemberAccessorMap(
                                         recorderContext,
-                                        solverConfigBuildItem.getGeneratedGizmoClasses()
-                                            .generatedGizmoMemberAccessorClassSet),
+                                        solverConfigBuildItem
+                                            .getGeneratedGizmoClasses()
+                                            .getGeneratedGizmoMemberAccessorClassSet()),
                                 GizmoMemberAccessorEntityEnhancer.getGeneratedSolutionClonerMap(
                                     recorderContext,
-                                    solverConfigBuildItem.getGeneratedGizmoClasses()
-                                        .generatedGizmoSolutionClonerClassSet)))
+                                    solverConfigBuildItem
+                                        .getGeneratedGizmoClasses()
+                                        .getGeneratedGizmoSolutionClonerClassSet())))
                         .setRuntimeInit()
                         .defaultBean()
                         .done());
@@ -845,12 +851,14 @@ class GreyCOSProcessor {
                                 GizmoMemberAccessorEntityEnhancer
                                     .getGeneratedGizmoMemberAccessorMap(
                                         recorderContext,
-                                        solverConfigBuildItem.getGeneratedGizmoClasses()
-                                            .generatedGizmoMemberAccessorClassSet),
+                                        solverConfigBuildItem
+                                            .getGeneratedGizmoClasses()
+                                            .getGeneratedGizmoMemberAccessorClassSet()),
                                 GizmoMemberAccessorEntityEnhancer.getGeneratedSolutionClonerMap(
                                     recorderContext,
-                                    solverConfigBuildItem.getGeneratedGizmoClasses()
-                                        .generatedGizmoSolutionClonerClassSet)))
+                                    solverConfigBuildItem
+                                        .getGeneratedGizmoClasses()
+                                        .getGeneratedGizmoSolutionClonerClassSet())))
                         .setRuntimeInit()
                         .named(key)
                         .done());
@@ -886,12 +894,14 @@ class GreyCOSProcessor {
                     solverConfigBuildItem.getSolverConfigMap(),
                     GizmoMemberAccessorEntityEnhancer.getGeneratedGizmoMemberAccessorMap(
                         recorderContext,
-                        solverConfigBuildItem.getGeneratedGizmoClasses()
-                            .generatedGizmoMemberAccessorClassSet),
+                        solverConfigBuildItem
+                            .getGeneratedGizmoClasses()
+                            .getGeneratedGizmoMemberAccessorClassSet()),
                     GizmoMemberAccessorEntityEnhancer.getGeneratedSolutionClonerMap(
                         recorderContext,
-                        solverConfigBuildItem.getGeneratedGizmoClasses()
-                            .generatedGizmoSolutionClonerClassSet)))
+                        solverConfigBuildItem
+                            .getGeneratedGizmoClasses()
+                            .getGeneratedGizmoSolutionClonerClassSet())))
             .defaultBean()
             .setRuntimeInit()
             .done());
@@ -973,8 +983,7 @@ class GreyCOSProcessor {
                     var constraintVerifierResultHandle =
                         methodCreator.new_(
                             ConstructorDesc.of(
-                                ClassDesc.of(
-                                    "ai.greycos.solver.test.impl.score.stream.DefaultConstraintVerifier"),
+                                DefaultConstraintVerifier.class,
                                 ConstraintProvider.class,
                                 SolutionDescriptor.class),
                             constraintProviderResultHandle,
@@ -1011,15 +1020,6 @@ class GreyCOSProcessor {
     applyScoreDirectorFactoryProperties(indexView, solverConfig);
 
     // Override the current configuration with values from the solver properties
-    greycosBuildTimeConfig
-        .getSolverConfig(solverName)
-        .flatMap(SolverBuildTimeConfig::cotwinAccessType)
-        .ifPresent(solverConfig::setCotwinAccessType);
-
-    if (solverConfig.getCotwinAccessType() == null) {
-      solverConfig.setCotwinAccessType(CotwinAccessType.GIZMO);
-    }
-
     greycosBuildTimeConfig
         .getSolverConfig(solverName)
         .flatMap(SolverBuildTimeConfig::enabledPreviewFeatures)
@@ -1214,10 +1214,8 @@ class GreyCOSProcessor {
      * "entity" in this context means both "planning solution",
      * "planning entity" and other things as well.
      */
-    assertSolverCotwinAccessType(solverConfigMap);
     var entityEnhancer = new GizmoMemberAccessorEntityEnhancer();
-    if (solverConfigMap.values().stream()
-        .anyMatch(c -> c.getCotwinAccessType() == CotwinAccessType.GIZMO)) {
+    {
       var membersToGeneratedAccessorsForCollection = new ArrayList<AnnotationInstance>();
 
       // Every entity and solution gets scanned for annotations.
@@ -1258,32 +1256,6 @@ class GreyCOSProcessor {
                     PlanningSolution.class.getSimpleName()));
       }
 
-      planningSolutionAnnotationInstanceCollection.forEach(
-          planningSolutionAnnotationInstance -> {
-            var autoDiscoverMemberType =
-                planningSolutionAnnotationInstance.values().stream()
-                    .filter(v -> v.name().equals("autoDiscoverMemberType"))
-                    .findFirst()
-                    .map(AnnotationValue::asEnum)
-                    .map(AutoDiscoverMemberType::valueOf)
-                    .orElse(AutoDiscoverMemberType.NONE);
-
-            if (autoDiscoverMemberType != AutoDiscoverMemberType.NONE) {
-              throw new UnsupportedOperationException(
-                  """
-                            Auto-discovery of members using %s is not supported under Quarkus.
-                            Remove the autoDiscoverMemberType property from the @%s annotation
-                            and explicitly annotate the fields or getters with annotations such as @%s, @%s or @%s."""
-                      .strip()
-                      .formatted(
-                          AutoDiscoverMemberType.class.getSimpleName(),
-                          PlanningSolution.class.getSimpleName(),
-                          PlanningScore.class.getSimpleName(),
-                          PlanningEntityCollectionProperty.class.getSimpleName(),
-                          ProblemFactCollectionProperty.class.getSimpleName()));
-            }
-          });
-
       var visited = new HashSet<AnnotationTarget>();
       for (var annotatedMember : membersToGeneratedAccessorsForCollection) {
         ClassInfo classInfo = null;
@@ -1316,7 +1288,10 @@ class GreyCOSProcessor {
                 classOutput,
                 classInfo,
                 methodInfo,
-                AccessorInfo.of(true, annotatedMember.name().equals(DotNames.VALUE_RANGE_PROVIDER)),
+                AccessorInfo.of(
+                    annotatedMember.name().equals(DotNames.VALUE_RANGE_PROVIDER)
+                        ? MemberAccessorType.FIELD_OR_READ_METHOD_WITH_OPTIONAL_PARAMETER
+                        : MemberAccessorType.FIELD_OR_READ_METHOD),
                 transformers);
           }
           default ->
@@ -1335,7 +1310,7 @@ class GreyCOSProcessor {
               classOutput,
               classInfo,
               methodInfo,
-              AccessorInfo.of(false, false),
+              AccessorInfo.of(MemberAccessorType.VOID_METHOD),
               transformers);
         } else if (annotatedMember.name().equals(DotNames.SHADOW_VARIABLE)
             && annotatedMember.value("supplierName") != null) {
@@ -1360,7 +1335,7 @@ class GreyCOSProcessor {
               classOutput,
               classInfo,
               methodInfo,
-              AccessorInfo.withReturnValueAndNoArguments(),
+              AccessorInfo.of(MemberAccessorType.FIELD_OR_READ_METHOD_WITH_OPTIONAL_PARAMETER),
               transformers);
         }
       }
@@ -1415,7 +1390,7 @@ class GreyCOSProcessor {
                 var solutionDescriptor =
                     SolutionDescriptor.buildSolutionDescriptor(
                         c.getEnablePreviewFeatureSet(),
-                        CotwinAccessType.REFLECTION,
+                        CotwinAccessType.FORCE_REFLECTION,
                         c.getSolutionClass(),
                         null,
                         null,
@@ -1524,25 +1499,6 @@ class GreyCOSProcessor {
           "Failed to generate member accessor for the method (%s) of the class (%s)."
               .formatted(methodInfo.name(), classInfo.name()),
           e);
-    }
-  }
-
-  private void assertSolverCotwinAccessType(Map<String, SolverConfig> solverConfigMap) {
-    // All solver must use the same cotwin access type
-    if (solverConfigMap.values().stream().map(SolverConfig::getCotwinAccessType).distinct().count()
-        > 1) {
-      throw new ConfigurationException(
-          """
-                            The cotwin access type must be unique across all Solver configurations.
-                            %s"""
-              .formatted(
-                  solverConfigMap.entrySet().stream()
-                      .map(
-                          e ->
-                              format(
-                                  "quarkus.greycos.\"%s\".cotwin-access-type=%s",
-                                  e.getKey(), e.getValue().getCotwinAccessType()))
-                      .collect(Collectors.joining("\n"))));
     }
   }
 

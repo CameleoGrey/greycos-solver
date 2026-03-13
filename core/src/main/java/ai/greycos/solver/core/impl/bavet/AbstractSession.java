@@ -12,6 +12,7 @@ public abstract class AbstractSession {
   private final Map<Class<?>, BavetRootNode<Object>[]> insertEffectiveClassToNodeArrayMap;
   private final Map<Class<?>, BavetRootNode<Object>[]> updateEffectiveClassToNodeArrayMap;
   private final Map<Class<?>, BavetRootNode<Object>[]> retractEffectiveClassToNodeArrayMap;
+  private boolean settled = true;
 
   protected AbstractSession(NodeNetwork nodeNetwork) {
     this.nodeNetwork = nodeNetwork;
@@ -22,6 +23,7 @@ public abstract class AbstractSession {
   }
 
   public final void insert(Object fact) {
+    settled = false;
     var factClass = fact.getClass();
     for (var node : findNodes(factClass, BavetRootNode.LifecycleOperation.INSERT)) {
       node.insert(fact);
@@ -51,6 +53,7 @@ public abstract class AbstractSession {
   }
 
   public final void update(Object fact) {
+    settled = false;
     var factClass = fact.getClass();
     for (var node : findNodes(factClass, BavetRootNode.LifecycleOperation.UPDATE)) {
       node.update(fact);
@@ -58,13 +61,22 @@ public abstract class AbstractSession {
   }
 
   public final void retract(Object fact) {
+    settled = false;
     var factClass = fact.getClass();
     for (var node : findNodes(factClass, BavetRootNode.LifecycleOperation.RETRACT)) {
       node.retract(fact);
     }
   }
 
-  public void settle() {
+  public final void settle() {
+    if (settled) {
+      return;
+    }
     nodeNetwork.settle();
+    settled = true;
+  }
+
+  public final void summarizeProfileIfPresent() {
+    nodeNetwork.summarizeProfileIfPresent();
   }
 }

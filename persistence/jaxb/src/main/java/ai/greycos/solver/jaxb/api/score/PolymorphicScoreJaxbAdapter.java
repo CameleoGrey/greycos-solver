@@ -4,19 +4,15 @@ import jakarta.xml.bind.annotation.XmlAttribute;
 import jakarta.xml.bind.annotation.XmlValue;
 import jakarta.xml.bind.annotation.adapters.XmlAdapter;
 
+import ai.greycos.solver.core.api.score.BendableBigDecimalScore;
+import ai.greycos.solver.core.api.score.BendableScore;
+import ai.greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import ai.greycos.solver.core.api.score.HardMediumSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
-import ai.greycos.solver.core.api.score.buildin.bendablebigdecimal.BendableBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.bendablelong.BendableLongScore;
-import ai.greycos.solver.core.api.score.buildin.hardmediumsoft.HardMediumSoftScore;
-import ai.greycos.solver.core.api.score.buildin.hardmediumsoftbigdecimal.HardMediumSoftBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.hardmediumsoftlong.HardMediumSoftLongScore;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.core.api.score.buildin.hardsoftbigdecimal.HardSoftBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
-import ai.greycos.solver.core.api.score.buildin.simplebigdecimal.SimpleBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.simplelong.SimpleLongScore;
+import ai.greycos.solver.core.api.score.SimpleBigDecimalScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 
 public class PolymorphicScoreJaxbAdapter
     extends XmlAdapter<PolymorphicScoreJaxbAdapter.JaxbAdaptedScore, Score> {
@@ -31,26 +27,18 @@ public class PolymorphicScoreJaxbAdapter
     // TODO Can this delegate to ScoreUtils.parseScore()?
     if (scoreClassName.equals(SimpleScore.class.getName())) {
       return SimpleScore.parseScore(scoreString);
-    } else if (scoreClassName.equals(SimpleLongScore.class.getName())) {
-      return SimpleLongScore.parseScore(scoreString);
     } else if (scoreClassName.equals(SimpleBigDecimalScore.class.getName())) {
       return SimpleBigDecimalScore.parseScore(scoreString);
     } else if (scoreClassName.equals(HardSoftScore.class.getName())) {
       return HardSoftScore.parseScore(scoreString);
-    } else if (scoreClassName.equals(HardSoftLongScore.class.getName())) {
-      return HardSoftLongScore.parseScore(scoreString);
     } else if (scoreClassName.equals(HardSoftBigDecimalScore.class.getName())) {
       return HardSoftBigDecimalScore.parseScore(scoreString);
     } else if (scoreClassName.equals(HardMediumSoftScore.class.getName())) {
       return HardMediumSoftScore.parseScore(scoreString);
-    } else if (scoreClassName.equals(HardMediumSoftLongScore.class.getName())) {
-      return HardMediumSoftLongScore.parseScore(scoreString);
     } else if (scoreClassName.equals(HardMediumSoftBigDecimalScore.class.getName())) {
       return HardMediumSoftBigDecimalScore.parseScore(scoreString);
     } else if (scoreClassName.equals(BendableScore.class.getName())) {
       return BendableScore.parseScore(scoreString);
-    } else if (scoreClassName.equals(BendableLongScore.class.getName())) {
-      return BendableLongScore.parseScore(scoreString);
     } else if (scoreClassName.equals(BendableBigDecimalScore.class.getName())) {
       return BendableBigDecimalScore.parseScore(scoreString);
     } else {

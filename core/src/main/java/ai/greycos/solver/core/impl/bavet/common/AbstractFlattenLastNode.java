@@ -10,16 +10,13 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
 import ai.greycos.solver.core.impl.util.CollectionUtils;
 
 public abstract class AbstractFlattenLastNode<
-        InTuple_ extends AbstractTuple,
-        OutTuple_ extends AbstractTuple,
-        EffectiveItem_,
-        FlattenedItem_>
+        InTuple_ extends Tuple, OutTuple_ extends Tuple, EffectiveItem_, FlattenedItem_>
     extends AbstractNode implements TupleLifecycle<InTuple_> {
 
   private final int flattenLastStoreIndex;
@@ -33,6 +30,11 @@ public abstract class AbstractFlattenLastNode<
     this.flattenLastStoreIndex = flattenLastStoreIndex;
     this.mappingFunction = Objects.requireNonNull(mappingFunction);
     this.propagationQueue = new StaticPropagationQueue<>(nextNodesTupleLifecycle);
+  }
+
+  @Override
+  public StreamKind getStreamKind() {
+    return StreamKind.FLATTEN;
   }
 
   @Override
@@ -112,7 +114,7 @@ public abstract class AbstractFlattenLastNode<
   }
 
   private void removeTuple(OutTuple_ outTuple) {
-    var state = outTuple.state;
+    var state = outTuple.getState();
     if (!state.isActive()) {
       throw new IllegalStateException(
           "Impossible state: The tuple (%s) is in an unexpected state (%s)."

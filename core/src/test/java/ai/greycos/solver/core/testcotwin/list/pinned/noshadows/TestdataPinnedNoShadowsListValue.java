@@ -3,7 +3,7 @@ package ai.greycos.solver.core.testcotwin.list.pinned.noshadows;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.index.IndexShadowVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.IndexShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 

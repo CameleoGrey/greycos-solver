@@ -6,7 +6,7 @@ import java.util.Iterator;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
-import ai.greycos.solver.core.impl.heuristic.move.NoChangeMove;
+import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
@@ -65,19 +65,19 @@ public class OriginalListChangeIterator<Solution_>
     var upcomingSource = listVariableStateSupply.getElementPosition(upcomingLeftValue);
     if (upcomingSource instanceof PositionInList sourceElement) {
       if (upcomingDestination instanceof PositionInList destinationElement) {
-        return new ListChangeMove<>(
+        return new SelectorBasedListChangeMove<>(
             listVariableDescriptor,
             sourceElement.entity(),
             sourceElement.index(),
             destinationElement.entity(),
             destinationElement.index());
       } else {
-        return new ListUnassignMove<>(
+        return new SelectorBasedListUnassignMove<>(
             listVariableDescriptor, sourceElement.entity(), sourceElement.index());
       }
     } else {
       if (upcomingDestination instanceof PositionInList destinationElement) {
-        return new ListAssignMove<>(
+        return new SelectorBasedListAssignMove<>(
             listVariableDescriptor,
             upcomingLeftValue,
             destinationElement.entity(),
@@ -85,7 +85,7 @@ public class OriginalListChangeIterator<Solution_>
       } else {
         // Only used in construction heuristics to give the CH an option to leave the element
         // unassigned.
-        return NoChangeMove.getInstance();
+        return SelectorBasedNoChangeMove.getInstance();
       }
     }
   }

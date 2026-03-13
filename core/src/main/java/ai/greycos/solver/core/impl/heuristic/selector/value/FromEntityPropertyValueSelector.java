@@ -4,7 +4,7 @@ import java.util.Iterator;
 import java.util.Objects;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
@@ -24,7 +24,7 @@ public final class FromEntityPropertyValueSelector<Solution_>
   private final SelectionSorter<Solution_, Object> selectionSorter;
   private final boolean randomSelection;
 
-  private CountableValueRange<Object> countableValueRange;
+  private ValueRange<Object> valueRange;
   private InnerScoreDirector<Solution_, ?> scoreDirector;
 
   public FromEntityPropertyValueSelector(
@@ -44,7 +44,7 @@ public final class FromEntityPropertyValueSelector<Solution_>
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
     this.scoreDirector = phaseScope.getScoreDirector();
-    this.countableValueRange =
+    this.valueRange =
         scoreDirector.getValueRangeManager().getFromSolution(valueRangeDescriptor, selectionSorter);
   }
 
@@ -52,7 +52,7 @@ public final class FromEntityPropertyValueSelector<Solution_>
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
     super.phaseEnded(phaseScope);
     this.scoreDirector = null;
-    this.countableValueRange = null;
+    this.valueRange = null;
   }
 
   // ************************************************************************
@@ -71,19 +71,19 @@ public final class FromEntityPropertyValueSelector<Solution_>
 
   @Override
   public boolean isCountable() {
-    return valueRangeDescriptor.isCountable();
+    return true;
   }
 
   @Override
   public boolean isNeverEnding() {
-    return randomSelection || !isCountable();
+    return randomSelection;
   }
 
   @Override
   public long getSize(Object entity) {
     if (entity == null) {
       // When the entity is null, the size of the complete list of values is returned
-      return Objects.requireNonNull(countableValueRange).getSize();
+      return Objects.requireNonNull(valueRange).getSize();
     } else {
       return scoreDirector.getValueRangeManager().countOnEntity(valueRangeDescriptor, entity);
     }
@@ -106,7 +106,7 @@ public final class FromEntityPropertyValueSelector<Solution_>
   public Iterator<Object> endingIterator(Object entity) {
     if (entity == null) {
       // When the entity is null, the complete list of values is returned
-      return countableValueRange.createOriginalIterator();
+      return valueRange.createOriginalIterator();
     } else {
       var valueRange =
           scoreDirector

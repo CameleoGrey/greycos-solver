@@ -8,7 +8,11 @@ import java.util.stream.Stream;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.bavet.common.BavetRootNode;
+import ai.greycos.solver.core.impl.bavet.common.InnerConstraintProfiler;
 import ai.greycos.solver.core.impl.bavet.common.Propagator;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents Bavet's network of nodes, specific to a particular session. Nodes only used by
@@ -19,10 +23,13 @@ import ai.greycos.solver.core.impl.bavet.common.Propagator;
  * @param layeredNodes nodes grouped first by their layer, then by their index within the layer;
  *     propagation needs to happen in this order.
  */
+@NullMarked
 public record NodeNetwork(
-    Map<Class<?>, List<BavetRootNode<?>>> declaredClassToNodeMap, Propagator[][] layeredNodes) {
+    Map<Class<?>, List<BavetRootNode<?>>> declaredClassToNodeMap,
+    Propagator[][] layeredNodes,
+    @Nullable InnerConstraintProfiler constraintProfiler) {
 
-  public static final NodeNetwork EMPTY = new NodeNetwork(Map.of(), new Propagator[0][0]);
+  public static final NodeNetwork EMPTY = new NodeNetwork(Map.of(), new Propagator[0][0], null);
 
   public int forEachNodeCount() {
     return declaredClassToNodeMap.size();
@@ -67,6 +74,12 @@ public record NodeNetwork(
       for (var node : nodesInLayer) {
         node.propagateInserts();
       }
+    }
+  }
+
+  public void summarizeProfileIfPresent() {
+    if (constraintProfiler != null) {
+      constraintProfiler.summarize();
     }
   }
 

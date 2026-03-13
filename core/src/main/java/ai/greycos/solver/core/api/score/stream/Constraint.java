@@ -49,31 +49,4 @@ public interface Constraint {
   default <Score_ extends Score<Score_>> @Nullable Score_ getConstraintWeight() {
     return null;
   }
-
-  /**
-   * @deprecated Prefer {@link #getConstraintRef()}.
-   * @return never null
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  default String getConstraintPackage() {
-    return getConstraintRef().packageName();
-  }
-
-  /**
-   * @deprecated Prefer {@link #getConstraintRef()}.
-   * @return never null
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  default String getConstraintName() {
-    return getConstraintRef().constraintName();
-  }
-
-  /**
-   * @deprecated Prefer {@link #getConstraintRef()}.
-   * @return never null
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  default String getConstraintId() {
-    return getConstraintRef().constraintId();
-  }
 }

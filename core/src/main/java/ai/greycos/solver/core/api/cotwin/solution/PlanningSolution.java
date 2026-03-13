@@ -6,13 +6,8 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-import ai.greycos.solver.core.api.cotwin.autodiscover.AutoDiscoverMemberType;
-import ai.greycos.solver.core.api.cotwin.lookup.LookUpStrategyType;
-import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
-
-import org.jspecify.annotations.NonNull;
 
 /**
  * Specifies that the class is a planning solution. A solution represents a problem and a possible
@@ -44,17 +39,6 @@ import org.jspecify.annotations.NonNull;
 public @interface PlanningSolution {
 
   /**
-   * Enable reflection through the members of the class to automatically assume {@link
-   * PlanningScore}, {@link PlanningEntityCollectionProperty}, {@link PlanningEntityProperty},
-   * {@link ProblemFactCollectionProperty}, {@link ProblemFactProperty} and {@link
-   * ConstraintWeightOverrides} annotations based on the member type.
-   *
-   * <p>This feature is not supported under Quarkus. When using Quarkus, setting this to anything
-   * other than {@link AutoDiscoverMemberType#NONE} will result in a build-time exception.
-   */
-  @NonNull AutoDiscoverMemberType autoDiscoverMemberType() default AutoDiscoverMemberType.NONE;
-
-  /**
    * Overrides the default {@link SolutionCloner} to implement a custom {@link PlanningSolution}
    * cloning implementation.
    *
@@ -67,11 +51,4 @@ public @interface PlanningSolution {
 
   /** Workaround for annotation limitation in {@link #solutionCloner()}. */
   interface NullSolutionCloner extends SolutionCloner {}
-
-  /**
-   * @deprecated When multi-threaded solving, ensure your cotwin classes use @{@link PlanningId}
-   *     instead.
-   */
-  @Deprecated(forRemoval = true, since = "1.10.0")
-  @NonNull LookUpStrategyType lookUpStrategyType() default LookUpStrategyType.PLANNING_ID_OR_NONE;
 }

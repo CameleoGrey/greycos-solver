@@ -8,15 +8,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.BooleanSupplier;
 import java.util.stream.IntStream;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.phase.PhaseCommand;
+import ai.greycos.solver.core.api.solver.phase.PhaseCommandContext;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
@@ -29,9 +28,9 @@ import ai.greycos.solver.core.config.solver.testutil.corruptedundoshadow.Corrupt
 import ai.greycos.solver.core.config.solver.testutil.corruptedundoshadow.CorruptedUndoShadowValue;
 import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
-import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.DefaultSolver;
 import ai.greycos.solver.core.impl.solver.random.RandomFactory;
+import ai.greycos.solver.core.preview.api.move.builtin.Moves;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
@@ -321,22 +320,20 @@ class EnvironmentModeTest {
   public static class TestdataFirstValueInitializer implements PhaseCommand<TestdataSolution> {
 
     @Override
-    public void changeWorkingSolution(
-        ScoreDirector<TestdataSolution> scoreDirector, BooleanSupplier isPhaseTerminated) {
-      var solution = scoreDirector.getWorkingSolution();
+    public void changeWorkingSolution(PhaseCommandContext<TestdataSolution> context) {
+      var solution = context.getWorkingSolution();
       var firstValue = solution.getValueList().get(0);
+      var variable =
+          context
+              .getSolutionMetaModel()
+              .genuineEntity(TestdataEntity.class)
+              .basicVariable("value", TestdataValue.class);
 
       for (var entity : solution.getEntityList()) {
-        scoreDirector.beforeVariableChanged(entity, "value");
-        entity.setValue(firstValue);
-        scoreDirector.afterVariableChanged(entity, "value");
+        context.executeAndCalculateScore(Moves.change(variable, entity, firstValue));
       }
 
-      scoreDirector.triggerVariableListeners();
-      var innerScoreDirector = (InnerScoreDirector<TestdataSolution, ?>) scoreDirector;
-      var score = innerScoreDirector.calculateScore();
-
-      if (!score.isFullyAssigned()) {
+      if (solution.getEntityList().stream().anyMatch(entity -> entity.getValue() == null)) {
         throw new IllegalStateException(
             "The solution ("
                 + TestdataEntity.class.getSimpleName()

@@ -8,13 +8,13 @@ import java.util.Map;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
 import ai.greycos.solver.core.impl.move.VariableChangeRecordingScoreDirector;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * Encapsulates planning variable changes from a partition's best solution.

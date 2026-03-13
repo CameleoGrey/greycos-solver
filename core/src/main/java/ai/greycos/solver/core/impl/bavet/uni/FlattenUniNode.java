@@ -1,0 +1,36 @@
+package ai.greycos.solver.core.impl.bavet.uni;
+
+import java.util.Objects;
+import java.util.function.Function;
+
+import ai.greycos.solver.core.impl.bavet.common.AbstractFlattenNode;
+import ai.greycos.solver.core.impl.bavet.common.tuple.BiTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+
+public final class FlattenUniNode<A, NewB>
+    extends AbstractFlattenNode<UniTuple<A>, BiTuple<A, NewB>, NewB> {
+
+  private final Function<A, Iterable<NewB>> mappingFunction;
+  private final int outputStoreSize;
+
+  public FlattenUniNode(
+      int flattenStoreIndex,
+      Function<A, Iterable<NewB>> mappingFunction,
+      TupleLifecycle<BiTuple<A, NewB>> nextNodesTupleLifecycle,
+      int outputStoreSize) {
+    super(flattenStoreIndex, nextNodesTupleLifecycle);
+    this.mappingFunction = Objects.requireNonNull(mappingFunction);
+    this.outputStoreSize = outputStoreSize;
+  }
+
+  @Override
+  protected BiTuple<A, NewB> createTuple(UniTuple<A> originalTuple, NewB newB) {
+    return BiTuple.of(originalTuple.getA(), newB, outputStoreSize);
+  }
+
+  @Override
+  protected Iterable<NewB> extractIterable(UniTuple<A> tuple) {
+    return mappingFunction.apply(tuple.getA());
+  }
+}

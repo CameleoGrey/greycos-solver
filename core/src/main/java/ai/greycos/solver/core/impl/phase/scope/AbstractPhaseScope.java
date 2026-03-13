@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.phase.scope;
 
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
@@ -241,7 +241,7 @@ public abstract class AbstractPhaseScope<Solution_> {
     innerScoreDirector.assertShadowVariablesAreNotStale(workingScore, completedAction);
   }
 
-  public Random getWorkingRandom() {
+  public RandomGenerator getWorkingRandom() {
     return getSolverScope().getWorkingRandom();
   }
 

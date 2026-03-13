@@ -1,8 +1,8 @@
 package ai.greycos.solver.core.impl.move;
 
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 record ListVariableBeforeAssignmentAction<Solution_>(
     Object element, ListVariableDescriptor<Solution_> variableDescriptor)
@@ -14,7 +14,8 @@ record ListVariableBeforeAssignmentAction<Solution_>(
   }
 
   @Override
-  public ChangeAction<Solution_> rebase(Rebaser rebaser) {
-    return new ListVariableBeforeAssignmentAction<>(rebaser.rebase(element), variableDescriptor);
+  public ChangeAction<Solution_> rebase(Lookup lookup) {
+    return new ListVariableBeforeAssignmentAction<>(
+        lookup.lookUpWorkingObject(element), variableDescriptor);
   }
 }

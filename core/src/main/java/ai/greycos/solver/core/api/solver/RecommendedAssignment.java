@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Represents the result of the Assignment Recommendation API, see {@link
- * SolutionManager#recommendFit(Object, Object, Function)}.
+ * SolutionManager#recommendAssignment(Object, Object, Function)}.
  *
  * <p>In order to be fully serializable to JSON, propositions must be fully serializable to JSON.
  * For deserialization from JSON, the user needs to provide the deserializer themselves. This is due

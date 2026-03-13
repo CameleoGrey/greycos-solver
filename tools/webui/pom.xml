@@ -21,8 +21,4 @@
   </description>
   <url>https://github.com/CameleoGrey/greycos-solver</url>
 
-  <properties>
-    <java.module.name>ai.greycos.solver.webui</java.module.name>
-  </properties>
-
 </project>

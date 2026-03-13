@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Random;
 import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
@@ -483,7 +483,7 @@ public final class FilteringEntityByEntitySelector<Solution_>
     private final Iterator<Entity_> allEntitiesIterator;
     private final BasicVariableDescriptor<Solution_> basicVariableDescriptor;
     private final ReachableValues<Entity_, Value_> reachableValues;
-    private final Random workingRandom;
+    private final RandomGenerator workingRandom;
     private final int maxBailoutSize;
     private Entity_ currentReplayedEntity = null;
     private Iterator<Entity_> entityIterator;
@@ -496,7 +496,7 @@ public final class FilteringEntityByEntitySelector<Solution_>
         BasicVariableDescriptor<Solution_>[] basicVariableDescriptors,
         ValueRangeManager<Solution_> valueRangeManager,
         ReachableValues<Entity_, Value_> reachableValues,
-        Random workingRandom,
+        RandomGenerator workingRandom,
         int maxBailoutSize) {
       super(upcomingEntitySupplier, basicVariableDescriptors, valueRangeManager);
       this.allEntitiesIterator = allEntitiesIterator;
@@ -619,9 +619,9 @@ public final class FilteringEntityByEntitySelector<Solution_>
   private static class RandomListIterator<Value_> implements Iterator<Value_> {
 
     private final List<Value_> values;
-    private final Random workingRandom;
+    private final RandomGenerator workingRandom;
 
-    private RandomListIterator(List<Value_> values, Random workingRandom) {
+    private RandomListIterator(List<Value_> values, RandomGenerator workingRandom) {
       this.values = values;
       this.workingRandom = workingRandom;
     }

@@ -7,7 +7,7 @@ import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 
 @PlanningSolution
 public class TestdataStringLengthShadowSolution {

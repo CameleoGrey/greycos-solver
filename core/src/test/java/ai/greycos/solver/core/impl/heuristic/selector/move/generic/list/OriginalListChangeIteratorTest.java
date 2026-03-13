@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.list.ElementDestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;

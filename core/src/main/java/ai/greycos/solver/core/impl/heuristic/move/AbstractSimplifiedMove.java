@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.move;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.move.VariableChangeRecordingScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * This is an alternative to {@link AbstractMove}, allowing to trade some performance for less

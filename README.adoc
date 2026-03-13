@@ -3,9 +3,9 @@ image::logos/GreyCOS_logo_2.png[link="https://github.com/CameleoGrey/greycos-sol
 
 == Main idea of this project
 
-Integrate back several advanced features from OptaPlanner (Apache 2.0) into fork of TimeFold Solver Community Edition (Apache 2.0).
+Integrate back several advanced features from OptaPlanner (Apache 2.0) into fork of GreyCOS Solver Community Edition (Apache 2.0).
 
-Reinvent (create my own) implementations of advanced Timefold Solver features based on publicly available information (common public description without
+Reinvent (create my own) implementations of advanced GreyCOS Solver features based on publicly available information (common public description without
 access to the propritary codebase or byte code).
 
 Implement some good ideas from my own GreyJack Solver (Apache 2.0).
@@ -34,11 +34,11 @@ $ ./mvnw clean install -Dquickly
 
 == Legal notice
 
-GreyCOS Solver was forked on 21 December 2025 from Timefold Solver Community Edition,
+GreyCOS Solver was forked on 21 December 2025 from GreyCOS Solver Community Edition,
 which was entirely Apache-2.0 licensed (a permissive license).
 
-Timefold Solver is a derivative work of OptaPlanner and OptaPy, which includes copyrights of 
+GreyCOS Solver is a derivative work of OptaPlanner and OptaPy, which includes copyrights of 
 the original creator, Red Hat Inc., affiliates, and contributors, that were all entirely 
 licensed under the Apache-2.0 license. Every source file has been modified.
 
-I'd never buy the Enterprise Edition of TimeFold Solver and never had an access to its source code or its byte code.
+I'd never buy the Enterprise Edition of GreyCOS Solver and never had an access to its source code or its byte code.

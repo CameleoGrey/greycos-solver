@@ -5,9 +5,10 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.persistence.common.api.cotwin.solution.SolutionFileIO;
+import ai.greycos.solver.core.api.cotwin.solution.SolutionFileIO;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 
 /**
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
@@ -18,7 +19,7 @@ public class JacksonSolutionFileIO<Solution_> implements SolutionFileIO<Solution
   private final ObjectMapper mapper;
 
   public JacksonSolutionFileIO(Class<Solution_> clazz) {
-    this(clazz, new ObjectMapper());
+    this(clazz, JsonMapper.builder().build());
   }
 
   public JacksonSolutionFileIO(Class<Solution_> clazz, ObjectMapper mapper) {

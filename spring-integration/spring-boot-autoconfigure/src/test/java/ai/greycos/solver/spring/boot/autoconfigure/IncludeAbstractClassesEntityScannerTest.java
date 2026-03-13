@@ -7,12 +7,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
-import ai.greycos.solver.core.api.cotwin.variable.AnchorShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.CustomShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PiggybackShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
@@ -33,12 +30,9 @@ class IncludeAbstractClassesEntityScannerTest {
         PlanningPin.class,
         PlanningVariable.class,
         PlanningListVariable.class,
-        AnchorShadowVariable.class,
-        CustomShadowVariable.class,
         IndexShadowVariable.class,
         InverseRelationShadowVariable.class,
         NextElementShadowVariable.class,
-        PiggybackShadowVariable.class,
         PreviousElementShadowVariable.class,
         ShadowVariable.class
       };

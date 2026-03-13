@@ -13,6 +13,8 @@ import java.util.stream.Stream;
 
 import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.AccessorInfo;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoClassLoader;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberDescriptor;
 import ai.greycos.solver.core.impl.cotwin.solution.cloner.AbstractSolutionClonerTest;
@@ -112,10 +114,16 @@ class GizmoSolutionClonerTest extends AbstractSolutionClonerTest {
           var name = field.getName();
 
           if (Modifier.isPublic(field.getModifiers())) {
-            member = new GizmoMemberDescriptor(name, memberDescriptor, declaringClass);
+            member =
+                new GizmoMemberDescriptor(
+                    name,
+                    memberDescriptor,
+                    declaringClass,
+                    AccessorInfo.of(MemberAccessorType.FIELD_OR_READ_METHOD));
           } else {
             var getter = ReflectionHelper.getGetterMethod(currentClass, field.getName());
-            var setter = ReflectionHelper.getSetterMethod(currentClass, field.getName());
+            var setter =
+                ReflectionHelper.getSetterMethod(currentClass, field.getType(), field.getName());
             if (getter != null && setter != null) {
               var getterDescriptor =
                   MethodDesc.of(field.getDeclaringClass(), getter.getName(), field.getType());

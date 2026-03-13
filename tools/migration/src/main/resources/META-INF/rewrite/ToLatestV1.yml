@@ -1,0 +1,36 @@
+type: specs.openrewrite.org/v1beta/recipe
+name: ai.greycos.solver.migration.ToLatestV1
+displayName: Upgrade to the latest GreyCOS Solver 1.x
+description: 'Replace all your calls to deleted/deprecated types and methods of GreyCOS Solver with their proper alternatives.'
+recipeList:
+  - org.openrewrite.properties.ChangePropertyKey:
+      oldPropertyKey: greycos.solver.solve-length
+      newPropertyKey: greycos.solver.solve.duration
+      fileMatcher: '**/application.properties'
+  - org.openrewrite.properties.ChangePropertyKey:
+      oldPropertyKey: quarkus.greycos.solver.solve-length
+      newPropertyKey: quarkus.greycos.solver.solve.duration
+      fileMatcher: '**/application.properties'
+  - org.openrewrite.java.ChangeMethodName:
+      methodPattern: ai.greycos.solver.core.api.score.stream.ConstraintFactory from(Class)
+      newMethodName: forEach
+  - org.openrewrite.java.ChangeMethodName:
+      methodPattern: ai.greycos.solver.core.api.score.stream.ConstraintFactory fromUnfiltered(Class)
+      newMethodName: forEachIncludingUnassigned
+  - org.openrewrite.java.ChangeMethodName:
+      methodPattern: ai.greycos.solver.core.api.score.stream.ConstraintFactory fromUniquePair(..)
+      newMethodName: forEachUniquePair
+  - ai.greycos.solver.migration.v1.ScoreManagerMethodsRecipe
+  - org.openrewrite.java.ChangeType:
+      oldFullyQualifiedTypeName: ai.greycos.solver.core.api.score.ScoreManager
+      newFullyQualifiedTypeName: ai.greycos.solver.core.api.solver.SolutionManager
+      ignoreDefinition: true
+  - ai.greycos.solver.migration.v1.ScoreGettersRecipe
+  - ai.greycos.solver.migration.v1.ConstraintRefRecipe
+  - ai.greycos.solver.migration.v1.SolverManagerBuilderRecipe
+  - ai.greycos.solver.migration.v1.NullableRecipe
+  - ai.greycos.solver.migration.v1.SingleConstraintAssertionMethodsRecipe
+  - ai.greycos.solver.migration.v1.AsConstraintRecipe
+  - ai.greycos.solver.migration.v1.RemoveConstraintPackageRecipe
+  - ai.greycos.solver.migration.v1.SolutionManagerRecommendAssignmentRecipe
+  - ai.greycos.solver.migration.v1.SortingMigrationRecipe

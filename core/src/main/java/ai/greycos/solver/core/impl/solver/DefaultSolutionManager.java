@@ -10,7 +10,6 @@ import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.ScoreExplanation;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import ai.greycos.solver.core.api.solver.RecommendedAssignment;
-import ai.greycos.solver.core.api.solver.RecommendedFit;
 import ai.greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolutionUpdatePolicy;
@@ -39,8 +38,8 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
   private final DefaultSolverFactory<Solution_> solverFactory;
   private final ScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory;
 
-  public <ProblemId_> DefaultSolutionManager(SolverManager<Solution_, ProblemId_> solverManager) {
-    this(((DefaultSolverManager<Solution_, ProblemId_>) solverManager).getSolverFactory());
+  public DefaultSolutionManager(SolverManager<Solution_> solverManager) {
+    this(((DefaultSolverManager<Solution_>) solverManager).getSolverFactory());
   }
 
   public DefaultSolutionManager(SolverFactory<Solution_> solverFactory) {
@@ -191,28 +190,6 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
             fetchPolicy,
             solution,
             evaluatedEntityOrElement);
-    return callScoreDirector(
-        solution,
-        SolutionUpdatePolicy.UPDATE_ALL,
-        assigner,
-        ConstraintMatchPolicy.match(fetchPolicy),
-        true);
-  }
-
-  @Override
-  public <In_, Out_> List<RecommendedFit<Out_, Score_>> recommendFit(
-      Solution_ solution,
-      In_ fittedEntityOrElement,
-      Function<In_, @Nullable Out_> propositionFunction,
-      ScoreAnalysisFetchPolicy fetchPolicy) {
-    var assigner =
-        new Assigner<Solution_, Score_, RecommendedFit<Out_, Score_>, In_, Out_>(
-            solverFactory,
-            propositionFunction,
-            DefaultRecommendedFit::new,
-            fetchPolicy,
-            solution,
-            fittedEntityOrElement);
     return callScoreDirector(
         solution,
         SolutionUpdatePolicy.UPDATE_ALL,

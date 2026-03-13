@@ -9,7 +9,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
@@ -17,10 +16,11 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateC
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateConstructionHeuristicPhaseBuilder;
 import ai.greycos.solver.core.impl.move.VariableChangeRecordingScoreDirector;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.util.CollectionUtils;
 
-public final class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
+public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
 
   private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final List<Object> ruinedValueList;

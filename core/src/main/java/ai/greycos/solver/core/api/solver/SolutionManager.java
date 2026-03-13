@@ -5,7 +5,6 @@ import static ai.greycos.solver.core.api.solver.SolutionUpdatePolicy.UPDATE_ALL;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.function.Function;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
@@ -57,11 +56,9 @@ public interface SolutionManager<Solution_, Score_ extends Score<Score_>> {
    *
    * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
    * @param <Score_> the actual score type
-   * @param <ProblemId_> the ID type of a submitted problem, such as {@link Long} or {@link UUID}
    */
-  static <Solution_, Score_ extends Score<Score_>, ProblemId_>
-      SolutionManager<Solution_, Score_> create(
-          SolverManager<Solution_, ProblemId_> solverManager) {
+  static <Solution_, Score_ extends Score<Score_>> SolutionManager<Solution_, Score_> create(
+      SolverManager<Solution_> solverManager) {
     return new DefaultSolutionManager<>(solverManager);
   }
 
@@ -289,32 +286,4 @@ public interface SolutionManager<Solution_, Score_ extends Score<Score_>> {
           EntityOrElement_ evaluatedEntityOrElement,
           Function<EntityOrElement_, @Nullable Proposition_> propositionFunction,
           ScoreAnalysisFetchPolicy fetchPolicy);
-
-  /**
-   * As defined by {@link #recommendAssignment(Object, Object, Function, ScoreAnalysisFetchPolicy)},
-   * with {@link ScoreAnalysisFetchPolicy#FETCH_ALL}.
-   *
-   * @deprecated Prefer {@link #recommendAssignment(Object, Object, Function,
-   *     ScoreAnalysisFetchPolicy)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.15.0")
-  default <EntityOrElement_, Proposition_> List<RecommendedFit<Proposition_, Score_>> recommendFit(
-      Solution_ solution,
-      EntityOrElement_ fittedEntityOrElement,
-      Function<EntityOrElement_, @Nullable Proposition_> propositionFunction) {
-    return recommendFit(solution, fittedEntityOrElement, propositionFunction, FETCH_ALL);
-  }
-
-  /**
-   * As defined by {@link #recommendAssignment(Object, Object, Function, ScoreAnalysisFetchPolicy)}.
-   *
-   * @deprecated Prefer {@link #recommendAssignment(Object, Object, Function,
-   *     ScoreAnalysisFetchPolicy)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.15.0")
-  <EntityOrElement_, Proposition_> List<RecommendedFit<Proposition_, Score_>> recommendFit(
-      Solution_ solution,
-      EntityOrElement_ fittedEntityOrElement,
-      Function<EntityOrElement_, @Nullable Proposition_> propositionFunction,
-      ScoreAnalysisFetchPolicy fetchPolicy);
 }

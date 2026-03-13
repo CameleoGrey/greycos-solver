@@ -15,7 +15,6 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.K
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateDemand;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
@@ -257,7 +256,7 @@ class KOptListMoveTest {
               {e2, destinationE2},
             });
     var supplyManager = Mockito.mock(SupplyManager.class);
-    var inverseVariableSupply = Mockito.mock(SingletonInverseVariableSupply.class);
+    var inverseVariableSupply = Mockito.mock(ListVariableStateSupply.class);
 
     when(destinationScoreDirector.getSupplyManager()).thenReturn(supplyManager);
     when(supplyManager.demand(Mockito.any(ListVariableStateDemand.class)))

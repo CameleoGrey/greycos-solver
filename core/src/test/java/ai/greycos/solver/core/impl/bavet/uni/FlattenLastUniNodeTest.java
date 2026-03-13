@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import ai.greycos.solver.core.impl.bavet.common.AbstractFlattenLastNode;
 import ai.greycos.solver.core.impl.bavet.common.Propagator;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
@@ -41,18 +40,18 @@ class FlattenLastUniNodeTest {
   }
 
   private static UniTuple<String> createTuple(String... facts) {
-    return new UniTuple<>(merge(facts), 1);
+    String a = merge(facts);
+    return UniTuple.of(a, 1);
   }
 
   private static UniTuple<String> modifyTuple(UniTuple<String> tuple, String... facts) {
-    ((UniTuple<String>) tuple).factA = merge(facts);
+    tuple.setA(merge(facts));
     return tuple;
   }
 
   @Test
   void insertAndRetract() {
-    AbstractFlattenLastNode<UniTuple<String>, UniTuple<String>, String, String> node =
-        new FlattenLastUniNode<>(0, FlattenLastUniNodeTest::split, downstream, 1);
+    var node = new FlattenLastUniNode<>(0, FlattenLastUniNodeTest::split, downstream, 1);
 
     // First tuple is inserted, A and B make it downstream.
     UniTuple<String> firstTuple = createTuple("A", "B");
@@ -61,8 +60,8 @@ class FlattenLastUniNodeTest {
 
     Propagator propagator = node.getPropagator();
     propagator.propagateEverything();
-    verify(downstream).insert(argThat(t -> Objects.equals(t.factA, "A")));
-    verify(downstream).insert(argThat(t -> Objects.equals(t.factA, "B")));
+    verify(downstream).insert(argThat(t -> Objects.equals(t.getA(), "A")));
+    verify(downstream).insert(argThat(t -> Objects.equals(t.getA(), "B")));
     verifyNoMoreInteractions(downstream);
     reset(downstream);
 
@@ -72,8 +71,8 @@ class FlattenLastUniNodeTest {
     verifyNoInteractions(downstream);
 
     propagator.propagateEverything();
-    verify(downstream).insert(argThat(t -> Objects.equals(t.factA, "B")));
-    verify(downstream).insert(argThat(t -> Objects.equals(t.factA, "C")));
+    verify(downstream).insert(argThat(t -> Objects.equals(t.getA(), "B")));
+    verify(downstream).insert(argThat(t -> Objects.equals(t.getA(), "C")));
     verifyNoMoreInteractions(downstream);
     reset(downstream);
 
@@ -82,8 +81,8 @@ class FlattenLastUniNodeTest {
     verifyNoInteractions(downstream);
 
     propagator.propagateEverything();
-    verify(downstream).retract(argThat(t -> Objects.equals(t.factA, "A")));
-    verify(downstream).retract(argThat(t -> Objects.equals(t.factA, "B")));
+    verify(downstream).retract(argThat(t -> Objects.equals(t.getA(), "A")));
+    verify(downstream).retract(argThat(t -> Objects.equals(t.getA(), "B")));
     verifyNoMoreInteractions(downstream);
     reset(downstream);
 
@@ -92,8 +91,8 @@ class FlattenLastUniNodeTest {
     verifyNoInteractions(downstream);
 
     propagator.propagateEverything();
-    verify(downstream).retract(argThat(t -> Objects.equals(t.factA, "B")));
-    verify(downstream).retract(argThat(t -> Objects.equals(t.factA, "C")));
+    verify(downstream).retract(argThat(t -> Objects.equals(t.getA(), "B")));
+    verify(downstream).retract(argThat(t -> Objects.equals(t.getA(), "C")));
     verifyNoMoreInteractions(downstream);
     reset(downstream);
 
@@ -104,8 +103,7 @@ class FlattenLastUniNodeTest {
 
   @Test
   void modify() {
-    AbstractFlattenLastNode<UniTuple<String>, UniTuple<String>, String, String> node =
-        new FlattenLastUniNode<>(0, FlattenLastUniNodeTest::split, downstream, 1);
+    var node = new FlattenLastUniNode<>(0, FlattenLastUniNodeTest::split, downstream, 1);
 
     // First tuple is inserted.
     UniTuple<String> firstTuple = createTuple("A", "B");
@@ -126,10 +124,10 @@ class FlattenLastUniNodeTest {
     verifyNoInteractions(downstream);
 
     propagator.propagateEverything();
-    verify(downstream).retract(argThat(t -> Objects.equals(t.factA, "A")));
-    verify(downstream).update(argThat(t -> Objects.equals(t.factA, "B")));
-    verify(downstream).insert(argThat(t -> Objects.equals(t.factA, "X")));
-    verify(downstream).insert(argThat(t -> Objects.equals(t.factA, "B")));
+    verify(downstream).retract(argThat(t -> Objects.equals(t.getA(), "A")));
+    verify(downstream).update(argThat(t -> Objects.equals(t.getA(), "B")));
+    verify(downstream).insert(argThat(t -> Objects.equals(t.getA(), "X")));
+    verify(downstream).insert(argThat(t -> Objects.equals(t.getA(), "B")));
     verifyNoMoreInteractions(downstream);
     reset(downstream);
 
@@ -139,9 +137,9 @@ class FlattenLastUniNodeTest {
     verifyNoInteractions(downstream);
 
     propagator.propagateEverything();
-    verify(downstream).retract(argThat(t -> Objects.equals(t.factA, "B")));
-    verify(downstream).update(argThat(t -> Objects.equals(t.factA, "C")));
-    verify(downstream).insert(argThat(t -> Objects.equals(t.factA, "X")));
+    verify(downstream).retract(argThat(t -> Objects.equals(t.getA(), "B")));
+    verify(downstream).update(argThat(t -> Objects.equals(t.getA(), "C")));
+    verify(downstream).insert(argThat(t -> Objects.equals(t.getA(), "X")));
     verifyNoMoreInteractions(downstream);
     reset(downstream);
 
@@ -151,8 +149,8 @@ class FlattenLastUniNodeTest {
     verifyNoInteractions(downstream);
 
     propagator.propagateEverything();
-    verify(downstream, times(2)).retract(argThat(t -> Objects.equals(t.factA, "B")));
-    verify(downstream).update(argThat(t -> Objects.equals(t.factA, "X")));
+    verify(downstream, times(2)).retract(argThat(t -> Objects.equals(t.getA(), "B")));
+    verify(downstream).update(argThat(t -> Objects.equals(t.getA(), "X")));
     verifyNoMoreInteractions(downstream);
   }
 }

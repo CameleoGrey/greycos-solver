@@ -3,9 +3,6 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list;
 import static ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicyTestUtils.buildHeuristicConfigPolicy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
-
-import java.util.stream.Stream;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
@@ -14,16 +11,12 @@ import ai.greycos.solver.core.config.heuristic.selector.list.DestinationSelector
 import ai.greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.impl.heuristic.selector.list.RandomSubListSelector;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
 import ai.greycos.solver.core.testcotwin.mixed.multientity.TestdataMixedMultiEntitySolution;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 class SubListChangeMoveSelectorFactoryTest {
 
@@ -135,76 +128,5 @@ class SubListChangeMoveSelectorFactoryTest {
                     SelectionOrder.RANDOM,
                     false))
         .withMessageContaining("not a planning list variable");
-  }
-
-  static SubListChangeMoveSelectorConfig minimumSize_SubListSelector() {
-    var config =
-        new SubListChangeMoveSelectorConfig()
-            .withSubListSelectorConfig(new SubListSelectorConfig().withMinimumSubListSize(10));
-    config.setMinimumSubListSize(10);
-    return config;
-  }
-
-  static SubListChangeMoveSelectorConfig maximumSize_SubListSelector() {
-    var config =
-        new SubListChangeMoveSelectorConfig()
-            .withSubListSelectorConfig(new SubListSelectorConfig().withMaximumSubListSize(10));
-    config.setMaximumSubListSize(10);
-    return config;
-  }
-
-  static Stream<Arguments> wrongConfigurations() {
-    return Stream.of(
-        arguments(minimumSize_SubListSelector(), "minimumSubListSize", "subListSelector"),
-        arguments(maximumSize_SubListSelector(), "maximumSubListSize", "subListSelector"));
-  }
-
-  @ParameterizedTest(name = "{1} + {2}")
-  @MethodSource("wrongConfigurations")
-  void failFast_ifSubListSizeOnBothMoveSelectorAndSubListSelector(
-      SubListChangeMoveSelectorConfig config, String propertyName, String childConfigName) {
-    var factory = new SubListChangeMoveSelectorFactory<TestdataListSolution>(config);
-
-    var heuristicConfigPolicy =
-        buildHeuristicConfigPolicy(TestdataListSolution.buildSolutionDescriptor());
-
-    assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                factory.buildMoveSelector(
-                    heuristicConfigPolicy,
-                    SelectionCacheType.JUST_IN_TIME,
-                    SelectionOrder.RANDOM,
-                    false))
-        .withMessageContainingAll(propertyName, childConfigName);
-  }
-
-  @Test
-  void transferDeprecatedSubListSizeToChildSelector() {
-    var minimumSubListSize = 21;
-    var maximumSubListSize = 445;
-    var config = new SubListChangeMoveSelectorConfig();
-    config.setMinimumSubListSize(minimumSubListSize);
-    config.setMaximumSubListSize(maximumSubListSize);
-
-    var factory = new SubListChangeMoveSelectorFactory<TestdataListSolution>(config);
-
-    var heuristicConfigPolicy =
-        buildHeuristicConfigPolicy(TestdataListSolution.buildSolutionDescriptor());
-
-    var moveSelector =
-        (RandomSubListChangeMoveSelector<TestdataListSolution>)
-            factory.buildMoveSelector(
-                heuristicConfigPolicy,
-                SelectionCacheType.JUST_IN_TIME,
-                SelectionOrder.RANDOM,
-                false);
-
-    assertThat(
-            ((RandomSubListSelector<?>) moveSelector.getSubListSelector()).getMinimumSubListSize())
-        .isEqualTo(minimumSubListSize);
-    assertThat(
-            ((RandomSubListSelector<?>) moveSelector.getSubListSelector()).getMaximumSubListSize())
-        .isEqualTo(maximumSubListSize);
   }
 }

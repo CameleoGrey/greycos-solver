@@ -1,11 +1,10 @@
 package ai.greycos.solver.core.impl.cotwin.variable;
 
+import java.util.Objects;
+
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.index.IndexShadowVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.index.IndexVariableSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.listener.SourcedListVariableListener;
 import ai.greycos.solver.core.impl.cotwin.variable.nextprev.NextElementShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.nextprev.PreviousElementShadowVariableDescriptor;
@@ -37,9 +36,7 @@ import org.jspecify.annotations.Nullable;
  */
 @NullMarked
 public interface ListVariableStateSupply<Solution_, Entity_, Element_>
-    extends SourcedListVariableListener<Solution_, Entity_, Element_>,
-        SingletonInverseVariableSupply,
-        IndexVariableSupply {
+    extends SourcedListVariableListener<Solution_, Entity_, Element_> {
 
   void externalize(IndexShadowVariableDescriptor<Solution_> shadowVariableDescriptor);
 
@@ -69,6 +66,14 @@ public interface ListVariableStateSupply<Solution_, Entity_, Element_>
    * @return never null
    */
   ElementPosition getElementPosition(Element_ value);
+
+  @Nullable Integer getIndex(Element_ planningValue);
+
+  default int getIndexOrElse(Element_ planningValue, int orElse) {
+    return Objects.requireNonNullElse(getIndex(planningValue), orElse);
+  }
+
+  @Nullable Object getInverseSingleton(Element_ planningValue);
 
   /**
    * Consider calling this before {@link #isAssigned(Object)} to eliminate some map accesses. If

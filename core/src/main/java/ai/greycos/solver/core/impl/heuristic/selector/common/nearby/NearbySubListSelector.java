@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import java.util.Iterator;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
@@ -125,11 +126,11 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
 
   private class RandomNearbySubListIterator implements Iterator<SubList> {
 
-    private final java.util.Random workingRandom;
+    private final RandomGenerator workingRandom;
     private final int nearbySize;
     private int count = 0;
 
-    public RandomNearbySubListIterator(java.util.Random workingRandom) {
+    public RandomNearbySubListIterator(RandomGenerator workingRandom) {
       this.workingRandom = workingRandom;
       this.nearbySize = (int) childSubListSelector.getSize();
     }

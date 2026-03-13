@@ -13,9 +13,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.SwapMove;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;

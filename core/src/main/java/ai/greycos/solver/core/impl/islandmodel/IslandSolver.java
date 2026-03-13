@@ -2,7 +2,6 @@ package ai.greycos.solver.core.impl.islandmodel;
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.solver.ProblemFactChange;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.impl.solver.AbstractSolver;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
@@ -68,24 +67,5 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_> {
   @Override
   public void addProblemChanges(@NonNull List<ProblemChange<Solution_>> problemChangeList) {
     throw new UnsupportedOperationException("IslandSolver does not support problem changes.");
-  }
-
-  @Override
-  @Deprecated(forRemoval = true)
-  public boolean isEveryProblemFactChangeProcessed() {
-    return false;
-  }
-
-  @Override
-  @Deprecated(forRemoval = true)
-  public boolean addProblemFactChange(@NonNull ProblemFactChange<Solution_> problemFactChange) {
-    throw new UnsupportedOperationException("IslandSolver does not support problem fact changes.");
-  }
-
-  @Override
-  @Deprecated(forRemoval = true)
-  public boolean addProblemFactChanges(
-      @NonNull List<ProblemFactChange<Solution_>> problemFactChangeList) {
-    throw new UnsupportedOperationException("IslandSolver does not support problem fact changes.");
   }
 }

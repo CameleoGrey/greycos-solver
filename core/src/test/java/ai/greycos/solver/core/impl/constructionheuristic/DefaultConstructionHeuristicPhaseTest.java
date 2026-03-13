@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
@@ -86,14 +86,6 @@ import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.comparator.TestdataI
 import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.comparator.TestdataInvalidMixedComparatorSortableSolution;
 import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.strength.TestdataInvalidMixedStrengthSortableEntity;
 import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.strength.TestdataInvalidMixedStrengthSortableSolution;
-import ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.entity.TestdataInvalidTwoEntityComparatorSortableEntity;
-import ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.entity.TestdataInvalidTwoEntityComparatorSortableSolution;
-import ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.value.TestdataInvalidTwoValueComparatorSortableEntity;
-import ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.value.TestdataInvalidTwoValueComparatorSortableSolution;
-import ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.entity.TestdataInvalidTwoEntityFactorySortableEntity;
-import ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.entity.TestdataInvalidTwoEntityFactorySortableSolution;
-import ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.value.TestdataInvalidTwoValueFactorySortableEntity;
-import ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.value.TestdataInvalidTwoValueFactorySortableSolution;
 import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEntity;
 import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedSolution;
@@ -485,8 +477,8 @@ class DefaultConstructionHeuristicPhaseTest {
             new ConstructionHeuristicPhaseConfig()
                 .withConstructionHeuristicType(
                     ConstructionHeuristicType.ALLOCATE_TO_VALUE_FROM_QUEUE)
-                .withEntitySorterManner(EntitySorterManner.DECREASING_DIFFICULTY)
-                .withValueSorterManner(ValueSorterManner.DECREASING_STRENGTH)
+                .withEntitySorterManner(EntitySorterManner.DESCENDING)
+                .withValueSorterManner(ValueSorterManner.DESCENDING)
                 .withForagerConfig(
                     new ConstructionHeuristicForagerConfig()
                         .withPickEarlyType(
@@ -521,8 +513,8 @@ class DefaultConstructionHeuristicPhaseTest {
             new ConstructionHeuristicPhaseConfig()
                 .withConstructionHeuristicType(
                     ConstructionHeuristicType.ALLOCATE_TO_VALUE_FROM_QUEUE)
-                .withEntitySorterManner(EntitySorterManner.DECREASING_DIFFICULTY_IF_AVAILABLE)
-                .withValueSorterManner(ValueSorterManner.DECREASING_STRENGTH_IF_AVAILABLE)
+                .withEntitySorterManner(EntitySorterManner.DESCENDING_IF_AVAILABLE)
+                .withValueSorterManner(ValueSorterManner.DESCENDING_IF_AVAILABLE)
                 .withForagerConfig(
                     new ConstructionHeuristicForagerConfig()
                         .withPickEarlyType(
@@ -554,7 +546,7 @@ class DefaultConstructionHeuristicPhaseTest {
                 .withConstructionHeuristicType(
                     ConstructionHeuristicType.ALLOCATE_TO_VALUE_FROM_QUEUE)
                 .withEntitySorterManner(EntitySorterManner.NONE)
-                .withValueSorterManner(ValueSorterManner.DECREASING_STRENGTH)
+                .withValueSorterManner(ValueSorterManner.DESCENDING)
                 .withForagerConfig(
                     new ConstructionHeuristicForagerConfig()
                         .withPickEarlyType(
@@ -585,8 +577,8 @@ class DefaultConstructionHeuristicPhaseTest {
             new ConstructionHeuristicPhaseConfig()
                 .withConstructionHeuristicType(
                     ConstructionHeuristicType.ALLOCATE_TO_VALUE_FROM_QUEUE)
-                .withEntitySorterManner(EntitySorterManner.DECREASING_DIFFICULTY)
-                .withValueSorterManner(ValueSorterManner.INCREASING_STRENGTH)
+                .withEntitySorterManner(EntitySorterManner.DESCENDING)
+                .withValueSorterManner(ValueSorterManner.ASCENDING)
                 .withForagerConfig(
                     new ConstructionHeuristicForagerConfig()
                         .withPickEarlyType(
@@ -617,8 +609,8 @@ class DefaultConstructionHeuristicPhaseTest {
             new ConstructionHeuristicPhaseConfig()
                 .withConstructionHeuristicType(
                     ConstructionHeuristicType.ALLOCATE_TO_VALUE_FROM_QUEUE)
-                .withEntitySorterManner(EntitySorterManner.DECREASING_DIFFICULTY_IF_AVAILABLE)
-                .withValueSorterManner(ValueSorterManner.INCREASING_STRENGTH_IF_AVAILABLE)
+                .withEntitySorterManner(EntitySorterManner.DESCENDING_IF_AVAILABLE)
+                .withValueSorterManner(ValueSorterManner.ASCENDING_IF_AVAILABLE)
                 .withForagerConfig(
                     new ConstructionHeuristicForagerConfig()
                         .withPickEarlyType(
@@ -650,7 +642,7 @@ class DefaultConstructionHeuristicPhaseTest {
                 .withConstructionHeuristicType(
                     ConstructionHeuristicType.ALLOCATE_TO_VALUE_FROM_QUEUE)
                 .withEntitySorterManner(EntitySorterManner.NONE)
-                .withValueSorterManner(ValueSorterManner.INCREASING_STRENGTH)
+                .withValueSorterManner(ValueSorterManner.ASCENDING)
                 .withForagerConfig(
                     new ConstructionHeuristicForagerConfig()
                         .withPickEarlyType(
@@ -713,7 +705,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                 .withId("sortedEntitySelector")
                                 .withSelectionOrder(SelectionOrder.SORTED)
                                 .withCacheType(SelectionCacheType.PHASE)
-                                .withSorterManner(EntitySorterManner.DECREASING_DIFFICULTY))
+                                .withSorterManner(EntitySorterManner.DESCENDING))
                         .withMoveSelectorConfigs(
                             new ChangeMoveSelectorConfig()
                                 .withEntitySelectorConfig(
@@ -723,7 +715,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                     new ValueSelectorConfig()
                                         .withSelectionOrder(SelectionOrder.SORTED)
                                         .withCacheType(entityDestinationCacheType)
-                                        .withSorterManner(ValueSorterManner.DECREASING_STRENGTH))))
+                                        .withSorterManner(ValueSorterManner.DESCENDING))))
                 .withForagerConfig(
                     new ConstructionHeuristicForagerConfig()
                         .withPickEarlyType(
@@ -777,7 +769,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                 .withId("sortedEntitySelector")
                                 .withSelectionOrder(SelectionOrder.SORTED)
                                 .withCacheType(SelectionCacheType.PHASE)
-                                .withSorterManner(EntitySorterManner.DECREASING_DIFFICULTY))
+                                .withSorterManner(EntitySorterManner.DESCENDING))
                         .withMoveSelectorConfigs(
                             new ChangeMoveSelectorConfig()
                                 .withEntitySelectorConfig(
@@ -787,7 +779,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                     new ValueSelectorConfig()
                                         .withSelectionOrder(SelectionOrder.SORTED)
                                         .withCacheType(entityDestinationCacheType)
-                                        .withSorterManner(ValueSorterManner.INCREASING_STRENGTH))))
+                                        .withSorterManner(ValueSorterManner.ASCENDING))))
                 .withForagerConfig(
                     new ConstructionHeuristicForagerConfig()
                         .withPickEarlyType(
@@ -1089,7 +1081,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                 .withId("sortedValueSelector")
                                 .withSelectionOrder(SelectionOrder.SORTED)
                                 .withCacheType(SelectionCacheType.PHASE)
-                                .withSorterManner(ValueSorterManner.DECREASING_STRENGTH))
+                                .withSorterManner(ValueSorterManner.DESCENDING))
                         .withMoveSelectorConfig(
                             new ListChangeMoveSelectorConfig()
                                 .withValueSelectorConfig(
@@ -1102,8 +1094,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                             new EntitySelectorConfig()
                                                 .withSelectionOrder(SelectionOrder.SORTED)
                                                 .withCacheType(entityDestinationCacheType)
-                                                .withSorterManner(
-                                                    EntitySorterManner.DECREASING_DIFFICULTY)))))
+                                                .withSorterManner(EntitySorterManner.DESCENDING)))))
                 .withForagerConfig(
                     new ConstructionHeuristicForagerConfig()
                         .withPickEarlyType(
@@ -1154,7 +1145,7 @@ class DefaultConstructionHeuristicPhaseTest {
     var isPhaseScope = entityDestinationCacheType == SelectionCacheType.PHASE;
     if (isPhaseScope) {
       // Hack to prevent the default sorting option,
-      // which is DECREASING_DIFFICULTY_IF_AVAILABLE
+      // which is DESCENDING_IF_AVAILABLE
       // This hack does not work with STEP scope
       nonSortedEntityConfig.setSorterManner(EntitySorterManner.NONE);
       nonSortedEntityConfig.setSelectionOrder(SelectionOrder.SORTED);
@@ -1170,7 +1161,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                 .withId("sortedValueSelector")
                                 .withSelectionOrder(SelectionOrder.SORTED)
                                 .withCacheType(SelectionCacheType.PHASE)
-                                .withSorterManner(ValueSorterManner.DECREASING_STRENGTH))
+                                .withSorterManner(ValueSorterManner.DESCENDING))
                         .withMoveSelectorConfig(
                             new ListChangeMoveSelectorConfig()
                                 .withValueSelectorConfig(
@@ -1230,7 +1221,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                 .withId("sortedValueSelector")
                                 .withSelectionOrder(SelectionOrder.SORTED)
                                 .withCacheType(SelectionCacheType.PHASE)
-                                .withSorterManner(ValueSorterManner.INCREASING_STRENGTH))
+                                .withSorterManner(ValueSorterManner.ASCENDING))
                         .withMoveSelectorConfig(
                             new ListChangeMoveSelectorConfig()
                                 .withValueSelectorConfig(
@@ -1243,8 +1234,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                             new EntitySelectorConfig()
                                                 .withSelectionOrder(SelectionOrder.SORTED)
                                                 .withCacheType(entityDestinationCacheType)
-                                                .withSorterManner(
-                                                    EntitySorterManner.DECREASING_DIFFICULTY)))))
+                                                .withSorterManner(EntitySorterManner.DESCENDING)))))
                 .withForagerConfig(
                     new ConstructionHeuristicForagerConfig()
                         .withPickEarlyType(
@@ -1297,7 +1287,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                 .withId("sortedValueSelector")
                                 .withSelectionOrder(SelectionOrder.SORTED)
                                 .withCacheType(SelectionCacheType.PHASE)
-                                .withSorterManner(ValueSorterManner.INCREASING_STRENGTH))
+                                .withSorterManner(ValueSorterManner.ASCENDING))
                         .withMoveSelectorConfig(
                             new ListChangeMoveSelectorConfig()
                                 .withValueSelectorConfig(
@@ -1541,7 +1531,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                         .withId("sortedEntitySelector")
                                         .withSelectionOrder(SelectionOrder.SORTED)
                                         .withCacheType(SelectionCacheType.PHASE)
-                                        .withSorterWeightFactoryClass(
+                                        .withComparatorFactoryClass(
                                             TestdataObjectSortableDescendingFactory.class))
                                 .withValueSelectorConfig(
                                     new ValueSelectorConfig()
@@ -1587,7 +1577,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                         .withId("sortedEntitySelector")
                                         .withSelectionOrder(SelectionOrder.SORTED)
                                         .withCacheType(SelectionCacheType.PHASE)
-                                        .withSorterComparatorClass(
+                                        .withComparatorClass(
                                             TestdataObjectSortableDescendingComparator.class))
                                 .withValueSelectorConfig(
                                     new ValueSelectorConfig()
@@ -1670,7 +1660,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                     new ValueSelectorConfig()
                                         .withSelectionOrder(SelectionOrder.SORTED)
                                         .withCacheType(SelectionCacheType.PHASE)
-                                        .withSorterWeightFactoryClass(
+                                        .withComparatorFactoryClass(
                                             TestdataObjectSortableDescendingFactory.class)))),
             new int[] {2, 1, 0},
             // Only values are sorted in descending order
@@ -1712,7 +1702,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                     new ValueSelectorConfig()
                                         .withSelectionOrder(SelectionOrder.SORTED)
                                         .withCacheType(SelectionCacheType.PHASE)
-                                        .withSorterComparatorClass(
+                                        .withComparatorClass(
                                             TestdataObjectSortableDescendingComparator.class)))),
             new int[] {2, 1, 0},
             // Only values are sorted in descending order
@@ -1784,7 +1774,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                     .withId("sortedValueSelector")
                                     .withSelectionOrder(SelectionOrder.SORTED)
                                     .withCacheType(SelectionCacheType.PHASE)
-                                    .withSorterManner(ValueSorterManner.DECREASING_STRENGTH))
+                                    .withSorterManner(ValueSorterManner.DESCENDING))
                             .withMoveSelectorConfig(
                                 new ListChangeMoveSelectorConfig()
                                     .withValueSelectorConfig(
@@ -1798,8 +1788,7 @@ class DefaultConstructionHeuristicPhaseTest {
                                                     .withSelectionOrder(SelectionOrder.SORTED)
                                                     .withCacheType(SelectionCacheType.PHASE)
                                                     .withSorterManner(
-                                                        EntitySorterManner
-                                                            .DECREASING_DIFFICULTY))))));
+                                                        EntitySorterManner.DESCENDING))))));
     var solution = TestdataListSortableEntityProvidingSolution.generateSolution(3, 3, true);
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, solution))
         .hasMessageContaining(
@@ -1870,9 +1859,9 @@ class DefaultConstructionHeuristicPhaseTest {
         .hasMessageContaining(
             "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.mixed.strength.TestdataInvalidMixedStrengthSortableEntity) property (value)")
         .hasMessageContaining(
-            "cannot have a strengthComparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
+            "cannot have a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
         .hasMessageContaining(
-            "strengthWeightFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyWeightValueFactory) at the same time.");
+            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyWeightValueFactory) at the same time.");
 
     // Comparator and Factory properties
     var otherSolverConfig =
@@ -1888,74 +1877,6 @@ class DefaultConstructionHeuristicPhaseTest {
             "cannot have a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
         .hasMessageContaining(
             "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueFactory) at the same time.");
-  }
-
-  @Test
-  void failConstructionHeuristicBothProperties() {
-    // Value
-    {
-      // Two comparator properties
-      var solverConfig =
-          PlannerTestUtils.buildSolverConfig(
-                  TestdataInvalidTwoValueComparatorSortableSolution.class,
-                  TestdataInvalidTwoValueComparatorSortableEntity.class)
-              .withEasyScoreCalculatorClass(DummyHardSoftEasyScoreCalculator.class);
-      var solution = new TestdataInvalidTwoValueComparatorSortableSolution();
-      assertThatCode(() -> PlannerTestUtils.solve(solverConfig, solution))
-          .hasMessageContaining(
-              "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.value.TestdataInvalidTwoValueComparatorSortableEntity) property (value)")
-          .hasMessageContaining(
-              "cannot have a strengthComparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
-          .hasMessageContaining(
-              "and a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator) at the same time.");
-
-      // Comparator and Factory properties
-      var otherSolverConfig =
-          PlannerTestUtils.buildSolverConfig(
-                  TestdataInvalidTwoValueFactorySortableSolution.class,
-                  TestdataInvalidTwoValueFactorySortableEntity.class)
-              .withEasyScoreCalculatorClass(DummyHardSoftEasyScoreCalculator.class);
-      var otherSolution = new TestdataInvalidTwoValueFactorySortableSolution();
-      assertThatCode(() -> PlannerTestUtils.solve(otherSolverConfig, otherSolution))
-          .hasMessageContaining(
-              "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.value.TestdataInvalidTwoValueFactorySortableEntity) property (value)")
-          .hasMessageContaining(
-              "cannot have a strengthWeightFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyWeightValueFactory)")
-          .hasMessageContaining(
-              "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueFactory) at the same time.");
-    }
-    // Entity
-    {
-      // Two comparator properties
-      var solverConfig =
-          PlannerTestUtils.buildSolverConfig(
-                  TestdataInvalidTwoEntityComparatorSortableSolution.class,
-                  TestdataInvalidTwoEntityComparatorSortableEntity.class)
-              .withEasyScoreCalculatorClass(DummyHardSoftEasyScoreCalculator.class);
-      var solution = new TestdataInvalidTwoEntityComparatorSortableSolution();
-      assertThatCode(() -> PlannerTestUtils.solve(solverConfig, solution))
-          .hasMessageContaining(
-              "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.twocomparator.entity.TestdataInvalidTwoEntityComparatorSortableEntity)")
-          .hasMessageContaining(
-              "cannot have a difficultyComparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
-          .hasMessageContaining(
-              "and a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator) at the same time.");
-
-      // Comparator and Factory properties
-      var otherSolverConfig =
-          PlannerTestUtils.buildSolverConfig(
-                  TestdataInvalidTwoEntityFactorySortableSolution.class,
-                  TestdataInvalidTwoEntityFactorySortableEntity.class)
-              .withEasyScoreCalculatorClass(DummyHardSoftEasyScoreCalculator.class);
-      var otherSolution = new TestdataInvalidTwoEntityFactorySortableSolution();
-      assertThatCode(() -> PlannerTestUtils.solve(otherSolverConfig, otherSolution))
-          .hasMessageContaining(
-              "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.twofactory.entity.TestdataInvalidTwoEntityFactorySortableEntity)")
-          .hasMessageContaining(
-              "cannot have a difficultyWeightFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueFactory)")
-          .hasMessageContaining(
-              "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueFactory) at the same time.");
-    }
   }
 
   @Test
@@ -1993,9 +1914,9 @@ class DefaultConstructionHeuristicPhaseTest {
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, solution))
         .hasMessageContaining("The nearbySelectorConfig")
         .hasMessageContaining(
-            "Maybe remove difficultyComparatorClass or difficultyWeightFactoryClass from your @PlanningEntity annotation.")
+            "Maybe remove comparatorClass or comparatorFactoryClass from your @PlanningEntity annotation.")
         .hasMessageContaining(
-            "Maybe remove strengthComparatorClass or strengthWeightFactoryClass from your @PlanningVariable annotation.")
+            "Maybe remove comparatorClass or comparatorFactoryClass from your @PlanningVariable annotation.")
         .hasMessageContaining("Maybe disable nearby selection.");
   }
 

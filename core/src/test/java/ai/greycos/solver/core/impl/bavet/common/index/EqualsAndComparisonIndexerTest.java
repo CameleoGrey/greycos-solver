@@ -61,6 +61,6 @@ class EqualsAndComparisonIndexerTest extends AbstractIndexerTest {
   }
 
   private static UniTuple<String> newTuple(String factA) {
-    return new UniTuple<>(factA, 0);
+    return UniTuple.of(factA, 0);
   }
 }

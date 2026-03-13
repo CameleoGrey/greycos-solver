@@ -7,7 +7,6 @@ import java.util.Collections;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
@@ -44,7 +43,6 @@ class GreyCOSProcessorXMLPropertyTest {
   @Test
   void solverConfigXml_property() {
     assertNotNull(solverConfig);
-    assertEquals(CotwinAccessType.GIZMO, solverConfig.getCotwinAccessType());
     assertEquals(TestdataQuarkusSolution.class, solverConfig.getSolutionClass());
     assertEquals(
         Collections.singletonList(TestdataQuarkusEntity.class), solverConfig.getEntityClassList());

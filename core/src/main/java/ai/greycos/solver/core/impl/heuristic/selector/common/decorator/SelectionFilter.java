@@ -6,9 +6,9 @@ import java.util.stream.Stream;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.Selector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * Decides on accepting or discarding a selection, which is either a {@link PlanningEntity}, a

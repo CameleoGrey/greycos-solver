@@ -4,8 +4,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.pillar.PillarSelector;
@@ -25,15 +23,6 @@ public class PillarChangeMoveSelector<Solution_> extends GenericMoveSelector<Sol
     this.pillarSelector = pillarSelector;
     this.valueSelector = valueSelector;
     this.randomSelection = randomSelection;
-    GenuineVariableDescriptor<Solution_> variableDescriptor = valueSelector.getVariableDescriptor();
-    boolean isChained =
-        variableDescriptor instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor
-            && basicVariableDescriptor.isChained();
-    if (isChained) {
-      throw new IllegalStateException(
-          "The selector (%s) has a variableDescriptor (%s) which is chained (%s)."
-              .formatted(this, variableDescriptor, isChained));
-    }
     phaseLifecycleSupport.addEventListener(pillarSelector);
     phaseLifecycleSupport.addEventListener(valueSelector);
   }
@@ -95,7 +84,8 @@ public class PillarChangeMoveSelector<Solution_> extends GenericMoveSelector<Sol
       }
       Object toValue = valueIterator.next();
 
-      return new PillarChangeMove<>(upcomingPillar, valueSelector.getVariableDescriptor(), toValue);
+      return new SelectorBasedPillarChangeMove<>(
+          upcomingPillar, valueSelector.getVariableDescriptor(), toValue);
     }
   }
 
@@ -135,7 +125,8 @@ public class PillarChangeMoveSelector<Solution_> extends GenericMoveSelector<Sol
       }
       Object toValue = valueIterator.next();
 
-      return new PillarChangeMove<>(pillar, valueSelector.getVariableDescriptor(), toValue);
+      return new SelectorBasedPillarChangeMove<>(
+          pillar, valueSelector.getVariableDescriptor(), toValue);
     }
   }
 

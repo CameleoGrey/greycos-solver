@@ -4,7 +4,7 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.util.ListEntry;
 
@@ -45,12 +45,12 @@ public final class DefaultUniqueRandomSequence<T> implements UniqueRandomSequenc
   }
 
   @Override
-  public SequenceElement<T> pick(Random workingRandom) {
+  public SequenceElement<T> pick(RandomGenerator workingRandom) {
     var randomIndex = pickIndex(workingRandom);
     return new SequenceElement<>(originalList.get(randomIndex).getElement(), randomIndex);
   }
 
-  private int pickIndex(Random workingRandom) {
+  private int pickIndex(RandomGenerator workingRandom) {
     if (isEmpty()) {
       throw new NoSuchElementException();
     }
@@ -63,7 +63,7 @@ public final class DefaultUniqueRandomSequence<T> implements UniqueRandomSequenc
     return pickIndex(workingRandom, randomIndex);
   }
 
-  int pickIndex(Random workingRandom, int index) {
+  int pickIndex(RandomGenerator workingRandom, int index) {
     if (removed.get(index)) {
       // use the closest index to avoid skewing the probability
       index = determineActiveIndex(workingRandom, index);
@@ -74,7 +74,7 @@ public final class DefaultUniqueRandomSequence<T> implements UniqueRandomSequenc
     return index;
   }
 
-  private int determineActiveIndex(Random workingRandom, int randomIndex) {
+  private int determineActiveIndex(RandomGenerator workingRandom, int randomIndex) {
     var nextClearIndex = removed.nextClearBit(randomIndex);
     var previousClearIndex = removed.previousClearBit(randomIndex);
 
@@ -92,13 +92,13 @@ public final class DefaultUniqueRandomSequence<T> implements UniqueRandomSequenc
   }
 
   @Override
-  public T remove(Random workingRandom) {
+  public T remove(RandomGenerator workingRandom) {
     return remove(pickIndex(workingRandom));
   }
 
   /**
    * Removes the element at the given index in the underlying list. Once this method returns, no
-   * subsequent {@link #pick(Random)} will return this element ever again.
+   * subsequent {@link #pick(RandomGenerator)} will return this element ever again.
    *
    * @param index the index of the element to remove
    * @return The element which exists in the original list at the given index.

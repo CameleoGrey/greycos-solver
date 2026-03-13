@@ -1,10 +1,9 @@
 package ai.greycos.solver.core.impl.score.definition;
 
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
-import ai.greycos.solver.core.api.score.buildin.simplebigdecimal.SimpleBigDecimalScore;
-import ai.greycos.solver.core.impl.score.buildin.HardSoftScoreDefinition;
+import ai.greycos.solver.core.api.score.SimpleBigDecimalScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.score.trend.InitializingScoreTrend;
 
 /**

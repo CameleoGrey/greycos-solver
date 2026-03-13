@@ -372,14 +372,13 @@ public final class TestdataListUtils {
         new EntitySelectorConfig().withEntityClass(entityDescriptor.getEntityClass()));
     destinationSelectorConfig.setValueSelectorConfig(
         new ValueSelectorConfig()
-            .withVariableName(
-                entityDescriptor.getGenuineListVariableDescriptor().getVariableName()));
+            .withVariableName(entityDescriptor.getListVariableDescriptor().getVariableName()));
     var configPolicy = mock(HeuristicConfigPolicy.class);
     doReturn(solutionDescriptor).when(configPolicy).getSolutionDescriptor();
     doReturn(mimicRecordingValueSelector).when(configPolicy).getValueMimicRecorder(any());
     return DestinationSelectorFactory.<T>create(destinationSelectorConfig)
         .buildDestinationSelector(
-            configPolicy, SelectionCacheType.JUST_IN_TIME, randomSelection, "any");
+            configPolicy, SelectionCacheType.JUST_IN_TIME, randomSelection, "any", false);
   }
 
   public static <S> DestinationSelector<S> getEntityValueRangeDestinationSelector(
@@ -394,15 +393,14 @@ public final class TestdataListUtils {
     destinationSelectorConfig.setValueSelectorConfig(
         new ValueSelectorConfig()
             .withFilterClass(selectionFilterClass)
-            .withVariableName(
-                entityDescriptor.getGenuineListVariableDescriptor().getVariableName()));
+            .withVariableName(entityDescriptor.getListVariableDescriptor().getVariableName()));
     var configPolicy = mock(HeuristicConfigPolicy.class);
     doReturn(solutionDescriptor).when(configPolicy).getSolutionDescriptor();
     doReturn(innerMimicRecordingValueSelector).when(configPolicy).getValueMimicRecorder(any());
     doReturn(ClassInstanceCache.create()).when(configPolicy).getClassInstanceCache();
     return DestinationSelectorFactory.<S>create(destinationSelectorConfig)
         .buildDestinationSelector(
-            configPolicy, SelectionCacheType.JUST_IN_TIME, randomSelection, "any");
+            configPolicy, SelectionCacheType.JUST_IN_TIME, randomSelection, "any", false);
   }
 
   private static <T> Iterator<T> cyclicIterator(List<T> elements) {

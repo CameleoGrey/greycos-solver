@@ -24,11 +24,9 @@
   <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <modules>
-    <module>common</module>
     <module>jaxb</module>
     <module>jackson</module>
     <module>jpa</module>
-    <module>jsonb</module>
   </modules>
 
 </project>

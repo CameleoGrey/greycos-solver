@@ -40,6 +40,6 @@ public final class IndexedIfExistsQuadNode<A, B, C, D, E>
   @Override
   protected boolean testFiltering(QuadTuple<A, B, C, D> leftTuple, UniTuple<E> rightTuple) {
     return filtering.test(
-        leftTuple.factA, leftTuple.factB, leftTuple.factC, leftTuple.factD, rightTuple.factA);
+        leftTuple.getA(), leftTuple.getB(), leftTuple.getC(), leftTuple.getD(), rightTuple.getA());
   }
 }

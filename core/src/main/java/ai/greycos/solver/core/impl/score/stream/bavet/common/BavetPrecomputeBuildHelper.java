@@ -15,15 +15,15 @@ import ai.greycos.solver.core.impl.bavet.NodeNetwork;
 import ai.greycos.solver.core.impl.bavet.common.AbstractNodeBuildHelper;
 import ai.greycos.solver.core.impl.bavet.common.BavetAbstractConstraintStream;
 import ai.greycos.solver.core.impl.bavet.common.BavetRootNode;
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.RecordingTupleLifecycle;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
-import ai.greycos.solver.core.impl.score.buildin.SimpleScoreDefinition;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
+import ai.greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 import ai.greycos.solver.core.impl.score.stream.common.RetrievalSemantics;
 import ai.greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;
 
-public final class BavetPrecomputeBuildHelper<Tuple_ extends AbstractTuple> {
+public final class BavetPrecomputeBuildHelper<Tuple_ extends Tuple> {
   private final NodeNetwork nodeNetwork;
   private final RecordingTupleLifecycle<Tuple_> recordingTupleLifecycle;
   private final Class<?>[] sourceClasses;
@@ -72,7 +72,8 @@ public final class BavetPrecomputeBuildHelper<Tuple_ extends AbstractTuple> {
             AbstractScoreInliner.buildScoreInliner(
                 new SimpleScoreDefinition(),
                 Collections.emptyMap(),
-                ConstraintMatchPolicy.DISABLED));
+                ConstraintMatchPolicy.DISABLED),
+            null);
 
     var declaredClassToNodeMap = new LinkedHashMap<Class<?>, List<BavetRootNode<?>>>();
     var nodeList =
@@ -93,7 +94,8 @@ public final class BavetPrecomputeBuildHelper<Tuple_ extends AbstractTuple> {
               }
             });
 
-    this.nodeNetwork = AbstractNodeBuildHelper.buildNodeNetwork(nodeList, declaredClassToNodeMap);
+    this.nodeNetwork =
+        AbstractNodeBuildHelper.buildNodeNetwork(nodeList, declaredClassToNodeMap, buildHelper);
     this.recordingTupleLifecycle =
         (RecordingTupleLifecycle<Tuple_>)
             buildHelper.getAggregatedTupleLifecycle(List.of(recordingPrecomputeConstraintStream));

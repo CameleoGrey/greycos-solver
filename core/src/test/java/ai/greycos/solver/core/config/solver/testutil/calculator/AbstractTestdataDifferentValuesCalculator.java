@@ -3,7 +3,7 @@ package ai.greycos.solver.core.config.solver.testutil.calculator;
 import java.util.HashSet;
 import java.util.Set;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;

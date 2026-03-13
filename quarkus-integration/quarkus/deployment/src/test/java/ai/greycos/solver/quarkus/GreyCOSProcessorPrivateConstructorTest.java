@@ -33,7 +33,7 @@ class GreyCOSProcessorPrivateConstructorTest {
                           PrivateNoArgsConstructorSolution.class,
                           PrivateNoArgsConstructorEntity.class));
 
-  @Inject SolverManager<PrivateNoArgsConstructorSolution, Long> solverManager;
+  @Inject SolverManager<PrivateNoArgsConstructorSolution> solverManager;
 
   @Test
   void canConstructBeansWithPrivateConstructors() throws ExecutionException, InterruptedException {

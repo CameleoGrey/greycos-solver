@@ -11,15 +11,13 @@ import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import ai.greycos.solver.core.config.AbstractConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
-import ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbDurationAdapter;
-import ai.greycos.solver.core.impl.solver.termination.Termination;
+import ai.greycos.solver.core.impl.io.jaxb.JaxbDurationAdapter;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @XmlType(
     propOrder = {
-      "terminationClass",
       "terminationCompositionStyle",
       "diminishedReturnsConfig",
       "spentLimit",
@@ -44,13 +42,6 @@ import org.jspecify.annotations.Nullable;
       "terminationConfigList"
     })
 public class TerminationConfig extends AbstractConfig<TerminationConfig> {
-
-  /**
-   * @deprecated A custom terminationClass is deprecated and will be removed in a future major
-   *     version of GreyCOS.
-   */
-  @Deprecated(forRemoval = true)
-  private Class<? extends Termination> terminationClass = null;
 
   private TerminationCompositionStyle terminationCompositionStyle = null;
 
@@ -88,24 +79,6 @@ public class TerminationConfig extends AbstractConfig<TerminationConfig> {
 
   @XmlElement(name = "termination")
   private List<TerminationConfig> terminationConfigList = null;
-
-  /**
-   * @deprecated A custom terminationClass is deprecated and will be removed in a future major
-   *     version of GreyCOS.
-   */
-  @Deprecated(forRemoval = true)
-  public Class<? extends Termination> getTerminationClass() {
-    return terminationClass;
-  }
-
-  /**
-   * @deprecated A custom terminationClass is deprecated and will be removed in a future major
-   *     version of GreyCOS.
-   */
-  @Deprecated(forRemoval = true)
-  public void setTerminationClass(Class<? extends Termination> terminationClass) {
-    this.terminationClass = terminationClass;
-  }
 
   public @Nullable TerminationCompositionStyle getTerminationCompositionStyle() {
     return terminationCompositionStyle;
@@ -290,16 +263,6 @@ public class TerminationConfig extends AbstractConfig<TerminationConfig> {
   // ************************************************************************
   // With methods
   // ************************************************************************
-
-  /**
-   * @deprecated A custom terminationClass is deprecated and will be removed in a future major
-   *     version of GreyCOS.
-   */
-  @Deprecated(forRemoval = true)
-  public TerminationConfig withTerminationClass(Class<? extends Termination> terminationClass) {
-    this.terminationClass = terminationClass;
-    return this;
-  }
 
   public @NonNull TerminationConfig withTerminationCompositionStyle(
       @NonNull TerminationCompositionStyle terminationCompositionStyle) {
@@ -554,8 +517,7 @@ public class TerminationConfig extends AbstractConfig<TerminationConfig> {
    */
   @XmlTransient
   public boolean isConfigured() {
-    return terminationClass != null
-        || timeSpentLimitIsSet()
+    return timeSpentLimitIsSet()
         || unimprovedTimeSpentLimitIsSet()
         || diminishedReturnsConfig != null
         || bestScoreLimit != null
@@ -589,9 +551,6 @@ public class TerminationConfig extends AbstractConfig<TerminationConfig> {
     diminishedReturnsConfig =
         ConfigUtils.inheritConfig(
             diminishedReturnsConfig, inheritedConfig.getDiminishedReturnsConfig());
-    terminationClass =
-        ConfigUtils.inheritOverwritableProperty(
-            terminationClass, inheritedConfig.getTerminationClass());
     terminationCompositionStyle =
         ConfigUtils.inheritOverwritableProperty(
             terminationCompositionStyle, inheritedConfig.getTerminationCompositionStyle());
@@ -630,7 +589,6 @@ public class TerminationConfig extends AbstractConfig<TerminationConfig> {
 
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
-    classVisitor.accept(terminationClass);
     if (terminationConfigList != null) {
       terminationConfigList.forEach(tc -> tc.visitReferencedClasses(classVisitor));
     }

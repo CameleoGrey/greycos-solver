@@ -11,7 +11,7 @@ import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
-import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
@@ -47,19 +47,27 @@ public class DeclarativeShadowVariableDescriptor<Solution_>
           "DeclarativeShadowVariableDescriptor was created when method is empty.");
     }
 
+    var solutionClass = entityDescriptor.getSolutionDescriptor().getSolutionClass();
     var method =
         ReflectionHelper.getDeclaredMethod(variableMemberAccessor.getDeclaringClass(), methodName);
+    if (method == null) {
+      method =
+          ReflectionHelper.getDeclaredMethod(
+              variableMemberAccessor.getDeclaringClass(), methodName, solutionClass);
+    }
 
     if (method == null) {
       throw new IllegalArgumentException(
           """
-                    @%s (%s) defines a supplierMethod (%s) that does not exist inside its declaring class (%s).
-                    Maybe you misspelled the supplierMethod name?"""
+                    @%s (%s) defines a supplierName (%s) that does not exist inside its declaring class (%s).
+                    Maybe you included a parameter which is not a planning solution (%s)?
+                    Maybe you misspelled the supplierName name?"""
               .formatted(
                   ShadowVariable.class.getSimpleName(),
                   variableName,
                   methodName,
-                  variableMemberAccessor.getDeclaringClass().getCanonicalName()));
+                  variableMemberAccessor.getDeclaringClass().getCanonicalName(),
+                  solutionClass.getName()));
     }
 
     var shadowVariableUpdater = method.getAnnotation(ShadowSources.class);
@@ -83,7 +91,7 @@ public class DeclarativeShadowVariableDescriptor<Solution_>
             .getMemberAccessorFactory()
             .buildAndCacheMemberAccessor(
                 method,
-                MemberAccessorFactory.MemberAccessorType.FIELD_OR_READ_METHOD,
+                MemberAccessorType.FIELD_OR_READ_METHOD_WITH_OPTIONAL_PARAMETER,
                 ShadowSources.class,
                 descriptorPolicy.getCotwinAccessType());
 
@@ -154,7 +162,7 @@ public class DeclarativeShadowVariableDescriptor<Solution_>
       alignmentKeyMap =
           memberAccessorFactory.buildAndCacheMemberAccessor(
                   alignmentKeyMember,
-                  MemberAccessorFactory.MemberAccessorType.FIELD_OR_GETTER_METHOD,
+                  MemberAccessorType.FIELD_OR_GETTER_METHOD,
                   ShadowSources.class,
                   descriptorPolicy.getCotwinAccessType())
               ::executeGetter;

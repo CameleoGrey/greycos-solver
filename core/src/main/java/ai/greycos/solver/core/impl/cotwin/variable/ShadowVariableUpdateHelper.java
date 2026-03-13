@@ -2,7 +2,6 @@ package ai.greycos.solver.core.impl.cotwin.variable;
 
 import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.BASIC;
 import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.CASCADING_UPDATE;
-import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.CUSTOM_LISTENER;
 import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.DECLARATIVE;
 import static ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy.DISABLED;
 
@@ -25,17 +24,16 @@ import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.api.score.constraint.Indictment;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.DefaultShadowVariableMetaModel;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.cascade.CascadingUpdateShadowVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.custom.CustomShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.ChangedVariableNotifier;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.DefaultShadowVariableSessionFactory;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.VariableReferenceGraph;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.index.IndexShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType;
 import ai.greycos.solver.core.impl.cotwin.variable.listener.support.VariableListenerSupport;
@@ -54,7 +52,7 @@ import org.jspecify.annotations.Nullable;
 public final class ShadowVariableUpdateHelper<Solution_> {
 
   private static final EnumSet<ShadowVariableType> SUPPORTED_TYPES =
-      EnumSet.of(BASIC, CUSTOM_LISTENER, CASCADING_UPDATE, DECLARATIVE);
+      EnumSet.of(BASIC, CASCADING_UPDATE, DECLARATIVE);
 
   public static <Solution_> ShadowVariableUpdateHelper<Solution_> create() {
     return new ShadowVariableUpdateHelper<>(SUPPORTED_TYPES);
@@ -101,15 +99,6 @@ public final class ShadowVariableUpdateHelper<Solution_> {
     var solutionDescriptor =
         SolutionDescriptor.buildSolutionDescriptor(
             Objects.requireNonNull(solutionClass), entityClassList.toArray(new Class<?>[0]));
-    var customShadowVariableDescriptorList =
-        solutionDescriptor.getAllShadowVariableDescriptors().stream()
-            .filter(CustomShadowVariableDescriptor.class::isInstance)
-            .toList();
-    if (!customShadowVariableDescriptorList.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Custom shadow variable descriptors are not supported (%s)"
-              .formatted(customShadowVariableDescriptorList));
-    }
     var variableListenerSupport =
         VariableListenerSupport.create(
             new InternalScoreDirector.Builder<>(solutionDescriptor).build());
@@ -128,7 +117,6 @@ public final class ShadowVariableUpdateHelper<Solution_> {
     var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
     if (listVariableDescriptor == null) {
       session.processBasicVariable(entities);
-      session.processChainedVariable(entities);
     } else {
       session.processListVariable(entities);
       session.processCascadingVariable(entities);
@@ -160,7 +148,7 @@ public final class ShadowVariableUpdateHelper<Solution_> {
       for (var entityWithDescriptor : fetchEntityAndDescriptors(entities)) {
         // Iterate over all basic variables and update the inverse relation field
         for (var variableDescriptor :
-            fetchBasicDescriptors(entityWithDescriptor.entityDescriptor(), false)) {
+            fetchBasicDescriptors(entityWithDescriptor.entityDescriptor())) {
           var shadowEntity = variableDescriptor.getValue(entityWithDescriptor.entity());
           addShadowEntity(
               entityWithDescriptor, variableDescriptor, shadowEntity, shadowEntityToUpdate);
@@ -195,30 +183,6 @@ public final class ShadowVariableUpdateHelper<Solution_> {
         }
         shadowEntityToUpdate.putIfAbsent(
             shadowEntity, new ShadowEntityVariable(descriptor.getVariableName(), values));
-      }
-    }
-
-    /**
-     * Identify and auto-update {@link InverseRelationShadowVariable inverse shadow variables} of
-     * shadow entities for chained models.
-     *
-     * @param entities the entities to be analyzed
-     */
-    public void processChainedVariable(Object... entities) {
-      for (var entityWithDescriptor : fetchEntityAndDescriptors(entities)) {
-        // We filter all planning entities and update the inverse shadow variable
-        for (var variableDescriptor :
-            fetchBasicDescriptors(entityWithDescriptor.entityDescriptor(), true)) {
-          var shadowEntity = variableDescriptor.getValue(entityWithDescriptor.entity());
-          if (shadowEntity != null) {
-            // If the planning value is set, we update the inverse element
-            updateShadowVariable(
-                shadowEntity.getClass(),
-                InverseRelationShadowVariableDescriptor.class,
-                shadowEntity,
-                entityWithDescriptor.entity());
-          }
-        }
       }
     }
 
@@ -367,12 +331,10 @@ public final class ShadowVariableUpdateHelper<Solution_> {
     }
 
     private List<BasicVariableDescriptor<Solution_>> fetchBasicDescriptors(
-        EntityDescriptor<Solution_> entityDescriptor, boolean chained) {
+        EntityDescriptor<Solution_> entityDescriptor) {
       var descriptorList = new ArrayList<BasicVariableDescriptor<Solution_>>();
       for (var descriptor : entityDescriptor.getDeclaredGenuineVariableDescriptors()) {
-        if (descriptor instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor
-            && ((!chained && !basicVariableDescriptor.isChained())
-                || (chained && basicVariableDescriptor.isChained()))) {
+        if (descriptor instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor) {
           descriptorList.add(basicVariableDescriptor);
         }
       }
@@ -384,8 +346,9 @@ public final class ShadowVariableUpdateHelper<Solution_> {
       extends AbstractScoreDirectorFactory<
           Solution_, Score_, InternalScoreDirectorFactory<Solution_, Score_>> {
 
-    public InternalScoreDirectorFactory(SolutionDescriptor<Solution_> solutionDescriptor) {
-      super(solutionDescriptor);
+    public InternalScoreDirectorFactory(
+        SolutionDescriptor<Solution_> solutionDescriptor, EnvironmentMode environmentMode) {
+      super(solutionDescriptor, environmentMode);
     }
 
     @Override
@@ -437,7 +400,8 @@ public final class ShadowVariableUpdateHelper<Solution_> {
             InternalScoreDirector.Builder<Solution_, Score_>> {
 
       public Builder(SolutionDescriptor<Solution_> solutionDescriptor) {
-        super(new InternalScoreDirectorFactory<>(solutionDescriptor));
+        // We use PHASE_ASSERT by default
+        super(new InternalScoreDirectorFactory<>(solutionDescriptor, EnvironmentMode.PHASE_ASSERT));
         withConstraintMatchPolicy(DISABLED);
         withLookUpEnabled(false);
         withExpectShadowVariablesInCorrectState(false);

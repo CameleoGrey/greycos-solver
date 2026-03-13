@@ -6,9 +6,7 @@ import java.util.List;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import ai.greycos.solver.core.impl.cotwin.valuerange.AbstractCountableValueRange;
-import ai.greycos.solver.core.impl.cotwin.valuerange.buildin.bigdecimal.BigDecimalValueRange;
 import ai.greycos.solver.core.impl.cotwin.valuerange.buildin.composite.CompositeCountableValueRange;
-import ai.greycos.solver.core.impl.cotwin.valuerange.buildin.primdouble.DoubleValueRange;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 
 import org.jspecify.annotations.NullMarked;
@@ -22,7 +20,6 @@ public final class CompositeValueRangeDescriptor<Solution_>
 
   private final boolean canExtractValueRangeFromSolution;
   private final List<ValueRangeDescriptor<Solution_>> childValueRangeDescriptorList;
-  private final boolean isGenericTypeImmutable;
 
   public CompositeValueRangeDescriptor(
       int ordinal,
@@ -31,30 +28,11 @@ public final class CompositeValueRangeDescriptor<Solution_>
     super(ordinal, variableDescriptor);
     this.childValueRangeDescriptorList = childValueRangeDescriptorList;
     var canExtractFromSolution = true;
-    var isImmutable = true;
     for (var valueRangeDescriptor : childValueRangeDescriptorList) {
-      if (!valueRangeDescriptor.isCountable()) {
-        throw new IllegalStateException(
-            """
-                        The valueRange (%s) has a childValueRange (%s) which is not countable.
-                        Maybe replace %s with %s?"""
-                .formatted(
-                    this,
-                    valueRangeDescriptor,
-                    DoubleValueRange.class.getSimpleName(),
-                    BigDecimalValueRange.class.getSimpleName()));
-      }
       canExtractFromSolution =
           canExtractFromSolution && valueRangeDescriptor.canExtractValueRangeFromSolution();
-      isImmutable = isImmutable && valueRangeDescriptor.isGenericTypeImmutable();
     }
     this.canExtractValueRangeFromSolution = canExtractFromSolution;
-    this.isGenericTypeImmutable = isImmutable;
-  }
-
-  @Override
-  public boolean isGenericTypeImmutable() {
-    return isGenericTypeImmutable;
   }
 
   public int getValueRangeCount() {
@@ -64,11 +42,6 @@ public final class CompositeValueRangeDescriptor<Solution_>
   @Override
   public boolean canExtractValueRangeFromSolution() {
     return canExtractValueRangeFromSolution;
-  }
-
-  @Override
-  public boolean isCountable() {
-    return true;
   }
 
   @Override

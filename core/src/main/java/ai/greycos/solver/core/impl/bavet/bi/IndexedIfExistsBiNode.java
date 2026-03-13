@@ -39,6 +39,6 @@ public final class IndexedIfExistsBiNode<A, B, C>
 
   @Override
   protected boolean testFiltering(BiTuple<A, B> leftTuple, UniTuple<C> rightTuple) {
-    return filtering.test(leftTuple.factA, leftTuple.factB, rightTuple.factA);
+    return filtering.test(leftTuple.getA(), leftTuple.getB(), rightTuple.getA());
   }
 }

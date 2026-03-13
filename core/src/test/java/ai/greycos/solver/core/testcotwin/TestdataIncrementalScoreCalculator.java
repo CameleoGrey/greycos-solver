@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.ConstraintMatchAwareIncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;

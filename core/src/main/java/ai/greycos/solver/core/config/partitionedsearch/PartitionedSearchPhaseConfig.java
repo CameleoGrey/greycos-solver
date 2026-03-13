@@ -12,11 +12,10 @@ import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
-import ai.greycos.solver.core.config.phase.NoChangePhaseConfig;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
 import ai.greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
-import ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbCustomPropertiesAdapter;
+import ai.greycos.solver.core.impl.io.jaxb.JaxbCustomPropertiesAdapter;
 import ai.greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
 
 import org.jspecify.annotations.NonNull;
@@ -56,7 +55,6 @@ public class PartitionedSearchPhaseConfig extends PhaseConfig<PartitionedSearchP
     @XmlElement(
         name = LocalSearchPhaseConfig.XML_ELEMENT_NAME,
         type = LocalSearchPhaseConfig.class),
-    @XmlElement(name = NoChangePhaseConfig.XML_ELEMENT_NAME, type = NoChangePhaseConfig.class),
     @XmlElement(
         name = PartitionedSearchPhaseConfig.XML_ELEMENT_NAME,
         type = PartitionedSearchPhaseConfig.class)

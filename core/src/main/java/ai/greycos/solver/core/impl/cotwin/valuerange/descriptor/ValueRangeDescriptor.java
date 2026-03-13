@@ -42,15 +42,20 @@ public sealed interface ValueRangeDescriptor<Solution_> permits AbstractValueRan
   }
 
   /**
-   * @return true if the value range generic type is immutable.
+   * @return always true; retained as a compatibility hook while the value range cleanup settles.
    */
-  boolean isGenericTypeImmutable();
+  @Deprecated(forRemoval = true, since = "1.1.0")
+  default boolean isGenericTypeImmutable() {
+    return true;
+  }
 
   /**
-   * @return true if the {@link ValueRange} is countable (for example a double value range between
-   *     1.2 and 1.4 is not countable)
+   * @return always true; all value ranges are countable now.
    */
-  boolean isCountable();
+  @Deprecated(forRemoval = true, since = "1.1.0")
+  default boolean isCountable() {
+    return true;
+  }
 
   /**
    * Returns true if the value range is defined at the solution level and can be directly extracted

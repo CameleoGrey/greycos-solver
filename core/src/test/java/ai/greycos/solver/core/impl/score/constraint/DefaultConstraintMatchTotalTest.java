@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;

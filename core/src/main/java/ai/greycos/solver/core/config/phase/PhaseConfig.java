@@ -23,7 +23,6 @@ import org.jspecify.annotations.Nullable;
   ExhaustiveSearchPhaseConfig.class,
   IslandModelPhaseConfig.class,
   LocalSearchPhaseConfig.class,
-  NoChangePhaseConfig.class,
   PartitionedSearchPhaseConfig.class
 })
 @XmlType(propOrder = {"terminationConfig"})

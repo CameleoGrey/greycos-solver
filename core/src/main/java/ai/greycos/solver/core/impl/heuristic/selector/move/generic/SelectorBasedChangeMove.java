@@ -1,0 +1,17 @@
+package ai.greycos.solver.core.impl.heuristic.selector.move.generic;
+
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
+public class SelectorBasedChangeMove<Solution_> extends ChangeMove<Solution_> {
+
+  public SelectorBasedChangeMove(
+      GenuineVariableDescriptor<Solution_> variableDescriptor,
+      Object entity,
+      @Nullable Object toPlanningValue) {
+    super(variableDescriptor, entity, toPlanningValue);
+  }
+}

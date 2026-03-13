@@ -3,13 +3,13 @@ package ai.greycos.solver.core.impl.solver;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -36,49 +36,55 @@ import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.SolverTermination;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
- * @param <ProblemId_> the ID type of submitted problem, such as {@link Long} or {@link UUID}.
  */
-public final class DefaultSolverJob<Solution_, ProblemId_>
-    implements SolverJob<Solution_, ProblemId_>, Callable<Solution_> {
+@NullMarked
+public final class DefaultSolverJob<Solution_>
+    implements SolverJob<Solution_>, Callable<Solution_> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultSolverJob.class);
+  private static final Duration EARLY_TERMINATION_TIMEOUT = Duration.ofMinutes(1);
 
-  private final DefaultSolverManager<Solution_, ProblemId_> solverManager;
+  private final DefaultSolverManager<Solution_> solverManager;
   private final DefaultSolver<Solution_> solver;
-  private final ProblemId_ problemId;
-  private final Function<? super ProblemId_, ? extends Solution_> problemFinder;
-  private final Consumer<NewBestSolutionEvent<Solution_>> bestSolutionConsumer;
-  private final Consumer<FinalBestSolutionEvent<Solution_>> finalBestSolutionConsumer;
-  private final Consumer<FirstInitializedSolutionEvent<Solution_>> firstInitializedSolutionConsumer;
-  private final Consumer<SolverJobStartedEvent<Solution_>> solverJobStartedConsumer;
-  private final BiConsumer<? super ProblemId_, ? super Throwable> exceptionHandler;
+  private final Object problemId;
+  private final Function<? super Object, ? extends Solution_> problemFinder;
+  private final @Nullable Consumer<NewBestSolutionEvent<Solution_>> bestSolutionConsumer;
+  private final @Nullable Consumer<FinalBestSolutionEvent<Solution_>> finalBestSolutionConsumer;
+  private final @Nullable Consumer<FirstInitializedSolutionEvent<Solution_>>
+      firstInitializedSolutionConsumer;
+  private final @Nullable Consumer<SolverJobStartedEvent<Solution_>> solverJobStartedConsumer;
+  private final BiConsumer<? super Object, ? super Throwable> exceptionHandler;
 
-  private volatile SolverStatus solverStatus;
   private final CountDownLatch terminatedLatch;
   private final ReentrantLock solverStatusModifyingLock;
-  private Future<Solution_> finalBestSolutionFuture;
-  private ConsumerSupport<Solution_, ProblemId_> consumerSupport;
   private final AtomicBoolean terminatedEarly = new AtomicBoolean(false);
   private final BestSolutionHolder<Solution_> bestSolutionHolder = new BestSolutionHolder<>();
-  private final AtomicReference<ProblemSizeStatistics> temporaryProblemSizeStatistics =
+  private final AtomicReference<SolverStatus> solverStatus =
+      new AtomicReference<>(SolverStatus.SOLVING_SCHEDULED);
+  private final AtomicReference<@Nullable Future<Solution_>> finalBestSolutionFuture =
+      new AtomicReference<>();
+  private final AtomicReference<@Nullable ConsumerSupport<Solution_, Object>> consumerSupport =
+      new AtomicReference<>();
+  private final AtomicReference<@Nullable ProblemSizeStatistics> temporaryProblemSizeStatistics =
       new AtomicReference<>();
 
   public DefaultSolverJob(
-      DefaultSolverManager<Solution_, ProblemId_> solverManager,
+      DefaultSolverManager<Solution_> solverManager,
       Solver<Solution_> solver,
-      ProblemId_ problemId,
-      Function<? super ProblemId_, ? extends Solution_> problemFinder,
-      Consumer<NewBestSolutionEvent<Solution_>> bestSolutionConsumer,
-      Consumer<FinalBestSolutionEvent<Solution_>> finalBestSolutionConsumer,
-      Consumer<FirstInitializedSolutionEvent<Solution_>> firstInitializedSolutionConsumer,
-      Consumer<SolverJobStartedEvent<Solution_>> solverJobStartedConsumer,
-      BiConsumer<? super ProblemId_, ? super Throwable> exceptionHandler) {
+      Object problemId,
+      Function<? super Object, ? extends Solution_> problemFinder,
+      @Nullable Consumer<NewBestSolutionEvent<Solution_>> bestSolutionConsumer,
+      @Nullable Consumer<FinalBestSolutionEvent<Solution_>> finalBestSolutionConsumer,
+      @Nullable Consumer<FirstInitializedSolutionEvent<Solution_>> firstInitializedSolutionConsumer,
+      @Nullable Consumer<SolverJobStartedEvent<Solution_>> solverJobStartedConsumer,
+      BiConsumer<? super Object, ? super Throwable> exceptionHandler) {
     this.solverManager = solverManager;
     this.problemId = problemId;
     if (!(solver instanceof DefaultSolver)) {
@@ -93,58 +99,69 @@ public final class DefaultSolverJob<Solution_, ProblemId_>
     this.firstInitializedSolutionConsumer = firstInitializedSolutionConsumer;
     this.solverJobStartedConsumer = solverJobStartedConsumer;
     this.exceptionHandler = exceptionHandler;
-    solverStatus = SolverStatus.SOLVING_SCHEDULED;
-    terminatedLatch = new CountDownLatch(1);
-    solverStatusModifyingLock = new ReentrantLock();
+    this.terminatedLatch = new CountDownLatch(1);
+    this.solverStatusModifyingLock = new ReentrantLock();
   }
 
   public void setFinalBestSolutionFuture(Future<Solution_> finalBestSolutionFuture) {
-    this.finalBestSolutionFuture = finalBestSolutionFuture;
+    var oldFuture = this.finalBestSolutionFuture.getAndSet(finalBestSolutionFuture);
+    if (oldFuture != null) {
+      throw new IllegalStateException(
+          "Impossible state: the finalBestSolutionFuture was already set to (%s)."
+              .formatted(oldFuture));
+    }
   }
 
   @Override
-  public @NonNull ProblemId_ getProblemId() {
+  public Object getProblemId() {
     return problemId;
   }
 
   @Override
-  public @NonNull SolverStatus getSolverStatus() {
-    return solverStatus;
+  public SolverStatus getSolverStatus() {
+    return solverStatus.get();
   }
 
   @Override
   public Solution_ call() {
     solverStatusModifyingLock.lock();
-    if (solverStatus != SolverStatus.SOLVING_SCHEDULED) {
+    if (solverStatus.get() != SolverStatus.SOLVING_SCHEDULED) {
       // This job has been canceled before it started,
       // or it is already solving
       solverStatusModifyingLock.unlock();
       return problemFinder.apply(problemId);
     }
     try {
-      solverStatus = SolverStatus.SOLVING_ACTIVE;
+      solverStatus.set(SolverStatus.SOLVING_ACTIVE);
       // Create the consumer thread pool only when this solver job is active.
-      consumerSupport =
+      var currentConsumerSupport =
           new ConsumerSupport<>(
-              getProblemId(),
+              problemId,
               bestSolutionConsumer,
               finalBestSolutionConsumer,
               firstInitializedSolutionConsumer,
               solverJobStartedConsumer,
               exceptionHandler,
               bestSolutionHolder);
+      var oldConsumerSupport = consumerSupport.getAndSet(currentConsumerSupport);
+      if (oldConsumerSupport != null) {
+        throw new IllegalStateException(
+            "Impossible state: the consumerSupport was already set to (%s)."
+                .formatted(oldConsumerSupport));
+      }
 
-      Solution_ problem = problemFinder.apply(problemId);
+      var problem = problemFinder.apply(problemId);
       // add a phase lifecycle listener that unlock the solver status lock when solving started
       solver.addPhaseLifecycleListener(new UnlockLockPhaseLifecycleListener());
       // add a phase lifecycle listener that consumes the first initialized solution
       solver.addPhaseLifecycleListener(
-          new FirstInitializedSolutionPhaseLifecycleListener(consumerSupport));
+          new FirstInitializedSolutionPhaseLifecycleListener(currentConsumerSupport));
       // add a phase lifecycle listener once when the solver starts its execution
-      solver.addPhaseLifecycleListener(new StartSolverJobPhaseLifecycleListener(consumerSupport));
+      solver.addPhaseLifecycleListener(
+          new StartSolverJobPhaseLifecycleListener(currentConsumerSupport));
       solver.addEventListener(this::onBestSolutionChangedEvent);
-      final Solution_ finalBestSolution = solver.solve(problem);
-      consumerSupport.consumeFinalBestSolution(finalBestSolution);
+      final var finalBestSolution = solver.solve(problem);
+      currentConsumerSupport.consumeFinalBestSolution(finalBestSolution);
       return finalBestSolution;
     } catch (Throwable e) {
       exceptionHandler.accept(problemId, e);
@@ -169,32 +186,43 @@ public final class DefaultSolverJob<Solution_, ProblemId_>
 
   private void onBestSolutionChangedEvent(
       BestSolutionChangedEvent<Solution_> bestSolutionChangedEvent) {
-    consumerSupport.consumeIntermediateBestSolution(
+    var currentConsumerSupport = consumerSupport.get();
+    if (currentConsumerSupport == null) {
+      throw new IllegalStateException(
+          """
+              Impossible state: Asked to consume a best solution changed event for problemId (%s), but the consumer is not set.
+              This means the solver job did not start properly or has already been terminated. This is likely a bug.
+              Please report this issue to GreyCOS with details on how to reproduce it."""
+              .formatted(problemId));
+    }
+    currentConsumerSupport.consumeIntermediateBestSolution(
         bestSolutionChangedEvent.getNewBestSolution(),
         bestSolutionChangedEvent.getProducerId(),
         bestSolutionChangedEvent::isEveryProblemChangeProcessed);
   }
 
   private void solvingTerminated() {
-    solverStatus = SolverStatus.NOT_SOLVING;
+    solverStatus.set(SolverStatus.NOT_SOLVING);
     solverManager.unregisterSolverJob(problemId);
     terminatedLatch.countDown();
     close();
   }
 
   @Override
-  public @NonNull CompletableFuture<Void> addProblemChanges(
-      @NonNull List<ProblemChange<Solution_>> problemChangeList) {
+  public CompletableFuture<Void> addProblemChanges(
+      List<ProblemChange<Solution_>> problemChangeList) {
     Objects.requireNonNull(
         problemChangeList,
         () -> "A problem change list for problem (%s) must not be null.".formatted(problemId));
     if (problemChangeList.isEmpty()) {
       throw new IllegalArgumentException(
           "The problem change list for problem (%s) must not be empty.".formatted(problemId));
-    } else if (solverStatus == SolverStatus.NOT_SOLVING) {
+    }
+    var currentSolverStatus = solverStatus.get();
+    if (currentSolverStatus == SolverStatus.NOT_SOLVING) {
       throw new IllegalStateException(
           "Cannot add the problem changes (%s) because the solver job (%s) is not solving."
-              .formatted(problemChangeList, solverStatus));
+              .formatted(problemChangeList, currentSolverStatus));
     }
 
     return bestSolutionHolder.addProblemChange(solver, problemChangeList);
@@ -202,34 +230,71 @@ public final class DefaultSolverJob<Solution_, ProblemId_>
 
   @Override
   public void terminateEarly() {
-    terminatedEarly.set(true);
     try {
       solverStatusModifyingLock.lock();
-      switch (solverStatus) {
-        case SOLVING_SCHEDULED:
-          finalBestSolutionFuture.cancel(false);
-          solvingTerminated();
-          break;
-        case SOLVING_ACTIVE:
-          // Indirectly triggers solvingTerminated()
-          // No need to cancel the finalBestSolutionFuture as it will finish normally.
-          solver.terminateEarly();
-          break;
-        case NOT_SOLVING:
-          // Do nothing, solvingTerminated() already called
-          break;
-        default:
-          throw new IllegalStateException("Unsupported solverStatus (%s).".formatted(solverStatus));
-      }
-      try {
-        // Don't return until bestSolutionConsumer won't be called anymore
-        terminatedLatch.await();
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.warn("The terminateEarly() call is interrupted.", e);
-      }
+      terminateEarlyLocked();
     } finally {
       solverStatusModifyingLock.unlock();
+    }
+  }
+
+  private void terminateEarlyLocked() {
+    var terminatedAlready = terminatedEarly.getAndSet(true);
+    if (terminatedAlready) {
+      return;
+    }
+    var actualSolverStatus = solverStatus.get();
+    var future = finalBestSolutionFuture.get();
+    switch (actualSolverStatus) {
+      case SOLVING_SCHEDULED:
+        if (solver.isSolving()) {
+          if (future == null) {
+            throw new IllegalStateException(
+                "Impossible state: the finalBestSolutionFuture is not set yet for problemId (%s)."
+                    .formatted(problemId));
+          }
+          future.cancel(false);
+        } else {
+          LOGGER.debug(
+              "terminateEarly() has been called while the solver was not solving. Cancelling the job.");
+          if (future != null) {
+            future.cancel(false);
+          }
+        }
+        solvingTerminated();
+        break;
+      case SOLVING_ACTIVE:
+        // Indirectly triggers solvingTerminated()
+        // No need to cancel the finalBestSolutionFuture as it will finish normally.
+        solver.terminateEarly();
+        break;
+      case NOT_SOLVING:
+        // Do nothing, solvingTerminated() already called
+        break;
+      default:
+        throw new IllegalStateException(
+            "Unsupported solverStatus (%s).".formatted(actualSolverStatus));
+    }
+    try {
+      // Don't return until bestSolutionConsumer won't be called anymore
+      var terminatedCorrectly =
+          terminatedLatch.await(EARLY_TERMINATION_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+      if (!terminatedCorrectly) {
+        LOGGER.warn(
+            """
+            The terminateEarly() call did not complete within ({}) for problemId ({}).
+            The final best solution may not have been consumed yet. This is likely a bug.
+            Please report this issue to GreyCOS with details on how to reproduce it.""",
+            EARLY_TERMINATION_TIMEOUT,
+            problemId);
+        if (future != null && !future.isDone()) {
+          future.cancel(true);
+        }
+        solvingTerminated();
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("The terminateEarly() call is interrupted.", e);
     }
   }
 
@@ -239,19 +304,25 @@ public final class DefaultSolverJob<Solution_, ProblemId_>
   }
 
   @Override
-  public @NonNull Solution_ getFinalBestSolution() throws InterruptedException, ExecutionException {
+  public Solution_ getFinalBestSolution() throws InterruptedException, ExecutionException {
     try {
-      return finalBestSolutionFuture.get();
+      var future = finalBestSolutionFuture.get();
+      if (future == null) {
+        throw new IllegalStateException(
+            "Impossible state: the finalBestSolutionFuture is not set yet for problemId (%s)."
+                .formatted(problemId));
+      }
+      return future.get();
     } catch (CancellationException cancellationException) {
       LOGGER.debug(
-          "The terminateEarly() has been called before the solver job started solving. "
+          "terminateEarly() has been called before the solver job started solving. "
               + "Retrieving the input problem instead.");
       return problemFinder.apply(problemId);
     }
   }
 
   @Override
-  public @NonNull Duration getSolvingDuration() {
+  public Duration getSolvingDuration() {
     return Duration.ofMillis(solver.getTimeMillisSpent());
   }
 
@@ -276,7 +347,7 @@ public final class DefaultSolverJob<Solution_, ProblemId_>
   }
 
   @Override
-  public @NonNull ProblemSizeStatistics getProblemSizeStatistics() {
+  public ProblemSizeStatistics getProblemSizeStatistics() {
     var solverScope = solver.getSolverScope();
     var problemSizeStatistics = solverScope.getProblemSizeStatistics();
     if (problemSizeStatistics != null) {
@@ -291,19 +362,25 @@ public final class DefaultSolverJob<Solution_, ProblemId_>
     // before the solving has started.
     // Once the solving has started, the problem size statistics will be computed
     // using the ScoreDirector's hot ValueRangeManager.
-    return temporaryProblemSizeStatistics.updateAndGet(
-        oldStatistics -> {
-          if (oldStatistics != null) {
-            // If the problem size statistics were already computed, return them.
-            // This can happen if the problem size statistics were computed before the solving
-            // started.
-            return oldStatistics;
-          }
-          var solutionDescriptor = solverScope.getSolutionDescriptor();
-          var valueManager =
-              ValueRangeManager.of(solutionDescriptor, problemFinder.apply(problemId));
-          return valueManager.getProblemSizeStatistics();
-        });
+    var result =
+        temporaryProblemSizeStatistics.updateAndGet(
+            oldStatistics -> {
+              if (oldStatistics != null) {
+                // If the problem size statistics were already computed, return them.
+                // This can happen if the problem size statistics were computed before the solving
+                // started.
+                return oldStatistics;
+              }
+              var solutionDescriptor = solverScope.getSolutionDescriptor();
+              var valueManager =
+                  ValueRangeManager.of(solutionDescriptor, problemFinder.apply(problemId));
+              return valueManager.getProblemSizeStatistics();
+            });
+    // Avoids nullness issues reported by IDE which cannot actually happen.
+    // The result can never be null, because none of the methods called in the lambda can return
+    // null, and the lambda is the only way to set the value of the
+    // temporaryProblemSizeStatistics, which is the only way for it to be null.
+    return Objects.requireNonNull(result);
   }
 
   public SolverTermination<Solution_> getSolverTermination() {
@@ -311,9 +388,9 @@ public final class DefaultSolverJob<Solution_, ProblemId_>
   }
 
   void close() {
-    if (consumerSupport != null) {
-      consumerSupport.close();
-      consumerSupport = null;
+    var currentConsumerSupport = consumerSupport.getAndSet(null);
+    if (currentConsumerSupport != null) {
+      currentConsumerSupport.close();
     }
   }
 
@@ -322,9 +399,20 @@ public final class DefaultSolverJob<Solution_, ProblemId_>
    *
    * <p>It prevents the following scenario caused by unlocking before Solving started:
    *
-   * <p>Thread 1: solverStatusModifyingLock.unlock() >solver.solve(...) // executes second
-   *
-   * <p>Thread 2: case SOLVING_ACTIVE: >solver.terminateEarly(); // executes first
+   * <dl>
+   *   <dt>Thread 1
+   *   <dd>
+   *       <pre>
+   *           solverStatusModifyingLock.unlock()
+   *           > solver.solve(...) // executes second
+   *     </pre>
+   *   <dt>Thread 2
+   *   <dd>
+   *       <pre>
+   *           case SOLVING_ACTIVE:
+   *           >solver.terminateEarly(); // executes first
+   *     </pre>
+   * </dl>
    *
    * <p>The solver.solve() call resets the terminateEarly flag, and thus the solver will not be
    * terminated by the call, which means terminatedLatch will not be decremented, causing Thread 2
@@ -352,10 +440,10 @@ public final class DefaultSolverJob<Solution_, ProblemId_>
   private final class FirstInitializedSolutionPhaseLifecycleListener
       extends PhaseLifecycleListenerAdapter<Solution_> {
 
-    private final ConsumerSupport<Solution_, ProblemId_> consumerSupport;
+    private final ConsumerSupport<Solution_, Object> consumerSupport;
 
     public FirstInitializedSolutionPhaseLifecycleListener(
-        ConsumerSupport<Solution_, ProblemId_> consumerSupport) {
+        ConsumerSupport<Solution_, Object> consumerSupport) {
       this.consumerSupport = consumerSupport;
     }
 
@@ -390,10 +478,10 @@ public final class DefaultSolverJob<Solution_, ProblemId_>
   private final class StartSolverJobPhaseLifecycleListener
       extends PhaseLifecycleListenerAdapter<Solution_> {
 
-    private final ConsumerSupport<Solution_, ProblemId_> consumerSupport;
+    private final ConsumerSupport<Solution_, Object> consumerSupport;
 
     public StartSolverJobPhaseLifecycleListener(
-        ConsumerSupport<Solution_, ProblemId_> consumerSupport) {
+        ConsumerSupport<Solution_, Object> consumerSupport) {
       this.consumerSupport = consumerSupport;
     }
 

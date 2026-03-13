@@ -16,8 +16,6 @@ import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfiguration;
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintWeight;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
@@ -1737,6 +1735,9 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    *     be deeply immutable. Not following this recommendation may lead to hard-to-debug hashing
    *     issues down the stream, especially if this value is ever used as a group key.
    */
+  <ResultA_> @NonNull BiConstraintStream<A, ResultA_> flatten(
+      @NonNull Function<A, Iterable<ResultA_>> mapping);
+
   <ResultA_> @NonNull UniConstraintStream<ResultA_> flattenLast(
       @NonNull Function<A, Iterable<ResultA_>> mapping);
 

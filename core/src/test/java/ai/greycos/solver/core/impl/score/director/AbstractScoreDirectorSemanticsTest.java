@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.util.List;
+import java.util.Map;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
-import ai.greycos.solver.core.testcotwin.constraintconfiguration.TestdataConstraintConfigurationSolution;
+import ai.greycos.solver.core.testcotwin.constraintweightoverrides.TestdataConstraintWeightOverridesSolution;
 import ai.greycos.solver.core.testcotwin.list.pinned.TestdataPinnedListSolution;
 import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListSolution;
 
@@ -17,18 +19,18 @@ import org.junit.jupiter.api.Test;
 
 public abstract class AbstractScoreDirectorSemanticsTest {
 
-  private final SolutionDescriptor<TestdataConstraintConfigurationSolution>
+  private final SolutionDescriptor<TestdataConstraintWeightOverridesSolution>
       constraintConfigurationSolutionDescriptor =
-          TestdataConstraintConfigurationSolution.buildSolutionDescriptor();
+          TestdataConstraintWeightOverridesSolution.buildSolutionDescriptor();
   private final SolutionDescriptor<TestdataPinnedListSolution> pinnedListSolutionDescriptor =
       TestdataPinnedListSolution.buildSolutionDescriptor();
   private final SolutionDescriptor<TestdataPinnedWithIndexListSolution>
       pinnedWithIndexListSolutionDescriptor =
           TestdataPinnedWithIndexListSolution.buildSolutionDescriptor();
 
-  protected abstract ScoreDirectorFactory<TestdataConstraintConfigurationSolution, SimpleScore>
+  protected abstract ScoreDirectorFactory<TestdataConstraintWeightOverridesSolution, SimpleScore>
       buildScoreDirectorFactoryWithConstraintConfiguration(
-          SolutionDescriptor<TestdataConstraintConfigurationSolution> solutionDescriptor);
+          SolutionDescriptor<TestdataConstraintWeightOverridesSolution> solutionDescriptor);
 
   protected abstract ScoreDirectorFactory<TestdataPinnedListSolution, SimpleScore>
       buildScoreDirectorFactoryWithListVariableEntityPin(
@@ -45,14 +47,14 @@ public abstract class AbstractScoreDirectorSemanticsTest {
             constraintConfigurationSolutionDescriptor);
 
     // Create first score director, calculate score.
-    var solution1 = TestdataConstraintConfigurationSolution.generateSolution(1, 1);
+    var solution1 = TestdataConstraintWeightOverridesSolution.generateSolution(1, 1);
     try (var scoreDirector1 = scoreDirectorFactory.buildScoreDirector()) {
       scoreDirector1.setWorkingSolution(solution1);
       var score1 = scoreDirector1.calculateScore();
       assertThat(score1.raw()).isEqualTo(SimpleScore.of(1));
 
       // Create second score director, calculate score.
-      var solution2 = TestdataConstraintConfigurationSolution.generateSolution(2, 2);
+      var solution2 = TestdataConstraintWeightOverridesSolution.generateSolution(2, 2);
       try (var scoreDirector2 = scoreDirectorFactory.buildScoreDirector()) {
         scoreDirector2.setWorkingSolution(solution2);
         var score2 = scoreDirector2.calculateScore();
@@ -88,22 +90,23 @@ public abstract class AbstractScoreDirectorSemanticsTest {
             constraintConfigurationSolutionDescriptor);
 
     // Create score director, calculate score.
-    var solution1 = TestdataConstraintConfigurationSolution.generateSolution(1, 1);
+    var solution1 = TestdataConstraintWeightOverridesSolution.generateSolution(1, 1);
     try (var scoreDirector = scoreDirectorFactory.buildScoreDirector()) {
       scoreDirector.setWorkingSolution(solution1);
       var score1 = scoreDirector.calculateScore();
       assertThat(score1.raw()).isEqualTo(SimpleScore.ONE);
 
       // Set new solution with a different constraint weight, calculate score.
-      var solution2 = TestdataConstraintConfigurationSolution.generateSolution(1, 1);
-      var constraintConfiguration = solution2.getConstraintConfiguration();
-      constraintConfiguration.setFirstWeight(SimpleScore.of(2));
+      var solution2 = TestdataConstraintWeightOverridesSolution.generateSolution(1, 1);
+      solution2.setConstraintWeightOverrides(
+          ConstraintWeightOverrides.of(Map.of("First weight", SimpleScore.of(2))));
       scoreDirector.setWorkingSolution(solution2);
       var score2 = scoreDirector.calculateScore();
       assertThat(score2.raw()).isEqualTo(SimpleScore.of(2));
 
       // Set new solution with a disabled constraint, calculate score.
-      constraintConfiguration.setFirstWeight(SimpleScore.ZERO);
+      solution2.setConstraintWeightOverrides(
+          ConstraintWeightOverrides.of(Map.of("First weight", SimpleScore.ZERO)));
       scoreDirector.setWorkingSolution(solution2);
       var score3 = scoreDirector.calculateScore();
       assertThat(score3.raw()).isEqualTo(SimpleScore.ZERO);
@@ -117,17 +120,18 @@ public abstract class AbstractScoreDirectorSemanticsTest {
             constraintConfigurationSolutionDescriptor);
 
     // Create score director, calculate score with a given constraint configuration.
-    var solution = TestdataConstraintConfigurationSolution.generateSolution(1, 1);
+    var solution = TestdataConstraintWeightOverridesSolution.generateSolution(1, 1);
     try (var scoreDirector = scoreDirectorFactory.buildScoreDirector()) {
       scoreDirector.setWorkingSolution(solution);
       var score1 = scoreDirector.calculateScore();
       assertThat(score1.raw()).isEqualTo(SimpleScore.ONE);
 
       // Change constraint configuration on the current working solution.
-      var constraintConfiguration = solution.getConstraintConfiguration();
-      scoreDirector.beforeProblemPropertyChanged(constraintConfiguration);
-      constraintConfiguration.setFirstWeight(SimpleScore.of(2));
-      scoreDirector.afterProblemPropertyChanged(constraintConfiguration);
+      var weightOverrides = solution.getConstraintWeightOverrides();
+      scoreDirector.beforeProblemPropertyChanged(weightOverrides);
+      solution.setConstraintWeightOverrides(
+          ConstraintWeightOverrides.of(Map.of("First weight", SimpleScore.of(2))));
+      scoreDirector.afterProblemPropertyChanged(weightOverrides);
       var score2 = scoreDirector.calculateScore();
       assertThat(score2.raw()).isEqualTo(SimpleScore.of(2));
     }
@@ -142,7 +146,7 @@ public abstract class AbstractScoreDirectorSemanticsTest {
     Assumptions.assumeTrue(scoreDirectorFactory.supportsConstraintMatching());
 
     // Create score director, calculate score with a given constraint configuration.
-    var solution = TestdataConstraintConfigurationSolution.generateSolution(1, 1);
+    var solution = TestdataConstraintWeightOverridesSolution.generateSolution(1, 1);
     try (var scoreDirector =
         scoreDirectorFactory
             .createScoreDirectorBuilder()
@@ -157,7 +161,7 @@ public abstract class AbstractScoreDirectorSemanticsTest {
             softly
                 .assertThat(scoreDirector.getConstraintMatchTotalMap())
                 .containsOnlyKeys(
-                    "ai.greycos.solver.core.testcotwin.constraintconfiguration/First weight");
+                    "ai.greycos.solver.core.testcotwin.constraintweightoverrides/First weight");
           });
 
       // Make sure nothing matches, but the constraint is still present.
@@ -173,7 +177,7 @@ public abstract class AbstractScoreDirectorSemanticsTest {
             softly
                 .assertThat(scoreDirector.getConstraintMatchTotalMap())
                 .containsOnlyKeys(
-                    "ai.greycos.solver.core.testcotwin.constraintconfiguration/First weight");
+                    "ai.greycos.solver.core.testcotwin.constraintweightoverrides/First weight");
           });
     }
   }

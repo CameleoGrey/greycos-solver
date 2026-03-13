@@ -5,9 +5,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 import ai.greycos.solver.core.impl.util.CollectionUtils;
@@ -42,7 +42,7 @@ import ai.greycos.solver.core.impl.util.CollectionUtils;
  *
  * @param <Solution_>
  */
-public final class TwoOptListMove<Solution_> extends AbstractMove<Solution_> {
+public class TwoOptListMove<Solution_> extends AbstractMove<Solution_> {
   private final ListVariableDescriptor<Solution_> variableDescriptor;
   private final Object firstEntity;
   private final Object secondEntity;
@@ -221,8 +221,7 @@ public final class TwoOptListMove<Solution_> extends AbstractMove<Solution_> {
             // A shift will rotate the entire list, changing the visiting order
             shift != 0
             ||
-            // The chain flipped by a K-Opt only changes if there are at least 2 values
-            // in the chain
+            // The chain flipped by a K-Opt only changes if there are at least 2 values in the chain
             Math.abs(secondEdgeEndpoint - firstEdgeEndpoint) >= 2;
     if (!doable || sameEntity || variableDescriptor.canExtractValueRangeFromSolution()) {
       return doable;

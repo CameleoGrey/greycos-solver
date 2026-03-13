@@ -3,7 +3,6 @@ package ai.greycos.solver.core.api.solver;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -11,38 +10,36 @@ import java.util.function.Consumer;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
 /**
  * Represents a {@link PlanningSolution problem} that has been submitted to solve on the {@link
  * SolverManager}.
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
- * @param <ProblemId_> the ID type of a submitted problem, such as {@link Long} or {@link UUID}.
  */
-public interface SolverJob<Solution_, ProblemId_> {
+@NullMarked
+public interface SolverJob<Solution_> {
 
   /**
    * @return a value given to {@link SolverManager#solve(Object, Object, Consumer)} or {@link
    *     SolverManager#solveAndListen(Object, Object, Consumer)}
    */
-  @NonNull ProblemId_ getProblemId();
+  Object getProblemId();
 
   /**
    * Returns whether the {@link Solver} is scheduled to solve, actively solving or not.
    *
    * <p>Returns {@link SolverStatus#NOT_SOLVING} if the solver already terminated.
    */
-  @NonNull SolverStatus getSolverStatus();
+  SolverStatus getSolverStatus();
 
   /**
    * As defined by {@link #addProblemChanges(List)}, only for a single problem change. Prefer to
    * submit multiple {@link ProblemChange}s at once to reduce the considerable overhead of multiple
    * calls.
    */
-  @NonNull
-  default CompletableFuture<Void> addProblemChange(
-      @NonNull ProblemChange<Solution_> problemChange) {
+  default CompletableFuture<Void> addProblemChange(ProblemChange<Solution_> problemChange) {
     return addProblemChanges(Collections.singletonList(problemChange));
   }
 
@@ -56,11 +53,11 @@ public interface SolverJob<Solution_, ProblemId_> {
    *     SolverStatus#SOLVING_ACTIVE} state
    * @see ProblemChange Learn more about problem change semantics.
    */
-  @NonNull CompletableFuture<Void> addProblemChanges(
-      @NonNull List<ProblemChange<Solution_>> problemChangeList);
+  CompletableFuture<Void> addProblemChanges(List<ProblemChange<Solution_>> problemChangeList);
 
   /**
-   * Terminates the solver or cancels the solver job if it hasn't (re)started yet.
+   * Terminates the solver if running. If the solver has not yet started, the job will be canceled
+   * and the solver will never start.
    *
    * <p>Does nothing if the solver already terminated.
    *
@@ -69,6 +66,10 @@ public interface SolverJob<Solution_, ProblemId_> {
    * finalBestSolutionConsumer} is executed with the latest best solution. These consumers run on a
    * consumer thread independently of the termination and may still run even after this method
    * returns.
+   *
+   * <p>It waits for no more than one minute, at which point it returns. In this case the solver
+   * might still be running in the background, but it will be terminated as soon as possible. Any
+   * best solutions from that point on will be ignored.
    */
   void terminateEarly();
 
@@ -86,7 +87,7 @@ public interface SolverJob<Solution_, ProblemId_> {
    * @throws InterruptedException if the current thread was interrupted while waiting
    * @throws ExecutionException if the computation threw an exception
    */
-  @NonNull Solution_ getFinalBestSolution() throws InterruptedException, ExecutionException;
+  Solution_ getFinalBestSolution() throws InterruptedException, ExecutionException;
 
   /**
    * Returns the {@link Duration} spent solving since the last start. If it hasn't started it yet,
@@ -96,7 +97,7 @@ public interface SolverJob<Solution_, ProblemId_> {
    *
    * @return the {@link Duration} spent solving since the last (re)start, at least 0
    */
-  @NonNull Duration getSolvingDuration();
+  Duration getSolvingDuration();
 
   /**
    * Return the number of score calculations since the last start. If it hasn't started yet, it
@@ -123,7 +124,7 @@ public interface SolverJob<Solution_, ProblemId_> {
    * Return the {@link ProblemSizeStatistics} for the {@link PlanningSolution problem} submitted to
    * the {@link SolverManager}.
    */
-  @NonNull ProblemSizeStatistics getProblemSizeStatistics();
+  ProblemSizeStatistics getProblemSizeStatistics();
 
   /**
    * Return the average number of score calculations per second since the last start. If it hasn't

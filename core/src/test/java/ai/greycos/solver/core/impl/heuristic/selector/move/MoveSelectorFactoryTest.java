@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import java.util.Comparator;
 import java.util.function.Consumer;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
@@ -21,6 +20,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.FilteringMo
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.ProbabilityMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.ShufflingMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.SortingMoveSelector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.common.DummyValueFactory;
 
@@ -251,41 +251,11 @@ class MoveSelectorFactoryTest {
   }
 
   @Test
-  void applySorting_withSorterComparatorClass() {
-    final MoveSelector<TestdataSolution> baseMoveSelector = SelectorTestUtils.mockMoveSelector();
-    DummyMoveSelectorConfig moveSelectorConfig = new DummyMoveSelectorConfig();
-    moveSelectorConfig.setSorterOrder(SelectionSorterOrder.ASCENDING);
-    moveSelectorConfig.setSorterComparatorClass(DummyComparator.class);
-
-    DummyMoveSelectorFactory moveSelectorFactory =
-        new DummyMoveSelectorFactory(moveSelectorConfig, baseMoveSelector);
-    MoveSelector<TestdataSolution> sortingMoveSelector =
-        moveSelectorFactory.applySorting(
-            SelectionCacheType.PHASE, SelectionOrder.SORTED, baseMoveSelector);
-    assertThat(sortingMoveSelector).isExactlyInstanceOf(SortingMoveSelector.class);
-  }
-
-  @Test
   void applySorting_withComparatorClass() {
     final MoveSelector<TestdataSolution> baseMoveSelector = SelectorTestUtils.mockMoveSelector();
     DummyMoveSelectorConfig moveSelectorConfig = new DummyMoveSelectorConfig();
     moveSelectorConfig.setSorterOrder(SelectionSorterOrder.ASCENDING);
     moveSelectorConfig.setComparatorClass(DummyComparator.class);
-
-    DummyMoveSelectorFactory moveSelectorFactory =
-        new DummyMoveSelectorFactory(moveSelectorConfig, baseMoveSelector);
-    MoveSelector<TestdataSolution> sortingMoveSelector =
-        moveSelectorFactory.applySorting(
-            SelectionCacheType.PHASE, SelectionOrder.SORTED, baseMoveSelector);
-    assertThat(sortingMoveSelector).isExactlyInstanceOf(SortingMoveSelector.class);
-  }
-
-  @Test
-  void applySorting_withWeightFactoryClass() {
-    final MoveSelector<TestdataSolution> baseMoveSelector = SelectorTestUtils.mockMoveSelector();
-    DummyMoveSelectorConfig moveSelectorConfig = new DummyMoveSelectorConfig();
-    moveSelectorConfig.setSorterOrder(SelectionSorterOrder.ASCENDING);
-    moveSelectorConfig.setSorterWeightFactoryClass(DummyValueFactory.class);
 
     DummyMoveSelectorFactory moveSelectorFactory =
         new DummyMoveSelectorFactory(moveSelectorConfig, baseMoveSelector);
@@ -353,48 +323,6 @@ class MoveSelectorFactoryTest {
             buildHeuristicConfigPolicy(), SelectionCacheType.PHASE, SelectionOrder.RANDOM, true);
     assertThat(moveSelector).isInstanceOf(FilteringMoveSelector.class);
     assertThat(moveSelector.iterator().hasNext()).isFalse();
-  }
-
-  @Test
-  void failFast_ifBothComparatorFactoriesUsed() {
-    final MoveSelector<TestdataSolution> baseMoveSelector = SelectorTestUtils.mockMoveSelector();
-    DummyMoveSelectorConfig moveSelectorConfig = new DummyMoveSelectorConfig();
-    moveSelectorConfig.setSorterOrder(SelectionSorterOrder.ASCENDING);
-    moveSelectorConfig.setSorterComparatorClass(DummyComparator.class);
-    moveSelectorConfig.setComparatorClass(DummyComparator.class);
-    DummyMoveSelectorFactory moveSelectorFactory =
-        new DummyMoveSelectorFactory(moveSelectorConfig, baseMoveSelector);
-    assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                moveSelectorFactory.applySorting(
-                    SelectionCacheType.PHASE, SelectionOrder.SORTED, baseMoveSelector))
-        .withMessageContaining("The moveSelectorConfig")
-        .withMessageContaining(
-            "cannot have a sorterComparatorClass (class ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactoryTest$DummyComparator)")
-        .withMessageContaining(
-            "and comparatorClass (class ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactoryTest$DummyComparator) at the same time");
-  }
-
-  @Test
-  void failFast_ifBothComparatorsFactoriesUsed() {
-    final MoveSelector<TestdataSolution> baseMoveSelector = SelectorTestUtils.mockMoveSelector();
-    DummyMoveSelectorConfig moveSelectorConfig = new DummyMoveSelectorConfig();
-    moveSelectorConfig.setSorterOrder(SelectionSorterOrder.ASCENDING);
-    moveSelectorConfig.setSorterWeightFactoryClass(DummyValueFactory.class);
-    moveSelectorConfig.setComparatorFactoryClass(DummyValueFactory.class);
-    DummyMoveSelectorFactory moveSelectorFactory =
-        new DummyMoveSelectorFactory(moveSelectorConfig, baseMoveSelector);
-    assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                moveSelectorFactory.applySorting(
-                    SelectionCacheType.PHASE, SelectionOrder.SORTED, baseMoveSelector))
-        .withMessageContaining("The moveSelectorConfig")
-        .withMessageContaining(
-            "cannot have a sorterWeightFactoryClass (class ai.greycos.solver.core.testcotwin.common.DummyValueFactory)")
-        .withMessageContaining(
-            "and comparatorFactoryClass (class ai.greycos.solver.core.testcotwin.common.DummyValueFactory) at the same time");
   }
 
   static class DummyMoveSelectorConfig extends MoveSelectorConfig<DummyMoveSelectorConfig> {

@@ -7,8 +7,6 @@ import java.util.Set;
 
 import jakarta.inject.Named;
 
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfigurationProvider;
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintWeight;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningPinToIndex;
@@ -21,16 +19,12 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactProperty;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.cotwin.variable.AnchorShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.CascadingUpdateShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.CustomShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PiggybackShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PlanningVariableReference;
 import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
@@ -38,6 +32,7 @@ import ai.greycos.solver.core.api.cotwin.variable.ShadowVariablesInconsistent;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.SolverConfig;
@@ -67,9 +62,6 @@ public final class DotNames {
       DotName.createSimple(ConstraintProvider.class.getName());
   static final DotName INCREMENTAL_SCORE_CALCULATOR =
       DotName.createSimple(IncrementalScoreCalculator.class.getName());
-  static final DotName CONSTRAINT_CONFIGURATION_PROVIDER =
-      DotName.createSimple(ConstraintConfigurationProvider.class.getName());
-  static final DotName CONSTRAINT_WEIGHT = DotName.createSimple(ConstraintWeight.class.getName());
   static final DotName CONSTRAINT_WEIGHT_OVERRIDES =
       DotName.createSimple(ConstraintWeightOverrides.class.getName());
 
@@ -82,23 +74,15 @@ public final class DotNames {
   static final DotName PLANNING_VARIABLE = DotName.createSimple(PlanningVariable.class.getName());
   static final DotName PLANNING_LIST_VARIABLE =
       DotName.createSimple(PlanningListVariable.class.getName());
-  static final DotName PLANNING_VARIABLE_REFERENCE =
-      DotName.createSimple(PlanningVariableReference.class.getName());
   static final DotName VALUE_RANGE_PROVIDER =
       DotName.createSimple(ValueRangeProvider.class.getName());
 
-  static final DotName ANCHOR_SHADOW_VARIABLE =
-      DotName.createSimple(AnchorShadowVariable.class.getName());
-  static final DotName CUSTOM_SHADOW_VARIABLE =
-      DotName.createSimple(CustomShadowVariable.class.getName());
   static final DotName INDEX_SHADOW_VARIABLE =
       DotName.createSimple(IndexShadowVariable.class.getName());
   static final DotName INVERSE_RELATION_SHADOW_VARIABLE =
       DotName.createSimple(InverseRelationShadowVariable.class.getName());
   static final DotName NEXT_ELEMENT_SHADOW_VARIABLE =
       DotName.createSimple(NextElementShadowVariable.class.getName());
-  static final DotName PIGGYBACK_SHADOW_VARIABLE =
-      DotName.createSimple(PiggybackShadowVariable.class.getName());
   static final DotName PREVIOUS_ELEMENT_SHADOW_VARIABLE =
       DotName.createSimple(PreviousElementShadowVariable.class.getName());
   static final DotName SHADOW_VARIABLE = DotName.createSimple(ShadowVariable.class.getName());
@@ -114,21 +98,17 @@ public final class DotNames {
   static final DotName SOLVER_FACTORY = DotName.createSimple(SolverFactory.class.getName());
   static final DotName SOLVER_MANAGER = DotName.createSimple(SolverManager.class.getName());
 
-  // Need to use String since greycos-solver-test is not on the compile classpath
   static final DotName CONSTRAINT_VERIFIER =
-      DotName.createSimple("ai.greycos.solver.test.api.score.stream.ConstraintVerifier");
+      DotName.createSimple(ConstraintVerifier.class.getName());
 
   static final DotName[] PLANNING_ENTITY_FIELD_ANNOTATIONS = {
     PLANNING_PIN,
     PLANNING_PIN_TO_INDEX,
     PLANNING_VARIABLE,
     PLANNING_LIST_VARIABLE,
-    ANCHOR_SHADOW_VARIABLE,
-    CUSTOM_SHADOW_VARIABLE,
     INDEX_SHADOW_VARIABLE,
     INVERSE_RELATION_SHADOW_VARIABLE,
     NEXT_ELEMENT_SHADOW_VARIABLE,
-    PIGGYBACK_SHADOW_VARIABLE,
     PREVIOUS_ELEMENT_SHADOW_VARIABLE,
     SHADOW_VARIABLE,
     SHADOW_VARIABLES_INCONSISTENT,
@@ -141,21 +121,15 @@ public final class DotNames {
     PLANNING_SCORE,
     PROBLEM_FACT_COLLECTION_PROPERTY,
     PROBLEM_FACT_PROPERTY,
-    CONSTRAINT_CONFIGURATION_PROVIDER,
-    CONSTRAINT_WEIGHT,
     PLANNING_PIN,
     PLANNING_PIN_TO_INDEX,
     PLANNING_ID,
     PLANNING_VARIABLE,
     PLANNING_LIST_VARIABLE,
-    PLANNING_VARIABLE_REFERENCE,
     VALUE_RANGE_PROVIDER,
-    ANCHOR_SHADOW_VARIABLE,
-    CUSTOM_SHADOW_VARIABLE,
     INDEX_SHADOW_VARIABLE,
     INVERSE_RELATION_SHADOW_VARIABLE,
     NEXT_ELEMENT_SHADOW_VARIABLE,
-    PIGGYBACK_SHADOW_VARIABLE,
     PREVIOUS_ELEMENT_SHADOW_VARIABLE,
     SHADOW_VARIABLE,
     SHADOW_VARIABLES_INCONSISTENT,
@@ -171,7 +145,6 @@ public final class DotNames {
     PLANNING_ENTITY(DotNames.PLANNING_ENTITY, PlanningEntity.class),
     PLANNING_VARIABLE(DotNames.PLANNING_VARIABLE, PlanningVariable.class),
     PLANNING_LIST_VARIABLE(DotNames.PLANNING_LIST_VARIABLE, PlanningListVariable.class),
-    CUSTOM_SHADOW_VARIABLE(DotNames.CUSTOM_SHADOW_VARIABLE, CustomShadowVariable.class),
     SHADOW_VARIABLE(DotNames.SHADOW_VARIABLE, ShadowVariable.class);
 
     private final DotName annotationDotName;

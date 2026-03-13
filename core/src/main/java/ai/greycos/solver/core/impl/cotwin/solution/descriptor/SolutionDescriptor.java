@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.cotwin.solution.descriptor;
 
-import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory.MemberAccessorType.FIELD_OR_GETTER_METHOD;
-import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory.MemberAccessorType.FIELD_OR_READ_METHOD;
+import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType.FIELD_OR_GETTER_METHOD;
+import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType.FIELD_OR_READ_METHOD;
 import static ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor.extractInheritedClasses;
 import static java.util.stream.Stream.concat;
 
@@ -10,7 +10,6 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,10 +33,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.cotwin.autodiscover.AutoDiscoverMemberType;
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfiguration;
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfigurationProvider;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
@@ -50,9 +45,9 @@ import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
 import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.util.ConfigUtils;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
@@ -61,7 +56,6 @@ import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.lookup.LookUpStrategyResolver;
 import ai.greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import ai.greycos.solver.core.impl.cotwin.score.descriptor.ScoreDescriptor;
-import ai.greycos.solver.core.impl.cotwin.solution.ConstraintConfigurationBasedConstraintWeightSupplier;
 import ai.greycos.solver.core.impl.cotwin.solution.ConstraintWeightSupplier;
 import ai.greycos.solver.core.impl.cotwin.solution.OverridesBasedConstraintWeightSupplier;
 import ai.greycos.solver.core.impl.cotwin.solution.cloner.FieldAccessingSolutionCloner;
@@ -74,6 +68,7 @@ import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescri
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.util.MutableInt;
 import ai.greycos.solver.core.impl.util.MutableLong;
 import ai.greycos.solver.core.impl.util.MutablePair;
@@ -123,7 +118,7 @@ public final class SolutionDescriptor<Solution_> {
       List<Class<?>> entityClassList) {
     return buildSolutionDescriptor(
         enabledPreviewFeaturesSet,
-        CotwinAccessType.REFLECTION,
+        CotwinAccessType.FORCE_REFLECTION,
         solutionClass,
         null,
         null,
@@ -151,7 +146,7 @@ public final class SolutionDescriptor<Solution_> {
     descriptorPolicy.setMemberAccessorFactory(solutionDescriptor.getMemberAccessorFactory());
 
     solutionDescriptor.processUnannotatedFieldsAndMethods(descriptorPolicy);
-    solutionDescriptor.processAnnotations(descriptorPolicy, entityClassList);
+    solutionDescriptor.processAnnotations(descriptorPolicy);
     // Before iterating over the entity classes, we need to read the inheritance chain,
     // add all parent and child classes, and sort them.
     var updatedEntityClassList = new ArrayList<>(entityClassList);
@@ -280,14 +275,7 @@ public final class SolutionDescriptor<Solution_> {
   private final MemberAccessorFactory memberAccessorFactory;
 
   private CotwinAccessType cotwinAccessType;
-  private AutoDiscoverMemberType autoDiscoverMemberType;
   private LookUpStrategyResolver lookUpStrategyResolver;
-
-  /**
-   * @deprecated {@link ConstraintConfiguration} was replaced by {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  private MemberAccessor constraintConfigurationMemberAccessor;
 
   private final Map<String, MemberAccessor> problemFactMemberAccessorMap = new LinkedHashMap<>();
   private final Map<String, MemberAccessor> problemFactCollectionMemberAccessorMap =
@@ -376,8 +364,7 @@ public final class SolutionDescriptor<Solution_> {
     }
   }
 
-  public void processAnnotations(
-      DescriptorPolicy descriptorPolicy, List<Class<?>> entityClassList) {
+  public void processAnnotations(DescriptorPolicy descriptorPolicy) {
     cotwinAccessType = descriptorPolicy.getCotwinAccessType();
     processSolutionAnnotations(descriptorPolicy);
     var potentiallyOverwritingMethodList = new ArrayList<Method>();
@@ -404,7 +391,7 @@ public final class SolutionDescriptor<Solution_> {
           continue;
         }
         processValueRangeProviderAnnotation(descriptorPolicy, member);
-        processFactEntityOrScoreAnnotation(descriptorPolicy, member, entityClassList);
+        processFactEntityOrScoreAnnotation(descriptorPolicy, member);
       }
       potentiallyOverwritingMethodList.ensureCapacity(
           potentiallyOverwritingMethodList.size() + memberList.size());
@@ -437,14 +424,12 @@ public final class SolutionDescriptor<Solution_> {
 
   private void processSolutionAnnotations(DescriptorPolicy descriptorPolicy) {
     var annotation = extractMostRelevantPlanningSolutionAnnotation();
-    autoDiscoverMemberType = annotation.autoDiscoverMemberType();
     var solutionClonerClass = annotation.solutionCloner();
     if (solutionClonerClass != PlanningSolution.NullSolutionCloner.class) {
       solutionCloner =
           ConfigUtils.newInstance(this::toString, "solutionClonerClass", solutionClonerClass);
     }
-    var lookUpStrategyType = annotation.lookUpStrategyType();
-    lookUpStrategyResolver = new LookUpStrategyResolver(descriptorPolicy, lookUpStrategyType);
+    lookUpStrategyResolver = new LookUpStrategyResolver(descriptorPolicy);
   }
 
   private @NonNull PlanningSolution extractMostRelevantPlanningSolutionAnnotation() {
@@ -490,15 +475,12 @@ public final class SolutionDescriptor<Solution_> {
   }
 
   private void processFactEntityOrScoreAnnotation(
-      DescriptorPolicy descriptorPolicy, Member member, List<Class<?>> entityClassList) {
-    var annotationClass =
-        extractFactEntityOrScoreAnnotationClassOrAutoDiscover(member, entityClassList);
+      DescriptorPolicy descriptorPolicy, Member member) {
+    var annotationClass = extractFactEntityOrScoreAnnotationClass(member);
     if (annotationClass == null) {
       return;
     }
-    if (annotationClass.equals(ConstraintConfigurationProvider.class)) {
-      processConstraintConfigurationProviderAnnotation(descriptorPolicy, member, annotationClass);
-    } else if (annotationClass.equals(ProblemFactProperty.class)
+    if (annotationClass.equals(ProblemFactProperty.class)
         || annotationClass.equals(ProblemFactCollectionProperty.class)) {
       processProblemFactPropertyAnnotation(descriptorPolicy, member, annotationClass);
     } else if (annotationClass.equals(PlanningEntityProperty.class)
@@ -515,159 +497,15 @@ public final class SolutionDescriptor<Solution_> {
     }
   }
 
-  private Class<? extends Annotation> extractFactEntityOrScoreAnnotationClassOrAutoDiscover(
-      Member member, List<Class<?>> entityClassList) {
-    var annotationClass =
-        ConfigUtils.extractAnnotationClass(
-            member,
-            ConstraintConfigurationProvider.class,
-            ProblemFactProperty.class,
-            ProblemFactCollectionProperty.class,
-            PlanningEntityProperty.class,
-            PlanningEntityCollectionProperty.class,
-            PlanningScore.class);
-    if (annotationClass == null) {
-      Class<?> type;
-      if (autoDiscoverMemberType == AutoDiscoverMemberType.FIELD && member instanceof Field field) {
-        type = field.getType();
-      } else if (autoDiscoverMemberType == AutoDiscoverMemberType.GETTER
-          && (member instanceof Method method)
-          && ReflectionHelper.isGetterMethod(method)) {
-        type = method.getReturnType();
-      } else {
-        type = null;
-      }
-      if (type != null) {
-        if (Score.class.isAssignableFrom(type)) {
-          annotationClass = PlanningScore.class;
-        } else if (Collection.class.isAssignableFrom(type) || type.isArray()) {
-          Class<?> elementType;
-          if (Collection.class.isAssignableFrom(type)) {
-            var genericType =
-                (member instanceof Field f)
-                    ? f.getGenericType()
-                    : ((Method) member).getGenericReturnType();
-            var memberName = member.getName();
-            if (!(genericType instanceof ParameterizedType)) {
-              throw new IllegalArgumentException(
-                  """
-                                            The solutionClass (%s) has a auto discovered member (%s) with a member type (%s) that returns a %s which has no generic parameters.
-                                            Maybe the member (%s) should return a typed %s."""
-                      .formatted(
-                          solutionClass,
-                          memberName,
-                          type,
-                          Collection.class.getSimpleName(),
-                          memberName,
-                          Collection.class.getSimpleName()));
-            }
-            elementType =
-                ConfigUtils.extractGenericTypeParameter(
-                        "solutionClass", solutionClass, type, genericType, null, member.getName())
-                    .orElse(Object.class);
-          } else {
-            elementType = type.getComponentType();
-          }
-          if (entityClassList.stream()
-              .anyMatch(entityClass -> entityClass.isAssignableFrom(elementType))) {
-            annotationClass = PlanningEntityCollectionProperty.class;
-          } else if (elementType.isAnnotationPresent(ConstraintConfiguration.class)) {
-            throw new IllegalStateException(
-                """
-                                        The autoDiscoverMemberType (%s) cannot accept a member (%s) of type (%s) with an elementType (%s) that has a @%s annotation.
-                                        Maybe use a member of the type (%s) directly instead of a %s or array of that type."""
-                    .formatted(
-                        autoDiscoverMemberType,
-                        member,
-                        type,
-                        elementType,
-                        ConstraintConfiguration.class.getSimpleName(),
-                        elementType,
-                        Collection.class.getSimpleName()));
-          } else {
-            annotationClass = ProblemFactCollectionProperty.class;
-          }
-        } else if (Map.class.isAssignableFrom(type)) {
-          throw new IllegalStateException(
-              "The autoDiscoverMemberType (%s) does not yet support the member (%s) of type (%s) which is an implementation of %s."
-                  .formatted(autoDiscoverMemberType, member, type, Map.class.getSimpleName()));
-        } else if (entityClassList.stream()
-            .anyMatch(entityClass -> entityClass.isAssignableFrom(type))) {
-          annotationClass = PlanningEntityProperty.class;
-        } else if (type.isAnnotationPresent(ConstraintConfiguration.class)) {
-          annotationClass = ConstraintConfigurationProvider.class;
-        } else {
-          annotationClass = ProblemFactProperty.class;
-        }
-      }
-    }
-    return annotationClass;
-  }
-
-  /**
-   * @deprecated {@link ConstraintConfiguration} was replaced by {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  private void processConstraintConfigurationProviderAnnotation(
-      DescriptorPolicy descriptorPolicy,
-      Member member,
-      Class<? extends Annotation> annotationClass) {
-    if (constraintWeightSupplier != null) {
-      throw new IllegalStateException(
-          """
-                    The solution class (%s) has both a %s member and a %s-annotated member.
-                    %s is deprecated, please remove it from your codebase and keep %s only."""
-              .formatted(
-                  solutionClass,
-                  ConstraintWeightOverrides.class.getSimpleName(),
-                  ConstraintConfigurationProvider.class.getSimpleName(),
-                  ConstraintConfigurationProvider.class.getSimpleName(),
-                  ConstraintWeightOverrides.class.getSimpleName()));
-    }
-    var memberAccessor =
-        descriptorPolicy
-            .getMemberAccessorFactory()
-            .buildAndCacheMemberAccessor(
-                member,
-                FIELD_OR_READ_METHOD,
-                annotationClass,
-                descriptorPolicy.getCotwinAccessType());
-    if (constraintConfigurationMemberAccessor != null) {
-      if (!constraintConfigurationMemberAccessor.getName().equals(memberAccessor.getName())
-          || !constraintConfigurationMemberAccessor.getClass().equals(memberAccessor.getClass())) {
-        throw new IllegalStateException(
-            """
-                                The solutionClass (%s) has a @%s annotated member (%s) that is duplicated by another member (%s).
-                                Maybe the annotation is defined on both the field and its getter."""
-                .formatted(
-                    solutionClass,
-                    ConstraintConfigurationProvider.class.getSimpleName(),
-                    memberAccessor,
-                    constraintConfigurationMemberAccessor));
-      }
-      // Bottom class wins. Bottom classes are parsed first due to
-      // ConfigUtil.getAllAnnotatedLineageClasses()
-      return;
-    }
-    assertNoFieldAndGetterDuplicationOrConflict(memberAccessor, annotationClass);
-    constraintConfigurationMemberAccessor = memberAccessor;
-    // Every ConstraintConfiguration is also a problem fact
-    problemFactMemberAccessorMap.put(memberAccessor.getName(), memberAccessor);
-
-    var constraintConfigurationClass = constraintConfigurationMemberAccessor.getType();
-    if (!constraintConfigurationClass.isAnnotationPresent(ConstraintConfiguration.class)) {
-      throw new IllegalStateException(
-          "The solutionClass (%s) has a @%s annotated member (%s) that does not return a class (%s) that has a %s annotation."
-              .formatted(
-                  solutionClass,
-                  ConstraintConfigurationProvider.class.getSimpleName(),
-                  member,
-                  constraintConfigurationClass,
-                  ConstraintConfiguration.class.getSimpleName()));
-    }
-    constraintWeightSupplier =
-        ConstraintConfigurationBasedConstraintWeightSupplier.create(
-            this, constraintConfigurationClass);
+  private static Class<? extends Annotation> extractFactEntityOrScoreAnnotationClass(
+      Member member) {
+    return ConfigUtils.extractAnnotationClass(
+        member,
+        ProblemFactProperty.class,
+        ProblemFactCollectionProperty.class,
+        PlanningEntityProperty.class,
+        PlanningEntityCollectionProperty.class,
+        PlanningScore.class);
   }
 
   private void processProblemFactPropertyAnnotation(
@@ -770,11 +608,7 @@ public final class SolutionDescriptor<Solution_> {
     MemberAccessor duplicate;
     Class<? extends Annotation> otherAnnotationClass;
     var memberName = memberAccessor.getName();
-    if (constraintConfigurationMemberAccessor != null
-        && constraintConfigurationMemberAccessor.getName().equals(memberName)) {
-      duplicate = constraintConfigurationMemberAccessor;
-      otherAnnotationClass = ConstraintConfigurationProvider.class;
-    } else if (problemFactMemberAccessorMap.containsKey(memberName)) {
+    if (problemFactMemberAccessorMap.containsKey(memberName)) {
       duplicate = problemFactMemberAccessorMap.get(memberName);
       otherAnnotationClass = ProblemFactProperty.class;
     } else if (problemFactCollectionMemberAccessorMap.containsKey(memberName)) {
@@ -896,22 +730,6 @@ public final class SolutionDescriptor<Solution_> {
 
     var listVariableDescriptor = listVariableDescriptorList.get(0);
     var listVariableEntityDescriptor = listVariableDescriptor.getEntityDescriptor();
-    // We will not support chained and list variables at the same entity,
-    // and the validation can be removed once we discontinue support for chained variables.
-    if (hasChainedVariable()) {
-      var basicVariableDescriptorList =
-          new ArrayList<>(listVariableEntityDescriptor.getGenuineVariableDescriptorList());
-      basicVariableDescriptorList.remove(listVariableDescriptor);
-      throw new UnsupportedOperationException(
-          "Combining chained variables (%s) with list variables (%s) on a single planning entity (%s) is not supported."
-              .formatted(
-                  basicVariableDescriptorList,
-                  listVariableDescriptor,
-                  listVariableDescriptor
-                      .getEntityDescriptor()
-                      .getEntityClass()
-                      .getCanonicalName()));
-    }
   }
 
   private Set<Class<?>> collectEntityAndProblemFactClasses() {
@@ -966,18 +784,12 @@ public final class SolutionDescriptor<Solution_> {
       gizmoSolutionCloner.setSolutionDescriptor(this);
     }
     if (solutionCloner == null) {
-      switch (descriptorPolicy.getCotwinAccessType()) {
-        case GIZMO:
-          solutionCloner =
-              GizmoSolutionClonerFactory.build(this, memberAccessorFactory.getGizmoClassLoader());
-          break;
-        case REFLECTION:
-          solutionCloner = new FieldAccessingSolutionCloner<>(this);
-          break;
-        default:
-          throw new IllegalStateException(
-              "The cotwinAccessType (" + cotwinAccessType + ") is not implemented.");
-      }
+      solutionCloner =
+          switch (descriptorPolicy.getCotwinAccessType()) {
+            case FORCE_GIZMO ->
+                GizmoSolutionClonerFactory.build(this, memberAccessorFactory.getGizmoClassLoader());
+            case AUTO, FORCE_REFLECTION -> new FieldAccessingSolutionCloner<>(this);
+          };
     }
   }
 
@@ -1038,26 +850,37 @@ public final class SolutionDescriptor<Solution_> {
     if (planningSolutionMetaModel == null) {
       var metaModel = new DefaultPlanningSolutionMetaModel<>(this);
       for (var entityDescriptor : getEntityDescriptors()) {
-        var entityMetaModel = new DefaultPlanningEntityMetaModel<>(metaModel, entityDescriptor);
-        for (var variableDescriptor : entityDescriptor.getGenuineVariableDescriptorList()) {
-          if (variableDescriptor.isListVariable()) {
-            var listVariableDescriptor = (ListVariableDescriptor<Solution_>) variableDescriptor;
-            var listVariableMetaModel =
-                new DefaultPlanningListVariableMetaModel<>(entityMetaModel, listVariableDescriptor);
-            entityMetaModel.addVariable(listVariableMetaModel);
-          } else {
-            var basicVariableDescriptor = (BasicVariableDescriptor<Solution_>) variableDescriptor;
-            var basicVariableMetaModel =
-                new DefaultPlanningVariableMetaModel<>(entityMetaModel, basicVariableDescriptor);
-            entityMetaModel.addVariable(basicVariableMetaModel);
+        if (entityDescriptor.isGenuine()) {
+          var entityMetaModel = new DefaultGenuineEntityMetaModel<>(metaModel, entityDescriptor);
+          for (var variableDescriptor : entityDescriptor.getGenuineVariableDescriptorList()) {
+            if (variableDescriptor.isListVariable()) {
+              var listVariableDescriptor = (ListVariableDescriptor<Solution_>) variableDescriptor;
+              var listVariableMetaModel =
+                  new DefaultPlanningListVariableMetaModel<>(
+                      entityMetaModel, listVariableDescriptor);
+              entityMetaModel.addVariable(listVariableMetaModel);
+            } else {
+              var basicVariableDescriptor = (BasicVariableDescriptor<Solution_>) variableDescriptor;
+              var basicVariableMetaModel =
+                  new DefaultPlanningVariableMetaModel<>(entityMetaModel, basicVariableDescriptor);
+              entityMetaModel.addVariable(basicVariableMetaModel);
+            }
           }
+          for (var shadowVariableDescriptor : entityDescriptor.getShadowVariableDescriptors()) {
+            var shadowVariableMetaModel =
+                new DefaultShadowVariableMetaModel<>(entityMetaModel, shadowVariableDescriptor);
+            entityMetaModel.addVariable(shadowVariableMetaModel);
+          }
+          metaModel.addEntity(entityMetaModel);
+        } else {
+          var entityMetaModel = new DefaultShadowEntityMetaModel<>(metaModel, entityDescriptor);
+          for (var shadowVariableDescriptor : entityDescriptor.getShadowVariableDescriptors()) {
+            var shadowVariableMetaModel =
+                new DefaultShadowVariableMetaModel<>(entityMetaModel, shadowVariableDescriptor);
+            entityMetaModel.addVariable(shadowVariableMetaModel);
+          }
+          metaModel.addEntity(entityMetaModel);
         }
-        for (var shadowVariableDescriptor : entityDescriptor.getShadowVariableDescriptors()) {
-          var shadowVariableMetaModel =
-              new DefaultShadowVariableMetaModel<>(entityMetaModel, shadowVariableDescriptor);
-          entityMetaModel.addVariable(shadowVariableMetaModel);
-        }
-        metaModel.addEntity(entityMetaModel);
       }
       this.planningSolutionMetaModel = metaModel;
     }
@@ -1066,19 +889,12 @@ public final class SolutionDescriptor<Solution_> {
 
   public List<BasicVariableDescriptor<Solution_>> getBasicVariableDescriptorList() {
     return getGenuineEntityDescriptors().stream()
-        .flatMap(
-            entityDescriptor -> entityDescriptor.getGenuineBasicVariableDescriptorList().stream())
-        .map(descriptor -> (BasicVariableDescriptor<Solution_>) descriptor)
+        .flatMap(entityDescriptor -> entityDescriptor.getBasicVariableDescriptorList().stream())
         .toList();
   }
 
   public boolean hasBasicVariable() {
     return !getBasicVariableDescriptorList().isEmpty();
-  }
-
-  public boolean hasChainedVariable() {
-    return getGenuineEntityDescriptors().stream()
-        .anyMatch(EntityDescriptor::hasAnyGenuineChainedVariables);
   }
 
   public boolean hasListVariable() {
@@ -1087,14 +903,6 @@ public final class SolutionDescriptor<Solution_> {
 
   public boolean hasBothBasicAndListVariables() {
     return hasBasicVariable() && hasListVariable();
-  }
-
-  /**
-   * @deprecated {@link ConstraintConfiguration} was replaced by {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  public MemberAccessor getConstraintConfigurationMemberAccessor() {
-    return constraintConfigurationMemberAccessor;
   }
 
   @SuppressWarnings("unchecked")

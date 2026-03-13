@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.function.Function;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.Joiners;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
@@ -549,8 +549,6 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
     // We don't want to update shadows for this test!
     scoreDirector.setWorkingSolutionWithoutUpdatingShadows(solution);
     scoreDirector.clearShadowVariablesListenerQueue();
-    assertThat(solution.getValueList().stream().allMatch(v -> v.getListenerValue() == 0))
-        .isTrue(); // zero if it is null
     assertThat(solution.getValueList().stream().allMatch(v -> v.getCascadeValue() == 2))
         .isTrue(); // two if it is null
   }

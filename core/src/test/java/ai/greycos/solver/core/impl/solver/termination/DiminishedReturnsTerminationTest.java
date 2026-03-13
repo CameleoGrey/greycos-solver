@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScore;

@@ -2,8 +2,9 @@ package ai.greycos.solver.core.impl.bavet.common;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.function.Consumer;
 
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
 
@@ -14,7 +15,7 @@ import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
  *
  * @param <Tuple_>
  */
-public final class StaticPropagationQueue<Tuple_ extends AbstractTuple>
+public final class StaticPropagationQueue<Tuple_ extends Tuple>
     implements PropagationQueue<Tuple_> {
 
   private final Deque<Tuple_> retractQueue;
@@ -36,26 +37,26 @@ public final class StaticPropagationQueue<Tuple_ extends AbstractTuple>
 
   @Override
   public void insert(Tuple_ carrier) {
-    if (carrier.state == TupleState.CREATING) {
+    if (carrier.getState() == TupleState.CREATING) {
       throw new IllegalStateException(
           "Impossible state: The tuple (%s) is already in the insert queue.".formatted(carrier));
     }
-    carrier.state = TupleState.CREATING;
+    carrier.setState(TupleState.CREATING);
     insertQueue.add(carrier);
   }
 
   @Override
   public void update(Tuple_ carrier) {
-    if (carrier.state == TupleState.UPDATING) { // Skip double updates.
+    if (carrier.getState() == TupleState.UPDATING) { // Skip double updates.
       return;
     }
-    carrier.state = TupleState.UPDATING;
+    carrier.setState(TupleState.UPDATING);
     updateQueue.add(carrier);
   }
 
   @Override
   public void retract(Tuple_ carrier, TupleState state) {
-    var carrierState = carrier.state;
+    var carrierState = carrier.getState();
     if (carrierState == state) { // Skip double retracts.
       return;
     }
@@ -66,64 +67,54 @@ public final class StaticPropagationQueue<Tuple_ extends AbstractTuple>
       throw new IllegalStateException(
           "Impossible state: The tuple (%s) is already in the retract queue.".formatted(carrier));
     }
-    carrier.state = state;
+    carrier.setState(state);
     retractQueue.add(carrier);
   }
 
   @Override
   public void propagateRetracts() {
-    if (retractQueue.isEmpty()) {
-      return;
-    }
-    for (var tuple : retractQueue) {
-      switch (tuple.state) {
+    while (!retractQueue.isEmpty()) {
+      var tuple = retractQueue.poll();
+      switch (tuple.getState()) {
         case DYING -> {
           // Change state before propagation, so that the next node can't make decisions on the
           // original state.
-          tuple.state = TupleState.DEAD;
+          tuple.setState(TupleState.DEAD);
           nextNodesTupleLifecycle.retract(tuple);
         }
-        case ABORTING -> tuple.state = TupleState.DEAD;
+        case ABORTING -> tuple.setState(TupleState.DEAD);
       }
     }
-    retractQueue.clear();
   }
 
   @Override
   public void propagateUpdates() {
-    processAndClear(updateQueue);
+    processAndClear(updateQueue, nextNodesTupleLifecycle::update);
   }
 
-  private void processAndClear(Deque<Tuple_> dirtyQueue) {
-    if (dirtyQueue.isEmpty()) {
-      return;
-    }
-    for (var tuple : dirtyQueue) {
-      if (tuple.state == TupleState.DEAD) {
-        /*
-         * DEAD signifies the tuple was both in insert/update and retract queues.
-         * This happens when a tuple was inserted/updated and subsequently retracted, all before propagation.
-         * We can safely ignore the later insert/update,
-         * as by this point the more recent retract has already been processed,
-         * setting the state to DEAD.
-         */
+  private static <Tuple_ extends Tuple> void processAndClear(
+      Deque<Tuple_> dirtyQueue, Consumer<Tuple_> tupleLifecycle) {
+    while (!dirtyQueue.isEmpty()) {
+      var tuple = dirtyQueue.poll();
+      if (tuple.getState() == TupleState.DEAD) {
+        // DEAD signifies the tuple was both in insert/update and retract queues.
+        // This happens when a tuple was inserted/updated and subsequently retracted, all before
+        // propagation.
+        // We can safely ignore the later insert/update,
+        // as by this point the more recent retract has already been processed,
+        // setting the state to DEAD.
         continue;
       }
       // Change state before propagation, so that the next node can't make decisions on the original
       // state.
-      tuple.state = TupleState.OK;
-      if (dirtyQueue == updateQueue) {
-        nextNodesTupleLifecycle.update(tuple);
-      } else {
-        nextNodesTupleLifecycle.insert(tuple);
-      }
+      tuple.setState(TupleState.OK);
+      tupleLifecycle.accept(tuple);
     }
-    dirtyQueue.clear();
   }
 
   @Override
   public void propagateInserts() {
-    processAndClear(insertQueue);
+    processAndClear(insertQueue, nextNodesTupleLifecycle::insert);
     if (!retractQueue.isEmpty()) {
       throw new IllegalStateException(
           "Impossible state: The retract queue (%s) is not empty.".formatted(retractQueue));

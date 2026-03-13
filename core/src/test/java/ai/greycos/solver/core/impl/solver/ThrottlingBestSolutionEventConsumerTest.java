@@ -397,7 +397,7 @@ class ThrottlingBestSolutionEventConsumerTest {
 
       @Override
       public EventProducerId producerId() {
-        return EventProducerId.unknown();
+        return EventProducerId.solvingStarted();
       }
     };
   }

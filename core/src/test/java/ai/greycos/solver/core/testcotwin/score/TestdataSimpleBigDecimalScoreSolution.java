@@ -8,7 +8,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.score.buildin.simplebigdecimal.SimpleBigDecimalScore;
+import ai.greycos.solver.core.api.score.SimpleBigDecimalScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataObject;

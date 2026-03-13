@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.cotwin.solution.cloner;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertCode;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.time.Duration;
@@ -20,39 +21,25 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testcotwin.backlinked.TestdataBacklinkedSolution;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedAnchor;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedObject;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution;
-import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedAnchor;
-import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedEntity;
-import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedObject;
-import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedSolution;
-import ai.greycos.solver.core.testcotwin.clone.cloneable.PlanningCloneableEntity;
-import ai.greycos.solver.core.testcotwin.clone.cloneable.PlanningCloneableSolution;
 import ai.greycos.solver.core.testcotwin.clone.deepcloning.AnnotatedTestdataVariousTypes;
 import ai.greycos.solver.core.testcotwin.clone.deepcloning.TestdataDeepCloningEntity;
 import ai.greycos.solver.core.testcotwin.clone.deepcloning.TestdataDeepCloningSolution;
 import ai.greycos.solver.core.testcotwin.clone.deepcloning.TestdataVariousTypes;
 import ai.greycos.solver.core.testcotwin.clone.deepcloning.field.TestdataFieldAnnotatedDeepCloningEntity;
 import ai.greycos.solver.core.testcotwin.clone.deepcloning.field.TestdataFieldAnnotatedDeepCloningSolution;
+import ai.greycos.solver.core.testcotwin.clone.deepcloning.field.invalid.TestdataInvalidEntityProvidingSolution;
 import ai.greycos.solver.core.testcotwin.collection.TestdataArrayBasedEntity;
 import ai.greycos.solver.core.testcotwin.collection.TestdataArrayBasedSolution;
 import ai.greycos.solver.core.testcotwin.collection.TestdataEntityCollectionPropertyEntity;
 import ai.greycos.solver.core.testcotwin.collection.TestdataEntityCollectionPropertySolution;
 import ai.greycos.solver.core.testcotwin.collection.TestdataSetBasedEntity;
 import ai.greycos.solver.core.testcotwin.collection.TestdataSetBasedSolution;
-import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowEntity;
-import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowExtendedShadowEntity;
-import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowShadowEntity;
-import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowSolution;
-import ai.greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.shadow.TestdataExtendedShadowVariable;
 import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedBaseEntity;
 import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedChildEntity;
 import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedExtendedSolution;
@@ -271,6 +258,24 @@ public abstract class AbstractSolutionClonerTest {
   }
 
   @Test
+  void failDeepCloneRequiredTypeAnnotation() {
+    var solutionDescriptor = TestdataInvalidEntityProvidingSolution.buildSolutionDescriptor();
+    var original = TestdataInvalidEntityProvidingSolution.generateSolution();
+    assertThatThrownBy(
+            () -> {
+              var cloner = createSolutionCloner(solutionDescriptor);
+              cloner.cloneSolution(original);
+            })
+        .hasMessageContaining(
+            "The field (value) of class (ai.greycos.solver.core.testcotwin.clone.deepcloning.field.invalid.TestdataInvalidEntityProvidingEntity) is configured to be deep-cloned")
+        .hasMessageContaining(
+            "but its type (ai.greycos.solver.core.testcotwin.TestdataValue) is not deep-cloned")
+        .hasMessageContaining("Maybe remove the @DeepPlanningClone annotation from the field?")
+        .hasMessageContaining(
+            "Maybe annotate the type (ai.greycos.solver.core.testcotwin.TestdataValue) with @DeepPlanningClone?");
+  }
+
+  @Test
   protected void cloneExtendedSolution() {
     // can't check cloner class; it doesn't implement any additional interfaces
     Assumptions.assumeFalse(
@@ -477,139 +482,6 @@ public abstract class AbstractSolutionClonerTest {
     assertThat(cloneEntity.getValueList()).containsExactlyElementsOf(originalEntity.getValueList());
     assertThat(cloneEntity.getValueList())
         .zipSatisfy(valueCodeList, (value, code) -> assertThat(value.getCode()).isEqualTo(code));
-  }
-
-  @Test
-  void cloneChainedSolution() {
-    var solutionDescriptor = TestdataChainedSolution.buildSolutionDescriptor();
-    var cloner = createSolutionCloner(solutionDescriptor);
-
-    var a0 = new TestdataChainedAnchor("a0");
-    var a1 = new TestdataChainedEntity("a1", a0);
-    var a2 = new TestdataChainedEntity("a2", a1);
-    var a3 = new TestdataChainedEntity("a3", a2);
-
-    var b0 = new TestdataChainedAnchor("b0");
-    var b1 = new TestdataChainedEntity("b1", b0);
-
-    var original = new TestdataChainedSolution("solution");
-    var anchorList = Arrays.asList(a0, b0);
-    original.setChainedAnchorList(anchorList);
-    var originalEntityList = Arrays.asList(a1, a2, a3, b1);
-    original.setChainedEntityList(originalEntityList);
-
-    var clone = cloner.cloneSolution(original);
-    assertThat(clone).isNotSameAs(original);
-    assertCode("solution", clone);
-    assertThat(clone.getChainedAnchorList()).isSameAs(anchorList);
-    assertThat(clone.getScore()).isEqualTo(original.getScore());
-
-    var cloneEntityList = clone.getChainedEntityList();
-    assertThat(cloneEntityList).hasSize(4).isNotSameAs(originalEntityList);
-    var cloneA1 = cloneEntityList.get(0);
-    var cloneA2 = cloneEntityList.get(1);
-    var cloneA3 = cloneEntityList.get(2);
-    var cloneB1 = cloneEntityList.get(3);
-    assertChainedEntityClone(a1, cloneA1, "a1", a0);
-    assertChainedEntityClone(a2, cloneA2, "a2", cloneA1);
-    assertChainedEntityClone(a3, cloneA3, "a3", cloneA2);
-    assertChainedEntityClone(b1, cloneB1, "b1", b0);
-
-    a3.setChainedObject(b1);
-    assertCode("b1", a3.getChainedObject());
-    // Clone remains unchanged
-    assertCode("a2", cloneA3.getChainedObject());
-  }
-
-  private void assertChainedEntityClone(
-      TestdataChainedEntity originalEntity,
-      TestdataChainedEntity cloneEntity,
-      String entityCode,
-      TestdataChainedObject value) {
-    assertThat(cloneEntity).isNotSameAs(originalEntity);
-    assertCode(entityCode, originalEntity);
-    assertCode(entityCode, cloneEntity);
-    assertThat(cloneEntity.getChainedObject()).isSameAs(value);
-  }
-
-  @Test
-  void cloneShadowChainedSolution() {
-    var solutionDescriptor = TestdataShadowingChainedSolution.buildSolutionDescriptor();
-    var cloner = createSolutionCloner(solutionDescriptor);
-
-    var a0 = new TestdataShadowingChainedAnchor("a0");
-    var a1 = new TestdataShadowingChainedEntity("a1", a0);
-    var a2 = new TestdataShadowingChainedEntity("a2", a1);
-    var a3 = new TestdataShadowingChainedEntity("a3", a2);
-
-    var b0 = new TestdataShadowingChainedAnchor("b0");
-    var b1 = new TestdataShadowingChainedEntity("b1", b0);
-
-    a0.setNextEntity(a1);
-    a1.setNextEntity(a2);
-    a2.setNextEntity(a3);
-    a3.setNextEntity(null);
-
-    b0.setNextEntity(b1);
-    b1.setNextEntity(null);
-
-    var original = new TestdataShadowingChainedSolution("solution");
-    var originalAnchorList = Arrays.asList(a0, b0);
-    original.setChainedAnchorList(originalAnchorList);
-    var originalEntityList = Arrays.asList(a1, a2, a3, b1);
-    original.setChainedEntityList(originalEntityList);
-
-    var clone = cloner.cloneSolution(original);
-    assertThat(clone).isNotSameAs(original);
-    assertCode("solution", clone);
-    assertThat(clone.getScore()).isEqualTo(original.getScore());
-
-    var cloneAnchorList = clone.getChainedAnchorList();
-    assertThat(cloneAnchorList).hasSize(2).isNotSameAs(originalAnchorList);
-    var cloneA0 = cloneAnchorList.get(0);
-    var cloneB0 = cloneAnchorList.get(1);
-
-    var cloneEntityList = clone.getChainedEntityList();
-    assertThat(cloneEntityList).hasSize(4).isNotSameAs(originalEntityList);
-    var cloneA1 = cloneEntityList.get(0);
-    var cloneA2 = cloneEntityList.get(1);
-    var cloneA3 = cloneEntityList.get(2);
-    var cloneB1 = cloneEntityList.get(3);
-    assertChainedShadowingAnchorClone(a0, cloneA0, "a0", cloneA1);
-    assertChainedShadowingEntityClone(a1, cloneA1, "a1", cloneA0, cloneA2);
-    assertChainedShadowingEntityClone(a2, cloneA2, "a2", cloneA1, cloneA3);
-    assertChainedShadowingEntityClone(a3, cloneA3, "a3", cloneA2, null);
-    assertChainedShadowingAnchorClone(b0, cloneB0, "b0", cloneB1);
-    assertChainedShadowingEntityClone(b1, cloneB1, "b1", cloneB0, null);
-
-    a3.setChainedObject(b1);
-    assertCode("b1", a3.getChainedObject());
-    // Clone remains unchanged.
-    assertCode("a2", cloneA3.getChainedObject());
-  }
-
-  private void assertChainedShadowingAnchorClone(
-      TestdataShadowingChainedAnchor originalEntity,
-      TestdataShadowingChainedAnchor cloneEntity,
-      String entityCode,
-      TestdataShadowingChainedEntity next) {
-    assertThat(cloneEntity).isNotSameAs(originalEntity);
-    assertCode(entityCode, originalEntity);
-    assertCode(entityCode, cloneEntity);
-    assertThat(cloneEntity.getNextEntity()).isSameAs(next);
-  }
-
-  private void assertChainedShadowingEntityClone(
-      TestdataShadowingChainedEntity originalEntity,
-      TestdataShadowingChainedEntity cloneEntity,
-      String entityCode,
-      TestdataShadowingChainedObject value,
-      TestdataShadowingChainedEntity next) {
-    assertThat(cloneEntity).isNotSameAs(originalEntity);
-    assertCode(entityCode, originalEntity);
-    assertCode(entityCode, cloneEntity);
-    assertThat(cloneEntity.getChainedObject()).isSameAs(value);
-    assertThat(cloneEntity.getNextEntity()).isSameAs(next);
   }
 
   @Test
@@ -1205,66 +1077,6 @@ public abstract class AbstractSolutionClonerTest {
             .containsEntry(key, originalStringToStringListMap.get(key));
       }
     }
-  }
-
-  @Test
-  void cloneExtendedShadowEntities() {
-    var solutionDescriptor =
-        SolutionDescriptor.buildSolutionDescriptor(
-            TestdataExtendedShadowSolution.class,
-            TestdataExtendedShadowEntity.class,
-            TestdataExtendedShadowShadowEntity.class);
-    var cloner = createSolutionCloner(solutionDescriptor);
-
-    var entity0 = new TestdataExtendedShadowEntity(0);
-    entity0.myPlanningVariable = new TestdataExtendedShadowVariable(0);
-    var shadowEntity = new TestdataExtendedShadowExtendedShadowEntity(entity0);
-
-    var original = new TestdataExtendedShadowSolution(shadowEntity);
-    var clone = cloner.cloneSolution(original);
-
-    assertThat(clone.shadowEntityList)
-        .hasSize(1)
-        .isNotSameAs(original.shadowEntityList)
-        .first()
-        .isNotNull();
-
-    assertThat(clone.shadowEntityList.get(0)).isNotSameAs(original.shadowEntityList.get(0));
-  }
-
-  @Test
-  void clonePlanningCloneableItems() {
-    var solutionDescriptor = PlanningCloneableSolution.buildSolutionDescriptor();
-    var cloner = createSolutionCloner(solutionDescriptor);
-
-    var entityA = new PlanningCloneableEntity("A");
-    var entityB = new PlanningCloneableEntity("B");
-    var entityC = new PlanningCloneableEntity("C");
-
-    var original = new PlanningCloneableSolution(List.of(entityA, entityB, entityC));
-    var clone = cloner.cloneSolution(original);
-
-    assertThat(clone.entityList).hasSize(3).isNotSameAs(original.entityList).first().isNotNull();
-
-    assertThat(clone.entityList.get(0))
-        .isNotSameAs(original.entityList.get(0))
-        .hasFieldOrPropertyWithValue("code", "A");
-
-    assertThat(clone.entityList.get(1))
-        .isNotSameAs(original.entityList.get(1))
-        .hasFieldOrPropertyWithValue("code", "B");
-
-    assertThat(clone.entityList.get(2))
-        .isNotSameAs(original.entityList.get(2))
-        .hasFieldOrPropertyWithValue("code", "C");
-
-    assertThat(clone.codeToEntity).hasSize(3).isNotSameAs(original.codeToEntity);
-
-    assertThat(clone.codeToEntity.get("A")).isSameAs(clone.entityList.get(0));
-
-    assertThat(clone.codeToEntity.get("B")).isSameAs(clone.entityList.get(1));
-
-    assertThat(clone.codeToEntity.get("C")).isSameAs(clone.entityList.get(2));
   }
 
   private static class MaxStackFrameFinder {

@@ -12,7 +12,6 @@ import ai.greycos.solver.core.api.cotwin.common.ComparatorFactory;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorterWeightFactory;
 
 /**
  * Specifies that a bean property (or a field) can be changed and should be optimized by the
@@ -46,21 +45,12 @@ public @interface PlanningVariable {
    * A variable will automatically add the planning value null to the {@link ValueRangeProvider}'s
    * range.
    *
-   * <p>Allowing unassigned is not compatible with {@link PlanningVariableGraphType#CHAINED} true.
-   * Allowing unassigned is not compatible with a primitive property type.
+   * <p>Allowing unassigned is not compatible with a primitive property type.
    *
    * @see PlanningListVariable#allowsUnassignedValues()
    * @return true if null is a valid value for this planning variable
    */
   boolean allowsUnassigned() default false;
-
-  /**
-   * In some use cases, such as Vehicle Routing, planning entities form a specific graph type, as
-   * specified by {@link PlanningVariableGraphType}.
-   *
-   * @return never null, defaults to {@link PlanningVariableGraphType#NONE}
-   */
-  PlanningVariableGraphType graphType() default PlanningVariableGraphType.NONE;
 
   /**
    * Allows sorting a collection of planning values for this variable. Some algorithms perform
@@ -93,62 +83,4 @@ public @interface PlanningVariable {
   Class<? extends ComparatorFactory> comparatorFactoryClass() default NullComparatorFactory.class;
 
   interface NullComparatorFactory<Solution_, T> extends ComparatorFactory<Solution_, T> {}
-
-  /**
-   * As defined by {@link #allowsUnassigned()}.
-   *
-   * @deprecated Use {@link #allowsUnassigned()} instead.
-   * @return true if null is a valid value for this planning variable
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  boolean nullable() default false;
-
-  /**
-   * Allows a collection of planning values for this variable to be sorted by strength. A
-   * strengthWeight estimates how strong a planning value is. Some algorithms benefit from planning
-   * on weaker planning values first or from focusing on them.
-   *
-   * <p>The {@link Comparator} should sort in ascending strength. For example: sorting 3 computers
-   * on strength based on their RAM capacity: Computer B (1GB RAM), Computer A (2GB RAM), Computer C
-   * (7GB RAM),
-   *
-   * <p>Do not use together with {@link #strengthWeightFactoryClass()}.
-   *
-   * @deprecated Deprecated in favor of {@link #comparatorClass()}.
-   * @return {@link NullStrengthComparator} when it is null (workaround for annotation limitation)
-   * @see #strengthWeightFactoryClass()
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  Class<? extends Comparator> strengthComparatorClass() default NullStrengthComparator.class;
-
-  /**
-   * Workaround for annotation limitation in {@link #strengthComparatorClass()}.
-   *
-   * @deprecated Deprecated in favor of {@link NullComparator}.
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  interface NullStrengthComparator<T> extends NullComparator<T> {}
-
-  /**
-   * The {@link SelectionSorterWeightFactory} alternative for {@link #strengthComparatorClass()}.
-   *
-   * <p>Do not use together with {@link #strengthComparatorClass()}.
-   *
-   * @deprecated Deprecated in favor of {@link #comparatorFactoryClass()}.
-   * @return {@link NullStrengthWeightFactory} when it is null (workaround for annotation
-   *     limitation)
-   * @see #strengthComparatorClass()
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  Class<? extends SelectionSorterWeightFactory> strengthWeightFactoryClass() default
-      NullStrengthWeightFactory.class;
-
-  /**
-   * Workaround for annotation limitation in {@link #strengthWeightFactoryClass()}.
-   *
-   * @deprecated Deprecated in favor of {@link NullComparatorFactory}.
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  interface NullStrengthWeightFactory<Solution_, T>
-      extends SelectionSorterWeightFactory<Solution_, T>, NullComparatorFactory<Solution_, T> {}
 }

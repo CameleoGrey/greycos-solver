@@ -7,7 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.util.CollectionUtils;
 
 /**
@@ -19,7 +19,7 @@ import ai.greycos.solver.core.impl.util.CollectionUtils;
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  * @see Move
  */
-public final class CompositeMove<Solution_> extends AbstractMove<Solution_> {
+public class CompositeMove<Solution_> extends AbstractMove<Solution_> {
 
   /**
    * @param moves never null, sometimes empty. Do not modify this argument afterwards or the

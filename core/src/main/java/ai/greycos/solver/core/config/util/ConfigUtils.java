@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.config.util;
 
-import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory.MemberAccessorType.FIELD_OR_READ_METHOD;
+import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType.FIELD_OR_READ_METHOD;
 import static ai.greycos.solver.core.impl.cotwin.solution.cloner.DeepCloningUtils.IMMUTABLE_CLASSES;
 
 import java.lang.annotation.Annotation;
@@ -25,16 +25,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.config.AbstractConfig;
 import ai.greycos.solver.core.impl.cotwin.common.AlphabeticMemberComparator;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
@@ -125,7 +125,7 @@ public class ConfigUtils {
     var beanClass = bean.getClass();
     customProperties.forEach(
         (propertyName, valueString) -> {
-          var setterMethod = ReflectionHelper.getSetterMethod(beanClass, propertyName);
+          var setterMethod = getSetterMethod(beanClass, propertyName);
           if (setterMethod == null) {
             throw new IllegalStateException(
                 """
@@ -209,6 +209,30 @@ public class ConfigUtils {
                 e.getCause());
           }
         });
+  }
+
+  /**
+   * @param containingClass never null
+   * @param propertyName never null
+   * @return null if it doesn't exist
+   */
+  private static Method getSetterMethod(Class<?> containingClass, String propertyName) {
+    String setterName =
+        ReflectionHelper.PROPERTY_MUTATOR_PREFIX
+            + ReflectionHelper.capitalizePropertyName(propertyName);
+    Method[] methods =
+        Arrays.stream(containingClass.getMethods())
+            .filter(method -> method.getName().equals(setterName))
+            .toArray(Method[]::new);
+    if (methods.length == 0) {
+      return null;
+    }
+    if (methods.length > 1) {
+      throw new IllegalStateException(
+          "The containingClass (%s) has multiple setter methods (%s) with the propertyName (%s)."
+              .formatted(containingClass, Arrays.toString(methods), propertyName));
+    }
+    return methods[0];
   }
 
   public static <Config_ extends AbstractConfig<Config_>> @Nullable Config_ inheritConfig(
@@ -726,7 +750,7 @@ public class ConfigUtils {
     return abbreviate(list, 3);
   }
 
-  public static String addRandomSuffix(String name, Random random) {
+  public static String addRandomSuffix(String name, RandomGenerator random) {
     var value = new StringBuilder(name);
     value.append("-");
     random

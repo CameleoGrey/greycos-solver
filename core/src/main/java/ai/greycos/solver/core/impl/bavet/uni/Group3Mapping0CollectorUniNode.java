@@ -34,16 +34,14 @@ public final class Group3Mapping0CollectorUniNode<OldA, A, B, C>
       Function<OldA, B> groupKeyMappingB,
       Function<OldA, C> groupKeyMappingC,
       UniTuple<OldA> tuple) {
-    OldA oldA = tuple.factA;
-    A a = groupKeyMappingA.apply(oldA);
-    B b = groupKeyMappingB.apply(oldA);
-    C c = groupKeyMappingC.apply(oldA);
-    return new Triple<>(a, b, c);
+    var oldA = tuple.getA();
+    return new Triple<>(
+        groupKeyMappingA.apply(oldA), groupKeyMappingB.apply(oldA), groupKeyMappingC.apply(oldA));
   }
 
   @Override
   protected TriTuple<A, B, C> createOutTuple(Triple<A, B, C> groupKey) {
-    return new TriTuple<>(groupKey.a(), groupKey.b(), groupKey.c(), outputStoreSize);
+    return TriTuple.of(groupKey.a(), groupKey.b(), groupKey.c(), outputStoreSize);
   }
 
   @Override

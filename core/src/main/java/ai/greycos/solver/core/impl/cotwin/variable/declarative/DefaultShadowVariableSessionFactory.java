@@ -313,8 +313,7 @@ public class DefaultShadowVariableSessionFactory<Solution_> {
                 solutionDescriptor.getListVariableDescriptor());
         yield new TopologicalSorter(
             listStateSupply::getNextElement,
-            Comparator.comparingInt(
-                entity -> Objects.requireNonNullElse(listStateSupply.getIndex(entity), 0)),
+            Comparator.comparingInt(entity -> listStateSupply.getIndexOrElse(entity, 0)),
             listStateSupply::getInverseSingleton);
       }
       case NEXT -> {
@@ -323,9 +322,7 @@ public class DefaultShadowVariableSessionFactory<Solution_> {
                 solutionDescriptor.getListVariableDescriptor());
         yield new TopologicalSorter(
             listStateSupply::getPreviousElement,
-            Comparator.comparingInt(
-                    entity -> Objects.requireNonNullElse(listStateSupply.getIndex(entity), 0))
-                .reversed(),
+            Comparator.comparingInt(entity -> listStateSupply.getIndexOrElse(entity, 0)).reversed(),
             listStateSupply::getInverseSingleton);
       }
       default ->
@@ -472,7 +469,7 @@ public class DefaultShadowVariableSessionFactory<Solution_> {
                 consistencyTracker.getDeclarativeEntityConsistencyState(
                     declarativeShadowVariableDescriptor.getEntityDescriptor()),
                 declarativeShadowVariableDescriptor.getMemberAccessor(),
-                declarativeShadowVariableDescriptor.getCalculator()::executeGetter);
+                declarativeShadowVariableDescriptor.getCalculator());
         if (declarativeShadowVariableDescriptor.getAlignmentKeyMap() != null) {
           var alignmentKeyFunction = declarativeShadowVariableDescriptor.getAlignmentKeyMap();
           var alignmentKeyToAlignedEntitiesMap = new HashMap<Object, List<Object>>();
@@ -591,7 +588,7 @@ public class DefaultShadowVariableSessionFactory<Solution_> {
                         .getDeclarativeEntityConsistencyState(
                             declarativeShadowVariableDescriptor.getEntityDescriptor()),
                     declarativeShadowVariableDescriptor.getMemberAccessor(),
-                    declarativeShadowVariableDescriptor.getCalculator()::executeGetter)));
+                    declarativeShadowVariableDescriptor.getCalculator())));
   }
 
   private static <Solution_>

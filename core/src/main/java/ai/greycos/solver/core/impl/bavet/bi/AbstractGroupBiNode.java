@@ -6,12 +6,12 @@ import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.score.stream.bi.BiConstraintCollector;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.bavet.common.AbstractGroupNode;
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.BiTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 
 abstract class AbstractGroupBiNode<
-        OldA, OldB, OutTuple_ extends AbstractTuple, GroupKey_, ResultContainer_, Result_>
+        OldA, OldB, OutTuple_ extends Tuple, GroupKey_, ResultContainer_, Result_>
     extends AbstractGroupNode<
         BiTuple<OldA, OldB>, OutTuple_, GroupKey_, ResultContainer_, Result_> {
 
@@ -46,6 +46,6 @@ abstract class AbstractGroupBiNode<
 
   @Override
   protected final Runnable accumulate(ResultContainer_ resultContainer, BiTuple<OldA, OldB> tuple) {
-    return accumulator.apply(resultContainer, tuple.factA, tuple.factB);
+    return accumulator.apply(resultContainer, tuple.getA(), tuple.getB());
   }
 }

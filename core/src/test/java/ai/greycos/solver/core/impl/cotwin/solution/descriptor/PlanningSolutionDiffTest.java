@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningSolutionDiff;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.SolverConfig;

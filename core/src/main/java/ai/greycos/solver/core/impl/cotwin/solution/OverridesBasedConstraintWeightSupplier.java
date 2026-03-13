@@ -6,14 +6,15 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
 import ai.greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
@@ -43,7 +44,7 @@ public final class OverridesBasedConstraintWeightSupplier<Score_ extends Score<S
             .getMemberAccessorFactory()
             .buildAndCacheMemberAccessor(
                 member,
-                MemberAccessorFactory.MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
+                MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
                 descriptorPolicy.getCotwinAccessType());
     return new OverridesBasedConstraintWeightSupplier<>(
         solutionDescriptor, memberAccessor, overridesClass);
@@ -118,13 +119,6 @@ public final class OverridesBasedConstraintWeightSupplier<Score_ extends Score<S
 
   @Override
   public Score_ getConstraintWeight(ConstraintRef constraintRef, Solution_ workingSolution) {
-    if (!constraintRef.packageName().equals(getDefaultConstraintPackage())) {
-      throw new IllegalStateException(
-          """
-                    The constraint (%s) is not in the default package (%s).
-                    Constraint packages are deprecated, check your constraint implementation."""
-              .formatted(constraintRef, getDefaultConstraintPackage()));
-    }
     if (workingSolution == null) { // ConstraintVerifier is known to cause null here.
       return null;
     }

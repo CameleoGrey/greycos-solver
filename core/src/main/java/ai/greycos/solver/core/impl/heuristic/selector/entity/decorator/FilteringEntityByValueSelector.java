@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Random;
 import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.constructionheuristic.placer.EntityPlacerFactory;
 import ai.greycos.solver.core.impl.constructionheuristic.placer.QueuedValuePlacer;
@@ -65,18 +65,22 @@ public final class FilteringEntityByValueSelector<Solution_>
   private final IterableValueSelector<Solution_> replayingValueSelector;
   private final EntitySelector<Solution_> childEntitySelector;
   private final boolean randomSelection;
+  private final boolean isExhaustiveSearch;
 
   private Object replayedValue;
+  private Object replayedEntity;
   private ReachableValues<Object, Object> reachableValues;
   private long entitiesSize;
 
   public FilteringEntityByValueSelector(
       EntitySelector<Solution_> childEntitySelector,
       IterableValueSelector<Solution_> replayingValueSelector,
-      boolean randomSelection) {
+      boolean randomSelection,
+      boolean isExhaustiveSearch) {
     this.replayingValueSelector = replayingValueSelector;
     this.childEntitySelector = childEntitySelector;
     this.randomSelection = randomSelection;
+    this.isExhaustiveSearch = isExhaustiveSearch;
   }
 
   // ************************************************************************
@@ -166,6 +170,17 @@ public final class FilteringEntityByValueSelector<Solution_>
     return replayedValue;
   }
 
+  private Object selectReplayedEntity() {
+    if (!isExhaustiveSearch) {
+      throw new IllegalStateException("Impossible state: exhaustiveSearch is set to false");
+    }
+    var iterator = childEntitySelector.iterator();
+    if (iterator.hasNext()) {
+      replayedEntity = iterator.next();
+    }
+    return replayedEntity;
+  }
+
   @Override
   public Iterator<Object> endingIterator() {
     return new OriginalFilteringValueRangeIterator<>(this::selectReplayedValue, reachableValues);
@@ -174,21 +189,39 @@ public final class FilteringEntityByValueSelector<Solution_>
   @Override
   public Iterator<Object> iterator() {
     if (randomSelection) {
+      if (isExhaustiveSearch) {
+        throw new IllegalStateException(
+            "The random iterator is not supported for the exhaustive search.");
+      }
       return new RandomFilteringValueRangeIterator<>(
           this::selectReplayedValue, reachableValues, workingRandom);
     } else {
-      return new OriginalFilteringValueRangeIterator<>(this::selectReplayedValue, reachableValues);
+      if (isExhaustiveSearch) {
+        return new ExhaustiveOriginalFilteringValueRangeIterator<>(
+            this::selectReplayedEntity, this::selectReplayedValue, reachableValues);
+      } else {
+        return new OriginalFilteringValueRangeIterator<>(
+            this::selectReplayedValue, reachableValues);
+      }
     }
   }
 
   @Override
   public ListIterator<Object> listIterator() {
+    if (isExhaustiveSearch) {
+      throw new IllegalStateException(
+          "The list iterator is not supported for the exhaustive search.");
+    }
     return new OriginalFilteringValueRangeListIterator<>(
         this::selectReplayedValue, childEntitySelector.listIterator(), reachableValues);
   }
 
   @Override
   public ListIterator<Object> listIterator(int index) {
+    if (isExhaustiveSearch) {
+      throw new IllegalStateException(
+          "The list iterator is not supported for the exhaustive search.");
+    }
     return new OriginalFilteringValueRangeListIterator<>(
         this::selectReplayedValue, childEntitySelector.listIterator(index), reachableValues);
   }
@@ -205,12 +238,46 @@ public final class FilteringEntityByValueSelector<Solution_>
     return Objects.hash(childEntitySelector, replayingValueSelector);
   }
 
+  private static class ExhaustiveOriginalFilteringValueRangeIterator<Entity_, Value_>
+      extends OriginalFilteringValueRangeIterator<Entity_, Value_> {
+
+    private final Supplier<Entity_> replayingEntitySupplier;
+
+    private ExhaustiveOriginalFilteringValueRangeIterator(
+        Supplier<Entity_> replayingEntitySupplier,
+        Supplier<Value_> upcomingValueSupplier,
+        ReachableValues<Entity_, Value_> reachableValues) {
+      super(upcomingValueSupplier, reachableValues);
+      this.replayingEntitySupplier = replayingEntitySupplier;
+    }
+
+    @Override
+    protected void initialize() {
+      if (entityIterator != null) {
+        return;
+      }
+      var currentUpcomingValue = upcomingValueSupplier.get();
+      if (currentUpcomingValue == null) {
+        entityIterator = Collections.emptyIterator();
+      } else {
+        var currentReplayedEntity = replayingEntitySupplier.get();
+        if (currentReplayedEntity == null) {
+          entityIterator = Collections.emptyIterator();
+        } else if (reachableValues.isEntityReachable(currentUpcomingValue, currentReplayedEntity)) {
+          entityIterator = Collections.singletonList(currentReplayedEntity).iterator();
+        } else {
+          entityIterator = Collections.emptyIterator();
+        }
+      }
+    }
+  }
+
   private static class OriginalFilteringValueRangeIterator<Entity_, Value_>
       extends UpcomingSelectionIterator<Entity_> {
 
-    private final Supplier<Value_> upcomingValueSupplier;
-    private final ReachableValues<Entity_, Value_> reachableValues;
-    private Iterator<Entity_> entityIterator;
+    protected final Supplier<Value_> upcomingValueSupplier;
+    protected final ReachableValues<Entity_, Value_> reachableValues;
+    protected Iterator<Entity_> entityIterator;
 
     private OriginalFilteringValueRangeIterator(
         Supplier<Value_> upcomingValueSupplier, ReachableValues<Entity_, Value_> reachableValues) {
@@ -218,7 +285,7 @@ public final class FilteringEntityByValueSelector<Solution_>
       this.upcomingValueSupplier = Objects.requireNonNull(upcomingValueSupplier);
     }
 
-    private void initialize() {
+    protected void initialize() {
       if (entityIterator != null) {
         return;
       }
@@ -312,14 +379,14 @@ public final class FilteringEntityByValueSelector<Solution_>
 
     private final Supplier<Value_> upcomingValueSupplier;
     private final ReachableValues<Entity_, Value_> reachableValues;
-    private final Random workingRandom;
+    private final RandomGenerator workingRandom;
     private Value_ currentUpcomingValue;
     private List<Entity_> entityList;
 
     private RandomFilteringValueRangeIterator(
         Supplier<Value_> upcomingValueSupplier,
         ReachableValues<Entity_, Value_> reachableValues,
-        Random workingRandom) {
+        RandomGenerator workingRandom) {
       this.upcomingValueSupplier = upcomingValueSupplier;
       this.reachableValues = Objects.requireNonNull(reachableValues);
       this.workingRandom = workingRandom;

@@ -6,12 +6,12 @@ import ai.greycos.solver.core.api.function.QuadFunction;
 import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollector;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.bavet.common.AbstractGroupNode;
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TriTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 
 abstract class AbstractGroupTriNode<
-        OldA, OldB, OldC, OutTuple_ extends AbstractTuple, GroupKey_, ResultContainer_, Result_>
+        OldA, OldB, OldC, OutTuple_ extends Tuple, GroupKey_, ResultContainer_, Result_>
     extends AbstractGroupNode<
         TriTuple<OldA, OldB, OldC>, OutTuple_, GroupKey_, ResultContainer_, Result_> {
 
@@ -47,6 +47,6 @@ abstract class AbstractGroupTriNode<
   @Override
   protected final Runnable accumulate(
       ResultContainer_ resultContainer, TriTuple<OldA, OldB, OldC> tuple) {
-    return accumulator.apply(resultContainer, tuple.factA, tuple.factB, tuple.factC);
+    return accumulator.apply(resultContainer, tuple.getA(), tuple.getB(), tuple.getC());
   }
 }

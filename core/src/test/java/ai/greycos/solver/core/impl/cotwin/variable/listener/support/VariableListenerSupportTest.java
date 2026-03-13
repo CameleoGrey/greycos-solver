@@ -1,6 +1,5 @@
 package ai.greycos.solver.core.impl.cotwin.variable.listener.support;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mock;
@@ -10,154 +9,28 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import ai.greycos.solver.core.api.function.QuadConsumer;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.DefaultTopologicalOrderGraph;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.GraphNode;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.TopologicalOrderGraph;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.VariableUpdaterInfo;
-import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.ExternalizedSingletonInverseVariableSupply;
-import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableDemand;
-import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableListener;
-import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.score.director.NeighborhoodNotifier;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
-import ai.greycos.solver.core.testcotwin.TestdataEntity;
-import ai.greycos.solver.core.testcotwin.TestdataSolution;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution;
-import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedEntity;
-import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedSolution;
 import ai.greycos.solver.core.testcotwin.shadow.concurrent.TestdataConcurrentEntity;
 import ai.greycos.solver.core.testcotwin.shadow.concurrent.TestdataConcurrentSolution;
 import ai.greycos.solver.core.testcotwin.shadow.concurrent.TestdataConcurrentValue;
-import ai.greycos.solver.core.testcotwin.shadow.order.TestdataShadowVariableOrderEntity;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 class VariableListenerSupportTest {
-
-  @Test
-  void demandBasic() {
-    var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
-    var scoreDirector = mock(InnerScoreDirector.class);
-    when(scoreDirector.getSolutionDescriptor()).thenReturn(solutionDescriptor);
-    var solution = new TestdataSolution();
-    solution.setEntityList(Collections.emptyList());
-    when(scoreDirector.getWorkingSolution()).thenReturn(solution);
-    when(scoreDirector.getSupplyManager()).thenReturn(mock(SupplyManager.class));
-    VariableListenerSupport<TestdataSolution> variableListenerSupport =
-        VariableListenerSupport.create(scoreDirector);
-    variableListenerSupport.linkVariableListeners();
-
-    var variableDescriptor =
-        solutionDescriptor
-            .getEntityDescriptorStrict(TestdataEntity.class)
-            .getVariableDescriptor("value");
-
-    var supply1 =
-        variableListenerSupport.demand(new SingletonInverseVariableDemand<>(variableDescriptor));
-    var supply2 =
-        variableListenerSupport.demand(new SingletonInverseVariableDemand<>(variableDescriptor));
-    assertThat(supply2).isSameAs(supply1);
-  }
-
-  @Test
-  void demandChained() {
-    var solutionDescriptor = TestdataChainedSolution.buildSolutionDescriptor();
-    var scoreDirector = mock(InnerScoreDirector.class);
-    when(scoreDirector.getSolutionDescriptor()).thenReturn(solutionDescriptor);
-    var solution = new TestdataChainedSolution();
-    solution.setChainedEntityList(Collections.emptyList());
-    when(scoreDirector.getWorkingSolution()).thenReturn(solution);
-    when(scoreDirector.getSupplyManager()).thenReturn(mock(SupplyManager.class));
-    VariableListenerSupport<TestdataChainedSolution> variableListenerSupport =
-        VariableListenerSupport.create(scoreDirector);
-    variableListenerSupport.linkVariableListeners();
-
-    VariableDescriptor<TestdataChainedSolution> variableDescriptor =
-        solutionDescriptor
-            .getEntityDescriptorStrict(TestdataChainedEntity.class)
-            .getVariableDescriptor("chainedObject");
-
-    var supply1 =
-        variableListenerSupport.demand(new SingletonInverseVariableDemand<>(variableDescriptor));
-    assertThat(supply1).isInstanceOf(ExternalizedSingletonInverseVariableSupply.class);
-    var supply2 =
-        variableListenerSupport.demand(new SingletonInverseVariableDemand<>(variableDescriptor));
-    assertThat(supply2).isSameAs(supply1);
-  }
-
-  @Test
-  void demandRichChained() {
-    var solutionDescriptor = TestdataShadowingChainedSolution.buildSolutionDescriptor();
-    var scoreDirector = mock(InnerScoreDirector.class);
-    when(scoreDirector.getSolutionDescriptor()).thenReturn(solutionDescriptor);
-    var solution = new TestdataShadowingChainedSolution();
-    solution.setChainedEntityList(Collections.emptyList());
-    when(scoreDirector.getWorkingSolution()).thenReturn(solution);
-    when(scoreDirector.getSupplyManager()).thenReturn(mock(SupplyManager.class));
-    var variableListenerSupport = VariableListenerSupport.create(scoreDirector);
-    variableListenerSupport.linkVariableListeners();
-
-    var variableDescriptor =
-        solutionDescriptor
-            .getEntityDescriptorStrict(TestdataShadowingChainedEntity.class)
-            .getVariableDescriptor("chainedObject");
-
-    var supply1 =
-        variableListenerSupport.demand(new SingletonInverseVariableDemand<>(variableDescriptor));
-    assertThat(supply1).isInstanceOf(SingletonInverseVariableListener.class);
-    var supply2 =
-        variableListenerSupport.demand(new SingletonInverseVariableDemand<>(variableDescriptor));
-    assertThat(supply2).isSameAs(supply1);
-  }
-
-  @Test
-  void shadowVariableListenerOrder() {
-    var entityDescriptor = TestdataShadowVariableOrderEntity.buildEntityDescriptor();
-    var solutionDescriptor = entityDescriptor.getSolutionDescriptor();
-    var scoreDirector = mock(InnerScoreDirector.class);
-    when(scoreDirector.getSolutionDescriptor()).thenReturn(solutionDescriptor);
-    when(scoreDirector.getSolutionDescriptor()).thenReturn(solutionDescriptor);
-
-    var registry = new NotifiableRegistry<>(solutionDescriptor);
-    var variableListenerSupport =
-        new VariableListenerSupport<>(scoreDirector, registry, DefaultTopologicalOrderGraph::new);
-
-    variableListenerSupport.linkVariableListeners();
-
-    assertThat(registry.getAll())
-        .map(Object::toString)
-        .containsExactly("(0) C", "(1) D", "(2) E", "(3) FG");
-
-    assertThat(registry.get(entityDescriptor))
-        .map(Object::toString)
-        .containsExactly("(0) C", "(1) D", "(2) E", "(3) FG");
-
-    assertThat(registry.get(entityDescriptor.getVariableDescriptor("x6A")))
-        .map(VariableListenerNotifiable::toString)
-        .containsExactly("(0) C");
-    assertThat(registry.get(entityDescriptor.getVariableDescriptor("x5B")))
-        .map(VariableListenerNotifiable::toString)
-        .containsExactly("(2) E");
-    assertThat(registry.get(entityDescriptor.getVariableDescriptor("x3C")))
-        .map(VariableListenerNotifiable::toString)
-        .containsExactly("(1) D", "(2) E");
-    assertThat(registry.get(entityDescriptor.getVariableDescriptor("x1D"))).isEmpty();
-    assertThat(registry.get(entityDescriptor.getVariableDescriptor("x2E")))
-        .map(VariableListenerNotifiable::toString)
-        .containsExactly("(3) FG");
-    assertThat(registry.get(entityDescriptor.getVariableDescriptor("x4F"))).isEmpty();
-    assertThat(registry.get(entityDescriptor.getVariableDescriptor("x0G"))).isEmpty();
-  }
 
   private static class MockTopologicalOrderGraph extends DefaultTopologicalOrderGraph
       implements TopologicalOrderGraph {
@@ -223,9 +96,15 @@ class VariableListenerSupportTest {
   @Test
   void shadowVariableListGraphEvents() {
     var solutionDescriptor = TestdataConcurrentSolution.buildSolutionDescriptor();
-    InnerScoreDirector<TestdataConcurrentSolution, HardSoftScore> scoreDirector =
-        mock(InnerScoreDirector.class);
+    @SuppressWarnings("unchecked")
+    var scoreDirector =
+        (InnerScoreDirector<TestdataConcurrentSolution, HardSoftScore>)
+            mock(InnerScoreDirector.class);
+    @SuppressWarnings("unchecked")
+    var neighborhoodNotifier =
+        (NeighborhoodNotifier<TestdataConcurrentSolution>) Mockito.mock(NeighborhoodNotifier.class);
     when(scoreDirector.getSolutionDescriptor()).thenReturn(solutionDescriptor);
+    when(scoreDirector.getNeighborhoodNotifier()).thenReturn(neighborhoodNotifier);
     var valueRangeManager = new ValueRangeManager<>(solutionDescriptor);
     when(scoreDirector.getValueRangeManager()).thenReturn(valueRangeManager);
 

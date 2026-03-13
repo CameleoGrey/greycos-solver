@@ -8,14 +8,14 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 
-import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.core.api.score.buildin.hardsoftbigdecimal.HardSoftBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
-import ai.greycos.solver.core.api.score.buildin.simplebigdecimal.SimpleBigDecimalScore;
+import ai.greycos.solver.core.api.score.BendableScore;
+import ai.greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
+import ai.greycos.solver.core.api.score.SimpleBigDecimalScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
-import ai.greycos.solver.core.impl.score.buildin.SimpleScoreDefinition;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
@@ -340,104 +340,104 @@ class BestScoreTerminationTest {
     var termination =
         new BestScoreTermination<>(
             scoreDefinition,
-            BendableScore.of(new int[] {-10}, new int[] {-300}),
+            BendableScore.of(new long[] {-10}, new long[] {-300}),
             new double[] {0.75});
 
     // Normal cases
     // Smack in the middle
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-20}, new int[] {-400}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-14}, new int[] {-340})))
+                BendableScore.of(new long[] {-20}, new long[] {-400}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-14}, new long[] {-340})))
         .isEqualTo(0.6, offset(0.0));
     // No hard broken, total soft broken
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-20}, new int[] {-400}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-10}, new int[] {-400})))
+                BendableScore.of(new long[] {-20}, new long[] {-400}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-10}, new long[] {-400})))
         .isEqualTo(0.75, offset(0.0));
     // Total hard broken, no soft broken
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-20}, new int[] {-400}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-20}, new int[] {-300})))
+                BendableScore.of(new long[] {-20}, new long[] {-400}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-20}, new long[] {-300})))
         .isEqualTo(0.25, offset(0.0));
     // No hard broken, more than total soft broken
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-20}, new int[] {-400}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-10}, new int[] {-900})))
+                BendableScore.of(new long[] {-20}, new long[] {-400}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-10}, new long[] {-900})))
         .isEqualTo(0.75, offset(0.0));
     // More than total hard broken, no soft broken
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-20}, new int[] {-400}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-90}, new int[] {-300})))
+                BendableScore.of(new long[] {-20}, new long[] {-400}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-90}, new long[] {-300})))
         .isEqualTo(0.0, offset(0.0));
 
     // Perfect min/max cases
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-10}, new int[] {-300})))
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-10}, new long[] {-300})))
         .isEqualTo(1.0, offset(0.0));
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-20}, new int[] {-400}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-20}, new int[] {-400})))
+                BendableScore.of(new long[] {-20}, new long[] {-400}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-20}, new long[] {-400})))
         .isEqualTo(0.0, offset(0.0));
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-20}, new int[] {-400}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-10}, new int[] {-300})))
+                BendableScore.of(new long[] {-20}, new long[] {-400}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-10}, new long[] {-300})))
         .isEqualTo(1.0, offset(0.0));
 
     // Hard total delta is 0
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-10}, new int[] {-400}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-10}, new int[] {-340})))
+                BendableScore.of(new long[] {-10}, new long[] {-400}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-10}, new long[] {-340})))
         .isEqualTo(0.75 + (0.6 * 0.25), offset(0.0));
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-10}, new int[] {-400}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-20}, new int[] {-340})))
+                BendableScore.of(new long[] {-10}, new long[] {-400}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-20}, new long[] {-340})))
         .isEqualTo(0.0, offset(0.0));
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-10}, new int[] {-400}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-0}, new int[] {-340})))
+                BendableScore.of(new long[] {-10}, new long[] {-400}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {0}, new long[] {-340})))
         .isEqualTo(1.0, offset(0.0));
 
     // Soft total delta is 0
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-20}, new int[] {-300}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-14}, new int[] {-300})))
+                BendableScore.of(new long[] {-20}, new long[] {-300}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-14}, new long[] {-300})))
         .isEqualTo((0.6 * 0.75) + 0.25, offset(0.0));
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-20}, new int[] {-300}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-14}, new int[] {-400})))
+                BendableScore.of(new long[] {-20}, new long[] {-300}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-14}, new long[] {-400})))
         .isEqualTo(0.6 * 0.75, offset(0.0));
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-20}, new int[] {-300}),
-                BendableScore.of(new int[] {-10}, new int[] {-300}),
-                BendableScore.of(new int[] {-14}, new int[] {-0})))
+                BendableScore.of(new long[] {-20}, new long[] {-300}),
+                BendableScore.of(new long[] {-10}, new long[] {-300}),
+                BendableScore.of(new long[] {-14}, new long[] {0})))
         .isEqualTo((0.6 * 0.75) + 0.25, offset(0.0));
   }
 
@@ -448,16 +448,16 @@ class BestScoreTerminationTest {
     var termination =
         new BestScoreTermination<>(
             scoreDefinition,
-            BendableScore.of(new int[] {0, 0}, new int[] {0, 0, -10}),
+            BendableScore.of(new long[] {0, 0}, new long[] {0, 0, -10}),
             new double[] {0.75, 0.75, 0.75, 0.75});
 
     // Normal cases
     // Smack in the middle
     assertThat(
             termination.calculateTimeGradient(
-                BendableScore.of(new int[] {-10, -100}, new int[] {-50, -60, -70}),
-                BendableScore.of(new int[] {0, 0}, new int[] {0, 0, -10}),
-                BendableScore.of(new int[] {-4, -40}, new int[] {-50, -60, -70})))
+                BendableScore.of(new long[] {-10, -100}, new long[] {-50, -60, -70}),
+                BendableScore.of(new long[] {0, 0}, new long[] {0, 0, -10}),
+                BendableScore.of(new long[] {-4, -40}, new long[] {-50, -60, -70})))
         .isEqualTo(0.6 * 0.75 + 0.6 * 0.25 * 0.75, offset(0.0));
   }
 }

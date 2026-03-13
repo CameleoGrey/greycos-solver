@@ -17,10 +17,10 @@ import ai.greycos.solver.quarkus.it.reflection.cotwin.TestdataReflectionSolution
 @Path("/greycos/test")
 public class GreyCOSTestResource {
 
-  private final SolverManager<TestdataReflectionSolution, Long> solverManager;
+  private final SolverManager<TestdataReflectionSolution> solverManager;
 
   @Inject
-  public GreyCOSTestResource(SolverManager<TestdataReflectionSolution, Long> solverManager) {
+  public GreyCOSTestResource(SolverManager<TestdataReflectionSolution> solverManager) {
     this.solverManager = solverManager;
   }
 
@@ -33,8 +33,7 @@ public class GreyCOSTestResource {
         Arrays.asList(new TestdataReflectionEntity(), new TestdataReflectionEntity()));
     planningProblem.setFieldValueList(Arrays.asList("a", "bb", "ccc"));
     planningProblem.setMethodValueList(Arrays.asList("a", "bb", "ccc", "ddd"));
-    SolverJob<TestdataReflectionSolution, Long> solverJob =
-        solverManager.solve(1L, planningProblem);
+    SolverJob<TestdataReflectionSolution> solverJob = solverManager.solve(1L, planningProblem);
     try {
       return solverJob.getFinalBestSolution().getScore().toString();
     } catch (InterruptedException e) {

@@ -1,5 +1,6 @@
 package ai.greycos.solver.core.impl.heuristic.selector.list;
 
+import static ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.mockReplayingValueSelector;
 import static ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.phaseStarted;
 import static ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.solvingStarted;
 import static ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.stepStarted;
@@ -21,14 +22,19 @@ import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle
 import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockScoreDirector;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.FromSolutionEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntityByValueSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueRangeSelector;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
@@ -161,7 +167,8 @@ class ElementDestinationSelectorTest {
     var valueSelector =
         mockIterableValueSelector(getEntityRangeListVariableDescriptor(scoreDirector), v1);
     var selector =
-        new FilteringEntityByValueSelector<>(mockEntitySelector(a, b, c), valueSelector, false);
+        new FilteringEntityByValueSelector<>(
+            mockEntitySelector(a, b, c), valueSelector, false, false);
     var solverScope = solvingStarted(selector, scoreDirector);
     phaseStarted(solverScope, selector);
     assertAllCodesOfIterator(selector.listIterator(), "A");
@@ -170,7 +177,8 @@ class ElementDestinationSelectorTest {
     valueSelector =
         mockIterableValueSelector(getEntityRangeListVariableDescriptor(scoreDirector), v2);
     selector =
-        new FilteringEntityByValueSelector<>(mockEntitySelector(a, b, c), valueSelector, false);
+        new FilteringEntityByValueSelector<>(
+            mockEntitySelector(a, b, c), valueSelector, false, false);
     solverScope = solvingStarted(selector, scoreDirector);
     phaseStarted(solverScope, selector);
     assertAllCodesOfIterator(selector.listIterator(), "A", "B");
@@ -179,7 +187,8 @@ class ElementDestinationSelectorTest {
     valueSelector =
         mockIterableValueSelector(getEntityRangeListVariableDescriptor(scoreDirector), v3);
     selector =
-        new FilteringEntityByValueSelector<>(mockEntitySelector(a, b, c), valueSelector, false);
+        new FilteringEntityByValueSelector<>(
+            mockEntitySelector(a, b, c), valueSelector, false, false);
     solverScope = solvingStarted(selector, scoreDirector);
     phaseStarted(solverScope, selector);
     assertAllCodesOfIterator(selector.listIterator(), "B", "C");
@@ -188,7 +197,8 @@ class ElementDestinationSelectorTest {
     valueSelector =
         mockIterableValueSelector(getEntityRangeListVariableDescriptor(scoreDirector), v4);
     selector =
-        new FilteringEntityByValueSelector<>(mockEntitySelector(a, b, c), valueSelector, false);
+        new FilteringEntityByValueSelector<>(
+            mockEntitySelector(a, b, c), valueSelector, false, false);
     solverScope = solvingStarted(selector, scoreDirector);
     phaseStarted(solverScope, selector);
     assertAllCodesOfIterator(selector.listIterator(), "C");
@@ -197,7 +207,8 @@ class ElementDestinationSelectorTest {
     valueSelector =
         mockIterableValueSelector(getEntityRangeListVariableDescriptor(scoreDirector), v5);
     selector =
-        new FilteringEntityByValueSelector<>(mockEntitySelector(a, b, c), valueSelector, false);
+        new FilteringEntityByValueSelector<>(
+            mockEntitySelector(a, b, c), valueSelector, false, false);
     solverScope = solvingStarted(selector, scoreDirector);
     phaseStarted(solverScope, selector);
     assertAllCodesOfIterator(selector.listIterator(), "C");
@@ -206,7 +217,8 @@ class ElementDestinationSelectorTest {
     valueSelector =
         mockIterableValueSelector(getEntityRangeListVariableDescriptor(scoreDirector), v3);
     selector =
-        new FilteringEntityByValueSelector<>(mockEntitySelector(a, b, c), valueSelector, false);
+        new FilteringEntityByValueSelector<>(
+            mockEntitySelector(a, b, c), valueSelector, false, false);
     solverScope = solvingStarted(selector, scoreDirector);
     phaseStarted(solverScope, selector);
     var listIterator = selector.listIterator();
@@ -259,7 +271,8 @@ class ElementDestinationSelectorTest {
     var replayinValueSelector =
         mockIterableValueSelector(getEntityRangeListVariableDescriptor(scoreDirector), v3);
     checkEntityValueRange(
-        new FilteringEntityByValueSelector<>(mockEntitySelector(a, b, c), valueSelector, true),
+        new FilteringEntityByValueSelector<>(
+            mockEntitySelector(a, b, c), valueSelector, true, false),
         new FilteringValueRangeSelector<>(
             filteringValueRangeSelector, replayinValueSelector, true, false),
         scoreDirector,
@@ -281,7 +294,8 @@ class ElementDestinationSelectorTest {
     // Cause the value iterator return no value at the second call
     doReturn(List.of(v1).iterator(), Collections.emptyIterator()).when(valueSelector).iterator();
     checkEntityValueRange(
-        new FilteringEntityByValueSelector<>(mockEntitySelector(a, b, c), valueSelector, true),
+        new FilteringEntityByValueSelector<>(
+            mockEntitySelector(a, b, c), valueSelector, true, false),
         new FilteringValueRangeSelector<>(
             filteringValueRangeSelector, replayinValueSelector, true, false),
         scoreDirector,
@@ -308,7 +322,8 @@ class ElementDestinationSelectorTest {
     // Cause the value iterator return no value at the second call
     doReturn(List.of(v2).iterator(), Collections.emptyIterator()).when(valueSelector).iterator();
     checkEntityValueRange(
-        new FilteringEntityByValueSelector<>(mockEntitySelector(a, b, c), valueSelector, true),
+        new FilteringEntityByValueSelector<>(
+            mockEntitySelector(a, b, c), valueSelector, true, false),
         new FilteringValueRangeSelector<>(
             filteringValueRangeSelector, replayinValueSelector, true, false),
         scoreDirector,
@@ -333,7 +348,8 @@ class ElementDestinationSelectorTest {
     // Cause the value iterator return no value at the second call
     doReturn(List.of(v5).iterator(), Collections.emptyIterator()).when(valueSelector).iterator();
     checkEntityValueRange(
-        new FilteringEntityByValueSelector<>(mockEntitySelector(a, b, c), valueSelector, true),
+        new FilteringEntityByValueSelector<>(
+            mockEntitySelector(a, b, c), valueSelector, true, false),
         new FilteringValueRangeSelector<>(
             filteringValueRangeSelector, replayinValueSelector, true, false),
         scoreDirector,
@@ -634,5 +650,44 @@ class ElementDestinationSelectorTest {
 
     verifyPhaseLifecycle(entitySelector, 1, 1, 2);
     verifyPhaseLifecycle(valueSelector, 1, 1, 2);
+  }
+
+  @Test
+  void discardOldValues() {
+    var v1 = new TestdataListEntityProvidingValue("V1");
+    var v2 = new TestdataListEntityProvidingValue("V2");
+    var v3 = new TestdataListEntityProvidingValue("V3");
+    var v4 = new TestdataListEntityProvidingValue("V4");
+    var v5 = new TestdataListEntityProvidingValue("V5");
+    var a = new TestdataListEntityProvidingEntity("A", List.of(v1, v2), List.of(v1, v2));
+    var b = new TestdataListEntityProvidingEntity("B", List.of(v2, v3), List.of(v3));
+    var c = new TestdataListEntityProvidingEntity("C", List.of(v3, v4, v5), List.of(v4, v5));
+    var solution = new TestdataListEntityProvidingSolution();
+    solution.setEntityList(List.of(a, b, c));
+
+    var scoreDirector =
+        mockScoreDirector(TestdataListEntityProvidingSolution.buildSolutionDescriptor());
+    scoreDirector.setWorkingSolution(solution);
+
+    var entitySelector = mockEntitySelector(a, b, c);
+    var entityIterator = mock(UpcomingSelectionIterator.class);
+    doReturn(entityIterator).when(entitySelector).iterator();
+    doReturn(a).when(entityIterator).next();
+    doReturn(true, true, false).when(entityIterator).hasNext();
+    var valueSelector =
+        mockIterableValueSelector(getEntityRangeListVariableDescriptor(scoreDirector), v3, v3);
+    IterableValueSelector<TestdataListEntityProvidingSolution> replayingValueSelector =
+        mockReplayingValueSelector(getEntityRangeListVariableDescriptor(scoreDirector), v1, v3);
+
+    var selector =
+        new ElementDestinationSelector<>(
+            entitySelector, replayingValueSelector, valueSelector, true, false);
+
+    var random = new TestRandom(5, 5, 5, 5);
+
+    solvingStarted(selector, scoreDirector, random);
+    assertAllCodesOfIterator(selector.iterator(), "B[1]", "B[1]");
+
+    verify(entityIterator, times(1)).discardUpcomingSelection();
   }
 }

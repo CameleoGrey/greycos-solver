@@ -3,17 +3,14 @@ package ai.greycos.solver.spring.boot.autoconfigure.invalid.type;
 import java.util.List;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
-import ai.greycos.solver.core.api.cotwin.variable.AnchorShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.CustomShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PiggybackShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
-import ai.greycos.solver.spring.boot.autoconfigure.invalid.VariableListener;
 
 public class InvalidMethodTestdataSpringEntity {
 
@@ -25,15 +22,11 @@ public class InvalidMethodTestdataSpringEntity {
 
   private String anchorShadow;
 
-  private String custom;
-
   private int indexShadow;
 
   private String inverse;
 
   private String next;
-
-  private String piggy;
 
   private String previous;
 
@@ -69,22 +62,12 @@ public class InvalidMethodTestdataSpringEntity {
     this.values = values;
   }
 
-  @AnchorShadowVariable(sourceVariableName = "source")
   public String getAnchorShadow() {
     return anchorShadow;
   }
 
   public void setAnchorShadow(String anchorShadow) {
     this.anchorShadow = anchorShadow;
-  }
-
-  @CustomShadowVariable
-  public String getCustom() {
-    return custom;
-  }
-
-  public void setCustom(String custom) {
-    this.custom = custom;
   }
 
   @IndexShadowVariable(sourceVariableName = "source")
@@ -114,15 +97,6 @@ public class InvalidMethodTestdataSpringEntity {
     this.next = next;
   }
 
-  @PiggybackShadowVariable(shadowVariableName = "variable")
-  public String getPiggy() {
-    return piggy;
-  }
-
-  public void setPiggy(String piggy) {
-    this.piggy = piggy;
-  }
-
   @PreviousElementShadowVariable(sourceVariableName = "source")
   public String getPrevious() {
     return previous;
@@ -132,12 +106,17 @@ public class InvalidMethodTestdataSpringEntity {
     this.previous = previous;
   }
 
-  @ShadowVariable(sourceVariableName = "source", variableListenerClass = VariableListener.class)
+  @ShadowVariable(supplierName = "updateShadow")
   public String getShadow() {
     return shadow;
   }
 
   public void setShadow(String shadow) {
     this.shadow = shadow;
+  }
+
+  @ShadowSources("value")
+  public String updateShadow() {
+    return "shadow";
   }
 }

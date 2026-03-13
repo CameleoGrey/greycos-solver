@@ -7,8 +7,7 @@ import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
-import ai.greycos.solver.core.api.score.ScoreManager;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
@@ -56,8 +55,7 @@ class GreyCOSProcessorInvalidTest {
               });
 
   @Inject SolverFactory<TestdataInvalidInverseRelationSolution> solverFactory;
-  @Inject SolverManager<TestdataInvalidInverseRelationSolution, Long> solverManager;
-  @Inject ScoreManager<TestdataInvalidInverseRelationSolution, SimpleScore> scoreManager;
+  @Inject SolverManager<TestdataInvalidInverseRelationSolution> solverManager;
   @Inject SolutionManager<TestdataInvalidInverseRelationSolution, SimpleScore> solutionManager;
 
   @Test

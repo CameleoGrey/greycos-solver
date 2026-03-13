@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import ai.greycos.solver.benchmark.api.PlannerBenchmarkFactory;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.solver.SolverConfigOverride;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
@@ -17,12 +17,6 @@ import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.solver.DefaultSolverJob;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.ChainedSpringTestConfiguration;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.constraints.TestdataChainedSpringConstraintProvider;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringAnchor;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringEntity;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringObject;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringSolution;
 import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.declarative.SupplierVariableSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.declarative.cotwin.TestdataSpringSupplierVariableEntity;
@@ -48,7 +42,6 @@ import org.springframework.test.context.TestExecutionListeners;
 class GreyCOSSolverSingleSolverAutoConfigurationTest {
 
   private final ApplicationContextRunner contextRunner;
-  private final ApplicationContextRunner chainedContextRunner;
   private final ApplicationContextRunner supplierVariableContextRunner;
   private final ApplicationContextRunner missingSupplierVariableContextRunner;
   private final ApplicationContextRunner multimoduleRunner;
@@ -62,12 +55,6 @@ class GreyCOSSolverSingleSolverAutoConfigurationTest {
                 AutoConfigurations.of(
                     GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(NormalSpringTestConfiguration.class);
-    chainedContextRunner =
-        new ApplicationContextRunner()
-            .withConfiguration(
-                AutoConfigurations.of(
-                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
-            .withUserConfiguration(ChainedSpringTestConfiguration.class);
     supplierVariableContextRunner =
         new ApplicationContextRunner()
             .withConfiguration(
@@ -129,7 +116,7 @@ class GreyCOSSolverSingleSolverAutoConfigurationTest {
         .withPropertyValues("greycos.solver.termination.best-score-limit=0")
         .run(
             context -> {
-              SolverManager<TestdataSpringSolution, Long> solverManager =
+              SolverManager<TestdataSpringSolution> solverManager =
                   context.getBean(SolverManager.class);
               var problem = new TestdataSpringSolution();
               problem.setValueList(IntStream.range(1, 3).mapToObj(i -> "v" + i).toList());
@@ -169,7 +156,7 @@ class GreyCOSSolverSingleSolverAutoConfigurationTest {
               problem.setEntityList(
                   IntStream.range(1, 3).mapToObj(i -> new TestdataSpringEntity()).toList());
               var solverJob =
-                  (DefaultSolverJob<TestdataSpringSolution, Long>)
+                  (DefaultSolverJob<TestdataSpringSolution>)
                       solverManager
                           .solveBuilder()
                           .withProblemId(1L)
@@ -209,7 +196,7 @@ class GreyCOSSolverSingleSolverAutoConfigurationTest {
         .withPropertyValues("greycos.solver.termination.best-score-limit=0")
         .run(
             context -> {
-              SolverManager<TestdataSpringSolution, Long> solverManager =
+              SolverManager<TestdataSpringSolution> solverManager =
                   context.getBean(SolverManager.class);
               var problem = new TestdataSpringSolution();
               problem.setValueList(IntStream.range(1, 3).mapToObj(i -> "v" + i).toList());
@@ -223,38 +210,13 @@ class GreyCOSSolverSingleSolverAutoConfigurationTest {
   }
 
   @Test
-  void chained_solverConfigXml_none() {
-    chainedContextRunner
-        .withClassLoader(allDefaultsFilteredClassLoader)
-        .run(
-            context -> {
-              var solverConfig = context.getBean(SolverConfig.class);
-              assertThat(solverConfig).isNotNull();
-              assertThat(solverConfig.getSolutionClass())
-                  .isEqualTo(TestdataChainedSpringSolution.class);
-              assertThat(solverConfig.getEntityClassList())
-                  .containsExactlyInAnyOrder(
-                      TestdataChainedSpringObject.class,
-                      TestdataChainedSpringEntity.class,
-                      TestdataChainedSpringAnchor.class);
-              assertThat(solverConfig.getScoreDirectorFactoryConfig().getConstraintProviderClass())
-                  .isEqualTo(TestdataChainedSpringConstraintProvider.class);
-              // No termination defined
-              assertThat(solverConfig.getTerminationConfig()).isNull();
-              var solverFactory = context.getBean(SolverFactory.class);
-              assertThat(solverFactory).isNotNull();
-              assertThat(solverFactory.buildSolver()).isNotNull();
-            });
-  }
-
-  @Test
   void solveSupplierVariables() {
     supplierVariableContextRunner
         .withClassLoader(allDefaultsFilteredClassLoader)
         .withPropertyValues("greycos.solver.termination.best-score-limit=0")
         .run(
             context -> {
-              SolverManager<TestdataSpringSupplierVariableSolution, Long> solverManager =
+              SolverManager<TestdataSpringSupplierVariableSolution> solverManager =
                   context.getBean(SolverManager.class);
               var problem = new TestdataSpringSupplierVariableSolution();
               problem.setValueList(List.of("a", "b"));

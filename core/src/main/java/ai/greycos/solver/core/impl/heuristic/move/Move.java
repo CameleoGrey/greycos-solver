@@ -3,19 +3,19 @@ package ai.greycos.solver.core.impl.heuristic.move;
 import java.util.Iterator;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactProperty;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveListFactory;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.tabu.MoveTabuAcceptor;
 import ai.greycos.solver.core.impl.move.MoveDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 /**
  * A Move represents a change of 1 or more {@link PlanningVariable}s of 1 or more {@link
@@ -40,7 +40,7 @@ import ai.greycos.solver.core.preview.api.move.Rebaser;
  *
  * <ul>
  *   <li>{@link #execute(MutableSolutionView)}
- *   <li>{@link #rebase(Rebaser)}
+ *   <li>{@link #rebase(Lookup)}
  *   <li>{@link #describe()}
  * </ul>
  *
@@ -173,8 +173,8 @@ public interface Move<Solution_> extends ai.greycos.solver.core.preview.api.move
 
   /** Do not override this default implementation. */
   @Override
-  default ai.greycos.solver.core.preview.api.move.Move<Solution_> rebase(Rebaser rebaser) {
-    return rebase(((MoveDirector<Solution_, ?>) rebaser).getScoreDirector());
+  default ai.greycos.solver.core.preview.api.move.Move<Solution_> rebase(Lookup lookup) {
+    return rebase(((MoveDirector<Solution_, ?>) lookup).getScoreDirector());
   }
 
   // ************************************************************************

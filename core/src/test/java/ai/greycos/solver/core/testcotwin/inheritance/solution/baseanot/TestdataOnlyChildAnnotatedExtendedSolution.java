@@ -7,7 +7,7 @@ import java.util.List;
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 
 @PlanningSolution
 public class TestdataOnlyChildAnnotatedExtendedSolution extends TestdataOnlyChildAnnotatedSolution {

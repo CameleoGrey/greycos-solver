@@ -50,23 +50,6 @@
       </dependency>
       <dependency>
         <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-persistence-common</artifactId>
-        <version>${version.ai.greycos.solver}</version>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-persistence-common</artifactId>
-        <version>${version.ai.greycos.solver}</version>
-        <classifier>sources</classifier>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-persistence-common</artifactId>
-        <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
         <artifactId>greycos-solver-jaxb</artifactId>
         <version>${version.ai.greycos.solver}</version>
       </dependency>
@@ -96,23 +79,6 @@
       <dependency>
         <groupId>ai.greycos.solver</groupId>
         <artifactId>greycos-solver-jackson</artifactId>
-        <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-jsonb</artifactId>
-        <version>${version.ai.greycos.solver}</version>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-jsonb</artifactId>
-        <version>${version.ai.greycos.solver}</version>
-        <classifier>sources</classifier>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-jsonb</artifactId>
         <type>test-jar</type>
         <version>${version.ai.greycos.solver}</version>
       </dependency>
@@ -163,18 +129,18 @@
       </dependency>
       <dependency>
         <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-test</artifactId>
+        <artifactId>greycos-solver-benchmark-aggregator</artifactId>
         <version>${version.ai.greycos.solver}</version>
       </dependency>
       <dependency>
         <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-test</artifactId>
+        <artifactId>greycos-solver-benchmark-aggregator</artifactId>
         <version>${version.ai.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
         <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-test</artifactId>
+        <artifactId>greycos-solver-benchmark-aggregator</artifactId>
         <type>test-jar</type>
         <version>${version.ai.greycos.solver}</version>
       </dependency>
@@ -261,57 +227,6 @@
       <dependency>
         <groupId>ai.greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-jackson-integration-test</artifactId>
-        <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-quarkus-jsonb</artifactId>
-        <version>${version.ai.greycos.solver}</version>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-quarkus-jsonb</artifactId>
-        <version>${version.ai.greycos.solver}</version>
-        <classifier>sources</classifier>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-quarkus-jsonb</artifactId>
-        <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-quarkus-jsonb-deployment</artifactId>
-        <version>${version.ai.greycos.solver}</version>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-quarkus-jsonb-deployment</artifactId>
-        <version>${version.ai.greycos.solver}</version>
-        <classifier>sources</classifier>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-quarkus-jsonb-deployment</artifactId>
-        <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-quarkus-jsonb-integration-test</artifactId>
-        <version>${version.ai.greycos.solver}</version>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-quarkus-jsonb-integration-test</artifactId>
-        <version>${version.ai.greycos.solver}</version>
-        <classifier>sources</classifier>
-      </dependency>
-      <dependency>
-        <groupId>ai.greycos.solver</groupId>
-        <artifactId>greycos-solver-quarkus-jsonb-integration-test</artifactId>
         <type>test-jar</type>
         <version>${version.ai.greycos.solver}</version>
       </dependency>

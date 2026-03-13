@@ -30,7 +30,6 @@ import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoClassLoader
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberDescriptor;
 import ai.greycos.solver.core.impl.cotwin.solution.cloner.DeepCloningUtils;
 import ai.greycos.solver.core.impl.cotwin.solution.cloner.FieldAccessingSolutionCloner;
-import ai.greycos.solver.core.impl.cotwin.solution.cloner.PlanningCloneable;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 
 import io.quarkus.gizmo2.ClassOutput;
@@ -324,7 +323,7 @@ public class GizmoSolutionClonerImplementor {
                         "clonedObjectClass", blockCreator.withObject(thisObj).getClass_());
                 for (Class<?> solutionSubclass : sortedSolutionClassList) {
                   var solutionSubclassConst = Const.of(solutionSubclass);
-                  var isSubclass = blockCreator.objEquals(solutionSubclassConst, thisObjClass);
+                  var isSubclass = blockCreator.exprEquals(solutionSubclassConst, thisObjClass);
                   blockCreator.if_(
                       isSubclass,
                       isExactMatchBranch -> {
@@ -349,21 +348,10 @@ public class GizmoSolutionClonerImplementor {
                               var clone =
                                   isExactMatchWithCastBranch.localVar(
                                       "newClone", solutionSubclass, Const.ofNull(solutionSubclass));
-                              if (PlanningCloneable.class.isAssignableFrom(solutionSubclass)) {
-                                var newInstance =
-                                    isExactMatchWithCastBranch.invokeInterface(
-                                        MethodDesc.of(
-                                            PlanningCloneable.class,
-                                            "createNewInstance",
-                                            Object.class),
-                                        castedSolution);
-                                isExactMatchWithCastBranch.set(clone, newInstance);
-                              } else {
-                                isExactMatchWithCastBranch.set(
-                                    clone,
-                                    isExactMatchWithCastBranch.new_(
-                                        ConstructorDesc.of(solutionSubclass)));
-                              }
+                              isExactMatchWithCastBranch.set(
+                                  clone,
+                                  isExactMatchWithCastBranch.new_(
+                                      ConstructorDesc.of(solutionSubclass)));
                               isExactMatchWithCastBranch
                                   .withMap(createdCloneMap)
                                   .put(castedSolution, clone);
@@ -405,7 +393,7 @@ public class GizmoSolutionClonerImplementor {
                     """
                                 which is not a known subclass of the solution class (%s).
                                 The known subclasses are: %s.
-                                Maybe use CotwinAccessType.REFLECTION?
+                                Maybe use DomainAccessType.REFLECTION?
                                 """
                         .formatted(
                             clonerDescriptor.solutionDescriptor.getSolutionClass(),
@@ -853,9 +841,7 @@ public class GizmoSolutionClonerImplementor {
   }
 
   /**
-   * Write the following code
-   *
-   * <p>
+   * Writes the following code:
    *
    * <pre>
    * if (constructedCollection instanceof deeplyClonedFieldClass temp) {
@@ -1248,8 +1234,8 @@ public class GizmoSolutionClonerImplementor {
    * }
    * </pre>
    *
-   * The cloneQueue is to prevent stack overflow on chained models, or models where many entities
-   * can be reached from a single entity.
+   * The cloneQueue is to prevent stack overflow on models where many entities can be reached from a
+   * single entity.
    */
   private void createDeepCloneHelperMethod(
       ClonerDescriptor clonerDescriptor, Class<?> entityClass) {
@@ -1287,16 +1273,7 @@ public class GizmoSolutionClonerImplementor {
                       LocalVar cloneObj =
                           newNoCloneBranch.localVar(
                               "clonedObject", entityClass, Const.ofNull(entityClass));
-                      if (PlanningCloneable.class.isAssignableFrom(entityClass)) {
-                        newNoCloneBranch.set(
-                            cloneObj,
-                            newNoCloneBranch.invokeInterface(
-                                MethodDesc.of(
-                                    PlanningCloneable.class, "createNewInstance", Object.class),
-                                toClone));
-                      } else {
-                        newNoCloneBranch.set(cloneObj, newNoCloneBranch.new_(entityClass));
-                      }
+                      newNoCloneBranch.set(cloneObj, newNoCloneBranch.new_(entityClass));
                       newNoCloneBranch.withMap(cloneMap).put(toClone, cloneObj);
 
                       // When deep cloning fields, they cannot be the first entity in the stack,

@@ -16,7 +16,6 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Random;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
@@ -30,6 +29,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.entity.mimic.MimicRecordin
 import ai.greycos.solver.core.impl.heuristic.selector.entity.mimic.MimicReplayingEntitySelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataObject;

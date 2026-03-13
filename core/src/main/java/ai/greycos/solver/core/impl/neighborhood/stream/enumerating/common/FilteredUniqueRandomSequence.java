@@ -4,8 +4,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Random;
 import java.util.function.Predicate;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.util.ListEntry;
 
@@ -36,12 +36,12 @@ public final class FilteredUniqueRandomSequence<T> implements UniqueRandomSequen
   }
 
   @Override
-  public SequenceElement<T> pick(Random workingRandom) {
+  public SequenceElement<T> pick(RandomGenerator workingRandom) {
     var index = pickIndex(workingRandom);
     return new SequenceElement<>(originalList.get(index).getElement(), index);
   }
 
-  private int pickIndex(Random workingRandom) {
+  private int pickIndex(RandomGenerator workingRandom) {
     if (delegate.isEmpty()) {
       throw new NoSuchElementException("No more elements to pick from.");
     }
@@ -64,7 +64,7 @@ public final class FilteredUniqueRandomSequence<T> implements UniqueRandomSequen
   }
 
   @Override
-  public T remove(Random workingRandom) {
+  public T remove(RandomGenerator workingRandom) {
     return delegate.remove(pickIndex(workingRandom));
   }
 

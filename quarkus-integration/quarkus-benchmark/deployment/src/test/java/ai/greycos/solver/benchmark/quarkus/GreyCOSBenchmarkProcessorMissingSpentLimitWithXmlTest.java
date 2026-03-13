@@ -35,8 +35,8 @@ class GreyCOSBenchmarkProcessorMissingSpentLimitWithXmlTest {
   void benchmark() throws InterruptedException {
     assertThatCode(
             () ->
-                new GreyCOSBenchmarkRecorder()
-                    .benchmarkConfigSupplier(new PlannerBenchmarkConfig(), null)
+                new GreyCOSBenchmarkRecorder(null)
+                    .benchmarkConfigSupplier(new PlannerBenchmarkConfig())
                     .get())
         .hasMessageContainingAll(
             "At least one of the properties",

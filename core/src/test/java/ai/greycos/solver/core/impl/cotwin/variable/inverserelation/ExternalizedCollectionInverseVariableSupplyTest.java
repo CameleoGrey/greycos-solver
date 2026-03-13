@@ -21,7 +21,8 @@ class ExternalizedCollectionInverseVariableSupplyTest {
   void normal() {
     var variableDescriptor = TestdataEntity.buildVariableDescriptorForValue();
     var scoreDirector = mock(InnerScoreDirector.class);
-    var supply = new ExternalizedCollectionInverseVariableSupply<>(variableDescriptor);
+    var supply =
+        new ExternalizedCollectionInverseVariableSupply<>(variableDescriptor, ignored -> {});
 
     var val1 = new TestdataValue("1");
     var val2 = new TestdataValue("2");

@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.bavet.common;
 
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
 
 /**
@@ -8,7 +8,7 @@ import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
  * be able to store metadata on them. This metadata is necessary for efficient operation of the
  * queue.
  */
-abstract sealed class AbstractPropagationMetadataCarrier<Tuple_ extends AbstractTuple>
+abstract sealed class AbstractPropagationMetadataCarrier<Tuple_ extends Tuple>
     permits Group, ExistsCounter {
 
   public int positionInDirtyList = -1;

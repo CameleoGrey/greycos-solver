@@ -16,7 +16,6 @@ import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -106,7 +105,7 @@ final class BestSolutionHolder<Solution_> {
     }
   }
 
-  @NonNull CompletableFuture<Void> addProblemChange(
+  CompletableFuture<Void> addProblemChange(
       Solver<Solution_> solver, List<ProblemChange<Solution_>> problemChangeList) {
     var futureProblemChange = new CompletableFuture<Void>();
     synchronized (this) {

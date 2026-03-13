@@ -2,7 +2,6 @@ package ai.greycos.solver.core.impl.score.director;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
@@ -30,6 +29,7 @@ public abstract class AbstractScoreDirectorFactory<
   protected final transient Logger logger = LoggerFactory.getLogger(getClass());
 
   protected final SolutionDescriptor<Solution_> solutionDescriptor;
+  protected final EnvironmentMode environmentMode;
   protected final ListVariableDescriptor<Solution_> listVariableDescriptor;
 
   protected InitializingScoreTrend initializingScoreTrend;
@@ -39,9 +39,15 @@ public abstract class AbstractScoreDirectorFactory<
   protected boolean assertClonedSolution = false;
   protected boolean trackingWorkingSolution = false;
 
-  public AbstractScoreDirectorFactory(SolutionDescriptor<Solution_> solutionDescriptor) {
+  public AbstractScoreDirectorFactory(
+      SolutionDescriptor<Solution_> solutionDescriptor, EnvironmentMode environmentMode) {
     this.solutionDescriptor = solutionDescriptor;
+    this.environmentMode = environmentMode;
     this.listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
+  }
+
+  public AbstractScoreDirectorFactory(SolutionDescriptor<Solution_> solutionDescriptor) {
+    this(solutionDescriptor, null);
   }
 
   @Override

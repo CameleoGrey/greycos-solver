@@ -7,8 +7,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import ai.greycos.solver.core.api.score.ScoreManager;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
+import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverConfigOverride;
 import ai.greycos.solver.core.api.solver.SolverFactory;
@@ -17,9 +17,6 @@ import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.solver.DefaultSolverJob;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.ChainedSpringTestConfiguration;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.constraints.TestdataChainedSpringConstraintProvider;
-import ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringSolution;
 import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleConstraintProviderSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleEasyScoreConstraintSpringTestConfiguration;
@@ -27,8 +24,6 @@ import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleIncrementalScor
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleSolutionsSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.NoEntitySpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.NoSolutionSpringTestConfiguration;
-import ai.greycos.solver.spring.boot.autoconfigure.dummy.chained.constraints.easy.DummyChainedSpringEasyScore;
-import ai.greycos.solver.spring.boot.autoconfigure.dummy.chained.constraints.incremental.DummyChainedSpringIncrementalScore;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.normal.constraints.easy.DummySpringEasyScore;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.normal.constraints.incremental.DummySpringIncrementalScore;
 import ai.greycos.solver.spring.boot.autoconfigure.invalid.entity.InvalidEntitySpringTestConfiguration;
@@ -41,7 +36,6 @@ import ai.greycos.solver.spring.boot.autoconfigure.normal.NormalSpringTestConfig
 import ai.greycos.solver.spring.boot.autoconfigure.normal.constraints.TestdataSpringConstraintProvider;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringEntity;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution;
-import ai.greycos.solver.test.api.score.stream.ConstraintVerifier;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -62,7 +56,6 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
   private final ApplicationContextRunner contextRunner;
   private final ApplicationContextRunner emptyContextRunner;
   private final ApplicationContextRunner noUserConfigurationContextRunner;
-  private final ApplicationContextRunner chainedContextRunner;
   private final ApplicationContextRunner multimoduleRunner;
   private final FilteredClassLoader allDefaultsFilteredClassLoader;
 
@@ -79,12 +72,6 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
                 AutoConfigurations.of(
                     GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
             .withUserConfiguration(EmptySpringTestConfiguration.class);
-    chainedContextRunner =
-        new ApplicationContextRunner()
-            .withConfiguration(
-                AutoConfigurations.of(
-                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
-            .withUserConfiguration(ChainedSpringTestConfiguration.class);
     multimoduleRunner =
         new ApplicationContextRunner()
             .withConfiguration(
@@ -119,10 +106,8 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
         .withClassLoader(allDefaultsFilteredClassLoader)
         .run(
             context -> {
-              var solver1 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver1");
-              var solver2 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver2");
+              var solver1 = (SolverManager<TestdataSpringSolution>) context.getBean("solver1");
+              var solver2 = (SolverManager<TestdataSpringSolution>) context.getBean("solver2");
               assertThat(solver1).isNotNull();
               assertThat(solver2).isNotNull();
               var problem = new TestdataSpringSolution();
@@ -141,12 +126,12 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
               customScope.setStartingInitializedScore(HardSoftScore.of(-1, -1));
               customScope.setInitializedBestScore(HardSoftScore.of(-1, -1));
               var gradientTimeDefaultSolver1 =
-                  ((DefaultSolverJob<TestdataSpringSolution, Long>) solver1.solve(1L, problem))
+                  ((DefaultSolverJob<TestdataSpringSolution>) solver1.solve(1L, problem))
                       .getSolverTermination()
                       .calculateSolverTimeGradient(customScope);
               assertThat(gradientTimeDefaultSolver1).isEqualTo(0.5);
               var gradientTimeSolver2 =
-                  ((DefaultSolverJob<TestdataSpringSolution, Long>) solver2.solve(1L, problem))
+                  ((DefaultSolverJob<TestdataSpringSolution>) solver2.solve(1L, problem))
                       .getSolverTermination()
                       .calculateSolverTimeGradient(customScope);
               assertThat(gradientTimeSolver2).isEqualTo(0.25);
@@ -162,10 +147,8 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "greycos.solver.solver2.solver-config-xml=ai/greycos/solver/spring/boot/autoconfigure/customSolver2Config.xml")
         .run(
             context -> {
-              var solver1 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver1");
-              var solver2 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver2");
+              var solver1 = (SolverManager<TestdataSpringSolution>) context.getBean("solver1");
+              var solver2 = (SolverManager<TestdataSpringSolution>) context.getBean("solver2");
               assertThat(solver1).isNotNull();
               assertThat(solver2).isNotNull();
               var problem = new TestdataSpringSolution();
@@ -184,12 +167,12 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
               customScope.setStartingInitializedScore(HardSoftScore.of(-1, -1));
               customScope.setInitializedBestScore(HardSoftScore.of(-1, -1));
               var gradientTimeDefaultSolver1 =
-                  ((DefaultSolverJob<TestdataSpringSolution, Long>) solver1.solve(1L, problem))
+                  ((DefaultSolverJob<TestdataSpringSolution>) solver1.solve(1L, problem))
                       .getSolverTermination()
                       .calculateSolverTimeGradient(customScope);
               assertThat(gradientTimeDefaultSolver1).isEqualTo(0.5);
               var gradientTimeSolver2 =
-                  ((DefaultSolverJob<TestdataSpringSolution, Long>) solver2.solve(1L, problem))
+                  ((DefaultSolverJob<TestdataSpringSolution>) solver2.solve(1L, problem))
                       .getSolverTermination()
                       .calculateSolverTimeGradient(customScope);
               assertThat(gradientTimeSolver2).isEqualTo(0.25);
@@ -205,10 +188,8 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "greycos.solver.solver2.solver-config-xml=ai/greycos/solver/spring/boot/autoconfigure/solverConfigWithoutGlobalTermination.xml")
         .run(
             context -> {
-              var solver1 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver1");
-              var solver2 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver2");
+              var solver1 = (SolverManager<TestdataSpringSolution>) context.getBean("solver1");
+              var solver2 = (SolverManager<TestdataSpringSolution>) context.getBean("solver2");
               assertThat(solver1).isNotNull();
               assertThat(solver2).isNotNull();
             });
@@ -221,10 +202,8 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
         .withPropertyValues("greycos.solver.solver2.environment-mode=TRACKED_FULL_ASSERT")
         .run(
             context -> {
-              var solver1 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver1");
-              var solver2 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver2");
+              var solver1 = (SolverManager<TestdataSpringSolution>) context.getBean("solver1");
+              var solver2 = (SolverManager<TestdataSpringSolution>) context.getBean("solver2");
               assertThat(solver1).isNotNull();
               assertThat(solver2).isNotNull();
             });
@@ -233,10 +212,8 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
         .withPropertyValues("greycos.solver.solver2.daemon=false")
         .run(
             context -> {
-              var solver1 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver1");
-              var solver2 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver2");
+              var solver1 = (SolverManager<TestdataSpringSolution>) context.getBean("solver1");
+              var solver2 = (SolverManager<TestdataSpringSolution>) context.getBean("solver2");
               assertThat(solver1).isNotNull();
               assertThat(solver2).isNotNull();
             });
@@ -293,10 +270,8 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             GreyCOSBenchmarkAutoConfiguration.class) // We load the configuration, but get no bean
         .run(
             context -> {
-              var solver1 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver1");
-              var solver2 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver2");
+              var solver1 = (SolverManager<TestdataSpringSolution>) context.getBean("solver1");
+              var solver2 = (SolverManager<TestdataSpringSolution>) context.getBean("solver2");
               assertThat(solver1).isNotNull();
               assertThat(solver2).isNotNull();
             });
@@ -316,8 +291,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
                   IntStream.range(1, 3).mapToObj(i -> new TestdataSpringEntity()).toList());
 
               for (var solverName : List.of("solver1", "solver2")) {
-                var solver =
-                    (SolverManager<TestdataSpringSolution, Long>) context.getBean(solverName);
+                var solver = (SolverManager<TestdataSpringSolution>) context.getBean(solverName);
                 var solverJob = solver.solve(1L, problem);
                 var solution = solverJob.getFinalBestSolution();
                 assertThat(solution).isNotNull();
@@ -340,8 +314,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
                   IntStream.range(1, 3).mapToObj(i -> new TestdataSpringEntity()).toList());
 
               for (var solverName : List.of("solver1", "solver2")) {
-                var solver =
-                    (SolverManager<TestdataSpringSolution, Long>) context.getBean(solverName);
+                var solver = (SolverManager<TestdataSpringSolution>) context.getBean(solverName);
                 var solverJob = solver.solve(1L, problem);
                 var solution = solverJob.getFinalBestSolution();
                 assertThat(solution).isNotNull();
@@ -363,7 +336,6 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solverConfigXml",
             "environmentMode",
             "moveThreadCount",
-            "cotwinAccessType",
             "are not valid",
             "Maybe try changing the property name to kebab-case");
     assertThatCode(
@@ -402,9 +374,9 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
                   IntStream.range(1, 3).mapToObj(i -> new TestdataSpringEntity()).toList());
               for (var solverName : List.of("solver1", "solver2")) {
                 var solverManager =
-                    (SolverManager<TestdataSpringSolution, Long>) context.getBean(solverName);
+                    (SolverManager<TestdataSpringSolution>) context.getBean(solverName);
                 var solverJob =
-                    (DefaultSolverJob<TestdataSpringSolution, Long>)
+                    (DefaultSolverJob<TestdataSpringSolution>)
                         solverManager
                             .solveBuilder()
                             .withProblemId(1L)
@@ -448,7 +420,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             context -> {
               for (var solverName : List.of("solver1", "solver2")) {
                 var solverManager =
-                    (SolverManager<TestdataSpringSolution, Long>) context.getBean(solverName);
+                    (SolverManager<TestdataSpringSolution>) context.getBean(solverName);
                 var problem = new TestdataSpringSolution();
                 problem.setValueList(IntStream.range(1, 3).mapToObj(i -> "v" + i).toList());
                 problem.setEntityList(
@@ -492,9 +464,9 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
                 contextRunner
                     .withPropertyValues("greycos.solver.solver1.termination.best-score-limit=0")
                     .withPropertyValues("greycos.solver.solver2.termination.best-score-limit=0")
-                    .run(context -> context.getBean(ScoreManager.class)))
+                    .run(context -> context.getBean(SolutionManager.class)))
         .hasMessageContaining(
-            "No qualifying bean of type 'ai.greycos.solver.core.api.score.ScoreManager' available");
+            "No qualifying bean of type 'ai.greycos.solver.core.api.solver.SolutionManager' available");
     assertThatCode(
             () ->
                 contextRunner
@@ -511,23 +483,6 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
                     .run(context -> context.getBean(ConstraintVerifier.class)))
         .hasMessageContaining(
             "No qualifying bean of type 'ai.greycos.solver.core.api.score.stream.ConstraintProvider' available");
-  }
-
-  @Test
-  void chained_solverConfigXml_none() {
-    chainedContextRunner
-        .withClassLoader(allDefaultsFilteredClassLoader)
-        .withPropertyValues("greycos.solver.solver1.termination.best-score-limit=0")
-        .withPropertyValues("greycos.solver.solver2.termination.best-score-limit=0")
-        .run(
-            context -> {
-              var solver1 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver1");
-              var solver2 =
-                  (SolverManager<TestdataSpringSolution, Long>) context.getBean("solver2");
-              assertThat(solver1).isNotNull();
-              assertThat(solver2).isNotNull();
-            });
   }
 
   @Test
@@ -560,7 +515,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a PlanningSolution class, yet there are multiple available",
-            TestdataChainedSpringSolution.class.getSimpleName(),
+            "TestdataChainedSpringSolution",
             TestdataSpringSolution.class.getSimpleName(),
             "on the classpath.");
   }
@@ -627,7 +582,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a EasyScoreCalculator score calculator class, yet there are multiple available",
-            DummyChainedSpringEasyScore.class.getSimpleName(),
+            "DummyChainedSpringEasyScore",
             DummySpringEasyScore.class.getSimpleName(),
             "on the classpath.");
   }
@@ -648,7 +603,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a ConstraintProvider score calculator class, yet there are multiple available",
-            TestdataChainedSpringConstraintProvider.class.getSimpleName(),
+            "TestdataChainedSpringConstraintProvider",
             TestdataSpringConstraintProvider.class.getSimpleName(),
             "on the classpath.");
   }
@@ -670,7 +625,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a IncrementalScoreCalculator score calculator class, yet there are multiple available",
-            DummyChainedSpringIncrementalScore.class.getSimpleName(),
+            "DummyChainedSpringIncrementalScore",
             DummySpringIncrementalScore.class.getSimpleName(),
             "on the classpath.");
   }
@@ -691,7 +646,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a EasyScoreCalculator score calculator class, yet there are multiple available",
-            DummyChainedSpringEasyScore.class.getSimpleName(),
+            "DummyChainedSpringEasyScore",
             DummySpringEasyScore.class.getSimpleName(),
             "on the classpath.");
   }
@@ -712,7 +667,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a ConstraintProvider score calculator class, yet there are multiple available",
-            TestdataChainedSpringConstraintProvider.class.getSimpleName(),
+            "TestdataChainedSpringConstraintProvider",
             TestdataSpringConstraintProvider.class.getSimpleName(),
             "on the classpath.");
   }
@@ -734,7 +689,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a IncrementalScoreCalculator score calculator class, yet there are multiple available",
-            DummyChainedSpringIncrementalScore.class.getSimpleName(),
+            "DummyChainedSpringIncrementalScore",
             DummySpringIncrementalScore.class.getSimpleName(),
             "on the classpath.");
   }
@@ -773,7 +728,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
         .message()
         .contains(
             "Unused classes (["
-                + TestdataChainedSpringConstraintProvider.class.getCanonicalName()
+                + "ai.greycos.solver.spring.boot.autoconfigure.chained.constraints.TestdataChainedSpringConstraintProvider"
                 + "]) that implements ConstraintProvider were found.");
   }
 

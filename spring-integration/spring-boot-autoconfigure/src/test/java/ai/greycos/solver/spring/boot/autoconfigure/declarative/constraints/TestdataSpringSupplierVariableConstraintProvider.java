@@ -1,6 +1,6 @@
 package ai.greycos.solver.spring.boot.autoconfigure.declarative.constraints;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;

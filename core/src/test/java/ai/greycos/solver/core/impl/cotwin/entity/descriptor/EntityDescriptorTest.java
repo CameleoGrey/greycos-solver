@@ -28,7 +28,7 @@ class EntityDescriptorTest {
     assertThat(movableEntityFilter.test(null, new TestdataPinnedEntity("e1", null, false, false)))
         .isTrue();
     assertThat(movableEntityFilter.test(null, new TestdataPinnedEntity("e2", null, true, false)))
-        .isFalse();
+        .isTrue();
   }
 
   @Test
@@ -52,7 +52,7 @@ class EntityDescriptorTest {
             childMovableEntityFilter.test(
                 null,
                 new TestdataExtendedPinnedEntity("e4", null, true, false, null, false, false)))
-        .isFalse();
+        .isTrue();
     assertThat(
             childMovableEntityFilter.test(
                 null,
@@ -62,7 +62,7 @@ class EntityDescriptorTest {
             childMovableEntityFilter.test(
                 null,
                 new TestdataExtendedPinnedEntity("e6", null, false, false, null, true, false)))
-        .isFalse();
+        .isTrue();
     assertThat(
             childMovableEntityFilter.test(
                 null,

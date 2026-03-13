@@ -1,9 +1,9 @@
 package ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating;
 
 import ai.greycos.solver.core.preview.api.move.SolutionView;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.BiEnumeratingMapper;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.BiEnumeratingPredicate;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.UniEnumeratingMapper;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsMapper;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsPredicate;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.function.UniNeighborhoodsMapper;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -11,17 +11,17 @@ import org.jspecify.annotations.NullMarked;
 public interface BiEnumeratingStream<Solution_, A, B> extends EnumeratingStream {
 
   /**
-   * Exhaustively test each fact against the {@link BiEnumeratingPredicate} and match if {@link
-   * BiEnumeratingPredicate#test(SolutionView, Object, Object)} returns true.
+   * Exhaustively test each fact against the {@link BiNeighborhoodsPredicate} and match if {@link
+   * BiNeighborhoodsPredicate#test(SolutionView, Object, Object)} returns true.
    */
-  BiEnumeratingStream<Solution_, A, B> filter(BiEnumeratingPredicate<Solution_, A, B> filter);
+  BiEnumeratingStream<Solution_, A, B> filter(BiNeighborhoodsPredicate<Solution_, A, B> filter);
 
   // ************************************************************************
   // Operations with duplicate tuple possibility
   // ************************************************************************
 
   /**
-   * As defined by {@link UniEnumeratingStream#map(UniEnumeratingMapper)}.
+   * As defined by {@link UniEnumeratingStream#map(UniNeighborhoodsMapper)}.
    *
    * <p>Use with caution, as the increased memory allocation rates coming from tuple creation may
    * negatively affect performance.
@@ -31,10 +31,11 @@ public interface BiEnumeratingStream<Solution_, A, B> extends EnumeratingStream 
    *     tuple
    */
   <ResultA_> UniEnumeratingStream<Solution_, ResultA_> map(
-      BiEnumeratingMapper<Solution_, A, B, ResultA_> mapping);
+      BiNeighborhoodsMapper<Solution_, A, B, ResultA_> mapping);
 
   /**
-   * As defined by {@link #map(BiEnumeratingMapper)}, only resulting in {@link BiEnumeratingStream}.
+   * As defined by {@link #map(BiNeighborhoodsMapper)}, only resulting in {@link
+   * BiEnumeratingStream}.
    *
    * @param mappingA function to convert the original tuple into the first fact of a new tuple
    * @param mappingB function to convert the original tuple into the second fact of a new tuple
@@ -44,8 +45,8 @@ public interface BiEnumeratingStream<Solution_, A, B> extends EnumeratingStream 
    *     tuple
    */
   <ResultA_, ResultB_> BiEnumeratingStream<Solution_, ResultA_, ResultB_> map(
-      BiEnumeratingMapper<Solution_, A, B, ResultA_> mappingA,
-      BiEnumeratingMapper<Solution_, A, B, ResultB_> mappingB);
+      BiNeighborhoodsMapper<Solution_, A, B, ResultA_> mappingA,
+      BiNeighborhoodsMapper<Solution_, A, B, ResultB_> mappingB);
 
   /** As defined by {@link UniEnumeratingStream#distinct()}. */
   BiEnumeratingStream<Solution_, A, B> distinct();

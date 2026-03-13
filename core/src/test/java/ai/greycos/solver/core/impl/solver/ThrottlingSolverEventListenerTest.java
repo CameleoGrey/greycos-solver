@@ -18,7 +18,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.event.BestSolutionChangedEvent;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.api.solver.event.SolverEventListener;
@@ -390,13 +391,36 @@ class ThrottlingSolverEventListenerTest {
   }
 
   private BestSolutionChangedEvent<String> createEvent(String solution) {
-    return new BestSolutionChangedEvent<>(
-        null, // solver
-        EventProducerId.unknown(),
-        100L, // timeMillisSpent
-        solution,
-        SimpleScore.ZERO,
-        true // isNewBestSolutionInitialized
-        );
+    return new BestSolutionChangedEvent<>() {
+      @Override
+      public long getTimeMillisSpent() {
+        return 100L;
+      }
+
+      @Override
+      public EventProducerId getProducerId() {
+        return EventProducerId.solvingStarted();
+      }
+
+      @Override
+      public String getNewBestSolution() {
+        return solution;
+      }
+
+      @Override
+      public Score getNewBestScore() {
+        return SimpleScore.ZERO;
+      }
+
+      @Override
+      public boolean isNewBestSolutionInitialized() {
+        return true;
+      }
+
+      @Override
+      public boolean isEveryProblemChangeProcessed() {
+        return true;
+      }
+    };
   }
 }

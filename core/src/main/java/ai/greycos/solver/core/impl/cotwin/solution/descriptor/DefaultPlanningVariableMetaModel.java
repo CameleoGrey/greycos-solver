@@ -32,11 +32,6 @@ public record DefaultPlanningVariableMetaModel<Solution_, Entity_, Value_>(
   }
 
   @Override
-  public boolean isChained() {
-    return variableDescriptor.isChained();
-  }
-
-  @Override
   public boolean equals(Object o) {
     // Do not use entity in equality checks;
     // If an entity is subclassed, that subclass will have it
@@ -54,8 +49,7 @@ public record DefaultPlanningVariableMetaModel<Solution_, Entity_, Value_>(
 
   @Override
   public String toString() {
-    return "Genuine Variable '%s %s.%s' (allowsUnassigned: %b, isChained: %b)"
-        .formatted(
-            type(), entity.getClass().getSimpleName(), name(), allowsUnassigned(), isChained());
+    return "Genuine Variable '%s %s.%s' (allowsUnassigned: %b)"
+        .formatted(type(), entity.getClass().getSimpleName(), name(), allowsUnassigned());
   }
 }

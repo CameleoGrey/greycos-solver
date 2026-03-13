@@ -5,7 +5,7 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import java.util.Collections;
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolutionManagerTest;

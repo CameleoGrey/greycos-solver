@@ -14,9 +14,7 @@ import ai.greycos.solver.core.impl.constructionheuristic.placer.EntityPlacer;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableDemand;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.chained.ChainedChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ListUnassignMove;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
@@ -81,15 +79,7 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
           continue;
         }
         // Uninitialize the basic variable.
-        if (basicVariableDescriptor.isChained()) {
-          var demand = new SingletonInverseVariableDemand<>(basicVariableDescriptor);
-          var supply = supplyManager.demand(demand);
-          moveDirector.execute(
-              new ChainedChangeMove<>(basicVariableDescriptor, clonedElement, null, supply));
-          supplyManager.cancel(demand);
-        } else {
-          moveDirector.execute(new ChangeMove<>(basicVariableDescriptor, clonedElement, null));
-        }
+        moveDirector.execute(new ChangeMove<>(basicVariableDescriptor, clonedElement, null));
       }
     }
     scoreDirector.triggerVariableListeners();
@@ -162,15 +152,16 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
       long moveIndex,
       In_ clonedElement,
       Function<In_, @Nullable Out_> propositionFunction) {
-    return scoreDirector
-        .getMoveDirector()
-        .executeTemporary(
-            move,
-            (moveDirector, score) -> {
-              var newScoreAnalysis = scoreDirector.buildScoreAnalysis(fetchPolicy);
-              var newScoreDifference = newScoreAnalysis.diff(originalScoreAnalysis);
-              return recommendationConstructor.apply(
-                  moveIndex, propositionFunction.apply(clonedElement), newScoreDifference);
-            });
+    return Objects.requireNonNull(
+        scoreDirector
+            .getMoveDirector()
+            .executeTemporary(
+                move,
+                (unused, unused2) -> {
+                  var newScoreAnalysis = scoreDirector.buildScoreAnalysis(fetchPolicy);
+                  var newScoreDifference = newScoreAnalysis.diff(originalScoreAnalysis);
+                  return recommendationConstructor.apply(
+                      moveIndex, propositionFunction.apply(clonedElement), newScoreDifference);
+                }));
   }
 }

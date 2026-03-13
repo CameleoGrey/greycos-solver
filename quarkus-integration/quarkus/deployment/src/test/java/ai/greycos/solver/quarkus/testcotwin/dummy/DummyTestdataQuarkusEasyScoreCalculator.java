@@ -1,6 +1,6 @@
 package ai.greycos.solver.quarkus.testcotwin.dummy;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
 

@@ -2,13 +2,15 @@ package ai.greycos.solver.core.impl.cotwin.valuerange.buildin.primboolean;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.cotwin.valuerange.AbstractCountableValueRange;
 import ai.greycos.solver.core.impl.cotwin.valuerange.util.ValueRangeIterator;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public final class BooleanValueRange extends AbstractCountableValueRange<Boolean> {
 
   @Override
@@ -17,11 +19,8 @@ public final class BooleanValueRange extends AbstractCountableValueRange<Boolean
   }
 
   @Override
-  public boolean contains(Boolean value) {
-    if (value == null) {
-      return false;
-    }
-    return true;
+  public boolean contains(@Nullable Boolean value) {
+    return value != null;
   }
 
   @Override
@@ -33,7 +32,7 @@ public final class BooleanValueRange extends AbstractCountableValueRange<Boolean
   }
 
   @Override
-  public @NonNull Iterator<Boolean> createOriginalIterator() {
+  public Iterator<Boolean> createOriginalIterator() {
     return new OriginalBooleanValueRangeIterator();
   }
 
@@ -63,15 +62,15 @@ public final class BooleanValueRange extends AbstractCountableValueRange<Boolean
   }
 
   @Override
-  public @NonNull Iterator<Boolean> createRandomIterator(@NonNull Random workingRandom) {
+  public Iterator<Boolean> createRandomIterator(RandomGenerator workingRandom) {
     return new RandomBooleanValueRangeIterator(workingRandom);
   }
 
   private static final class RandomBooleanValueRangeIterator extends ValueRangeIterator<Boolean> {
 
-    private final Random workingRandom;
+    private final RandomGenerator workingRandom;
 
-    public RandomBooleanValueRangeIterator(Random workingRandom) {
+    public RandomBooleanValueRangeIterator(RandomGenerator workingRandom) {
       this.workingRandom = workingRandom;
     }
 
@@ -82,7 +81,7 @@ public final class BooleanValueRange extends AbstractCountableValueRange<Boolean
 
     @Override
     public Boolean next() {
-      return Boolean.valueOf(workingRandom.nextBoolean());
+      return workingRandom.nextBoolean();
     }
   }
 

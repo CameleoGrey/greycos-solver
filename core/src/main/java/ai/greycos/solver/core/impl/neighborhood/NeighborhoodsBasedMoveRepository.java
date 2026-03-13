@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.neighborhood;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.neighborhood.stream.DefaultMoveStreamFactory;
 import ai.greycos.solver.core.impl.neighborhood.stream.DefaultNeighborhoodSession;
@@ -14,7 +14,7 @@ import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.SessionContext;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.preview.api.move.Move;
-import ai.greycos.solver.core.preview.api.neighborhood.MoveDefinition;
+import ai.greycos.solver.core.preview.api.neighborhood.MoveProvider;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -29,11 +29,11 @@ public final class NeighborhoodsBasedMoveRepository<Solution_>
 
   private @Nullable DefaultNeighborhoodSession<Solution_> neighborhoodSession;
   private @Nullable List<MoveIterable<Solution_>> moveIterableList;
-  private @Nullable Random workingRandom;
+  private @Nullable RandomGenerator workingRandom;
 
   public NeighborhoodsBasedMoveRepository(
       DefaultMoveStreamFactory<Solution_> moveStreamFactory,
-      List<MoveDefinition<Solution_>> neighborhood,
+      List<MoveProvider<Solution_>> neighborhood,
       boolean random) {
     this.moveStreamFactory = Objects.requireNonNull(moveStreamFactory);
     this.moveStreamList =
@@ -87,7 +87,8 @@ public final class NeighborhoodsBasedMoveRepository<Solution_>
 
   @Override
   public void stepStarted(AbstractStepScope<Solution_> stepScope) {
-    // No need to do anything.
+    neighborhoodSession
+        .settle(); // Tests may enumerate multiple times without always calling stepEnded().
   }
 
   @Override

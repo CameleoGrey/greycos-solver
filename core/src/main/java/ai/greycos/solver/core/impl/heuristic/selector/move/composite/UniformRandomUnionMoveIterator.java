@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.composite;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
@@ -24,10 +24,10 @@ final class UniformRandomUnionMoveIterator<Solution_> extends SelectionIterator<
   }
 
   private final List<Iterator<Move<Solution_>>> moveIteratorList;
-  private final Random workingRandom;
+  private final RandomGenerator workingRandom;
 
   public UniformRandomUnionMoveIterator(
-      List<MoveSelector<Solution_>> childMoveSelectorList, Random workingRandom) {
+      List<MoveSelector<Solution_>> childMoveSelectorList, RandomGenerator workingRandom) {
     this.moveIteratorList = toMoveIteratorList(childMoveSelectorList);
     this.workingRandom = workingRandom;
   }

@@ -9,7 +9,7 @@ import java.util.stream.IntStream;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.testcotwin.common.TestdataSortableValue;
 

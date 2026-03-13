@@ -12,7 +12,6 @@ import ai.greycos.solver.core.config.heuristic.selector.move.NearbyAutoConfigura
 import ai.greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.TailChainSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
@@ -65,12 +64,6 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
     var phaseConfigPolicy = solverConfigPolicy.createPhaseConfigPolicy();
-    var phaseMoveThreadCount = phaseConfig.getMoveThreadCount();
-    if (phaseMoveThreadCount != null) {
-      var resolvedMoveThreadCount = resolveMoveThreadCount(phaseMoveThreadCount, true);
-      phaseConfigPolicy =
-          phaseConfigPolicy.cloneBuilder().withMoveThreadCount(resolvedMoveThreadCount).build();
-    }
     var phaseTermination = buildPhaseTermination(phaseConfigPolicy, solverTermination);
     var decider = buildDecider(phaseConfigPolicy, phaseTermination);
     return new DefaultLocalSearchPhase.Builder<>(
@@ -150,7 +143,7 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
     var moveDefinitionList =
         ((DefaultNeighborhood<Solution_>)
                 neighborhoodProvider.defineNeighborhood(neighborhoodBuilder))
-            .getMoveDefinitionList();
+            .getMoveProviderList();
     return new NeighborhoodsBasedMoveRepository<>(
         moveStreamFactory, moveDefinitionList, pickSelectionOrder() == SelectionOrder.RANDOM);
   }
@@ -203,7 +196,9 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
                     Maybe configure the <forager> with an <acceptedCountLimit>."""
               .formatted(moveRepository, moveRepository.isNeverEnding(), forager));
     }
-    var moveThreadCount = configPolicy.getMoveThreadCount();
+    var moveThreadCount =
+        resolveMoveThreadCount(
+            phaseConfig.getMoveThreadCount(), configPolicy.getMoveThreadCount(), true);
     var environmentMode = configPolicy.getEnvironmentMode();
     var decider =
         moveThreadCount == null
@@ -374,18 +369,8 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
     } else {
       // We only have basic variables.
       var basicVariableDescriptorList = solutionDescriptor.getBasicVariableDescriptorList();
-      if (solutionDescriptor.hasChainedVariable() && basicVariableDescriptorList.size() == 1) {
-        // if there is only one chained variable, we add TailChainSwapMoveSelectorConfig
-        return new UnionMoveSelectorConfig()
-            .withMoveSelectors(
-                new ChangeMoveSelectorConfig(),
-                new SwapMoveSelectorConfig(),
-                new TailChainSwapMoveSelectorConfig());
-      } else {
-        // Basic variables or a mixed model with basic and chained variables
-        return new UnionMoveSelectorConfig()
-            .withMoveSelectors(new ChangeMoveSelectorConfig(), new SwapMoveSelectorConfig());
-      }
+      return new UnionMoveSelectorConfig()
+          .withMoveSelectors(new ChangeMoveSelectorConfig(), new SwapMoveSelectorConfig());
     }
   }
 }

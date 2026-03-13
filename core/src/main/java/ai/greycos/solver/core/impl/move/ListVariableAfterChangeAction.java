@@ -2,9 +2,9 @@ package ai.greycos.solver.core.impl.move;
 
 import java.util.List;
 
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 record ListVariableAfterChangeAction<Solution_, Entity_, Value_>(
     Entity_ entity,
@@ -22,8 +22,8 @@ record ListVariableAfterChangeAction<Solution_, Entity_, Value_>(
   }
 
   @Override
-  public ChangeAction<Solution_> rebase(Rebaser rebaser) {
+  public ChangeAction<Solution_> rebase(Lookup lookup) {
     return new ListVariableAfterChangeAction<>(
-        rebaser.rebase(entity), fromIndex, toIndex, variableDescriptor);
+        lookup.lookUpWorkingObject(entity), fromIndex, toIndex, variableDescriptor);
   }
 }

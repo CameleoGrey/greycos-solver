@@ -1,7 +1,7 @@
 package ai.greycos.solver.quarkus.it.cotwin;
 
 import ai.greycos.solver.core.api.cotwin.variable.VariableListener;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NonNull;
 

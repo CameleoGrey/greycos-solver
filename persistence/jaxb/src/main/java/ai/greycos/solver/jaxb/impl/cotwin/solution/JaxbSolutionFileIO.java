@@ -16,7 +16,7 @@ import jakarta.xml.bind.Marshaller;
 import jakarta.xml.bind.Unmarshaller;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.persistence.common.api.cotwin.solution.SolutionFileIO;
+import ai.greycos.solver.core.api.cotwin.solution.SolutionFileIO;
 
 /**
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation

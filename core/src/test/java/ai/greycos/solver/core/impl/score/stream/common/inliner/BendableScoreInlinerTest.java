@@ -1,11 +1,12 @@
 package ai.greycos.solver.core.impl.score.stream.common.inliner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Collections;
 import java.util.Map;
 
-import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
+import ai.greycos.solver.core.api.score.BendableScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
@@ -26,18 +27,18 @@ class BendableScoreInlinerTest
   void impactHard() {
     var constraintWeight = buildScore(90, 0, 0);
     var impacter = buildScoreImpacter(constraintWeight);
-    var scoreInliner = (AbstractScoreInliner<BendableScore>) impacter.getContext().parent;
+    var scoreInliner = (AbstractScoreInliner<BendableScore>) impacter.getContext().inliner;
 
-    var undo1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    var impact1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(90, 0, 0));
 
-    var undo2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
+    var impact2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(270, 0, 0));
 
-    undo2.run();
+    impact2.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(90, 0, 0));
 
-    undo1.run();
+    impact1.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(0, 0, 0));
   }
 
@@ -45,18 +46,18 @@ class BendableScoreInlinerTest
   void impactSoft1() {
     var constraintWeight = buildScore(0, 90, 0);
     var impacter = buildScoreImpacter(constraintWeight);
-    var scoreInliner = (AbstractScoreInliner<BendableScore>) impacter.getContext().parent;
+    var scoreInliner = (AbstractScoreInliner<BendableScore>) impacter.getContext().inliner;
 
-    var undo1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    var impact1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(0, 90, 0));
 
-    var undo2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
+    var impact2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(0, 270, 0));
 
-    undo2.run();
+    impact2.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(0, 90, 0));
 
-    undo1.run();
+    impact1.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(0, 0, 0));
   }
 
@@ -64,18 +65,18 @@ class BendableScoreInlinerTest
   void impactSoft2() {
     var constraintWeight = buildScore(0, 0, 90);
     var impacter = buildScoreImpacter(constraintWeight);
-    var scoreInliner = (AbstractScoreInliner<BendableScore>) impacter.getContext().parent;
+    var scoreInliner = (AbstractScoreInliner<BendableScore>) impacter.getContext().inliner;
 
-    var undo1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    var impact1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(0, 0, 90));
 
-    var undo2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
+    var impact2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(0, 0, 270));
 
-    undo2.run();
+    impact2.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(0, 0, 90));
 
-    undo1.run();
+    impact1.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(0, 0, 0));
   }
 
@@ -83,19 +84,37 @@ class BendableScoreInlinerTest
   void impactAll() {
     var constraintWeight = buildScore(10, 100, 1_000);
     var impacter = buildScoreImpacter(constraintWeight);
-    var scoreInliner = (AbstractScoreInliner<BendableScore>) impacter.getContext().parent;
+    var scoreInliner = (AbstractScoreInliner<BendableScore>) impacter.getContext().inliner;
 
-    var undo1 = impacter.impactScore(10, ConstraintMatchSupplier.empty());
+    var impact1 = impacter.impactScore(10, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(100, 1_000, 10_000));
 
-    var undo2 = impacter.impactScore(20, ConstraintMatchSupplier.empty());
+    var impact2 = impacter.impactScore(20, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(300, 3_000, 30_000));
 
-    undo2.run();
+    impact2.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(100, 1_000, 10_000));
 
-    undo1.run();
+    impact1.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(buildScore(0, 0, 0));
+  }
+
+  @Test
+  void impactAllMatchWeightOverflow() {
+    var constraintWeight = buildScore(100, 1_000, 10_000);
+    var impacter = buildScoreImpacter(constraintWeight);
+    assertThatThrownBy(
+            () -> impacter.impactScore(Integer.MAX_VALUE, ConstraintMatchSupplier.empty()))
+        .isInstanceOf(ArithmeticException.class);
+  }
+
+  @Test
+  void impactAllTotalOverflow() {
+    var constraintWeight = buildScore(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE);
+    var impacter = buildScoreImpacter(constraintWeight);
+    impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    assertThatThrownBy(() -> impacter.impactScore(1, ConstraintMatchSupplier.empty()))
+        .isInstanceOf(ArithmeticException.class);
   }
 
   @Override
@@ -111,6 +130,6 @@ class BendableScoreInlinerTest
   }
 
   private BendableScore buildScore(int hard, int soft1, int soft2) {
-    return BendableScore.of(new int[] {hard}, new int[] {soft1, soft2});
+    return BendableScore.of(new long[] {hard}, new long[] {soft1, soft2});
   }
 }

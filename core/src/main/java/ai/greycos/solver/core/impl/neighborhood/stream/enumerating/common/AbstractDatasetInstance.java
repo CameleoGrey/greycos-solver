@@ -2,13 +2,13 @@ package ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-public abstract class AbstractDatasetInstance<Solution_, Tuple_ extends AbstractTuple>
+public abstract class AbstractDatasetInstance<Solution_, Tuple_ extends Tuple>
     implements TupleLifecycle<Tuple_> {
 
   private final AbstractDataset<Solution_> parent;

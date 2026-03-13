@@ -1,0 +1,44 @@
+package ai.greycos.solver.jackson.api.score;
+
+import java.math.BigDecimal;
+
+import ai.greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import ai.greycos.solver.jackson.api.score.buildin.HardMediumSoftBigDecimalScoreJacksonDeserializer;
+import ai.greycos.solver.jackson.api.score.buildin.HardMediumSoftBigDecimalScoreJacksonSerializer;
+
+import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
+class HardMediumSoftBigDecimalScoreJacksonRoundTripTest extends AbstractScoreJacksonRoundTripTest {
+
+  @Test
+  void serializeAndDeserialize() {
+    assertSerializeAndDeserialize(null, new TestHardMediumSoftBigDecimalScoreWrapper(null));
+    var score =
+        HardMediumSoftBigDecimalScore.of(
+            new BigDecimal("1200.0021"), new BigDecimal("-3.1415"), new BigDecimal("34.4300"));
+    assertSerializeAndDeserialize(score, new TestHardMediumSoftBigDecimalScoreWrapper(score));
+  }
+
+  public static class TestHardMediumSoftBigDecimalScoreWrapper
+      extends TestScoreWrapper<HardMediumSoftBigDecimalScore> {
+
+    @JsonSerialize(using = HardMediumSoftBigDecimalScoreJacksonSerializer.class)
+    @JsonDeserialize(using = HardMediumSoftBigDecimalScoreJacksonDeserializer.class)
+    private HardMediumSoftBigDecimalScore score;
+
+    @SuppressWarnings("unused")
+    private TestHardMediumSoftBigDecimalScoreWrapper() {}
+
+    public TestHardMediumSoftBigDecimalScoreWrapper(HardMediumSoftBigDecimalScore score) {
+      this.score = score;
+    }
+
+    @Override
+    public HardMediumSoftBigDecimalScore getScore() {
+      return score;
+    }
+  }
+}

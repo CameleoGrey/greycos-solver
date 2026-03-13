@@ -3,10 +3,10 @@ package ai.greycos.solver.core.impl.bavet.common;
 import java.util.List;
 
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 
-final class GroupNodeConstructorWithAccumulate<Tuple_ extends AbstractTuple>
+final class GroupNodeConstructorWithAccumulate<Tuple_ extends Tuple>
     extends AbstractGroupNodeConstructor<Tuple_> {
 
   private final NodeConstructorWithAccumulate<Tuple_> nodeConstructorFunction;

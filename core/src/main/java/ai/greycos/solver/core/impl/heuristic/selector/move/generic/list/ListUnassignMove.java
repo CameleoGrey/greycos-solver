@@ -4,10 +4,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 
 public class ListUnassignMove<Solution_> extends AbstractMove<Solution_> {

@@ -25,8 +25,8 @@ public abstract class AbstractConstraintWeightOverridesDeserializer<Score_ exten
       JsonParser p, DeserializationContext ctxt) throws IOException {
     var resultMap = new LinkedHashMap<String, Score_>();
     JsonNode node = p.readValueAsTree();
-    node.fields()
-        .forEachRemaining(
+    node.properties()
+        .forEach(
             entry -> {
               var constraintName = entry.getKey();
               var weight = parseScore(entry.getValue().asText());

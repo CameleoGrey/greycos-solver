@@ -12,7 +12,6 @@ import java.util.function.Consumer;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PlanningVariableGraphType;
 import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
@@ -21,6 +20,7 @@ import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
 import ai.greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
@@ -417,9 +417,7 @@ public record RootVariableSource<Entity_, Value_>(
       MemberAccessorFactory memberAccessorFactory,
       DescriptorPolicy descriptorPolicy) {
     return memberAccessorFactory.buildAndCacheMemberAccessor(
-        member,
-        MemberAccessorFactory.MemberAccessorType.FIELD_OR_GETTER_METHOD,
-        descriptorPolicy.getCotwinAccessType());
+        member, MemberAccessorType.FIELD_OR_GETTER_METHOD, descriptorPolicy.getCotwinAccessType());
   }
 
   public static boolean isVariable(
@@ -461,11 +459,7 @@ public record RootVariableSource<Entity_, Value_>(
         // Must have a PlanningListVariable instead
         return ParentVariableType.INVERSE;
       }
-      if (sourcePlanningVariable.graphType() == PlanningVariableGraphType.CHAINED) {
-        return ParentVariableType.CHAINED_NEXT;
-      } else {
-        return ParentVariableType.INVERSE;
-      }
+      return ParentVariableType.INVERSE;
     }
     if (getAnnotation(declaringClass, memberName, PlanningVariable.class) != null) {
       return ParentVariableType.VARIABLE;

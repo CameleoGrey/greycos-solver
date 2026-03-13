@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.cotwin.policy;
 
-import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory.MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER;
+import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER;
 
 import java.lang.reflect.Member;
 import java.util.ArrayList;
@@ -13,26 +13,22 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
+import ai.greycos.solver.core.api.score.BendableBigDecimalScore;
+import ai.greycos.solver.core.api.score.BendableScore;
+import ai.greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import ai.greycos.solver.core.api.score.HardMediumSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.IBendableScore;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
-import ai.greycos.solver.core.api.score.buildin.bendablebigdecimal.BendableBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.bendablelong.BendableLongScore;
-import ai.greycos.solver.core.api.score.buildin.hardmediumsoft.HardMediumSoftScore;
-import ai.greycos.solver.core.api.score.buildin.hardmediumsoftbigdecimal.HardMediumSoftBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.hardmediumsoftlong.HardMediumSoftLongScore;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.core.api.score.buildin.hardsoftbigdecimal.HardSoftBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
-import ai.greycos.solver.core.api.score.buildin.simplebigdecimal.SimpleBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.simplelong.SimpleLongScore;
+import ai.greycos.solver.core.api.score.SimpleBigDecimalScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.util.ConfigUtils;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
@@ -43,19 +39,15 @@ import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.FromEntityProper
 import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.FromSolutionPropertyValueRangeDescriptor;
 import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.score.buildin.BendableBigDecimalScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.BendableLongScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.BendableScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardMediumSoftBigDecimalScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardMediumSoftLongScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardMediumSoftScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardSoftBigDecimalScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardSoftLongScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardSoftScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.SimpleBigDecimalScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.SimpleLongScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.SimpleScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.BendableBigDecimalScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.BendableScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.HardMediumSoftBigDecimalScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.HardMediumSoftScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.HardSoftBigDecimalScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.HardSoftScoreDefinition;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.SimpleBigDecimalScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -70,7 +62,7 @@ public class DescriptorPolicy {
   private final Map<String, MemberAccessor> fromEntityValueRangeProviderMap = new LinkedHashMap<>();
   private final Set<MemberAccessor> anonymousFromEntityValueRangeProviderSet =
       new LinkedHashSet<>();
-  private CotwinAccessType cotwinAccessType = CotwinAccessType.REFLECTION;
+  private CotwinAccessType cotwinAccessType = CotwinAccessType.FORCE_REFLECTION;
   private Set<PreviewFeature> enabledPreviewFeatureSet = EnumSet.noneOf(PreviewFeature.class);
   @Nullable private MemberAccessorFactory memberAccessorFactory;
   private int entityDescriptorCount = 0;
@@ -203,20 +195,14 @@ public class DescriptorPolicy {
       }
       if (scoreType.equals(SimpleScore.class)) {
         return (ScoreDefinition_) new SimpleScoreDefinition();
-      } else if (scoreType.equals(SimpleLongScore.class)) {
-        return (ScoreDefinition_) new SimpleLongScoreDefinition();
       } else if (scoreType.equals(SimpleBigDecimalScore.class)) {
         return (ScoreDefinition_) new SimpleBigDecimalScoreDefinition();
       } else if (scoreType.equals(HardSoftScore.class)) {
         return (ScoreDefinition_) new HardSoftScoreDefinition();
-      } else if (scoreType.equals(HardSoftLongScore.class)) {
-        return (ScoreDefinition_) new HardSoftLongScoreDefinition();
       } else if (scoreType.equals(HardSoftBigDecimalScore.class)) {
         return (ScoreDefinition_) new HardSoftBigDecimalScoreDefinition();
       } else if (scoreType.equals(HardMediumSoftScore.class)) {
         return (ScoreDefinition_) new HardMediumSoftScoreDefinition();
-      } else if (scoreType.equals(HardMediumSoftLongScore.class)) {
-        return (ScoreDefinition_) new HardMediumSoftLongScoreDefinition();
       } else if (scoreType.equals(HardMediumSoftBigDecimalScore.class)) {
         return (ScoreDefinition_) new HardMediumSoftBigDecimalScoreDefinition();
       } else {
@@ -248,9 +234,6 @@ public class DescriptorPolicy {
       if (scoreType.equals(BendableScore.class)) {
         return (ScoreDefinition_)
             new BendableScoreDefinition(bendableHardLevelsSize, bendableSoftLevelsSize);
-      } else if (scoreType.equals(BendableLongScore.class)) {
-        return (ScoreDefinition_)
-            new BendableLongScoreDefinition(bendableHardLevelsSize, bendableSoftLevelsSize);
       } else if (scoreType.equals(BendableBigDecimalScore.class)) {
         return (ScoreDefinition_)
             new BendableBigDecimalScoreDefinition(bendableHardLevelsSize, bendableSoftLevelsSize);

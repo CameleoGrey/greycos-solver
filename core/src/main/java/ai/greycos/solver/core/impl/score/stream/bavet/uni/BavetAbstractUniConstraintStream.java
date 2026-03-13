@@ -541,6 +541,15 @@ public abstract class BavetAbstractUniConstraintStream<Solution_, A>
   }
 
   @Override
+  public @NonNull <ResultA_> BiConstraintStream<A, ResultA_> flatten(
+      @NonNull Function<A, Iterable<ResultA_>> mapping) {
+    var stream =
+        shareAndAddChild(new BavetFlattenUniConstraintStream<>(constraintFactory, this, mapping));
+    return constraintFactory.share(
+        new BavetAftBridgeBiConstraintStream<>(constraintFactory, stream), stream::setAftBridge);
+  }
+
+  @Override
   public @NonNull <ResultA_> UniConstraintStream<ResultA_> flattenLast(
       @NonNull Function<A, Iterable<ResultA_>> mapping) {
     var stream =

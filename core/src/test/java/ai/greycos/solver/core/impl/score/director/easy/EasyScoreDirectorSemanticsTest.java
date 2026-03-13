@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
@@ -13,8 +13,8 @@ import ai.greycos.solver.core.impl.score.director.AbstractScoreDirectorSemantics
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactoryFactory;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
-import ai.greycos.solver.core.testcotwin.constraintconfiguration.TestdataConstraintConfigurationSolution;
-import ai.greycos.solver.core.testcotwin.constraintconfiguration.TestdataConstraintWeightEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.constraintweightoverrides.TestdataConstraintWeightOverridesEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.constraintweightoverrides.TestdataConstraintWeightOverridesSolution;
 import ai.greycos.solver.core.testcotwin.list.pinned.TestdataPinnedListEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.list.pinned.TestdataPinnedListSolution;
 import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListEasyScoreCalculator;
@@ -26,14 +26,15 @@ import org.junit.jupiter.api.Test;
 final class EasyScoreDirectorSemanticsTest extends AbstractScoreDirectorSemanticsTest {
 
   @Override
-  protected ScoreDirectorFactory<TestdataConstraintConfigurationSolution, SimpleScore>
+  protected ScoreDirectorFactory<TestdataConstraintWeightOverridesSolution, SimpleScore>
       buildScoreDirectorFactoryWithConstraintConfiguration(
-          SolutionDescriptor<TestdataConstraintConfigurationSolution> solutionDescriptor) {
+          SolutionDescriptor<TestdataConstraintWeightOverridesSolution> solutionDescriptor) {
     var scoreDirectorFactoryConfig =
         new ScoreDirectorFactoryConfig()
-            .withEasyScoreCalculatorClass(TestdataConstraintWeightEasyScoreCalculator.class);
+            .withEasyScoreCalculatorClass(
+                TestdataConstraintWeightOverridesEasyScoreCalculator.class);
     var scoreDirectorFactoryFactory =
-        new ScoreDirectorFactoryFactory<TestdataConstraintConfigurationSolution, SimpleScore>(
+        new ScoreDirectorFactoryFactory<TestdataConstraintWeightOverridesSolution, SimpleScore>(
             scoreDirectorFactoryConfig);
     return scoreDirectorFactoryFactory.buildScoreDirectorFactory(
         EnvironmentMode.PHASE_ASSERT, solutionDescriptor);

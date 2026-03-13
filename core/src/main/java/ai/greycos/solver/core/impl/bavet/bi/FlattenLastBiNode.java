@@ -2,12 +2,14 @@ package ai.greycos.solver.core.impl.bavet.bi;
 
 import java.util.function.Function;
 
-import ai.greycos.solver.core.impl.bavet.common.AbstractFlattenLastNode;
+import ai.greycos.solver.core.impl.bavet.common.AbstractFlattenNode;
 import ai.greycos.solver.core.impl.bavet.common.tuple.BiTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 
 public final class FlattenLastBiNode<A, B, NewB>
-    extends AbstractFlattenLastNode<BiTuple<A, B>, BiTuple<A, NewB>, B, NewB> {
+    extends AbstractFlattenNode<BiTuple<A, B>, BiTuple<A, NewB>, NewB> {
+
+  private final Function<B, Iterable<NewB>> mappingFunction;
 
   private final int outputStoreSize;
 
@@ -16,17 +18,18 @@ public final class FlattenLastBiNode<A, B, NewB>
       Function<B, Iterable<NewB>> mappingFunction,
       TupleLifecycle<BiTuple<A, NewB>> nextNodesTupleLifecycle,
       int outputStoreSize) {
-    super(flattenLastStoreIndex, mappingFunction, nextNodesTupleLifecycle);
+    super(flattenLastStoreIndex, nextNodesTupleLifecycle);
+    this.mappingFunction = mappingFunction;
     this.outputStoreSize = outputStoreSize;
   }
 
   @Override
   protected BiTuple<A, NewB> createTuple(BiTuple<A, B> originalTuple, NewB newB) {
-    return new BiTuple<>(originalTuple.factA, newB, outputStoreSize);
+    return BiTuple.of(originalTuple.getA(), newB, outputStoreSize);
   }
 
   @Override
-  protected B getEffectiveFactIn(BiTuple<A, B> tuple) {
-    return tuple.factB;
+  protected Iterable<NewB> extractIterable(BiTuple<A, B> tuple) {
+    return mappingFunction.apply(tuple.getB());
   }
 }

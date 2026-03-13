@@ -30,9 +30,9 @@ public final class MapBiToTriNode<A, B, NewA, NewB, NewC>
 
   @Override
   protected TriTuple<NewA, NewB, NewC> map(BiTuple<A, B> tuple) {
-    A factA = tuple.factA;
-    B factB = tuple.factB;
-    return new TriTuple<>(
+    var factA = tuple.getA();
+    var factB = tuple.getB();
+    return TriTuple.of(
         mappingFunctionA.apply(factA, factB),
         mappingFunctionB.apply(factA, factB),
         mappingFunctionC.apply(factA, factB),
@@ -41,13 +41,10 @@ public final class MapBiToTriNode<A, B, NewA, NewB, NewC>
 
   @Override
   protected void remap(BiTuple<A, B> inTuple, TriTuple<NewA, NewB, NewC> outTuple) {
-    A factA = inTuple.factA;
-    B factB = inTuple.factB;
-    NewA newA = mappingFunctionA.apply(factA, factB);
-    NewB newB = mappingFunctionB.apply(factA, factB);
-    NewC newC = mappingFunctionC.apply(factA, factB);
-    outTuple.factA = newA;
-    outTuple.factB = newB;
-    outTuple.factC = newC;
+    var factA = inTuple.getA();
+    var factB = inTuple.getB();
+    outTuple.setA(mappingFunctionA.apply(factA, factB));
+    outTuple.setB(mappingFunctionB.apply(factA, factB));
+    outTuple.setC(mappingFunctionC.apply(factA, factB));
   }
 }

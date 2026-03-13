@@ -1,8 +1,8 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 final class DoableMoveSelectionFilter<Solution_>
     implements SelectionFilter<Solution_, Move<Solution_>> {

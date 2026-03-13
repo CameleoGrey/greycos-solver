@@ -11,8 +11,8 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import ai.greycos.solver.core.impl.bavet.NodeNetwork;
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.RecordingTupleLifecycle;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
 import ai.greycos.solver.core.impl.score.stream.bavet.common.BavetPrecomputeBuildHelper;
@@ -28,7 +28,7 @@ import org.jspecify.annotations.NullMarked;
  * @param <Tuple_>
  */
 @NullMarked
-public final class RecordAndReplayPropagator<Tuple_ extends AbstractTuple> implements Propagator {
+public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Propagator {
 
   private final Set<Object> retractQueue;
   private final Set<Object> insertQueue;
@@ -41,7 +41,8 @@ public final class RecordAndReplayPropagator<Tuple_ extends AbstractTuple> imple
   private final Supplier<BavetPrecomputeBuildHelper<Tuple_>> precomputeBuildHelperSupplier;
   private final UnaryOperator<Tuple_> internalTupleToOutputTupleMapper;
   private final Map<Object, List<Tuple_>> objectToOutputTuplesMap;
-  private final Map<Class<?>, Boolean> objectClassToIsEntitySourceClass;
+  private final Set<Object> alreadyUpdatingSet = Collections.newSetFromMap(new IdentityHashMap<>());
+  private final Map<Class<?>, Boolean> objectClassToIsEntitySourceClassMap;
 
   private final StaticPropagationQueue<Tuple_> propagationQueue;
 
@@ -57,7 +58,7 @@ public final class RecordAndReplayPropagator<Tuple_ extends AbstractTuple> imple
     // Guesstimate that updates are dominant.
     this.retractQueue = CollectionUtils.newIdentityHashSet(size / 20);
     this.insertQueue = CollectionUtils.newIdentityHashSet(size / 20);
-    this.objectClassToIsEntitySourceClass = new HashMap<>();
+    this.objectClassToIsEntitySourceClassMap = new HashMap<>();
     this.seenEntitySet = CollectionUtils.newIdentityHashSet(size);
     this.seenFactSet = CollectionUtils.newIdentityHashSet(size);
 
@@ -81,14 +82,18 @@ public final class RecordAndReplayPropagator<Tuple_ extends AbstractTuple> imple
   }
 
   public void update(Object object) {
+    if (!alreadyUpdatingSet.add(object)) {
+      // The list was already sent to the propagation queue.
+      // Don't iterate over it again, even though the queue would deduplicate its contents.
+      return;
+    }
     // Updates happen very frequently, so we optimize by avoiding the update queue
     // and going straight to the propagation queue.
     // The propagation queue deduplicates updates internally.
     var outTupleList = objectToOutputTuplesMap.get(object);
-    if (outTupleList == null) {
-      return;
+    if (outTupleList != null) {
+      outTupleList.forEach(propagationQueue::update);
     }
-    outTupleList.forEach(propagationQueue::update);
   }
 
   public void retract(Object object) {
@@ -126,7 +131,7 @@ public final class RecordAndReplayPropagator<Tuple_ extends AbstractTuple> imple
       // Do not remove queued retracts from inserts; if a fact property
       // change, there will be both a retract and insert for that fact
       for (var object : insertQueue) {
-        if (objectClassToIsEntitySourceClass.computeIfAbsent(
+        if (objectClassToIsEntitySourceClassMap.computeIfAbsent(
             object.getClass(), precomputeBuildHelper::isSourceEntityClass)) {
           seenEntitySet.add(object);
         } else {
@@ -167,6 +172,7 @@ public final class RecordAndReplayPropagator<Tuple_ extends AbstractTuple> imple
   @Override
   public void propagateUpdates() {
     propagationQueue.propagateUpdates();
+    alreadyUpdatingSet.clear();
   }
 
   @Override
@@ -176,14 +182,14 @@ public final class RecordAndReplayPropagator<Tuple_ extends AbstractTuple> imple
   }
 
   private void insertIfAbsent(Tuple_ tuple) {
-    var state = tuple.state;
+    var state = tuple.getState();
     if (state != TupleState.CREATING) {
       propagationQueue.insert(tuple);
     }
   }
 
   private void retractIfPresent(Tuple_ tuple) {
-    var state = tuple.state;
+    var state = tuple.getState();
     if (state.isDirty()) {
       if (state == TupleState.DYING || state == TupleState.ABORTING) {
         // We already retracted this tuple from another list, so we
@@ -221,7 +227,7 @@ public final class RecordAndReplayPropagator<Tuple_ extends AbstractTuple> imple
         internalNodeNetwork.settle();
       }
       if (mappedTuples.isEmpty()) {
-        objectToOutputTuplesMap.put(invalidated, Collections.emptyList());
+        objectToOutputTuplesMap.remove(invalidated);
       } else {
         objectToOutputTuplesMap.put(invalidated, mappedTuples);
       }

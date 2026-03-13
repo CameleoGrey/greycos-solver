@@ -47,7 +47,7 @@ public class GreyCOSDevUITest extends DevUIJsonRPCTest {
   @Path("/greycos/test")
   public static class GreyCOSTestResource {
 
-    @Inject SolverManager<TestdataStringLengthShadowSolution, Long> solverManager;
+    @Inject SolverManager<TestdataStringLengthShadowSolution> solverManager;
 
     @POST
     @Path("/solver-factory")
@@ -58,7 +58,7 @@ public class GreyCOSDevUITest extends DevUIJsonRPCTest {
           Arrays.asList(
               new TestdataStringLengthShadowEntity(), new TestdataStringLengthShadowEntity()));
       planningProblem.setValueList(Arrays.asList("a", "bb", "ccc"));
-      SolverJob<TestdataStringLengthShadowSolution, Long> solverJob =
+      SolverJob<TestdataStringLengthShadowSolution> solverJob =
           solverManager.solve(1L, planningProblem);
       try {
         return solverJob.getFinalBestSolution().getScore().toString();
@@ -90,7 +90,6 @@ public class GreyCOSDevUITest extends DevUIJsonRPCTest {
                 + "  <entityClass>"
                 + TestdataStringLengthShadowEntity.class.getCanonicalName()
                 + "</entityClass>\n"
-                + "  <cotwinAccessType>GIZMO</cotwinAccessType>\n"
                 + "  <scoreDirectorFactory>\n"
                 + "    <constraintProviderClass>"
                 + TestdataStringLengthConstraintProvider.class.getCanonicalName()

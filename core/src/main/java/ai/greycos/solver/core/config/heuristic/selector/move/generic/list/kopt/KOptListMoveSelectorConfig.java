@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.config.heuristic.selector.move.generic.list.kopt;
 
-import java.util.Random;
 import java.util.function.Consumer;
+import java.util.random.RandomGenerator;
 
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlType;
@@ -126,7 +126,8 @@ public class KOptListMoveSelectorConfig extends MoveSelectorConfig<KOptListMoveS
 
   @Override
   public @NonNull KOptListMoveSelectorConfig enableNearbySelection(
-      @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter, @NonNull Random random) {
+      @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
+      @NonNull RandomGenerator random) {
     return NearbyUtil.enable(this, distanceMeter, random);
   }
 

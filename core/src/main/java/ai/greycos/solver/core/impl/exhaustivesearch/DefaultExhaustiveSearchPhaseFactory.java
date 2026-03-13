@@ -23,7 +23,8 @@ import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.exhaustivesearch.decider.ExhaustiveSearchDecider;
+import ai.greycos.solver.core.impl.exhaustivesearch.decider.AbstractExhaustiveSearchDecider;
+import ai.greycos.solver.core.impl.exhaustivesearch.decider.BasicExhaustiveSearchDecider;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.bounder.ScoreBounder;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.bounder.TrendBasedScoreBounder;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
@@ -67,7 +68,6 @@ public class DefaultExhaustiveSearchPhaseFactory<Solution_>
         solverConfigPolicy
             .cloneBuilder()
             .withReinitializeVariableFilterEnabled(true)
-            .withInitializedChainedValueFilterEnabled(true)
             .withEntitySorterManner(entitySorterManner)
             .withValueSorterManner(valueSorterManner)
             .build();
@@ -105,7 +105,6 @@ public class DefaultExhaustiveSearchPhaseFactory<Solution_>
             solverConfigPolicy.getLogIndentation(),
             phaseTermination,
             nodeExplorationType_.buildNodeComparator(scoreBounderEnabled),
-            entitySelector,
             buildDecider(
                 phaseConfigPolicy,
                 entitySelector,
@@ -160,12 +159,14 @@ public class DefaultExhaustiveSearchPhaseFactory<Solution_>
     return entityDescriptors.iterator().next();
   }
 
-  private ExhaustiveSearchDecider<Solution_> buildDecider(
-      HeuristicConfigPolicy<Solution_> configPolicy,
-      EntitySelector<Solution_> sourceEntitySelector,
-      BestSolutionRecaller<Solution_> bestSolutionRecaller,
-      PhaseTermination<Solution_> termination,
-      boolean scoreBounderEnabled) {
+  private AbstractExhaustiveSearchDecider<
+          Solution_, ? extends ai.greycos.solver.core.api.score.Score<?>>
+      buildDecider(
+          HeuristicConfigPolicy<Solution_> configPolicy,
+          EntitySelector<Solution_> sourceEntitySelector,
+          BestSolutionRecaller<Solution_> bestSolutionRecaller,
+          PhaseTermination<Solution_> termination,
+          boolean scoreBounderEnabled) {
     ManualEntityMimicRecorder<Solution_> manualEntityMimicRecorder =
         new ManualEntityMimicRecorder<>(sourceEntitySelector);
     String mimicSelectorId =
@@ -185,15 +186,17 @@ public class DefaultExhaustiveSearchPhaseFactory<Solution_>
             ? new TrendBasedScoreBounder(
                 configPolicy.getScoreDefinition(), configPolicy.getInitializingScoreTrend())
             : null;
-    ExhaustiveSearchDecider<Solution_> decider =
-        new ExhaustiveSearchDecider<>(
-            configPolicy.getLogIndentation(),
-            bestSolutionRecaller,
-            termination,
-            manualEntityMimicRecorder,
-            new MoveSelectorBasedMoveRepository<>(moveSelector),
-            scoreBounderEnabled,
-            scoreBounder);
+    AbstractExhaustiveSearchDecider<Solution_, ? extends ai.greycos.solver.core.api.score.Score<?>>
+        decider =
+            new BasicExhaustiveSearchDecider<>(
+                configPolicy.getLogIndentation(),
+                bestSolutionRecaller,
+                termination,
+                sourceEntitySelector,
+                manualEntityMimicRecorder,
+                new MoveSelectorBasedMoveRepository<>(moveSelector),
+                scoreBounderEnabled,
+                scoreBounder);
     EnvironmentMode environmentMode = configPolicy.getEnvironmentMode();
     if (environmentMode.isFullyAsserted()) {
       decider.setAssertMoveScoreFromScratch(true);

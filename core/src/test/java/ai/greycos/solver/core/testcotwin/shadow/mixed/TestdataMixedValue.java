@@ -30,7 +30,7 @@ public class TestdataMixedValue extends TestdataObject {
   }
 
   @ShadowSources({"previous", "previous.delay"})
-  private Integer previousDelaySupplier() {
+  public Integer previousDelaySupplier() {
     if (previous == null) {
       return null;
     } else {

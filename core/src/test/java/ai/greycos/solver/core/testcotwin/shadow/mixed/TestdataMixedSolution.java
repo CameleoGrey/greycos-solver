@@ -6,7 +6,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProper
 import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 
 @PlanningSolution
 public class TestdataMixedSolution {
@@ -44,5 +44,13 @@ public class TestdataMixedSolution {
 
   public void setDelayList(List<Integer> delayList) {
     this.delayList = delayList;
+  }
+
+  public SimpleScore getScore() {
+    return score;
+  }
+
+  public void setScore(SimpleScore score) {
+    this.score = score;
   }
 }

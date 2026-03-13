@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.tabu.size.FixedTabuSizeStrategy;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;

@@ -14,7 +14,6 @@ import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.solver.event.SolverEventSupport;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 
 import org.slf4j.Logger;
@@ -175,11 +174,6 @@ public abstract class AbstractSolver<Solution_> implements Solver<Solution_> {
   public void removePhaseLifecycleListener(
       PhaseLifecycleListener<Solution_> phaseLifecycleListener) {
     phaseLifecycleSupport.removeEventListener(phaseLifecycleListener);
-  }
-
-  public boolean isTerminationSameAsSolverTermination(
-      PhaseTermination<Solution_> phaseTermination) {
-    return phaseTermination == globalTermination;
   }
 
   public BestSolutionRecaller<Solution_> getBestSolutionRecaller() {

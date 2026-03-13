@@ -10,6 +10,7 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 
@@ -86,7 +87,7 @@ public abstract class AbstractFromConfigFactory<
       SolutionDescriptor<Solution_> solutionDescriptor) {
     var entityDescriptors =
         solutionDescriptor.getGenuineEntityDescriptors().stream()
-            .filter(EntityDescriptor::hasAnyGenuineBasicVariables)
+            .filter(EntityDescriptor::hasAnyBasicVariables)
             .toList();
     if (entityDescriptors.size() != 1) {
       throw new IllegalArgumentException(
@@ -100,7 +101,7 @@ public abstract class AbstractFromConfigFactory<
       SolutionDescriptor<Solution_> solutionDescriptor) {
     var entityDescriptors =
         solutionDescriptor.getGenuineEntityDescriptors().stream()
-            .filter(EntityDescriptor::hasAnyGenuineListVariables)
+            .filter(EntityDescriptor::hasAnyListVariables)
             .toList();
     if (entityDescriptors.size() != 1) {
       throw new IllegalArgumentException(
@@ -176,18 +177,18 @@ public abstract class AbstractFromConfigFactory<
         .toList();
   }
 
-  protected List<GenuineVariableDescriptor<Solution_>> deduceBasicVariableDescriptorList(
+  protected List<BasicVariableDescriptor<Solution_>> deduceBasicVariableDescriptorList(
       EntityDescriptor<Solution_> entityDescriptor, List<String> variableNameIncludeList) {
     Objects.requireNonNull(entityDescriptor);
-    var variableDescriptorList = entityDescriptor.getGenuineBasicVariableDescriptorList();
+    var basicVariableDescriptorList = entityDescriptor.getBasicVariableDescriptorList();
     if (variableNameIncludeList == null) {
-      return variableDescriptorList;
+      return basicVariableDescriptorList;
     }
 
     return variableNameIncludeList.stream()
         .map(
             variableNameInclude ->
-                variableDescriptorList.stream()
+                basicVariableDescriptorList.stream()
                     .filter(
                         variableDescriptor ->
                             variableDescriptor.getVariableName().equals(variableNameInclude))
@@ -200,7 +201,7 @@ public abstract class AbstractFromConfigFactory<
                                         config,
                                         variableNameInclude,
                                         entityDescriptor.getEntityClass(),
-                                        variableDescriptorList))))
+                                        basicVariableDescriptorList))))
         .toList();
   }
 }

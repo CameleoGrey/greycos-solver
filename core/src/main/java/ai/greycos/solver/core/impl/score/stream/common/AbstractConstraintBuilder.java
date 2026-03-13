@@ -6,9 +6,11 @@ import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintBuilder;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @SuppressWarnings("rawtypes")
+@NullMarked
 public abstract class AbstractConstraintBuilder<Score_ extends Score<Score_>>
     implements ConstraintBuilder {
   private final ConstraintConstructor constraintConstructor;
@@ -24,25 +26,50 @@ public abstract class AbstractConstraintBuilder<Score_ extends Score<Score_>>
     this.constraintWeight = constraintWeight;
   }
 
-  protected abstract <JustificationMapping_> JustificationMapping_ getJustificationMapping();
+  protected abstract <JustificationMapping_>
+      @Nullable JustificationMapping_ getJustificationMapping();
 
-  protected abstract <IndictedObjectsMapping_> IndictedObjectsMapping_ getIndictedObjectsMapping();
+  protected abstract <IndictedObjectsMapping_>
+      @Nullable IndictedObjectsMapping_ getIndictedObjectsMapping();
 
   @SuppressWarnings("unchecked")
   @Override
-  public final @NonNull Constraint asConstraintDescribed(
-      @NonNull String constraintName,
-      @NonNull String constraintDescription,
-      @NonNull String constraintGroup) {
+  public final Constraint asConstraintDescribed(
+      String constraintName, String constraintDescription, String constraintGroup) {
     return constraintConstructor.apply(
         null,
-        constraintName,
+        sanitize("constraintName", constraintName),
         constraintDescription,
-        constraintGroup,
+        sanitize("constraintGroup", constraintGroup),
         constraintWeight,
         impactType,
         getJustificationMapping(),
         getIndictedObjectsMapping());
+  }
+
+  public static String sanitize(String fieldName, String fieldValue) {
+    if (fieldValue == null
+        || fieldValue.equalsIgnoreCase("null")
+        || fieldValue.equalsIgnoreCase("nil")) {
+      throw new IllegalArgumentException(
+          "The %s (%s) cannot be null.".formatted(fieldName, fieldValue));
+    }
+    if (!fieldValue.matches("^[a-zA-Z0-9]+[a-zA-Z0-9 _.'()-]*$")) {
+      throw new IllegalArgumentException(
+          """
+                    The %s (%s) must only contain alphanumeric characters, spaces, underscores, hyphens, \
+                    apostrophes ("'"), parentheses ("(", ")") or full stops (".").
+                    It must start with an alphanumeric character.
+                    Names "null" and "nil" are not allowed."""
+              .formatted(fieldName, fieldValue));
+    }
+    var trimmed = fieldValue.trim();
+    if (trimmed.isEmpty()) {
+      throw new IllegalArgumentException(
+          "The %s (%s) must not be empty or only contain whitespace."
+              .formatted(fieldName, fieldName));
+    }
+    return trimmed;
   }
 
   @SuppressWarnings("unchecked")

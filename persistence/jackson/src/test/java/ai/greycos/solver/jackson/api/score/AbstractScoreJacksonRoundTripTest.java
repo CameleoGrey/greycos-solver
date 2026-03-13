@@ -37,11 +37,11 @@ public abstract class AbstractScoreJacksonRoundTripTest extends AbstractJacksonR
               + expectedScore
                   .toString()
                   .replaceAll("\\[", "\\\\[")
-                  .replaceAll("\\]", "\\\\]") // Score
+                  .replaceAll("]", "\\\\]") // Score
               + "\""
-              + "\\s*\\}"; // End of element
+              + "\\s*}"; // End of element
     } else {
-      regex = "\\{\"score\":null\\}"; // Start and end of element
+      regex = "\\{\"score\":null}"; // Start and end of element
     }
     if (!jsonString.matches(regex)) {
       fail(

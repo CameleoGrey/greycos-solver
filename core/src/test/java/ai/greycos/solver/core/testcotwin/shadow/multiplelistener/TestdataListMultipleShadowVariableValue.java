@@ -10,7 +10,6 @@ import ai.greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 
@@ -37,11 +36,6 @@ public class TestdataListMultipleShadowVariableValue extends TestdataObject {
 
   @CascadingUpdateShadowVariable(targetMethodName = "updateCascadeValue")
   private Integer cascadeValue;
-
-  @ShadowVariable(
-      variableListenerClass = TestdataListMultipleShadowVariableListener.class,
-      sourceVariableName = "entity")
-  private Integer listenerValue;
 
   private final List<TestdataListMultipleShadowVariableEntity> entityHistory = new ArrayList<>();
   private final List<Integer> indexHistory = new ArrayList<>();
@@ -97,19 +91,12 @@ public class TestdataListMultipleShadowVariableValue extends TestdataObject {
     return cascadeValue;
   }
 
+  public void setCascadeValue(Integer cascadeValue) {
+    this.cascadeValue = cascadeValue;
+  }
+
   public void updateCascadeValue() {
     this.cascadeValue = index + 10;
-  }
-
-  public Integer getListenerValue() {
-    if (listenerValue == null) {
-      return 0;
-    }
-    return listenerValue;
-  }
-
-  public void setListenerValue(Integer listenerValue) {
-    this.listenerValue = listenerValue;
   }
 
   public List<TestdataListMultipleShadowVariableEntity> getEntityHistory() {

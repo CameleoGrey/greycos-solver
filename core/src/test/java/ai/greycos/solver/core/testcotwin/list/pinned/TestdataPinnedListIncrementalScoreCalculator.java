@@ -3,7 +3,7 @@ package ai.greycos.solver.core.testcotwin.list.pinned;
 import java.util.ArrayList;
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 
 import org.jspecify.annotations.NonNull;

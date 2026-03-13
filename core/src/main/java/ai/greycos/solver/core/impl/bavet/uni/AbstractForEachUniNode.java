@@ -7,6 +7,7 @@ import ai.greycos.solver.core.impl.bavet.common.AbstractNode;
 import ai.greycos.solver.core.impl.bavet.common.BavetRootNode;
 import ai.greycos.solver.core.impl.bavet.common.Propagator;
 import ai.greycos.solver.core.impl.bavet.common.StaticPropagationQueue;
+import ai.greycos.solver.core.impl.bavet.common.StreamKind;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
@@ -41,6 +42,11 @@ public abstract sealed class AbstractForEachUniNode<A> extends AbstractNode
   }
 
   @Override
+  public StreamKind getStreamKind() {
+    return StreamKind.FOR_EACH;
+  }
+
+  @Override
   public boolean allowsInstancesOf(Class<?> clazz) {
     return forEachClass.isAssignableFrom(clazz);
   }
@@ -52,7 +58,7 @@ public abstract sealed class AbstractForEachUniNode<A> extends AbstractNode
 
   @Override
   public void insert(@Nullable A a) {
-    var tuple = new UniTuple<>(a, outputStoreSize);
+    var tuple = UniTuple.of(a, outputStoreSize);
     var old = tupleMap.put(a, tuple);
     if (old != null) {
       throw new IllegalStateException(
@@ -62,7 +68,7 @@ public abstract sealed class AbstractForEachUniNode<A> extends AbstractNode
   }
 
   protected final void updateExisting(@Nullable A a, UniTuple<A> tuple) {
-    var state = tuple.state;
+    var state = tuple.getState();
     if (state.isDirty()) {
       if (state == TupleState.DYING || state == TupleState.ABORTING) {
         throw new IllegalStateException(
@@ -85,7 +91,7 @@ public abstract sealed class AbstractForEachUniNode<A> extends AbstractNode
   }
 
   protected void retractExisting(@Nullable A a, UniTuple<A> tuple) {
-    var state = tuple.state;
+    var state = tuple.getState();
     if (state.isDirty()) {
       if (state == TupleState.DYING || state == TupleState.ABORTING) {
         throw new IllegalStateException(

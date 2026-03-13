@@ -29,13 +29,13 @@
                     
           <xs:element minOccurs="0" name="threadFactoryClass" type="xs:string"/>
                     
+          <xs:element minOccurs="0" name="threadPoolShutdownTimeoutSeconds" type="xs:int"/>
+                    
           <xs:element minOccurs="0" name="monitoring" type="tns:monitoringConfig"/>
                     
           <xs:element minOccurs="0" name="solutionClass" type="xs:string"/>
                     
           <xs:element maxOccurs="unbounded" minOccurs="0" name="entityClass" type="xs:string"/>
-                    
-          <xs:element minOccurs="0" name="cotwinAccessType" type="tns:cotwinAccessType"/>
                     
           <xs:element minOccurs="0" name="scoreDirectorFactory" type="tns:scoreDirectorFactoryConfig"/>
                     
@@ -44,21 +44,19 @@
           <xs:element minOccurs="0" name="nearbyDistanceMeterClass" type="xs:string"/>
                     
           <xs:choice maxOccurs="unbounded" minOccurs="0">
-
+                        
             <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
-
+                        
             <xs:element name="customPhase" type="tns:customPhaseConfig"/>
-
+                        
             <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
-
+                        
             <xs:element name="islandModel" type="tns:islandModelPhaseConfig"/>
-
+                        
             <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
-
-            <xs:element name="noChangePhase" type="tns:noChangePhaseConfig"/>
-
+                        
             <xs:element name="partitionedSearch" type="tns:partitionedSearchPhaseConfig"/>
-
+                      
           </xs:choice>
                   
         </xs:sequence>
@@ -109,15 +107,13 @@
                     
           <xs:element minOccurs="0" name="constraintProviderCustomProperties" type="tns:jaxbAdaptedMap"/>
                     
-          <xs:element minOccurs="0" name="constraintStreamImplType" type="tns:constraintStreamImplType"/>
-                    
           <xs:element minOccurs="0" name="constraintStreamAutomaticNodeSharing" type="xs:boolean"/>
+                    
+          <xs:element minOccurs="0" name="constraintStreamProfilingEnabled" type="xs:boolean"/>
                     
           <xs:element minOccurs="0" name="incrementalScoreCalculatorClass" type="xs:string"/>
                     
           <xs:element minOccurs="0" name="incrementalScoreCalculatorCustomProperties" type="tns:jaxbAdaptedMap"/>
-                    
-          <xs:element maxOccurs="unbounded" minOccurs="0" name="scoreDrl" type="xs:string"/>
                     
           <xs:element minOccurs="0" name="initializingScoreTrend" type="xs:string"/>
                     
@@ -158,8 +154,6 @@
       <xs:extension base="tns:abstractConfig">
                 
         <xs:sequence>
-                    
-          <xs:element minOccurs="0" name="terminationClass" type="xs:string"/>
                     
           <xs:element minOccurs="0" name="terminationCompositionStyle" type="tns:terminationCompositionStyle"/>
                     
@@ -244,21 +238,21 @@
   </xs:complexType>
     
   <xs:complexType name="constructionHeuristicPhaseConfig">
-
+        
     <xs:complexContent>
-
+            
       <xs:extension base="tns:phaseConfig">
-
+                
         <xs:sequence>
-
+                    
           <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
-
+                    
           <xs:element minOccurs="0" name="constructionHeuristicType" type="tns:constructionHeuristicType"/>
-
+                    
           <xs:element minOccurs="0" name="entitySorterManner" type="tns:entitySorterManner"/>
-
+                    
           <xs:element minOccurs="0" name="valueSorterManner" type="tns:valueSorterManner"/>
-
+                    
           <xs:choice minOccurs="0">
                         
             <xs:element name="queuedEntityPlacer" type="tns:queuedEntityPlacerConfig"/>
@@ -283,13 +277,7 @@
                         
             <xs:element name="pillarSwapMoveSelector" type="tns:pillarSwapMoveSelectorConfig"/>
                         
-            <xs:element name="subChainChangeMoveSelector" type="tns:subChainChangeMoveSelectorConfig"/>
-                        
-            <xs:element name="subChainSwapMoveSelector" type="tns:subChainSwapMoveSelectorConfig"/>
-                        
             <xs:element name="swapMoveSelector" type="tns:swapMoveSelectorConfig"/>
-                        
-            <xs:element name="tailChainSwapMoveSelector" type="tns:tailChainSwapMoveSelectorConfig"/>
                         
             <xs:element name="unionMoveSelector" type="tns:unionMoveSelectorConfig"/>
                       
@@ -347,13 +335,7 @@
                         
             <xs:element name="pillarSwapMoveSelector" type="tns:pillarSwapMoveSelectorConfig"/>
                         
-            <xs:element name="subChainChangeMoveSelector" type="tns:subChainChangeMoveSelectorConfig"/>
-                        
-            <xs:element name="subChainSwapMoveSelector" type="tns:subChainSwapMoveSelectorConfig"/>
-                        
             <xs:element name="swapMoveSelector" type="tns:swapMoveSelectorConfig"/>
-                        
-            <xs:element name="tailChainSwapMoveSelector" type="tns:tailChainSwapMoveSelectorConfig"/>
                         
             <xs:element name="unionMoveSelector" type="tns:unionMoveSelectorConfig"/>
                       
@@ -401,11 +383,7 @@
                     
           <xs:element minOccurs="0" name="sorterManner" type="tns:entitySorterManner"/>
                     
-          <xs:element minOccurs="0" name="sorterComparatorClass" type="xs:string"/>
-                    
           <xs:element minOccurs="0" name="comparatorClass" type="xs:string"/>
-                    
-          <xs:element minOccurs="0" name="sorterWeightFactoryClass" type="xs:string"/>
                     
           <xs:element minOccurs="0" name="comparatorFactoryClass" type="xs:string"/>
                     
@@ -537,11 +515,7 @@
                     
           <xs:element minOccurs="0" name="sorterManner" type="tns:valueSorterManner"/>
                     
-          <xs:element minOccurs="0" name="sorterComparatorClass" type="xs:string"/>
-                    
           <xs:element minOccurs="0" name="comparatorClass" type="xs:string"/>
-                    
-          <xs:element minOccurs="0" name="sorterWeightFactoryClass" type="xs:string"/>
                     
           <xs:element minOccurs="0" name="comparatorFactoryClass" type="xs:string"/>
                     
@@ -603,17 +577,11 @@
                         
             <xs:element name="listMultistageMoveSelector" type="tns:listMultistageMoveSelectorConfig"/>
                         
-            <xs:element name="subChainChangeMoveSelector" type="tns:subChainChangeMoveSelectorConfig"/>
-                        
-            <xs:element name="subChainSwapMoveSelector" type="tns:subChainSwapMoveSelectorConfig"/>
-                        
             <xs:element name="subListChangeMoveSelector" type="tns:subListChangeMoveSelectorConfig"/>
                         
             <xs:element name="subListSwapMoveSelector" type="tns:subListSwapMoveSelectorConfig"/>
                         
             <xs:element name="swapMoveSelector" type="tns:swapMoveSelectorConfig"/>
-                        
-            <xs:element name="tailChainSwapMoveSelector" type="tns:tailChainSwapMoveSelectorConfig"/>
                         
             <xs:element name="unionMoveSelector" type="tns:unionMoveSelectorConfig"/>
                       
@@ -643,11 +611,7 @@
                     
           <xs:element minOccurs="0" name="filterClass" type="xs:string"/>
                     
-          <xs:element minOccurs="0" name="sorterComparatorClass" type="xs:string"/>
-                    
           <xs:element minOccurs="0" name="comparatorClass" type="xs:string"/>
-                    
-          <xs:element minOccurs="0" name="sorterWeightFactoryClass" type="xs:string"/>
                     
           <xs:element minOccurs="0" name="comparatorFactoryClass" type="xs:string"/>
                     
@@ -961,76 +925,6 @@
       
   </xs:complexType>
     
-  <xs:complexType name="subChainChangeMoveSelectorConfig">
-        
-    <xs:complexContent>
-            
-      <xs:extension base="tns:moveSelectorConfig">
-                
-        <xs:sequence>
-                    
-          <xs:element minOccurs="0" name="entityClass" type="xs:string"/>
-                    
-          <xs:element minOccurs="0" name="subChainSelector" type="tns:subChainSelectorConfig"/>
-                    
-          <xs:element minOccurs="0" name="valueSelector" type="tns:valueSelectorConfig"/>
-                    
-          <xs:element minOccurs="0" name="selectReversingMoveToo" type="xs:boolean"/>
-                  
-        </xs:sequence>
-              
-      </xs:extension>
-          
-    </xs:complexContent>
-      
-  </xs:complexType>
-    
-  <xs:complexType name="subChainSelectorConfig">
-        
-    <xs:complexContent>
-            
-      <xs:extension base="tns:selectorConfig">
-                
-        <xs:sequence>
-                    
-          <xs:element minOccurs="0" name="valueSelector" type="tns:valueSelectorConfig"/>
-                    
-          <xs:element minOccurs="0" name="minimumSubChainSize" type="xs:int"/>
-                    
-          <xs:element minOccurs="0" name="maximumSubChainSize" type="xs:int"/>
-                  
-        </xs:sequence>
-              
-      </xs:extension>
-          
-    </xs:complexContent>
-      
-  </xs:complexType>
-    
-  <xs:complexType name="subChainSwapMoveSelectorConfig">
-        
-    <xs:complexContent>
-            
-      <xs:extension base="tns:moveSelectorConfig">
-                
-        <xs:sequence>
-                    
-          <xs:element minOccurs="0" name="entityClass" type="xs:string"/>
-                    
-          <xs:element minOccurs="0" name="subChainSelector" type="tns:subChainSelectorConfig"/>
-                    
-          <xs:element minOccurs="0" name="secondarySubChainSelector" type="tns:subChainSelectorConfig"/>
-                    
-          <xs:element minOccurs="0" name="selectReversingMoveToo" type="xs:boolean"/>
-                  
-        </xs:sequence>
-              
-      </xs:extension>
-          
-    </xs:complexContent>
-      
-  </xs:complexType>
-    
   <xs:complexType name="subListChangeMoveSelectorConfig">
         
     <xs:complexContent>
@@ -1038,10 +932,6 @@
       <xs:extension base="tns:moveSelectorConfig">
                 
         <xs:sequence>
-                    
-          <xs:element minOccurs="0" name="minimumSubListSize" type="xs:int"/>
-                    
-          <xs:element minOccurs="0" name="maximumSubListSize" type="xs:int"/>
                     
           <xs:element minOccurs="0" name="selectReversingMoveToo" type="xs:boolean"/>
                     
@@ -1064,10 +954,6 @@
       <xs:extension base="tns:moveSelectorConfig">
                 
         <xs:sequence>
-                    
-          <xs:element minOccurs="0" name="minimumSubListSize" type="xs:int"/>
-                    
-          <xs:element minOccurs="0" name="maximumSubListSize" type="xs:int"/>
                     
           <xs:element minOccurs="0" name="selectReversingMoveToo" type="xs:boolean"/>
                     
@@ -1117,26 +1003,6 @@
       
   </xs:complexType>
     
-  <xs:complexType name="tailChainSwapMoveSelectorConfig">
-        
-    <xs:complexContent>
-            
-      <xs:extension base="tns:moveSelectorConfig">
-                
-        <xs:sequence>
-                    
-          <xs:element minOccurs="0" name="entitySelector" type="tns:entitySelectorConfig"/>
-                    
-          <xs:element minOccurs="0" name="valueSelector" type="tns:valueSelectorConfig"/>
-                  
-        </xs:sequence>
-              
-      </xs:extension>
-          
-    </xs:complexContent>
-      
-  </xs:complexType>
-    
   <xs:complexType name="unionMoveSelectorConfig">
         
     <xs:complexContent>
@@ -1173,17 +1039,11 @@
                         
             <xs:element name="listMultistageMoveSelector" type="tns:listMultistageMoveSelectorConfig"/>
                         
-            <xs:element name="subChainChangeMoveSelector" type="tns:subChainChangeMoveSelectorConfig"/>
-                        
-            <xs:element name="subChainSwapMoveSelector" type="tns:subChainSwapMoveSelectorConfig"/>
-                        
             <xs:element name="subListChangeMoveSelector" type="tns:subListChangeMoveSelectorConfig"/>
                         
             <xs:element name="subListSwapMoveSelector" type="tns:subListSwapMoveSelectorConfig"/>
                         
             <xs:element name="swapMoveSelector" type="tns:swapMoveSelectorConfig"/>
-                        
-            <xs:element name="tailChainSwapMoveSelector" type="tns:tailChainSwapMoveSelectorConfig"/>
                         
             <xs:element name="unionMoveSelector" type="tns:unionMoveSelectorConfig"/>
                       
@@ -1261,13 +1121,7 @@
                         
             <xs:element name="pillarSwapMoveSelector" type="tns:pillarSwapMoveSelectorConfig"/>
                         
-            <xs:element name="subChainChangeMoveSelector" type="tns:subChainChangeMoveSelectorConfig"/>
-                        
-            <xs:element name="subChainSwapMoveSelector" type="tns:subChainSwapMoveSelectorConfig"/>
-                        
             <xs:element name="swapMoveSelector" type="tns:swapMoveSelectorConfig"/>
-                        
-            <xs:element name="tailChainSwapMoveSelector" type="tns:tailChainSwapMoveSelectorConfig"/>
                         
             <xs:element name="unionMoveSelector" type="tns:unionMoveSelectorConfig"/>
                       
@@ -1307,13 +1161,7 @@
                         
             <xs:element name="pillarSwapMoveSelector" type="tns:pillarSwapMoveSelectorConfig"/>
                         
-            <xs:element name="subChainChangeMoveSelector" type="tns:subChainChangeMoveSelectorConfig"/>
-                        
-            <xs:element name="subChainSwapMoveSelector" type="tns:subChainSwapMoveSelectorConfig"/>
-                        
             <xs:element name="swapMoveSelector" type="tns:swapMoveSelectorConfig"/>
-                        
-            <xs:element name="tailChainSwapMoveSelector" type="tns:tailChainSwapMoveSelectorConfig"/>
                         
             <xs:element name="unionMoveSelector" type="tns:unionMoveSelectorConfig"/>
                       
@@ -1336,9 +1184,9 @@
         <xs:sequence>
                     
           <xs:element minOccurs="0" name="pickEarlyType" type="tns:constructionHeuristicPickEarlyType"/>
-          
+                    
           <xs:element minOccurs="0" name="foragerClass" type="xs:string"/>
-          
+                    
           <xs:element minOccurs="0" name="customProperties" type="tns:jaxbAdaptedMap"/>
                   
         </xs:sequence>
@@ -1401,13 +1249,7 @@
                         
             <xs:element name="pillarSwapMoveSelector" type="tns:pillarSwapMoveSelectorConfig"/>
                         
-            <xs:element name="subChainChangeMoveSelector" type="tns:subChainChangeMoveSelectorConfig"/>
-                        
-            <xs:element name="subChainSwapMoveSelector" type="tns:subChainSwapMoveSelectorConfig"/>
-                        
             <xs:element name="swapMoveSelector" type="tns:swapMoveSelectorConfig"/>
-                        
-            <xs:element name="tailChainSwapMoveSelector" type="tns:tailChainSwapMoveSelectorConfig"/>
                         
             <xs:element name="unionMoveSelector" type="tns:unionMoveSelectorConfig"/>
                       
@@ -1421,7 +1263,7 @@
       
   </xs:complexType>
     
-  <xs:complexType name="localSearchPhaseConfig">
+  <xs:complexType name="islandModelPhaseConfig">
         
     <xs:complexContent>
             
@@ -1429,7 +1271,25 @@
                 
         <xs:sequence>
                     
+          <xs:element minOccurs="0" name="islandCount" type="xs:int"/>
+                    
+          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
+                    
+          <xs:element minOccurs="0" name="migrationFrequency" type="xs:int"/>
+                    
+          <xs:element minOccurs="0" name="compareGlobalEnabled" type="xs:boolean"/>
+                    
+          <xs:element minOccurs="0" name="receiveGlobalUpdateFrequency" type="xs:int"/>
+                    
+          <xs:element minOccurs="0" name="compareGlobalFrequency" type="xs:int"/>
+                    
+          <xs:element minOccurs="0" name="migrationTimeout" type="xs:long"/>
+                    
           <xs:element minOccurs="0" name="localSearchType" type="tns:localSearchType"/>
+                    
+          <xs:element minOccurs="0" name="acceptor" type="tns:localSearchAcceptorConfig"/>
+                    
+          <xs:element minOccurs="0" name="forager" type="tns:localSearchForagerConfig"/>
                     
           <xs:choice minOccurs="0">
                         
@@ -1457,29 +1317,27 @@
                         
             <xs:element name="listMultistageMoveSelector" type="tns:listMultistageMoveSelectorConfig"/>
                         
-            <xs:element name="subChainChangeMoveSelector" type="tns:subChainChangeMoveSelectorConfig"/>
-                        
-            <xs:element name="subChainSwapMoveSelector" type="tns:subChainSwapMoveSelectorConfig"/>
-                        
             <xs:element name="subListChangeMoveSelector" type="tns:subListChangeMoveSelectorConfig"/>
                         
             <xs:element name="subListSwapMoveSelector" type="tns:subListSwapMoveSelectorConfig"/>
                         
             <xs:element name="swapMoveSelector" type="tns:swapMoveSelectorConfig"/>
                         
-            <xs:element name="tailChainSwapMoveSelector" type="tns:tailChainSwapMoveSelectorConfig"/>
-                        
             <xs:element name="unionMoveSelector" type="tns:unionMoveSelectorConfig"/>
                       
           </xs:choice>
-
-          <xs:element minOccurs="0" name="neighborhoodProviderClass" type="xs:string"/>
-
-          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
-
-          <xs:element minOccurs="0" name="acceptor" type="tns:localSearchAcceptorConfig"/>
                     
-          <xs:element minOccurs="0" name="forager" type="tns:localSearchForagerConfig"/>
+          <xs:choice maxOccurs="unbounded" minOccurs="0">
+                        
+            <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
+                        
+            <xs:element name="customPhase" type="tns:customPhaseConfig"/>
+                        
+            <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
+                        
+            <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
+                      
+          </xs:choice>
                   
         </xs:sequence>
               
@@ -1509,19 +1367,11 @@
                     
           <xs:element minOccurs="0" name="valueTabuSize" type="xs:int"/>
                     
-          <xs:element minOccurs="0" name="valueTabuRatio" type="xs:double"/>
-                    
           <xs:element minOccurs="0" name="fadingValueTabuSize" type="xs:int"/>
-                    
-          <xs:element minOccurs="0" name="fadingValueTabuRatio" type="xs:double"/>
                     
           <xs:element minOccurs="0" name="moveTabuSize" type="xs:int"/>
                     
           <xs:element minOccurs="0" name="fadingMoveTabuSize" type="xs:int"/>
-                    
-          <xs:element minOccurs="0" name="undoMoveTabuSize" type="xs:int"/>
-                    
-          <xs:element minOccurs="0" name="fadingUndoMoveTabuSize" type="xs:int"/>
                     
           <xs:element minOccurs="0" name="simulatedAnnealingStartingTemperature" type="xs:string"/>
                     
@@ -1558,9 +1408,9 @@
           <xs:element minOccurs="0" name="finalistPodiumType" type="tns:finalistPodiumType"/>
                     
           <xs:element minOccurs="0" name="breakTieRandomly" type="xs:boolean"/>
-          
+                    
           <xs:element minOccurs="0" name="foragerClass" type="xs:string"/>
-          
+                    
           <xs:element minOccurs="0" name="customProperties" type="tns:jaxbAdaptedMap"/>
                   
         </xs:sequence>
@@ -1571,148 +1421,98 @@
       
   </xs:complexType>
     
-  <xs:complexType name="noChangePhaseConfig">
-
-    <xs:complexContent>
-
-      <xs:extension base="tns:phaseConfig">
-
-        <xs:sequence/>
-
-      </xs:extension>
-
-    </xs:complexContent>
-
-  </xs:complexType>
-
-  <xs:complexType name="partitionedSearchPhaseConfig">
-
-    <xs:complexContent>
-
-      <xs:extension base="tns:phaseConfig">
-
-        <xs:sequence>
-
-          <xs:element minOccurs="0" name="solutionPartitionerClass" type="xs:string"/>
-
-          <xs:element minOccurs="0" name="solutionPartitionerCustomProperties" type="tns:jaxbAdaptedMap"/>
-
-          <xs:element minOccurs="0" name="runnablePartThreadLimit" type="xs:string"/>
-
-          <xs:choice maxOccurs="unbounded" minOccurs="0">
-
-            <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
-
-            <xs:element name="customPhase" type="tns:customPhaseConfig"/>
-
-            <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
-
-            <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
-
-            <xs:element name="noChangePhase" type="tns:noChangePhaseConfig"/>
-
-            <xs:element name="partitionedSearch" type="tns:partitionedSearchPhaseConfig"/>
-
-          </xs:choice>
-
-        </xs:sequence>
-
-      </xs:extension>
-
-    </xs:complexContent>
-
-  </xs:complexType>
-
-  <xs:complexType name="islandModelPhaseConfig">
-
-<xs:complexContent>
-    
-<xs:extension base="tns:phaseConfig">
+  <xs:complexType name="localSearchPhaseConfig">
         
-<xs:sequence>
-
-  <xs:element minOccurs="0" name="islandCount" type="xs:int"/>
-
-  <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
-
-  <xs:element minOccurs="0" name="migrationFrequency" type="xs:int"/>
-
-  <xs:element minOccurs="0" name="compareGlobalEnabled" type="xs:boolean" default="true"/>
-
-  <xs:element minOccurs="0" name="receiveGlobalUpdateFrequency" type="xs:int"/>
-
-  <xs:element minOccurs="0" name="compareGlobalFrequency" type="xs:int"/>
-
-  <xs:element minOccurs="0" name="migrationTimeout" type="xs:long"/>
-
-  <xs:element minOccurs="0" name="localSearchType" type="tns:localSearchType"/>
-
-  <xs:element minOccurs="0" name="acceptor" type="tns:localSearchAcceptorConfig"/>
-
-  <xs:element minOccurs="0" name="forager" type="tns:localSearchForagerConfig"/>
-
-  <xs:choice maxOccurs="unbounded" minOccurs="0">
-
-    <xs:element name="cartesianProductMoveSelector" type="tns:cartesianProductMoveSelectorConfig"/>
-
-    <xs:element name="changeMoveSelector" type="tns:changeMoveSelectorConfig"/>
-
-    <xs:element name="kOptListMoveSelector" type="tns:kOptListMoveSelectorConfig"/>
-
-    <xs:element name="listChangeMoveSelector" type="tns:listChangeMoveSelectorConfig"/>
-
-    <xs:element name="listSwapMoveSelector" type="tns:listSwapMoveSelectorConfig"/>
-
-    <xs:element name="moveIteratorFactory" type="tns:moveIteratorFactoryConfig"/>
-
-    <xs:element name="moveListFactory" type="tns:moveListFactoryConfig"/>
-
-    <xs:element name="pillarChangeMoveSelector" type="tns:pillarChangeMoveSelectorConfig"/>
-
-    <xs:element name="pillarSwapMoveSelector" type="tns:pillarSwapMoveSelectorConfig"/>
-
-    <xs:element name="ruinRecreateMoveSelector" type="tns:ruinRecreateMoveSelectorConfig"/>
-
-    <xs:element name="listRuinRecreateMoveSelector" type="tns:listRuinRecreateMoveSelectorConfig"/>
-
-    <xs:element name="multistageMoveSelector" type="tns:multistageMoveSelectorConfig"/>
-
-    <xs:element name="listMultistageMoveSelector" type="tns:listMultistageMoveSelectorConfig"/>
-
-    <xs:element name="subChainChangeMoveSelector" type="tns:subChainChangeMoveSelectorConfig"/>
-
-    <xs:element name="subChainSwapMoveSelector" type="tns:subChainSwapMoveSelectorConfig"/>
-
-    <xs:element name="subListChangeMoveSelector" type="tns:subListChangeMoveSelectorConfig"/>
-
-    <xs:element name="subListSwapMoveSelector" type="tns:subListSwapMoveSelectorConfig"/>
-
-    <xs:element name="swapMoveSelector" type="tns:swapMoveSelectorConfig"/>
-
-    <xs:element name="tailChainSwapMoveSelector" type="tns:tailChainSwapMoveSelectorConfig"/>
-
-    <xs:element name="unionMoveSelector" type="tns:unionMoveSelectorConfig"/>
-
-  </xs:choice>
-
-  <xs:choice maxOccurs="unbounded" minOccurs="0">
-
-    <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
-
-    <xs:element name="customPhase" type="tns:customPhaseConfig"/>
-
-    <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
-
-    <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
-
-    <xs:element name="noChangePhase" type="tns:noChangePhaseConfig"/>
-
-    <xs:element name="partitionedSearch" type="tns:partitionedSearchPhaseConfig"/>
-
-  </xs:choice>
-
-</xs:sequence>
+    <xs:complexContent>
+            
+      <xs:extension base="tns:phaseConfig">
+                
+        <xs:sequence>
+                    
+          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
+                    
+          <xs:element minOccurs="0" name="localSearchType" type="tns:localSearchType"/>
+                    
+          <xs:choice minOccurs="0">
+                        
+            <xs:element name="cartesianProductMoveSelector" type="tns:cartesianProductMoveSelectorConfig"/>
+                        
+            <xs:element name="changeMoveSelector" type="tns:changeMoveSelectorConfig"/>
+                        
+            <xs:element name="listChangeMoveSelector" type="tns:listChangeMoveSelectorConfig"/>
+                        
+            <xs:element name="listSwapMoveSelector" type="tns:listSwapMoveSelectorConfig"/>
+                        
+            <xs:element name="moveIteratorFactory" type="tns:moveIteratorFactoryConfig"/>
+                        
+            <xs:element name="moveListFactory" type="tns:moveListFactoryConfig"/>
+                        
+            <xs:element name="pillarChangeMoveSelector" type="tns:pillarChangeMoveSelectorConfig"/>
+                        
+            <xs:element name="pillarSwapMoveSelector" type="tns:pillarSwapMoveSelectorConfig"/>
+                        
+            <xs:element name="ruinRecreateMoveSelector" type="tns:ruinRecreateMoveSelectorConfig"/>
+                        
+            <xs:element name="listRuinRecreateMoveSelector" type="tns:listRuinRecreateMoveSelectorConfig"/>
+                        
+            <xs:element name="multistageMoveSelector" type="tns:multistageMoveSelectorConfig"/>
+                        
+            <xs:element name="listMultistageMoveSelector" type="tns:listMultistageMoveSelectorConfig"/>
+                        
+            <xs:element name="subListChangeMoveSelector" type="tns:subListChangeMoveSelectorConfig"/>
+                        
+            <xs:element name="subListSwapMoveSelector" type="tns:subListSwapMoveSelectorConfig"/>
+                        
+            <xs:element name="swapMoveSelector" type="tns:swapMoveSelectorConfig"/>
+                        
+            <xs:element name="unionMoveSelector" type="tns:unionMoveSelectorConfig"/>
+                      
+          </xs:choice>
+                    
+          <xs:element minOccurs="0" name="neighborhoodProviderClass" type="xs:string"/>
+                    
+          <xs:element minOccurs="0" name="acceptor" type="tns:localSearchAcceptorConfig"/>
+                    
+          <xs:element minOccurs="0" name="forager" type="tns:localSearchForagerConfig"/>
+                  
+        </xs:sequence>
+              
+      </xs:extension>
           
+    </xs:complexContent>
+      
+  </xs:complexType>
+    
+  <xs:complexType name="partitionedSearchPhaseConfig">
+        
+    <xs:complexContent>
+            
+      <xs:extension base="tns:phaseConfig">
+                
+        <xs:sequence>
+                    
+          <xs:element minOccurs="0" name="solutionPartitionerClass" type="xs:string"/>
+                    
+          <xs:element minOccurs="0" name="solutionPartitionerCustomProperties" type="tns:jaxbAdaptedMap"/>
+                    
+          <xs:element minOccurs="0" name="runnablePartThreadLimit" type="xs:string"/>
+                    
+          <xs:choice maxOccurs="unbounded" minOccurs="0">
+                        
+            <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
+                        
+            <xs:element name="customPhase" type="tns:customPhaseConfig"/>
+                        
+            <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
+                        
+            <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
+                        
+            <xs:element name="partitionedSearch" type="tns:partitionedSearchPhaseConfig"/>
+                      
+          </xs:choice>
+                  
+        </xs:sequence>
+              
       </xs:extension>
           
     </xs:complexContent>
@@ -1768,10 +1568,6 @@
   <xs:simpleType name="previewFeature">
         
     <xs:restriction base="xs:string">
-            
-      <xs:enumeration value="DIVERSIFIED_LATE_ACCEPTANCE"/>
-            
-      <xs:enumeration value="PLANNING_SOLUTION_DIFF"/>
             
       <xs:enumeration value="NEIGHBORHOODS"/>
           
@@ -1847,30 +1643,6 @@
       
   </xs:simpleType>
     
-  <xs:simpleType name="cotwinAccessType">
-        
-    <xs:restriction base="xs:string">
-            
-      <xs:enumeration value="REFLECTION"/>
-            
-      <xs:enumeration value="GIZMO"/>
-          
-    </xs:restriction>
-      
-  </xs:simpleType>
-    
-  <xs:simpleType name="constraintStreamImplType">
-        
-    <xs:restriction base="xs:string">
-            
-      <xs:enumeration value="BAVET"/>
-            
-      <xs:enumeration value="DROOLS"/>
-          
-    </xs:restriction>
-      
-  </xs:simpleType>
-    
   <xs:simpleType name="terminationCompositionStyle">
         
     <xs:restriction base="xs:string">
@@ -1917,10 +1689,6 @@
             
       <xs:enumeration value="NONE"/>
             
-      <xs:enumeration value="DECREASING_DIFFICULTY"/>
-            
-      <xs:enumeration value="DECREASING_DIFFICULTY_IF_AVAILABLE"/>
-            
       <xs:enumeration value="DESCENDING"/>
             
       <xs:enumeration value="DESCENDING_IF_AVAILABLE"/>
@@ -1934,14 +1702,6 @@
     <xs:restriction base="xs:string">
             
       <xs:enumeration value="NONE"/>
-            
-      <xs:enumeration value="INCREASING_STRENGTH"/>
-            
-      <xs:enumeration value="INCREASING_STRENGTH_IF_AVAILABLE"/>
-            
-      <xs:enumeration value="DECREASING_STRENGTH"/>
-            
-      <xs:enumeration value="DECREASING_STRENGTH_IF_AVAILABLE"/>
             
       <xs:enumeration value="ASCENDING"/>
             

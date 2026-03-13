@@ -7,16 +7,12 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
 
 public abstract class AbstractGroupNode<
-        InTuple_ extends AbstractTuple,
-        OutTuple_ extends AbstractTuple,
-        GroupKey_,
-        ResultContainer_,
-        Result_>
+        InTuple_ extends Tuple, OutTuple_ extends Tuple, GroupKey_, ResultContainer_, Result_>
     extends AbstractNode implements TupleLifecycle<InTuple_> {
 
   private final int groupStoreIndex;
@@ -88,7 +84,7 @@ public abstract class AbstractGroupNode<
                 nextNodesTupleLifecycle,
                 group -> {
                   var outTuple = group.getTuple();
-                  var state = outTuple.state;
+                  var state = outTuple.getState();
                   if (state == TupleState.CREATING || state == TupleState.UPDATING) {
                     updateOutTupleToFinisher(outTuple, group.getResultContainer());
                   }
@@ -113,6 +109,11 @@ public abstract class AbstractGroupNode<
   }
 
   @Override
+  public StreamKind getStreamKind() {
+    return StreamKind.GROUP_BY;
+  }
+
+  @Override
   public final void insert(InTuple_ tuple) {
     if (tuple.getStore(groupStoreIndex) != null) {
       throw new IllegalStateException(
@@ -127,7 +128,7 @@ public abstract class AbstractGroupNode<
   private void createTuple(InTuple_ tuple, GroupKey_ userSuppliedKey) {
     var newGroup = getOrCreateGroup(userSuppliedKey);
     var outTuple = accumulate(tuple, newGroup);
-    switch (outTuple.state) {
+    switch (outTuple.getState()) {
       case CREATING, UPDATING -> {
         // Already in the correct state.
       }
@@ -140,7 +141,7 @@ public abstract class AbstractGroupNode<
                   + ") in node ("
                   + this
                   + ") is in an unexpected state ("
-                  + outTuple.state
+                  + outTuple.getState()
                   + ").");
     }
   }
@@ -222,31 +223,34 @@ public abstract class AbstractGroupNode<
       Runnable undoAccumulator = tuple.getStore(undoStoreIndex);
       undoAccumulator.run();
     }
-
-    var oldUserSuppliedGroupKey =
-        hasMultipleGroups ? extractUserSuppliedKey(oldGroup.getGroupKey()) : null;
-    var newUserSuppliedGroupKey = hasMultipleGroups ? groupKeyFunction.apply(tuple) : null;
-    if (Objects.equals(newUserSuppliedGroupKey, oldUserSuppliedGroupKey)) {
-      // No need to change parentCount because it is the same group
-      var outTuple = accumulate(tuple, oldGroup);
-      switch (outTuple.state) {
-        case CREATING, UPDATING -> {
-          // Already in the correct state.
-        }
-        case OK -> propagationQueue.update(oldGroup);
-        default ->
-            throw new IllegalStateException(
-                "Impossible state: The group ("
-                    + oldGroup
-                    + ") in node ("
-                    + this
-                    + ") is in an unexpected state ("
-                    + outTuple.state
-                    + ").");
-      }
+    if (!hasMultipleGroups) {
+      updateGroup(tuple, oldGroup);
+      return;
+    }
+    var oldUserSuppliedGroupKey = extractUserSuppliedKey(oldGroup.getGroupKey());
+    var newUserSuppliedGroupKey = groupKeyFunction.apply(tuple);
+    if (Objects.equals(oldUserSuppliedGroupKey, newUserSuppliedGroupKey)) {
+      updateGroup(tuple, oldGroup);
     } else {
       killTuple(oldGroup);
       createTuple(tuple, newUserSuppliedGroupKey);
+    }
+  }
+
+  private void updateGroup(
+      InTuple_ tuple,
+      Group<OutTuple_, ResultContainer_>
+          oldGroup) { // No need to change parentCount because it is the same group
+    var outTuple = accumulate(tuple, oldGroup);
+    switch (outTuple.getState()) {
+      case CREATING, UPDATING -> {
+        // Already in the correct state.
+      }
+      case OK -> propagationQueue.update(oldGroup);
+      default ->
+          throw new IllegalStateException(
+              "Impossible state: The group (%s) in node (%s) is in an unexpected state (%s)."
+                  .formatted(oldGroup, this, outTuple.getState()));
     }
   }
 
@@ -265,7 +269,7 @@ public abstract class AbstractGroupNode<
       }
     }
     var outTuple = group.getTuple();
-    switch (outTuple.state) {
+    switch (outTuple.getState()) {
       case CREATING -> {
         if (killGroup) {
           propagationQueue.retract(group, TupleState.ABORTING);
@@ -290,7 +294,7 @@ public abstract class AbstractGroupNode<
                   + ") in node ("
                   + this
                   + ") is in an unexpected state ("
-                  + outTuple.state
+                  + outTuple.getState()
                   + ").");
     }
   }

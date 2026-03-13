@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.bavet.common.tuple;
 import java.util.Arrays;
 import java.util.Objects;
 
-record AggregatedTupleLifecycle<Tuple_ extends AbstractTuple>(TupleLifecycle<Tuple_>... lifecycles)
+public record AggregatedTupleLifecycle<Tuple_ extends Tuple>(TupleLifecycle<Tuple_>... lifecycles)
     implements TupleLifecycle<Tuple_> {
 
   @SafeVarargs

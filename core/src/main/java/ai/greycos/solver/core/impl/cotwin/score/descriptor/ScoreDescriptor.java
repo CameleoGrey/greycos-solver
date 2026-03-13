@@ -49,6 +49,7 @@ public final class ScoreDescriptor<Score_ extends Score<Score_>> {
     // annotation cannot appear on both the score field and its getter (member accessor class
     // check).
     if (!scoreMemberAccessor.getName().equals(memberAccessor.getName())
+        || !scoreMemberAccessor.equals(memberAccessor)
         || !scoreMemberAccessor.getClass().equals(memberAccessor.getClass())) {
       throw new IllegalStateException(
           "The solutionClass ("

@@ -8,7 +8,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactProperty;
-import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 
 @PlanningSolution
 public class TestDataKitchenSinkSolution {
@@ -22,7 +22,7 @@ public class TestDataKitchenSinkSolution {
 
   @ProblemFactCollectionProperty private List<String> problemFactListProperty;
 
-  @PlanningScore private HardSoftLongScore score;
+  @PlanningScore private HardSoftScore score;
 
   public TestDataKitchenSinkSolution() {}
 
@@ -31,7 +31,7 @@ public class TestDataKitchenSinkSolution {
       List<TestDataKitchenSinkEntity> planningEntityListProperty,
       String problemFactProperty,
       List<String> problemFactListProperty,
-      HardSoftLongScore score) {
+      HardSoftScore score) {
     this.planningEntityProperty = planningEntityProperty;
     this.planningEntityListProperty = planningEntityListProperty;
     this.problemFactProperty = problemFactProperty;

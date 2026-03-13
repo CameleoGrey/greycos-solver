@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.testcotwin.valuerange.anonymous.TestdataAnonymousArraySolution;
 import ai.greycos.solver.core.testcotwin.valuerange.anonymous.TestdataAnonymousListSolution;

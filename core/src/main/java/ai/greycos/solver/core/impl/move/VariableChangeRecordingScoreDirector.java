@@ -7,13 +7,13 @@ import java.util.Map;
 import java.util.Objects;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.RevertableScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorCache;
 
@@ -239,11 +239,5 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
   @Override
   public <E> E lookUpWorkingObject(E externalObject) {
     return Objects.requireNonNull(backingScoreDirector).lookUpWorkingObject(externalObject);
-  }
-
-  @Override
-  public <E> E lookUpWorkingObjectOrReturnNull(E externalObject) {
-    return Objects.requireNonNull(backingScoreDirector)
-        .lookUpWorkingObjectOrReturnNull(externalObject);
   }
 }

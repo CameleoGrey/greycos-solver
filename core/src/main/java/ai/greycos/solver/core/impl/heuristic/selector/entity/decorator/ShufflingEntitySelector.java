@@ -1,11 +1,11 @@
 package ai.greycos.solver.core.impl.heuristic.selector.entity.decorator;
 
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.ListIterator;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
+import ai.greycos.solver.core.impl.solver.random.RandomUtils;
 
 public final class ShufflingEntitySelector<Solution_>
     extends AbstractCachingEntitySelector<Solution_> {
@@ -26,7 +26,7 @@ public final class ShufflingEntitySelector<Solution_>
 
   @Override
   public Iterator<Object> iterator() {
-    Collections.shuffle(cachedEntityList, workingRandom);
+    RandomUtils.shuffle(cachedEntityList, workingRandom);
     logger.trace(
         "    Shuffled cachedEntityList with size ({}) in entitySelector({}).",
         cachedEntityList.size(),
@@ -36,7 +36,7 @@ public final class ShufflingEntitySelector<Solution_>
 
   @Override
   public ListIterator<Object> listIterator() {
-    Collections.shuffle(cachedEntityList, workingRandom);
+    RandomUtils.shuffle(cachedEntityList, workingRandom);
     logger.trace(
         "    Shuffled cachedEntityList with size ({}) in entitySelector({}).",
         cachedEntityList.size(),

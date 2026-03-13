@@ -12,8 +12,6 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfiguration;
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintWeight;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
@@ -1249,6 +1247,9 @@ public interface TriConstraintStream<A, B, C> extends ConstraintStream {
    * @param mapping function to convert the last fact in the original tuple into {@link Iterable}.
    *     For performance, returning an implementation of {@link java.util.Collection} is preferred.
    */
+  <ResultD_> @NonNull QuadConstraintStream<A, B, C, ResultD_> flatten(
+      @NonNull TriFunction<A, B, C, Iterable<ResultD_>> mapping);
+
   <ResultC_> @NonNull TriConstraintStream<A, B, ResultC_> flattenLast(
       @NonNull Function<C, Iterable<ResultC_>> mapping);
 

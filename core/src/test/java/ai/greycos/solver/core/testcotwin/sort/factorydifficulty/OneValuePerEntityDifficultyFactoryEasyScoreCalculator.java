@@ -2,7 +2,7 @@ package ai.greycos.solver.core.testcotwin.sort.factorydifficulty;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 
 import org.jspecify.annotations.NonNull;

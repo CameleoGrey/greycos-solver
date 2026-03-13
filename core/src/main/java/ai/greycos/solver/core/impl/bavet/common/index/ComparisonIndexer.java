@@ -2,59 +2,44 @@ package ai.greycos.solver.core.impl.bavet.common.index;
 
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.NavigableMap;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.bavet.common.joiner.JoinerType;
 import ai.greycos.solver.core.impl.util.ListEntry;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 final class ComparisonIndexer<T, Key_ extends Comparable<Key_>> implements Indexer<T> {
 
-  private final KeyRetriever<Key_> keyRetriever;
+  private final KeyUnpacker<Key_> keyUnpacker;
   private final Supplier<Indexer<T>> downstreamIndexerSupplier;
   private final boolean reverseOrder;
   private final boolean hasOrEquals;
   private final NavigableMap<Key_, Indexer<T>> comparisonMap;
 
   /**
-   * Construct an {@link ComparisonIndexer} which immediately ends in the backend. This means {@code
-   * compositeKey} must be a single key.
-   *
    * @param comparisonJoinerType the type of comparison to use
-   * @param downstreamIndexerSupplier the supplier of the downstream indexer
-   */
-  public ComparisonIndexer(
-      JoinerType comparisonJoinerType, Supplier<Indexer<T>> downstreamIndexerSupplier) {
-    this(comparisonJoinerType, new SingleKeyRetriever<>(), downstreamIndexerSupplier);
-  }
-
-  /**
-   * Construct an {@link ComparisonIndexer} which does not immediately go to a {@link
-   * IndexerBackend}. This means {@code compositeKey} must be an instance of {@link CompositeKey}.
-   *
-   * @param comparisonJoinerType the type of comparison to use
-   * @param keyIndex the index of the key to use within {@link CompositeKey}.
+   * @param keyUnpacker determines if it immediately goes to a {@link IndexerBackend} or if it uses
+   *     a {@link CompositeKey}.
    * @param downstreamIndexerSupplier the supplier of the downstream indexer
    */
   public ComparisonIndexer(
       JoinerType comparisonJoinerType,
-      int keyIndex,
+      KeyUnpacker<?> keyUnpacker,
       Supplier<Indexer<T>> downstreamIndexerSupplier) {
-    this(comparisonJoinerType, new CompositeKeyRetriever<>(keyIndex), downstreamIndexerSupplier);
-  }
-
-  private ComparisonIndexer(
-      JoinerType comparisonJoinerType,
-      KeyRetriever<Key_> keyRetriever,
-      Supplier<Indexer<T>> downstreamIndexerSupplier) {
-    this.keyRetriever = Objects.requireNonNull(keyRetriever);
+    this.keyUnpacker = Objects.requireNonNull((KeyUnpacker<Key_>) keyUnpacker);
     this.downstreamIndexerSupplier = Objects.requireNonNull(downstreamIndexerSupplier);
     // For GT/GTE, the iteration order is reversed.
     // This allows us to iterate over the entire map from the start, stopping when the threshold is
@@ -71,7 +56,7 @@ final class ComparisonIndexer<T, Key_ extends Comparable<Key_>> implements Index
 
   @Override
   public ListEntry<T> put(Object compositeKey, T tuple) {
-    var indexKey = keyRetriever.apply(compositeKey);
+    var indexKey = keyUnpacker.apply(compositeKey);
     // Avoids computeIfAbsent in order to not create lambdas on the hot path.
     var downstreamIndexer = comparisonMap.get(indexKey);
     if (downstreamIndexer == null) {
@@ -83,10 +68,10 @@ final class ComparisonIndexer<T, Key_ extends Comparable<Key_>> implements Index
 
   @Override
   public void remove(Object compositeKey, ListEntry<T> entry) {
-    var indexKey = keyRetriever.apply(compositeKey);
+    var indexKey = keyUnpacker.apply(compositeKey);
     var downstreamIndexer = getDownstreamIndexer(compositeKey, indexKey, entry);
     downstreamIndexer.remove(compositeKey, entry);
-    if (downstreamIndexer.isEmpty()) {
+    if (downstreamIndexer.isRemovable()) {
       comparisonMap.remove(indexKey);
     }
   }
@@ -112,7 +97,7 @@ final class ComparisonIndexer<T, Key_ extends Comparable<Key_>> implements Index
   }
 
   private int sizeSingleIndexer(Object compositeKey) {
-    var indexKey = keyRetriever.apply(compositeKey);
+    var indexKey = keyUnpacker.apply(compositeKey);
     var entry = comparisonMap.firstEntry();
     return boundaryReached(entry.getKey(), indexKey) ? 0 : entry.getValue().size(compositeKey);
   }
@@ -133,7 +118,7 @@ final class ComparisonIndexer<T, Key_ extends Comparable<Key_>> implements Index
   }
 
   private int sizeManyIndexers(Object compositeKey) {
-    var indexKey = keyRetriever.apply(compositeKey);
+    var indexKey = keyUnpacker.apply(compositeKey);
     var size = 0;
     for (var entry : comparisonMap.entrySet()) {
       if (boundaryReached(entry.getKey(), indexKey)) {
@@ -149,14 +134,15 @@ final class ComparisonIndexer<T, Key_ extends Comparable<Key_>> implements Index
   public void forEach(Object compositeKey, Consumer<T> tupleConsumer) {
     switch (comparisonMap.size()) {
       case 0 -> {
-        /* Nothing to do. */ }
+        /* Nothing to do. */
+      }
       case 1 -> forEachSingleIndexer(compositeKey, tupleConsumer);
       default -> forEachManyIndexers(compositeKey, tupleConsumer);
     }
   }
 
   private void forEachSingleIndexer(Object compositeKey, Consumer<T> tupleConsumer) {
-    var indexKey = keyRetriever.apply(compositeKey);
+    var indexKey = keyUnpacker.apply(compositeKey);
     var entry = comparisonMap.firstEntry();
     if (!boundaryReached(entry.getKey(), indexKey)) {
       // Boundary condition not yet reached; include the indexer in the range.
@@ -165,7 +151,7 @@ final class ComparisonIndexer<T, Key_ extends Comparable<Key_>> implements Index
   }
 
   private void forEachManyIndexers(Object compositeKey, Consumer<T> tupleConsumer) {
-    var indexKey = keyRetriever.apply(compositeKey);
+    var indexKey = keyUnpacker.apply(compositeKey);
     for (var entry : comparisonMap.entrySet()) {
       if (boundaryReached(entry.getKey(), indexKey)) {
         return;
@@ -176,49 +162,143 @@ final class ComparisonIndexer<T, Key_ extends Comparable<Key_>> implements Index
   }
 
   @Override
-  public boolean isEmpty() {
-    return comparisonMap.isEmpty();
-  }
-
-  @Override
-  public List<? extends ListEntry<T>> asList(Object compositeKey) {
+  public Iterator<T> iterator(Object queryCompositeKey) {
     return switch (comparisonMap.size()) {
-      case 0 -> Collections.emptyList();
-      case 1 -> asListSingleIndexer(compositeKey);
-      default -> asListManyIndexers(compositeKey);
+      case 0 -> Collections.emptyIterator();
+      case 1 -> iteratorSingleIndexer(queryCompositeKey);
+      default -> new DefaultIterator(queryCompositeKey);
     };
   }
 
-  private List<? extends ListEntry<T>> asListSingleIndexer(Object compositeKey) {
-    var indexKey = keyRetriever.apply(compositeKey);
+  private Iterator<T> iteratorSingleIndexer(Object compositeKey) {
+    var indexKey = keyUnpacker.apply(compositeKey);
     var entry = comparisonMap.firstEntry();
-    return boundaryReached(entry.getKey(), indexKey)
-        ? Collections.emptyList()
-        : entry.getValue().asList(compositeKey);
+    if (boundaryReached(entry.getKey(), indexKey)) {
+      return Collections.emptyIterator();
+    }
+    // Boundary condition not yet reached; include the indexer in the range.
+    return entry.getValue().iterator(compositeKey);
   }
 
-  @SuppressWarnings("unchecked")
-  private List<? extends ListEntry<T>> asListManyIndexers(Object compositeKey) {
-    // The index backend's asList() may take a while to build.
-    // At the same time, the elements in these lists will be accessed randomly.
-    // Therefore we build this abstraction to avoid building unnecessary lists that would never get
-    // accessed.
-    var result = new ComposingList<ListEntry<T>>();
-    var indexKey = keyRetriever.apply(compositeKey);
-    for (var entry : comparisonMap.entrySet()) {
-      if (boundaryReached(entry.getKey(), indexKey)) {
-        return result;
-      } else { // Boundary condition not yet reached; include the indexer in the range.
-        var value = entry.getValue();
-        result.addSubList(
-            () -> (List<ListEntry<T>>) value.asList(compositeKey), value.size(compositeKey));
+  @Override
+  public Iterator<T> randomIterator(Object queryCompositeKey, RandomGenerator workingRandom) {
+    return createRandomIterator(queryCompositeKey, workingRandom, null);
+  }
+
+  private Iterator<T> createRandomIterator(
+      Object queryCompositeKey, RandomGenerator workingRandom, @Nullable Predicate<T> filter) {
+    return switch (comparisonMap.size()) {
+      case 0 -> Collections.emptyIterator();
+      case 1 -> {
+        var indexKey = keyUnpacker.apply(queryCompositeKey);
+        var entry = comparisonMap.firstEntry();
+        if (boundaryReached(entry.getKey(), indexKey)) {
+          yield Collections.emptyIterator();
+        } else { // Boundary condition not yet reached; include the indexer in the range.
+          if (filter == null) {
+            yield entry.getValue().randomIterator(queryCompositeKey, workingRandom);
+          } else {
+            yield entry.getValue().randomIterator(queryCompositeKey, workingRandom, filter);
+          }
+        }
       }
-    }
-    return result;
+      default -> {
+        if (filter == null) {
+          yield new RandomIterator(
+              queryCompositeKey,
+              indexer -> indexer.randomIterator(queryCompositeKey, workingRandom));
+        } else {
+          yield new RandomIterator(
+              queryCompositeKey,
+              indexer -> indexer.randomIterator(queryCompositeKey, workingRandom, filter));
+        }
+      }
+    };
+  }
+
+  @Override
+  public Iterator<T> randomIterator(
+      Object queryCompositeKey, RandomGenerator workingRandom, Predicate<T> filter) {
+    return createRandomIterator(queryCompositeKey, workingRandom, filter);
+  }
+
+  @Override
+  public boolean isRemovable() {
+    return comparisonMap.isEmpty();
   }
 
   @Override
   public String toString() {
     return "size = " + comparisonMap.size();
+  }
+
+  private class DefaultIterator implements Iterator<T> {
+
+    private final Key_ indexKey;
+    private final Function<Indexer<T>, Iterator<T>> downstreamIteratorFunction;
+    private final Iterator<Map.Entry<Key_, Indexer<T>>> indexerIterator =
+        comparisonMap.entrySet().iterator();
+    protected @Nullable Iterator<T> downstreamIterator = null;
+    private @Nullable T next = null;
+
+    public DefaultIterator(Object queryCompositeKey) {
+      this(queryCompositeKey, downstreamIndexer -> downstreamIndexer.iterator(queryCompositeKey));
+    }
+
+    protected DefaultIterator(
+        Object queryCompositeKey, Function<Indexer<T>, Iterator<T>> downstreamIteratorFunction) {
+      this.indexKey = keyUnpacker.apply(queryCompositeKey);
+      this.downstreamIteratorFunction = downstreamIteratorFunction;
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (next != null) {
+        return true;
+      }
+      if (downstreamIterator != null && downstreamIterator.hasNext()) {
+        next = downstreamIterator.next();
+        return true;
+      }
+      while (indexerIterator.hasNext()) {
+        var entry = indexerIterator.next();
+        if (boundaryReached(entry.getKey(), indexKey)) {
+          return false;
+        }
+        // Boundary condition not yet reached; include the indexer in the range.
+        downstreamIterator = downstreamIteratorFunction.apply(entry.getValue());
+        if (downstreamIterator.hasNext()) {
+          next = downstreamIterator.next();
+          return true;
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public T next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      var result = next;
+      next = null;
+      return result;
+    }
+  }
+
+  private final class RandomIterator extends DefaultIterator {
+
+    public RandomIterator(
+        Object queryCompositeKey, Function<Indexer<T>, Iterator<T>> downstreamIteratorFunction) {
+      super(queryCompositeKey, downstreamIteratorFunction);
+    }
+
+    @Override
+    public void remove() {
+      if (downstreamIterator == null) {
+        throw new IllegalStateException("next() must be called before remove().");
+      }
+      downstreamIterator.remove();
+    }
   }
 }

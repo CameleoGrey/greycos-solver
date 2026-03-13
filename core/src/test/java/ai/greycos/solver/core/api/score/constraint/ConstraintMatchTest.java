@@ -1,12 +1,12 @@
 package ai.greycos.solver.core.api.score.constraint;
 
-import static ai.greycos.solver.core.api.score.buildin.simple.SimpleScore.ONE;
-import static ai.greycos.solver.core.api.score.buildin.simple.SimpleScore.ZERO;
+import static ai.greycos.solver.core.api.score.SimpleScore.ONE;
+import static ai.greycos.solver.core.api.score.SimpleScore.ZERO;
 
 import java.util.Arrays;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification;
 import ai.greycos.solver.core.testutil.PlannerAssert;
 

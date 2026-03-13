@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;

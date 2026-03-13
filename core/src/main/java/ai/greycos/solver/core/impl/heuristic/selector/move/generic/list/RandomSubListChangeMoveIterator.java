@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list;
 
 import java.util.Iterator;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
@@ -18,13 +18,13 @@ class RandomSubListChangeMoveIterator<Solution_>
   private final Iterator<SubList> subListIterator;
   private final Iterator<ElementPosition> destinationIterator;
   private final ListVariableDescriptor<Solution_> listVariableDescriptor;
-  private final Random workingRandom;
+  private final RandomGenerator workingRandom;
   private final boolean selectReversingMoveToo;
 
   RandomSubListChangeMoveIterator(
       SubListSelector<Solution_> subListSelector,
       DestinationSelector<Solution_> destinationSelector,
-      Random workingRandom,
+      RandomGenerator workingRandom,
       boolean selectReversingMoveToo) {
     this.subListIterator = subListSelector.iterator();
     this.destinationIterator = destinationSelector.iterator();
@@ -48,7 +48,7 @@ class RandomSubListChangeMoveIterator<Solution_>
       return noUpcomingSelection();
     } else if (destination instanceof PositionInList destinationElement) {
       var reversing = selectReversingMoveToo && workingRandom.nextBoolean();
-      return new SubListChangeMove<>(
+      return new SelectorBasedSubListChangeMove<>(
           listVariableDescriptor,
           subList,
           destinationElement.entity(),
@@ -56,7 +56,7 @@ class RandomSubListChangeMoveIterator<Solution_>
           reversing);
     } else {
       // TODO add SubListAssignMove
-      return new SubListUnassignMove<>(listVariableDescriptor, subList);
+      return new SelectorBasedSubListUnassignMove<>(listVariableDescriptor, subList);
     }
   }
 }

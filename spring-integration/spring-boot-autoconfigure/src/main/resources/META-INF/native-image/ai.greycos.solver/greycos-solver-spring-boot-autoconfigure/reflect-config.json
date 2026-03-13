@@ -9,7 +9,7 @@
     ]
   },
   {
-    "name": "ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbCustomPropertiesAdapter",
+    "name": "ai.greycos.solver.core.impl.io.jaxb.JaxbCustomPropertiesAdapter",
     "methods": [
       {
         "name": "<init>",
@@ -18,7 +18,7 @@
     ]
   },
   {
-    "name": "ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbDurationAdapter",
+    "name": "ai.greycos.solver.core.impl.io.jaxb.JaxbDurationAdapter",
     "methods": [
       {
         "name": "<init>",
@@ -27,7 +27,7 @@
     ]
   },
   {
-    "name": "ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbLocaleAdapter",
+    "name": "ai.greycos.solver.core.impl.io.jaxb.JaxbLocaleAdapter",
     "methods": [
       {
         "name": "<init>",
@@ -36,17 +36,13 @@
     ]
   },
   {
-    "name": "ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbOffsetDateTimeAdapter",
+    "name": "ai.greycos.solver.core.impl.io.jaxb.JaxbOffsetDateTimeAdapter",
     "methods": [
       {
         "name": "<init>",
         "parameterTypes": []
       }
     ]
-  },
-  {
-    "name": "ai.greycos.solver.core.api.cotwin.common.CotwinAccessType",
-    "allDeclaredFields": true
   },
   {
     "name": "ai.greycos.solver.core.api.score.stream.ConstraintStreamImplType",
@@ -573,17 +569,6 @@
     ]
   },
   {
-    "name": "ai.greycos.solver.core.config.phase.NoChangePhaseConfig",
-    "allDeclaredFields": true,
-    "queryAllDeclaredMethods": true,
-    "methods": [
-      {
-        "name": "<init>",
-        "parameterTypes": []
-      }
-    ]
-  },
-  {
     "name": "ai.greycos.solver.core.config.phase.PhaseConfig",
     "allDeclaredFields": true,
     "queryAllDeclaredMethods": true,
@@ -681,7 +666,7 @@
     ]
   },
   {
-    "name": "ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbCustomPropertiesAdapter",
+    "name": "ai.greycos.solver.core.impl.io.jaxb.JaxbCustomPropertiesAdapter",
     "methods": [
       {
         "name": "<init>",
@@ -690,7 +675,7 @@
     ]
   },
   {
-    "name": "ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbCustomPropertiesAdapter$JaxbAdaptedMap",
+    "name": "ai.greycos.solver.core.impl.io.jaxb.JaxbAdaptedMap",
     "allDeclaredFields": true,
     "queryAllDeclaredMethods": true,
     "methods": [
@@ -701,7 +686,7 @@
     ]
   },
   {
-    "name": "ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbCustomPropertiesAdapter$JaxbAdaptedMapEntry",
+    "name": "ai.greycos.solver.core.impl.io.jaxb.JaxbAdaptedMapEntry",
     "allDeclaredFields": true,
     "queryAllDeclaredMethods": true,
     "methods": [

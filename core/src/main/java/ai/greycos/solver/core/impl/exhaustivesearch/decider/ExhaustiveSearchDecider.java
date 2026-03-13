@@ -169,7 +169,7 @@ public final class ExhaustiveSearchDecider<Solution_>
   private <Score_ extends Score<Score_>> void processMove(
       ExhaustiveSearchStepScope<Solution_> stepScope, ExhaustiveSearchNode moveNode) {
     var phaseScope = stepScope.getPhaseScope();
-    var lastLayer = moveNode.isLastLayer();
+    var lastLayer = moveNode.getLayer().isLastLayer();
     if (!scoreBounderEnabled) {
       if (lastLayer) {
         var score = phaseScope.<Score_>calculateScore();

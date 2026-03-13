@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.heuristic.selector.list;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 public record SubList(Object entity, int fromIndex, int length) {
 

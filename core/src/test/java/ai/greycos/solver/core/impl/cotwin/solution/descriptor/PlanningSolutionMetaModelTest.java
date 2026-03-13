@@ -4,10 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.GenuineEntityMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.GenuineVariableMetaModel;
-import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningEntityMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.ShadowEntityMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.ShadowVariableMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
@@ -46,7 +47,7 @@ class PlanningSolutionMetaModelTest {
     @Test
     void hasProperGenuineEntities() {
       assertThat(planningSolutionMetaModel.genuineEntities())
-          .containsOnly(planningSolutionMetaModel.entity(TestdataEntity.class));
+          .containsOnly(planningSolutionMetaModel.genuineEntity(TestdataEntity.class));
     }
 
     @Test
@@ -67,8 +68,8 @@ class PlanningSolutionMetaModelTest {
     @DisplayName("with a genuine entity")
     class BasicVariablePlanningEntityMetaModelTest {
 
-      private final PlanningEntityMetaModel<TestdataSolution, TestdataEntity>
-          planningEntityMetaModel = planningSolutionMetaModel.entity(TestdataEntity.class);
+      private final GenuineEntityMetaModel<TestdataSolution, TestdataEntity>
+          planningEntityMetaModel = planningSolutionMetaModel.genuineEntity(TestdataEntity.class);
 
       @Test
       void hasProperParent() {
@@ -92,9 +93,10 @@ class PlanningSolutionMetaModelTest {
                 planningEntityMetaModel.variable("value");
         assertSoftly(
             softly -> {
+              softly.assertThat(planningEntityMetaModel.variables()).hasSize(1);
               softly
-                  .assertThat(planningEntityMetaModel.variables())
-                  .containsOnly(variableMetaModel);
+                  .assertThat(planningEntityMetaModel.variables().get(0))
+                  .isEqualTo(variableMetaModel);
               softly
                   .assertThat(planningEntityMetaModel.genuineVariables())
                   .containsOnly(variableMetaModel);
@@ -152,7 +154,7 @@ class PlanningSolutionMetaModelTest {
     @Test
     void hasProperGenuineEntities() {
       assertThat(planningSolutionMetaModel.genuineEntities())
-          .containsOnly(planningSolutionMetaModel.entity(TestdataListEntity.class));
+          .containsOnly(planningSolutionMetaModel.genuineEntity(TestdataListEntity.class));
     }
 
     @Test
@@ -172,8 +174,9 @@ class PlanningSolutionMetaModelTest {
     @DisplayName("with a genuine entity")
     class GenuinePlanningEntityMetaModelTest {
 
-      private final PlanningEntityMetaModel<TestdataListSolution, TestdataListEntity>
-          planningEntityMetaModel = planningSolutionMetaModel.entity(TestdataListEntity.class);
+      private final GenuineEntityMetaModel<TestdataListSolution, TestdataListEntity>
+          planningEntityMetaModel =
+              planningSolutionMetaModel.genuineEntity(TestdataListEntity.class);
 
       @Test
       void hasProperParent() {
@@ -197,9 +200,10 @@ class PlanningSolutionMetaModelTest {
                 planningEntityMetaModel.variable("valueList");
         assertSoftly(
             softly -> {
+              softly.assertThat(planningEntityMetaModel.variables()).hasSize(1);
               softly
-                  .assertThat(planningEntityMetaModel.variables())
-                  .containsOnly(variableMetaModel);
+                  .assertThat(planningEntityMetaModel.variables().get(0))
+                  .isEqualTo(variableMetaModel);
               softly
                   .assertThat(planningEntityMetaModel.genuineVariables())
                   .containsOnly(variableMetaModel);
@@ -239,8 +243,8 @@ class PlanningSolutionMetaModelTest {
     @DisplayName("with a shadow entity")
     class ShadowPlanningEntityMetaModelTest {
 
-      private final PlanningEntityMetaModel<TestdataListSolution, TestdataListValue>
-          planningEntityMetaModel = planningSolutionMetaModel.entity(TestdataListValue.class);
+      private final ShadowEntityMetaModel<TestdataListSolution, TestdataListValue>
+          planningEntityMetaModel = planningSolutionMetaModel.shadowEntity(TestdataListValue.class);
 
       @Test
       void hasProperParent() {
@@ -267,7 +271,6 @@ class PlanningSolutionMetaModelTest {
               softly
                   .assertThat(planningEntityMetaModel.variables())
                   .containsExactly(genuineVariableMetaModel, shadowVariableMetaModel);
-              softly.assertThat(planningEntityMetaModel.genuineVariables()).isEmpty();
             });
       }
 

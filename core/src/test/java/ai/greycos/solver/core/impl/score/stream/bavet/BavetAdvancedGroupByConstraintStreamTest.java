@@ -18,7 +18,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.ConstraintCollectors;
 import ai.greycos.solver.core.api.score.stream.Joiners;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;

@@ -1,9 +1,10 @@
 package ai.greycos.solver.core.impl.solver;
 
-import static ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner.DECREASING_DIFFICULTY;
-import static ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner.DECREASING_DIFFICULTY_IF_AVAILABLE;
+import static ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner.DESCENDING;
+import static ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner.DESCENDING_IF_AVAILABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
@@ -12,6 +13,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -19,20 +21,20 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.function.BooleanSupplier;
+import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
 
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.ConstraintMatchAwareIncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.constraint.Indictment;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.phase.PhaseCommand;
+import ai.greycos.solver.core.api.solver.phase.PhaseCommandContext;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
 import ai.greycos.solver.core.config.constructionheuristic.placer.QueuedValuePlacerConfig;
@@ -51,9 +53,6 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarChang
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainChangeMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainSwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.TailChainSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
@@ -62,7 +61,6 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubLis
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
-import ai.greycos.solver.core.config.heuristic.selector.value.chained.SubChainSelectorConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
@@ -70,25 +68,20 @@ import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
+import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorFactory;
 import ai.greycos.solver.core.impl.score.DummySimpleScoreEasyScoreCalculator;
 import ai.greycos.solver.core.impl.score.constraint.DefaultConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.constraint.DefaultIndictment;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.util.Pair;
-import ai.greycos.solver.core.preview.api.move.builtin.ChangeMoveDefinition;
-import ai.greycos.solver.core.preview.api.move.builtin.ListChangeMoveDefinition;
+import ai.greycos.solver.core.preview.api.move.builtin.Moves;
 import ai.greycos.solver.core.preview.api.neighborhood.Neighborhood;
 import ai.greycos.solver.core.preview.api.neighborhood.NeighborhoodBuilder;
 import ai.greycos.solver.core.preview.api.neighborhood.NeighborhoodProvider;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedAnchor;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution;
-import ai.greycos.solver.core.testcotwin.chained.multientity.TestdataChainedBrownEntity;
-import ai.greycos.solver.core.testcotwin.chained.multientity.TestdataChainedGreenEntity;
-import ai.greycos.solver.core.testcotwin.chained.multientity.TestdataChainedMultiEntityAnchor;
-import ai.greycos.solver.core.testcotwin.chained.multientity.TestdataChainedMultiEntitySolution;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
 import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
 import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
@@ -103,12 +96,17 @@ import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassi
 import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
 import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
 import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingValue;
 import ai.greycos.solver.core.testcotwin.list.valuerange.unassignedvar.TestdataListUnassignedEntityProvidingEntity;
 import ai.greycos.solver.core.testcotwin.list.valuerange.unassignedvar.TestdataListUnassignedEntityProvidingScoreCalculator;
 import ai.greycos.solver.core.testcotwin.list.valuerange.unassignedvar.TestdataListUnassignedEntityProvidingSolution;
 import ai.greycos.solver.core.testcotwin.mixed.multientity.TestdataMixedEntityEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.mixed.multientity.TestdataMixedMultiEntityFirstEntity;
+import ai.greycos.solver.core.testcotwin.mixed.multientity.TestdataMixedMultiEntityFirstValue;
 import ai.greycos.solver.core.testcotwin.mixed.multientity.TestdataMixedMultiEntitySecondEntity;
+import ai.greycos.solver.core.testcotwin.mixed.multientity.TestdataMixedMultiEntitySecondValue;
 import ai.greycos.solver.core.testcotwin.mixed.multientity.TestdataMixedMultiEntitySolution;
 import ai.greycos.solver.core.testcotwin.mixed.singleentity.MixedCustomMoveIteratorFactory;
 import ai.greycos.solver.core.testcotwin.mixed.singleentity.MixedCustomPhaseCommand;
@@ -117,6 +115,8 @@ import ai.greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedEntity;
 import ai.greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedOtherValue;
 import ai.greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedSolution;
 import ai.greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedValue;
+import ai.greycos.solver.core.testcotwin.mixed.singleentity.multipleprovider.TestdataMixedMultipleProviderEntity;
+import ai.greycos.solver.core.testcotwin.mixed.singleentity.multipleprovider.TestdataMixedMultipleProviderSolution;
 import ai.greycos.solver.core.testcotwin.mixed.singleentity.unassignedvar.TestdataUnassignedMixedEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.mixed.singleentity.unassignedvar.TestdataUnassignedMixedEntity;
 import ai.greycos.solver.core.testcotwin.mixed.singleentity.unassignedvar.TestdataUnassignedMixedSolution;
@@ -138,6 +138,10 @@ import ai.greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseR
 import ai.greycos.solver.core.testcotwin.sort.comparator.OneValuePerEntityComparatorEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.sort.comparator.TestdataComparatorSortableEntity;
 import ai.greycos.solver.core.testcotwin.sort.comparator.TestdataComparatorSortableSolution;
+import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.TestdataEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.TestdataEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.multivar.TestdataAllowsUnassignedMultiVarEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.multivar.TestdataAllowsUnassignedMultiVarEntityProvidingSolution;
 import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingEntity;
 import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingScoreCalculator;
 import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingSolution;
@@ -188,12 +192,9 @@ class DefaultSolverTest {
             .withPreviewFeature(PreviewFeature.NEIGHBORHOODS)
             .withSolutionClass(TestdataSolution.class)
             .withEntityClasses(TestdataEntity.class)
-            .withEasyScoreCalculatorClass(TestingEasyScoreCalculator.class)
+            .withEasyScoreCalculatorClass(DummyEasyScoreCalculator.class)
             .withTerminationConfig(
-                new TerminationConfig().withBestScoreLimit("0")) // Should get there quickly.
-            .withPhases(
-                new LocalSearchPhaseConfig()
-                    .withMoveProviderClass(TestingNeighborhoodProvider.class));
+                new TerminationConfig().withBestScoreLimit("0")); // Should get there quickly.
 
     var solution = TestdataSolution.generateSolution(3, 2);
 
@@ -203,7 +204,7 @@ class DefaultSolverTest {
   }
 
   @Test
-  void solveWithNeighborhoodsListVar() {
+  void solveWithDefaultNeighborhoodProviderListVar() {
     var solverConfig =
         new SolverConfig()
             .withPreviewFeature(PreviewFeature.NEIGHBORHOODS)
@@ -211,10 +212,7 @@ class DefaultSolverTest {
             .withEntityClasses(TestdataListEntity.class, TestdataListValue.class)
             .withEasyScoreCalculatorClass(TestingListEasyScoreCalculator.class)
             .withTerminationConfig(
-                new TerminationConfig().withBestScoreLimit("0")) // Should get there quickly.
-            .withPhases(
-                new LocalSearchPhaseConfig()
-                    .withMoveProviderClass(TestingListNeighborhoodProvider.class));
+                new TerminationConfig().withBestScoreLimit("0")); // Should get there quickly.
 
     // Both values are on the same entity; the goal of the solver is to move one of them to the
     // other entity.
@@ -224,7 +222,36 @@ class DefaultSolverTest {
     var e1 = solution.getEntityList().get(0);
     e1.addValue(v1);
     e1.addValue(v2);
-    solution.getEntityList().forEach(TestdataListEntity::setUpShadowVariables);
+    SolutionManager.updateShadowVariables(solution);
+
+    solution = PlannerTestUtils.solve(solverConfig, solution, true);
+    assertThat(solution).isNotNull();
+  }
+
+  @Test
+  void solveWithDefaultNeighborhoodProviderMixedModel() {
+    var solverConfig =
+        new SolverConfig()
+            .withPreviewFeature(PreviewFeature.NEIGHBORHOODS)
+            .withSolutionClass(TestdataMixedSolution.class)
+            .withEntityClasses(
+                TestdataMixedEntity.class, TestdataMixedValue.class, TestdataMixedOtherValue.class)
+            .withEasyScoreCalculatorClass(TestingMixedEasyScoreCalculator.class)
+            .withTerminationConfig(
+                new TerminationConfig().withBestScoreLimit("0")); // Should get there quickly.
+
+    var solution = TestdataMixedSolution.generateUninitializedSolution(2, 2, 2);
+    // Values are assigned in reverse; the solver needs to swap them.
+    var e1 = solution.getEntityList().get(0);
+    var e2 = solution.getEntityList().get(1);
+    e1.setBasicValue(solution.getOtherValueList().get(1));
+    e2.setBasicValue(solution.getOtherValueList().get(0));
+    // Both values are on the same entity; the goal of the solver is to move one of them to the
+    // other entity.
+    var v1 = solution.getValueList().get(0);
+    var v2 = solution.getValueList().get(1);
+    e1.setValueList(new ArrayList<>(List.of(v1, v2)));
+    SolutionManager.updateShadowVariables(solution);
 
     solution = PlannerTestUtils.solve(solverConfig, solution, true);
     assertThat(solution).isNotNull();
@@ -236,7 +263,7 @@ class DefaultSolverTest {
         new SolverConfig() // Preview feature not enabled.
             .withSolutionClass(TestdataSolution.class)
             .withEntityClasses(TestdataEntity.class)
-            .withEasyScoreCalculatorClass(TestingEasyScoreCalculator.class)
+            .withEasyScoreCalculatorClass(DummyEasyScoreCalculator.class)
             .withTerminationConfig(
                 new TerminationConfig().withBestScoreLimit("0")) // Should get there quickly.
             .withPhases(
@@ -244,8 +271,8 @@ class DefaultSolverTest {
                     .withMoveProviderClass(TestingNeighborhoodProvider.class));
 
     var solution = TestdataSolution.generateSolution(3, 2);
-    Assertions.assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution))
-        .isInstanceOf(IllegalStateException.class)
+    assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution))
+        .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("NEIGHBORHOODS");
   }
 
@@ -256,16 +283,68 @@ class DefaultSolverTest {
             .withPreviewFeature(PreviewFeature.NEIGHBORHOODS)
             .withSolutionClass(TestdataSolution.class)
             .withEntityClasses(TestdataEntity.class)
-            .withEasyScoreCalculatorClass(TestingEasyScoreCalculator.class)
+            .withEasyScoreCalculatorClass(DummyEasyScoreCalculator.class)
             .withTerminationConfig(
                 new TerminationConfig().withBestScoreLimit("0")) // Should get there quickly.
-            // Swaps are coming from move selectors, changes are coming from Neighborhoods.
+            // Swaps are coming from move selectors, other moves are coming from default
+            // Neighborhood provider.
             .withPhases(
-                new LocalSearchPhaseConfig()
-                    .withMoveSelectorConfig(new SwapMoveSelectorConfig())
-                    .withMoveProviderClass(TestingNeighborhoodProvider.class));
+                new LocalSearchPhaseConfig().withMoveSelectorConfig(new SwapMoveSelectorConfig()));
 
     var solution = TestdataSolution.generateSolution(3, 2);
+    var result = PlannerTestUtils.solve(solverConfig, solution);
+    Assertions.assertThat(result).isNotNull();
+  }
+
+  @Test
+  void solveWithDefaultNeighborhoodProvider() {
+    var solverConfig =
+        new SolverConfig()
+            .withPreviewFeature(PreviewFeature.NEIGHBORHOODS)
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(DummyEasyScoreCalculator.class)
+            .withTerminationConfig(
+                new TerminationConfig().withBestScoreLimit("0")); // Should get there quickly.
+
+    var solution = TestdataSolution.generateSolution(3, 2);
+    var result = PlannerTestUtils.solve(solverConfig, solution);
+    Assertions.assertThat(result).isNotNull();
+  }
+
+  @Test
+  void solveWithDefaultNeighborhoodProviderMultiVar() {
+    var solverConfig =
+        new SolverConfig()
+            .withPreviewFeature(PreviewFeature.NEIGHBORHOODS)
+            .withSolutionClass(TestdataMultiVarSolution.class)
+            .withEntityClasses(TestdataMultiVarEntity.class)
+            .withEasyScoreCalculatorClass(DummyMultiVarEasyScoreCalculator.class)
+            .withTerminationConfig(
+                new TerminationConfig().withBestScoreLimit("0")); // Should get there quickly.
+
+    var solution = TestdataMultiVarSolution.generateSolution(2, 3, 3);
+    var result = PlannerTestUtils.solve(solverConfig, solution);
+    Assertions.assertThat(result).isNotNull();
+  }
+
+  @Test
+  void solveWithDefaultNeighborhoodProviderMultiEntity() {
+    var solverConfig =
+        new SolverConfig()
+            .withPreviewFeature(PreviewFeature.NEIGHBORHOODS)
+            .withSolutionClass(TestdataMultiEntitySolution.class)
+            .withEntityClasses(TestdataLeadEntity.class, TestdataHerdEntity.class)
+            .withEasyScoreCalculatorClass(DummyMultiEntityEasyScoreCalculator.class)
+            .withTerminationConfig(
+                new TerminationConfig().withBestScoreLimit("0")); // Should get there quickly.
+
+    // Set each value to be the same, so that the solver has to split them.
+    var solution = TestdataMultiEntitySolution.generateUninitializedSolution(2, 2);
+    solution.getLeadEntityList().forEach(e -> e.setValue(solution.getValueList().get(0)));
+    solution.getHerdEntityList().forEach(e -> e.setLeadEntity(solution.getLeadEntityList().get(0)));
+
+    // Zero result means each value has different value.
     var result = PlannerTestUtils.solve(solverConfig, solution);
     Assertions.assertThat(result).isNotNull();
   }
@@ -281,7 +360,7 @@ class DefaultSolverTest {
     solution.setValueList(Arrays.asList(new TestdataValue("v1"), new TestdataValue("v2")));
     solution.setEntityList(Arrays.asList(new TestdataEntity("e1"), new TestdataEntity("e2")));
 
-    Assertions.assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
+    assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
         .hasMessageContaining("corruption")
         .hasMessageContaining(EnvironmentMode.FULL_ASSERT.name())
         .hasMessageContaining(EnvironmentMode.NO_ASSERT.name());
@@ -313,7 +392,7 @@ class DefaultSolverTest {
     solution.setValueList(Arrays.asList(new TestdataValue("v1"), new TestdataValue("v2")));
     solution.setEntityList(Arrays.asList(new TestdataEntity("e1"), new TestdataEntity("e2")));
 
-    Assertions.assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
+    assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
         .hasMessageContaining("Score corruption")
         .hasMessageContaining("workingScore")
         .hasMessageContaining("uncorruptedScore")
@@ -337,7 +416,7 @@ class DefaultSolverTest {
     entity2.setValue(value2);
     solution.setEntityList(List.of(entity1, entity2));
 
-    Assertions.assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
+    assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
         .hasMessageContaining("Score corruption")
         .hasMessageContaining("workingScore")
         .hasMessageContaining("uncorruptedScore")
@@ -358,7 +437,7 @@ class DefaultSolverTest {
     solution.setValueList(Arrays.asList(new TestdataValue("v1"), new TestdataValue("v2")));
     solution.setEntityList(Arrays.asList(new TestdataEntity("e1"), new TestdataEntity("e2")));
 
-    Assertions.assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
+    assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
         .hasMessageContaining("Score corruption")
         .hasMessageContaining("workingScore")
         .hasMessageContaining("uncorruptedScore")
@@ -387,7 +466,7 @@ class DefaultSolverTest {
     entity2.setValue(value2);
     solution.setEntityList(List.of(entity1, entity2));
 
-    Assertions.assertThatThrownBy(() -> solver.solve(solution))
+    assertThatThrownBy(() -> solver.solve(solution))
         .hasMessageContaining("Score corruption")
         .hasMessageContaining("workingScore")
         .hasMessageContaining("uncorruptedScore")
@@ -414,29 +493,9 @@ class DefaultSolverTest {
   private static final class FailCommand implements PhaseCommand<Object> {
 
     @Override
-    public void changeWorkingSolution(
-        ScoreDirector<Object> scoreDirector, BooleanSupplier isPhaseTerminated) {
+    public void changeWorkingSolution(PhaseCommandContext<Object> context) {
       fail("All phases should be skipped because there are no movable entities.");
     }
-  }
-
-  @Test
-  void solveChainedEmptyEntityList() {
-    var solverConfig =
-        PlannerTestUtils.buildSolverConfig(
-                TestdataChainedSolution.class, TestdataChainedEntity.class)
-            .withPhases(new CustomPhaseConfig().withCustomPhaseCommands(new FailCommand()));
-
-    var solution = new TestdataChainedSolution("s1");
-    solution.setChainedAnchorList(
-        Arrays.asList(new TestdataChainedAnchor("v1"), new TestdataChainedAnchor("v2")));
-    solution.setChainedEntityList(Collections.emptyList());
-
-    solution =
-        PlannerTestUtils.solveAssertingEvents(
-            solverConfig, solution, BestScoreChangedEvent.solvingStarted(SimpleScore.ZERO));
-    assertThat(solution).isNotNull();
-    assertThat(solution.getScore()).isNotNull();
   }
 
   @Test
@@ -659,11 +718,12 @@ class DefaultSolverTest {
     var value2 = new TestdataAllowsUnassignedValuesListValue("v2");
     var value3 = new TestdataAllowsUnassignedValuesListValue("v3");
     var value4 = new TestdataAllowsUnassignedValuesListValue("v4");
-    var entity = TestdataAllowsUnassignedValuesListEntity.createWithValues("e1", value1, value2);
+    var entity = new TestdataAllowsUnassignedValuesListEntity("e1", value1, value2);
 
     var solution = new TestdataAllowsUnassignedValuesListSolution();
     solution.setEntityList(List.of(entity));
     solution.setValueList(Arrays.asList(value1, value2, value3, value4));
+    SolutionManager.updateShadowVariables(solution);
 
     var bestSolution = PlannerTestUtils.solve(solverConfig, solution);
     assertSoftly(
@@ -694,11 +754,12 @@ class DefaultSolverTest {
     var value2 = new TestdataAllowsUnassignedValuesListValue("v2");
     var value3 = new TestdataAllowsUnassignedValuesListValue("v3");
     var value4 = new TestdataAllowsUnassignedValuesListValue("v4");
-    var entity = TestdataAllowsUnassignedValuesListEntity.createWithValues("e1", value1, value2);
+    var entity = new TestdataAllowsUnassignedValuesListEntity("e1", value1, value2);
 
     var solution = new TestdataAllowsUnassignedValuesListSolution();
     solution.setEntityList(List.of(entity));
     solution.setValueList(Arrays.asList(value1, value2, value3, value4));
+    SolutionManager.updateShadowVariables(solution);
 
     var bestSolution = PlannerTestUtils.solve(solverConfig, solution);
     assertSoftly(
@@ -718,7 +779,7 @@ class DefaultSolverTest {
    * processed. If the CH is terminated before all moves have been processed, the solution should
    * use the result of the previous fully completed step.
    *
-   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/1130">Github issue 1130</a>.
+   * @see GitHub issue 1130.
    */
   @Test
   void solveWithCHAllowsUnassignedValuesListVariableAndTerminateInStep() {
@@ -742,73 +803,15 @@ class DefaultSolverTest {
             .withPhases(constructionHeuristicConfig);
 
     var value1 = new TestdataAllowsUnassignedValuesListValue("v1");
-    var entity = TestdataAllowsUnassignedValuesListEntity.createWithValues("e1");
+    var entity = new TestdataAllowsUnassignedValuesListEntity("e1");
 
     var solution = new TestdataAllowsUnassignedValuesListSolution();
     solution.setEntityList(List.of(entity));
     solution.setValueList(List.of(value1));
+    SolutionManager.updateShadowVariables(solution);
 
     var bestSolution = PlannerTestUtils.solve(solverConfig, solution, true);
     assertThat(bestSolution.getScore()).isEqualTo(SimpleScore.of(1));
-  }
-
-  /** Verifies <a href="https://issues.redhat.com/browse/PLANNER-2798">PLANNER-2798</a>. */
-  @Test
-  void solveWithMultipleChainedPlanningEntities() {
-    var solverConfig =
-        new SolverConfig()
-            .withSolutionClass(TestdataChainedMultiEntitySolution.class)
-            .withEntityClasses(TestdataChainedBrownEntity.class, TestdataChainedGreenEntity.class)
-            .withEasyScoreCalculatorClass(DummySimpleScoreEasyScoreCalculator.class)
-            .withTerminationConfig(new TerminationConfig().withBestScoreLimit("0"))
-            .withPhases(
-                // Each planning entity class needs a separate CH phase.
-                new ConstructionHeuristicPhaseConfig()
-                    .withEntityPlacerConfig(
-                        new QueuedEntityPlacerConfig()
-                            .withEntitySelectorConfig(
-                                new EntitySelectorConfig(TestdataChainedBrownEntity.class))),
-                new ConstructionHeuristicPhaseConfig()
-                    .withEntityPlacerConfig(
-                        new QueuedEntityPlacerConfig()
-                            .withEntitySelectorConfig(
-                                new EntitySelectorConfig(TestdataChainedGreenEntity.class))),
-                new LocalSearchPhaseConfig()
-                    .withMoveSelectorConfig(
-                        new UnionMoveSelectorConfig()
-                            .withMoveSelectors(
-                                new ChangeMoveSelectorConfig(),
-                                new SwapMoveSelectorConfig(),
-                                // Include TailChainSwapMoveSelector, which uses
-                                // ExternalizedAnchorVariableSupply.
-                                new TailChainSwapMoveSelectorConfig()
-                                    .withEntitySelectorConfig(
-                                        new EntitySelectorConfig(TestdataChainedBrownEntity.class)),
-                                new TailChainSwapMoveSelectorConfig()
-                                    .withEntitySelectorConfig(
-                                        new EntitySelectorConfig(
-                                            TestdataChainedGreenEntity.class)))));
-    SolverFactory<TestdataChainedMultiEntitySolution> solverFactory =
-        SolverFactory.create(solverConfig);
-    var solver = solverFactory.buildSolver();
-
-    var anchors =
-        List.of(
-            new TestdataChainedMultiEntityAnchor("a1"),
-            new TestdataChainedMultiEntityAnchor("a2"),
-            new TestdataChainedMultiEntityAnchor("a3"));
-    var brownEntities =
-        List.of(new TestdataChainedBrownEntity("b1"), new TestdataChainedBrownEntity("b2"));
-    var greenEntities =
-        List.of(
-            new TestdataChainedGreenEntity("g1"),
-            new TestdataChainedGreenEntity("g2"),
-            new TestdataChainedGreenEntity("g3"));
-    var solution = new TestdataChainedMultiEntitySolution(brownEntities, greenEntities, anchors);
-
-    solution = solver.solve(solution);
-    assertThat(solution).isNotNull();
-    assertThat(solution.getScore()).isNotNull();
   }
 
   @Test
@@ -1031,56 +1034,6 @@ class DefaultSolverTest {
   }
 
   @ParameterizedTest
-  @MethodSource("generateMovesForChainedVar")
-  void solveChainedVarMoveConfig(MoveSelectorConfig moveSelectionConfig) {
-    // Local search
-    var localSearchConfig =
-        new LocalSearchPhaseConfig()
-            .withMoveSelectorConfig(moveSelectionConfig)
-            .withTerminationConfig(new TerminationConfig().withMoveCountLimit(40L));
-    // Solver config
-    var solverConfig =
-        PlannerTestUtils.buildSolverConfig(
-                TestdataChainedSolution.class, TestdataChainedEntity.class)
-            .withPhases(new ConstructionHeuristicPhaseConfig(), localSearchConfig)
-            .withEasyScoreCalculatorClass(DummySimpleScoreEasyScoreCalculator.class);
-
-    var problem = TestdataChainedSolution.generateUninitializedSolution(2, 2);
-    assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem)).doesNotThrowAnyException();
-  }
-
-  private static List<MoveSelectorConfig> generateMovesForChainedVar() {
-    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig>();
-    // Change - chained
-    allMoveSelectionConfigList.add(new ChangeMoveSelectorConfig());
-    // Swap - chained
-    allMoveSelectionConfigList.add(new SwapMoveSelectorConfig());
-    // Tail Chain - chained
-    allMoveSelectionConfigList.add(
-        new TailChainSwapMoveSelectorConfig()
-            .withValueSelectorConfig(new ValueSelectorConfig().withVariableName("chainedObject")));
-    // Subchain chain - chained
-    allMoveSelectionConfigList.add(
-        new SubChainChangeMoveSelectorConfig()
-            .withSubChainSelectorConfig(
-                new SubChainSelectorConfig()
-                    .withValueSelectorConfig(
-                        new ValueSelectorConfig().withVariableName("chainedObject")))
-            .withValueSelectorConfig(new ValueSelectorConfig().withVariableName("chainedObject")));
-    // Subchain swap - chained
-    allMoveSelectionConfigList.add(
-        new SubChainSwapMoveSelectorConfig()
-            .withSubChainSelectorConfig(
-                new SubChainSelectorConfig()
-                    .withValueSelectorConfig(
-                        new ValueSelectorConfig().withVariableName("chainedObject"))));
-    // Union of all moves
-    allMoveSelectionConfigList.add(
-        new UnionMoveSelectorConfig(List.copyOf(allMoveSelectionConfigList)));
-    return allMoveSelectionConfigList;
-  }
-
-  @ParameterizedTest
   @MethodSource("generateMovesForListVar")
   void solveListVarMoveConfig(MoveSelectorConfig moveSelectionConfig) {
     // Local search
@@ -1296,12 +1249,6 @@ class DefaultSolverTest {
     assertThat(solution.getEntityList().stream().filter(e -> e.getValueList().isEmpty()).count())
         .isEqualTo(expectedSize);
 
-    // Check custom listener execution
-    assertThat(
-            solution.getValueList().stream()
-                .allMatch(v -> v.getShadowVariableListenerValue().equals(v.getIndex())))
-        .isTrue();
-
     // Check cascading shadow variable
     assertThat(
             solution.getValueList().stream()
@@ -1436,8 +1383,8 @@ class DefaultSolverTest {
   private static List<Pair<EntitySorterManner, ValueSorterManner>> getSortMannerList() {
     var sortMannerList = new ArrayList<Pair<EntitySorterManner, ValueSorterManner>>();
     for (var valueSortManner : ValueSorterManner.values()) {
-      sortMannerList.add(new Pair<>(DECREASING_DIFFICULTY, valueSortManner));
-      sortMannerList.add(new Pair<>(DECREASING_DIFFICULTY_IF_AVAILABLE, valueSortManner));
+      sortMannerList.add(new Pair<>(DESCENDING, valueSortManner));
+      sortMannerList.add(new Pair<>(DESCENDING_IF_AVAILABLE, valueSortManner));
     }
     return sortMannerList;
   }
@@ -1486,6 +1433,21 @@ class DefaultSolverTest {
                             || e.getSecondBasicValue() == null
                             || e.getValueList().isEmpty()))
         .isEmpty();
+  }
+
+  @Test
+  void solveMixedModelWithMultipleProviders() {
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(
+                TestdataMixedMultipleProviderSolution.class,
+                TestdataMixedMultipleProviderEntity.class)
+            .withPhaseList(Collections.emptyList())
+            .withTerminationConfig(new TerminationConfig().withStepCountLimit(16))
+            .withEasyScoreCalculatorClass(DummySimpleScoreEasyScoreCalculator.class);
+
+    var problem = TestdataMixedMultipleProviderSolution.generateUninitializedSolution(3, 3, 3);
+    var solution = PlannerTestUtils.solve(solverConfig, problem);
+    assertThat(solution).isNotNull();
   }
 
   @Test
@@ -2181,6 +2143,162 @@ class DefaultSolverTest {
         .hasMessageContaining("it cannot be deduced automatically");
   }
 
+  @Test
+  void failBasicVariableInvalidValueRange() {
+    // Solver config
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(
+                TestdataEntityProvidingSolution.class, TestdataEntityProvidingEntity.class)
+            .withEasyScoreCalculatorClass(DummySimpleScoreEasyScoreCalculator.class);
+
+    var problem = new TestdataEntityProvidingSolution();
+    var v1 = new TestdataValue("1");
+    var v2 = new TestdataValue("2");
+    var v3 = new TestdataValue("3");
+    // The entity has an assigned value v3 that is not included in the entity value ranges
+    var e1 = new TestdataEntityProvidingEntity("e1", List.of(v1, v2), v3);
+    var e2 = new TestdataEntityProvidingEntity("e2", List.of(v1, v2), v1);
+    problem.setEntityList(new ArrayList<>(Arrays.asList(e1, e2)));
+
+    assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
+        .hasMessageContaining(
+            "The value (3) from the planning variable (value) has been assigned to the entity (e1), but it is outside of the related value range [1-2]");
+  }
+
+  @Test
+  void failMultipleBasicVariableInvalidValueRange() {
+    // Solver config
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(
+                TestdataAllowsUnassignedMultiVarEntityProvidingSolution.class,
+                TestdataAllowsUnassignedMultiVarEntityProvidingEntity.class)
+            .withEasyScoreCalculatorClass(DummySimpleScoreEasyScoreCalculator.class);
+
+    var problem = new TestdataAllowsUnassignedMultiVarEntityProvidingSolution();
+    var v1 = new TestdataValue("1");
+    var v2 = new TestdataValue("2");
+    var v3 = new TestdataValue("3");
+    // The entity has been assigned a value v3 for the second value range,
+    // which is not included in the entity's value ranges
+    var e1 =
+        new TestdataAllowsUnassignedMultiVarEntityProvidingEntity(
+            "e1", List.of(v1, v2, v3), v3, List.of(v1, v2), v3, v3);
+    var e2 =
+        new TestdataAllowsUnassignedMultiVarEntityProvidingEntity(
+            "e2", List.of(v1, v2, v3), v1, List.of(v1, v2, v3), v1, v1);
+    problem.setEntityList(new ArrayList<>(Arrays.asList(e1, e2)));
+
+    assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
+        .hasMessageContaining(
+            "The value (3) from the planning variable (secondValue) has been assigned to the entity (e1), but it is outside of the related value range [null]∪[1-2]");
+  }
+
+  @Test
+  void failListVariableInvalidValueRange() {
+    // Solver config
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(
+                TestdataListEntityProvidingSolution.class,
+                TestdataListEntityProvidingEntity.class,
+                TestdataListEntityProvidingValue.class)
+            .withEasyScoreCalculatorClass(DummySimpleScoreEasyScoreCalculator.class);
+
+    var problem = new TestdataListEntityProvidingSolution();
+    var v1 = new TestdataListEntityProvidingValue("1");
+    var v2 = new TestdataListEntityProvidingValue("2");
+    var v3 = new TestdataListEntityProvidingValue("3");
+    // The entity has an assigned value v3 that is not included in the entity value ranges
+    var e1 = new TestdataListEntityProvidingEntity("e1", List.of(v1, v2), List.of(v3));
+    var e2 = new TestdataListEntityProvidingEntity("e2", List.of(v1, v2), List.of(v1));
+    problem.setEntityList(new ArrayList<>(Arrays.asList(e1, e2)));
+
+    assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
+        .hasMessageContaining(
+            "The value (3) from the planning variable (valueList) has been assigned to the entity (e1), but it is outside of the related value range [1-2]");
+  }
+
+  @Test
+  void failMixedModelInvalidValueRange() {
+    // Solver config
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(
+                TestdataMixedMultiEntitySolution.class,
+                TestdataMixedMultiEntityFirstEntity.class,
+                TestdataMixedMultiEntitySecondEntity.class)
+            .withEasyScoreCalculatorClass(DummySimpleScoreEasyScoreCalculator.class);
+
+    var problem = new TestdataMixedMultiEntitySolution();
+    var v1a = new TestdataMixedMultiEntityFirstValue("1");
+    var v2a = new TestdataMixedMultiEntityFirstValue("2");
+    var v3a = new TestdataMixedMultiEntityFirstValue("3");
+    var v1b = new TestdataMixedMultiEntitySecondValue("1", 1);
+    var v2b = new TestdataMixedMultiEntitySecondValue("2", 1);
+    var v3b = new TestdataMixedMultiEntitySecondValue("3", 1);
+
+    // 1 - Invalid basic variable
+    var e1a = new TestdataMixedMultiEntityFirstEntity("e1", 1);
+    var e1b = new TestdataMixedMultiEntitySecondEntity("e1");
+    e1b.setBasicValue(v1b);
+    var e2b = new TestdataMixedMultiEntitySecondEntity("e2");
+    // Invalid assigned value
+    problem.setEntityList(List.of(e1a));
+    problem.setOtherEntityList(List.of(e1b, e2b));
+    problem.setValueList(List.of(v1a, v2a, v3a));
+    problem.setOtherValueList(List.of(v2b, v3b));
+
+    assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
+        .hasMessageContaining(
+            "The value (1) from the planning variable (basicValue) has been assigned to the entity (e1), but it is outside of the related value range [2-3]");
+    e1b.setBasicValue(null);
+
+    // 2 - Invalid list variable
+    // Invalid assigned value
+    e1a.getValueList().add(v1a);
+    problem.setEntityList(List.of(e1a));
+    problem.setOtherEntityList(List.of(e1b, e2b));
+    problem.setValueList(List.of(v2a, v3a));
+    problem.setOtherValueList(List.of(v2b, v3b));
+
+    assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
+        .hasMessageContaining(
+            "The value (1) from the planning variable (valueList) has been assigned to the entity (e1), but it is outside of the related value range [2-3]");
+  }
+
+  @Test
+  void failLocalSearchValueRangeAssertion() {
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(
+            TestdataListSolution.class, TestdataListEntity.class, TestdataListValue.class);
+    solverConfig.setEnvironmentMode(EnvironmentMode.FULL_ASSERT);
+    var localSearchPhaseConfig = new LocalSearchPhaseConfig();
+    localSearchPhaseConfig.setMoveSelectorConfig(
+        new MoveIteratorFactoryConfig().withMoveIteratorFactoryClass(InvalidMoveListFactory.class));
+    solverConfig.setPhaseConfigList(
+        List.of(new ConstructionHeuristicPhaseConfig(), localSearchPhaseConfig));
+
+    var problem = TestdataListSolution.generateUninitializedSolution(2, 2);
+    assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
+        .hasMessageContaining(
+            "The value (bad value) from the planning variable (valueList) has been assigned to the entity (Generated Entity 0), but it is outside of the related value range [Generated Value 0-Generated Value 1]");
+  }
+
+  @Test
+  void failCustomPhaseValueRangeAssertion() {
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(
+            TestdataListSolution.class, TestdataListEntity.class, TestdataListValue.class);
+    solverConfig.setEnvironmentMode(EnvironmentMode.STEP_ASSERT);
+    var customPhaseConfig =
+        new CustomPhaseConfig().withCustomPhaseCommands(new InvalidCustomPhaseCommand());
+    solverConfig.setPhaseConfigList(
+        List.of(new ConstructionHeuristicPhaseConfig(), customPhaseConfig));
+
+    var problem = TestdataListSolution.generateUninitializedSolution(2, 2);
+    assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
+        .hasMessageContaining(
+            "The value (bad value) from the planning variable (valueList) has been assigned to the entity (Generated Entity 0), but it is outside of the related value range [Generated Value 0-Generated Value 1]");
+  }
+
   public static final class MinimizeUnusedEntitiesEasyScoreCalculator
       implements EasyScoreCalculator<Object, SimpleScore> {
 
@@ -2322,29 +2440,23 @@ class DefaultSolverTest {
 
     @Override
     public Neighborhood defineNeighborhood(NeighborhoodBuilder<TestdataSolution> builder) {
-      var variableMetamodel =
-          builder
-              .getSolutionMetaModel()
-              .entity(TestdataEntity.class)
-              .<TestdataValue>basicVariable();
-      return builder.add(new ChangeMoveDefinition<>(variableMetamodel)).build();
+      throw new UnsupportedOperationException(); // The test will not get here.
     }
   }
 
-  /** Penalizes the number of values which are not the first value. */
-  public static final class TestingEasyScoreCalculator
+  public static final class DummyEasyScoreCalculator
       implements EasyScoreCalculator<TestdataSolution, SimpleScore> {
 
     @Override
-    public @NonNull SimpleScore calculateScore(@NonNull TestdataSolution testdataSolution) {
-      var valueList = testdataSolution.getValueList();
+    public @NonNull SimpleScore calculateScore(@NonNull TestdataSolution solution) {
+      var valueList = solution.getValueList();
       var firstValue = valueList.get(0);
       var valueSet = new HashSet<TestdataValue>(valueList.size());
-      testdataSolution
+      solution
           .getEntityList()
           .forEach(
               e -> {
-                if (e.getValue() != firstValue) {
+                if (e.getValue() == firstValue) {
                   valueSet.add(e.getValue());
                 }
               });
@@ -2352,15 +2464,58 @@ class DefaultSolverTest {
     }
   }
 
-  @NullMarked
-  public static final class TestingListNeighborhoodProvider
-      implements NeighborhoodProvider<TestdataListSolution> {
+  public static final class DummyMultiVarEasyScoreCalculator
+      implements EasyScoreCalculator<TestdataMultiVarSolution, SimpleScore> {
 
     @Override
-    public Neighborhood defineNeighborhood(NeighborhoodBuilder<TestdataListSolution> builder) {
-      var variableMetamodel =
-          builder.getSolutionMetaModel().entity(TestdataListEntity.class).listVariable();
-      return builder.add(new ListChangeMoveDefinition<>(variableMetamodel)).build();
+    public @NonNull SimpleScore calculateScore(@NonNull TestdataMultiVarSolution solution) {
+      var primaryValue = solution.getValueList().get(0);
+      var secondaryValue = solution.getValueList().get(1);
+      var otherValue = solution.getOtherValueList().get(0);
+      var valueSet = new HashSet<Pair<Object, Integer>>();
+      solution
+          .getMultiVarEntityList()
+          .forEach(
+              e -> {
+                if (e.getPrimaryValue() == primaryValue) {
+                  valueSet.add(new Pair<>(e.getPrimaryValue(), 1));
+                }
+                if (e.getSecondaryValue() == secondaryValue) {
+                  valueSet.add(new Pair<>(e.getSecondaryValue(), 2));
+                }
+                if (e.getTertiaryValueAllowedUnassigned() == otherValue) {
+                  valueSet.add(new Pair<>(e.getTertiaryValueAllowedUnassigned(), 2));
+                }
+              });
+      return SimpleScore.of(-valueSet.size());
+    }
+  }
+
+  public static final class DummyMultiEntityEasyScoreCalculator
+      implements EasyScoreCalculator<TestdataMultiEntitySolution, SimpleScore> {
+
+    @Override
+    public @NonNull SimpleScore calculateScore(@NonNull TestdataMultiEntitySolution solution) {
+      var primaryValue = solution.getValueList().get(0);
+      var secondaryValue = solution.getLeadEntityList().get(0);
+      var valueSet = new HashSet<>();
+      solution
+          .getLeadEntityList()
+          .forEach(
+              e -> {
+                if (e.getValue() == primaryValue) {
+                  valueSet.add(e.getValue());
+                }
+              });
+      solution
+          .getHerdEntityList()
+          .forEach(
+              e -> {
+                if (e.getLeadEntity() == secondaryValue) {
+                  valueSet.add(e.getLeadEntity());
+                }
+              });
+      return SimpleScore.of(-valueSet.size());
     }
   }
 
@@ -2385,6 +2540,86 @@ class DefaultSolverTest {
                 }
               });
       return SimpleScore.of(-sum.intValue());
+    }
+  }
+
+  public static final class TestingMixedEasyScoreCalculator
+      implements EasyScoreCalculator<TestdataMixedSolution, SimpleScore> {
+
+    @Override
+    public @NonNull SimpleScore calculateScore(@NonNull TestdataMixedSolution testdataSolution) {
+      var firstValue = testdataSolution.getOtherValueList().get(0);
+      var secondValue = testdataSolution.getOtherValueList().get(1);
+      var sum = new LongAdder();
+      testdataSolution
+          .getEntityList()
+          .forEach(
+              e -> {
+                var size = e.getValueList().size();
+                if (size > 1) {
+                  var penalty = Math.pow(size - 1, 2);
+                  sum.add((long) penalty);
+                }
+                if (e.getBasicValue() == firstValue) {
+                  sum.add(1L);
+                }
+                if (e.getSecondBasicValue() == secondValue) {
+                  sum.add(1L);
+                }
+              });
+      return SimpleScore.of(-sum.intValue());
+    }
+  }
+
+  public static final class InvalidCustomPhaseCommand
+      implements PhaseCommand<TestdataListSolution> {
+
+    @Override
+    public void changeWorkingSolution(PhaseCommandContext<TestdataListSolution> context) {
+      var variableMetaModel =
+          context
+              .getSolutionMetaModel()
+              .genuineEntity(TestdataListEntity.class)
+              .listVariable("valueList", TestdataListValue.class);
+      var entity = context.getWorkingSolution().getEntityList().get(0);
+      context.executeAndCalculateScore(
+          Moves.assign(variableMetaModel, new TestdataListValue("bad value"), entity, 0));
+    }
+  }
+
+  public static final class InvalidMoveListFactory
+      implements MoveIteratorFactory<TestdataListSolution, InvalidMove> {
+    @Override
+    public long getSize(ScoreDirector<TestdataListSolution> scoreDirector) {
+      return 1;
+    }
+
+    @Override
+    public Iterator<InvalidMove> createOriginalMoveIterator(
+        ScoreDirector<TestdataListSolution> scoreDirector) {
+      return List.of(new InvalidMove()).iterator();
+    }
+
+    @Override
+    public Iterator<InvalidMove> createRandomMoveIterator(
+        ScoreDirector<TestdataListSolution> scoreDirector, RandomGenerator workingRandom) {
+      return createOriginalMoveIterator(scoreDirector);
+    }
+  }
+
+  public static final class InvalidMove extends AbstractMove<TestdataListSolution> {
+
+    @Override
+    protected void doMoveOnGenuineVariables(ScoreDirector<TestdataListSolution> scoreDirector) {
+      var entity = scoreDirector.getWorkingSolution().getEntityList().get(0);
+      scoreDirector.beforeListVariableChanged(entity, "valueList", 0, 0);
+      entity.getValueList().add(new TestdataListValue("bad value"));
+      scoreDirector.afterListVariableChanged(entity, "valueList", 0, entity.getValueList().size());
+    }
+
+    @Override
+    public boolean isMoveDoable(ScoreDirector<TestdataListSolution> scoreDirector) {
+      return true;
     }
   }
 }

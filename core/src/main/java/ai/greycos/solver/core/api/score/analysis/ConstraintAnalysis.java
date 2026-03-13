@@ -11,14 +11,12 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.calculator.ConstraintMatchAwareIncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
 import ai.greycos.solver.core.api.solver.SolutionManager;
-import ai.greycos.solver.core.impl.score.constraint.DefaultConstraintMatchTotal;
 import ai.greycos.solver.core.impl.util.CollectionUtils;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -41,17 +39,18 @@ import org.jspecify.annotations.Nullable;
  *           #matches} list.
  *     </ul>
  */
+@NullMarked
 public record ConstraintAnalysis<Score_ extends Score<Score_>>(
-    @NonNull ConstraintRef constraintRef,
-    @NonNull Score_ weight,
-    @NonNull Score_ score,
+    ConstraintRef constraintRef,
+    Score_ weight,
+    Score_ score,
     @Nullable List<MatchAnalysis<Score_>> matches,
     int matchCount) {
 
   public ConstraintAnalysis(
-      @NonNull ConstraintRef constraintRef,
-      @NonNull Score_ weight,
-      @NonNull Score_ score,
+      ConstraintRef constraintRef,
+      Score_ weight,
+      Score_ score,
       @Nullable List<MatchAnalysis<Score_>> matches) {
     this(constraintRef, weight, score, matches, matches == null ? -1 : matches.size());
   }
@@ -63,19 +62,11 @@ public record ConstraintAnalysis<Score_ extends Score<Score_>>(
      * Easy doesn't support constraint analysis at all.
      * CS always provides constraint weights.
      */
-    Objects.requireNonNull(
-        weight,
-        () ->
-            """
-                The constraint weight must be non-null.
-                Maybe use a non-deprecated %s constructor in your %s implementation?"""
-                .formatted(
-                    DefaultConstraintMatchTotal.class.getSimpleName(),
-                    ConstraintMatchAwareIncrementalScoreCalculator.class.getSimpleName()));
+    Objects.requireNonNull(weight);
     Objects.requireNonNull(score);
   }
 
-  @NonNull ConstraintAnalysis<Score_> negate() {
+  ConstraintAnalysis<Score_> negate() {
     // Only used to compute diff; use semantics for non-diff.
     // A negative match count is only allowed within these semantics when matches == null.
     if (matches == null) {
@@ -90,8 +81,8 @@ public record ConstraintAnalysis<Score_ extends Score<Score_>>(
     }
   }
 
-  static <Score_ extends Score<Score_>> @NonNull ConstraintAnalysis<Score_> diff(
-      @NonNull ConstraintRef constraintRef,
+  static <Score_ extends Score<Score_>> ConstraintAnalysis<Score_> diff(
+      ConstraintRef constraintRef,
       @Nullable ConstraintAnalysis<Score_> constraintAnalysis,
       @Nullable ConstraintAnalysis<Score_> otherConstraintAnalysis) {
     if (constraintAnalysis == null) {
@@ -201,22 +192,11 @@ public record ConstraintAnalysis<Score_ extends Score<Score_>>(
   }
 
   /**
-   * Return package name of the constraint that this analysis is for.
-   *
-   * @return equal to {@code constraintRef.packageName()}
-   * @deprecated Do not rely on constraint package in user code.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  public String constraintPackage() {
-    return constraintRef.packageName();
-  }
-
-  /**
    * Return name of the constraint that this analysis is for.
    *
    * @return equal to {@code constraintRef.constraintName()}
    */
-  public @NonNull String constraintName() {
+  public String constraintName() {
     return constraintRef.constraintName();
   }
 
@@ -225,7 +205,7 @@ public record ConstraintAnalysis<Score_ extends Score<Score_>>(
    * ConstraintAnalysis} API. The string is built fresh every time the method is called.
    */
   @SuppressWarnings("java:S3457")
-  public @NonNull String summarize() {
+  public String summarize() {
     return buildSummary(DEFAULT_SUMMARY_CONSTRAINT_MATCH_LIMIT);
   }
 
@@ -238,7 +218,7 @@ public record ConstraintAnalysis<Score_ extends Score<Score_>>(
    * @param topLimit maximum number of constraint matches to display per constraint Use {@link
    *     Integer#MAX_VALUE} to show all matches.
    */
-  public @NonNull String summarize(int topLimit) {
+  public String summarize(int topLimit) {
     if (topLimit < 1) {
       throw new IllegalArgumentException(
           "The topLimit (%d) must be at least 1.".formatted(topLimit));
@@ -247,7 +227,7 @@ public record ConstraintAnalysis<Score_ extends Score<Score_>>(
   }
 
   @SuppressWarnings("java:S3457")
-  private @NonNull String buildSummary(int topLimit) {
+  private String buildSummary(int topLimit) {
     var summary = new StringBuilder();
     summary.append(
         """

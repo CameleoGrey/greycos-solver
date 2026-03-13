@@ -4,7 +4,6 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
@@ -14,6 +13,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSe
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 public class FilteringValueSelector<Solution_> extends AbstractDemandEnabledSelector<Solution_>
     implements ValueSelector<Solution_> {

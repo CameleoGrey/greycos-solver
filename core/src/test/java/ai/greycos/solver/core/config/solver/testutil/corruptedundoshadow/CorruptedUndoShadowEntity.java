@@ -1,8 +1,11 @@
 package ai.greycos.solver.core.config.solver.testutil.corruptedundoshadow;
 
+import java.util.Objects;
+
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 
 @PlanningEntity
@@ -11,9 +14,7 @@ public class CorruptedUndoShadowEntity {
 
   @PlanningVariable CorruptedUndoShadowValue value;
 
-  @ShadowVariable(
-      sourceVariableName = "value",
-      variableListenerClass = CorruptedUndoShadowVariableListener.class)
+  @ShadowVariable(supplierName = "updateValueClone")
   CorruptedUndoShadowValue valueClone;
 
   public CorruptedUndoShadowEntity() {}
@@ -36,6 +37,14 @@ public class CorruptedUndoShadowEntity {
 
   public void setValueClone(CorruptedUndoShadowValue valueClone) {
     this.valueClone = valueClone;
+  }
+
+  @ShadowSources("value")
+  public CorruptedUndoShadowValue updateValueClone() {
+    if (valueClone == null || !Objects.equals("v1", value.value)) {
+      return value;
+    }
+    return valueClone;
   }
 
   @Override

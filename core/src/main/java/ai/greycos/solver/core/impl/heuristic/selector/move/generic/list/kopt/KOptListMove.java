@@ -6,16 +6,16 @@ import java.util.Collections;
 import java.util.List;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 
 /**
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
-public final class KOptListMove<Solution_> extends AbstractMove<Solution_> {
+public class KOptListMove<Solution_> extends AbstractMove<Solution_> {
 
   private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final KOptDescriptor<?> descriptor;

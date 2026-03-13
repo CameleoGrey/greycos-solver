@@ -1,13 +1,13 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.factory;
 
 import java.util.Iterator;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * An interface to generate an {@link Iterator} of custom {@link Move}s.
@@ -49,7 +49,7 @@ public interface MoveIteratorFactory<Solution_, Move_ extends Move<Solution_>> {
    *     ScoreDirector#getWorkingSolution()} of which the {@link Move}s need to be generated
    * @return never null, an {@link Iterator} that will end sooner or later
    * @throws UnsupportedOperationException if only {@link #createRandomMoveIterator(ScoreDirector,
-   *     Random)} is supported
+   *     RandomGenerator)} is supported
    */
   Iterator<Move_> createOriginalMoveIterator(ScoreDirector<Solution_> scoreDirector);
 
@@ -58,12 +58,12 @@ public interface MoveIteratorFactory<Solution_, Move_ extends Move<Solution_>> {
    *
    * @param scoreDirector never null, the {@link ScoreDirector} which has the {@link
    *     ScoreDirector#getWorkingSolution()} of which the {@link Move}s need to be generated
-   * @param workingRandom never null, the {@link Random} to use when any random number is needed, so
-   *     {@link EnvironmentMode#PHASE_ASSERT} works correctly
+   * @param workingRandom never null, the {@link RandomGenerator} to use when any random number is
+   *     needed, so {@link EnvironmentMode#PHASE_ASSERT} works correctly
    * @return never null, an {@link Iterator} that is allowed (or even presumed) to be never ending
    * @throws UnsupportedOperationException if only {@link
    *     #createOriginalMoveIterator(ScoreDirector)} is supported
    */
   Iterator<Move_> createRandomMoveIterator(
-      ScoreDirector<Solution_> scoreDirector, Random workingRandom);
+      ScoreDirector<Solution_> scoreDirector, RandomGenerator workingRandom);
 }

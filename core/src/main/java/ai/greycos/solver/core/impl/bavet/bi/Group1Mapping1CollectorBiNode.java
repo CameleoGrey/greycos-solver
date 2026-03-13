@@ -34,11 +34,11 @@ public final class Group1Mapping1CollectorBiNode<OldA, OldB, A, B, ResultContain
 
   @Override
   protected BiTuple<A, B> createOutTuple(A a) {
-    return new BiTuple<>(a, null, outputStoreSize);
+    return BiTuple.of(a, outputStoreSize);
   }
 
   @Override
   protected void updateOutTupleToResult(BiTuple<A, B> outTuple, B b) {
-    outTuple.factB = b;
+    outTuple.setB(b);
   }
 }

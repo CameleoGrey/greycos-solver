@@ -16,6 +16,8 @@ import ai.greycos.solver.core.impl.bavet.NodeNetwork;
 import ai.greycos.solver.core.impl.bavet.common.AbstractNodeBuildHelper;
 import ai.greycos.solver.core.impl.bavet.common.BavetAbstractConstraintStream;
 import ai.greycos.solver.core.impl.bavet.common.BavetRootNode;
+import ai.greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler;
+import ai.greycos.solver.core.impl.bavet.common.InnerConstraintProfiler;
 import ai.greycos.solver.core.impl.bavet.uni.AbstractForEachUniNode;
 import ai.greycos.solver.core.impl.bavet.visual.NodeGraph;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
@@ -25,6 +27,7 @@ import ai.greycos.solver.core.impl.score.stream.bavet.common.ConstraintNodeBuild
 import ai.greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;
 import ai.greycos.solver.core.impl.util.CollectionUtils;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -36,11 +39,15 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
 
   private final SolutionDescriptor<Solution_> solutionDescriptor;
   private final ConstraintMetaModel constraintMetaModel;
+  private final @Nullable InnerConstraintProfiler constraintProfiler;
 
   public BavetConstraintSessionFactory(
-      SolutionDescriptor<Solution_> solutionDescriptor, ConstraintMetaModel constraintMetaModel) {
+      SolutionDescriptor<Solution_> solutionDescriptor,
+      ConstraintMetaModel constraintMetaModel,
+      boolean profilingEnabled) {
     this.solutionDescriptor = Objects.requireNonNull(solutionDescriptor);
     this.constraintMetaModel = Objects.requireNonNull(constraintMetaModel);
+    this.constraintProfiler = profilingEnabled ? new DefaultConstraintProfiler() : null;
   }
 
   // ************************************************************************
@@ -129,6 +136,7 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
             consistencyTracker,
             constraintStreamSet,
             scoreInliner,
+            constraintProfiler,
             nodeNetworkVisualizationConsumer));
   }
 
@@ -137,9 +145,11 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
       ConsistencyTracker<Solution_> consistencyTracker,
       Set<BavetAbstractConstraintStream<Solution_>> constraintStreamSet,
       AbstractScoreInliner<Score_> scoreInliner,
+      @Nullable InnerConstraintProfiler profiler,
       Consumer<String> nodeNetworkVisualizationConsumer) {
     var buildHelper =
-        new ConstraintNodeBuildHelper<>(consistencyTracker, constraintStreamSet, scoreInliner);
+        new ConstraintNodeBuildHelper<>(
+            consistencyTracker, constraintStreamSet, scoreInliner, profiler);
     var declaredClassToNodeMap = new LinkedHashMap<Class<?>, List<BavetRootNode<?>>>();
     var nodeList =
         buildHelper.buildNodeList(
@@ -186,6 +196,6 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
               .buildGraphvizDOT();
       nodeNetworkVisualizationConsumer.accept(visualisation);
     }
-    return AbstractNodeBuildHelper.buildNodeNetwork(nodeList, declaredClassToNodeMap);
+    return AbstractNodeBuildHelper.buildNodeNetwork(nodeList, declaredClassToNodeMap, buildHelper);
   }
 }

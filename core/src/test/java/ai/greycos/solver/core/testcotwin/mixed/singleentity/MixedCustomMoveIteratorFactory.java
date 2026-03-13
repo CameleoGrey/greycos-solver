@@ -1,12 +1,12 @@
 package ai.greycos.solver.core.testcotwin.mixed.singleentity;
 
 import java.util.Iterator;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 public class MixedCustomMoveIteratorFactory
     implements MoveIteratorFactory<TestdataMixedSolution, ChangeMove<TestdataMixedSolution>> {
@@ -23,7 +23,7 @@ public class MixedCustomMoveIteratorFactory
 
   @Override
   public Iterator<ChangeMove<TestdataMixedSolution>> createRandomMoveIterator(
-      ScoreDirector<TestdataMixedSolution> scoreDirector, Random workingRandom) {
+      ScoreDirector<TestdataMixedSolution> scoreDirector, RandomGenerator workingRandom) {
     var solutionDescriptor = TestdataMixedSolution.buildSolutionDescriptor();
     var variableDescriptor =
         solutionDescriptor

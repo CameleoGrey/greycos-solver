@@ -7,7 +7,7 @@ import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 
-@PlanningEntity(difficultyComparatorClass = TestdataMixedMultiEntityFirstEntityComparator.class)
+@PlanningEntity(comparatorClass = TestdataMixedMultiEntityFirstEntityComparator.class)
 public class TestdataMixedMultiEntityFirstEntity extends TestdataObject {
 
   @PlanningListVariable(valueRangeProviderRefs = "valueRange")

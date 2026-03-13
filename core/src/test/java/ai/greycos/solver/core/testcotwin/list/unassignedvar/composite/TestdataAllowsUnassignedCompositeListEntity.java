@@ -48,4 +48,8 @@ public class TestdataAllowsUnassignedCompositeListEntity extends TestdataObject 
   public List<TestdataListValue> getValueList() {
     return valueList;
   }
+
+  public void setValueList(List<TestdataListValue> valueList) {
+    this.valueList = valueList;
+  }
 }

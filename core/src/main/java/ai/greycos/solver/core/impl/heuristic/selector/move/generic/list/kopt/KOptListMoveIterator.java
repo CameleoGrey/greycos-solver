@@ -2,12 +2,12 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
-import ai.greycos.solver.core.impl.heuristic.move.NoChangeMove;
+import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 
@@ -18,7 +18,7 @@ import org.jspecify.annotations.Nullable;
 final class KOptListMoveIterator<Solution_, Node_>
     extends UpcomingSelectionIterator<Move<Solution_>> {
 
-  private final Random workingRandom;
+  private final RandomGenerator workingRandom;
   private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
   private final IterableValueSelector<Node_> originSelector;
@@ -29,7 +29,7 @@ final class KOptListMoveIterator<Solution_, Node_>
   private final int maxCyclesPatchedInInfeasibleMove;
 
   public KOptListMoveIterator(
-      Random workingRandom,
+      RandomGenerator workingRandom,
       ListVariableDescriptor<Solution_> listVariableDescriptor,
       ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply,
       IterableValueSelector<Node_> originSelector,
@@ -67,7 +67,7 @@ final class KOptListMoveIterator<Solution_, Node_>
     var descriptor = pickKOptMove(k);
     if (descriptor == null) {
       // Was unable to find a K-Opt move
-      return NoChangeMove.getInstance();
+      return SelectorBasedNoChangeMove.getInstance();
     }
     return descriptor.getKOptListMove(listVariableStateSupply);
   }
@@ -76,21 +76,21 @@ final class KOptListMoveIterator<Solution_, Node_>
     @SuppressWarnings("unchecked")
     var originIterator = (Iterator<Node_>) originSelector.iterator();
     if (!originIterator.hasNext()) {
-      return NoChangeMove.getInstance();
+      return SelectorBasedNoChangeMove.getInstance();
     }
     // The inner node may need the outer iterator to select the next value first
     Object firstValue = originIterator.next();
     @SuppressWarnings("unchecked")
     var valueIterator = (Iterator<Node_>) valueSelector.iterator();
     if (!valueIterator.hasNext()) {
-      return NoChangeMove.getInstance();
+      return SelectorBasedNoChangeMove.getInstance();
     }
     Object secondValue = valueIterator.next();
     var firstElementPosition =
         listVariableStateSupply.getElementPosition(firstValue).ensureAssigned();
     var secondElementPosition =
         listVariableStateSupply.getElementPosition(secondValue).ensureAssigned();
-    return new TwoOptListMove<>(
+    return new SelectorBasedTwoOptListMove<>(
         listVariableDescriptor,
         firstElementPosition.entity(),
         secondElementPosition.entity(),

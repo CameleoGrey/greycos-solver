@@ -20,9 +20,7 @@
     This module contains the JPA and Hibernate integration.
   </description>
   <url>https://github.com/CameleoGrey/greycos-solver</url>
-
   <properties>
-    <java.module.name>ai.greycos.solver.jpa</java.module.name>
     <enforcer.failOnDuplicatedClasses>false</enforcer.failOnDuplicatedClasses> <!-- Quarkus. -->
   </properties>
 
@@ -63,7 +61,7 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-junit5</artifactId>
+      <artifactId>quarkus-junit</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

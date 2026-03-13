@@ -28,11 +28,11 @@ import ai.greycos.solver.quarkus.testcotwin.shadowvariable.TestdataQuarkusShadow
 public class TestdataQuarkusShadowSolutionConfigResource {
   @Inject
   @Named("solver1")
-  SolverManager<TestdataQuarkusSolution, Long> solver1;
+  SolverManager<TestdataQuarkusSolution> solver1;
 
   @Inject
   @Named("solver2")
-  SolverManager<TestdataQuarkusShadowVariableSolution, Long> solver2;
+  SolverManager<TestdataQuarkusShadowVariableSolution> solver2;
 
   private static long count = 0;
 
@@ -50,8 +50,8 @@ public class TestdataQuarkusShadowSolutionConfigResource {
     problem.setEntityList(List.of(new TestdataQuarkusEntity()));
     SolverScope<TestdataQuarkusSolution> solverScopeSolver1 = mock(SolverScope.class);
     doReturn(500L).when(solverScopeSolver1).calculateTimeMillisSpentUpToNow();
-    DefaultSolverJob<TestdataQuarkusSolution, Long> jobSolver1 =
-        (DefaultSolverJob<TestdataQuarkusSolution, Long>) solver1.solve(++count, problem);
+    DefaultSolverJob<TestdataQuarkusSolution> jobSolver1 =
+        (DefaultSolverJob<TestdataQuarkusSolution>) solver1.solve(++count, problem);
     double gradientTimeSolver1 =
         jobSolver1.getSolverTermination().calculateSolverTimeGradient(solverScopeSolver1);
 
@@ -62,8 +62,8 @@ public class TestdataQuarkusShadowSolutionConfigResource {
     problemShadowVariable.setEntityList(List.of(new TestdataQuarkusShadowVariableEntity()));
     SolverScope<TestdataQuarkusShadowVariableSolution> solverScopeSolver2 = mock(SolverScope.class);
     doReturn(500L).when(solverScopeSolver2).calculateTimeMillisSpentUpToNow();
-    DefaultSolverJob<TestdataQuarkusShadowVariableSolution, Long> jobSolver2 =
-        (DefaultSolverJob<TestdataQuarkusShadowVariableSolution, Long>)
+    DefaultSolverJob<TestdataQuarkusShadowVariableSolution> jobSolver2 =
+        (DefaultSolverJob<TestdataQuarkusShadowVariableSolution>)
             solver2.solve(++count, problemShadowVariable);
     double gradientTimeSolver2 =
         jobSolver2.getSolverTermination().calculateSolverTimeGradient(solverScopeSolver2);

@@ -10,7 +10,7 @@ import ai.greycos.solver.core.testcotwin.common.TestSortableComparator;
 import ai.greycos.solver.core.testcotwin.common.TestSortableObject;
 import ai.greycos.solver.core.testcotwin.common.TestdataSortableValue;
 
-@PlanningEntity(difficultyComparatorClass = TestSortableComparator.class)
+@PlanningEntity(comparatorClass = TestSortableComparator.class)
 public class TestdataListSortableEntity extends TestdataObject implements TestSortableObject {
 
   @PlanningListVariable(

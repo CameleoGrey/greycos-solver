@@ -3,29 +3,12 @@ package ai.greycos.solver.core.impl.exhaustivesearch;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertCode;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.Collections;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
-import ai.greycos.solver.core.impl.exhaustivesearch.decider.ExhaustiveSearchDecider;
-import ai.greycos.solver.core.impl.exhaustivesearch.node.ExhaustiveSearchLayer;
-import ai.greycos.solver.core.impl.exhaustivesearch.node.ExhaustiveSearchNode;
-import ai.greycos.solver.core.impl.exhaustivesearch.scope.ExhaustiveSearchPhaseScope;
-import ai.greycos.solver.core.impl.exhaustivesearch.scope.ExhaustiveSearchStepScope;
-import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
-import ai.greycos.solver.core.impl.move.MoveDirector;
-import ai.greycos.solver.core.impl.score.director.InnerScore;
-import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
-import ai.greycos.solver.core.preview.api.move.Move;
-import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
@@ -41,77 +24,6 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 
 @Execution(ExecutionMode.CONCURRENT)
 class DefaultExhaustiveSearchPhaseTest {
-
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  @Test
-  void restoreWorkingSolution() {
-    var phaseScope = mock(ExhaustiveSearchPhaseScope.class);
-    var lastCompletedStepScope = mock(ExhaustiveSearchStepScope.class);
-    when(phaseScope.getLastCompletedStepScope()).thenReturn(lastCompletedStepScope);
-    var stepScope = mock(ExhaustiveSearchStepScope.class);
-    when(stepScope.getPhaseScope()).thenReturn(phaseScope);
-    var workingSolution = new TestdataSolution();
-    when(phaseScope.getWorkingSolution()).thenReturn(workingSolution);
-    InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector =
-        mock(InnerScoreDirector.class);
-    var moveDirector = new MoveDirector<>(scoreDirector);
-    doAnswer(
-            invocation -> {
-              var move = (Move<TestdataSolution>) invocation.getArgument(0);
-              moveDirector.execute(move);
-              return null;
-            })
-        .when(scoreDirector)
-        .executeMove(any());
-    when(phaseScope.getScoreDirector()).thenReturn((InnerScoreDirector) scoreDirector);
-
-    var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
-    when(phaseScope.getSolutionDescriptor()).thenReturn(solutionDescriptor);
-
-    var layer0 = new ExhaustiveSearchLayer(0, mock(Object.class));
-    var layer1 = new ExhaustiveSearchLayer(1, mock(Object.class));
-    var layer2 = new ExhaustiveSearchLayer(2, mock(Object.class));
-    var layer3 = new ExhaustiveSearchLayer(3, mock(Object.class));
-    var layer4 = new ExhaustiveSearchLayer(4, mock(Object.class));
-    var node0 = createNode(layer0, null);
-    var node1 = createNode(layer1, node0);
-    var node2A = createNode(layer2, node1);
-    var node3A = createNode(layer3, node2A); // oldNode
-    var node2B = createNode(layer2, node1);
-    var node3B = createNode(layer3, node2B);
-    var node4B = createNode(layer4, node3B); // newNode
-    node4B.setScore(InnerScore.withUnassignedCount(SimpleScore.of(7), 96));
-    when(lastCompletedStepScope.getExpandingNode()).thenReturn(node3A);
-    when(stepScope.getExpandingNode()).thenReturn(node4B);
-
-    DefaultExhaustiveSearchPhase<TestdataSolution> phase =
-        new DefaultExhaustiveSearchPhase.Builder<>(
-                0, "", null, null, mock(EntitySelector.class), mock(ExhaustiveSearchDecider.class))
-            .build();
-    phase.restoreWorkingSolution(stepScope);
-
-    verify(node0.getMove(), times(0)).execute(any(MutableSolutionView.class));
-    verify(node0.getUndoMove(), times(0)).execute(any(MutableSolutionView.class));
-    verify(node1.getMove(), times(0)).execute(any(MutableSolutionView.class));
-    verify(node1.getUndoMove(), times(0)).execute(any(MutableSolutionView.class));
-    verify(node2A.getMove(), times(0)).execute(any(MutableSolutionView.class));
-    verify(node2A.getUndoMove(), times(1)).execute(any(MutableSolutionView.class));
-    verify(node3A.getMove(), times(0)).execute(any(MutableSolutionView.class));
-    verify(node3A.getUndoMove(), times(1)).execute(any(MutableSolutionView.class));
-    verify(node2B.getMove(), times(1)).execute(any(MutableSolutionView.class));
-    verify(node2B.getUndoMove(), times(0)).execute(any(MutableSolutionView.class));
-    verify(node3B.getMove(), times(1)).execute(any(MutableSolutionView.class));
-    verify(node3B.getUndoMove(), times(0)).execute(any(MutableSolutionView.class));
-    verify(node4B.getMove(), times(1)).execute(any(MutableSolutionView.class));
-    verify(node4B.getUndoMove(), times(0)).execute(any(MutableSolutionView.class));
-  }
-
-  ExhaustiveSearchNode createNode(ExhaustiveSearchLayer layer, ExhaustiveSearchNode parentNode) {
-    var node = new ExhaustiveSearchNode(layer, parentNode);
-    node.setMove(mock(Move.class));
-    node.setUndoMove(mock(Move.class));
-    return node;
-  }
 
   @Test
   void solveWithInitializedEntities() {

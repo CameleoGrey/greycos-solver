@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Comparator;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.ExhaustiveSearchNode;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 

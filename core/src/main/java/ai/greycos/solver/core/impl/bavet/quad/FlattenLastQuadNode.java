@@ -2,12 +2,14 @@ package ai.greycos.solver.core.impl.bavet.quad;
 
 import java.util.function.Function;
 
-import ai.greycos.solver.core.impl.bavet.common.AbstractFlattenLastNode;
+import ai.greycos.solver.core.impl.bavet.common.AbstractFlattenNode;
 import ai.greycos.solver.core.impl.bavet.common.tuple.QuadTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 
 public final class FlattenLastQuadNode<A, B, C, D, NewD>
-    extends AbstractFlattenLastNode<QuadTuple<A, B, C, D>, QuadTuple<A, B, C, NewD>, D, NewD> {
+    extends AbstractFlattenNode<QuadTuple<A, B, C, D>, QuadTuple<A, B, C, NewD>, NewD> {
+
+  private final Function<D, Iterable<NewD>> mappingFunction;
 
   private final int outputStoreSize;
 
@@ -16,18 +18,19 @@ public final class FlattenLastQuadNode<A, B, C, D, NewD>
       Function<D, Iterable<NewD>> mappingFunction,
       TupleLifecycle<QuadTuple<A, B, C, NewD>> nextNodesTupleLifecycle,
       int outputStoreSize) {
-    super(flattenLastStoreIndex, mappingFunction, nextNodesTupleLifecycle);
+    super(flattenLastStoreIndex, nextNodesTupleLifecycle);
+    this.mappingFunction = mappingFunction;
     this.outputStoreSize = outputStoreSize;
   }
 
   @Override
   protected QuadTuple<A, B, C, NewD> createTuple(QuadTuple<A, B, C, D> originalTuple, NewD newD) {
-    return new QuadTuple<>(
-        originalTuple.factA, originalTuple.factB, originalTuple.factC, newD, outputStoreSize);
+    return QuadTuple.of(
+        originalTuple.getA(), originalTuple.getB(), originalTuple.getC(), newD, outputStoreSize);
   }
 
   @Override
-  protected D getEffectiveFactIn(QuadTuple<A, B, C, D> tuple) {
-    return tuple.factD;
+  protected Iterable<NewD> extractIterable(QuadTuple<A, B, C, D> tuple) {
+    return mappingFunction.apply(tuple.getD());
   }
 }

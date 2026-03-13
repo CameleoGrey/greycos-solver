@@ -10,8 +10,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
-import ai.greycos.solver.core.api.score.stream.ConstraintStreamImplType;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
@@ -24,10 +22,6 @@ public enum SolverProperty {
       value -> EnvironmentMode.valueOf(value.toString())),
   DAEMON("daemon", SolverProperties::setDaemon, value -> Boolean.valueOf(value.toString())),
   MOVE_THREAD_COUNT("move-thread-count", SolverProperties::setMoveThreadCount, Object::toString),
-  DOMAIN_ACCESS_TYPE(
-      "cotwin-access-type",
-      SolverProperties::setCotwinAccessType,
-      value -> CotwinAccessType.valueOf(value.toString())),
   ENABLED_PREVIEW_FEATURES(
       "enabled-preview-features",
       SolverProperties::setEnabledPreviewFeatures,
@@ -53,14 +47,6 @@ public enum SolverProperty {
               "Cannot find the Nearby Selection Meter class (%s).".formatted(value.toString()));
         }
       }),
-  /**
-   * @deprecated No longer used.
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  CONSTRAINT_STREAM_IMPL_TYPE(
-      "constraint-stream-impl-type",
-      SolverProperties::setConstraintStreamImplType,
-      value -> ConstraintStreamImplType.valueOf(value.toString())),
   CONSTRAINT_STREAM_AUTOMATIC_NODE_SHARING(
       "constraint-stream-automatic-node-sharing",
       SolverProperties::setConstraintStreamAutomaticNodeSharing,

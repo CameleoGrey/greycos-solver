@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common;
 
 import java.util.NoSuchElementException;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -18,24 +18,25 @@ public sealed interface UniqueRandomSequence<T>
 
   /**
    * Picks a random element from the list which has not already been removed. Once an element of the
-   * list is removed either via {@link #remove(Random)}, it will never be returned again by this
-   * method.
+   * list is removed either via {@link #remove(RandomGenerator)}, it will never be returned again by
+   * this method.
    *
    * @param workingRandom the random number generator to use
    * @return a random element from the list which has not already been removed
    * @throws NoSuchElementException if there are no more elements to pick from
    */
-  SequenceElement<T> pick(Random workingRandom);
+  SequenceElement<T> pick(RandomGenerator workingRandom);
 
   /**
    * Removes a random element in the underlying list which has not already been removed. Once this
-   * method returns, no subsequent {@link #pick(Random)} will return this element ever again.
+   * method returns, no subsequent {@link #pick(RandomGenerator)} will return this element ever
+   * again.
    *
    * @param workingRandom the random number generator to use
    * @return The element which exists in the original list at the removed index.
    * @throws NoSuchElementException if there are no more elements to pick from
    */
-  T remove(Random workingRandom);
+  T remove(RandomGenerator workingRandom);
 
   /**
    * Returns whether there are no more elements to pick from. In case of {@link

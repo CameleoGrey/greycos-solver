@@ -26,11 +26,9 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.XmlTransient;
 import jakarta.xml.bind.annotation.XmlType;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
-import ai.greycos.solver.core.api.score.stream.ConstraintStreamImplType;
 import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.AbstractConfig;
@@ -39,7 +37,6 @@ import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfi
 import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
-import ai.greycos.solver.core.config.phase.NoChangePhaseConfig;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
 import ai.greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
@@ -81,7 +78,6 @@ import org.slf4j.LoggerFactory;
       "monitoringConfig",
       "solutionClass",
       "entityClassList",
-      "cotwinAccessType",
       "scoreDirectorFactoryConfig",
       "terminationConfig",
       "nearbyDistanceMeterClass",
@@ -254,7 +250,6 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
   @XmlElement(name = "entityClass")
   protected List<Class<?>> entityClassList = null;
 
-  protected CotwinAccessType cotwinAccessType = null;
   @XmlTransient protected Map<String, MemberAccessor> gizmoMemberAccessorMap = null;
   @XmlTransient protected Map<String, SolutionCloner> gizmoSolutionClonerMap = null;
 
@@ -280,7 +275,6 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     @XmlElement(
         name = LocalSearchPhaseConfig.XML_ELEMENT_NAME,
         type = LocalSearchPhaseConfig.class),
-    @XmlElement(name = NoChangePhaseConfig.XML_ELEMENT_NAME, type = NoChangePhaseConfig.class),
     @XmlElement(
         name = PartitionedSearchPhaseConfig.XML_ELEMENT_NAME,
         type = PartitionedSearchPhaseConfig.class)
@@ -476,14 +470,6 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     this.entityClassList = entityClassList;
   }
 
-  public @Nullable CotwinAccessType getCotwinAccessType() {
-    return cotwinAccessType;
-  }
-
-  public void setCotwinAccessType(@Nullable CotwinAccessType cotwinAccessType) {
-    this.cotwinAccessType = cotwinAccessType;
-  }
-
   public @Nullable Map<@NonNull String, @NonNull MemberAccessor> getGizmoMemberAccessorMap() {
     return gizmoMemberAccessorMap;
   }
@@ -616,11 +602,6 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     return this;
   }
 
-  public @NonNull SolverConfig withCotwinAccessType(@NonNull CotwinAccessType cotwinAccessType) {
-    this.cotwinAccessType = cotwinAccessType;
-    return this;
-  }
-
   public @NonNull SolverConfig withGizmoMemberAccessorMap(
       @NonNull Map<@NonNull String, @NonNull MemberAccessor> memberAccessorMap) {
     this.gizmoMemberAccessorMap = memberAccessorMap;
@@ -667,15 +648,6 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
       scoreDirectorFactoryConfig = new ScoreDirectorFactoryConfig();
     }
     scoreDirectorFactoryConfig.setConstraintProviderClass(constraintProviderClass);
-    return this;
-  }
-
-  public @NonNull SolverConfig withConstraintStreamImplType(
-      @NonNull ConstraintStreamImplType constraintStreamImplType) {
-    if (scoreDirectorFactoryConfig == null) {
-      scoreDirectorFactoryConfig = new ScoreDirectorFactoryConfig();
-    }
-    scoreDirectorFactoryConfig.setConstraintStreamImplType(constraintStreamImplType);
     return this;
   }
 
@@ -749,10 +721,6 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     return Objects.requireNonNullElse(environmentMode, EnvironmentMode.PHASE_ASSERT);
   }
 
-  public @NonNull CotwinAccessType determineCotwinAccessType() {
-    return Objects.requireNonNullElse(cotwinAccessType, CotwinAccessType.REFLECTION);
-  }
-
   public @NonNull MonitoringConfig determineMetricConfig() {
     return Objects.requireNonNullElse(
         monitoringConfig,
@@ -818,9 +786,6 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     entityClassList =
         ConfigUtils.inheritMergeableListProperty(
             entityClassList, inheritedConfig.getEntityClassList());
-    cotwinAccessType =
-        ConfigUtils.inheritOverwritableProperty(
-            cotwinAccessType, inheritedConfig.getCotwinAccessType());
     gizmoMemberAccessorMap =
         ConfigUtils.inheritMergeableMapProperty(
             gizmoMemberAccessorMap, inheritedConfig.getGizmoMemberAccessorMap());

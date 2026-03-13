@@ -12,7 +12,7 @@ import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintBuilder;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
 /**
  * Used to build a {@link Constraint} out of a {@link QuadConstraintStream}, applying optional
@@ -25,6 +25,7 @@ import org.jspecify.annotations.NonNull;
  * <p>Unless {@link #indictWith(QuadFunction)} is called, the default indicted objects' mapping will
  * be used. The function takes the input arguments and converts them into a {@link java.util.List}.
  */
+@NullMarked
 public interface QuadConstraintBuilder<A, B, C, D, Score_ extends Score<Score_>>
     extends ConstraintBuilder {
 
@@ -35,9 +36,8 @@ public interface QuadConstraintBuilder<A, B, C, D, Score_ extends Score<Score_>>
    * @see ConstraintMatch
    */
   <ConstraintJustification_ extends ConstraintJustification>
-      @NonNull QuadConstraintBuilder<A, B, C, D, Score_> justifyWith(
-          @NonNull PentaFunction<A, B, C, D, Score_, ConstraintJustification_>
-              justificationMapping);
+      QuadConstraintBuilder<A, B, C, D, Score_> justifyWith(
+          PentaFunction<A, B, C, D, Score_, ConstraintJustification_> justificationMapping);
 
   /**
    * Sets a custom function to mark any object returned by it as responsible for causing the
@@ -46,6 +46,6 @@ public interface QuadConstraintBuilder<A, B, C, D, Score_ extends Score<Score_>>
    *
    * @return this
    */
-  @NonNull QuadConstraintBuilder<A, B, C, D, Score_> indictWith(
-      @NonNull QuadFunction<A, B, C, D, Collection<Object>> indictedObjectsMapping);
+  QuadConstraintBuilder<A, B, C, D, Score_> indictWith(
+      QuadFunction<A, B, C, D, Collection<Object>> indictedObjectsMapping);
 }

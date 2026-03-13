@@ -70,7 +70,7 @@ class GenericJaxbIOTest {
     assertThatExceptionOfType(GreyCOSXmlSerializationException.class)
         .isThrownBy(() -> xmlIO.readOverridingNamespace(new StringReader(maliciousXml)))
         .withRootCauseExactlyInstanceOf(SAXParseException.class)
-        .withStackTraceContaining("accessExternalDTD");
+        .withStackTraceContaining("disallow-doctype-decl");
   }
 
   @XmlRootElement

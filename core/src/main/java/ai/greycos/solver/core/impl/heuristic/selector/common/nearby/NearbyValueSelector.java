@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import java.util.Iterator;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
@@ -253,7 +254,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
    */
   private class RandomNearbyValueIterator implements Iterator<Object> {
 
-    private final java.util.Random random;
+    private final RandomGenerator random;
     private final @NonNull Object entity;
     private final Iterator<Object> replayingOriginIterator;
     private final int nearbySize;
@@ -261,7 +262,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
     // Origin caching - origin is selected once from replaying iterator
     private Object origin = null;
 
-    public RandomNearbyValueIterator(java.util.Random random, @NonNull Object entity) {
+    public RandomNearbyValueIterator(RandomGenerator random, @NonNull Object entity) {
       this.random = random;
       this.entity = entity;
       this.replayingOriginIterator = originValueSelector.iterator(entity);

@@ -2,15 +2,18 @@ package ai.greycos.solver.core.impl.score.stream.common.inliner;
 
 import java.util.Map;
 
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 final class HardSoftScoreInliner extends AbstractScoreInliner<HardSoftScore> {
 
-  int hardScore;
-  int softScore;
+  long hardScore;
+  long softScore;
 
   HardSoftScoreInliner(
       Map<Constraint, HardSoftScore> constraintWeightMap,
@@ -21,8 +24,8 @@ final class HardSoftScoreInliner extends AbstractScoreInliner<HardSoftScore> {
   @Override
   public WeightedScoreImpacter<HardSoftScore, ?> buildWeightedScoreImpacter(
       AbstractConstraint<?, ?, ?> constraint) {
-    HardSoftScore constraintWeight = constraintWeightMap.get(constraint);
-    HardSoftScoreContext context = new HardSoftScoreContext(this, constraint, constraintWeight);
+    var constraintWeight = constraintWeightMap.get(constraint);
+    var context = new HardSoftScoreContext(this, constraint, constraintWeight);
     if (constraintWeight.softScore() == 0) {
       return WeightedScoreImpacter.of(context, HardSoftScoreContext::changeHardScoreBy);
     } else if (constraintWeight.hardScore() == 0) {

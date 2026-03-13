@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
-import ai.greycos.solver.core.api.score.stream.ConstraintStreamImplType;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
@@ -39,26 +37,10 @@ public class SolverProperties {
    */
   private String moveThreadCount;
 
-  /**
-   * Determines how to access the fields and methods of cotwin classes. Defaults to REFLECTION.
-   *
-   * <p>To use GIZMO, io.quarkus.gizmo:gizmo must be in your classpath, and all planning annotations
-   * must be on public members.
-   */
-  private CotwinAccessType cotwinAccessType;
-
   private List<PreviewFeature> enabledPreviewFeatures;
 
   /** Enable the Nearby Selection quick configuration. */
   private Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass;
-
-  /**
-   * What constraint stream implementation to use. Defaults to BAVET.
-   *
-   * @deprecated No longer used.
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  private ConstraintStreamImplType constraintStreamImplType;
 
   /**
    * Enable rewriting the {@link ai.greycos.solver.core.api.score.stream.ConstraintProvider} class
@@ -109,14 +91,6 @@ public class SolverProperties {
     this.moveThreadCount = moveThreadCount;
   }
 
-  public CotwinAccessType getCotwinAccessType() {
-    return cotwinAccessType;
-  }
-
-  public void setCotwinAccessType(CotwinAccessType cotwinAccessType) {
-    this.cotwinAccessType = cotwinAccessType;
-  }
-
   public List<PreviewFeature> getEnabledPreviewFeatures() {
     return enabledPreviewFeatures;
   }
@@ -132,22 +106,6 @@ public class SolverProperties {
   public void setNearbyDistanceMeterClass(
       Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass) {
     this.nearbyDistanceMeterClass = nearbyDistanceMeterClass;
-  }
-
-  /**
-   * @deprecated No longer used.
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  public ConstraintStreamImplType getConstraintStreamImplType() {
-    return constraintStreamImplType;
-  }
-
-  /**
-   * @deprecated No longer used.
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  public void setConstraintStreamImplType(ConstraintStreamImplType constraintStreamImplType) {
-    this.constraintStreamImplType = constraintStreamImplType;
   }
 
   public Boolean getConstraintStreamAutomaticNodeSharing() {

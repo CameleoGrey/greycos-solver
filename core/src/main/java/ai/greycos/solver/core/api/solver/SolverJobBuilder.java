@@ -1,7 +1,6 @@
 package ai.greycos.solver.core.api.solver;
 
 import java.time.Duration;
-import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -32,9 +31,9 @@ import org.jspecify.annotations.NullMarked;
  * <p>Then solve it by calling {@link #run()}.
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
- * @param <ProblemId_> the ID type of submitted problem, such as {@link Long} or {@link UUID}.
  */
-public interface SolverJobBuilder<Solution_, ProblemId_> {
+@NullMarked
+public interface SolverJobBuilder<Solution_> {
 
   /**
    * Sets the problem id.
@@ -42,7 +41,7 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
    * @param problemId a ID for each planning problem. This must be unique.
    * @return this
    */
-  @NonNull SolverJobBuilder<Solution_, ProblemId_> withProblemId(@NonNull ProblemId_ problemId);
+  SolverJobBuilder<Solution_> withProblemId(Object problemId);
 
   /**
    * Sets the problem definition.
@@ -50,7 +49,7 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
    * @param problem a {@link PlanningSolution} usually with uninitialized planning variables
    * @return this
    */
-  default @NonNull SolverJobBuilder<Solution_, ProblemId_> withProblem(@NonNull Solution_ problem) {
+  default SolverJobBuilder<Solution_> withProblem(Solution_ problem) {
     return withProblemFinder(id -> problem);
   }
 
@@ -61,20 +60,8 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
    *     uninitialized planning variables
    * @return this
    */
-  @NonNull SolverJobBuilder<Solution_, ProblemId_> withProblemFinder(
-      @NonNull Function<? super ProblemId_, ? extends Solution_> problemFinder);
-
-  /**
-   * As defined by {@link #withBestSolutionEventConsumer(Consumer)}.
-   *
-   * @deprecated Use {@link #withBestSolutionEventConsumer(Consumer)} instead.
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  @NonNull
-  default SolverJobBuilder<Solution_, ProblemId_> withBestSolutionConsumer(
-      @NonNull Consumer<? super Solution_> bestSolutionConsumer) {
-    return withBestSolutionEventConsumer(event -> bestSolutionConsumer.accept(event.solution()));
-  }
+  SolverJobBuilder<Solution_> withProblemFinder(
+      Function<? super Object, ? extends Solution_> problemFinder);
 
   /**
    * Sets the best solution consumer, which may be called multiple times during the solving process.
@@ -87,8 +74,8 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
    *     thread
    * @return this
    */
-  @NonNull SolverJobBuilder<Solution_, ProblemId_> withBestSolutionEventConsumer(
-      @NonNull Consumer<NewBestSolutionEvent<Solution_>> bestSolutionEventConsumer);
+  SolverJobBuilder<Solution_> withBestSolutionEventConsumer(
+      Consumer<NewBestSolutionEvent<Solution_>> bestSolutionEventConsumer);
 
   /**
    * Sets a throttled best solution consumer.
@@ -118,25 +105,12 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
    * @return this
    */
   @NonNull
-  default SolverJobBuilder<Solution_, ProblemId_> withThrottledBestSolutionEventConsumer(
+  default SolverJobBuilder<Solution_> withThrottledBestSolutionEventConsumer(
       @NonNull Consumer<NewBestSolutionEvent<Solution_>> delegate,
       @NonNull Duration throttleDuration) {
     ThrottlingBestSolutionEventConsumer<Solution_> throttledConsumer =
         ThrottlingBestSolutionEventConsumer.of(delegate, throttleDuration);
     return withBestSolutionEventConsumer(throttledConsumer);
-  }
-
-  /**
-   * As defined by {@link #withFinalBestSolutionEventConsumer}.
-   *
-   * @deprecated Use {@link #withFinalBestSolutionEventConsumer(Consumer)} instead.
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  @NonNull
-  default SolverJobBuilder<Solution_, ProblemId_> withFinalBestSolutionConsumer(
-      @NonNull Consumer<? super Solution_> finalBestSolutionConsumer) {
-    return withFinalBestSolutionEventConsumer(
-        event -> finalBestSolutionConsumer.accept(event.solution()));
   }
 
   /**
@@ -147,39 +121,8 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
    *     consumer thread
    * @return this
    */
-  @NonNull SolverJobBuilder<Solution_, ProblemId_> withFinalBestSolutionEventConsumer(
-      @NonNull Consumer<FinalBestSolutionEvent<Solution_>> finalBestSolutionEventConsumer);
-
-  /**
-   * As defined by {@link #withFirstInitializedSolutionEventConsumer(Consumer)}.
-   *
-   * @deprecated Use {@link #withFirstInitializedSolutionEventConsumer(Consumer)} instead.
-   */
-  @Deprecated(forRemoval = true, since = "1.19.0")
-  @NonNull
-  default SolverJobBuilder<Solution_, ProblemId_> withFirstInitializedSolutionConsumer(
-      @NonNull Consumer<? super Solution_> firstInitializedSolutionConsumer) {
-    return withFirstInitializedSolutionEventConsumer(
-        event -> firstInitializedSolutionConsumer.accept(event.solution()));
-  }
-
-  /**
-   * As defined by {@link #withFirstInitializedSolutionEventConsumer(Consumer)}.
-   *
-   * @deprecated Use {@link #withFirstInitializedSolutionEventConsumer(Consumer)} instead.
-   * @param firstInitializedSolutionConsumer called only once before starting the first Local Search
-   *     phase
-   * @return this
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  @NonNull
-  default SolverJobBuilder<Solution_, ProblemId_> withFirstInitializedSolutionConsumer(
-      @NonNull FirstInitializedSolutionConsumer<? super Solution_>
-          firstInitializedSolutionConsumer) {
-    return withFirstInitializedSolutionEventConsumer(
-        event ->
-            firstInitializedSolutionConsumer.accept(event.solution(), event.isTerminatedEarly()));
-  }
+  SolverJobBuilder<Solution_> withFinalBestSolutionEventConsumer(
+      Consumer<FinalBestSolutionEvent<Solution_>> finalBestSolutionEventConsumer);
 
   /**
    * Sets the consumer of the first initialized solution, the beginning of the actual optimization
@@ -190,21 +133,8 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
    *     Search phase
    * @return this
    */
-  SolverJobBuilder<Solution_, ProblemId_> withFirstInitializedSolutionEventConsumer(
-      @NonNull Consumer<FirstInitializedSolutionEvent<Solution_>>
-          firstInitializedSolutionEventConsumer);
-
-  /**
-   * As defined by {@link #withSolverJobStartedEventConsumer(Consumer)}.
-   *
-   * @deprecated Use {@link #withSolverJobStartedEventConsumer(Consumer)} instead.
-   */
-  @Deprecated(forRemoval = true, since = "1.28.0")
-  default SolverJobBuilder<Solution_, ProblemId_> withSolverJobStartedConsumer(
-      Consumer<? super Solution_> solverJobStartedConsumer) {
-    return withSolverJobStartedEventConsumer(
-        event -> solverJobStartedConsumer.accept(event.solution()));
-  }
+  SolverJobBuilder<Solution_> withFirstInitializedSolutionEventConsumer(
+      Consumer<FirstInitializedSolutionEvent<Solution_>> firstInitializedSolutionEventConsumer);
 
   /**
    * Sets the consumer for when the solver starts its solving process.
@@ -213,7 +143,7 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
    *     solving process
    * @return this, never null
    */
-  SolverJobBuilder<Solution_, ProblemId_> withSolverJobStartedEventConsumer(
+  SolverJobBuilder<Solution_> withSolverJobStartedEventConsumer(
       Consumer<SolverJobStartedEvent<Solution_>> solverJobStartedConsumer);
 
   /**
@@ -223,8 +153,8 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
    *     the exception as an error.
    * @return this
    */
-  @NonNull SolverJobBuilder<Solution_, ProblemId_> withExceptionHandler(
-      @NonNull BiConsumer<? super ProblemId_, ? super Throwable> exceptionHandler);
+  SolverJobBuilder<Solution_> withExceptionHandler(
+      BiConsumer<? super Object, ? super Throwable> exceptionHandler);
 
   /**
    * Sets the solver config override.
@@ -232,35 +162,12 @@ public interface SolverJobBuilder<Solution_, ProblemId_> {
    * @param solverConfigOverride allows overriding the default behavior of {@link Solver}
    * @return this
    */
-  @NonNull SolverJobBuilder<Solution_, ProblemId_> withConfigOverride(
-      @NonNull SolverConfigOverride<Solution_> solverConfigOverride);
+  SolverJobBuilder<Solution_> withConfigOverride(
+      SolverConfigOverride<Solution_> solverConfigOverride);
 
   /**
    * Submits a planning problem to solve and returns immediately. The planning problem is solved on
    * a solver {@link Thread}, as soon as one is available.
    */
-  @NonNull SolverJob<Solution_, ProblemId_> run();
-
-  /**
-   * A consumer that accepts the first initialized solution.
-   *
-   * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
-   */
-  @NullMarked
-  interface FirstInitializedSolutionConsumer<Solution_> {
-
-    /**
-     * Accepts the first solution after initialization.
-     *
-     * @param solution the first solution after initialization phase(s) finished
-     * @param isTerminatedEarly false in most common cases. True if the solver was terminated early,
-     *     before the solution could be fully initialized, typically as a result of construction
-     *     heuristic running for too long and tripping a time-based termination condition. In that
-     *     case, there will likely be no other phase after this one and the solver will terminate as
-     *     well, without launching any optimizing phase. Therefore, the solution captured with
-     *     {@link SolverJobBuilder#withBestSolutionConsumer(Consumer)} will likely be unchanged from
-     *     this one.
-     */
-    void accept(Solution_ solution, boolean isTerminatedEarly);
-  }
+  SolverJob<Solution_> run();
 }

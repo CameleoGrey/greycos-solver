@@ -5,17 +5,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.cotwin.common.ComparatorFactory;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
@@ -26,12 +28,12 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorF
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveListFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
 import ai.greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedChildEntity;
 import ai.greycos.solver.quarkus.gizmo.GreyCOSGizmoBeanFactory;
-import ai.greycos.solver.quarkus.testcotwin.gizmo.DummyVariableListener;
 
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
@@ -59,7 +61,6 @@ class GreyCOSProcessorGeneratedGizmoSupplierTest {
                           TestdataBothAnnotatedChildEntity.class,
                           DummyInterfaceEntity.class,
                           DummyAbstractEntity.class,
-                          DummyVariableListener.class,
                           DummyChangeMoveFilter.class,
                           DummyConstraintProvider.class,
                           DummyEasyScoreCalculator.class,
@@ -91,7 +92,6 @@ class GreyCOSProcessorGeneratedGizmoSupplierTest {
     assertFactoryContains(DummyMoveListFactory.class);
     assertFactoryContains(DummySolutionPartitioner.class);
     assertFactoryContains(DummyValueFilter.class);
-    assertFactoryContains(DummyVariableListener.class);
     assertFactoryContains(DummyEntityComparator.class);
     assertFactoryContains(DummyAbstractEntityComparatorFactory.class);
 
@@ -118,24 +118,40 @@ class GreyCOSProcessorGeneratedGizmoSupplierTest {
 
   @PlanningEntity(comparatorClass = DummyEntityComparator.class)
   public interface DummyInterfaceEntity {
-    @ShadowVariable(
-        variableListenerClass = DummyVariableListener.class,
-        sourceEntityClass = TestdataEntity.class,
-        sourceVariableName = "value")
+    @ValueRangeProvider
+    List<String> getValues();
+
+    @PlanningVariable
+    String getValue();
+
+    void setValue(String value);
+
+    @ShadowVariable(supplierName = "updateLength")
     Integer getLength();
 
     void setLength(Integer length);
+
+    @ShadowSources("value")
+    Integer updateLength();
   }
 
   @PlanningEntity(comparatorFactoryClass = DummyAbstractEntityComparatorFactory.class)
   public abstract static class DummyAbstractEntity {
-    @ShadowVariable(
-        variableListenerClass = DummyVariableListener.class,
-        sourceEntityClass = TestdataEntity.class,
-        sourceVariableName = "value")
+    @ValueRangeProvider
+    public abstract List<String> getValues();
+
+    @PlanningVariable
+    public abstract String getValue();
+
+    public abstract void setValue(String value);
+
+    @ShadowVariable(supplierName = "updateLength")
     public abstract Integer getLength();
 
     public abstract void setLength(Integer length);
+
+    @ShadowSources("value")
+    public abstract Integer updateLength();
   }
 
   public static class DummySolutionPartitioner implements SolutionPartitioner<TestdataSolution> {
@@ -243,7 +259,7 @@ class GreyCOSProcessorGeneratedGizmoSupplierTest {
 
     @Override
     public Iterator<DummyMove> createRandomMoveIterator(
-        ScoreDirector<TestdataSolution> scoreDirector, Random workingRandom) {
+        ScoreDirector<TestdataSolution> scoreDirector, RandomGenerator workingRandom) {
       return null;
     }
   }

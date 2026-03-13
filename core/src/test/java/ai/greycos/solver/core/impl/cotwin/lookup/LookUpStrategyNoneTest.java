@@ -2,7 +2,6 @@ package ai.greycos.solver.core.impl.cotwin.lookup;
 
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
-import ai.greycos.solver.core.api.cotwin.lookup.LookUpStrategyType;
 import ai.greycos.solver.core.testcotwin.clone.lookup.TestdataObjectIntegerId;
 import ai.greycos.solver.core.testcotwin.clone.lookup.TestdataObjectMultipleIds;
 import ai.greycos.solver.core.testcotwin.clone.lookup.TestdataObjectNoId;

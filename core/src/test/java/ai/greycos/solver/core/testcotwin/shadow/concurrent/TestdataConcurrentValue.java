@@ -100,6 +100,14 @@ public class TestdataConcurrentValue {
     this.index = index;
   }
 
+  public LocalDateTime getServiceReadyTime() {
+    return serviceReadyTime;
+  }
+
+  public void setServiceReadyTime(LocalDateTime serviceReadyTime) {
+    this.serviceReadyTime = serviceReadyTime;
+  }
+
   public LocalDateTime getServiceStartTime() {
     return serviceStartTime;
   }
@@ -190,7 +198,15 @@ public class TestdataConcurrentValue {
     return isInconsistent;
   }
 
+  public Boolean getIsInconsistent() {
+    return isInconsistent;
+  }
+
   public void setInconsistent(Boolean inconsistent) {
+    isInconsistent = inconsistent;
+  }
+
+  public void setIsInconsistent(Boolean inconsistent) {
     isInconsistent = inconsistent;
   }
 

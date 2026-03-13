@@ -2,8 +2,8 @@ package ai.greycos.solver.core.impl.cotwin.variable.descriptor;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
 import java.util.function.BiPredicate;
+import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
@@ -16,7 +16,7 @@ import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateDemand;
 import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.move.MoveDirector;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.BiEnumeratingPredicate;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsPredicate;
 
 public final class ListVariableDescriptor<Solution_> extends GenuineVariableDescriptor<Solution_> {
 
@@ -27,7 +27,7 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
         var list = getValue(entity);
         return list.contains(element);
       };
-  private final BiEnumeratingPredicate<Solution_, Object, Object>
+  private final BiNeighborhoodsPredicate<Solution_, Object, Object>
       entityContainsPinnedValuePredicate =
           (solutionView, value, entity) -> {
             var moveDirector = (MoveDirector<Solution_, ?>) solutionView;
@@ -53,8 +53,8 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
   }
 
   @SuppressWarnings("unchecked")
-  public <A, B> BiEnumeratingPredicate<Solution_, A, B> getEntityContainsPinnedValuePredicate() {
-    return (BiEnumeratingPredicate<Solution_, A, B>) entityContainsPinnedValuePredicate;
+  public <A, B> BiNeighborhoodsPredicate<Solution_, A, B> getEntityContainsPinnedValuePredicate() {
+    return (BiNeighborhoodsPredicate<Solution_, A, B>) entityContainsPinnedValuePredicate;
   }
 
   public boolean allowsUnassignedValues() {
@@ -190,7 +190,7 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
     }
   }
 
-  public Object getRandomUnpinnedElement(Object entity, Random workingRandom) {
+  public Object getRandomUnpinnedElement(Object entity, RandomGenerator workingRandom) {
     var listVariable = getValue(entity);
     var firstUnpinnedIndex = getFirstUnpinnedIndex(entity);
     return listVariable.get(

@@ -35,7 +35,7 @@ class GreyCOSProcessorSupplierShadowSolutionSimpleSolveTest {
                           TestdataQuarkusSupplierVariableSimpleEntity.class,
                           TestdataQuarkusSupplierVariableSimpleConstraintProvider.class));
 
-  @Inject SolverManager<TestdataQuarkusSupplierVariableSimpleSolution, Long> solverManager;
+  @Inject SolverManager<TestdataQuarkusSupplierVariableSimpleSolution> solverManager;
 
   @Test
   void solve() throws ExecutionException, InterruptedException {

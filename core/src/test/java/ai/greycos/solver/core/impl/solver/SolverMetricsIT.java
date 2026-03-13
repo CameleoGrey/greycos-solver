@@ -19,15 +19,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BooleanSupplier;
 
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.phase.PhaseCommand;
+import ai.greycos.solver.core.api.solver.phase.PhaseCommandContext;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
 import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
@@ -43,7 +42,9 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.Selection
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
 import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.preview.api.move.builtin.Moves;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
@@ -563,16 +564,18 @@ class SolverMetricsIT extends AbstractMeterTest {
     }
 
     @Override
-    public void changeWorkingSolution(
-        ScoreDirector<TestdataHardSoftScoreSolution> scoreDirector,
-        BooleanSupplier isPhaseTerminated) {
-      var workingEntity = scoreDirector.lookUpWorkingObject(entity);
-      var workingValue = scoreDirector.lookUpWorkingObject(value);
-
-      scoreDirector.beforeVariableChanged(workingEntity, "value");
-      workingEntity.setValue(workingValue);
-      scoreDirector.afterVariableChanged(workingEntity, "value");
-      scoreDirector.triggerVariableListeners();
+    public void changeWorkingSolution(PhaseCommandContext<TestdataHardSoftScoreSolution> context) {
+      var workingEntity = context.lookUpWorkingObject(entity);
+      var workingValue = context.lookUpWorkingObject(value);
+      var move =
+          Moves.change(
+              context
+                  .getSolutionMetaModel()
+                  .genuineEntity(TestdataEntity.class)
+                  .basicVariable("value", TestdataValue.class),
+              workingEntity,
+              workingValue);
+      context.executeAndCalculateScore(move);
     }
   }
 

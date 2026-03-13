@@ -3,8 +3,7 @@ package ai.greycos.solver.core.impl.cotwin.valuerange.buildin.collection;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import ai.greycos.solver.core.impl.cotwin.valuerange.AbstractCountableValueRange;
@@ -18,22 +17,16 @@ import org.jspecify.annotations.Nullable;
 @NullMarked
 public final class ListValueRange<T> extends AbstractCountableValueRange<T> {
 
-  private final boolean isValueImmutable;
   private final List<T> list;
   private @Nullable ValueRangeCache<T> cache;
 
   public ListValueRange(List<T> list) {
-    this(list, false);
-  }
-
-  public ListValueRange(List<T> list, boolean isValueImmutable) {
-    this.isValueImmutable = isValueImmutable;
     this.list = list;
   }
 
-  @Override
-  public boolean isValueImmutable() {
-    return isValueImmutable;
+  @Deprecated(forRemoval = true, since = "1.1.0")
+  public ListValueRange(List<T> list, boolean isValueImmutable) {
+    this.list = list;
   }
 
   @Override
@@ -52,11 +45,7 @@ public final class ListValueRange<T> extends AbstractCountableValueRange<T> {
   @Override
   public boolean contains(@Nullable T value) {
     if (cache == null) {
-      var cacheBuilder =
-          isValueImmutable
-              ? ValueRangeCache.Builder.FOR_TRUSTED_VALUES
-              : ValueRangeCache.Builder.FOR_USER_VALUES;
-      cache = cacheBuilder.buildCache(list);
+      cache = ValueRangeCache.of(list);
     }
     return cache.contains(value);
   }
@@ -66,7 +55,7 @@ public final class ListValueRange<T> extends AbstractCountableValueRange<T> {
     // The list may be immutable and need to be copied
     var sortableList = new ArrayList<>(list);
     sorter.sort(sortableList);
-    return new ListValueRange<>(sortableList, isValueImmutable);
+    return new ListValueRange<>(sortableList);
   }
 
   @Override
@@ -75,24 +64,24 @@ public final class ListValueRange<T> extends AbstractCountableValueRange<T> {
   }
 
   @Override
-  public Iterator<T> createRandomIterator(Random workingRandom) {
+  public Iterator<T> createRandomIterator(RandomGenerator workingRandom) {
     return new CachedListRandomIterator<>(list, workingRandom);
   }
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof ListValueRange<?> that)) {
-      return false;
+    // We do not use Objects.equals(...) due to https://bugs.openjdk.org/browse/JDK-8015417.
+    if (this == o) {
+      return true;
     }
-    return isValueImmutable == that.isValueImmutable && Objects.equals(list, that.list);
+    return o instanceof ListValueRange<?> that && list.equals(that.list);
   }
 
   @Override
   public int hashCode() {
-    var hash = 7;
-    hash = 31 * hash + Boolean.hashCode(isValueImmutable);
-    hash = 31 * hash + Objects.hashCode(list);
-    return hash;
+    // We do not use Objects.hash(...) because it creates an array each time.
+    // We do not use Objects.hashCode() due to https://bugs.openjdk.org/browse/JDK-8015417.
+    return 31 * list.hashCode();
   }
 
   @Override

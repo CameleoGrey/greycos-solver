@@ -17,22 +17,20 @@ public final class DefaultPentaJoiner<A, B, C, D, E> extends AbstractJoiner<E>
 
   private static final DefaultPentaJoiner NONE =
       new DefaultPentaJoiner(new QuadFunction[0], new JoinerType[0], new Function[0]);
-  private final QuadFunction<A, B, C, D, ?>[] leftMappings;
+  private final QuadFunction<A, B, C, D, Object>[] leftMappings;
 
-  public <Property_> DefaultPentaJoiner(
-      QuadFunction<A, B, C, D, Property_> leftMapping,
-      JoinerType joinerType,
-      Function<E, Property_> rightMapping) {
+  public DefaultPentaJoiner(
+      QuadFunction<A, B, C, D, ?> leftMapping, JoinerType joinerType, Function<E, ?> rightMapping) {
     super(rightMapping, joinerType);
     this.leftMappings = new QuadFunction[] {leftMapping};
   }
 
-  private <Property_> DefaultPentaJoiner(
-      QuadFunction<A, B, C, D, Property_>[] leftMappings,
+  private DefaultPentaJoiner(
+      QuadFunction<A, B, C, D, ?>[] leftMappings,
       JoinerType[] joinerTypes,
-      Function<E, Property_>[] rightMappings) {
+      Function<E, ?>[] rightMappings) {
     super(rightMappings, joinerTypes);
-    this.leftMappings = leftMappings;
+    this.leftMappings = (QuadFunction<A, B, C, D, Object>[]) Objects.requireNonNull(leftMappings);
   }
 
   public static <A, B, C, D, E> DefaultPentaJoiner<A, B, C, D, E> merge(
@@ -63,7 +61,7 @@ public final class DefaultPentaJoiner<A, B, C, D, E> extends AbstractJoiner<E>
   }
 
   public QuadFunction<A, B, C, D, Object> getLeftMapping(int index) {
-    return (QuadFunction<A, B, C, D, Object>) leftMappings[index];
+    return leftMappings[index];
   }
 
   public boolean matches(A a, B b, C c, D d, E e) {

@@ -15,7 +15,7 @@ import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import ai.greycos.solver.core.api.solver.phase.PhaseCommand;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
-import ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbCustomPropertiesAdapter;
+import ai.greycos.solver.core.impl.io.jaxb.JaxbCustomPropertiesAdapter;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

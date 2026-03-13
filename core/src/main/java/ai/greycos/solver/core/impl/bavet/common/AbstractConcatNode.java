@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.bavet.common;
 
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
 
@@ -23,9 +23,7 @@ import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
  * the same {@link TupleSource}), it creates another clone.
  */
 public abstract class AbstractConcatNode<
-        LeftTuple_ extends AbstractTuple,
-        RightTuple_ extends AbstractTuple,
-        OutTuple_ extends AbstractTuple>
+        LeftTuple_ extends Tuple, RightTuple_ extends Tuple, OutTuple_ extends Tuple>
     extends AbstractTwoInputNode<LeftTuple_, RightTuple_> {
 
   private final int leftSourceTupleCloneStoreIndex;
@@ -44,6 +42,11 @@ public abstract class AbstractConcatNode<
     this.outputStoreSize = outputStoreSize;
   }
 
+  @Override
+  public StreamKind getStreamKind() {
+    return StreamKind.CONCAT;
+  }
+
   protected abstract OutTuple_ getOutTupleFromLeft(LeftTuple_ leftTuple);
 
   protected abstract OutTuple_ getOutTupleFromRight(RightTuple_ rightTuple);
@@ -54,7 +57,7 @@ public abstract class AbstractConcatNode<
 
   @Override
   public final void insertLeft(LeftTuple_ tuple) {
-    OutTuple_ outTuple = getOutTupleFromLeft(tuple);
+    var outTuple = getOutTupleFromLeft(tuple);
     tuple.setStore(leftSourceTupleCloneStoreIndex, outTuple);
     propagationQueue.insert(outTuple);
   }
@@ -72,7 +75,7 @@ public abstract class AbstractConcatNode<
     updateOutTupleFromLeft(tuple, outTuple);
     // Even if the facts of tuple do not change, an update MUST be done so
     // downstream nodes get notified of updates in planning variables.
-    TupleState previousState = outTuple.state;
+    var previousState = outTuple.getState();
     if (previousState == TupleState.CREATING || previousState == TupleState.UPDATING) {
       return;
     }
@@ -87,7 +90,7 @@ public abstract class AbstractConcatNode<
       // predicate(s)
       return;
     }
-    TupleState state = outTuple.state;
+    var state = outTuple.getState();
     if (!state.isActive()) {
       // No fail fast for inactive tuples, since the same tuple can be
       // passed twice if they are from the same source;
@@ -100,7 +103,7 @@ public abstract class AbstractConcatNode<
 
   @Override
   public final void insertRight(RightTuple_ tuple) {
-    OutTuple_ outTuple = getOutTupleFromRight(tuple);
+    var outTuple = getOutTupleFromRight(tuple);
     tuple.setStore(rightSourceTupleCloneStoreIndex, outTuple);
     propagationQueue.insert(outTuple);
   }
@@ -118,7 +121,7 @@ public abstract class AbstractConcatNode<
     updateOutTupleFromRight(tuple, outTuple);
     // Even if the facts of tuple do not change, an update MUST be done so
     // downstream nodes get notified of updates in planning variables.
-    TupleState previousState = outTuple.state;
+    var previousState = outTuple.getState();
     if (previousState == TupleState.CREATING || previousState == TupleState.UPDATING) {
       return;
     }
@@ -133,7 +136,7 @@ public abstract class AbstractConcatNode<
       // predicate(s)
       return;
     }
-    TupleState state = outTuple.state;
+    var state = outTuple.getState();
     if (!state.isActive()) {
       // No fail fast for inactive tuples, since the same tuple can be
       // passed twice if they are from the same source;

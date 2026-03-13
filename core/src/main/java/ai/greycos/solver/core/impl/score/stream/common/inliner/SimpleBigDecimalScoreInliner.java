@@ -3,11 +3,14 @@ package ai.greycos.solver.core.impl.score.stream.common.inliner;
 import java.math.BigDecimal;
 import java.util.Map;
 
-import ai.greycos.solver.core.api.score.buildin.simplebigdecimal.SimpleBigDecimalScore;
+import ai.greycos.solver.core.api.score.SimpleBigDecimalScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 final class SimpleBigDecimalScoreInliner extends AbstractScoreInliner<SimpleBigDecimalScore> {
 
   BigDecimal score = BigDecimal.ZERO;
@@ -21,9 +24,8 @@ final class SimpleBigDecimalScoreInliner extends AbstractScoreInliner<SimpleBigD
   @Override
   public WeightedScoreImpacter<SimpleBigDecimalScore, ?> buildWeightedScoreImpacter(
       AbstractConstraint<?, ?, ?> constraint) {
-    SimpleBigDecimalScore constraintWeight = constraintWeightMap.get(constraint);
-    SimpleBigDecimalScoreContext context =
-        new SimpleBigDecimalScoreContext(this, constraint, constraintWeight);
+    var constraintWeight = constraintWeightMap.get(constraint);
+    var context = new SimpleBigDecimalScoreContext(this, constraint, constraintWeight);
     return WeightedScoreImpacter.of(context, SimpleBigDecimalScoreContext::changeScoreBy);
   }
 

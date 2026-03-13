@@ -16,10 +16,6 @@ import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedAnchor;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedObject;
-import ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 import ai.greycos.solver.core.testutil.TestNearbyRandom;
 import ai.greycos.solver.core.testutil.TestRandom;
@@ -204,66 +200,6 @@ class NearEntityNearbyValueSelectorTest {
     valueSelector.stepEnded(stepScopeB3);
 
     valueSelector.phaseEnded(phaseScopeB);
-    valueSelector.solvingEnded(solverScope);
-  }
-
-  @Test
-  void originalSelectionChained() {
-    // Test with chained entities (e.g., vehicle routing with trailers)
-    // Anchors should be excluded from distance matrix
-    final TestdataChainedEntity morocco = new TestdataChainedEntity("Morocco");
-    final TestdataChainedEntity spain = new TestdataChainedEntity("Spain");
-    final TestdataChainedEntity australia = new TestdataChainedEntity("Australia");
-    final TestdataChainedAnchor brazil = new TestdataChainedAnchor("Brazil");
-
-    GenuineVariableDescriptor<TestdataChainedSolution> variableDescriptor =
-        TestdataChainedEntity.buildVariableDescriptorForChainedObject();
-    EntityDescriptor<TestdataChainedSolution> entityDescriptor =
-        variableDescriptor.getEntityDescriptor();
-
-    final TestdataChainedEntity africa = new TestdataChainedEntity("Africa");
-
-    NearbyDistanceMeter<TestdataChainedEntity, TestdataChainedObject> meter =
-        (origin, destination) -> {
-          if (origin.getCode().equals("Africa")) {
-            if (destination == africa) return 0.0; // Origin to itself
-            else if (destination == morocco) return 0.5;
-            else if (destination == spain) return 1.0;
-            else if (destination == australia) return 100.0;
-            else if (destination == brazil) return 50.0;
-          }
-          return Double.MAX_VALUE;
-        };
-
-    var childValueSelector =
-        SelectorTestUtils.mockIterableValueSelector(
-            variableDescriptor, africa, morocco, spain, australia, brazil);
-
-    var mimicReplayingEntitySelector =
-        SelectorTestUtils.mockReplayingEntitySelector(entityDescriptor, africa, africa);
-
-    NearEntityNearbyValueSelector<TestdataChainedSolution> valueSelector =
-        new NearEntityNearbyValueSelector<>(
-            childValueSelector, mimicReplayingEntitySelector, meter, new TestNearbyRandom(), false);
-
-    TestRandom workingRandom = new TestRandom(0);
-
-    InnerScoreDirector<TestdataChainedSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    SolverScope<TestdataChainedSolution> solverScope =
-        SelectorTestUtils.solvingStarted(valueSelector, scoreDirector, workingRandom);
-    AbstractPhaseScope<TestdataChainedSolution> phaseScopeA =
-        PlannerTestUtils.delegatingPhaseScope(solverScope);
-    valueSelector.phaseStarted(phaseScopeA);
-    AbstractStepScope<TestdataChainedSolution> stepScopeA1 =
-        PlannerTestUtils.delegatingStepScope(phaseScopeA);
-    valueSelector.stepStarted(stepScopeA1);
-
-    // Excludes anchors from distance matrix, only returns chained entities
-    assertAllCodesOfValueSelectorForEntity(
-        valueSelector, africa, "Morocco", "Spain", "Australia", "Brazil");
-
-    valueSelector.stepEnded(stepScopeA1);
-    valueSelector.phaseEnded(phaseScopeA);
     valueSelector.solvingEnded(solverScope);
   }
 }

@@ -25,13 +25,15 @@ import ai.greycos.solver.quarkus.config.SolverRuntimeConfig;
 import org.jspecify.annotations.Nullable;
 
 import io.quarkus.runtime.RuntimeValue;
+import io.quarkus.runtime.annotations.RecordableConstructor;
 import io.quarkus.runtime.annotations.Recorder;
 
 @Recorder
 public class GreyCOSRecorder {
-  final RuntimeValue<GreyCOSRuntimeConfig> greycosRuntimeConfig;
+  private final RuntimeValue<GreyCOSRuntimeConfig> greycosRuntimeConfig;
 
-  public GreyCOSRecorder(final RuntimeValue<GreyCOSRuntimeConfig> greycosRuntimeConfig) {
+  @RecordableConstructor
+  public GreyCOSRecorder(RuntimeValue<GreyCOSRuntimeConfig> greycosRuntimeConfig) {
     this.greycosRuntimeConfig = greycosRuntimeConfig;
   }
 
@@ -86,7 +88,7 @@ public class GreyCOSRecorder {
     };
   }
 
-  public <Solution_, ProblemId_> Supplier<SolverManager<Solution_, ProblemId_>> solverManager(
+  public <Solution_> Supplier<SolverManager<Solution_>> solverManager(
       final String solverName,
       final SolverConfig solverConfig,
       Map<String, RuntimeValue<MemberAccessor>> generatedGizmoMemberAccessorMap,
@@ -108,8 +110,7 @@ public class GreyCOSRecorder {
 
       var solverFactory = SolverFactory.create(solverConfig);
 
-      return (SolverManager<Solution_, ProblemId_>)
-          SolverManager.create(solverFactory, solverManagerConfig);
+      return (SolverManager<Solution_>) SolverManager.create(solverFactory, solverManagerConfig);
     };
   }
 

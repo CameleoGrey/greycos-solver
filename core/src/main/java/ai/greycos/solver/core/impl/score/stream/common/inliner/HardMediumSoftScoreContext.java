@@ -1,8 +1,12 @@
 package ai.greycos.solver.core.impl.score.stream.common.inliner;
 
-import ai.greycos.solver.core.api.score.buildin.hardmediumsoft.HardMediumSoftScore;
+import ai.greycos.solver.core.api.score.HardMediumSoftScore;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
 final class HardMediumSoftScoreContext
     extends ScoreContext<HardMediumSoftScore, HardMediumSoftScoreInliner> {
 
@@ -13,62 +17,106 @@ final class HardMediumSoftScoreContext
     super(parent, constraint, constraintWeight);
   }
 
-  public UndoScoreImpacter changeSoftScoreBy(
-      int matchWeight, ConstraintMatchSupplier<HardMediumSoftScore> constraintMatchSupplier) {
-    int softImpact = constraintWeight.softScore() * matchWeight;
-    parent.softScore += softImpact;
-    UndoScoreImpacter undoScoreImpact = () -> parent.softScore -= softImpact;
-    if (!constraintMatchPolicy.isEnabled()) {
-      return undoScoreImpact;
-    }
-    return impactWithConstraintMatch(
-        undoScoreImpact, HardMediumSoftScore.ofSoft(softImpact), constraintMatchSupplier);
+  public ScoreImpact<HardMediumSoftScore> changeSoftScoreBy(
+      long matchWeight,
+      @Nullable ConstraintMatchSupplier<HardMediumSoftScore> constraintMatchSupplier) {
+    var softImpact = Math.multiplyExact(constraintWeight.softScore(), matchWeight);
+    inliner.softScore = Math.addExact(inliner.softScore, softImpact);
+    var scoreImpact = new SoftImpact(inliner, softImpact);
+    return possiblyAddConstraintMatch(scoreImpact, constraintMatchSupplier);
   }
 
-  public UndoScoreImpacter changeMediumScoreBy(
-      int matchWeight, ConstraintMatchSupplier<HardMediumSoftScore> constraintMatchSupplier) {
-    int mediumImpact = constraintWeight.mediumScore() * matchWeight;
-    parent.mediumScore += mediumImpact;
-    UndoScoreImpacter undoScoreImpact = () -> parent.mediumScore -= mediumImpact;
-    if (!constraintMatchPolicy.isEnabled()) {
-      return undoScoreImpact;
-    }
-    return impactWithConstraintMatch(
-        undoScoreImpact, HardMediumSoftScore.ofMedium(mediumImpact), constraintMatchSupplier);
+  public ScoreImpact<HardMediumSoftScore> changeMediumScoreBy(
+      long matchWeight,
+      @Nullable ConstraintMatchSupplier<HardMediumSoftScore> constraintMatchSupplier) {
+    var mediumImpact = Math.multiplyExact(constraintWeight.mediumScore(), matchWeight);
+    inliner.mediumScore = Math.addExact(inliner.mediumScore, mediumImpact);
+    var scoreImpact = new MediumImpact(inliner, mediumImpact);
+    return possiblyAddConstraintMatch(scoreImpact, constraintMatchSupplier);
   }
 
-  public UndoScoreImpacter changeHardScoreBy(
-      int matchWeight, ConstraintMatchSupplier<HardMediumSoftScore> constraintMatchSupplier) {
-    int hardImpact = constraintWeight.hardScore() * matchWeight;
-    parent.hardScore += hardImpact;
-    UndoScoreImpacter undoScoreImpact = () -> parent.hardScore -= hardImpact;
-    if (!constraintMatchPolicy.isEnabled()) {
-      return undoScoreImpact;
-    }
-    return impactWithConstraintMatch(
-        undoScoreImpact, HardMediumSoftScore.ofHard(hardImpact), constraintMatchSupplier);
+  public ScoreImpact<HardMediumSoftScore> changeHardScoreBy(
+      long matchWeight,
+      @Nullable ConstraintMatchSupplier<HardMediumSoftScore> constraintMatchSupplier) {
+    var hardImpact = Math.multiplyExact(constraintWeight.hardScore(), matchWeight);
+    inliner.hardScore = Math.addExact(inliner.hardScore, hardImpact);
+    var scoreImpact = new HardImpact(inliner, hardImpact);
+    return possiblyAddConstraintMatch(scoreImpact, constraintMatchSupplier);
   }
 
-  public UndoScoreImpacter changeScoreBy(
-      int matchWeight, ConstraintMatchSupplier<HardMediumSoftScore> constraintMatchSupplier) {
-    int hardImpact = constraintWeight.hardScore() * matchWeight;
-    int mediumImpact = constraintWeight.mediumScore() * matchWeight;
-    int softImpact = constraintWeight.softScore() * matchWeight;
-    parent.hardScore += hardImpact;
-    parent.mediumScore += mediumImpact;
-    parent.softScore += softImpact;
-    UndoScoreImpacter undoScoreImpact =
-        () -> {
-          parent.hardScore -= hardImpact;
-          parent.mediumScore -= mediumImpact;
-          parent.softScore -= softImpact;
-        };
-    if (!constraintMatchPolicy.isEnabled()) {
-      return undoScoreImpact;
+  public ScoreImpact<HardMediumSoftScore> changeScoreBy(
+      long matchWeight,
+      @Nullable ConstraintMatchSupplier<HardMediumSoftScore> constraintMatchSupplier) {
+    var hardImpact = Math.multiplyExact(constraintWeight.hardScore(), matchWeight);
+    var mediumImpact = Math.multiplyExact(constraintWeight.mediumScore(), matchWeight);
+    var softImpact = Math.multiplyExact(constraintWeight.softScore(), matchWeight);
+    inliner.hardScore = Math.addExact(inliner.hardScore, hardImpact);
+    inliner.mediumScore = Math.addExact(inliner.mediumScore, mediumImpact);
+    inliner.softScore = Math.addExact(inliner.softScore, softImpact);
+    var scoreImpact = new ComplexImpact(inliner, hardImpact, mediumImpact, softImpact);
+    return possiblyAddConstraintMatch(scoreImpact, constraintMatchSupplier);
+  }
+
+  @NullMarked
+  private record SoftImpact(HardMediumSoftScoreInliner inliner, long softImpact)
+      implements ScoreImpact<HardMediumSoftScore> {
+
+    @Override
+    public void undo() {
+      inliner.softScore = Math.subtractExact(inliner.softScore, softImpact);
     }
-    return impactWithConstraintMatch(
-        undoScoreImpact,
-        HardMediumSoftScore.of(hardImpact, mediumImpact, softImpact),
-        constraintMatchSupplier);
+
+    @Override
+    public HardMediumSoftScore toScore() {
+      return HardMediumSoftScore.ofSoft(softImpact);
+    }
+  }
+
+  @NullMarked
+  private record MediumImpact(HardMediumSoftScoreInliner inliner, long mediumImpact)
+      implements ScoreImpact<HardMediumSoftScore> {
+
+    @Override
+    public void undo() {
+      inliner.mediumScore = Math.subtractExact(inliner.mediumScore, mediumImpact);
+    }
+
+    @Override
+    public HardMediumSoftScore toScore() {
+      return HardMediumSoftScore.ofMedium(mediumImpact);
+    }
+  }
+
+  @NullMarked
+  private record HardImpact(HardMediumSoftScoreInliner inliner, long hardImpact)
+      implements ScoreImpact<HardMediumSoftScore> {
+
+    @Override
+    public void undo() {
+      inliner.hardScore = Math.subtractExact(inliner.hardScore, hardImpact);
+    }
+
+    @Override
+    public HardMediumSoftScore toScore() {
+      return HardMediumSoftScore.ofHard(hardImpact);
+    }
+  }
+
+  @NullMarked
+  private record ComplexImpact(
+      HardMediumSoftScoreInliner inliner, long hardImpact, long mediumImpact, long softImpact)
+      implements ScoreImpact<HardMediumSoftScore> {
+
+    @Override
+    public void undo() {
+      inliner.hardScore = Math.subtractExact(inliner.hardScore, hardImpact);
+      inliner.mediumScore = Math.subtractExact(inliner.mediumScore, mediumImpact);
+      inliner.softScore = Math.subtractExact(inliner.softScore, softImpact);
+    }
+
+    @Override
+    public HardMediumSoftScore toScore() {
+      return HardMediumSoftScore.of(hardImpact, mediumImpact, softImpact);
+    }
   }
 }

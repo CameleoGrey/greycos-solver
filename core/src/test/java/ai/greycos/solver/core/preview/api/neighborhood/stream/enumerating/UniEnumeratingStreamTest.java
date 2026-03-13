@@ -4,8 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
+import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.DatasetSession;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.DatasetSessionFactory;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
@@ -45,7 +46,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(entity1, entity2);
 
     // Make incremental changes.
@@ -56,7 +57,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(entity1, entity3);
   }
 
@@ -84,7 +85,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(null, entity1, entity2);
 
     // Make incremental changes.
@@ -95,7 +96,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(null, entity1, entity3);
   }
 
@@ -118,7 +119,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(entity1, entity2);
 
     // Make incremental changes.
@@ -129,7 +130,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(entity1, entity3);
   }
 
@@ -152,7 +153,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(null, entity1, entity2);
 
     // Make incremental changes.
@@ -163,7 +164,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(null, entity1, entity3);
   }
 
@@ -216,7 +217,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(fullyPinnedEntity, partiallyPinnedEntity, unpinnedEntity);
 
     // Make incremental changes.
@@ -228,7 +229,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(fullyPinnedEntity, unpinnedEntity, entity4);
   }
 
@@ -263,7 +264,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(null, fullyPinnedEntity, partiallyPinnedEntity, unpinnedEntity);
 
     // Make incremental changes.
@@ -275,7 +276,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(null, fullyPinnedEntity, unpinnedEntity, entity4);
   }
 
@@ -311,7 +312,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(partiallyPinnedEntity, unpinnedEntity);
 
     // Make incremental changes.
@@ -323,7 +324,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(unpinnedEntity);
   }
 
@@ -360,7 +361,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(null, partiallyPinnedEntity, unpinnedEntity);
 
     // Make incremental changes.
@@ -372,7 +373,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(null, unpinnedEntity);
   }
 
@@ -417,7 +418,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(value1, value2, value3, value4, unassignedValue);
   }
 
@@ -462,7 +463,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(null, value1, value2, value3, value4, unassignedValue);
   }
 
@@ -509,7 +510,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(value2, value3, value4);
   }
 
@@ -556,7 +557,7 @@ class UniEnumeratingStreamTest {
 
     assertThat(uniDatasetInstance.iterator())
         .toIterable()
-        .map(t -> t.factA)
+        .map(UniTuple::getA)
         .containsExactly(null, value2, value3, value4);
   }
 }

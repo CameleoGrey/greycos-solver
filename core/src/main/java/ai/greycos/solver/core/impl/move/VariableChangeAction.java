@@ -1,8 +1,8 @@
 package ai.greycos.solver.core.impl.move;
 
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 record VariableChangeAction<Solution_, Entity_, Value_>(
     Entity_ entity, Value_ oldValue, VariableDescriptor<Solution_> variableDescriptor)
@@ -16,8 +16,10 @@ record VariableChangeAction<Solution_, Entity_, Value_>(
   }
 
   @Override
-  public ChangeAction<Solution_> rebase(Rebaser rebaser) {
+  public ChangeAction<Solution_> rebase(Lookup lookup) {
     return new VariableChangeAction<>(
-        rebaser.rebase(entity), rebaser.rebase(oldValue), variableDescriptor);
+        lookup.lookUpWorkingObject(entity),
+        lookup.lookUpWorkingObject(oldValue),
+        variableDescriptor);
   }
 }

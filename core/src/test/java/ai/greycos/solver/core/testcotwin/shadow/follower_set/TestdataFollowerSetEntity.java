@@ -24,9 +24,21 @@ public class TestdataFollowerSetEntity extends TestdataObject implements Testdat
     this.leaders = leaders;
   }
 
+  public List<TestdataLeaderEntity> getLeaders() {
+    return leaders;
+  }
+
+  public void setLeaders(List<TestdataLeaderEntity> leaders) {
+    this.leaders = leaders;
+  }
+
   @Override
   public TestdataValue getValue() {
     return value;
+  }
+
+  public void setValue(TestdataValue value) {
+    this.value = value;
   }
 
   @ShadowSources("leaders[].value")

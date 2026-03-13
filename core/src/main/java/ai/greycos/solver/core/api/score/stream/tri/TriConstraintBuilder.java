@@ -12,7 +12,7 @@ import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintBuilder;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
 /**
  * Used to build a {@link Constraint} out of a {@link TriConstraintStream}, applying optional
@@ -25,6 +25,7 @@ import org.jspecify.annotations.NonNull;
  * <p>Unless {@link #indictWith(TriFunction)} is called, the default indicted objects' mapping will
  * be used. The function takes the input arguments and converts them into a {@link java.util.List}.
  */
+@NullMarked
 public interface TriConstraintBuilder<A, B, C, Score_ extends Score<Score_>>
     extends ConstraintBuilder {
 
@@ -35,8 +36,8 @@ public interface TriConstraintBuilder<A, B, C, Score_ extends Score<Score_>>
    * @return this
    */
   <ConstraintJustification_ extends ConstraintJustification>
-      @NonNull TriConstraintBuilder<A, B, C, Score_> justifyWith(
-          @NonNull QuadFunction<A, B, C, Score_, ConstraintJustification_> justificationMapping);
+      TriConstraintBuilder<A, B, C, Score_> justifyWith(
+          QuadFunction<A, B, C, Score_, ConstraintJustification_> justificationMapping);
 
   /**
    * Sets a custom function to mark any object returned by it as responsible for causing the
@@ -45,6 +46,6 @@ public interface TriConstraintBuilder<A, B, C, Score_ extends Score<Score_>>
    *
    * @return this
    */
-  @NonNull TriConstraintBuilder<A, B, C, Score_> indictWith(
-      @NonNull TriFunction<A, B, C, Collection<Object>> indictedObjectsMapping);
+  TriConstraintBuilder<A, B, C, Score_> indictWith(
+      TriFunction<A, B, C, Collection<Object>> indictedObjectsMapping);
 }

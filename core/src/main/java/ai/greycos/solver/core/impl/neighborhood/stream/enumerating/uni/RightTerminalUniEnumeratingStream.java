@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.DataNodeBuildHelper;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.TerminalEnumeratingStream;
-import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.joiner.BiEnumeratingJoinerComber;
+import ai.greycos.solver.core.impl.neighborhood.stream.joiner.BiNeighborhoodsJoinerComber;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -17,7 +17,7 @@ final class RightTerminalUniEnumeratingStream<Solution_, A, B>
   public RightTerminalUniEnumeratingStream(
       EnumeratingStreamFactory<Solution_> enumeratingStreamFactory,
       AbstractUniEnumeratingStream<Solution_, B> parent,
-      BiEnumeratingJoinerComber<Solution_, A, B> joinerComber) {
+      BiNeighborhoodsJoinerComber<Solution_, A, B> joinerComber) {
     super(enumeratingStreamFactory, parent);
     this.dataset = new UniRightDataset<>(this, joinerComber);
   }

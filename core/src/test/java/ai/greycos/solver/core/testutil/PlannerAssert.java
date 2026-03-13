@@ -24,7 +24,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.entity.pillar.PillarSelect
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
-import ai.greycos.solver.core.impl.heuristic.selector.value.chained.SubChainSelector;
 import ai.greycos.solver.core.impl.localsearch.event.LocalSearchPhaseLifecycleListener;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
@@ -142,8 +141,8 @@ public final class PlannerAssert {
   // PhaseLifecycleListener methods
   // ************************************************************************
 
-  public static void verifyPhaseLifecycle(
-      PhaseLifecycleListener phaseLifecycleListener,
+  public static <Solution_> void verifyPhaseLifecycle(
+      PhaseLifecycleListener<Solution_> phaseLifecycleListener,
       int solvingCount,
       int phaseCount,
       int stepCount) {
@@ -155,8 +154,8 @@ public final class PlannerAssert {
     verify(phaseLifecycleListener, times(solvingCount)).solvingEnded(any(SolverScope.class));
   }
 
-  public static void verifyPhaseLifecycle(
-      ConstructionHeuristicPhaseLifecycleListener phaseLifecycleListener,
+  public static <Solution_> void verifyPhaseLifecycle(
+      ConstructionHeuristicPhaseLifecycleListener<Solution_> phaseLifecycleListener,
       int solvingCount,
       int phaseCount,
       int stepCount) {
@@ -172,8 +171,8 @@ public final class PlannerAssert {
     verify(phaseLifecycleListener, times(solvingCount)).solvingEnded(any(SolverScope.class));
   }
 
-  public static void verifyPhaseLifecycle(
-      LocalSearchPhaseLifecycleListener phaseLifecycleListener,
+  public static <Solution_> void verifyPhaseLifecycle(
+      LocalSearchPhaseLifecycleListener<Solution_> phaseLifecycleListener,
       int solvingCount,
       int phaseCount,
       int stepCount) {
@@ -438,13 +437,6 @@ public final class PlannerAssert {
     assertEmptyNeverEndingIterableSelector(pillarSelector, DO_NOT_ASSERT_SIZE);
   }
 
-  // ---- Sub Chain
-
-  public static void assertAllCodesOfSubChainSelector(
-      SubChainSelector<?> selector, String... codes) {
-    assertAllCodesOfIterableSelector(selector, codes.length, codes);
-  }
-
   // ---- Value
 
   public static void assertAllCodesOfValueSelector(
@@ -501,7 +493,7 @@ public final class PlannerAssert {
 
   public static <E> E extractSingleton(List<E> singletonList) {
     assertThat(singletonList).hasSize(1);
-    return singletonList.get(0);
+    return singletonList.getFirst();
   }
 
   private PlannerAssert() {}

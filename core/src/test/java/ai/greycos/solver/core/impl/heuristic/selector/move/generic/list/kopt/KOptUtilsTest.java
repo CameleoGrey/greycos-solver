@@ -2,10 +2,12 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 
 import static ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt.KOptUtils.getBetweenPredicate;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.List;
 import java.util.function.Function;
 
+import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.util.Pair;
 import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
 
@@ -234,7 +236,9 @@ public class KOptUtilsTest {
         tourArray,
         incl,
         item -> originalTour.get((originalTour.indexOf(item) + 1) % originalTour.size()),
-        getBetweenPredicate(originalTour::indexOf));
+        getBetweenPredicate(
+            new DelegatingListVariableStateSupply<>(
+                mock(ListVariableStateSupply.class), originalTour::indexOf)));
   }
 
   private static int identityIndexOf(List<TestdataListValue> sourceList, TestdataListValue query) {

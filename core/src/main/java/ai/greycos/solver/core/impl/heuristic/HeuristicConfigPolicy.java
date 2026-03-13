@@ -3,9 +3,9 @@ package ai.greycos.solver.core.impl.heuristic;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ThreadFactory;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
@@ -40,10 +40,9 @@ public class HeuristicConfigPolicy<Solution_> {
   private final ValueSorterManner valueSorterManner;
   private final ClassInstanceCache classInstanceCache;
   private final boolean reinitializeVariableFilterEnabled;
-  private final boolean initializedChainedValueFilterEnabled;
   private final boolean unassignedValuesAllowed;
   private final Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass;
-  private final Random random;
+  private final RandomGenerator random;
 
   private final Map<String, EntityMimicRecorder<Solution_>> entityMimicRecorderMap =
       new HashMap<>();
@@ -64,7 +63,6 @@ public class HeuristicConfigPolicy<Solution_> {
     this.valueSorterManner = builder.valueSorterManner;
     this.classInstanceCache = builder.classInstanceCache;
     this.reinitializeVariableFilterEnabled = builder.reinitializeVariableFilterEnabled;
-    this.initializedChainedValueFilterEnabled = builder.initializedChainedValueFilterEnabled;
     this.unassignedValuesAllowed = builder.unassignedValuesAllowed;
     this.nearbyDistanceMeterClass = builder.nearbyDistanceMeterClass;
     this.random = builder.random;
@@ -114,10 +112,6 @@ public class HeuristicConfigPolicy<Solution_> {
     return reinitializeVariableFilterEnabled;
   }
 
-  public boolean isInitializedChainedValueFilterEnabled() {
-    return initializedChainedValueFilterEnabled;
-  }
-
   public boolean isUnassignedValuesAllowed() {
     return unassignedValuesAllowed;
   }
@@ -126,7 +120,7 @@ public class HeuristicConfigPolicy<Solution_> {
     return nearbyDistanceMeterClass;
   }
 
-  public Random getRandom() {
+  public RandomGenerator getRandom() {
     return random;
   }
 
@@ -154,7 +148,6 @@ public class HeuristicConfigPolicy<Solution_> {
         .withEntitySorterManner(entitySorterManner)
         .withValueSorterManner(valueSorterManner)
         .withReinitializeVariableFilterEnabled(reinitializeVariableFilterEnabled)
-        .withInitializedChainedValueFilterEnabled(initializedChainedValueFilterEnabled)
         .withUnassignedValuesAllowed(unassignedValuesAllowed)
         .build();
   }
@@ -283,11 +276,10 @@ public class HeuristicConfigPolicy<Solution_> {
     private ValueSorterManner valueSorterManner = ValueSorterManner.NONE;
 
     private boolean reinitializeVariableFilterEnabled = false;
-    private boolean initializedChainedValueFilterEnabled = false;
     private boolean unassignedValuesAllowed = false;
 
     private Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass;
-    private Random random;
+    private RandomGenerator random;
 
     public Builder<Solution_> withPreviewFeatureSet(Set<PreviewFeature> previewFeatureSet) {
       this.previewFeatureSet = previewFeatureSet;
@@ -321,7 +313,7 @@ public class HeuristicConfigPolicy<Solution_> {
       return this;
     }
 
-    public Builder<Solution_> withRandom(Random random) {
+    public Builder<Solution_> withRandom(RandomGenerator random) {
       this.random = random;
       return this;
     }
@@ -361,12 +353,6 @@ public class HeuristicConfigPolicy<Solution_> {
     public Builder<Solution_> withReinitializeVariableFilterEnabled(
         boolean reinitializeVariableFilterEnabled) {
       this.reinitializeVariableFilterEnabled = reinitializeVariableFilterEnabled;
-      return this;
-    }
-
-    public Builder<Solution_> withInitializedChainedValueFilterEnabled(
-        boolean initializedChainedValueFilterEnabled) {
-      this.initializedChainedValueFilterEnabled = initializedChainedValueFilterEnabled;
       return this;
     }
 

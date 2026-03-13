@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
-import ai.greycos.solver.core.api.cotwin.lookup.LookUpStrategyType;
 import ai.greycos.solver.core.testcotwin.clone.lookup.TestdataObjectEquals;
 import ai.greycos.solver.core.testcotwin.clone.lookup.TestdataObjectEqualsNoHashCode;
 import ai.greycos.solver.core.testcotwin.clone.lookup.TestdataObjectEqualsSubclass;

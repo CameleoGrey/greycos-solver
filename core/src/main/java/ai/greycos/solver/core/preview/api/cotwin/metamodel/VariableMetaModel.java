@@ -45,4 +45,14 @@ public sealed interface VariableMetaModel<Solution_, Entity_, Value_>
    * @return never null
    */
   String name();
+
+  /**
+   * Returns true if this variable is a genuine variable. Effectively checks if this variable is an
+   * instance of {@link GenuineVariableMetaModel}.
+   *
+   * @return true if this variable is genuine
+   */
+  default boolean isGenuine() {
+    return this instanceof GenuineVariableMetaModel;
+  }
 }

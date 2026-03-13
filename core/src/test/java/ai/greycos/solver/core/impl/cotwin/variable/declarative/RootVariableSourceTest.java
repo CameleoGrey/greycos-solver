@@ -16,8 +16,8 @@ import ai.greycos.solver.core.api.cotwin.variable.ShadowVariablesInconsistent;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
 import ai.greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningEntityMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.ShadowEntityMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.ShadowVariableMetaModel;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
@@ -43,28 +43,30 @@ class RootVariableSourceTest {
                   TestdataInvalidDeclarativeEntity.class,
                   TestdataInvalidDeclarativeValue.class)
               .getMetaModel();
-  private final PlanningEntityMetaModel<
+  private final ShadowEntityMetaModel<
           TestdataInvalidDeclarativeSolution, TestdataInvalidDeclarativeValue>
       shadowEntityMetaModel =
-          planningSolutionMetaModel.entity(TestdataInvalidDeclarativeValue.class);
+          (ShadowEntityMetaModel<
+                  TestdataInvalidDeclarativeSolution, TestdataInvalidDeclarativeValue>)
+              planningSolutionMetaModel.entity(TestdataInvalidDeclarativeValue.class);
   private final ShadowVariableMetaModel<
           TestdataInvalidDeclarativeSolution,
           TestdataInvalidDeclarativeValue,
           TestdataInvalidDeclarativeValue>
       previousElementMetaModel =
-          shadowEntityMetaModel.shadowVariable("previous", TestdataInvalidDeclarativeValue.class);
+          shadowEntityMetaModel.variable("previous", TestdataInvalidDeclarativeValue.class);
   private final ShadowVariableMetaModel<
           TestdataInvalidDeclarativeSolution,
           TestdataInvalidDeclarativeValue,
           TestdataInvalidDeclarativeValue>
       shadowVariableMetaModel =
-          shadowEntityMetaModel.shadowVariable("shadow", TestdataInvalidDeclarativeValue.class);
+          shadowEntityMetaModel.variable("shadow", TestdataInvalidDeclarativeValue.class);
   private final ShadowVariableMetaModel<
           TestdataInvalidDeclarativeSolution,
           TestdataInvalidDeclarativeValue,
           TestdataInvalidDeclarativeValue>
       dependencyMetaModel =
-          shadowEntityMetaModel.shadowVariable("dependency", TestdataInvalidDeclarativeValue.class);
+          shadowEntityMetaModel.variable("dependency", TestdataInvalidDeclarativeValue.class);
 
   private void assertChainToVariableEntity(
       VariableSourceReference variableSourceReference, String... expectedNames) {
@@ -592,6 +594,25 @@ class RootVariableSourceTest {
                 + " starting from root class (TestdataInvalidDeclarativeValue)"
                 + " accesses a collection (group[])"
                 + " after another collection (group), which is not allowed.");
+  }
+
+  @Test
+  void invalidPathUsingGroupAfterVariable() {
+    assertThatCode(
+            () ->
+                RootVariableSource.from(
+                    planningSolutionMetaModel,
+                    TestdataInvalidDeclarativeEntity.class,
+                    "shadow",
+                    "values[].shadow",
+                    DEFAULT_MEMBER_ACCESSOR_FACTORY,
+                    DEFAULT_DESCRIPTOR_POLICY))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "The source path (values[].shadow)"
+                + " starting from root class (TestdataInvalidDeclarativeEntity)"
+                + " accesses a collection (values[])"
+                + " via a variable (values), which is not allowed.");
   }
 
   @Test

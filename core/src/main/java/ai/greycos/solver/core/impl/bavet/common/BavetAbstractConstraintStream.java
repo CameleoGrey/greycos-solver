@@ -1,13 +1,21 @@
 package ai.greycos.solver.core.impl.bavet.common;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.Constraint;
+import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
+import ai.greycos.solver.core.api.score.stream.ConstraintStream;
 import ai.greycos.solver.core.impl.score.stream.bavet.BavetConstraint;
 import ai.greycos.solver.core.impl.score.stream.bavet.BavetConstraintFactory;
 import ai.greycos.solver.core.impl.score.stream.bavet.common.BavetScoringConstraintStream;
@@ -17,14 +25,27 @@ import ai.greycos.solver.core.impl.score.stream.common.RetrievalSemantics;
 import ai.greycos.solver.core.impl.score.stream.common.ScoreImpactType;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public abstract class BavetAbstractConstraintStream<Solution_>
     extends AbstractConstraintStream<Solution_> implements BavetStream {
+
+  private static final Set<String> CONSTRAINT_STREAM_API_METHOD_SET =
+      Stream.of(
+              ai.greycos.solver.core.api.score.stream.uni.UniConstraintStream.class,
+              ai.greycos.solver.core.api.score.stream.bi.BiConstraintStream.class,
+              ai.greycos.solver.core.api.score.stream.tri.TriConstraintStream.class,
+              ai.greycos.solver.core.api.score.stream.quad.QuadConstraintStream.class)
+          .flatMap(clazz -> Arrays.stream(clazz.getMethods()))
+          .map(Method::getName)
+          .collect(Collectors.toUnmodifiableSet());
 
   protected final BavetConstraintFactory<Solution_> constraintFactory;
   protected final BavetAbstractConstraintStream<Solution_> parent;
   protected final List<BavetAbstractConstraintStream<Solution_>> childStreamList =
       new ArrayList<>(2);
+  protected final SortedSet<ConstraintNodeLocation> streamLocationSet;
 
   protected BavetAbstractConstraintStream(
       BavetConstraintFactory<Solution_> constraintFactory,
@@ -32,6 +53,8 @@ public abstract class BavetAbstractConstraintStream<Solution_>
     super(parent.getRetrievalSemantics());
     this.constraintFactory = constraintFactory;
     this.parent = parent;
+    this.streamLocationSet = new TreeSet<>();
+    streamLocationSet.add(determineStreamLocation());
   }
 
   protected BavetAbstractConstraintStream(
@@ -39,6 +62,40 @@ public abstract class BavetAbstractConstraintStream<Solution_>
     super(retrievalSemantics);
     this.constraintFactory = constraintFactory;
     this.parent = null;
+    this.streamLocationSet = new TreeSet<>();
+    streamLocationSet.add(determineStreamLocation());
+  }
+
+  private static ConstraintNodeLocation determineStreamLocation() {
+    return StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+        .walk(
+            stack ->
+                stack
+                    .dropWhile(
+                        frame ->
+                            !ConstraintStream.class.isAssignableFrom(frame.getDeclaringClass())
+                                && !CONSTRAINT_STREAM_API_METHOD_SET.contains(
+                                    frame.getMethodName()))
+                    .dropWhile(
+                        frame ->
+                            ConstraintStream.class.isAssignableFrom(frame.getDeclaringClass())
+                                || ConstraintFactory.class.isAssignableFrom(
+                                    frame.getDeclaringClass()))
+                    .map(
+                        frame ->
+                            new ConstraintNodeLocation(
+                                frame.getClassName(), frame.getMethodName(), frame.getLineNumber()))
+                    .findFirst()
+                    .orElseGet(ConstraintNodeLocation::unknown));
+  }
+
+  @Override
+  public SortedSet<ConstraintNodeLocation> getLocationSet() {
+    return streamLocationSet;
+  }
+
+  public void addLocationSet(Set<ConstraintNodeLocation> locationSet) {
+    streamLocationSet.addAll(locationSet);
   }
 
   /**
@@ -68,16 +125,13 @@ public abstract class BavetAbstractConstraintStream<Solution_>
       Object justificationFunction,
       Object indictedObjectsMapping,
       BavetScoringConstraintStream<Solution_> stream) {
-    var resolvedConstraintPackage =
-        Objects.requireNonNullElseGet(
-            constraintPackage, this.constraintFactory::getDefaultConstraintPackage);
     var resolvedJustificationMapping =
         Objects.requireNonNullElseGet(justificationFunction, this::getDefaultJustificationMapping);
     var resolvedIndictedObjectsMapping =
         Objects.requireNonNullElseGet(
             indictedObjectsMapping, this::getDefaultIndictedObjectsMapping);
     var isConstraintWeightConfigurable = constraintWeight == null;
-    var constraintRef = ConstraintRef.of(resolvedConstraintPackage, constraintName);
+    var constraintRef = ConstraintRef.of(constraintName);
     var constraint =
         new BavetConstraint<>(
             constraintFactory,

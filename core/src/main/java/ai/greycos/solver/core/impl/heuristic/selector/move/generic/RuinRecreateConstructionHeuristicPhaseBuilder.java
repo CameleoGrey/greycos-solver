@@ -44,8 +44,13 @@ public final class RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>
                 (SolverTermination<Solution_>)
                     TerminationFactory.<Solution_>create(new TerminationConfig())
                         .buildTermination(solverConfigPolicy));
-    if (solverConfigPolicy.getMoveThreadCount() != null
-        && solverConfigPolicy.getMoveThreadCount() >= 1) {
+    var phaseMoveThreadCount = constructionHeuristicConfig.getMoveThreadCount();
+    var effectiveMoveThreadCount =
+        phaseMoveThreadCount == null
+            ? solverConfigPolicy.getMoveThreadCount()
+            : constructionHeuristicPhaseFactory.resolvePhaseMoveThreadCount(
+                phaseMoveThreadCount, solverConfigPolicy.getMoveThreadCount(), true);
+    if (effectiveMoveThreadCount != null && effectiveMoveThreadCount >= 1) {
       builder.multithreaded = true;
     }
     return builder;

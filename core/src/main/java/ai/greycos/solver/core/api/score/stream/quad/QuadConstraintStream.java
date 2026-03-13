@@ -12,8 +12,6 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfiguration;
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintWeight;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;

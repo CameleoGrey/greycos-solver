@@ -1,25 +1,26 @@
 package ai.greycos.solver.core.impl.cotwin.valuerange.buildin.composite;
 
 import java.util.Iterator;
-import java.util.Objects;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
-import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import ai.greycos.solver.core.impl.cotwin.valuerange.AbstractCountableValueRange;
+import ai.greycos.solver.core.impl.cotwin.valuerange.AbstractValueRange;
 import ai.greycos.solver.core.impl.cotwin.valuerange.sort.ValueRangeSorter;
 import ai.greycos.solver.core.impl.cotwin.valuerange.util.ValueRangeIterator;
 import ai.greycos.solver.core.impl.solver.random.RandomUtils;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public final class NullAllowingCountableValueRange<T> extends AbstractCountableValueRange<T> {
 
-  private final AbstractCountableValueRange<T> childValueRange;
+  private final AbstractValueRange<T> childValueRange;
   private final long size;
 
-  public NullAllowingCountableValueRange(CountableValueRange<T> childValueRange) {
-    this.childValueRange = (AbstractCountableValueRange<T>) childValueRange;
+  public NullAllowingCountableValueRange(ValueRange<T> childValueRange) {
+    this.childValueRange = (AbstractValueRange<T>) childValueRange;
     if (childValueRange instanceof NullAllowingCountableValueRange<T>) {
       throw new IllegalArgumentException(
           "Impossible state: The childValueRange (%s) must not be a %s, because it is already wrapped in one."
@@ -28,7 +29,7 @@ public final class NullAllowingCountableValueRange<T> extends AbstractCountableV
     size = childValueRange.getSize() + 1L;
   }
 
-  AbstractCountableValueRange<T> getChildValueRange() {
+  AbstractValueRange<T> getChildValueRange() {
     return childValueRange;
   }
 
@@ -47,7 +48,7 @@ public final class NullAllowingCountableValueRange<T> extends AbstractCountableV
   }
 
   @Override
-  public boolean contains(T value) {
+  public boolean contains(@Nullable T value) {
     if (value == null) {
       return true;
     }
@@ -60,7 +61,7 @@ public final class NullAllowingCountableValueRange<T> extends AbstractCountableV
   }
 
   @Override
-  public @NonNull Iterator<T> createOriginalIterator() {
+  public Iterator<T> createOriginalIterator() {
     return new OriginalNullValueRangeIterator(childValueRange.createOriginalIterator());
   }
 
@@ -90,15 +91,15 @@ public final class NullAllowingCountableValueRange<T> extends AbstractCountableV
   }
 
   @Override
-  public @NonNull Iterator<T> createRandomIterator(@NonNull Random workingRandom) {
+  public Iterator<T> createRandomIterator(RandomGenerator workingRandom) {
     return new RandomNullValueRangeIterator(workingRandom);
   }
 
   private class RandomNullValueRangeIterator extends ValueRangeIterator<T> {
 
-    private final Random workingRandom;
+    private final RandomGenerator workingRandom;
 
-    public RandomNullValueRangeIterator(Random workingRandom) {
+    public RandomNullValueRangeIterator(RandomGenerator workingRandom) {
       this.workingRandom = workingRandom;
     }
 
@@ -116,15 +117,22 @@ public final class NullAllowingCountableValueRange<T> extends AbstractCountableV
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof NullAllowingCountableValueRange<?> that)) {
-      return false;
+    // We do not use Objects.equals(...) due to https://bugs.openjdk.org/browse/JDK-8015417.
+    if (this == o) {
+      return true;
     }
-    return Objects.equals(childValueRange, that.childValueRange);
+    return o instanceof NullAllowingCountableValueRange<?> that
+        && size == that.size
+        && childValueRange.equals(that.childValueRange);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(childValueRange);
+    // We do not use Objects.hash(...) because it creates an array each time.
+    // We do not use Objects.hashCode() due to https://bugs.openjdk.org/browse/JDK-8015417.
+    var hash = 1;
+    hash = 31 * hash + Long.hashCode(size);
+    return 31 * hash + childValueRange.hashCode();
   }
 
   @Override

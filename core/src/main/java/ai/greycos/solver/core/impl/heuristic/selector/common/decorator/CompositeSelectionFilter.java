@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.common.decorator;
 
 import java.util.Arrays;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * Combines several {@link SelectionFilter}s into one. Does a logical AND over the accept status of

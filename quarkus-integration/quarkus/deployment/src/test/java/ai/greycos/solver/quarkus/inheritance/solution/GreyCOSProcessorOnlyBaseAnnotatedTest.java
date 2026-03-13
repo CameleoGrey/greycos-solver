@@ -5,9 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.core.testcotwin.TestdataObject;
 import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedBaseEntity;
 import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedChildEntity;
 import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedConstraintProvider;
@@ -35,8 +34,7 @@ class GreyCOSProcessorOnlyBaseAnnotatedTest {
                           TestdataOnlyBaseAnnotatedExtendedSolution.class,
                           TestdataOnlyBaseAnnotatedSolution.class,
                           TestdataOnlyBaseAnnotatedChildEntity.class,
-                          TestdataOnlyBaseAnnotatedBaseEntity.class,
-                          TestdataObject.class));
+                          TestdataOnlyBaseAnnotatedBaseEntity.class));
 
   @Inject SolverFactory<TestdataOnlyBaseAnnotatedExtendedSolution> solverFactory;
 

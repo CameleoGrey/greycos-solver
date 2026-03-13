@@ -15,7 +15,6 @@
     <url>https://github.com/CameleoGrey/greycos-solver</url>
 
     <properties>
-        <java.module.name>ai.greycos.solver.quarkus.benchmark</java.module.name>
         <!-- Code of integration tests should not be a part of test coverage reports. -->
         <sonar.coverage.exclusions>**/*</sonar.coverage.exclusions>
     </properties>
@@ -61,6 +60,7 @@
             <plugin>
                 <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-maven-plugin</artifactId>
+                <extensions>true</extensions>
                 <executions>
                     <execution>
                         <goals>

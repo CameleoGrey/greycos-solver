@@ -25,8 +25,8 @@ import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockScoreDirector
 import java.util.List;
 import java.util.Random;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;

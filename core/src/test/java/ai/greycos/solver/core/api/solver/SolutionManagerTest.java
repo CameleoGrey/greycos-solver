@@ -9,9 +9,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.impl.solver.DefaultSolutionManager;
@@ -20,11 +20,6 @@ import ai.greycos.solver.core.testcotwin.TestdataConstraintProvider;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
-import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedAnchor;
-import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedEntity;
-import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedIncrementalScoreCalculator;
-import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedObject;
-import ai.greycos.solver.core.testcotwin.chained.shadow.TestdataShadowingChainedSolution;
 import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListCMAIncrementalScoreCalculator;
 import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListEntity;
 import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListSolution;
@@ -61,11 +56,11 @@ public class SolutionManagerTest {
 
   public static final SolverFactory<TestdataShadowedSolution> SOLVER_FACTORY =
       SolverFactory.createFromXmlResource(
-          "ai/greycos/solver/core/api/solver/testdataShadowedSolverConfig.xml");
+          "ai.greycos.solver/core/api/solver/testdataShadowedSolverConfig.xml");
   public static final SolverFactory<TestdataAllowsUnassignedSolution>
       SOLVER_FACTORY_OVERCONSTRAINED =
           SolverFactory.createFromXmlResource(
-              "ai/greycos/solver/core/api/solver/testdataOverconstrainedSolverConfig.xml");
+              "ai.greycos.solver/core/api/solver/testdataOverconstrainedSolverConfig.xml");
   public static final SolverFactory<TestdataShadowedSolution> SOLVER_FACTORY_SHADOWED =
       SolverFactory.create(
           new SolverConfig()
@@ -99,16 +94,6 @@ public class SolutionManagerTest {
                   new ScoreDirectorFactoryConfig()
                       .withIncrementalScoreCalculatorClass(
                           TestdataMultivarIncrementalScoreCalculator.class)));
-  public static final SolverFactory<TestdataShadowingChainedSolution> SOLVER_FACTORY_CHAINED =
-      SolverFactory.create(
-          new SolverConfig()
-              .withSolutionClass(TestdataShadowingChainedSolution.class)
-              .withEntityClasses(
-                  TestdataShadowingChainedEntity.class, TestdataShadowingChainedObject.class)
-              .withScoreDirectorFactory(
-                  new ScoreDirectorFactoryConfig()
-                      .withIncrementalScoreCalculatorClass(
-                          TestdataShadowingChainedIncrementalScoreCalculator.class)));
   public static final SolverFactory<TestdataListSolutionWithShadowHistory> SOLVER_FACTORY_LIST =
       SolverFactory.create(
           new SolverConfig()
@@ -166,52 +151,6 @@ public class SolutionManagerTest {
         softly -> {
           softly.assertThat(solution.getScore()).isNotNull();
           softly.assertThat(solution.getEntityList().get(0).getFirstShadow()).isNotNull();
-        });
-  }
-
-  @ParameterizedTest
-  @EnumSource(SolutionManagerSource.class)
-  void updateEverythingChained(SolutionManagerSource SolutionManagerSource) {
-    var a0 = new TestdataShadowingChainedAnchor("a0");
-    var a1 = new TestdataShadowingChainedEntity("a1", a0);
-    var b0 = new TestdataShadowingChainedAnchor("b0");
-    var b1 = new TestdataShadowingChainedEntity("b1", b0);
-    var b2 = new TestdataShadowingChainedEntity("b2", b1);
-    var c0 = new TestdataShadowingChainedAnchor("c0");
-    var solution = new TestdataShadowingChainedSolution("solution");
-    solution.setChainedAnchorList(Arrays.asList(a0, b0, c0));
-    solution.setChainedEntityList(Arrays.asList(a1, b1, b2));
-
-    assertSoftly(
-        softly -> {
-          softly.assertThat(solution.getScore()).isNull();
-          softly.assertThat(a0.getNextEntity()).isNull();
-          softly.assertThat(a1.getAnchor()).isNull();
-          softly.assertThat(a1.getNextEntity()).isNull();
-          softly.assertThat(b0.getNextEntity()).isNull();
-          softly.assertThat(b1.getAnchor()).isNull();
-          softly.assertThat(b1.getNextEntity()).isNull();
-          softly.assertThat(b2.getAnchor()).isNull();
-          softly.assertThat(b2.getNextEntity()).isNull();
-          softly.assertThat(c0.getNextEntity()).isNull();
-        });
-
-    var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_CHAINED);
-    assertThat(solutionManager).isNotNull();
-    solutionManager.update(solution);
-
-    assertSoftly(
-        softly -> {
-          softly.assertThat(solution.getScore()).isNotNull();
-          softly.assertThat(a0.getNextEntity()).isEqualTo(a1);
-          softly.assertThat(a1.getAnchor()).isEqualTo(a0);
-          softly.assertThat(a1.getNextEntity()).isNull();
-          softly.assertThat(b0.getNextEntity()).isEqualTo(b1);
-          softly.assertThat(b1.getAnchor()).isEqualTo(b0);
-          softly.assertThat(b1.getNextEntity()).isEqualTo(b2);
-          softly.assertThat(b2.getAnchor()).isEqualTo(b0);
-          softly.assertThat(b2.getNextEntity()).isNull();
-          softly.assertThat(c0.getNextEntity()).isNull();
         });
   }
 
@@ -586,72 +525,6 @@ public class SolutionManagerTest {
 
   @ParameterizedTest
   @EnumSource(SolutionManagerSource.class)
-  void recommendFit(SolutionManagerSource SolutionManagerSource) {
-    int valueSize = 3;
-    var solution = TestdataShadowedSolution.generateSolution(valueSize, 3);
-    var uninitializedEntity = solution.getEntityList().get(2);
-    var unassignedValue = uninitializedEntity.getValue();
-    uninitializedEntity.setValue(null);
-
-    var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_SHADOWED);
-    assertThat(solutionManager).isNotNull();
-    var recommendationList =
-        solutionManager.recommendFit(
-            solution, uninitializedEntity, TestdataShadowedEntity::getValue);
-
-    // Three values means there need to be three recommendations.
-    assertThat(recommendationList).hasSize(valueSize);
-    /*
-     * The calculator counts how many entities have the same value as another entity.
-     * Therefore the recommendation to assign value #2 needs to come first,
-     * as it means each entity only has each value once.
-     */
-    var firstRecommendation = recommendationList.get(0);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(firstRecommendation.proposition()).isEqualTo(unassignedValue);
-          softly
-              .assertThat(firstRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(-1));
-        });
-    // The other two recommendations need to come in order of the placer; so value #0, then value
-    // #1.
-    var secondRecommendation = recommendationList.get(1);
-    assertSoftly(
-        softly -> {
-          softly
-              .assertThat(secondRecommendation.proposition())
-              .isEqualTo(solution.getValueList().get(0));
-          softly
-              .assertThat(secondRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(-3));
-        });
-    var thirdRecommendation = recommendationList.get(2);
-    assertSoftly(
-        softly -> {
-          softly
-              .assertThat(thirdRecommendation.proposition())
-              .isEqualTo(solution.getValueList().get(1));
-          softly
-              .assertThat(thirdRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(-3));
-        });
-    // Ensure the original solution is in its original state.
-    assertSoftly(
-        softly -> {
-          softly.assertThat(uninitializedEntity.getValue()).isNull();
-          softly
-              .assertThat(solution.getEntityList().get(0).getValue())
-              .isEqualTo(solution.getValueList().get(0));
-          softly
-              .assertThat(solution.getEntityList().get(1).getValue())
-              .isEqualTo(solution.getValueList().get(1));
-          softly.assertThat(solution.getScore()).isNull();
-        });
-  }
-
-  @ParameterizedTest
-  @EnumSource(SolutionManagerSource.class)
   void recommendAssignment(SolutionManagerSource SolutionManagerSource) {
     int valueSize = 3;
     var solution = TestdataShadowedSolution.generateSolution(valueSize, 3);
@@ -793,7 +666,7 @@ public class SolutionManagerTest {
     assertThat(solutionManager).isNotNull();
     assertThatThrownBy(
             () ->
-                solutionManager.recommendFit(
+                solutionManager.recommendAssignment(
                     uninitializedSolution, uninitializedEntity, TestdataShadowedEntity::getValue))
         .hasMessageContaining("Solution (Generated Solution 0) has (3) uninitialized elements.");
   }
@@ -829,7 +702,7 @@ public class SolutionManagerTest {
     var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_UNASSIGNED);
     assertThat(solutionManager).isNotNull();
     var recommendationList =
-        solutionManager.recommendFit(
+        solutionManager.recommendAssignment(
             solution, uninitializedEntity, TestdataAllowsUnassignedEntity::getValue);
 
     // Three values means there need to be four recommendations, one extra for unassigned.
@@ -1216,7 +1089,7 @@ public class SolutionManagerTest {
     var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_UNASSIGNED);
     assertThat(solutionManager).isNotNull();
     var recommendationList =
-        solutionManager.recommendFit(
+        solutionManager.recommendAssignment(
             uninitializedSolution, uninitializedEntity, TestdataAllowsUnassignedEntity::getValue);
 
     // Three values means there need to be four recommendations, one extra for unassigned.
@@ -1255,7 +1128,7 @@ public class SolutionManagerTest {
 
     var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_MULTIVAR);
     var recommendationList =
-        solutionManager.recommendFit(
+        solutionManager.recommendAssignment(
             solution,
             uninitializedEntity,
             entity ->
@@ -1623,7 +1496,7 @@ public class SolutionManagerTest {
     var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_MULTIVAR);
     assertThatThrownBy(
             () ->
-                solutionManager.recommendFit(
+                solutionManager.recommendAssignment(
                     solution,
                     uninitializedEntity,
                     entity ->
@@ -1666,304 +1539,6 @@ public class SolutionManagerTest {
 
   @ParameterizedTest
   @EnumSource(SolutionManagerSource.class)
-  void recommendFitChained(SolutionManagerSource SolutionManagerSource) {
-    var a0 = new TestdataShadowingChainedAnchor("a0");
-    var b0 = new TestdataShadowingChainedAnchor("b0");
-    var b1 = new TestdataShadowingChainedEntity("b1", b0);
-    var c0 = new TestdataShadowingChainedAnchor("c0");
-    var c1 = new TestdataShadowingChainedEntity("c1", c0);
-    var c2 = new TestdataShadowingChainedEntity("c2", c1);
-    var uninitializedEntity = new TestdataShadowingChainedEntity("uninitialized");
-    var solution = new TestdataShadowingChainedSolution("solution");
-    solution.setChainedAnchorList(Arrays.asList(a0, b0, c0));
-    solution.setChainedEntityList(Arrays.asList(b1, c1, c2, uninitializedEntity));
-
-    var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_CHAINED);
-    var recommendationList =
-        solutionManager.recommendFit(
-            solution, uninitializedEntity, TestdataShadowingChainedEntity::getChainedObject);
-    assertThat(recommendationList).hasSize(6);
-
-    // First recommendation is to be added to the "a" chain, as that results in the shortest chain.
-    var firstRecommendation = recommendationList.get(0);
-    assertSoftly(
-        softly -> {
-          var clonedAnchor = (TestdataShadowingChainedAnchor) firstRecommendation.proposition();
-          // The anchor is cloned...
-          softly.assertThat(clonedAnchor).isNotEqualTo(a0);
-          softly.assertThat(clonedAnchor.getCode()).isEqualTo(a0.getCode());
-          // ... but it is in a state as it would've been in the original solution.
-          softly.assertThat(clonedAnchor.getNextEntity()).isNull();
-          softly
-              .assertThat(firstRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(-3));
-        });
-
-    // Second recommendation is to be added to the start of the "b" chain.
-    var secondRecommendation = recommendationList.get(1);
-    assertSoftly(
-        softly -> {
-          var clonedAnchor = (TestdataShadowingChainedAnchor) secondRecommendation.proposition();
-          softly.assertThat(clonedAnchor).isNotEqualTo(b0);
-          softly.assertThat(clonedAnchor.getCode()).isEqualTo(b0.getCode());
-          softly.assertThat(clonedAnchor.getNextEntity().getCode()).isEqualTo(b1.getCode());
-          softly
-              .assertThat(secondRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(-21));
-        });
-
-    // Third recommendation is to be added to the end of the "b" chain.
-    var thirdRecommendation = recommendationList.get(2);
-    assertSoftly(
-        softly -> {
-          var clonedEntity = (TestdataShadowingChainedEntity) thirdRecommendation.proposition();
-          softly.assertThat(clonedEntity).isNotEqualTo(b1);
-          softly.assertThat(clonedEntity.getCode()).isEqualTo(b1.getCode());
-          softly.assertThat(clonedEntity.getNextEntity()).isNull();
-          softly
-              .assertThat(thirdRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(-21));
-        });
-
-    // Fourth recommendation is to be added to the start of the "c" chain and so on...
-    var fourthRecommendation = recommendationList.get(3);
-    assertSoftly(
-        softly -> {
-          var clonedAnchor = (TestdataShadowingChainedAnchor) fourthRecommendation.proposition();
-          softly.assertThat(clonedAnchor).isNotEqualTo(c0);
-          softly.assertThat(clonedAnchor.getCode()).isEqualTo(c0.getCode());
-          softly.assertThat(clonedAnchor.getNextEntity().getCode()).isEqualTo(c1.getCode());
-          softly
-              .assertThat(fourthRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(-651));
-        });
-
-    // Ensure the original solution is in its original state.
-    assertSoftly(
-        softly -> {
-          softly.assertThat(uninitializedEntity.getNextEntity()).isNull();
-          softly.assertThat(solution.getScore()).isNull();
-        });
-  }
-
-  @ParameterizedTest
-  @EnumSource(SolutionManagerSource.class)
-  void recommendAssignmentChained(SolutionManagerSource SolutionManagerSource) {
-    var a0 = new TestdataShadowingChainedAnchor("a0");
-    var b0 = new TestdataShadowingChainedAnchor("b0");
-    var b1 = new TestdataShadowingChainedEntity("b1", b0);
-    var c0 = new TestdataShadowingChainedAnchor("c0");
-    var c1 = new TestdataShadowingChainedEntity("c1", c0);
-    var c2 = new TestdataShadowingChainedEntity("c2", c1);
-    var uninitializedEntity = new TestdataShadowingChainedEntity("uninitialized");
-    var solution = new TestdataShadowingChainedSolution("solution");
-    solution.setChainedAnchorList(Arrays.asList(a0, b0, c0));
-    solution.setChainedEntityList(Arrays.asList(b1, c1, c2, uninitializedEntity));
-
-    var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_CHAINED);
-    var recommendationList =
-        solutionManager.recommendAssignment(
-            solution, uninitializedEntity, TestdataShadowingChainedEntity::getChainedObject);
-    assertThat(recommendationList).hasSize(6);
-
-    // First recommendation is to be added to the "a" chain, as that results in the shortest chain.
-    var firstRecommendation = recommendationList.get(0);
-    assertSoftly(
-        softly -> {
-          var clonedAnchor = (TestdataShadowingChainedAnchor) firstRecommendation.proposition();
-          // The anchor is cloned...
-          softly.assertThat(clonedAnchor).isNotEqualTo(a0);
-          softly.assertThat(clonedAnchor.getCode()).isEqualTo(a0.getCode());
-          // ... but it is in a state as it would've been in the original solution.
-          softly.assertThat(clonedAnchor.getNextEntity()).isNull();
-          softly
-              .assertThat(firstRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(-3));
-        });
-
-    // Second recommendation is to be added to the start of the "b" chain.
-    var secondRecommendation = recommendationList.get(1);
-    assertSoftly(
-        softly -> {
-          var clonedAnchor = (TestdataShadowingChainedAnchor) secondRecommendation.proposition();
-          softly.assertThat(clonedAnchor).isNotEqualTo(b0);
-          softly.assertThat(clonedAnchor.getCode()).isEqualTo(b0.getCode());
-          softly.assertThat(clonedAnchor.getNextEntity().getCode()).isEqualTo(b1.getCode());
-          softly
-              .assertThat(secondRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(-21));
-        });
-
-    // Third recommendation is to be added to the end of the "b" chain.
-    var thirdRecommendation = recommendationList.get(2);
-    assertSoftly(
-        softly -> {
-          var clonedEntity = (TestdataShadowingChainedEntity) thirdRecommendation.proposition();
-          softly.assertThat(clonedEntity).isNotEqualTo(b1);
-          softly.assertThat(clonedEntity.getCode()).isEqualTo(b1.getCode());
-          softly.assertThat(clonedEntity.getNextEntity()).isNull();
-          softly
-              .assertThat(thirdRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(-21));
-        });
-
-    // Fourth recommendation is to be added to the start of the "c" chain and so on...
-    var fourthRecommendation = recommendationList.get(3);
-    assertSoftly(
-        softly -> {
-          var clonedAnchor = (TestdataShadowingChainedAnchor) fourthRecommendation.proposition();
-          softly.assertThat(clonedAnchor).isNotEqualTo(c0);
-          softly.assertThat(clonedAnchor.getCode()).isEqualTo(c0.getCode());
-          softly.assertThat(clonedAnchor.getNextEntity().getCode()).isEqualTo(c1.getCode());
-          softly
-              .assertThat(fourthRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(-651));
-        });
-
-    // Ensure the original solution is in its original state.
-    assertSoftly(
-        softly -> {
-          softly.assertThat(uninitializedEntity.getNextEntity()).isNull();
-          softly.assertThat(solution.getScore()).isNull();
-        });
-  }
-
-  @ParameterizedTest
-  @EnumSource(SolutionManagerSource.class)
-  void recommendAssignmentChainedAlreadyAssigned(SolutionManagerSource SolutionManagerSource) {
-    var a0 = new TestdataShadowingChainedAnchor("a0");
-    var b0 = new TestdataShadowingChainedAnchor("b0");
-    var b1 = new TestdataShadowingChainedEntity("b1", b0);
-    var c0 = new TestdataShadowingChainedAnchor("c0");
-    var c1 = new TestdataShadowingChainedEntity("c1", c0);
-    var evaluatedValue = new TestdataShadowingChainedEntity("c2", c1);
-    var solution = new TestdataShadowingChainedSolution("solution");
-    solution.setChainedAnchorList(Arrays.asList(a0, b0, c0));
-    solution.setChainedEntityList(Arrays.asList(b1, c1, evaluatedValue));
-
-    var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_CHAINED);
-    var recommendationList =
-        solutionManager.recommendAssignment(
-            solution, evaluatedValue, TestdataShadowingChainedEntity::getChainedObject);
-    assertThat(recommendationList).hasSize(5);
-
-    // First recommendation is to be added to the "a" chain, as that results in the shortest chain.
-    var firstRecommendation = recommendationList.get(0);
-    assertSoftly(
-        softly -> {
-          var clonedAnchor = (TestdataShadowingChainedAnchor) firstRecommendation.proposition();
-          // The anchor is cloned...
-          softly.assertThat(clonedAnchor).isNotEqualTo(a0);
-          softly.assertThat(clonedAnchor.getCode()).isEqualTo(a0.getCode());
-          // ... but it is in a state as it would've been in the original solution.
-          softly.assertThat(clonedAnchor.getNextEntity()).isNull();
-          softly
-              .assertThat(firstRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(18));
-        });
-
-    // Second recommendation is to be added to the start of the "b" chain.
-    var secondRecommendation = recommendationList.get(1);
-    assertSoftly(
-        softly -> {
-          var clonedAnchor = (TestdataShadowingChainedAnchor) secondRecommendation.proposition();
-          softly.assertThat(clonedAnchor).isNotEqualTo(b0);
-          softly.assertThat(clonedAnchor.getCode()).isEqualTo(b0.getCode());
-          softly.assertThat(clonedAnchor.getNextEntity().getCode()).isEqualTo(b1.getCode());
-          softly
-              .assertThat(secondRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(0));
-        });
-
-    // Third recommendation is to be added to the start of the "c" chain.
-    var thirdRecommendation = recommendationList.get(2);
-    assertSoftly(
-        softly -> {
-          var clonedEntity = (TestdataShadowingChainedAnchor) thirdRecommendation.proposition();
-          softly.assertThat(clonedEntity).isNotEqualTo(c0);
-          softly.assertThat(clonedEntity.getCode()).isEqualTo(c0.getCode());
-          softly.assertThat(clonedEntity.getNextEntity().getCode()).isEqualTo(c1.getCode());
-          softly
-              .assertThat(thirdRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(0));
-        });
-
-    // Fourth recommendation is to be added to the end of the "b" chain and so on...
-    var fourthRecommendation = recommendationList.get(3);
-    assertSoftly(
-        softly -> {
-          var clonedAnchor = (TestdataShadowingChainedEntity) fourthRecommendation.proposition();
-          softly.assertThat(clonedAnchor).isNotEqualTo(b1);
-          softly.assertThat(clonedAnchor.getCode()).isEqualTo(b1.getCode());
-          softly.assertThat(clonedAnchor.getNextEntity()).isNull();
-          softly
-              .assertThat(fourthRecommendation.scoreAnalysisDiff().score())
-              .isEqualTo(SimpleScore.of(0));
-        });
-
-    // Ensure the original solution is in its original state.
-    assertSoftly(
-        softly -> {
-          softly.assertThat(evaluatedValue.getNextEntity()).isNull();
-          softly.assertThat(solution.getScore()).isNull();
-        });
-  }
-
-  @ParameterizedTest
-  @EnumSource(SolutionManagerSource.class)
-  void recommendFitTwoUninitializedEntityWithChained(SolutionManagerSource SolutionManagerSource) {
-    var a0 = new TestdataShadowingChainedAnchor("a0");
-    var b0 = new TestdataShadowingChainedAnchor("b0");
-    var b1 = new TestdataShadowingChainedEntity("b1", b0);
-    var c0 = new TestdataShadowingChainedAnchor("c0");
-    var c1 = new TestdataShadowingChainedEntity("c1", c0);
-    var c2 = new TestdataShadowingChainedEntity("c2", c1);
-    var uninitializedEntity = new TestdataShadowingChainedEntity("uninitialized");
-    var uninitializedEntity2 = new TestdataShadowingChainedEntity("uninitialized2");
-    var uninitializedSolution = new TestdataShadowingChainedSolution("solution");
-    uninitializedSolution.setChainedAnchorList(Arrays.asList(a0, b0, c0));
-    uninitializedSolution.setChainedEntityList(
-        Arrays.asList(b1, c1, c2, uninitializedEntity, uninitializedEntity2));
-
-    var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_CHAINED);
-    assertThatThrownBy(
-            () ->
-                solutionManager.recommendFit(
-                    uninitializedSolution,
-                    uninitializedEntity,
-                    TestdataShadowingChainedEntity::getChainedObject))
-        .hasMessageContaining("Solution (solution) has (2) uninitialized elements.");
-  }
-
-  @ParameterizedTest
-  @EnumSource(SolutionManagerSource.class)
-  void recommendAssignmentTwoUninitializedEntityWithChained(
-      SolutionManagerSource SolutionManagerSource) {
-    var a0 = new TestdataShadowingChainedAnchor("a0");
-    var b0 = new TestdataShadowingChainedAnchor("b0");
-    var b1 = new TestdataShadowingChainedEntity("b1", b0);
-    var c0 = new TestdataShadowingChainedAnchor("c0");
-    var c1 = new TestdataShadowingChainedEntity("c1", c0);
-    var c2 = new TestdataShadowingChainedEntity("c2", c1);
-    var uninitializedEntity = new TestdataShadowingChainedEntity("uninitialized");
-    var uninitializedEntity2 = new TestdataShadowingChainedEntity("uninitialized2");
-    var uninitializedSolution = new TestdataShadowingChainedSolution("solution");
-    uninitializedSolution.setChainedAnchorList(Arrays.asList(a0, b0, c0));
-    uninitializedSolution.setChainedEntityList(
-        Arrays.asList(b1, c1, c2, uninitializedEntity, uninitializedEntity2));
-
-    var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_CHAINED);
-    assertThatThrownBy(
-            () ->
-                solutionManager.recommendAssignment(
-                    uninitializedSolution,
-                    uninitializedEntity,
-                    TestdataShadowingChainedEntity::getChainedObject))
-        .hasMessageContaining("Solution (solution) has (2) uninitialized elements.");
-  }
-
-  @ParameterizedTest
-  @EnumSource(SolutionManagerSource.class)
   void recommendFitList(SolutionManagerSource SolutionManagerSource) {
     var a = new TestdataListEntityWithShadowHistory("a");
     var b0 = new TestdataListValueWithShadowHistory("b0");
@@ -1979,7 +1554,7 @@ public class SolutionManagerTest {
 
     var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_LIST);
     var recommendationList =
-        solutionManager.recommendFit(
+        solutionManager.recommendAssignment(
             solution, uninitializedValue, v -> new Pair<>(v.getEntity(), v.getIndex()));
     assertThat(recommendationList).hasSize(6);
 
@@ -2236,7 +1811,7 @@ public class SolutionManagerTest {
     var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_LIST);
     assertThatThrownBy(
             () ->
-                solutionManager.recommendFit(
+                solutionManager.recommendAssignment(
                     solution, uninitializedValue, TestdataListValueWithShadowHistory::getEntity))
         .hasMessageContaining("at most one");
   }
@@ -2287,7 +1862,7 @@ public class SolutionManagerTest {
 
     var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_LIST_PINNED);
     var recommendationList =
-        solutionManager.recommendFit(
+        solutionManager.recommendAssignment(
             solution,
             uninitializedValue,
             v -> new Pair<>(v.getEntity(), v.getEntity().getValueList().indexOf(v)));
@@ -2496,7 +2071,7 @@ public class SolutionManagerTest {
 
     var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_LIST_PINNED);
     var recommendationList =
-        solutionManager.recommendFit(
+        solutionManager.recommendAssignment(
             solution,
             uninitializedValue,
             v -> new Pair<>(v.getEntity(), v.getEntity().getValueList().indexOf(v)));

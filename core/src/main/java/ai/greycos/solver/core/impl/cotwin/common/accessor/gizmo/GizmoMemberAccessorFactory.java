@@ -5,7 +5,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 
@@ -51,7 +51,7 @@ public class GizmoMemberAccessorFactory {
           """
                     When using the cotwinAccessType (%s) the classpath or modulepath must contain io.quarkus.gizmo:gizmo2.
                     Maybe add a dependency to io.quarkus.gizmo:gizmo2."""
-              .formatted(CotwinAccessType.GIZMO));
+              .formatted(CotwinAccessType.FORCE_GIZMO));
     }
     return GizmoMemberAccessorImplementor.createAccessorFor(
         member, annotationClass, accessorInfo, gizmoClassLoader);

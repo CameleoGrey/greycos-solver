@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NullMarked;
 

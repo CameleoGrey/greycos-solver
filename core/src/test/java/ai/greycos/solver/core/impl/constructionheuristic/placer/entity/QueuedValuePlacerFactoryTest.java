@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.constructionheuristic.placer.QueuedValuePlacerConfig;
 import ai.greycos.solver.core.impl.constructionheuristic.placer.Placement;
 import ai.greycos.solver.core.impl.constructionheuristic.placer.QueuedValuePlacer;

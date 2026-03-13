@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.cotwin.solution.cloner.gizmo;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoClassLoader;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 
@@ -28,7 +28,7 @@ public final class GizmoSolutionClonerFactory {
           """
                     When using the cotwinAccessType (%s) the classpath or modulepath must contain io.quarkus.gizmo:gizmo2.
                     Maybe add a dependency to io.quarkus.gizmo:gizmo2."""
-              .formatted(CotwinAccessType.GIZMO));
+              .formatted(CotwinAccessType.FORCE_GIZMO));
     }
     return new GizmoSolutionClonerImplementor()
         .createClonerFor(solutionDescriptor, gizmoClassLoader);

@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 import java.util.Arrays;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.jackson.testcotwin.JacksonTestdataEntity;
 import ai.greycos.solver.jackson.testcotwin.JacksonTestdataSolution;
 import ai.greycos.solver.jackson.testcotwin.JacksonTestdataValue;

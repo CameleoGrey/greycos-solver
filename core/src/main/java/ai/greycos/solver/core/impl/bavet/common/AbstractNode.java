@@ -1,14 +1,23 @@
 package ai.greycos.solver.core.impl.bavet.common;
 
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
 import ai.greycos.solver.core.impl.score.stream.bavet.BavetConstraintSession;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * @see PropagationQueue Description of the propagation mechanism.
  */
+@NullMarked
 public abstract class AbstractNode {
 
   private long id;
   private long layerIndex = -1;
+  private @Nullable SortedSet<ConstraintNodeLocation> locationSet;
 
   /**
    * Instead of calling the propagation directly from here, we export the propagation queue and
@@ -21,12 +30,25 @@ public abstract class AbstractNode {
    */
   public abstract Propagator getPropagator();
 
+  public abstract StreamKind getStreamKind();
+
   public long getId() {
     return id;
   }
 
   public final void setId(long id) {
     this.id = id;
+  }
+
+  public SortedSet<ConstraintNodeLocation> getLocationSet() {
+    return locationSet == null ? new TreeSet<>() : locationSet;
+  }
+
+  public void addLocationSet(Set<ConstraintNodeLocation> locationSet) {
+    if (this.locationSet == null) {
+      this.locationSet = new TreeSet<>();
+    }
+    this.locationSet.addAll(locationSet);
   }
 
   public final void setLayerIndex(long layerIndex) {

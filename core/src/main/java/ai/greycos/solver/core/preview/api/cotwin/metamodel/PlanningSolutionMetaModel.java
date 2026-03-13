@@ -1,9 +1,12 @@
 package ai.greycos.solver.core.preview.api.cotwin.metamodel;
 
+import static java.util.function.Predicate.not;
+
 import java.util.List;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -27,6 +30,11 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 public interface PlanningSolutionMetaModel<Solution_> {
 
+  static <Solution_> PlanningSolutionMetaModel<Solution_> of(
+      Class<Solution_> solutionClass, Class<?>... entityClasses) {
+    return SolutionDescriptor.buildSolutionDescriptor(solutionClass, entityClasses).getMetaModel();
+  }
+
   /**
    * Returns the class of the solution.
    *
@@ -48,8 +56,28 @@ public interface PlanningSolutionMetaModel<Solution_> {
    *
    * @return Entities declared by the solution, which declare some genuine variables.
    */
-  default List<PlanningEntityMetaModel<Solution_, ?>> genuineEntities() {
-    return entities().stream().filter(PlanningEntityMetaModel::isGenuine).toList();
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  default List<GenuineEntityMetaModel<Solution_, ?>> genuineEntities() {
+    return (List)
+        entities().stream()
+            .filter(PlanningEntityMetaModel::isGenuine)
+            .map(entityMetaModel -> (GenuineEntityMetaModel<Solution_, ?>) entityMetaModel)
+            .toList();
+  }
+
+  /**
+   * Returns the meta-models of shadow @{@link PlanningEntity planning entities} known to the
+   * solution.
+   *
+   * @return Entities declared by the solution, which do not declare any genuine variables.
+   */
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  default List<ShadowEntityMetaModel<Solution_, ?>> shadowEntities() {
+    return (List)
+        entities().stream()
+            .filter(not(PlanningEntityMetaModel::isGenuine))
+            .map(entityMetaModel -> (ShadowEntityMetaModel<Solution_, ?>) entityMetaModel)
+            .toList();
   }
 
   /**
@@ -68,6 +96,52 @@ public interface PlanningSolutionMetaModel<Solution_> {
     }
     throw new IllegalArgumentException(
         "The type (%s) is not among known entities (%s).".formatted(entityClass, entities()));
+  }
+
+  /**
+   * Returns the meta-model of the genuine @{@link PlanningEntity planning entity} with the given
+   * class.
+   *
+   * @param entityClass Expected class of the entity.
+   * @return A genuine entity declared by the solution.
+   * @throws IllegalArgumentException where {@link #hasEntity(Class)} would have returned false, or
+   *     where the entity is a shadow entity
+   */
+  @SuppressWarnings("unchecked")
+  default <Entity_> GenuineEntityMetaModel<Solution_, Entity_> genuineEntity(
+      Class<Entity_> entityClass) {
+    var genuineEntities = genuineEntities();
+    for (var entityMetaModel : genuineEntities) {
+      if (entityMetaModel.type().equals(entityClass)) {
+        return (GenuineEntityMetaModel<Solution_, Entity_>) entityMetaModel;
+      }
+    }
+    throw new IllegalArgumentException(
+        "The type (%s) is not among known genuine entities (%s)."
+            .formatted(entityClass, genuineEntities));
+  }
+
+  /**
+   * Returns the meta-model of the shadow @{@link PlanningEntity planning entity} with the given
+   * class.
+   *
+   * @param entityClass Expected class of the entity.
+   * @return A shadow entity declared by the solution.
+   * @throws IllegalArgumentException where {@link #hasEntity(Class)} would have returned false, or
+   *     where the entity is a genuine entity
+   */
+  @SuppressWarnings("unchecked")
+  default <Entity_> ShadowEntityMetaModel<Solution_, Entity_> shadowEntity(
+      Class<Entity_> entityClass) {
+    var shadowEntities = shadowEntities();
+    for (var entityMetaModel : shadowEntities) {
+      if (entityMetaModel.type().equals(entityClass)) {
+        return (ShadowEntityMetaModel<Solution_, Entity_>) entityMetaModel;
+      }
+    }
+    throw new IllegalArgumentException(
+        "The type (%s) is not among known shadow entities (%s)."
+            .formatted(entityClass, shadowEntities));
   }
 
   /**

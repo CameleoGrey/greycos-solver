@@ -1,6 +1,6 @@
 package ai.greycos.solver.quarkus.testcotwin.declarative.missing;
 
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 
 import org.jspecify.annotations.NonNull;

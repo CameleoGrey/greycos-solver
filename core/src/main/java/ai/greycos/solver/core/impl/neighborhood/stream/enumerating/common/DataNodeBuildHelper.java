@@ -7,7 +7,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import ai.greycos.solver.core.impl.bavet.common.AbstractNodeBuildHelper;
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.score.director.SessionContext;
 
@@ -23,13 +23,13 @@ public final class DataNodeBuildHelper<Solution_>
   public DataNodeBuildHelper(
       SessionContext<Solution_> sessionContext,
       Set<AbstractEnumeratingStream<Solution_>> activeStreamSet) {
-    super(activeStreamSet);
+    super(activeStreamSet, null);
     this.sessionContext = Objects.requireNonNull(sessionContext);
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})
   @Override
-  public <Tuple_ extends AbstractTuple> void putInsertUpdateRetract(
+  public <Tuple_ extends Tuple> void putInsertUpdateRetract(
       AbstractEnumeratingStream<Solution_> stream, TupleLifecycle<Tuple_> tupleLifecycle) {
     super.putInsertUpdateRetract(stream, tupleLifecycle);
     if (tupleLifecycle instanceof AbstractDatasetInstance datasetInstance) {

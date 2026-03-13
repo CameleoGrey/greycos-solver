@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.config.localsearch.decider.acceptor.AcceptorType;
 import ai.greycos.solver.core.config.localsearch.decider.acceptor.LocalSearchAcceptorConfig;
 import ai.greycos.solver.core.config.localsearch.decider.acceptor.stepcountinghillclimbing.StepCountingHillClimbingType;
@@ -23,7 +23,7 @@ import ai.greycos.solver.core.impl.localsearch.decider.acceptor.stepcountinghill
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.tabu.EntityTabuAcceptor;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.tabu.MoveTabuAcceptor;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.tabu.ValueTabuAcceptor;
-import ai.greycos.solver.core.impl.score.buildin.HardSoftScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.HardSoftScoreDefinition;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
 
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,6 @@ class AcceptorFactoryTest {
             .withFadingEntityTabuSize(1)
             .withMoveTabuSize(1)
             .withFadingMoveTabuSize(1)
-            .withUndoMoveTabuSize(1) // Has no effect anymore.
             .withValueTabuSize(1)
             .withFadingValueTabuSize(1)
             .withLateAcceptanceSize(10)

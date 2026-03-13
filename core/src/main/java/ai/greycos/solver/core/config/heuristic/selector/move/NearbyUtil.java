@@ -1,13 +1,12 @@
 package ai.greycos.solver.core.config.heuristic.selector.move;
 
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.list.DestinationSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.TailChainSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
@@ -22,7 +21,7 @@ public final class NearbyUtil {
   public static @NonNull ChangeMoveSelectorConfig enable(
       @NonNull ChangeMoveSelectorConfig changeMoveSelectorConfig,
       @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
-      @NonNull Random random) {
+      @NonNull RandomGenerator random) {
     var nearbyConfig = changeMoveSelectorConfig.copyConfig();
     var entityConfig = configureEntitySelector(nearbyConfig.getEntitySelectorConfig(), random);
     var valueConfig =
@@ -32,7 +31,7 @@ public final class NearbyUtil {
   }
 
   private static EntitySelectorConfig configureEntitySelector(
-      EntitySelectorConfig entitySelectorConfig, Random random) {
+      EntitySelectorConfig entitySelectorConfig, RandomGenerator random) {
     if (entitySelectorConfig == null) {
       entitySelectorConfig = new EntitySelectorConfig();
     }
@@ -75,7 +74,7 @@ public final class NearbyUtil {
   public static @NonNull SwapMoveSelectorConfig enable(
       @NonNull SwapMoveSelectorConfig swapMoveSelectorConfig,
       @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
-      @NonNull Random random) {
+      @NonNull RandomGenerator random) {
     var nearbyConfig = swapMoveSelectorConfig.copyConfig();
     var entityConfig = configureEntitySelector(nearbyConfig.getEntitySelectorConfig(), random);
     var secondaryConfig = nearbyConfig.getSecondaryEntitySelectorConfig();
@@ -89,22 +88,10 @@ public final class NearbyUtil {
         .withSecondaryEntitySelectorConfig(secondaryConfig);
   }
 
-  public static @NonNull TailChainSwapMoveSelectorConfig enable(
-      @NonNull TailChainSwapMoveSelectorConfig tailChainSwapMoveSelectorConfig,
-      @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
-      @NonNull Random random) {
-    var nearbyConfig = tailChainSwapMoveSelectorConfig.copyConfig();
-    var entityConfig = configureEntitySelector(nearbyConfig.getEntitySelectorConfig(), random);
-    var valueConfig =
-        configureValueSelector(
-            nearbyConfig.getValueSelectorConfig(), entityConfig.getId(), distanceMeter);
-    return nearbyConfig.withEntitySelectorConfig(entityConfig).withValueSelectorConfig(valueConfig);
-  }
-
   public static @NonNull ListChangeMoveSelectorConfig enable(
       @NonNull ListChangeMoveSelectorConfig listChangeMoveSelectorConfig,
       @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
-      @NonNull Random random) {
+      @NonNull RandomGenerator random) {
     var nearbyConfig = listChangeMoveSelectorConfig.copyConfig();
     var valueConfig = configureValueSelector(nearbyConfig.getValueSelectorConfig(), random);
     var destinationConfig = nearbyConfig.getDestinationSelectorConfig();
@@ -145,7 +132,7 @@ public final class NearbyUtil {
   }
 
   private static ValueSelectorConfig configureValueSelector(
-      ValueSelectorConfig valueSelectorConfig, Random random) {
+      ValueSelectorConfig valueSelectorConfig, RandomGenerator random) {
     if (valueSelectorConfig == null) {
       valueSelectorConfig = new ValueSelectorConfig();
     }
@@ -157,7 +144,7 @@ public final class NearbyUtil {
   public static @NonNull ListSwapMoveSelectorConfig enable(
       @NonNull ListSwapMoveSelectorConfig listSwapMoveSelectorConfig,
       @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
-      @NonNull Random random) {
+      @NonNull RandomGenerator random) {
     var nearbyConfig = listSwapMoveSelectorConfig.copyConfig();
     var valueConfig = configureValueSelector(nearbyConfig.getValueSelectorConfig(), random);
     var secondaryConfig =
@@ -183,7 +170,7 @@ public final class NearbyUtil {
   public static @NonNull KOptListMoveSelectorConfig enable(
       @NonNull KOptListMoveSelectorConfig kOptListMoveSelectorConfig,
       @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
-      @NonNull Random random) {
+      @NonNull RandomGenerator random) {
     var nearbyConfig = kOptListMoveSelectorConfig.copyConfig();
     var originConfig = configureValueSelector(nearbyConfig.getOriginSelectorConfig(), random);
     var valueConfig =

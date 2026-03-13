@@ -1,6 +1,5 @@
 package ai.greycos.solver.core.impl.score.director;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;

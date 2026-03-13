@@ -5,7 +5,7 @@ import java.util.function.Function;
 
 import ai.greycos.solver.core.api.function.QuadFunction;
 import ai.greycos.solver.core.api.function.TriFunction;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.ConstraintCollectors;
 import ai.greycos.solver.core.api.score.stream.Joiners;
 import ai.greycos.solver.core.api.score.stream.PrecomputeFactory;

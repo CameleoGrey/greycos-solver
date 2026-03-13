@@ -16,8 +16,8 @@ import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.Termin
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni.AbstractUniEnumeratingStream;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni.ForEachIncludingPinnedEnumeratingStream;
 import ai.greycos.solver.core.impl.score.director.SessionContext;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.EnumeratingJoiners;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.joiner.NeighborhoodsJoiners;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -72,7 +72,7 @@ public final class EnumeratingStreamFactory<Solution_> {
         forEachNonDiscriminating(sourceClass, includeNull)
             .ifNotExists(
                 parentEntityDescriptor.getEntityClass(),
-                EnumeratingJoiners.filtering(
+                NeighborhoodsJoiners.filtering(
                     listVariableDescriptor.getEntityContainsPinnedValuePredicate()));
     return share((AbstractUniEnumeratingStream<Solution_, A>) stream);
   }

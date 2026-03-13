@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 import java.util.OptionalInt;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverConfigOverride;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;

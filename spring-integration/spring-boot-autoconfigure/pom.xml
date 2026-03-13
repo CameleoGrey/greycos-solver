@@ -20,23 +20,11 @@
     This module contains the Spring Boot autoconfigure.
   </description>
   <url>https://github.com/CameleoGrey/greycos-solver</url>
-
-  <properties>
-    <java.module.name>ai.greycos.solver.spring.boot.autoconfigure</java.module.name>
-  </properties>
-
   <dependencies>
     <!-- Internal dependencies -->
     <dependency>
       <groupId>ai.greycos.solver</groupId>
       <artifactId>greycos-solver-core</artifactId>
-    </dependency>
-
-    <!-- Need this so we can @Autowire ConstraintVerifier -->
-    <dependency>
-      <groupId>ai.greycos.solver</groupId>
-      <artifactId>greycos-solver-test</artifactId>
-      <optional>true</optional>
     </dependency>
 
     <!-- Need this so we can @Autowire Benchmark -->

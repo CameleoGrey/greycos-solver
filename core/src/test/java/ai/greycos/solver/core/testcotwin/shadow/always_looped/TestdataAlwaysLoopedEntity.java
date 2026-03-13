@@ -10,10 +10,10 @@ import ai.greycos.solver.core.testcotwin.TestdataObject;
 public class TestdataAlwaysLoopedEntity extends TestdataObject {
   @PlanningVariable Integer value;
 
-  @ShadowVariable(supplierName = "isEvenSupplier")
+  @ShadowVariable(supplierName = "getEvenSupplier")
   Boolean isEven;
 
-  @ShadowVariable(supplierName = "isOddSupplier")
+  @ShadowVariable(supplierName = "getOddSupplier")
   Boolean isOdd;
 
   public TestdataAlwaysLoopedEntity() {}
@@ -39,13 +39,29 @@ public class TestdataAlwaysLoopedEntity extends TestdataObject {
     return isEven;
   }
 
+  public Boolean getIsEven() {
+    return isEven;
+  }
+
+  public void setIsEven(Boolean isEven) {
+    this.isEven = isEven;
+  }
+
   public Boolean getOdd() {
     return isOdd;
   }
 
+  public Boolean getIsOdd() {
+    return isOdd;
+  }
+
+  public void setIsOdd(Boolean isOdd) {
+    this.isOdd = isOdd;
+  }
+
   // Complex methods
   @ShadowSources({"value", "isOdd"})
-  public Boolean isEvenSupplier() {
+  public Boolean getEvenSupplier() {
     if (value == null) {
       return null;
     }
@@ -56,7 +72,7 @@ public class TestdataAlwaysLoopedEntity extends TestdataObject {
   }
 
   @ShadowSources({"value", "isEven"})
-  public Boolean isOddSupplier() {
+  public Boolean getOddSupplier() {
     if (value == null) {
       return null;
     }

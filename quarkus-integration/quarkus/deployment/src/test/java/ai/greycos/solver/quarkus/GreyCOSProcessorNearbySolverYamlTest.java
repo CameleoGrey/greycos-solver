@@ -8,8 +8,7 @@ import java.time.Duration;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.SolverConfig;
@@ -51,9 +50,6 @@ class GreyCOSProcessorNearbySolverYamlTest {
     assertNotNull(solverConfig.getNearbyDistanceMeterClass());
     assertTrue(solverConfig.getDaemon());
     assertEquals("2", solverConfig.getMoveThreadCount());
-    assertEquals(CotwinAccessType.REFLECTION, solverConfig.getCotwinAccessType());
-    assertEquals(null, solverConfig.getScoreDirectorFactoryConfig().getConstraintStreamImplType());
-
     assertNotNull(solverFactory);
   }
 

@@ -3,11 +3,10 @@ package ai.greycos.solver.core.impl.cotwin.lookup;
 import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentMap;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
-import ai.greycos.solver.core.api.cotwin.lookup.LookUpStrategyType;
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.config.util.ConfigUtils;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
 import ai.greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import ai.greycos.solver.core.impl.cotwin.solution.cloner.DeepCloningUtils;
@@ -21,6 +20,10 @@ public final class LookUpStrategyResolver {
   private final MemberAccessorFactory memberAccessorFactory;
   private final ConcurrentMap<Class<?>, LookUpStrategy> decisionCache =
       new ConcurrentMemoization<>();
+
+  public LookUpStrategyResolver(DescriptorPolicy descriptorPolicy) {
+    this(descriptorPolicy, LookUpStrategyType.PLANNING_ID_OR_NONE);
+  }
 
   public LookUpStrategyResolver(
       DescriptorPolicy descriptorPolicy, LookUpStrategyType lookUpStrategyType) {

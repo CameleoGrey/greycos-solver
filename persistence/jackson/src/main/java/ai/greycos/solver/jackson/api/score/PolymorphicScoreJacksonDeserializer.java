@@ -2,20 +2,16 @@ package ai.greycos.solver.jackson.api.score;
 
 import java.io.IOException;
 
+import ai.greycos.solver.core.api.score.BendableBigDecimalScore;
+import ai.greycos.solver.core.api.score.BendableScore;
+import ai.greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import ai.greycos.solver.core.api.score.HardMediumSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
-import ai.greycos.solver.core.api.score.buildin.bendablebigdecimal.BendableBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.bendablelong.BendableLongScore;
-import ai.greycos.solver.core.api.score.buildin.hardmediumsoft.HardMediumSoftScore;
-import ai.greycos.solver.core.api.score.buildin.hardmediumsoftbigdecimal.HardMediumSoftBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.hardmediumsoftlong.HardMediumSoftLongScore;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.core.api.score.buildin.hardsoftbigdecimal.HardSoftBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
-import ai.greycos.solver.core.api.score.buildin.simplebigdecimal.SimpleBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.simplelong.SimpleLongScore;
-import ai.greycos.solver.jackson.api.score.buildin.hardsoft.HardSoftScoreJacksonDeserializer;
+import ai.greycos.solver.core.api.score.SimpleBigDecimalScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
+import ai.greycos.solver.jackson.api.score.buildin.HardSoftScoreJacksonDeserializer;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -39,31 +35,23 @@ public class PolymorphicScoreJacksonDeserializer extends JsonDeserializer<Score>
   @Override
   public Score deserialize(JsonParser parser, DeserializationContext context) throws IOException {
     parser.nextToken();
-    String scoreClassSimpleName = parser.getCurrentName();
+    String scoreClassSimpleName = parser.currentName();
     parser.nextToken();
     String scoreString = parser.getValueAsString();
     if (scoreClassSimpleName.equals(SimpleScore.class.getSimpleName())) {
       return SimpleScore.parseScore(scoreString);
-    } else if (scoreClassSimpleName.equals(SimpleLongScore.class.getSimpleName())) {
-      return SimpleLongScore.parseScore(scoreString);
     } else if (scoreClassSimpleName.equals(SimpleBigDecimalScore.class.getSimpleName())) {
       return SimpleBigDecimalScore.parseScore(scoreString);
     } else if (scoreClassSimpleName.equals(HardSoftScore.class.getSimpleName())) {
       return HardSoftScore.parseScore(scoreString);
-    } else if (scoreClassSimpleName.equals(HardSoftLongScore.class.getSimpleName())) {
-      return HardSoftLongScore.parseScore(scoreString);
     } else if (scoreClassSimpleName.equals(HardSoftBigDecimalScore.class.getSimpleName())) {
       return HardSoftBigDecimalScore.parseScore(scoreString);
     } else if (scoreClassSimpleName.equals(HardMediumSoftScore.class.getSimpleName())) {
       return HardMediumSoftScore.parseScore(scoreString);
-    } else if (scoreClassSimpleName.equals(HardMediumSoftLongScore.class.getSimpleName())) {
-      return HardMediumSoftLongScore.parseScore(scoreString);
     } else if (scoreClassSimpleName.equals(HardMediumSoftBigDecimalScore.class.getSimpleName())) {
       return HardMediumSoftBigDecimalScore.parseScore(scoreString);
     } else if (scoreClassSimpleName.equals(BendableScore.class.getSimpleName())) {
       return BendableScore.parseScore(scoreString);
-    } else if (scoreClassSimpleName.equals(BendableLongScore.class.getSimpleName())) {
-      return BendableLongScore.parseScore(scoreString);
     } else if (scoreClassSimpleName.equals(BendableBigDecimalScore.class.getSimpleName())) {
       return BendableBigDecimalScore.parseScore(scoreString);
     } else {

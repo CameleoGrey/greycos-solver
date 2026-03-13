@@ -15,9 +15,6 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveS
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainChangeMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainSwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.TailChainSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 
 import org.jspecify.annotations.NonNull;
@@ -44,17 +41,8 @@ public class PooledEntityPlacerConfig extends EntityPlacerConfig<PooledEntityPla
         name = PillarSwapMoveSelectorConfig.XML_ELEMENT_NAME,
         type = PillarSwapMoveSelectorConfig.class),
     @XmlElement(
-        name = SubChainChangeMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = SubChainChangeMoveSelectorConfig.class),
-    @XmlElement(
-        name = SubChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = SubChainSwapMoveSelectorConfig.class),
-    @XmlElement(
         name = SwapMoveSelectorConfig.XML_ELEMENT_NAME,
         type = SwapMoveSelectorConfig.class),
-    @XmlElement(
-        name = TailChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = TailChainSwapMoveSelectorConfig.class),
     @XmlElement(
         name = UnionMoveSelectorConfig.XML_ELEMENT_NAME,
         type = UnionMoveSelectorConfig.class)

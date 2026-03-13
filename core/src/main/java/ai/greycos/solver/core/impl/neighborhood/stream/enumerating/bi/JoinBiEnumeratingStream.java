@@ -13,8 +13,8 @@ import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.Abstra
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.DataNodeBuildHelper;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.JoinEnumeratingStream;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.bridge.ForeBridgeUniEnumeratingStream;
-import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.joiner.DefaultBiEnumeratingJoiner;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.BiEnumeratingPredicate;
+import ai.greycos.solver.core.impl.neighborhood.stream.joiner.DefaultBiNeighborhoodsJoiner;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsPredicate;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -26,15 +26,15 @@ public final class JoinBiEnumeratingStream<Solution_, A, B>
 
   private final ForeBridgeUniEnumeratingStream<Solution_, A> leftParent;
   private final ForeBridgeUniEnumeratingStream<Solution_, B> rightParent;
-  private final DefaultBiEnumeratingJoiner<A, B> joiner;
-  private final @Nullable BiEnumeratingPredicate<Solution_, A, B> filtering;
+  private final DefaultBiNeighborhoodsJoiner<A, B> joiner;
+  private final @Nullable BiNeighborhoodsPredicate<Solution_, A, B> filtering;
 
   public JoinBiEnumeratingStream(
       EnumeratingStreamFactory<Solution_> enumeratingStreamFactory,
       ForeBridgeUniEnumeratingStream<Solution_, A> leftParent,
       ForeBridgeUniEnumeratingStream<Solution_, B> rightParent,
-      DefaultBiEnumeratingJoiner<A, B> joiner,
-      @Nullable BiEnumeratingPredicate<Solution_, A, B> filtering) {
+      DefaultBiNeighborhoodsJoiner<A, B> joiner,
+      @Nullable BiNeighborhoodsPredicate<Solution_, A, B> filtering) {
     super(enumeratingStreamFactory);
     this.leftParent = leftParent;
     this.rightParent = rightParent;

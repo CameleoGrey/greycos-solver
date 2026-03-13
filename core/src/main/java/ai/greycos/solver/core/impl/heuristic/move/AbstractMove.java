@@ -7,12 +7,10 @@ import java.util.Set;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
 import ai.greycos.solver.core.impl.move.VariableChangeRecordingScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
-import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 /**
  * Abstract superclass for {@link Move}, requiring implementation of undo moves.
@@ -20,7 +18,8 @@ import ai.greycos.solver.core.preview.api.move.Rebaser;
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  * @see Move
  */
-public abstract class AbstractMove<Solution_> implements Move<Solution_> {
+public abstract class AbstractMove<Solution_> extends AbstractSelectorBasedMove<Solution_>
+    implements Move<Solution_> {
 
   @Override
   public final void doMoveOnly(ScoreDirector<Solution_> scoreDirector) {
@@ -33,6 +32,11 @@ public abstract class AbstractMove<Solution_> implements Move<Solution_> {
             : new VariableChangeRecordingScoreDirector<>(scoreDirector);
     doMoveOnGenuineVariables(recordingScoreDirector);
     scoreDirector.triggerVariableListeners();
+  }
+
+  @Override
+  protected final void execute(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
+    doMoveOnGenuineVariables(scoreDirector);
   }
 
   /**
@@ -86,24 +90,5 @@ public abstract class AbstractMove<Solution_> implements Move<Solution_> {
       rebasedObjectSet.add(destinationScoreDirector.lookUpWorkingObject(entity));
     }
     return rebasedObjectSet;
-  }
-
-  // ************************************************************************
-  // Final methods from the new move interface, to prevent user error
-  // ************************************************************************
-
-  @Override
-  public final void execute(MutableSolutionView<Solution_> solutionView) {
-    Move.super.execute(solutionView);
-  }
-
-  @Override
-  public final ai.greycos.solver.core.preview.api.move.Move<Solution_> rebase(Rebaser rebaser) {
-    return Move.super.rebase(rebaser);
-  }
-
-  @Override
-  public final String describe() {
-    return Move.super.describe();
   }
 }

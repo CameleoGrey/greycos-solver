@@ -4,10 +4,10 @@ import ai.greycos.solver.core.impl.bavet.common.index.Indexer;
 import ai.greycos.solver.core.impl.bavet.common.index.IndexerFactory;
 import ai.greycos.solver.core.impl.bavet.common.index.IndexerFactory.KeysExtractor;
 import ai.greycos.solver.core.impl.bavet.common.index.IndexerFactory.UniKeysExtractor;
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.InOutTupleStorePositionTracker;
 import ai.greycos.solver.core.impl.bavet.common.tuple.LeftTupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.RightTupleLifecycle;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import ai.greycos.solver.core.impl.util.ElementAwareLinkedList;
@@ -20,7 +20,7 @@ import ai.greycos.solver.core.impl.util.ElementAwareLinkedList;
  * @param <Right_>
  */
 public abstract class AbstractIndexedJoinNode<
-        LeftTuple_ extends AbstractTuple, Right_, OutTuple_ extends AbstractTuple>
+        LeftTuple_ extends Tuple, Right_, OutTuple_ extends Tuple>
     extends AbstractJoinNode<LeftTuple_, Right_, OutTuple_>
     implements LeftTupleLifecycle<LeftTuple_>, RightTupleLifecycle<UniTuple<Right_>> {
 
@@ -31,7 +31,7 @@ public abstract class AbstractIndexedJoinNode<
   private final int inputStoreIndexRightCompositeKey;
   private final int inputStoreIndexRightEntry;
 
-  /** Calls for example {@link AbstractScorer#insert(AbstractTuple)} and/or ... */
+  /** Calls for example {@link AbstractScorer#insert(Tuple)} and/or ... */
   private final Indexer<LeftTuple_> indexerLeft;
 
   private final Indexer<UniTuple<Right_>> indexerRight;
@@ -93,7 +93,7 @@ public abstract class AbstractIndexedJoinNode<
   private void indexAndPropagateLeft(LeftTuple_ leftTuple, Object compositeKey) {
     leftTuple.setStore(inputStoreIndexLeftCompositeKey, compositeKey);
     leftTuple.setStore(inputStoreIndexLeftEntry, indexerLeft.put(compositeKey, leftTuple));
-    if (!leftTuple.state.isActive()) {
+    if (!leftTuple.getState().isActive()) {
       // Assume the following scenario:
       // - The join is of two entities of the same type, both filtering out unassigned.
       // - One entity became unassigned, so the outTuple is getting retracted.

@@ -27,17 +27,15 @@ public final class MapUniToBiNode<A, NewA, NewB>
 
   @Override
   protected BiTuple<NewA, NewB> map(UniTuple<A> tuple) {
-    A factA = tuple.factA;
-    return new BiTuple<>(
+    var factA = tuple.getA();
+    return BiTuple.of(
         mappingFunctionA.apply(factA), mappingFunctionB.apply(factA), outputStoreSize);
   }
 
   @Override
   protected void remap(UniTuple<A> inTuple, BiTuple<NewA, NewB> outTuple) {
-    A factA = inTuple.factA;
-    NewA newA = mappingFunctionA.apply(factA);
-    NewB newB = mappingFunctionB.apply(factA);
-    outTuple.factA = newA;
-    outTuple.factB = newB;
+    var factA = inTuple.getA();
+    outTuple.setA(mappingFunctionA.apply(factA));
+    outTuple.setB(mappingFunctionB.apply(factA));
   }
 }

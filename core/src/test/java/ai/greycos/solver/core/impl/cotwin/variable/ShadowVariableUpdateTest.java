@@ -9,15 +9,10 @@ import java.util.Collections;
 import java.util.List;
 
 import ai.greycos.solver.core.api.solver.SolutionManager;
+import ai.greycos.solver.core.testcotwin.shadow.TestdataShadowedSolution;
 import ai.greycos.solver.core.testcotwin.shadow.basic.TestdataBasicVarEntity;
 import ai.greycos.solver.core.testcotwin.shadow.basic.TestdataBasicVarSolution;
 import ai.greycos.solver.core.testcotwin.shadow.basic.TestdataBasicVarValue;
-import ai.greycos.solver.core.testcotwin.shadow.chained.TestdataChainedVarEntity;
-import ai.greycos.solver.core.testcotwin.shadow.chained.TestdataChainedVarSolution;
-import ai.greycos.solver.core.testcotwin.shadow.chained.TestdataChainedVarValue;
-import ai.greycos.solver.core.testcotwin.shadow.full.TestdataShadowedFullEntity;
-import ai.greycos.solver.core.testcotwin.shadow.full.TestdataShadowedFullSolution;
-import ai.greycos.solver.core.testcotwin.shadow.full.TestdataShadowedFullValue;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -29,22 +24,8 @@ class ShadowVariableUpdateTest {
     Assertions.assertThatCode(
             () ->
                 SolutionManager.updateShadowVariables(
-                    TestdataShadowedFullSolution.class, new Object[0]))
+                    TestdataShadowedSolution.class, new Object[0]))
         .hasMessageContaining("The entity array cannot be empty.");
-  }
-
-  @Test
-  void invalidCustomListener() {
-    var value = new TestdataShadowedFullValue("v1");
-    var entity = new TestdataShadowedFullEntity("e1");
-    var solution = new TestdataShadowedFullSolution();
-    solution.setEntityList(List.of(entity));
-    solution.setValueList(List.of(value));
-    Assertions.assertThatCode(
-            () ->
-                SolutionManager.updateShadowVariables(
-                    TestdataShadowedFullSolution.class, entity, value))
-        .hasMessageContaining("Custom shadow variable descriptors are not supported");
   }
 
   @Test
@@ -76,7 +57,7 @@ class ShadowVariableUpdateTest {
                 shadowVariableHelper.updateShadowVariables(
                     TestdataBasicVarSolution.class, entity1, value1))
         .hasMessageContaining(
-            "The following shadow variable types are not currently supported ([CUSTOM_LISTENER, CASCADING_UPDATE, DECLARATIVE])");
+            "The following shadow variable types are not currently supported ([CASCADING_UPDATE, DECLARATIVE])");
   }
 
   @Test
@@ -128,42 +109,6 @@ class ShadowVariableUpdateTest {
     assertThat(value1.getEndTime()).isEqualTo(value1.getStartTime().plus(value1.getDuration()));
     assertThat(value2.getStartTime())
         .isEqualTo(TestdataBasicVarValue.DEFAULT_TIME.plusDays(value2.getEntityList().size()));
-    assertThat(value2.getEndTime()).isEqualTo(value2.getStartTime().plus(value2.getDuration()));
-  }
-
-  @Test
-  void updateChainedShadowVariables() {
-    var value1 = new TestdataChainedVarValue("v1", Duration.ofDays(10));
-    var value2 = new TestdataChainedVarValue("v2", Duration.ofDays(20));
-    var entity1 = new TestdataChainedVarEntity("e1", value1);
-    var entity2 = new TestdataChainedVarEntity("e2", value2);
-    SolutionManager.updateShadowVariables(
-        TestdataChainedVarSolution.class, entity1, entity2, value1, value2);
-    assertThat(value1.getNext()).isSameAs(entity1);
-    assertThat(value2.getNext()).isSameAs(entity2);
-    assertThat(value1.getStartTime()).isEqualTo(TestdataBasicVarValue.DEFAULT_TIME.plusDays(1));
-    assertThat(value1.getEndTime()).isEqualTo(value1.getStartTime().plus(value1.getDuration()));
-    assertThat(value2.getStartTime()).isEqualTo(TestdataBasicVarValue.DEFAULT_TIME.plusDays(1));
-    assertThat(value2.getEndTime()).isEqualTo(value2.getStartTime().plus(value2.getDuration()));
-    assertThat(entity1.getDurationInDays()).isEqualTo(value1.getDuration().toDays());
-    assertThat(entity2.getDurationInDays()).isEqualTo(value2.getDuration().toDays());
-  }
-
-  @Test
-  void solutionUpdateChainedShadowVariables() {
-    var value1 = new TestdataChainedVarValue("v1", Duration.ofSeconds(10));
-    var value2 = new TestdataChainedVarValue("v2", Duration.ofSeconds(20));
-    var entity1 = new TestdataChainedVarEntity("e1", value1);
-    var entity2 = new TestdataChainedVarEntity("e2", value2);
-    var solution = new TestdataChainedVarSolution();
-    solution.setEntities(List.of(entity1, entity2));
-    solution.setValues(List.of(value1, value2));
-    SolutionManager.updateShadowVariables(solution);
-    assertThat(value1.getNext()).isSameAs(entity1);
-    assertThat(value2.getNext()).isSameAs(entity2);
-    assertThat(value1.getStartTime()).isEqualTo(TestdataBasicVarValue.DEFAULT_TIME.plusDays(1));
-    assertThat(value1.getEndTime()).isEqualTo(value1.getStartTime().plus(value1.getDuration()));
-    assertThat(value2.getStartTime()).isEqualTo(TestdataBasicVarValue.DEFAULT_TIME.plusDays(1));
     assertThat(value2.getEndTime()).isEqualTo(value2.getStartTime().plus(value2.getDuration()));
   }
 }

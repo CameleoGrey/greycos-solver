@@ -3,6 +3,8 @@ package ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo;
 import java.lang.reflect.Type;
 import java.util.function.Consumer;
 
+import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
+
 import io.quarkus.gizmo2.Expr;
 import io.quarkus.gizmo2.creator.BlockCreator;
 import io.quarkus.gizmo2.desc.FieldDesc;
@@ -12,12 +14,32 @@ final class GizmoFieldHandler implements GizmoMemberHandler {
 
   private final Class<?> declaringClass;
   private final FieldDesc fieldDescriptor;
+  private final MethodDesc getterDescriptor;
+  private final MethodDesc setterDescriptor;
   private final boolean canBeWritten;
 
   GizmoFieldHandler(Class<?> declaringClass, FieldDesc fieldDescriptor, boolean canBeWritten) {
     this.declaringClass = declaringClass;
     this.fieldDescriptor = fieldDescriptor;
-    this.canBeWritten = canBeWritten;
+    var fieldType = GizmoMemberHandler.resolveType(declaringClass, fieldDescriptor.type());
+    var getterMethod = ReflectionHelper.getGetterMethod(declaringClass, fieldDescriptor.name());
+    var setterMethod =
+        ReflectionHelper.getSetterMethod(declaringClass, fieldType, fieldDescriptor.name());
+    if (getterMethod == null) {
+      getterDescriptor = null;
+      setterDescriptor = null;
+      this.canBeWritten = canBeWritten;
+    } else {
+      ReflectionHelper.assertGetterMethod(getterMethod);
+      getterDescriptor = MethodDesc.of(getterMethod);
+      if (setterMethod != null) {
+        setterDescriptor = MethodDesc.of(setterMethod);
+        this.canBeWritten = true;
+      } else {
+        setterDescriptor = null;
+        this.canBeWritten = false;
+      }
+    }
   }
 
   @Override
@@ -32,6 +54,9 @@ final class GizmoFieldHandler implements GizmoMemberHandler {
 
   @Override
   public Expr readMemberValue(BlockCreator bytecodeCreator, Expr thisObj) {
+    if (getterDescriptor != null) {
+      return bytecodeCreator.invokeVirtual(getterDescriptor, thisObj);
+    }
     return thisObj.field(fieldDescriptor);
   }
 
@@ -44,6 +69,10 @@ final class GizmoFieldHandler implements GizmoMemberHandler {
   public boolean writeMemberValue(
       MethodDesc setter, BlockCreator bytecodeCreator, Expr thisObj, Expr newValue) {
     if (canBeWritten) {
+      if (setterDescriptor != null) {
+        bytecodeCreator.invokeVirtual(setterDescriptor, thisObj, newValue);
+        return true;
+      }
       bytecodeCreator.set(thisObj.field(fieldDescriptor), newValue);
       return true;
     } else {

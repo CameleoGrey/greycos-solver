@@ -11,13 +11,13 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.api.score.constraint.Indictment;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirector;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.stream.bavet.BavetConstraintSession;
 
 import org.jspecify.annotations.NullMarked;
@@ -178,6 +178,7 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
   public void close() {
     super.close();
     if (session != null) {
+      session.summarizeProfileIfPresent();
       session = null;
     }
   }

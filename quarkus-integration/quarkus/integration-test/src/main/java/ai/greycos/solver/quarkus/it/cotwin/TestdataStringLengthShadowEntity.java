@@ -3,6 +3,7 @@ package ai.greycos.solver.quarkus.it.cotwin;
 import java.util.List;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 
 @PlanningEntity
@@ -12,10 +13,7 @@ public class TestdataStringLengthShadowEntity implements TestdataStringLengthSha
 
   private List<String> valueList;
 
-  @ShadowVariable(
-      variableListenerClass = StringLengthVariableListener.class,
-      sourceEntityClass = TestdataStringLengthShadowEntity.class,
-      sourceVariableName = "value")
+  @ShadowVariable(supplierName = "lengthSupplier")
   private Integer length;
 
   // ************************************************************************
@@ -38,6 +36,11 @@ public class TestdataStringLengthShadowEntity implements TestdataStringLengthSha
 
   public void setLength(Integer length) {
     this.length = length;
+  }
+
+  @ShadowSources("value")
+  public Integer lengthSupplier() {
+    return value == null ? 0 : value.length();
   }
 
   @Override

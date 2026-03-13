@@ -6,14 +6,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.move.VariableChangeRecordingScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 
-public final class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
+public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
 
   private final GenuineVariableDescriptor<Solution_> genuineVariableDescriptor;
   private final RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>

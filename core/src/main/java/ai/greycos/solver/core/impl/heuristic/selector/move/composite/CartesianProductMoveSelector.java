@@ -6,9 +6,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import ai.greycos.solver.core.impl.heuristic.move.CompositeMove;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
-import ai.greycos.solver.core.impl.heuristic.move.NoChangeMove;
+import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedCompositeMove;
+import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
@@ -26,7 +26,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
  */
 public class CartesianProductMoveSelector<Solution_> extends CompositeMoveSelector<Solution_> {
 
-  private static final Move<?> EMPTY_MARK = NoChangeMove.getInstance();
+  private static final Move<?> EMPTY_MARK = SelectorBasedNoChangeMove.getInstance();
 
   private final boolean ignoreEmptyChildIterators;
 
@@ -55,9 +55,9 @@ public class CartesianProductMoveSelector<Solution_> extends CompositeMoveSelect
 
   @Override
   public long getSize() {
-    long size = 0L;
-    for (MoveSelector<Solution_> moveSelector : childMoveSelectorList) {
-      long childSize = moveSelector.getSize();
+    var size = 0L;
+    for (var moveSelector : childMoveSelectorList) {
+      var childSize = moveSelector.getSize();
       if (childSize == 0L) {
         if (!ignoreEmptyChildIterators) {
           return 0L;
@@ -87,13 +87,13 @@ public class CartesianProductMoveSelector<Solution_> extends CompositeMoveSelect
   public class OriginalCartesianProductMoveIterator
       extends UpcomingSelectionIterator<Move<Solution_>> {
 
-    private List<Iterator<Move<Solution_>>> moveIteratorList;
+    private final List<Iterator<Move<Solution_>>> moveIteratorList;
 
     private Move<Solution_>[] subSelections;
 
     public OriginalCartesianProductMoveIterator() {
       moveIteratorList = new ArrayList<>(childMoveSelectorList.size());
-      for (int i = 0; i < childMoveSelectorList.size(); i++) {
+      for (var i = 0; i < childMoveSelectorList.size(); i++) {
         moveIteratorList.add(null);
       }
       subSelections = null;
@@ -101,76 +101,82 @@ public class CartesianProductMoveSelector<Solution_> extends CompositeMoveSelect
 
     @Override
     protected Move<Solution_> createUpcomingSelection() {
-      int childSize = moveIteratorList.size();
+      var childSize = moveIteratorList.size();
       int startingIndex;
       Move<Solution_>[] moveList = new Move[childSize];
       if (subSelections == null) {
         startingIndex = -1;
       } else {
-        startingIndex = childSize - 1;
-        while (startingIndex >= 0) {
-          Iterator<Move<Solution_>> moveIterator = moveIteratorList.get(startingIndex);
-          if (moveIterator.hasNext()) {
-            break;
-          }
-          startingIndex--;
-        }
+        startingIndex = findStartingIndex(childSize);
         if (startingIndex < 0) {
           return noUpcomingSelection();
         }
         // Clone to avoid CompositeMove corruption
         System.arraycopy(subSelections, 0, moveList, 0, startingIndex);
-        moveList[startingIndex] =
-            moveIteratorList.get(startingIndex).next(); // Increment the 4 in 004999
+        moveList[startingIndex] = moveIteratorList.get(startingIndex).next();
       }
-      for (int i = startingIndex + 1; i < childSize; i++) { // Increment the 9s in 004999
-        Iterator<Move<Solution_>> moveIterator = childMoveSelectorList.get(i).iterator();
+      for (var i = startingIndex + 1; i < childSize; i++) {
+        var moveIterator = childMoveSelectorList.get(i).iterator();
         moveIteratorList.set(i, moveIterator);
-        Move<Solution_> next;
         if (!moveIterator.hasNext()) { // in case a moveIterator is empty
           if (ignoreEmptyChildIterators) {
-            next = (Move<Solution_>) EMPTY_MARK;
+            moveList[i] = (Move<Solution_>) EMPTY_MARK;
           } else {
             return noUpcomingSelection();
           }
         } else {
-          next = moveIterator.next();
+          moveList[i] = moveIterator.next();
         }
-        moveList[i] = next;
       }
       // No need to clone to avoid CompositeMove corruption because subSelections's elements never
       // change
       subSelections = moveList;
-      if (ignoreEmptyChildIterators) {
-        // Clone because EMPTY_MARK should survive in subSelections
-        Move<Solution_>[] newMoveList = new Move[childSize];
-        int newSize = 0;
-        for (int i = 0; i < childSize; i++) {
-          if (moveList[i] != EMPTY_MARK) {
-            newMoveList[newSize] = moveList[i];
-            newSize++;
-          }
+      return buildMove(moveList, childSize);
+    }
+
+    private int findStartingIndex(int childSize) {
+      var startingIndex = childSize - 1;
+      while (startingIndex >= 0) {
+        var moveIterator = moveIteratorList.get(startingIndex);
+        if (moveIterator.hasNext()) {
+          break;
         }
-        if (newSize == 0) {
-          return noUpcomingSelection();
-        } else if (newSize == 1) {
-          return newMoveList[0];
-        }
-        moveList = Arrays.copyOfRange(newMoveList, 0, newSize);
+        startingIndex--;
       }
-      return CompositeMove.buildMove(moveList);
+      return startingIndex;
+    }
+
+    private Move<Solution_> buildMove(Move<Solution_>[] moveList, int childSize) {
+      if (!ignoreEmptyChildIterators) {
+        return SelectorBasedCompositeMove.buildMove(moveList);
+      }
+      // Clone because EMPTY_MARK should survive in subSelections
+      Move<Solution_>[] newMoveList = new Move[childSize];
+      var newSize = 0;
+      for (var i = 0; i < childSize; i++) {
+        if (moveList[i] != EMPTY_MARK) {
+          newMoveList[newSize] = moveList[i];
+          newSize++;
+        }
+      }
+      return switch (newSize) {
+        case 0 -> noUpcomingSelection();
+        case 1 -> newMoveList[0];
+        default ->
+            SelectorBasedCompositeMove.buildMove(Arrays.copyOfRange(newMoveList, 0, newSize));
+      };
     }
   }
 
   public class RandomCartesianProductMoveIterator extends SelectionIterator<Move<Solution_>> {
 
-    private List<Iterator<Move<Solution_>>> moveIteratorList;
+    private final List<Iterator<Move<Solution_>>> moveIteratorList;
     private Boolean empty;
 
     public RandomCartesianProductMoveIterator() {
       moveIteratorList = new ArrayList<>(childMoveSelectorList.size());
       empty = null;
-      for (MoveSelector<Solution_> moveSelector : childMoveSelectorList) {
+      for (var moveSelector : childMoveSelectorList) {
         moveIteratorList.add(moveSelector.iterator());
       }
     }
@@ -178,8 +184,8 @@ public class CartesianProductMoveSelector<Solution_> extends CompositeMoveSelect
     @Override
     public boolean hasNext() {
       if (empty == null) { // Only done in the first call
-        int emptyCount = 0;
-        for (Iterator<Move<Solution_>> moveIterator : moveIteratorList) {
+        var emptyCount = 0;
+        for (var moveIterator : moveIteratorList) {
           if (!moveIterator.hasNext()) {
             emptyCount++;
             if (!ignoreEmptyChildIterators) {
@@ -195,11 +201,11 @@ public class CartesianProductMoveSelector<Solution_> extends CompositeMoveSelect
     @Override
     public Move<Solution_> next() {
       List<Move<Solution_>> moveList = new ArrayList<>(moveIteratorList.size());
-      for (int i = 0; i < moveIteratorList.size(); i++) {
-        Iterator<Move<Solution_>> moveIterator = moveIteratorList.get(i);
-        boolean skip = false;
+      for (var i = 0; i < moveIteratorList.size(); i++) {
+        var moveIterator = moveIteratorList.get(i);
+        var skip = false;
         if (!moveIterator.hasNext()) {
-          MoveSelector<Solution_> moveSelector = childMoveSelectorList.get(i);
+          var moveSelector = childMoveSelectorList.get(i);
           moveIterator = moveSelector.iterator();
           moveIteratorList.set(i, moveIterator);
           if (!moveIterator.hasNext()) {
@@ -223,7 +229,7 @@ public class CartesianProductMoveSelector<Solution_> extends CompositeMoveSelect
           return moveList.get(0);
         }
       }
-      return CompositeMove.buildMove(moveList.toArray(new Move[0]));
+      return SelectorBasedCompositeMove.buildMove(moveList.toArray(new Move[0]));
     }
   }
 

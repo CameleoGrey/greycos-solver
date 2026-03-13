@@ -13,17 +13,17 @@ import ai.greycos.solver.quarkus.jackson.it.cotwin.ITestdataPlanningSolution;
 @Path("/greycos/test")
 public class GreyCOSTestResource {
 
-  private final SolverManager<ITestdataPlanningSolution, Long> solverManager;
+  private final SolverManager<ITestdataPlanningSolution> solverManager;
 
   @Inject
-  public GreyCOSTestResource(SolverManager<ITestdataPlanningSolution, Long> solverManager) {
+  public GreyCOSTestResource(SolverManager<ITestdataPlanningSolution> solverManager) {
     this.solverManager = solverManager;
   }
 
   @POST
   @Path("/solver-factory")
   public ITestdataPlanningSolution solveWithSolverFactory(ITestdataPlanningSolution problem) {
-    SolverJob<ITestdataPlanningSolution, Long> solverJob = solverManager.solve(1L, problem);
+    SolverJob<ITestdataPlanningSolution> solverJob = solverManager.solve(1L, problem);
     try {
       return solverJob.getFinalBestSolution();
     } catch (InterruptedException e) {

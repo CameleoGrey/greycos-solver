@@ -9,7 +9,7 @@ import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveListFactory;
-import ai.greycos.solver.core.impl.io.jaxb.adapter.JaxbCustomPropertiesAdapter;
+import ai.greycos.solver.core.impl.io.jaxb.JaxbCustomPropertiesAdapter;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;

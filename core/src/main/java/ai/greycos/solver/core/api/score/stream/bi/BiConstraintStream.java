@@ -14,8 +14,6 @@ import java.util.function.Function;
 import java.util.function.ToIntBiFunction;
 import java.util.function.ToLongBiFunction;
 
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfiguration;
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintWeight;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
@@ -1261,6 +1259,9 @@ public interface BiConstraintStream<A, B> extends ConstraintStream {
    *     this type be deeply immutable. Not following this recommendation may lead to hard-to-debug
    *     hashing issues down the stream, especially if this value is ever used as a group key.
    */
+  <ResultC_> @NonNull TriConstraintStream<A, B, ResultC_> flatten(
+      @NonNull BiFunction<A, B, @NonNull Iterable<ResultC_>> mapping);
+
   <ResultB_> @NonNull BiConstraintStream<A, ResultB_> flattenLast(
       @NonNull Function<B, @NonNull Iterable<ResultB_>> mapping);
 

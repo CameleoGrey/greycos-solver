@@ -4,11 +4,14 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Map;
 
-import ai.greycos.solver.core.api.score.buildin.bendablebigdecimal.BendableBigDecimalScore;
+import ai.greycos.solver.core.api.score.BendableBigDecimalScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 final class BendableBigDecimalScoreInliner extends AbstractScoreInliner<BendableBigDecimalScore> {
 
   final BigDecimal[] hardScores;
@@ -30,8 +33,8 @@ final class BendableBigDecimalScoreInliner extends AbstractScoreInliner<Bendable
   public WeightedScoreImpacter<BendableBigDecimalScore, ?> buildWeightedScoreImpacter(
       AbstractConstraint<?, ?, ?> constraint) {
     Integer singleLevel = null;
-    BendableBigDecimalScore constraintWeight = constraintWeightMap.get(constraint);
-    for (int i = 0; i < constraintWeight.levelsSize(); i++) {
+    var constraintWeight = constraintWeightMap.get(constraint);
+    for (var i = 0; i < constraintWeight.levelsSize(); i++) {
       if (!constraintWeight.hardOrSoftScore(i).equals(BigDecimal.ZERO)) {
         if (singleLevel != null) {
           singleLevel = null;
@@ -41,9 +44,9 @@ final class BendableBigDecimalScoreInliner extends AbstractScoreInliner<Bendable
       }
     }
     if (singleLevel != null) {
-      boolean isHardScore = singleLevel < constraintWeight.hardLevelsSize();
-      int level = isHardScore ? singleLevel : singleLevel - constraintWeight.hardLevelsSize();
-      BendableBigDecimalScoreContext context =
+      var isHardScore = singleLevel < constraintWeight.hardLevelsSize();
+      var level = isHardScore ? singleLevel : singleLevel - constraintWeight.hardLevelsSize();
+      var context =
           new BendableBigDecimalScoreContext(
               this,
               constraint,
@@ -58,7 +61,7 @@ final class BendableBigDecimalScoreInliner extends AbstractScoreInliner<Bendable
         return WeightedScoreImpacter.of(context, BendableBigDecimalScoreContext::changeSoftScoreBy);
       }
     } else {
-      BendableBigDecimalScoreContext context =
+      var context =
           new BendableBigDecimalScoreContext(
               this, constraint, constraintWeight, hardScores.length, softScores.length);
       return WeightedScoreImpacter.of(context, BendableBigDecimalScoreContext::changeScoreBy);

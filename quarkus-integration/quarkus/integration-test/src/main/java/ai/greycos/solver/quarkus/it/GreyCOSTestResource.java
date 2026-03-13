@@ -15,7 +15,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.solver.SolverConfigOverride;
 import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
@@ -27,11 +27,10 @@ import ai.greycos.solver.quarkus.it.cotwin.TestdataStringLengthShadowSolution;
 @Path("/greycos/test")
 public class GreyCOSTestResource {
 
-  private final SolverManager<TestdataStringLengthShadowSolution, Long> solverManager;
+  private final SolverManager<TestdataStringLengthShadowSolution> solverManager;
 
   @Inject
-  public GreyCOSTestResource(
-      SolverManager<TestdataStringLengthShadowSolution, Long> solverManager) {
+  public GreyCOSTestResource(SolverManager<TestdataStringLengthShadowSolution> solverManager) {
     this.solverManager = solverManager;
   }
 
@@ -75,8 +74,7 @@ public class GreyCOSTestResource {
                 new SolverConfigOverride<TestdataStringLengthShadowSolution>()
                     .withTerminationConfig(
                         new TerminationConfig().withSpentLimit(Duration.ofSeconds(seconds))));
-    var solverJob =
-        (DefaultSolverJob<TestdataStringLengthShadowSolution, Long>) solverJobBuilder.run();
+    var solverJob = (DefaultSolverJob<TestdataStringLengthShadowSolution>) solverJobBuilder.run();
     SolverScope<TestdataStringLengthShadowSolution> customScope =
         new SolverScope<>() {
           @Override

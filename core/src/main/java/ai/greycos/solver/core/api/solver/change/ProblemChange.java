@@ -54,7 +54,7 @@ import org.jspecify.annotations.NullMarked;
  *
  *     {@literal @Override}
  *     public void doChange(CloudBalance cloudBalance, ProblemChangeDirector problemChangeDirector) {
- *         CloudComputer workingComputer = problemChangeDirector.lookUpWorkingObjectOrFail(computer);
+ *         CloudComputer workingComputer = problemChangeDirector.lookUpWorkingObject(computer);
  *         // First remove the problem fact from all planning entities that use it
  *         for (CloudProcess process : cloudBalance.getProcessList()) {
  *             if (process.getComputer() == workingComputer) {

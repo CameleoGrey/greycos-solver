@@ -4,15 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.util.Collections;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
-import ai.greycos.solver.core.api.score.ScoreManager;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
+import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
@@ -33,7 +31,6 @@ import ai.greycos.solver.spring.boot.autoconfigure.normal.NormalSpringTestConfig
 import ai.greycos.solver.spring.boot.autoconfigure.normal.constraints.TestdataSpringConstraintProvider;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringEntity;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution;
-import ai.greycos.solver.test.api.score.stream.ConstraintVerifier;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -262,9 +259,6 @@ class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
               assertEquals(EnvironmentMode.FULL_ASSERT, solverConfig.getEnvironmentMode());
               assertTrue(solverConfig.getDaemon());
               assertEquals("2", solverConfig.getMoveThreadCount());
-              assertEquals(CotwinAccessType.REFLECTION, solverConfig.getCotwinAccessType());
-              assertNull(
-                  solverConfig.getScoreDirectorFactoryConfig().getConstraintStreamImplType());
               assertEquals(
                   Duration.ofHours(4), solverConfig.getTerminationConfig().getSpentLimit());
               assertEquals(
@@ -288,7 +282,6 @@ class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
             "solverConfigXml",
             "environmentMode",
             "moveThreadCount",
-            "cotwinAccessType",
             "Expected all values to be maps, but values for key(s)",
             "Maybe try changing the property name to kebab-case");
     assertThatCode(
@@ -317,7 +310,6 @@ class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
           assertThat(context.getBean(SolverFactory.class)).isNotNull();
           assertThat(context.getBean(SolverManager.class)).isNotNull();
           assertThat(context.getBean(SolutionManager.class)).isNotNull();
-          assertThat(context.getBean(ScoreManager.class)).isNotNull();
           assertThat(context.getBean(ConstraintVerifier.class)).isNotNull();
         });
   }
@@ -439,8 +431,6 @@ class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
         context -> {
           var solverFactory = context.getBean(SolverFactory.class);
           assertThat(solverFactory).isNotNull();
-          var scoreManager = context.getBean(ScoreManager.class);
-          assertThat(scoreManager).isNotNull();
           SolutionManager<TestdataSpringSolution, SimpleScore> solutionManager =
               context.getBean(SolutionManager.class);
           assertThat(((DefaultSolverFactory) solverFactory).getScoreDirectorFactory())
@@ -451,8 +441,7 @@ class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
           assertThat(solverManager).isNotNull();
           // There is only one SolverFactory instance
           assertThat(
-                  ((DefaultSolverManager<TestdataSpringSolution, Long>) solverManager)
-                      .getSolverFactory())
+                  ((DefaultSolverManager<TestdataSpringSolution>) solverManager).getSolverFactory())
               .isSameAs(solverFactory);
         });
   }

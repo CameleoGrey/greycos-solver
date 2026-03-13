@@ -2,9 +2,9 @@ package ai.greycos.solver.core.impl.heuristic.selector.common.decorator;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.Selector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * Create a probabilityWeight for a selection (which is a {@link PlanningEntity}, a planningValue, a

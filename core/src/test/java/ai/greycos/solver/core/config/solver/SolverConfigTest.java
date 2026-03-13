@@ -13,7 +13,6 @@ import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.function.Consumer;
@@ -26,7 +25,7 @@ import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
@@ -54,7 +53,6 @@ import ai.greycos.solver.core.testcotwin.interfaces.TestdataInterfaceSolution;
 import ai.greycos.solver.core.testcotwin.record.TestdataRecordEntity;
 import ai.greycos.solver.core.testcotwin.record.TestdataRecordSolution;
 
-import org.apache.commons.io.IOUtils;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -78,23 +76,8 @@ class SolverConfigTest {
     var stringWriter = new StringWriter();
     solverConfigIO.write(jaxbSolverConfig, stringWriter);
     var jaxbString = stringWriter.toString();
-
-    var originalXml =
-        IOUtils.toString(
-            SolverConfigTest.class.getResourceAsStream(solverConfigResource),
-            StandardCharsets.UTF_8);
-
-    // During writing the solver config, the solver element's namespace is removed.
-    var solverElementWithNamespace =
-        """
-                %s xmlns="%s"
-                """
-            .formatted(SolverConfig.XML_ELEMENT_NAME, SolverConfig.XML_NAMESPACE)
-            .trim();
-    if (originalXml.contains(solverElementWithNamespace)) {
-      originalXml = originalXml.replace(solverElementWithNamespace, SolverConfig.XML_ELEMENT_NAME);
-    }
-    assertThat(jaxbString).isEqualToIgnoringWhitespace(originalXml);
+    var roundTrippedConfig = solverConfigIO.read(new StringReader(jaxbString));
+    assertThat(roundTrippedConfig).usingRecursiveComparison().isEqualTo(jaxbSolverConfig);
   }
 
   @Test
@@ -307,10 +290,10 @@ class SolverConfigTest {
       @PlanningScore SimpleScore score) {}
 
   @PlanningSolution
-  private static class DummySolutionWithRecordEntity {
+  public static class DummySolutionWithRecordEntity {
 
-    @PlanningEntityCollectionProperty List<DummyRecordEntity> entities;
-    @PlanningScore SimpleScore score;
+    @PlanningEntityCollectionProperty public List<DummyRecordEntity> entities;
+    @PlanningScore public SimpleScore score;
   }
 
   @PlanningEntity
@@ -341,27 +324,27 @@ class SolverConfigTest {
   }
 
   @PlanningSolution
-  private static class DummySolutionWithTwoListVariablesEntity {
+  public static class DummySolutionWithTwoListVariablesEntity {
 
-    @PlanningEntityCollectionProperty List<DummyEntityWithTwoListVariables> entities;
+    @PlanningEntityCollectionProperty public List<DummyEntityWithTwoListVariables> entities;
 
     @ValueRangeProvider(id = "firstListValueRange")
-    ValueRange<DummyEntityForListVariable> firstListValueRange;
+    public ValueRange<DummyEntityForListVariable> firstListValueRange;
 
     @ValueRangeProvider(id = "secondListValueRange")
-    ValueRange<DummyEntityForListVariable> secondListValueRange;
+    public ValueRange<DummyEntityForListVariable> secondListValueRange;
 
-    @PlanningScore SimpleScore score;
+    @PlanningScore public SimpleScore score;
   }
 
   @PlanningEntity
-  private static class DummyEntityWithTwoListVariables {
+  public static class DummyEntityWithTwoListVariables {
 
     @PlanningListVariable(valueRangeProviderRefs = "firstListValueRange")
-    private List<DummyEntityForListVariable> firstListVariable;
+    public List<DummyEntityForListVariable> firstListVariable;
 
     @PlanningListVariable(valueRangeProviderRefs = "secondListValueRange")
-    private List<DummyEntityForListVariable> secondListVariable;
+    public List<DummyEntityForListVariable> secondListVariable;
   }
 
   @PlanningEntity

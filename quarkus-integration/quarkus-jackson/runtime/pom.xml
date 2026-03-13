@@ -13,11 +13,6 @@
   <name>GreyCOS Solver Quarkus Jackson - Runtime</name>
   <description>Activate Jackson bindings for GreyCOS's Score classes</description>
   <url>https://github.com/CameleoGrey/greycos-solver</url>
-
-  <properties>
-    <java.module.name>ai.greycos.solver.quarkus.jackson</java.module.name>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>io.quarkus</groupId>

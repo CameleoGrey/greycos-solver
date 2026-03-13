@@ -17,7 +17,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ListUnas
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListSwapMove;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListUnassignMove;
-import ai.greycos.solver.core.impl.heuristic.selector.value.chained.SubChain;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.UnassignedElement;
 
@@ -155,9 +154,6 @@ public interface CodeAssertable {
       return unassignedLocation::toString;
     } else if (o instanceof PositionInList locationInList) {
       return () -> convert(locationInList.entity()) + "[" + locationInList.index() + "]";
-    } else if (o instanceof SubChain subChain) {
-      final String code = convert(subChain.getEntityList()).getCode();
-      return () -> code;
     }
     throw new AssertionError(
         ("o's class (" + o.getClass() + ") cannot be converted to CodeAssertable."));

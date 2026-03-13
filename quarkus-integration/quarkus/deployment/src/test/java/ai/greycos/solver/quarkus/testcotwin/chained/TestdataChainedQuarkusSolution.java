@@ -7,18 +7,17 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
+import ai.greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
 
 @PlanningSolution
 public class TestdataChainedQuarkusSolution {
 
   @ProblemFactCollectionProperty
-  @ValueRangeProvider(id = "chainedAnchorRange")
-  private List<TestdataChainedQuarkusAnchor> chainedAnchorList;
+  @ValueRangeProvider(id = "valueRange")
+  private List<String> valueList;
 
-  @PlanningEntityCollectionProperty
-  @ValueRangeProvider(id = "chainedEntityRange")
-  private List<TestdataChainedQuarkusEntity> chainedEntityList;
+  @PlanningEntityCollectionProperty private List<TestdataQuarkusEntity> entityList;
 
   @PlanningScore private SimpleScore score;
 
@@ -26,20 +25,20 @@ public class TestdataChainedQuarkusSolution {
   // Getters/setters
   // ************************************************************************
 
-  public List<TestdataChainedQuarkusAnchor> getChainedAnchorList() {
-    return chainedAnchorList;
+  public List<String> getValueList() {
+    return valueList;
   }
 
-  public void setChainedAnchorList(List<TestdataChainedQuarkusAnchor> chainedAnchorList) {
-    this.chainedAnchorList = chainedAnchorList;
+  public void setValueList(List<String> valueList) {
+    this.valueList = valueList;
   }
 
-  public List<TestdataChainedQuarkusEntity> getChainedEntityList() {
-    return chainedEntityList;
+  public List<TestdataQuarkusEntity> getEntityList() {
+    return entityList;
   }
 
-  public void setChainedEntityList(List<TestdataChainedQuarkusEntity> chainedEntityList) {
-    this.chainedEntityList = chainedEntityList;
+  public void setEntityList(List<TestdataQuarkusEntity> entityList) {
+    this.entityList = entityList;
   }
 
   public SimpleScore getScore() {

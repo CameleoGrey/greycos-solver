@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.move;
 
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 public sealed interface ChangeAction<Solution_>
     permits ListVariableAfterAssignmentAction,
@@ -15,5 +15,5 @@ public sealed interface ChangeAction<Solution_>
 
   void undo(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector);
 
-  ChangeAction<Solution_> rebase(Rebaser rebaser);
+  ChangeAction<Solution_> rebase(Lookup lookup);
 }

@@ -5,10 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.core.testcotwin.TestdataEntity;
-import ai.greycos.solver.core.testcotwin.TestdataObject;
 import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedChildEntity;
 import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedConstraintProvider;
 import ai.greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedExtendedConstraintProvider;
@@ -39,9 +37,7 @@ class GreyCOSProcessorBothClassesAnnotatedConfiguredXmlTest {
                           TestdataBothAnnotatedConstraintProvider.class,
                           TestdataBothAnnotatedNoRawListExtendedSolution.class,
                           TestdataBothAnnotatedSolution.class,
-                          TestdataBothAnnotatedChildEntity.class,
-                          TestdataEntity.class,
-                          TestdataObject.class)
+                          TestdataBothAnnotatedChildEntity.class)
                       .addAsResource(
                           "ai/greycos/solver/quarkus/inheritance/bothClassAnnotatedConfig.xml"));
 

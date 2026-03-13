@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.move;
 
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 public final class TriggerVariableListenersAction<Solution_> implements ChangeAction<Solution_> {
   @Override
@@ -10,7 +10,7 @@ public final class TriggerVariableListenersAction<Solution_> implements ChangeAc
   }
 
   @Override
-  public TriggerVariableListenersAction<Solution_> rebase(Rebaser rebaser) {
+  public TriggerVariableListenersAction<Solution_> rebase(Lookup lookup) {
     return this;
   }
 }

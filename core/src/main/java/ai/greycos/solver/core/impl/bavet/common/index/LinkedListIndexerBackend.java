@@ -1,6 +1,9 @@
 package ai.greycos.solver.core.impl.bavet.common.index;
 
+import java.util.Iterator;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.util.ElementAwareLinkedList;
 import ai.greycos.solver.core.impl.util.ListEntry;
@@ -38,7 +41,28 @@ public final class LinkedListIndexerBackend<T> implements IndexerBackend<T> {
   }
 
   @Override
-  public boolean isEmpty() {
+  public Iterator<T> iterator(Object queryCompositeKey) {
+    return tupleList.iterator();
+  }
+
+  @Override
+  public Iterator<T> randomIterator(
+      Object queryCompositeKey, RandomGenerator workingRandom) { // Neighborhoods will not get here.
+    throw new UnsupportedOperationException(
+        "Impossible state: This backend does not support random access.");
+  }
+
+  @Override
+  public Iterator<T> randomIterator(
+      Object queryCompositeKey,
+      RandomGenerator workingRandom,
+      Predicate<T> filter) { // Neighborhoods will not get here.
+    throw new UnsupportedOperationException(
+        "Impossible state: This backend does not support random access.");
+  }
+
+  @Override
+  public boolean isRemovable() {
     return tupleList.size() == 0;
   }
 

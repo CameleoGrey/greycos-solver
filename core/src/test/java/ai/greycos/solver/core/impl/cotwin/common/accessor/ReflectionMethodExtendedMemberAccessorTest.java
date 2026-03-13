@@ -90,17 +90,15 @@ class ReflectionMethodExtendedMemberAccessorTest {
     assertThatCode(
             TestdataInvalidCountEntityProvidingWithParameterEntity
                 ::buildVariableDescriptorForValueRange)
-        .hasMessageContaining("The readMethod")
-        .hasMessageContaining("with a ValueRangeProvider annotation must have only one parameter");
+        .hasMessageContaining(
+            "is a public read method, but takes (2) parameters instead of zero or one");
   }
 
   @Test
   void invalidSolutionReadMethodWithParameter() {
     assertThatCode(TestdataInvalidParameterSolution::buildSolutionDescriptor)
-        .hasMessageContainingAll(
-            "The readMethod (public java.util.List ai.greycos.solver.core.testcotwin.valuerange.parameter.invalid.TestdataInvalidParameterSolution.getValueList(ai.greycos.solver.core.testcotwin.valuerange.parameter.invalid.TestdataInvalidParameterSolution))")
-        .hasMessageContainingAll(
-            " with a ValueRangeProvider annotation must not have any parameters ([class ai.greycos.solver.core.testcotwin.valuerange.parameter.invalid.TestdataInvalidParameterSolution]).");
+        .hasMessageContaining("is a public read method, but takes (1) parameters instead of none")
+        .hasMessageContaining("Maybe make the method (getValueList) take no parameters?");
   }
 
   @Test
@@ -109,8 +107,7 @@ class ReflectionMethodExtendedMemberAccessorTest {
             () ->
                 new ReflectionMethodExtendedMemberAccessor(
                         TestdataEntityProvidingWithParameterEntity.class.getMethod(
-                            "getValueRange", TestdataEntityProvidingWithParameterSolution.class),
-                        true)
+                            "getValueRange", TestdataEntityProvidingWithParameterSolution.class))
                     .executeGetter(new TestdataEntityProvidingWithParameterEntity()))
         .hasMessageContainingAll(
             "Impossible state: the method executeGetter(Object) without parameter is not supported.");
@@ -118,8 +115,7 @@ class ReflectionMethodExtendedMemberAccessorTest {
             () ->
                 new ReflectionMethodExtendedMemberAccessor(
                         TestdataEntityProvidingWithParameterEntity.class.getMethod(
-                            "getValueRange", TestdataEntityProvidingWithParameterSolution.class),
-                        true)
+                            "getValueRange", TestdataEntityProvidingWithParameterSolution.class))
                     .getGetterFunction())
         .hasMessageContainingAll(
             "Impossible state: the method getGetterFunction() is not supported.");

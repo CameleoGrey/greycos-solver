@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.cotwin.common.accessor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.mock;
 
 import java.lang.reflect.Member;
@@ -8,9 +9,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactProperty;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberAccessorFactory;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
@@ -26,11 +27,11 @@ class MemberAccessorFactoryTest {
     MemberAccessor memberAccessor =
         MemberAccessorFactory.buildMemberAccessor(
             TestdataFieldAnnotatedEntity.class.getDeclaredField("value"),
-            MemberAccessorFactory.MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
+            MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
             PlanningVariable.class,
-            CotwinAccessType.REFLECTION,
+            CotwinAccessType.FORCE_REFLECTION,
             null);
-    assertThat(memberAccessor).isInstanceOf(ReflectionFieldMemberAccessor.class);
+    assertThat(memberAccessor).isInstanceOf(ReflectionBeanPropertyMemberAccessor.class);
     assertThat(memberAccessor.getName()).isEqualTo("value");
     assertThat(memberAccessor.getType()).isEqualTo(TestdataValue.class);
 
@@ -44,23 +45,16 @@ class MemberAccessorFactoryTest {
 
   @Test
   void privateField() throws NoSuchFieldException {
-    MemberAccessor memberAccessor =
-        MemberAccessorFactory.buildMemberAccessor(
-            TestdataVisibilityModifierSolution.class.getDeclaredField("privateField"),
-            MemberAccessorFactory.MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
-            ProblemFactProperty.class,
-            CotwinAccessType.REFLECTION,
-            null);
-    assertThat(memberAccessor).isInstanceOf(ReflectionFieldMemberAccessor.class);
-    assertThat(memberAccessor.getName()).isEqualTo("privateField");
-    assertThat(memberAccessor.getType()).isEqualTo(String.class);
-
-    TestdataVisibilityModifierSolution s1 =
-        new TestdataVisibilityModifierSolution(
-            "s1", "firstValue", "n/a", "n/a", "n/a", "n/a", "n/a");
-    assertThat(memberAccessor.executeGetter(s1)).isEqualTo("firstValue");
-    memberAccessor.executeSetter(s1, "secondValue");
-    assertThat(memberAccessor.executeGetter(s1)).isEqualTo("secondValue");
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                MemberAccessorFactory.buildMemberAccessor(
+                    TestdataVisibilityModifierSolution.class.getDeclaredField("privateField"),
+                    MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
+                    ProblemFactProperty.class,
+                    CotwinAccessType.FORCE_REFLECTION,
+                    null))
+        .withMessageContaining("does not have a public getter method");
   }
 
   @Test
@@ -68,9 +62,9 @@ class MemberAccessorFactoryTest {
     MemberAccessor memberAccessor =
         MemberAccessorFactory.buildMemberAccessor(
             TestdataVisibilityModifierSolution.class.getDeclaredField("publicField"),
-            MemberAccessorFactory.MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
+            MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
             ProblemFactProperty.class,
-            CotwinAccessType.REFLECTION,
+            CotwinAccessType.FORCE_REFLECTION,
             null);
     assertThat(memberAccessor).isInstanceOf(ReflectionFieldMemberAccessor.class);
     assertThat(memberAccessor.getName()).isEqualTo("publicField");
@@ -89,9 +83,9 @@ class MemberAccessorFactoryTest {
     MemberAccessor memberAccessor =
         MemberAccessorFactory.buildMemberAccessor(
             TestdataVisibilityModifierSolution.class.getDeclaredMethod("getPublicProperty"),
-            MemberAccessorFactory.MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
+            MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
             ProblemFactProperty.class,
-            CotwinAccessType.REFLECTION,
+            CotwinAccessType.FORCE_REFLECTION,
             null);
     assertThat(memberAccessor).isInstanceOf(ReflectionBeanPropertyMemberAccessor.class);
     assertThat(memberAccessor.getName()).isEqualTo("publicProperty");
@@ -110,9 +104,9 @@ class MemberAccessorFactoryTest {
     MemberAccessor memberAccessor =
         MemberAccessorFactory.buildMemberAccessor(
             TestdataEntity.class.getMethod("updateValue"),
-            MemberAccessorFactory.MemberAccessorType.VOID_METHOD,
+            MemberAccessorType.VOID_METHOD,
             null,
-            CotwinAccessType.REFLECTION,
+            CotwinAccessType.FORCE_REFLECTION,
             null);
     assertThat(memberAccessor).isInstanceOf(ReflectionMethodMemberAccessor.class);
     assertThat(memberAccessor.getName()).isEqualTo("updateValue");
@@ -141,9 +135,9 @@ class MemberAccessorFactoryTest {
     MemberAccessor memberAccessor =
         memberAccessorFactory.buildAndCacheMemberAccessor(
             member,
-            MemberAccessorFactory.MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
+            MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER,
             ProblemFactProperty.class,
-            CotwinAccessType.REFLECTION);
+            CotwinAccessType.FORCE_REFLECTION);
     assertThat(memberAccessor).isSameAs(mockMemberAccessor);
   }
 

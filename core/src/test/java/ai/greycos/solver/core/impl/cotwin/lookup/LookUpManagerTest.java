@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 
-import ai.greycos.solver.core.api.cotwin.lookup.LookUpStrategyType;
 import ai.greycos.solver.core.testcotwin.clone.lookup.TestdataObjectIntegerId;
 import ai.greycos.solver.core.testcotwin.interfaces.TestdataInterfaceEntity;
 import ai.greycos.solver.core.testcotwin.interfaces.TestdataInterfaceValue;

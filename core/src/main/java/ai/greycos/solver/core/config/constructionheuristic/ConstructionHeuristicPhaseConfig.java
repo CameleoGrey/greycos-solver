@@ -22,9 +22,6 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveS
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainChangeMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainSwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.TailChainSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
@@ -51,11 +48,9 @@ public class ConstructionHeuristicPhaseConfig
   // and also because the input config file should match the output config file
 
   protected ConstructionHeuristicType constructionHeuristicType = null;
+  protected String moveThreadCount = null;
   protected EntitySorterManner entitySorterManner = null;
   protected ValueSorterManner valueSorterManner = null;
-
-  @XmlElement(name = "moveThreadCount")
-  protected String moveThreadCount = null;
 
   @XmlElements({
     @XmlElement(name = "queuedEntityPlacer", type = QueuedEntityPlacerConfig.class),
@@ -83,17 +78,8 @@ public class ConstructionHeuristicPhaseConfig
         name = PillarSwapMoveSelectorConfig.XML_ELEMENT_NAME,
         type = PillarSwapMoveSelectorConfig.class),
     @XmlElement(
-        name = SubChainChangeMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = SubChainChangeMoveSelectorConfig.class),
-    @XmlElement(
-        name = SubChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = SubChainSwapMoveSelectorConfig.class),
-    @XmlElement(
         name = SwapMoveSelectorConfig.XML_ELEMENT_NAME,
         type = SwapMoveSelectorConfig.class),
-    @XmlElement(
-        name = TailChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = TailChainSwapMoveSelectorConfig.class),
     @XmlElement(
         name = UnionMoveSelectorConfig.XML_ELEMENT_NAME,
         type = UnionMoveSelectorConfig.class)
@@ -114,6 +100,14 @@ public class ConstructionHeuristicPhaseConfig
   public void setConstructionHeuristicType(
       @Nullable ConstructionHeuristicType constructionHeuristicType) {
     this.constructionHeuristicType = constructionHeuristicType;
+  }
+
+  public @Nullable String getMoveThreadCount() {
+    return moveThreadCount;
+  }
+
+  public void setMoveThreadCount(@Nullable String moveThreadCount) {
+    this.moveThreadCount = moveThreadCount;
   }
 
   public @Nullable EntitySorterManner getEntitySorterManner() {
@@ -157,14 +151,6 @@ public class ConstructionHeuristicPhaseConfig
     this.foragerConfig = foragerConfig;
   }
 
-  public @Nullable String getMoveThreadCount() {
-    return moveThreadCount;
-  }
-
-  public void setMoveThreadCount(@Nullable String moveThreadCount) {
-    this.moveThreadCount = moveThreadCount;
-  }
-
   // ************************************************************************
   // With methods
   // ************************************************************************
@@ -172,6 +158,12 @@ public class ConstructionHeuristicPhaseConfig
   public @NonNull ConstructionHeuristicPhaseConfig withConstructionHeuristicType(
       ConstructionHeuristicType constructionHeuristicType) {
     this.constructionHeuristicType = constructionHeuristicType;
+    return this;
+  }
+
+  public @NonNull ConstructionHeuristicPhaseConfig withMoveThreadCount(
+      @NonNull String moveThreadCount) {
+    this.moveThreadCount = moveThreadCount;
     return this;
   }
 
@@ -205,12 +197,6 @@ public class ConstructionHeuristicPhaseConfig
     return this;
   }
 
-  public @NonNull ConstructionHeuristicPhaseConfig withMoveThreadCount(
-      @NonNull String moveThreadCount) {
-    this.moveThreadCount = moveThreadCount;
-    return this;
-  }
-
   @Override
   public @NonNull ConstructionHeuristicPhaseConfig inherit(
       @NonNull ConstructionHeuristicPhaseConfig inheritedConfig) {
@@ -218,6 +204,9 @@ public class ConstructionHeuristicPhaseConfig
     constructionHeuristicType =
         ConfigUtils.inheritOverwritableProperty(
             constructionHeuristicType, inheritedConfig.getConstructionHeuristicType());
+    moveThreadCount =
+        ConfigUtils.inheritOverwritableProperty(
+            moveThreadCount, inheritedConfig.getMoveThreadCount());
     entitySorterManner =
         ConfigUtils.inheritOverwritableProperty(
             entitySorterManner, inheritedConfig.getEntitySorterManner());
@@ -231,9 +220,6 @@ public class ConstructionHeuristicPhaseConfig
         ConfigUtils.inheritMergeableListConfig(
             moveSelectorConfigList, inheritedConfig.getMoveSelectorConfigList());
     foragerConfig = ConfigUtils.inheritConfig(foragerConfig, inheritedConfig.getForagerConfig());
-    moveThreadCount =
-        ConfigUtils.inheritOverwritableProperty(
-            moveThreadCount, inheritedConfig.getMoveThreadCount());
     return this;
   }
 

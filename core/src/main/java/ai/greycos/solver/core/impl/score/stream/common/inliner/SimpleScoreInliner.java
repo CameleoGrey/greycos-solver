@@ -2,14 +2,17 @@ package ai.greycos.solver.core.impl.score.stream.common.inliner;
 
 import java.util.Map;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 final class SimpleScoreInliner extends AbstractScoreInliner<SimpleScore> {
 
-  int score;
+  long score;
 
   SimpleScoreInliner(
       Map<Constraint, SimpleScore> constraintWeightMap,
@@ -20,8 +23,8 @@ final class SimpleScoreInliner extends AbstractScoreInliner<SimpleScore> {
   @Override
   public WeightedScoreImpacter<SimpleScore, ?> buildWeightedScoreImpacter(
       AbstractConstraint<?, ?, ?> constraint) {
-    SimpleScore constraintWeight = constraintWeightMap.get(constraint);
-    SimpleScoreContext context = new SimpleScoreContext(this, constraint, constraintWeight);
+    var constraintWeight = constraintWeightMap.get(constraint);
+    var context = new SimpleScoreContext(this, constraint, constraintWeight);
     return WeightedScoreImpacter.of(context, SimpleScoreContext::changeScoreBy);
   }
 

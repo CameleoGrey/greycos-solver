@@ -1,20 +1,20 @@
 package ai.greycos.solver.core.impl.exhaustivesearch.node;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.bounder.ScoreBounder;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.preview.api.move.Move;
 
-public class ExhaustiveSearchNode {
+public class ExhaustiveSearchNode<Solution_> {
 
   private final ExhaustiveSearchLayer layer;
-  private final ExhaustiveSearchNode parent;
+  private final ExhaustiveSearchNode<Solution_> parent;
   private final long breadth;
 
   // The move to get from the parent to this node
-  private Move move;
-  private Move undoMove;
+  private Move<Solution_> move;
+  private Move<Solution_> undoMove;
   private InnerScore<?> score;
 
   /**
@@ -26,7 +26,7 @@ public class ExhaustiveSearchNode {
 
   private boolean expandable = false;
 
-  public ExhaustiveSearchNode(ExhaustiveSearchLayer layer, ExhaustiveSearchNode parent) {
+  public ExhaustiveSearchNode(ExhaustiveSearchLayer layer, ExhaustiveSearchNode<Solution_> parent) {
     this.layer = layer;
     this.parent = parent;
     this.breadth = layer.assignBreadth();
@@ -36,7 +36,7 @@ public class ExhaustiveSearchNode {
     return layer;
   }
 
-  public ExhaustiveSearchNode getParent() {
+  public ExhaustiveSearchNode<Solution_> getParent() {
     return parent;
   }
 
@@ -44,19 +44,19 @@ public class ExhaustiveSearchNode {
     return breadth;
   }
 
-  public Move getMove() {
+  public Move<Solution_> getMove() {
     return move;
   }
 
-  public void setMove(Move move) {
+  public void setMove(Move<Solution_> move) {
     this.move = move;
   }
 
-  public Move getUndoMove() {
+  public Move<Solution_> getUndoMove() {
     return undoMove;
   }
 
-  public void setUndoMove(Move undoMove) {
+  public void setUndoMove(Move<Solution_> undoMove) {
     this.undoMove = undoMove;
   }
 
@@ -104,10 +104,6 @@ public class ExhaustiveSearchNode {
 
   public Object getEntity() {
     return layer.getEntity();
-  }
-
-  public boolean isLastLayer() {
-    return layer.isLastLayer();
   }
 
   public long getParentBreadth() {

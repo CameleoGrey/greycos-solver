@@ -2,6 +2,7 @@ package ai.greycos.solver.quarkus.benchmark.it.cotwin;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 
 @PlanningEntity
@@ -12,9 +13,7 @@ public class TestdataListValueShadowEntity {
   @InverseRelationShadowVariable(sourceVariableName = "values")
   private TestdataStringLengthShadowEntity entity;
 
-  @ShadowVariable(
-      variableListenerClass = StringLengthVariableListener.class,
-      sourceVariableName = "entity")
+  @ShadowVariable(supplierName = "lengthSupplier")
   private Integer length;
 
   public TestdataListValueShadowEntity() {}
@@ -45,5 +44,17 @@ public class TestdataListValueShadowEntity {
 
   public void setLength(Integer length) {
     this.length = length;
+  }
+
+  @ShadowSources("entity.values[].value")
+  public Integer lengthSupplier() {
+    if (entity == null || entity.getValues() == null) {
+      return 0;
+    }
+    return entity.getValues().stream()
+        .map(TestdataListValueShadowEntity::getValue)
+        .filter(value -> value != null)
+        .mapToInt(String::length)
+        .sum();
   }
 }

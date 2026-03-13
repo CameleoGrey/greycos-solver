@@ -1,17 +1,14 @@
 package ai.greycos.solver.core.impl.neighborhood.stream;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.DefaultUniqueRandomSequence;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.UniqueRandomSequence;
-import ai.greycos.solver.core.impl.util.CollectionUtils;
 import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.NullMarked;
@@ -61,39 +58,35 @@ import org.jspecify.annotations.Nullable;
 final class BiRandomMoveIterator<Solution_, A, B> implements Iterator<Move<Solution_>> {
 
   private final BiMoveStreamContext<Solution_, A, B> context;
-  private final Random workingRandom;
+  private final RandomGenerator workingRandom;
 
   // Fields required for iteration.
   private final DefaultUniqueRandomSequence<UniTuple<A>> leftTupleSequence;
-  private final Map<UniTuple<A>, UniqueRandomSequence<UniTuple<B>>> rightTupleSequenceMap;
+  private final int rightSequenceStoreIndex;
   private @Nullable Move<Solution_> nextMove;
 
-  public BiRandomMoveIterator(BiMoveStreamContext<Solution_, A, B> context, Random workingRandom) {
+  public BiRandomMoveIterator(
+      BiMoveStreamContext<Solution_, A, B> context, RandomGenerator workingRandom) {
     this.context = Objects.requireNonNull(context);
     this.workingRandom = Objects.requireNonNull(workingRandom);
     var leftDatasetInstance = context.getLeftDatasetInstance();
+    this.rightSequenceStoreIndex = leftDatasetInstance.getRightSequenceStoreIndex();
     this.leftTupleSequence = leftDatasetInstance.buildRandomSequence();
-    this.rightTupleSequenceMap =
-        leftTupleSequence.isEmpty()
-            ? Collections.emptyMap()
-            : CollectionUtils.newIdentityHashMap(leftDatasetInstance.size());
   }
 
-  private UniqueRandomSequence<UniTuple<B>> computeRightSequence(UniTuple<A> leftTuple) {
+  private Iterator<UniTuple<B>> createRightTupleIterator(UniTuple<A> leftTuple) {
     var rightDatasetInstance = context.getRightDatasetInstance();
     var compositeKey = rightDatasetInstance.produceCompositeKey(leftTuple);
-    var rightTupleCount = rightDatasetInstance.size(compositeKey);
-    if (rightTupleCount == 0) {
-      return DefaultUniqueRandomSequence.empty();
-    }
     var filter = rightDatasetInstance.getFilter();
-    if (filter == null) { // Shortcut: no filter means we can take the entire right dataset as-is.
-      return rightDatasetInstance.buildRandomSequence(compositeKey);
+    if (filter == null) {
+      return rightDatasetInstance.randomIterator(compositeKey, workingRandom);
     }
-    var leftFact = leftTuple.factA;
+    var leftFact = leftTuple.getA();
     var solutionView = context.neighborhoodSession().getSolutionView();
-    return rightDatasetInstance.buildRandomSequence(
-        compositeKey, rightTuple -> filter.test(solutionView, leftFact, rightTuple.factA));
+    return rightDatasetInstance.randomIterator(
+        compositeKey,
+        workingRandom,
+        rightTuple -> filter.test(solutionView, leftFact, rightTuple.getA()));
   }
 
   @Override
@@ -104,7 +97,11 @@ final class BiRandomMoveIterator<Solution_, A, B> implements Iterator<Move<Solut
 
     while (!leftTupleSequence.isEmpty()) {
       var leftElement = leftTupleSequence.pick(workingRandom);
-      pickNextMove(leftElement);
+      var rightEmpty = pickNextMove(leftElement);
+      if (rightEmpty) {
+        leftTupleSequence.remove(leftElement.index());
+        leftElement.value().setStore(rightSequenceStoreIndex, null);
+      }
       if (nextMove != null) {
         if (nextMove
             instanceof ai.greycos.solver.core.impl.heuristic.move.Move<Solution_> legacyMove) {
@@ -120,33 +117,21 @@ final class BiRandomMoveIterator<Solution_, A, B> implements Iterator<Move<Solut
     return false;
   }
 
-  private void pickNextMove(UniqueRandomSequence.SequenceElement<UniTuple<A>> leftElement) {
+  private boolean pickNextMove(UniqueRandomSequence.SequenceElement<UniTuple<A>> leftElement) {
     var leftTuple = leftElement.value();
-    var rightTupleSequence =
-        rightTupleSequenceMap.computeIfAbsent(leftTuple, this::computeRightSequence);
-    var remove = false;
-    if (rightTupleSequence.isEmpty()) {
-      remove = true;
-    } else {
-      try {
-        var bTuple = rightTupleSequence.remove(workingRandom);
-        var leftFact = leftTuple.factA;
-        var rightFact = bTuple.factA;
-        nextMove = context.buildMove(leftFact, rightFact);
-      } catch (NoSuchElementException e) {
-        // We cannot guarantee that the right sequence is empty, because we do not check filtering
-        // eagerly.
-        // Therefore we can run into a situation where there are no more elements passing the
-        // filter,
-        // even though the sequence is not technically empty.
-        // We only find this out at runtime.
-        remove = true;
-      }
+    @SuppressWarnings("unchecked")
+    var rightTupleIterator = (Iterator<UniTuple<B>>) leftTuple.getStore(rightSequenceStoreIndex);
+    if (rightTupleIterator == null) {
+      rightTupleIterator = createRightTupleIterator(leftTuple);
+      leftTuple.setStore(rightSequenceStoreIndex, rightTupleIterator);
     }
-    if (remove) {
-      leftTupleSequence.remove(leftElement.index());
-      rightTupleSequenceMap.remove(leftTuple);
+    if (!rightTupleIterator.hasNext()) {
+      return true;
     }
+    var bTuple = rightTupleIterator.next();
+    nextMove = context.buildMove(leftTuple.getA(), bTuple.getA());
+    rightTupleIterator.remove();
+    return false;
   }
 
   @Override

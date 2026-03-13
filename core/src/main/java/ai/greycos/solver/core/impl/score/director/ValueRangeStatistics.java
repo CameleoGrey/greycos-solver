@@ -95,7 +95,7 @@ final class ValueRangeStatistics<Solution_> {
           if (finisher != null) {
             finisher.accept(entity);
           }
-          if (!entityDescriptor.hasAnyGenuineListVariables()) {
+          if (!entityDescriptor.hasAnyListVariables()) {
             return;
           }
           var listVariableEntityDescriptor = listVariableDescriptor.getEntityDescriptor();
@@ -273,36 +273,9 @@ final class ValueRangeStatistics<Solution_> {
                   variableDescriptor.getValueRangeDescriptor(), entity);
       // TODO: When minimum Java supported is 21, this can be replaced with a sealed interface
       // switch
-      if (variableDescriptor
-          instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor) {
-        if (basicVariableDescriptor.isChained()) {
-          // An entity is a value
-          tracker.addListValueCount(1);
-          if (!entityDescriptor.isMovable(solution, entity)) {
-            tracker.addPinnedListValueCount(1);
-          }
-          // Anchors are entities
-          var valueRange =
-              variableDescriptor.canExtractValueRangeFromSolution()
-                  ? valueRangeManager.getFromSolution(
-                      variableDescriptor.getValueRangeDescriptor(), solution)
-                  : valueRangeManager.getFromEntity(
-                      variableDescriptor.getValueRangeDescriptor(), entity);
-          var valueIterator = valueRange.createOriginalIterator();
-          while (valueIterator.hasNext()) {
-            var value = valueIterator.next();
-            if (variableDescriptor.isValuePotentialAnchor(value)) {
-              if (tracker.isAnchorVisited(value)) {
-                continue;
-              }
-              // Assumes anchors are not pinned
-              tracker.incrementListEntityCount(true);
-            }
-          }
-        } else {
-          if (entityDescriptor.isMovable(solution, entity)) {
-            tracker.addBasicProblemScale(valueCount);
-          }
+      if (variableDescriptor instanceof BasicVariableDescriptor<Solution_>) {
+        if (entityDescriptor.isMovable(solution, entity)) {
+          tracker.addBasicProblemScale(valueCount);
         }
       } else if (variableDescriptor
           instanceof ListVariableDescriptor<Solution_> listVariableDescriptor) {

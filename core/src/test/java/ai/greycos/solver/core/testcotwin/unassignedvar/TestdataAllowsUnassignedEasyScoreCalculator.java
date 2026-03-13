@@ -2,7 +2,7 @@ package ai.greycos.solver.core.testcotwin.unassignedvar;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 

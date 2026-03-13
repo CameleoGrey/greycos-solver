@@ -31,7 +31,6 @@ class GreyCOSProcessorSolverUnusedPropertiesTest {
               "quarkus.greycos.solver.\"solver1\".nearby-distance-meter-class",
               "ai.greycos.solver.quarkus.testcotwin.dummy.DummyDistanceMeter")
           .overrideConfigKey("quarkus.greycos.solver.\"solver2\".move-thread-count", "2")
-          .overrideConfigKey("quarkus.greycos.solver.\"solver2\".cotwin-access-type", "REFLECTION")
           .overrideConfigKey("quarkus.greycos.solver.\"solver2\".termination.spent-limit", "4h")
           .overrideConfigKey(
               "quarkus.greycos.solver.\"solver3\".termination.unimproved-spent-limit", "5h")
@@ -100,7 +99,7 @@ class GreyCOSProcessorSolverUnusedPropertiesTest {
 
   @Inject
   @Named("solver1")
-  SolverManager<TestdataQuarkusSolution, ?> solverManager;
+  SolverManager<TestdataQuarkusSolution> solverManager;
 
   @Test
   void solve() {

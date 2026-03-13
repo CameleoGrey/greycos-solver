@@ -2,8 +2,6 @@ package ai.greycos.solver.core.api.score;
 
 import java.io.Serializable;
 
-import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
-
 import org.jspecify.annotations.NullMarked;
 
 /**

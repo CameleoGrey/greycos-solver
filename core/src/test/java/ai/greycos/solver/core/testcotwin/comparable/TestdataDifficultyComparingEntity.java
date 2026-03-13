@@ -7,7 +7,7 @@ import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDes
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 
-@PlanningEntity(difficultyComparatorClass = TestdataCodeComparator.class)
+@PlanningEntity(comparatorClass = TestdataCodeComparator.class)
 public class TestdataDifficultyComparingEntity extends TestdataObject {
 
   public static EntityDescriptor<TestdataDifficultyComparingSolution> buildEntityDescriptor() {
@@ -35,7 +35,7 @@ public class TestdataDifficultyComparingEntity extends TestdataObject {
 
   @PlanningVariable(
       valueRangeProviderRefs = {"valueRange"},
-      strengthComparatorClass = TestdataCodeComparator.class)
+      comparatorClass = TestdataCodeComparator.class)
   public TestdataValue getValue() {
     return value;
   }

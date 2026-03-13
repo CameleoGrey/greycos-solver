@@ -9,7 +9,6 @@ import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfi
 import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
-import ai.greycos.solver.core.config.phase.NoChangePhaseConfig;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
 import ai.greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
@@ -39,8 +38,6 @@ public interface PhaseFactory<Solution_> {
       return new DefaultCustomPhaseFactory<>((CustomPhaseConfig) phaseConfig);
     } else if (ExhaustiveSearchPhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
       return new DefaultExhaustiveSearchPhaseFactory<>((ExhaustiveSearchPhaseConfig) phaseConfig);
-    } else if (NoChangePhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
-      return new NoChangePhaseFactory<>((NoChangePhaseConfig) phaseConfig);
     } else {
       throw new IllegalArgumentException(
           String.format(

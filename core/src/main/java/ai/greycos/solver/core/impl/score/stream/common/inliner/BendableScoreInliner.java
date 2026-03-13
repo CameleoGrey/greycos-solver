@@ -3,15 +3,18 @@ package ai.greycos.solver.core.impl.score.stream.common.inliner;
 import java.util.Arrays;
 import java.util.Map;
 
-import ai.greycos.solver.core.api.score.buildin.bendable.BendableScore;
+import ai.greycos.solver.core.api.score.BendableScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 
-final class BendableScoreInliner extends AbstractScoreInliner<BendableScore> {
+import org.jspecify.annotations.NullMarked;
 
-  final int[] hardScores;
-  final int[] softScores;
+@NullMarked
+public final class BendableScoreInliner extends AbstractScoreInliner<BendableScore> {
+
+  final long[] hardScores;
+  final long[] softScores;
 
   BendableScoreInliner(
       Map<Constraint, BendableScore> constraintWeightMap,
@@ -19,16 +22,16 @@ final class BendableScoreInliner extends AbstractScoreInliner<BendableScore> {
       int hardLevelsSize,
       int softLevelsSize) {
     super(constraintWeightMap, constraintMatchPolicy);
-    hardScores = new int[hardLevelsSize];
-    softScores = new int[softLevelsSize];
+    hardScores = new long[hardLevelsSize];
+    softScores = new long[softLevelsSize];
   }
 
   @Override
   public WeightedScoreImpacter<BendableScore, ?> buildWeightedScoreImpacter(
       AbstractConstraint<?, ?, ?> constraint) {
     Integer singleLevel = null;
-    BendableScore constraintWeight = constraintWeightMap.get(constraint);
-    for (int i = 0; i < constraintWeight.levelsSize(); i++) {
+    var constraintWeight = constraintWeightMap.get(constraint);
+    for (var i = 0; i < constraintWeight.levelsSize(); i++) {
       if (constraintWeight.hardOrSoftScore(i) != 0L) {
         if (singleLevel != null) {
           singleLevel = null;
@@ -38,9 +41,9 @@ final class BendableScoreInliner extends AbstractScoreInliner<BendableScore> {
       }
     }
     if (singleLevel != null) {
-      boolean isHardScore = singleLevel < constraintWeight.hardLevelsSize();
-      int level = isHardScore ? singleLevel : singleLevel - constraintWeight.hardLevelsSize();
-      BendableScoreContext context =
+      var isHardScore = singleLevel < constraintWeight.hardLevelsSize();
+      var level = isHardScore ? singleLevel : singleLevel - constraintWeight.hardLevelsSize();
+      var context =
           new BendableScoreContext(
               this,
               constraint,
@@ -55,7 +58,7 @@ final class BendableScoreInliner extends AbstractScoreInliner<BendableScore> {
         return WeightedScoreImpacter.of(context, BendableScoreContext::changeSoftScoreBy);
       }
     } else {
-      BendableScoreContext context =
+      var context =
           new BendableScoreContext(
               this, constraint, constraintWeight, hardScores.length, softScores.length);
       return WeightedScoreImpacter.of(context, BendableScoreContext::changeScoreBy);

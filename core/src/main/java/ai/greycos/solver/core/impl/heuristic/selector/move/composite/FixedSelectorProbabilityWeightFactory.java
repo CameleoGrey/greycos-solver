@@ -2,9 +2,9 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.composite;
 
 import java.util.Map;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.heuristic.selector.Selector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 final class FixedSelectorProbabilityWeightFactory<Solution_, Selector_ extends Selector>
     implements SelectionProbabilityWeightFactory<Solution_, Selector_> {

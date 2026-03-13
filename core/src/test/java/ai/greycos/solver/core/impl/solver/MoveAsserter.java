@@ -4,19 +4,33 @@ import java.util.function.Consumer;
 
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.neighborhood.MoveRepository;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.preview.api.move.Move;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
 public class MoveAsserter<Solution_> {
   private final SolutionDescriptor<Solution_> solutionDescriptor;
+  @Nullable private final MoveRepository<Solution_> moveRepository;
 
-  private MoveAsserter(SolutionDescriptor<Solution_> solutionDescriptor) {
+  private MoveAsserter(
+      SolutionDescriptor<Solution_> solutionDescriptor,
+      @Nullable MoveRepository<Solution_> moveRepository) {
     this.solutionDescriptor = solutionDescriptor;
+    this.moveRepository = moveRepository;
   }
 
   public static <Solution_> MoveAsserter<Solution_> create(
       SolutionDescriptor<Solution_> solutionDescriptor) {
-    return new MoveAsserter<>(solutionDescriptor);
+    return new MoveAsserter<>(solutionDescriptor, null);
+  }
+
+  public static <Solution_> MoveAsserter<Solution_> create(
+      SolutionDescriptor<Solution_> solutionDescriptor, MoveRepository<Solution_> moveRepository) {
+    return new MoveAsserter<>(solutionDescriptor, moveRepository);
   }
 
   public void assertMoveAndUndo(Solution_ solution, Move<Solution_> move) {
@@ -53,7 +67,8 @@ public class MoveAsserter<Solution_> {
       Consumer<Solution_> moveSolutionConsumer,
       boolean applyMove) {
     var scoreDirectorFactory =
-        new MoveAssertScoreDirectorFactory<>(solutionDescriptor, moveSolutionConsumer);
+        new MoveAssertScoreDirectorFactory<>(
+            solutionDescriptor, moveSolutionConsumer, moveRepository);
     scoreDirectorFactory.setTrackingWorkingSolution(true);
     try (var scoreDirector =
         scoreDirectorFactory.createScoreDirectorBuilder().withLookUpEnabled(false).build()) {
@@ -73,6 +88,18 @@ public class MoveAsserter<Solution_> {
       if (applyMove) {
         scoreDirector.executeMove(move);
       }
+    }
+  }
+
+  public void applyMove(Solution_ solution, Move<Solution_> move, Runnable beforeMove) {
+    var scoreDirectorFactory =
+        new MoveAssertScoreDirectorFactory<>(solutionDescriptor, ignored -> {}, moveRepository);
+    scoreDirectorFactory.setTrackingWorkingSolution(false);
+    try (var scoreDirector =
+        scoreDirectorFactory.createScoreDirectorBuilder().withLookUpEnabled(false).build()) {
+      scoreDirector.setWorkingSolution(solution);
+      beforeMove.run();
+      scoreDirector.executeMove(move);
     }
   }
 }

@@ -7,11 +7,9 @@ import static org.mockito.Mockito.mock;
 
 import java.util.Comparator;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
@@ -19,6 +17,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.Selection
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.ProbabilityEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.ShufflingEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.SortingEntitySelector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
@@ -188,24 +187,9 @@ class EntitySelectorFactoryTest {
   }
 
   @Test
-  void applySorting_withSorterComparatorClass() {
-    EntitySelectorConfig entitySelectorConfig =
-        new EntitySelectorConfig().withSorterComparatorClass(DummyEntityComparator.class);
-    applySorting(entitySelectorConfig);
-  }
-
-  @Test
   void applySorting_withComparatorClass() {
     EntitySelectorConfig entitySelectorConfig =
         new EntitySelectorConfig().withComparatorClass(DummyEntityComparator.class);
-    applySorting(entitySelectorConfig);
-  }
-
-  @Test
-  void applySorting_withSorterWeightFactoryClass() {
-    EntitySelectorConfig entitySelectorConfig =
-        new EntitySelectorConfig()
-            .withSorterWeightFactoryClass(DummySelectionComparatorFactory.class);
     applySorting(entitySelectorConfig);
   }
 
@@ -265,56 +249,6 @@ class EntitySelectorFactoryTest {
                 EntitySelectorFactory.create(entitySelectorConfig)
                     .buildMimicReplaying(mock(HeuristicConfigPolicy.class)))
         .withMessageContaining("has another property");
-  }
-
-  @Test
-  void failFast_ifBothComparatorsUsed() {
-    var entitySelectorConfig =
-        new EntitySelectorConfig()
-            .withSorterManner(EntitySorterManner.DESCENDING)
-            .withCacheType(SelectionCacheType.PHASE)
-            .withSelectionOrder(SelectionOrder.SORTED)
-            .withComparatorClass(DummyEntityComparator.class)
-            .withSorterComparatorClass(DummyEntityComparator.class);
-
-    assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                EntitySelectorFactory.<TestdataSolution>create(entitySelectorConfig)
-                    .buildEntitySelector(
-                        buildHeuristicConfigPolicy(),
-                        SelectionCacheType.PHASE,
-                        SelectionOrder.SORTED))
-        .withMessageContaining("The entitySelectorConfig")
-        .withMessageContaining(
-            "cannot have a sorterComparatorClass (class ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactoryTest$DummyEntityComparator)")
-        .withMessageContaining(
-            "and comparatorClass (class ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactoryTest$DummyEntityComparator) at the same time");
-  }
-
-  @Test
-  void failFast_ifBothComparatorFactoriesUsed() {
-    var entitySelectorConfig =
-        new EntitySelectorConfig()
-            .withSorterManner(EntitySorterManner.DESCENDING)
-            .withCacheType(SelectionCacheType.PHASE)
-            .withSelectionOrder(SelectionOrder.SORTED)
-            .withSorterWeightFactoryClass(DummySelectionComparatorFactory.class)
-            .withComparatorFactoryClass(DummySelectionComparatorFactory.class);
-
-    assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                EntitySelectorFactory.<TestdataSolution>create(entitySelectorConfig)
-                    .buildEntitySelector(
-                        buildHeuristicConfigPolicy(),
-                        SelectionCacheType.PHASE,
-                        SelectionOrder.SORTED))
-        .withMessageContaining("The entitySelectorConfig")
-        .withMessageContaining(
-            "cannot have a sorterWeightFactoryClass (class ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactoryTest$DummySelectionComparatorFactory)")
-        .withMessageContaining(
-            "and comparatorFactoryClass (class ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactoryTest$DummySelectionComparatorFactory) at the same time");
   }
 
   public static class DummySelectionProbabilityWeightFactory

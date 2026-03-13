@@ -4,10 +4,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
+import ai.greycos.solver.core.impl.move.AbstractMove;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import ai.greycos.solver.core.preview.api.move.Move;
 import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -41,11 +42,11 @@ public class ListAssignMove<Solution_, Entity_, Value_> extends AbstractMove<Sol
   }
 
   @Override
-  public Move<Solution_> rebase(Rebaser rebaser) {
+  public Move<Solution_> rebase(Lookup lookup) {
     return new ListAssignMove<>(
         variableMetaModel,
-        Objects.requireNonNull(rebaser.rebase(planningValue)),
-        Objects.requireNonNull(rebaser.rebase(destinationEntity)),
+        Objects.requireNonNull(lookup.lookUpWorkingObject(planningValue)),
+        Objects.requireNonNull(lookup.lookUpWorkingObject(destinationEntity)),
         destinationIndex);
   }
 

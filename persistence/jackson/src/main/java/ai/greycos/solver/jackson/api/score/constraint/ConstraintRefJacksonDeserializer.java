@@ -11,6 +11,6 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 public final class ConstraintRefJacksonDeserializer extends JsonDeserializer<ConstraintRef> {
   @Override
   public ConstraintRef deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-    return ConstraintRef.parseId(p.getValueAsString());
+    return ConstraintRef.of(p.getValueAsString());
   }
 }

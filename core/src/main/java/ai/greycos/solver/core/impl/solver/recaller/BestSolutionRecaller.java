@@ -91,9 +91,10 @@ public class BestSolutionRecaller<Solution_> extends PhaseLifecycleListenerAdapt
       phaseScope.setBestSolutionStepIndex(stepScope.getStepIndex());
       var newBestSolution = stepScope.cloneWorkingSolution();
       var innerScore =
-          InnerScore.withUnassignedCount(
+          buildInnerScore(
               solverScope.getSolutionDescriptor().<Score_>getScore(newBestSolution),
-              -stepScope.getScoreDirector().getWorkingInitScore());
+              stepScope.getScoreDirector().getWorkingInitScore(),
+              true);
       updateBestSolutionAndFire(solverScope, phaseScope, innerScore, newBestSolution);
     } else if (assertBestScoreIsUnmodified) {
       solverScope.assertScoreFromScratch(solverScope.getBestSolution());
@@ -114,7 +115,13 @@ public class BestSolutionRecaller<Solution_> extends PhaseLifecycleListenerAdapt
       phaseScope.setBestSolutionStepIndex(stepScope.getStepIndex());
       var newBestSolution = solverScope.getScoreDirector().cloneWorkingSolution();
       var innerScore =
-          new InnerScore<>(moveScore.raw(), solverScope.getScoreDirector().getWorkingInitScore());
+          buildInnerScore(
+              moveScore.raw(),
+              solverScope.getScoreDirector().getWorkingInitScore(),
+              solverScope
+                  .getScoreDirector()
+                  .getSolutionDescriptor()
+                  .hasBothBasicAndListVariables());
       updateBestSolutionAndFire(solverScope, phaseScope, innerScore, newBestSolution);
     } else if (assertBestScoreIsUnmodified) {
       solverScope.assertScoreFromScratch(solverScope.getBestSolution());
@@ -152,8 +159,7 @@ public class BestSolutionRecaller<Solution_> extends PhaseLifecycleListenerAdapt
     var newBestSolution = solverScope.getScoreDirector().cloneWorkingSolution();
     var newBestScore = solverScope.getSolutionDescriptor().<Score>getScore(newBestSolution);
     var innerScore =
-        InnerScore.withUnassignedCount(
-            newBestScore, -solverScope.getScoreDirector().getWorkingInitScore());
+        buildInnerScore(newBestScore, solverScope.getScoreDirector().getWorkingInitScore(), true);
     updateBestSolutionWithoutFiring(solverScope, innerScore, newBestSolution);
   }
 
@@ -166,5 +172,16 @@ public class BestSolutionRecaller<Solution_> extends PhaseLifecycleListenerAdapt
     solverScope.setBestSolution(bestSolution);
     solverScope.setBestScore(bestScore);
     solverScope.setBestSolutionTimeMillis(solverScope.getClock().millis());
+  }
+
+  private static <Score_ extends Score<Score_>> InnerScore<Score_> buildInnerScore(
+      Score_ moveScore, int uninitializedScore, boolean acceptUnassigned) {
+    if (acceptUnassigned) {
+      var adjustedUninitializedScore =
+          uninitializedScore < 0 ? -uninitializedScore : uninitializedScore;
+      return InnerScore.withUnassignedCount(moveScore, adjustedUninitializedScore);
+    } else {
+      return new InnerScore<>(moveScore, uninitializedScore);
+    }
   }
 }

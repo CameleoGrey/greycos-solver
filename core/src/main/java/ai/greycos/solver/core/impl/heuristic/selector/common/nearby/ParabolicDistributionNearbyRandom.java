@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import java.util.Objects;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import org.jspecify.annotations.NonNull;
 
@@ -21,7 +21,7 @@ public final class ParabolicDistributionNearbyRandom implements NearbyRandom {
   }
 
   @Override
-  public int nextInt(@NonNull Random random, int nearbySize) {
+  public int nextInt(@NonNull RandomGenerator random, int nearbySize) {
     int m = sizeMaximum <= nearbySize ? sizeMaximum : nearbySize;
     double p = random.nextDouble();
     double x = m * (1.0 - Math.cbrt(1.0 - p));

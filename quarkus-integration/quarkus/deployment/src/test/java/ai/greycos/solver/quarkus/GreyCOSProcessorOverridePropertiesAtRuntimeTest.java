@@ -25,7 +25,7 @@ import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.quarkus.bootstrap.model.AppArtifact;
+import io.quarkus.maven.dependency.Dependency;
 import io.quarkus.test.QuarkusProdModeTest;
 import io.restassured.RestAssured;
 
@@ -45,7 +45,7 @@ class GreyCOSProcessorOverridePropertiesAtRuntimeTest {
   static final QuarkusProdModeTest config =
       new QuarkusProdModeTest()
           .setForcedDependencies(
-              List.of(new AppArtifact("io.quarkus", "quarkus-rest", QUARKUS_VERSION)))
+              List.of(Dependency.of("io.quarkus", "quarkus-rest", QUARKUS_VERSION)))
           // We want to check if these are overridden at runtime
           .overrideConfigKey("quarkus.greycos.solver.termination.best-score-limit", "0")
           .overrideConfigKey("quarkus.greycos.solver.move-thread-count", "4")

@@ -7,7 +7,7 @@ import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 
-@PlanningEntity(pinningFilter = TestdataPinningFilter.class)
+@PlanningEntity
 public class TestdataPinnedEntity extends TestdataObject {
 
   public static EntityDescriptor<TestdataPinnedSolution> buildEntityDescriptor() {

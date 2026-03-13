@@ -7,9 +7,9 @@ import static org.mockito.Mockito.mock;
 
 import java.util.Arrays;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.easy.EasyScoreDirectorFactory;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;

@@ -65,15 +65,9 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
         solverConfigPolicy
             .cloneBuilder()
             .withReinitializeVariableFilterEnabled(true)
-            .withInitializedChainedValueFilterEnabled(true)
             .withUnassignedValuesAllowed(true)
             .withEntitySorterManner(entitySorterManner)
             .withValueSorterManner(valueSorterManner);
-    var phaseMoveThreadCount = phaseConfig.getMoveThreadCount();
-    if (phaseMoveThreadCount != null) {
-      var resolvedMoveThreadCount = resolveMoveThreadCount(phaseMoveThreadCount, true);
-      phaseConfigPolicyBuilder.withMoveThreadCount(resolvedMoveThreadCount);
-    }
     var phaseConfigPolicy = phaseConfigPolicyBuilder.build();
     var entityPlacerConfig_ =
         getValidEntityPlacerConfig()
@@ -153,7 +147,7 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
     // When an entity has both list and basic variables,
     // the CH configuration will require two separate placers to initialize each variable,
     // which cannot be deduced automatically by default, since a single placer would be returned
-    if (listVariableDescriptor.getEntityDescriptor().hasAnyGenuineBasicVariables()) {
+    if (listVariableDescriptor.getEntityDescriptor().hasAnyBasicVariables()) {
       throw new IllegalArgumentException(
           """
                     The entity (%s) has both basic and list variables and cannot be deduced automatically.
@@ -201,7 +195,9 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
   protected ConstructionHeuristicDecider<Solution_> buildDecider(
       HeuristicConfigPolicy<Solution_> configPolicy, PhaseTermination<Solution_> termination) {
     var forager = buildForager(configPolicy);
-    var moveThreadCount = configPolicy.getMoveThreadCount();
+    var moveThreadCount =
+        resolveMoveThreadCount(
+            phaseConfig.getMoveThreadCount(), configPolicy.getMoveThreadCount(), true);
     var decider =
         (moveThreadCount == null)
             ? new ConstructionHeuristicDecider<>(

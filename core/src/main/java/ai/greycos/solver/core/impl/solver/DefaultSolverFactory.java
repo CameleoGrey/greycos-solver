@@ -26,6 +26,7 @@ import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.AbstractFromConfigFactory;
 import ai.greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhaseFactory;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
@@ -45,7 +46,7 @@ import ai.greycos.solver.core.impl.solver.termination.SolverTermination;
 import ai.greycos.solver.core.impl.solver.termination.TerminationFactory;
 import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +57,7 @@ import io.micrometer.core.instrument.Tags;
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  * @see SolverFactory
  */
+@NullMarked
 public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solution_> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultSolverFactory.class);
@@ -65,8 +67,14 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
   private final SolverConfig solverConfig;
   private final SolutionDescriptor<Solution_> solutionDescriptor;
   private final ScoreDirectorFactory<Solution_, ?> scoreDirectorFactory;
+  private final CotwinAccessType cotwinAccessType;
 
   public DefaultSolverFactory(SolverConfig solverConfig) {
+    this(solverConfig, CotwinAccessType.AUTO);
+  }
+
+  public DefaultSolverFactory(SolverConfig solverConfig, CotwinAccessType cotwinAccessType) {
+    this.cotwinAccessType = cotwinAccessType;
     this.clock = Objects.requireNonNullElse(solverConfig.getClock(), Clock.systemDefaultZone());
     this.solverConfig =
         Objects.requireNonNull(
@@ -91,8 +99,7 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
   }
 
   @Override
-  public @NonNull Solver<Solution_> buildSolver(
-      @NonNull SolverConfigOverride<Solution_> configOverride) {
+  public Solver<Solution_> buildSolver(SolverConfigOverride<Solution_> configOverride) {
     Objects.requireNonNull(configOverride, "Invalid configOverride (null) given to SolverFactory.");
     var isDaemon = Objects.requireNonNullElse(solverConfig.getDaemon(), false);
 
@@ -138,6 +145,15 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
         BestSolutionRecallerFactory.create().<Solution_>buildBestSolutionRecaller(environmentMode);
     var randomFactory = buildRandomFactory(environmentMode);
     var previewFeaturesEnabled = solverConfig.getEnablePreviewFeatureSet();
+    var scoreDirectorFactoryConfig = solverConfig.getScoreDirectorFactoryConfig();
+    if (scoreDirectorFactoryConfig != null) {
+      var profilingEnabled = scoreDirectorFactoryConfig.getConstraintStreamProfilingEnabled();
+      if (moveThreadCount != null && Boolean.TRUE.equals(profilingEnabled)) {
+        throw new UnsupportedOperationException(
+            "Multithreaded solving is not supported together with constraintStreamProfilingEnabled (%s)."
+                .formatted(profilingEnabled));
+      }
+    }
 
     var configPolicy =
         new HeuristicConfigPolicy.Builder<Solution_>()
@@ -207,7 +223,7 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
     }
     return SolutionDescriptor.buildSolutionDescriptor(
         solverConfig.getEnablePreviewFeatureSet(),
-        solverConfig.determineCotwinAccessType(),
+        cotwinAccessType,
         (Class<Solution_>) solverConfig.getSolutionClass(),
         solverConfig.getGizmoMemberAccessorMap(),
         solverConfig.getGizmoSolutionClonerMap(),
@@ -258,17 +274,16 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
           configPolicy.getSolutionDescriptor().getGenuineEntityDescriptors();
       phaseConfigList = new ArrayList<>(genuineEntityDescriptorCollection.size() + 2);
       for (var entityDescriptor : genuineEntityDescriptorCollection) {
-        if (entityDescriptor.hasBothGenuineListAndBasicVariables()) {
+        if (entityDescriptor.hasBothListAndBasicVariables()) {
           // We add a separate step for each variable type
           phaseConfigList.add(
               buildConstructionHeuristicPhaseConfigForBasicVariable(
                   configPolicy, entityDescriptor));
           phaseConfigList.add(
               buildConstructionHeuristicPhaseConfigForListVariable(configPolicy, entityDescriptor));
-        } else if (entityDescriptor.hasAnyGenuineListVariables()) {
+        } else if (entityDescriptor.hasAnyListVariables()) {
           // There is no need to revalidate the number of list variables,
           // as it has already been validated in SolutionDescriptor
-          // TODO: Do multiple Construction Heuristics for each list variable descriptor?
           phaseConfigList.add(
               buildConstructionHeuristicPhaseConfigForListVariable(configPolicy, entityDescriptor));
         } else {
@@ -297,7 +312,7 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
   private ConstructionHeuristicPhaseConfig buildConstructionHeuristicPhaseConfigForListVariable(
       HeuristicConfigPolicy<Solution_> configPolicy, EntityDescriptor<Solution_> entityDescriptor) {
     var constructionHeuristicPhaseConfig = new ConstructionHeuristicPhaseConfig();
-    var listVariableDescriptor = entityDescriptor.getGenuineListVariableDescriptor();
+    var listVariableDescriptor = entityDescriptor.getListVariableDescriptor();
     constructionHeuristicPhaseConfig.setEntityPlacerConfig(
         DefaultConstructionHeuristicPhaseFactory.buildListVariableQueuedValuePlacerConfig(
             configPolicy, listVariableDescriptor));
@@ -316,7 +331,8 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
       return resolveMoveThreadCount(moveThreadCount, true);
     }
 
-    protected OptionalInt resolveMoveThreadCount(String moveThreadCount, boolean enforceMaximum) {
+    protected OptionalInt resolveMoveThreadCount(
+        @Nullable String moveThreadCount, boolean enforceMaximum) {
       var availableProcessorCount = getAvailableProcessors();
       int resolvedMoveThreadCount;
       if (moveThreadCount == null || moveThreadCount.equals(SolverConfig.MOVE_THREAD_COUNT_NONE)) {

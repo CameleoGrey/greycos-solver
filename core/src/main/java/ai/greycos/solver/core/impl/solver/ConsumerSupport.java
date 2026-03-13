@@ -3,8 +3,8 @@ package ai.greycos.solver.core.impl.solver;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -15,33 +15,46 @@ import ai.greycos.solver.core.api.solver.event.FirstInitializedSolutionEvent;
 import ai.greycos.solver.core.api.solver.event.NewBestSolutionEvent;
 import ai.greycos.solver.core.api.solver.event.SolverJobStartedEvent;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
 /**
- * Manages asynchronous consumption of solver events including best solutions, first initialized
- * solutions, and solver job started events. Coordinates with throttling consumers and ensures
- * proper event ordering.
+ * Support class for consuming solver events in a separate thread. It ensures that the events are
+ * consumed in the correct order and handles exceptions properly.
+ *
+ * <p>The public consume* methods in this class are called by the Solver thread, and the actual
+ * consumption of events is scheduled in the schedule* methods to a separate Consumer thread
+ * produced by the {@link #consumerExecutor}. The consumptions are protected by semaphores to ensure
+ * the correct order and to avoid concurrent consumptions, and it is the responsibility of the
+ * consume* methods to only run the schedule* methods when locked.
+ *
+ * @param <Solution_> the solution type
+ * @param <ProblemId_> the problem id type
  */
+@NullMarked
 final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
 
   private final ProblemId_ problemId;
-  private final Consumer<NewBestSolutionEvent<Solution_>> bestSolutionConsumer;
+  private final @Nullable Consumer<NewBestSolutionEvent<Solution_>> bestSolutionConsumer;
   private final Consumer<FinalBestSolutionEvent<Solution_>> finalBestSolutionConsumer;
   private final Consumer<FirstInitializedSolutionEvent<Solution_>> firstInitializedSolutionConsumer;
-  private final Consumer<SolverJobStartedEvent<Solution_>> solverJobStartedConsumer;
+  private final @Nullable Consumer<SolverJobStartedEvent<Solution_>> solverJobStartedConsumer;
   private final BiConsumer<? super ProblemId_, ? super Throwable> exceptionHandler;
   private final Semaphore activeConsumption = new Semaphore(1);
   private final Semaphore firstSolutionConsumption = new Semaphore(1);
   private final Semaphore startSolverJobConsumption = new Semaphore(1);
   private final BestSolutionHolder<Solution_> bestSolutionHolder;
   private final ExecutorService consumerExecutor = Executors.newSingleThreadExecutor();
-  private Solution_ firstInitializedSolution;
-  private Solution_ initialSolution;
+  private final AtomicReference<@Nullable Solution_> firstInitializedSolution =
+      new AtomicReference<>();
+  private final AtomicReference<@Nullable Solution_> initialSolution = new AtomicReference<>();
 
   public ConsumerSupport(
       ProblemId_ problemId,
-      Consumer<NewBestSolutionEvent<Solution_>> bestSolutionConsumer,
-      Consumer<FinalBestSolutionEvent<Solution_>> finalBestSolutionConsumer,
-      Consumer<FirstInitializedSolutionEvent<Solution_>> firstInitializedSolutionConsumer,
-      Consumer<SolverJobStartedEvent<Solution_>> solverJobStartedConsumer,
+      @Nullable Consumer<NewBestSolutionEvent<Solution_>> bestSolutionConsumer,
+      @Nullable Consumer<FinalBestSolutionEvent<Solution_>> finalBestSolutionConsumer,
+      @Nullable Consumer<FirstInitializedSolutionEvent<Solution_>> firstInitializedSolutionConsumer,
+      @Nullable Consumer<SolverJobStartedEvent<Solution_>> solverJobStartedConsumer,
       BiConsumer<? super ProblemId_, ? super Throwable> exceptionHandler,
       BestSolutionHolder<Solution_> bestSolutionHolder) {
     this.problemId = problemId;
@@ -53,99 +66,68 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
     this.solverJobStartedConsumer = solverJobStartedConsumer;
     this.exceptionHandler = exceptionHandler;
     this.bestSolutionHolder = bestSolutionHolder;
-    this.firstInitializedSolution = null;
-    this.initialSolution = null;
   }
 
   void consumeIntermediateBestSolution(
-      Solution_ bestSolution,
+      Solution_ solution,
       EventProducerId producerId,
       BooleanSupplier isEveryProblemChangeProcessed) {
-    bestSolutionHolder.set(bestSolution, producerId, isEveryProblemChangeProcessed);
+    bestSolutionHolder.set(solution, producerId, isEveryProblemChangeProcessed);
     if (bestSolutionConsumer != null) {
       tryConsumeWaitingIntermediateBestSolution();
     }
   }
 
   void consumeFirstInitializedSolution(
-      Solution_ firstInitializedSolution, EventProducerId producerId, boolean isTerminatedEarly) {
-    this.firstInitializedSolution = firstInitializedSolution;
+      Solution_ solution, EventProducerId producerId, boolean isTerminatedEarly) {
+    try {
+      firstSolutionConsumption.acquire();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(
+          "Interrupted when waiting for the first initialized solution consumption.");
+    }
+    firstInitializedSolution.getAndSet(solution);
     scheduleFirstInitializedSolutionConsumption(
-        solution ->
-            firstInitializedSolutionConsumer.accept(
-                new FirstInitializedSolutionEventImpl<>(solution, producerId, isTerminatedEarly)));
+            s ->
+                firstInitializedSolutionConsumer.accept(
+                    new FirstInitializedSolutionEventImpl<>(s, producerId, isTerminatedEarly)))
+        .whenCompleteAsync(
+            (unused, throwable) -> firstSolutionConsumption.release(), consumerExecutor);
   }
 
-  void consumeStartSolverJob(Solution_ initialSolution) {
-    this.initialSolution = initialSolution;
-    scheduleStartJobConsumption();
+  void consumeStartSolverJob(Solution_ solution) {
+    try {
+      startSolverJobConsumption.acquire();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(
+          "Interrupted when waiting for the start solver job consumption.");
+    }
+    initialSolution.getAndSet(solution);
+    scheduleStartJobConsumption()
+        .whenCompleteAsync(
+            (unused, throwable) -> startSolverJobConsumption.release(), consumerExecutor);
   }
 
-  void consumeFinalBestSolution(Solution_ finalBestSolution) {
-    // Drain any remaining intermediate best solutions before submitting the final one.
+  void consumeFinalBestSolution(Solution_ solution) {
+    try {
+      acquireAll();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(
+          "Interrupted when waiting for the final best solution consumption.");
+    }
+    // Make sure the final best solution is consumed by the intermediate best solution consumer
+    // first.
+    // Situation:
+    // The consumer is consuming the last but one best solution. The final best solution is waiting
+    // for the consumer.
     if (bestSolutionConsumer != null) {
       scheduleIntermediateBestSolutionConsumption();
     }
-
-    if (bestSolutionConsumer instanceof ThrottlingBestSolutionEventConsumer) {
-      ((ThrottlingBestSolutionEventConsumer<Solution_>) bestSolutionConsumer)
-          .terminateAndDeliverPending();
-    }
-
-    // Submit a marker task BEFORE the final best solution task.
-    // When the marker task completes, all previous tasks have been processed.
-    // We need to do this before the final task because the final task shuts down the executor.
-    Future<?> markerTask = null;
-    try {
-      markerTask = consumerExecutor.submit(() -> {});
-    } catch (java.util.concurrent.RejectedExecutionException e) {
-      // Executor is already shut down, continue without waiting
-    }
-
-    // Submit the final best solution consumption to the executor.
-    // The single-threaded executor guarantees that this task will run after all
-    // previously submitted tasks (start solver job, first initialized solution,
-    // intermediate solutions) have completed, because tasks are processed in FIFO order.
-    consumerExecutor.submit(
-        () -> {
-          try {
-            finalBestSolutionConsumer.accept(new FinalBestSolutionEventImpl<>(finalBestSolution));
-          } catch (Throwable throwable) {
-            exceptionHandler.accept(problemId, throwable);
-          } finally {
-            if (bestSolutionConsumer == null) {
-              var solutionHolder = bestSolutionHolder.take();
-              if (solutionHolder != null) {
-                solutionHolder.completeProblemChanges();
-              }
-            }
-            bestSolutionHolder.cancelPendingChangesQuietly();
-            disposeConsumerThread();
-          }
-        });
-
-    // Wait for the marker task to complete, ensuring all prior tasks have run.
-    if (markerTask != null) {
-      waitForMarkerTask(markerTask);
-    }
-  }
-
-  private void waitForMarkerTask(Future<?> markerTask) {
-    // Wait for the marker task to complete.
-    // When it completes, all previously submitted tasks have been processed.
-    try {
-      // Wait with a short timeout to avoid blocking indefinitely
-      markerTask.get(1, java.util.concurrent.TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      // If interrupted, we can't guarantee all tasks have run, but that's okay
-      // - the executor will process them eventually
-    } catch (java.util.concurrent.TimeoutException e) {
-      // Timeout means tasks are taking too long, but that's okay
-      // - they're still processing in the background
-    } catch (java.util.concurrent.ExecutionException e) {
-      // Should not happen as the marker task doesn't throw exceptions
-    }
+    scheduleFinalBestSolutionConsumption(solution)
+        .whenComplete((unused, throwable) -> releaseAll());
   }
 
   private void tryConsumeWaitingIntermediateBestSolution() {
@@ -154,7 +136,12 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
     }
     if (activeConsumption.tryAcquire()) {
       scheduleIntermediateBestSolutionConsumption()
-          .thenRunAsync(this::tryConsumeWaitingIntermediateBestSolution, consumerExecutor);
+          .whenCompleteAsync(
+              (unused, throwable) -> {
+                activeConsumption.release();
+                tryConsumeWaitingIntermediateBestSolution();
+              },
+              consumerExecutor);
     }
   }
 
@@ -165,71 +152,76 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
               bestSolutionHolder.take();
           if (bestSolutionContainingProblemChanges != null) {
             try {
-              bestSolutionConsumer.accept(
-                  new NewBestSolutionEventImpl<>(
-                      bestSolutionContainingProblemChanges.getBestSolution(),
-                      bestSolutionContainingProblemChanges.getProducerId()));
+              if (bestSolutionConsumer != null) {
+                var event =
+                    new NewBestSolutionEventImpl<>(
+                        bestSolutionContainingProblemChanges.getBestSolution(),
+                        bestSolutionContainingProblemChanges.getProducerId());
+                bestSolutionConsumer.accept(event);
+              }
               bestSolutionContainingProblemChanges.completeProblemChanges();
             } catch (Throwable throwable) {
-              if (exceptionHandler != null) {
-                exceptionHandler.accept(problemId, throwable);
-              }
+              exceptionHandler.accept(problemId, throwable);
               bestSolutionContainingProblemChanges.completeProblemChangesExceptionally(throwable);
             }
           }
-          activeConsumption.release();
         },
         consumerExecutor);
   }
 
-  private void scheduleFirstInitializedSolutionConsumption(
+  private CompletableFuture<Void> scheduleFirstInitializedSolutionConsumption(
       Consumer<? super Solution_> solutionConsumer) {
-    scheduleConsumptionNoSemaphore(solutionConsumer, firstInitializedSolution);
+    return scheduleConsumption(solutionConsumer, firstInitializedSolution.get());
   }
 
-  private void scheduleStartJobConsumption() {
-    Consumer<? super Solution_> consumer =
+  private CompletableFuture<Void> scheduleConsumption(
+      @Nullable Consumer<? super Solution_> consumer, @Nullable Solution_ solution) {
+    return CompletableFuture.runAsync(
+        () -> {
+          try {
+            if (consumer != null && solution != null) {
+              consumer.accept(solution);
+            }
+          } catch (Throwable throwable) {
+            exceptionHandler.accept(problemId, throwable);
+          }
+        },
+        consumerExecutor);
+  }
+
+  private CompletableFuture<Void> scheduleStartJobConsumption() {
+    return scheduleConsumption(
         solverJobStartedConsumer == null
             ? null
             : solution ->
-                solverJobStartedConsumer.accept(new SolverJobStartedEventImpl<>(solution));
-    scheduleConsumptionNoSemaphore(consumer, initialSolution);
+                solverJobStartedConsumer.accept(new SolverJobStartedEventImpl<>(solution)),
+        initialSolution.get());
   }
 
-  private void scheduleConsumptionNoSemaphore(
-      Consumer<? super Solution_> consumer, Solution_ solution) {
-    CompletableFuture.runAsync(
-        () -> {
-          try {
-            if (consumer != null && solution != null) {
-              consumer.accept(solution);
-            }
-          } catch (Throwable throwable) {
-            if (exceptionHandler != null) {
-              exceptionHandler.accept(problemId, throwable);
-            }
-          }
-        },
-        consumerExecutor);
-  }
-
-  private void scheduleConsumption(
-      Semaphore semaphore, Consumer<? super Solution_> consumer, Solution_ solution) {
-    CompletableFuture.runAsync(
-        () -> {
-          try {
-            if (consumer != null && solution != null) {
-              consumer.accept(solution);
-            }
-          } catch (Throwable throwable) {
-            if (exceptionHandler != null) {
-              exceptionHandler.accept(problemId, throwable);
-            }
-          } finally {
-            semaphore.release();
-          }
-        },
-        consumerExecutor);
+  private CompletableFuture<Void> scheduleFinalBestSolutionConsumption(Solution_ solution) {
+    return CompletableFuture.runAsync(
+            () -> {
+              try {
+                if (bestSolutionConsumer instanceof ThrottlingBestSolutionEventConsumer) {
+                  ((ThrottlingBestSolutionEventConsumer<Solution_>) bestSolutionConsumer)
+                      .terminateAndDeliverPending();
+                }
+                finalBestSolutionConsumer.accept(new FinalBestSolutionEventImpl<>(solution));
+              } catch (Throwable throwable) {
+                exceptionHandler.accept(problemId, throwable);
+              }
+            },
+            consumerExecutor)
+        .whenComplete(
+            (unused, throwable) -> {
+              if (bestSolutionConsumer == null) {
+                var solutionHolder = bestSolutionHolder.take();
+                if (solutionHolder != null) {
+                  solutionHolder.completeProblemChanges();
+                }
+              }
+              shutdownConsumerExecutor();
+            });
   }
 
   private void acquireAll() throws InterruptedException {
@@ -244,23 +236,31 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
     firstSolutionConsumption.release();
   }
 
-  @Override
-  public void close() {
-    // Clean up resources.
-    // Note: cancelPendingChangesQuietly() is called in the final best solution consumption task.
+  private void shutdownConsumerExecutor() {
+    bestSolutionHolder.cancelPendingChangesQuietly();
     if (bestSolutionConsumer instanceof AutoCloseable) {
       try {
         ((AutoCloseable) bestSolutionConsumer).close();
       } catch (Exception e) {
       }
     }
-    disposeConsumerThread();
+    consumerExecutor.shutdownNow();
   }
 
-  private void disposeConsumerThread() {
-    // Gracefully shut down the executor.
-    // Don't wait for termination here, as this might be called from within the executor.
-    consumerExecutor.shutdown();
+  @Override
+  public void close() {
+    if (consumerExecutor.isShutdown()) {
+      return;
+    }
+    try {
+      acquireAll();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted when waiting for closing the consumer.");
+    } finally {
+      shutdownConsumerExecutor();
+      releaseAll();
+    }
   }
 
   record NewBestSolutionEventImpl<Solution_>(Solution_ solution, EventProducerId producerId)

@@ -11,13 +11,15 @@ import ai.greycos.solver.core.api.score.stream.bi.BiConstraintBuilder;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintBuilder;
 import ai.greycos.solver.core.impl.score.stream.common.ScoreImpactType;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public final class BiConstraintBuilderImpl<A, B, Score_ extends Score<Score_>>
     extends AbstractConstraintBuilder<Score_> implements BiConstraintBuilder<A, B, Score_> {
 
-  private TriFunction<A, B, Score_, ConstraintJustification> justificationMapping;
-  private BiFunction<A, B, Collection<Object>> indictedObjectsMapping;
+  private @Nullable TriFunction<A, B, Score_, ConstraintJustification> justificationMapping;
+  private @Nullable BiFunction<A, B, Collection<Object>> indictedObjectsMapping;
 
   public BiConstraintBuilderImpl(
       BiConstraintConstructor<A, B, Score_> constraintConstructor,
@@ -27,14 +29,14 @@ public final class BiConstraintBuilderImpl<A, B, Score_ extends Score<Score_>>
   }
 
   @Override
-  protected TriFunction<A, B, Score_, ConstraintJustification> getJustificationMapping() {
+  protected @Nullable TriFunction<A, B, Score_, ConstraintJustification> getJustificationMapping() {
     return justificationMapping;
   }
 
   @Override
   public <ConstraintJustification_ extends ConstraintJustification>
-      @NonNull BiConstraintBuilder<A, B, Score_> justifyWith(
-          @NonNull TriFunction<A, B, Score_, ConstraintJustification_> justificationMapping) {
+      BiConstraintBuilder<A, B, Score_> justifyWith(
+          TriFunction<A, B, Score_, ConstraintJustification_> justificationMapping) {
     if (this.justificationMapping != null) {
       throw new IllegalStateException(
           """
@@ -49,13 +51,13 @@ public final class BiConstraintBuilderImpl<A, B, Score_ extends Score<Score_>>
   }
 
   @Override
-  protected BiFunction<A, B, Collection<Object>> getIndictedObjectsMapping() {
+  protected @Nullable BiFunction<A, B, Collection<Object>> getIndictedObjectsMapping() {
     return indictedObjectsMapping;
   }
 
   @Override
-  public @NonNull BiConstraintBuilder<A, B, Score_> indictWith(
-      @NonNull BiFunction<A, B, Collection<Object>> indictedObjectsMapping) {
+  public BiConstraintBuilder<A, B, Score_> indictWith(
+      BiFunction<A, B, Collection<Object>> indictedObjectsMapping) {
     if (this.indictedObjectsMapping != null) {
       throw new IllegalStateException(
           """

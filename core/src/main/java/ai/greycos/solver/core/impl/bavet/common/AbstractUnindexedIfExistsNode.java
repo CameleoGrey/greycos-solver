@@ -1,9 +1,9 @@
 package ai.greycos.solver.core.impl.bavet.common;
 
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.InTupleStorePositionTracker;
 import ai.greycos.solver.core.impl.bavet.common.tuple.LeftTupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.RightTupleLifecycle;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import ai.greycos.solver.core.impl.util.ElementAwareLinkedList;
@@ -15,7 +15,7 @@ import ai.greycos.solver.core.impl.util.ElementAwareLinkedList;
  * @param <LeftTuple_>
  * @param <Right_>
  */
-public abstract class AbstractUnindexedIfExistsNode<LeftTuple_ extends AbstractTuple, Right_>
+public abstract class AbstractUnindexedIfExistsNode<LeftTuple_ extends Tuple, Right_>
     extends AbstractIfExistsNode<LeftTuple_, Right_>
     implements LeftTupleLifecycle<LeftTuple_>, RightTupleLifecycle<UniTuple<Right_>> {
 

@@ -41,7 +41,7 @@ class ProblemChangeBarrageIT {
 
     var futureList = new ArrayList<RecordedFuture>();
     try (var solverManager =
-        SolverManager.<TestdataSolution, UUID>create(solverConfig, new SolverManagerConfig())) {
+        SolverManager.<TestdataSolution>create(solverConfig, new SolverManagerConfig())) {
       var solverStartedLatch = new CountDownLatch(1);
       var solution = TestdataSolution.generateSolution();
       var solverJob =

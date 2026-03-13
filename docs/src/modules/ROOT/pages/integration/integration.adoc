@@ -177,8 +177,9 @@ Add a dependency to the `greycos-solver-jackson` jar and register `GreyCOSJackso
 
 [source,java,options="nowrap"]
 ----
-ObjectMapper objectMapper = new ObjectMapper();
-objectMapper.registerModule(GreyCOSJacksonModule.createModule());
+var objectMapper = JsonMapper.builder()
+            .addModule(GreyCOSJacksonModule.createModule())
+            .build();
 ----
 
 
@@ -635,7 +636,7 @@ and read the xref:quickstart/spring-boot/spring-boot-quickstart.adoc#springBootQ
 
 [NOTE]
 ====
-GreyCOS Solver Spring Boot Starter only supports Spring Boot version 3.2.x and up.
+GreyCOS Solver Spring Boot Starter only supports Spring Boot version 3.5.x.
 ====
 
 [#integrationWithSpringBootProperties]
@@ -1005,9 +1006,11 @@ class Resource {
 [#integrationWithJPMS]
 === Java platform module system (Jigsaw)
 
-When using GreyCOS Solver from code on the modulepath (Java 9 and higher),
-_open_ your packages that contain your domain objects, constraints and solver configuration
-_to all modules_ in your `module-info.java` file:
+GreyCOS Solver supports the https://openjdk.org/projects/jigsaw/spec/[Java Platform Module System (JPMS)].
+
+When using GreyCOS Solver from code on the module path,
+_export_ the packages that contain your domain objects, constraints and solver configuration, and
+_open_ them to the GreyCOS Solver module(s) in your `module-info.java` file:
 
 [source,java,options="nowrap"]
 ----
@@ -1015,13 +1018,34 @@ module org.acme.vehiclerouting {
     requires ai.greycos.solver.core;
     ...
 
-    opens org.acme.vehiclerouting.domain; // Domain classes
-    opens org.acme.vehiclerouting.solver; // Constraints
+    exports org.acme.vehiclerouting.domain; // Domain classes
+    exports org.acme.vehiclerouting.solver; // Constraints
+
+    opens org.acme.vehiclerouting.domain to ai.greycos.solver.core; // Domain classes
+    opens org.acme.vehiclerouting.solver to ai.greycos.solver.core; // Constraints
     ...
 }
 ----
 
-Otherwise GreyCOS Solver can't reach those classes or files, even if they are exported.
+If this is not set up correctly, you will get errors. These usually mention the `unnamed module`
+and explain which package export or opening is missing.
+
+[source,options="nowrap"]
+----
+class org.acme.schooltimetabling.domain.Timetable$GreyCOS$MemberAccessor$Field$lessons
+(in unnamed module @0x273444fe) cannot access class org.acme.schooltimetabling.domain.Timetable
+(in module hello.world.school.timetabling) because module hello.world.school.timetabling does not
+export org.acme.schooltimetabling.domain to unnamed module @0x273444fe
+----
+
+[WARNING]
+====
+Only JPMS-exported packages are part of the supported public API.
+====
+If you access non-exported classes, for example by running on the classpath, and GreyCOS later
+changes or removes them, that is not considered a breaking change.
+
+You can opt out of JPMS by running all JAR files on the classpath instead of using the module path.
 
 
 [#integrationWithHumanPlanners]

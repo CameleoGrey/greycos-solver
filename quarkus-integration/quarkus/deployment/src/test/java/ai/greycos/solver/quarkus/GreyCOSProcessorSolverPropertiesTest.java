@@ -8,8 +8,7 @@ import java.time.Duration;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.SolverConfig;
@@ -36,7 +35,6 @@ class GreyCOSProcessorSolverPropertiesTest {
               "quarkus.greycos.solver.nearby-distance-meter-class",
               "ai.greycos.solver.quarkus.testcotwin.dummy.DummyDistanceMeter")
           .overrideConfigKey("quarkus.greycos.solver.move-thread-count", "2")
-          .overrideConfigKey("quarkus.greycos.solver.cotwin-access-type", "REFLECTION")
           .overrideConfigKey("quarkus.greycos.solver.termination.spent-limit", "4h")
           .overrideConfigKey("quarkus.greycos.solver.termination.unimproved-spent-limit", "5h")
           .overrideConfigKey("quarkus.greycos.solver.termination.best-score-limit", "0")
@@ -64,8 +62,6 @@ class GreyCOSProcessorSolverPropertiesTest {
     assertEquals(EnvironmentMode.FULL_ASSERT, solverConfig.getEnvironmentMode());
     assertTrue(solverConfig.getDaemon());
     assertEquals("2", solverConfig.getMoveThreadCount());
-    assertEquals(CotwinAccessType.REFLECTION, solverConfig.getCotwinAccessType());
-    assertEquals(null, solverConfig.getScoreDirectorFactoryConfig().getConstraintStreamImplType());
     assertNotNull(solverConfig.getNearbyDistanceMeterClass());
     assertNotNull(solverFactory);
   }

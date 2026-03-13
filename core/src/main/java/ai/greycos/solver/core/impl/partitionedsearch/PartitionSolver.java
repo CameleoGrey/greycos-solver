@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.solver.ProblemFactChange;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.impl.phase.Phase;
@@ -96,27 +95,6 @@ public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
   public void addProblemChanges(@NonNull List<ProblemChange<Solution_>> problemChangeList) {
     throw new UnsupportedOperationException(
         "The PartitionSolver does not support problem changes.");
-  }
-
-  @Override
-  @Deprecated(forRemoval = true)
-  public boolean isEveryProblemFactChangeProcessed() {
-    return false;
-  }
-
-  @Override
-  @Deprecated(forRemoval = true)
-  public boolean addProblemFactChange(@NonNull ProblemFactChange<Solution_> problemFactChange) {
-    throw new UnsupportedOperationException(
-        "The PartitionSolver does not support problem fact changes.");
-  }
-
-  @Override
-  @Deprecated(forRemoval = true)
-  public boolean addProblemFactChanges(
-      @NonNull List<ProblemFactChange<Solution_>> problemFactChangeList) {
-    throw new UnsupportedOperationException(
-        "The PartitionSolver does not support problem fact changes.");
   }
 
   private void runPhases() {

@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.testcotwin.shadow.dynamic_follower;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintCollectors;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;

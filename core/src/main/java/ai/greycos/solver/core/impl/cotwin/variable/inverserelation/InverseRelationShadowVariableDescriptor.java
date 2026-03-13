@@ -8,8 +8,6 @@ import java.util.List;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PlanningVariableGraphType;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
@@ -17,7 +15,6 @@ import ai.greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import ai.greycos.solver.core.impl.cotwin.variable.BasicVariableChangeEvent;
 import ai.greycos.solver.core.impl.cotwin.variable.InnerVariableListener;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
-import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
@@ -33,7 +30,6 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
 
   private VariableDescriptor<Solution_> sourceVariableDescriptor;
   private boolean singleton;
-  private boolean chained;
 
   public InverseRelationShadowVariableDescriptor(
       int ordinal,
@@ -53,9 +49,8 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
   }
 
   /**
-   * Sourced on a basic genuine planning variable, the shadow type is a Collection (such as List or
-   * Set). Sourced on a list or chained planning variable, the shadow variable type is a single
-   * instance.
+   * Sourced on a basic variable, the shadow type is a Collection (such as List or Set). Sourced on
+   * a list variable, the shadow variable type is a single instance.
    *
    * @param descriptorPolicy descriptor policy
    */
@@ -84,93 +79,67 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
         getEntityDescriptor().getSolutionDescriptor().findEntityDescriptor(sourceClass);
     if (sourceEntityDescriptor == null) {
       throw new IllegalArgumentException(
-          "The entityClass ("
-              + entityDescriptor.getEntityClass()
-              + ") has an @"
-              + InverseRelationShadowVariable.class.getSimpleName()
-              + " annotated property ("
-              + variableMemberAccessor.getName()
-              + ") with a sourceClass ("
-              + sourceClass
-              + ") which is not a valid planning entity."
-              + "\nMaybe check the annotations of the class ("
-              + sourceClass
-              + ")."
-              + "\nMaybe add the class ("
-              + sourceClass
-              + ") among planning entities in the solver configuration.");
+          """
+                    The entityClass (%s) has an @%s-annotated property (%s) \
+                    with a sourceClass (%s) which is not a valid planning entity.
+                    Maybe check the annotations of the class (%s).
+                    Maybe add the class (%s) among planning entities in the solver configuration."""
+              .formatted(
+                  entityDescriptor.getEntityClass(),
+                  InverseRelationShadowVariable.class.getSimpleName(),
+                  variableMemberAccessor.getName(),
+                  sourceClass,
+                  sourceClass,
+                  sourceClass));
     }
     String sourceVariableName = shadowVariableAnnotation.sourceVariableName();
     // TODO can we getGenuineVariableDescriptor()?
     sourceVariableDescriptor = sourceEntityDescriptor.getVariableDescriptor(sourceVariableName);
     if (sourceVariableDescriptor == null) {
-      throw new IllegalArgumentException(
-          "The entityClass ("
-              + entityDescriptor.getEntityClass()
-              + ") has an @"
-              + InverseRelationShadowVariable.class.getSimpleName()
-              + " annotated property ("
-              + variableMemberAccessor.getName()
-              + ") with sourceVariableName ("
-              + sourceVariableName
-              + ") which is not a valid planning variable on entityClass ("
-              + sourceEntityDescriptor.getEntityClass()
-              + ").\n"
-              + sourceEntityDescriptor.buildInvalidVariableNameExceptionMessage(
-                  sourceVariableName));
+      throw new IllegalStateException(
+          """
+                    The entityClass (%s) has an @%s-annotated property (%s) \
+                    with sourceVariableName (%s) which is not a valid planning variable on entityClass (%s).
+                    %s"""
+              .formatted(
+                  entityDescriptor.getEntityClass(),
+                  InverseRelationShadowVariable.class.getSimpleName(),
+                  variableMemberAccessor.getName(),
+                  sourceVariableName,
+                  sourceEntityDescriptor.getEntityClass(),
+                  sourceEntityDescriptor.buildInvalidVariableNameExceptionMessage(
+                      sourceVariableName)));
     }
-    chained =
-        sourceVariableDescriptor
-                instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor
-            && basicVariableDescriptor.isChained();
     boolean list = sourceVariableDescriptor.isListVariable();
     if (singleton) {
-      if (!chained && !list) {
+      if (!list) {
         throw new IllegalArgumentException(
-            "The entityClass ("
-                + entityDescriptor.getEntityClass()
-                + ") has an @"
-                + InverseRelationShadowVariable.class.getSimpleName()
-                + " annotated property ("
-                + variableMemberAccessor.getName()
-                + ") which does not return a "
-                + Collection.class.getSimpleName()
-                + " with sourceVariableName ("
-                + sourceVariableName
-                + ") which is neither a list variable @"
-                + PlanningListVariable.class.getSimpleName()
-                + " nor a chained variable @"
-                + PlanningVariable.class.getSimpleName()
-                + "(graphType="
-                + PlanningVariableGraphType.CHAINED
-                + ")."
-                + " Only list and chained variables support a singleton inverse.");
+            """
+                        The entityClass (%s) has an @%s-annotated property (%s) \
+                        which does not return a %s with sourceVariableName (%s) which is not a list variable @%s.
+                        Only list variable supports a singleton inverse."""
+                .formatted(
+                    entityDescriptor.getEntityClass(),
+                    InverseRelationShadowVariable.class.getSimpleName(),
+                    variableMemberAccessor.getName(),
+                    Collection.class.getSimpleName(),
+                    sourceVariableName,
+                    PlanningListVariable.class.getSimpleName()));
       }
     } else {
-      if (chained || list) {
+      if (list) {
         throw new IllegalArgumentException(
-            "The entityClass ("
-                + entityDescriptor.getEntityClass()
-                + ") has an @"
-                + InverseRelationShadowVariable.class.getSimpleName()
-                + " annotated property ("
-                + variableMemberAccessor.getName()
-                + ") which returns a "
-                + Collection.class.getSimpleName()
-                + " ("
-                + variablePropertyType
-                + ") with sourceVariableName ("
-                + sourceVariableName
-                + ") which is a"
-                + (chained
-                    ? " chained variable @"
-                        + PlanningVariable.class.getSimpleName()
-                        + "(graphType="
-                        + PlanningVariableGraphType.CHAINED
-                        + "). A chained variable supports only a singleton inverse."
-                    : " list variable @"
-                        + PlanningListVariable.class.getSimpleName()
-                        + ". A list variable supports only a singleton inverse."));
+            """
+                        The entityClass (%s) has an @%s-annotated property (%s) \
+                        which returns a %s with sourceVariableName (%s) which is a list variable @%s.
+                        A list variable supports only a singleton inverse."""
+                .formatted(
+                    entityDescriptor.getEntityClass(),
+                    InverseRelationShadowVariable.class.getSimpleName(),
+                    variableMemberAccessor.getName(),
+                    Collection.class.getSimpleName(),
+                    sourceVariableName,
+                    PlanningListVariable.class.getSimpleName()));
       }
     }
     sourceVariableDescriptor.registerSinkVariableDescriptor(this);
@@ -184,13 +153,9 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
   @Override
   public Collection<Class<?>> getVariableListenerClasses() {
     if (singleton) {
-      if (chained) {
-        return Collections.singleton(SingletonInverseVariableListener.class);
-      } else {
-        throw new UnsupportedOperationException(
-            "Impossible state: Handled by %s."
-                .formatted(ListVariableStateSupply.class.getSimpleName()));
-      }
+      throw new UnsupportedOperationException(
+          "Impossible state: Handled by %s."
+              .formatted(ListVariableStateSupply.class.getSimpleName()));
     } else {
       return Collections.singleton(CollectionInverseVariableListener.class);
     }
@@ -203,13 +168,9 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
   @Override
   public Demand<?> getProvidedDemand() {
     if (singleton) {
-      if (chained) {
-        return new SingletonInverseVariableDemand<>(sourceVariableDescriptor);
-      } else {
-        throw new UnsupportedOperationException(
-            "Impossible state: Handled by %s."
-                .formatted(ListVariableStateSupply.class.getSimpleName()));
-      }
+      throw new UnsupportedOperationException(
+          "Impossible state: Handled by %s."
+              .formatted(ListVariableStateSupply.class.getSimpleName()));
     } else {
       return new CollectionInverseVariableDemand<>(sourceVariableDescriptor);
     }
@@ -224,13 +185,9 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
   private InnerVariableListener<Solution_, BasicVariableChangeEvent<Object>>
       buildVariableListener() {
     if (singleton) {
-      if (chained) {
-        return new SingletonInverseVariableListener<>(this, sourceVariableDescriptor);
-      } else {
-        throw new UnsupportedOperationException(
-            "Impossible state: Handled by %s."
-                .formatted(ListVariableStateSupply.class.getSimpleName()));
-      }
+      throw new UnsupportedOperationException(
+          "Impossible state: Handled by %s."
+              .formatted(ListVariableStateSupply.class.getSimpleName()));
     } else {
       return new CollectionInverseVariableListener<>(this, sourceVariableDescriptor);
     }

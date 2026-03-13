@@ -8,7 +8,7 @@ import ai.greycos.solver.benchmark.quarkus.GreyCOSBenchmarkRecorder;
 import ai.greycos.solver.benchmark.quarkus.UnavailableGreyCOSBenchmarkBeanProvider;
 import ai.greycos.solver.benchmark.quarkus.config.GreyCOSBenchmarkRuntimeConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.quarkus.deployment.SolverConfigBuildItem;
+import ai.greycos.solver.quarkus.deployment.api.SolverConfigBuildItem;
 
 import org.jboss.logging.Logger;
 
@@ -96,16 +96,14 @@ class GreyCOSBenchmarkProcessor {
       GreyCOSBenchmarkRecorder recorder,
       BuildProducer<SyntheticBeanBuildItem> syntheticBeans,
       SolverConfigBuildItem solverConfigBuildItem,
-      BenchmarkConfigBuildItem benchmarkConfigBuildItem,
-      GreyCOSBenchmarkRuntimeConfig runtimeConfig) {
+      BenchmarkConfigBuildItem benchmarkConfigBuildItem) {
     if (solverConfigBuildItem.getGeneratedGizmoClasses() == null) {
       return;
     }
     syntheticBeans.produce(
         SyntheticBeanBuildItem.configure(PlannerBenchmarkConfig.class)
             .supplier(
-                recorder.benchmarkConfigSupplier(
-                    benchmarkConfigBuildItem.getBenchmarkConfig(), runtimeConfig))
+                recorder.benchmarkConfigSupplier(benchmarkConfigBuildItem.getBenchmarkConfig()))
             .setRuntimeInit()
             .done());
   }

@@ -3,9 +3,9 @@ package ai.greycos.solver.core.impl.move;
 import java.util.List;
 import java.util.Objects;
 
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.preview.api.move.Move;
 import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -26,10 +26,10 @@ record RecordedUndoMove<Solution_>(List<ChangeAction<Solution_>> variableChangeA
   }
 
   @Override
-  public Move<Solution_> rebase(Rebaser rebaser) {
+  public Move<Solution_> rebase(Lookup lookup) {
     return new RecordedUndoMove<>(
         variableChangeActionList.stream()
-            .map(changeAction -> changeAction.rebase(rebaser))
+            .map(changeAction -> changeAction.rebase(lookup))
             .toList());
   }
 

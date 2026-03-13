@@ -2,11 +2,11 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.factory;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /** Bridges a {@link MoveIteratorFactory} to a {@link MoveSelector}. */
 public class MoveIteratorFactoryToMoveSelectorBridge<Solution_>

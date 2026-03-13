@@ -32,6 +32,7 @@ import java.util.UUID;
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.api.cotwin.solution.cloner.DeepPlanningClone;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
@@ -111,6 +112,23 @@ public final class DeepCloningUtils {
     if (isImmutable(fieldType)) {
       return false;
     } else {
+      if (isFieldAPlanningBasicVariable(field, owningClass)
+          && isFieldADeepCloneProperty(field, owningClass)
+          && !isClassDeepCloned(solutionDescriptor, fieldType)) {
+        throw new IllegalStateException(
+            """
+            The field (%s) of class (%s) is configured to be deep-cloned,
+            but its type (%s) is not deep-cloned.
+            Maybe remove the @%s annotation from the field?
+            Maybe annotate the type (%s) with @%s?"""
+                .formatted(
+                    field.getName(),
+                    owningClass.getCanonicalName(),
+                    fieldType.getCanonicalName(),
+                    DeepPlanningClone.class.getSimpleName(),
+                    fieldType.getCanonicalName(),
+                    DeepPlanningClone.class.getSimpleName()));
+      }
       return needsDeepClone(solutionDescriptor, field, owningClass);
     }
   }
@@ -142,18 +160,6 @@ public final class DeepCloningUtils {
                     clz.getName(),
                     PlanningId.class.getSimpleName(),
                     PlanningId.class.getSimpleName()));
-      }
-      return true;
-    } else if (PlanningImmutable.class.isAssignableFrom(clz)) {
-      if (PlanningCloneable.class.isAssignableFrom(clz)) {
-        throw new IllegalStateException(
-            """
-                        The class (%s) implements %s, but it is %s.
-                        Immutable objects can not be cloned."""
-                .formatted(
-                    clz.getName(),
-                    PlanningCloneable.class.getSimpleName(),
-                    PlanningImmutable.class.getSimpleName()));
       }
       return true;
     }
@@ -247,6 +253,15 @@ public final class DeepCloningUtils {
     if (!field.isAnnotationPresent(PlanningListVariable.class)) {
       Method getterMethod = ReflectionHelper.getGetterMethod(owningClass, field.getName());
       return getterMethod != null && getterMethod.isAnnotationPresent(PlanningListVariable.class);
+    } else {
+      return true;
+    }
+  }
+
+  private static boolean isFieldAPlanningBasicVariable(Field field, Class<?> owningClass) {
+    if (!field.isAnnotationPresent(PlanningVariable.class)) {
+      Method getterMethod = ReflectionHelper.getGetterMethod(owningClass, field.getName());
+      return getterMethod != null && getterMethod.isAnnotationPresent(PlanningVariable.class);
     } else {
       return true;
     }

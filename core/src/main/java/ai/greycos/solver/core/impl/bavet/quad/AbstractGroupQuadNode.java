@@ -6,19 +6,12 @@ import ai.greycos.solver.core.api.function.PentaFunction;
 import ai.greycos.solver.core.api.score.stream.quad.QuadConstraintCollector;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.bavet.common.AbstractGroupNode;
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.QuadTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 
 abstract class AbstractGroupQuadNode<
-        OldA,
-        OldB,
-        OldC,
-        OldD,
-        OutTuple_ extends AbstractTuple,
-        GroupKey_,
-        ResultContainer_,
-        Result_>
+        OldA, OldB, OldC, OldD, OutTuple_ extends Tuple, GroupKey_, ResultContainer_, Result_>
     extends AbstractGroupNode<
         QuadTuple<OldA, OldB, OldC, OldD>, OutTuple_, GroupKey_, ResultContainer_, Result_> {
 
@@ -54,6 +47,7 @@ abstract class AbstractGroupQuadNode<
   @Override
   protected final Runnable accumulate(
       ResultContainer_ resultContainer, QuadTuple<OldA, OldB, OldC, OldD> tuple) {
-    return accumulator.apply(resultContainer, tuple.factA, tuple.factB, tuple.factC, tuple.factD);
+    return accumulator.apply(
+        resultContainer, tuple.getA(), tuple.getB(), tuple.getC(), tuple.getD());
   }
 }

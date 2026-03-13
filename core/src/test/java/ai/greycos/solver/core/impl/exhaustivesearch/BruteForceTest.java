@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.exhaustivesearch;
 import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchType;

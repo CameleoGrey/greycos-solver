@@ -16,7 +16,6 @@ import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.analysis.ConstraintAnalysis;
 import ai.greycos.solver.core.api.score.analysis.MatchAnalysis;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.api.solver.change.ProblemChangeDirector;
@@ -360,15 +359,16 @@ public abstract class AbstractScoreDirector<
     }
     var moveScore =
         assertMoveScoreFromScratch
-            ? moveDirector.executeTemporary(
-                move,
-                (score, undoMove) -> {
-                  if (solutionTracker != null) {
-                    solutionTracker.setAfterMoveSolution(workingSolution);
-                  }
-                  assertWorkingScoreFromScratch(score, move);
-                  return score;
-                })
+            ? Objects.requireNonNull(
+                moveDirector.executeTemporary(
+                    move,
+                    (score, undoMove) -> {
+                      if (solutionTracker != null) {
+                        solutionTracker.setAfterMoveSolution(workingSolution);
+                      }
+                      assertWorkingScoreFromScratch(score, move);
+                      return score;
+                    }))
             : moveDirector.executeTemporary(move);
     allChangesWillBeUndoneBeforeStepEnds = false;
     return moveScore;
@@ -720,7 +720,6 @@ public abstract class AbstractScoreDirector<
     return lookUpManager.lookUpWorkingObject(externalObject);
   }
 
-  @Override
   public <E> @Nullable E lookUpWorkingObjectOrReturnNull(@Nullable E externalObject) {
     if (!lookUpEnabled) {
       throw new IllegalStateException(
@@ -1111,7 +1110,7 @@ public abstract class AbstractScoreDirector<
                                 %s/%s=%s
                             """
                           .formatted(
-                              match.constraintRef().constraintId(),
+                              match.constraintRef().constraintName(),
                               match.justification(),
                               match.score())));
       if (matches.size() >= CONSTRAINT_MATCH_DISPLAY_LIMIT) {

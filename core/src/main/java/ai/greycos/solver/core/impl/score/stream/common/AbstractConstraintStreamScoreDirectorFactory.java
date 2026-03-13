@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.score.stream.common;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.stream.ConstraintMetaModel;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
@@ -20,6 +21,11 @@ public abstract class AbstractConstraintStreamScoreDirectorFactory<
         Score_ extends Score<Score_>,
         Factory_ extends AbstractConstraintStreamScoreDirectorFactory<Solution_, Score_, Factory_>>
     extends AbstractScoreDirectorFactory<Solution_, Score_, Factory_> {
+
+  protected AbstractConstraintStreamScoreDirectorFactory(
+      SolutionDescriptor<Solution_> solutionDescriptor, EnvironmentMode environmentMode) {
+    super(solutionDescriptor, environmentMode);
+  }
 
   protected AbstractConstraintStreamScoreDirectorFactory(
       SolutionDescriptor<Solution_> solutionDescriptor) {

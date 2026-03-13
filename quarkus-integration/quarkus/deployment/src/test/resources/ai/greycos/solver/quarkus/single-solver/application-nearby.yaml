@@ -4,7 +4,6 @@ quarkus:
       environment-mode: FULL_ASSERT
       daemon: true
       move-thread-count: 2
-      cotwin-access-type: REFLECTION
       nearby-distance-meter-class: ai.greycos.solver.quarkus.testcotwin.dummy.DummyDistanceMeter
       termination:
         spent-limit: 4h

@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Objects;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 
 /**
@@ -17,13 +17,13 @@ import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDi
  */
 public class SwapMove<Solution_> extends AbstractMove<Solution_> {
 
-  protected final List<GenuineVariableDescriptor<Solution_>> variableDescriptorList;
+  protected final List<? extends GenuineVariableDescriptor<Solution_>> variableDescriptorList;
 
   protected final Object leftEntity;
   protected final Object rightEntity;
 
   public SwapMove(
-      List<GenuineVariableDescriptor<Solution_>> variableDescriptorList,
+      List<? extends GenuineVariableDescriptor<Solution_>> variableDescriptorList,
       Object leftEntity,
       Object rightEntity) {
     this.variableDescriptorList = variableDescriptorList;
@@ -151,7 +151,7 @@ public class SwapMove<Solution_> extends AbstractMove<Solution_> {
         s.append(", ");
       }
       var value = variableDescriptor.getValue(entity);
-      s.append(value == null ? null : value.toString());
+      s.append(value == null ? "null" : value.toString());
       first = false;
     }
   }

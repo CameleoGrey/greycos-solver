@@ -8,6 +8,7 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheTyp
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 import ai.greycos.solver.core.config.heuristic.selector.list.DestinationSelectorConfig;
+import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelectorFactory;
@@ -35,14 +36,15 @@ public final class DestinationSelectorFactory<Solution_>
       HeuristicConfigPolicy<Solution_> configPolicy,
       SelectionCacheType minimumCacheType,
       boolean randomSelection) {
-    return buildDestinationSelector(configPolicy, minimumCacheType, randomSelection, null);
+    return buildDestinationSelector(configPolicy, minimumCacheType, randomSelection, null, false);
   }
 
   public DestinationSelector<Solution_> buildDestinationSelector(
       HeuristicConfigPolicy<Solution_> configPolicy,
       SelectionCacheType minimumCacheType,
       boolean randomSelection,
-      String entityValueRangeRecorderId) {
+      String entityValueRangeRecorderId,
+      boolean isExhaustiveSearch) {
     var selectionOrder = SelectionOrder.fromRandomSelectionBoolean(randomSelection);
     var entitySelectorConfig =
         Objects.requireNonNull(config.getEntitySelectorConfig()).copyConfig();
@@ -52,7 +54,10 @@ public final class DestinationSelectorFactory<Solution_>
     var entityDescriptor =
         deduceEntityDescriptor(configPolicy, entitySelectorConfig.getEntityClass());
     var hasSorter = entityDescriptor.getDescendingSorter() != null;
-    if (hasSortManner && hasSorter && entitySelectorConfig.getSorterManner() == null) {
+    if (!isExhaustiveSearch
+        && hasSortManner
+        && hasSorter
+        && entitySelectorConfig.getSorterManner() == null) {
       if (entityValueRangeRecorderId == null) {
         // Solution-range model
         entitySelectorConfig.setCacheType(SelectionCacheType.PHASE);
@@ -64,13 +69,19 @@ public final class DestinationSelectorFactory<Solution_>
       entitySelectorConfig.setSelectionOrder(SelectionOrder.SORTED);
       entitySelectorConfig.setSorterManner(configPolicy.getEntitySorterManner());
     }
+    var valueRangeRecorderId = new ValueRangeRecorderId(entityValueRangeRecorderId, false);
+    if (isExhaustiveSearch) {
+      entitySelectorConfig.setEntityClass(null);
+    }
     var entitySelector =
         EntitySelectorFactory.<Solution_>create(entitySelectorConfig)
             .buildEntitySelector(
-                configPolicy,
-                minimumCacheType,
-                selectionOrder,
-                new ValueRangeRecorderId(entityValueRangeRecorderId, false));
+                configPolicy, minimumCacheType, selectionOrder, valueRangeRecorderId);
+    if (isExhaustiveSearch) {
+      entitySelector =
+          EntitySelectorFactory.applyEntityValueRangeFilteringForExhaustiveSearch(
+              configPolicy, entitySelector, valueRangeRecorderId, minimumCacheType, selectionOrder);
+    }
     var valueSelector =
         buildIterableValueSelector(
             configPolicy,
@@ -78,9 +89,20 @@ public final class DestinationSelectorFactory<Solution_>
             minimumCacheType,
             selectionOrder,
             entityValueRangeRecorderId);
+    var replayingValueSelector =
+        buildReplayingValueSelector(
+            configPolicy,
+            entityDescriptor,
+            minimumCacheType,
+            selectionOrder,
+            entityValueRangeRecorderId);
     var baseDestinationSelector =
         new ElementDestinationSelector<>(
-            entitySelector, valueSelector, selectionOrder.toRandomSelectionBoolean());
+            entitySelector,
+            replayingValueSelector,
+            valueSelector,
+            selectionOrder.toRandomSelectionBoolean(),
+            isExhaustiveSearch);
     return applyNearbySelection(
         configPolicy,
         minimumCacheType,
@@ -124,6 +146,22 @@ public final class DestinationSelectorFactory<Solution_>
                 entityValueRangeRecorderId,
                 false);
     return (IterableValueSelector<Solution_>) valueSelector;
+  }
+
+  private IterableValueSelector<Solution_> buildReplayingValueSelector(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      EntityDescriptor<Solution_> entityDescriptor,
+      SelectionCacheType minimumCacheType,
+      SelectionOrder selectionOrder,
+      String entityValueRangeRecorderId) {
+    if (entityValueRangeRecorderId == null) {
+      return null;
+    }
+    var mimicValueSelectorConfig =
+        new ValueSelectorConfig().withMimicSelectorRef(entityValueRangeRecorderId);
+    return (IterableValueSelector<Solution_>)
+        ValueSelectorFactory.<Solution_>create(mimicValueSelectorConfig)
+            .buildValueSelector(configPolicy, entityDescriptor, minimumCacheType, selectionOrder);
   }
 
   private DestinationSelector<Solution_> applyNearbySelection(

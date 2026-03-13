@@ -16,18 +16,14 @@ import java.util.Optional;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.cotwin.variable.AnchorShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.CascadingUpdateShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.CustomShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PiggybackShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
-import ai.greycos.solver.core.api.score.ScoreManager;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
@@ -73,14 +69,12 @@ import org.springframework.core.env.Environment;
 @ConditionalOnClass({
   SolverConfig.class,
   SolverFactory.class,
-  ScoreManager.class,
   SolutionManager.class,
   SolverManager.class
 })
 @ConditionalOnMissingBean({
   SolverConfig.class,
   SolverFactory.class,
-  ScoreManager.class,
   SolutionManager.class,
   SolverManager.class
 })
@@ -99,12 +93,9 @@ public class GreyCOSSolverAutoConfiguration
         PlanningPin.class,
         PlanningVariable.class,
         PlanningListVariable.class,
-        AnchorShadowVariable.class,
-        CustomShadowVariable.class,
         IndexShadowVariable.class,
         InverseRelationShadowVariable.class,
         NextElementShadowVariable.class,
-        PiggybackShadowVariable.class,
         PreviousElementShadowVariable.class,
         ShadowVariable.class,
         CascadingUpdateShadowVariable.class
@@ -307,9 +298,6 @@ public class GreyCOSSolverAutoConfiguration
     }
     if (solverProperties.getEnvironmentMode() != null) {
       solverConfig.setEnvironmentMode(solverProperties.getEnvironmentMode());
-    }
-    if (solverProperties.getCotwinAccessType() != null) {
-      solverConfig.setCotwinAccessType(solverProperties.getCotwinAccessType());
     }
     if (solverProperties.getEnabledPreviewFeatures() != null) {
       solverConfig.setEnablePreviewFeatureSet(

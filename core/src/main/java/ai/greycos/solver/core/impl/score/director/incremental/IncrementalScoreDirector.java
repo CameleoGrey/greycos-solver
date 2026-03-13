@@ -14,7 +14,6 @@ import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.api.score.constraint.Indictment;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
@@ -22,6 +21,7 @@ import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.constraint.DefaultIndictment;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirector;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -93,7 +93,7 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
     return ((ConstraintMatchAwareIncrementalScoreCalculator<Solution_, Score_>)
             incrementalScoreCalculator)
         .getConstraintMatchTotals().stream()
-            .collect(toMap(c -> c.getConstraintRef().constraintId(), identity()));
+            .collect(toMap(c -> c.getConstraintRef().constraintName(), identity()));
   }
 
   @Override

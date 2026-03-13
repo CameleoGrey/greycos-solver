@@ -3,10 +3,6 @@ package ai.greycos.solver.core.api.score;
 import java.io.Serializable;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
-import ai.greycos.solver.core.api.score.buildin.simplebigdecimal.SimpleBigDecimalScore;
-import ai.greycos.solver.core.api.score.buildin.simplelong.SimpleLongScore;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -163,8 +159,7 @@ public interface Score<Score_ extends Score<Score_>> extends Comparable<Score_>,
 
   /**
    * A {@link PlanningSolution} is feasible if it has no broken hard constraints. Simple scores
-   * ({@link SimpleScore}, {@link SimpleLongScore}, {@link SimpleBigDecimalScore}) are always
-   * feasible.
+   * ({@link SimpleScore}, {@link SimpleBigDecimalScore}) are always feasible.
    *
    * @return true if the hard score is 0 or higher.
    */

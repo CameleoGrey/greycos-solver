@@ -1,10 +1,11 @@
 package ai.greycos.solver.core.impl.heuristic.selector.list;
 
 import java.util.Iterator;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.solver.random.RandomUtils;
@@ -16,23 +17,28 @@ final class ElementPositionRandomIterator<Solution_> implements Iterator<Element
   private final ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
   private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final EntitySelector<Solution_> entitySelector;
+  private final Iterator<Object> replayingValueIterator;
   private final IterableValueSelector<Solution_> valueSelector;
   private final Iterator<Object> entityIterator;
-  private final Random workingRandom;
+  private final RandomGenerator workingRandom;
   private final long totalSize;
   private final boolean allowsUnassignedValues;
   private Iterator<Object> valueIterator;
+  private Object selectedValue;
+  private boolean hasNextValue = false;
 
   public ElementPositionRandomIterator(
       ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply,
       EntitySelector<Solution_> entitySelector,
+      Iterator<Object> replayingValueIterator,
       IterableValueSelector<Solution_> valueSelector,
-      Random workingRandom,
+      RandomGenerator workingRandom,
       long totalSize,
       boolean allowsUnassignedValues) {
     this.listVariableStateSupply = listVariableStateSupply;
     this.listVariableDescriptor = listVariableStateSupply.getSourceVariableDescriptor();
     this.entitySelector = entitySelector;
+    this.replayingValueIterator = replayingValueIterator;
     this.valueSelector = valueSelector;
     this.entityIterator = entitySelector.iterator();
     this.workingRandom = workingRandom;
@@ -44,15 +50,39 @@ final class ElementPositionRandomIterator<Solution_> implements Iterator<Element
     this.valueIterator = null;
   }
 
+  private void tryUpdateEntityIterator() {
+    if (entityIterator instanceof UpcomingSelectionIterator<?> upcomingSelectionIterator) {
+      upcomingSelectionIterator.discardUpcomingSelection();
+    }
+  }
+
+  private boolean hasNextValue() {
+    if (hasNextValue) {
+      return true;
+    }
+    if (replayingValueIterator == null) {
+      return entityIterator.hasNext();
+    }
+    if (replayingValueIterator.hasNext()) {
+      var oldValue = selectedValue;
+      selectedValue = replayingValueIterator.next();
+      if (oldValue != null && oldValue != selectedValue) {
+        tryUpdateEntityIterator();
+      }
+      return entityIterator.hasNext();
+    }
+    return selectedValue != null && entityIterator.hasNext();
+  }
+
   @Override
   public boolean hasNext() {
-    // The valueSelector's hasNext() is insignificant.
-    // The next random destination exists if and only if there is a next entity.
-    return entityIterator.hasNext();
+    this.hasNextValue = hasNextValue();
+    return hasNextValue;
   }
 
   @Override
   public ElementPosition next() {
+    this.hasNextValue = false;
     // This code operates under the assumption that the entity selector already filtered out all
     // immovable entities.
     // At this point, entities are only partially pinned, or not pinned at all.

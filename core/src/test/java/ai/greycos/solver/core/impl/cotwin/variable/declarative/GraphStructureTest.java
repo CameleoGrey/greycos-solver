@@ -23,8 +23,6 @@ import ai.greycos.solver.core.testcotwin.shadow.multi_directional_parent.Testdat
 import ai.greycos.solver.core.testcotwin.shadow.multi_entity.TestdataMultiEntityDependencyEntity;
 import ai.greycos.solver.core.testcotwin.shadow.multi_entity.TestdataMultiEntityDependencySolution;
 import ai.greycos.solver.core.testcotwin.shadow.multi_entity.TestdataMultiEntityDependencyValue;
-import ai.greycos.solver.core.testcotwin.shadow.simple_chained.TestdataChainedSimpleVarSolution;
-import ai.greycos.solver.core.testcotwin.shadow.simple_chained.TestdataChainedSimpleVarValue;
 import ai.greycos.solver.core.testcotwin.shadow.simple_list.TestdataDeclarativeSimpleListSolution;
 import ai.greycos.solver.core.testcotwin.shadow.simple_list.TestdataDeclarativeSimpleListValue;
 
@@ -47,16 +45,6 @@ class GraphStructureTest {
                 TestdataDeclarativeSimpleListSolution.buildSolutionDescriptor(), entity))
         .hasFieldOrPropertyWithValue("structure", SINGLE_DIRECTIONAL_PARENT)
         .hasFieldOrPropertyWithValue("direction", ParentVariableType.PREVIOUS);
-  }
-
-  @Test
-  void simpleChainedStructure() {
-    var entity = new TestdataChainedSimpleVarValue();
-    assertThat(
-            GraphStructure.determineGraphStructure(
-                TestdataChainedSimpleVarSolution.buildSolutionDescriptor(), entity))
-        .hasFieldOrPropertyWithValue(
-            "structure", ARBITRARY_SINGLE_ENTITY_AT_MOST_ONE_DIRECTIONAL_PARENT_TYPE);
   }
 
   @Test

@@ -5,7 +5,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.Arrays;
 
 /**
  * A {@link MemberAccessor} based on a single read {@link Method}. Do not confuse with {@link
@@ -20,16 +19,10 @@ public sealed class ReflectionMethodMemberAccessor extends AbstractMemberAccesso
   private final MethodHandle methodHandle;
 
   public ReflectionMethodMemberAccessor(Method readMethod) {
-    this(readMethod, true, false);
-  }
-
-  public ReflectionMethodMemberAccessor(
-      Method readMethod, boolean returnTypeRequired, boolean readMethodWithParameter) {
     this.readMethod = readMethod;
     this.returnType = readMethod.getReturnType();
     this.methodName = readMethod.getName();
     try {
-      readMethod.setAccessible(true);
       this.methodHandle = MethodHandles.lookup().unreflect(readMethod).asFixedArity();
     } catch (IllegalAccessException e) {
       throw new IllegalStateException(
@@ -39,21 +32,6 @@ public sealed class ReflectionMethodMemberAccessor extends AbstractMemberAccesso
                     """
               .formatted(readMethod, MemberAccessorFactory.CLASSLOADER_NUDGE_MESSAGE),
           e);
-    }
-    if (!readMethodWithParameter && readMethod.getParameterCount() != 0) {
-      throw new IllegalArgumentException(
-          "The readMethod (%s) must not have any parameters (%s)."
-              .formatted(readMethod, Arrays.toString(readMethod.getParameterTypes())));
-    }
-    if (readMethodWithParameter && readMethod.getParameterCount() > 1) {
-      throw new IllegalArgumentException(
-          "The readMethod (%s) must have only one parameter (%s)."
-              .formatted(readMethod, Arrays.toString(readMethod.getParameterTypes())));
-    }
-    if (returnTypeRequired && readMethod.getReturnType() == void.class) {
-      throw new IllegalArgumentException(
-          "The readMethod (%s) must have a return type (%s)."
-              .formatted(readMethod, readMethod.getReturnType()));
     }
   }
 

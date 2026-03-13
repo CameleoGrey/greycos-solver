@@ -2,9 +2,9 @@ package ai.greycos.solver.core.impl.bavet.common;
 
 import java.util.function.Consumer;
 
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.InOutTupleStorePositionTracker;
 import ai.greycos.solver.core.impl.bavet.common.tuple.OutTupleStorePositionTracker;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
@@ -19,8 +19,7 @@ import ai.greycos.solver.core.impl.util.ElementAwareLinkedList;
  * @param <LeftTuple_>
  * @param <Right_>
  */
-public abstract class AbstractJoinNode<
-        LeftTuple_ extends AbstractTuple, Right_, OutTuple_ extends AbstractTuple>
+public abstract class AbstractJoinNode<LeftTuple_ extends Tuple, Right_, OutTuple_ extends Tuple>
     extends AbstractTwoInputNode<LeftTuple_, UniTuple<Right_>> {
 
   protected final int inputStoreIndexLeftOutTupleList;
@@ -44,6 +43,11 @@ public abstract class AbstractJoinNode<
     this.propagationQueue = new StaticPropagationQueue<>(nextNodesTupleLifecycle);
   }
 
+  @Override
+  public StreamKind getStreamKind() {
+    return StreamKind.JOIN;
+  }
+
   protected abstract OutTuple_ createOutTuple(LeftTuple_ leftTuple, UniTuple<Right_> rightTuple);
 
   protected abstract void setOutTupleLeftFacts(OutTuple_ outTuple, LeftTuple_ leftTuple);
@@ -65,7 +69,7 @@ public abstract class AbstractJoinNode<
 
   protected final void insertOutTupleFilteredFromLeft(
       LeftTuple_ leftTuple, UniTuple<Right_> rightTuple) {
-    if (!leftTuple.state.isActive()) {
+    if (!leftTuple.getState().isActive()) {
       // Assume the following scenario:
       // - The join is of two entities of the same type, both filtering out unassigned.
       // - One entity became unassigned, so the outTuple is getting retracted.
@@ -102,7 +106,7 @@ public abstract class AbstractJoinNode<
         updateOutTupleLeft(outTuple, leftTuple);
       }
     } else {
-      if (!leftTuple.state.isActive()) {
+      if (!leftTuple.getState().isActive()) {
         // Assume the following scenario:
         // - The join is of two entities of the same type, both filtering out unassigned.
         // - One entity became unassigned, so the outTuple is getting retracted.
@@ -137,11 +141,11 @@ public abstract class AbstractJoinNode<
   }
 
   private void doUpdateOutTuple(OutTuple_ outTuple) {
-    var state = outTuple.state;
+    var state = outTuple.getState();
     if (!state.isActive()) { // Impossible because they shouldn't linger in the indexes.
       throw new IllegalStateException(
           "Impossible state: The tuple (%s) in node (%s) is in an unexpected state (%s)."
-              .formatted(outTuple, this, outTuple.state));
+              .formatted(outTuple, this, state));
     } else if (state != TupleState.OK) { // Already in the queue in the correct state.
       return;
     }
@@ -177,7 +181,7 @@ public abstract class AbstractJoinNode<
       ElementAwareLinkedList<OutTuple_> outList,
       ElementAwareLinkedList<OutTuple_> outTupleList,
       int outputStoreIndexOutEntry) {
-    if (!leftTuple.state.isActive()) {
+    if (!leftTuple.getState().isActive()) {
       // Assume the following scenario:
       // - The join is of two entities of the same type, both filtering out unassigned.
       // - One entity became unassigned, so the outTuple is getting retracted.
@@ -218,7 +222,7 @@ public abstract class AbstractJoinNode<
     }
   }
 
-  private static <Tuple_ extends AbstractTuple> Tuple_ findOutTuple(
+  private static <Tuple_ extends Tuple> Tuple_ findOutTuple(
       ElementAwareLinkedList<Tuple_> sourceList,
       ElementAwareLinkedList<Tuple_> referenceList,
       int outputStoreIndexOutEntry) {
@@ -259,11 +263,11 @@ public abstract class AbstractJoinNode<
   }
 
   private void propagateRetract(OutTuple_ outTuple) {
-    var state = outTuple.state;
+    var state = outTuple.getState();
     if (!state.isActive()) { // Impossible because they shouldn't linger in the indexes.
       throw new IllegalStateException(
           "Impossible state: The tuple (%s) in node (%s) is in an unexpected state (%s)."
-              .formatted(outTuple, this, outTuple.state));
+              .formatted(outTuple, this, state));
     }
     propagationQueue.retract(
         outTuple, state == TupleState.CREATING ? TupleState.ABORTING : TupleState.DYING);

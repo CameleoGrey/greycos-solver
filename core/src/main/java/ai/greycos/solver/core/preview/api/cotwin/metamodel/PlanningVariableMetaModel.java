@@ -5,7 +5,7 @@ import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import org.jspecify.annotations.NullMarked;
 
 /**
- * A {@link VariableMetaModel} that represents a @{@link PlanningVariable basic planning variable}.
+ * A {@link VariableMetaModel} that represents a {@link PlanningVariable basic planning variable}.
  *
  * <p><strong>This package and all of its contents are part of the Neighborhoods API, which is under
  * development and is only offered as a preview feature.</strong> There are no guarantees for
@@ -14,9 +14,7 @@ import org.jspecify.annotations.NullMarked;
  *
  * <p>We encourage you to try the API and give us feedback on your experience with it, before we
  * finalize the API. Please direct your feedback to <a
- * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver Github</a> or to
- * <a href="https://discord.com/channels/1413420192213631086/1414521616955605003">GreyCOS
- * Discord</a>.
+ * href="https://github.com/CameleoGrey/greycos-solver">GreyCOS Solver GitHub</a>.
  *
  * @param <Solution_> the solution type
  * @param <Entity_> the entity type
@@ -32,11 +30,4 @@ public non-sealed interface PlanningVariableMetaModel<Solution_, Entity_, Value_
    * @return {@code true} if the planning variable allows null values, {@code false} otherwise.
    */
   boolean allowsUnassigned();
-
-  /**
-   * Returns whether the planning variable is chained.
-   *
-   * @return {@code true} if the planning variable is chained, {@code false} otherwise.
-   */
-  boolean isChained();
 }

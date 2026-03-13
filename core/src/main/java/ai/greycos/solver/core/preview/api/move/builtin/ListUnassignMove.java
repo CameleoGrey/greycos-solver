@@ -5,10 +5,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
+import ai.greycos.solver.core.impl.move.AbstractMove;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import ai.greycos.solver.core.preview.api.move.Move;
 import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -41,8 +42,9 @@ public final class ListUnassignMove<Solution_, Entity_, Value_> extends Abstract
   }
 
   @Override
-  public Move<Solution_> rebase(Rebaser rebaser) {
-    return new ListUnassignMove<>(variableMetaModel, rebaser.rebase(sourceEntity), sourceIndex);
+  public Move<Solution_> rebase(Lookup lookup) {
+    return new ListUnassignMove<>(
+        variableMetaModel, lookup.lookUpWorkingObject(sourceEntity), sourceIndex);
   }
 
   @Override

@@ -68,15 +68,13 @@ public final class SubPillarConfigPolicy {
   private void validateSizes() {
     if (minimumSubPillarSize < 1) {
       throw new IllegalStateException(
-          "The sub pillar's minimumPillarSize (" + minimumSubPillarSize + ") must be at least 1.");
+          "The sub pillar's minimumSubPillarSize (%d) must be at least 1."
+              .formatted(minimumSubPillarSize));
     }
     if (minimumSubPillarSize > maximumSubPillarSize) {
       throw new IllegalStateException(
-          "The minimumPillarSize ("
-              + minimumSubPillarSize
-              + ") must be at least maximumSubChainSize ("
-              + maximumSubPillarSize
-              + ").");
+          "The minimumSubPillarSize (%d) must be <= maximumSubPillarSize (%d)."
+              .formatted(minimumSubPillarSize, maximumSubPillarSize));
     }
   }
 

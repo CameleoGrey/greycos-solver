@@ -7,7 +7,7 @@ import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockScoreDirector
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;

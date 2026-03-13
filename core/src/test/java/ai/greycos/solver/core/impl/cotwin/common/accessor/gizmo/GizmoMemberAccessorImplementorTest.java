@@ -10,6 +10,7 @@ import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testcotwin.gizmo.GizmoTestdataEntity;
@@ -145,7 +146,7 @@ class GizmoMemberAccessorImplementorTest {
     var member = TestdataEntity.class.getMethod("updateValue");
     var memberAccessor =
         GizmoMemberAccessorFactory.buildGizmoMemberAccessor(
-            member, null, AccessorInfo.of(false, false), new GizmoClassLoader());
+            member, null, AccessorInfo.of(MemberAccessorType.VOID_METHOD), new GizmoClassLoader());
 
     var entity = new TestdataEntity();
     var value = new TestdataValue("A");

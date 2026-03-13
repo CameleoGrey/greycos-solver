@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.localsearch.decider.acceptor.stepcountinghil
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.localsearch.decider.acceptor.stepcountinghillclimbing.StepCountingHillClimbingType;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.AbstractAcceptorTest;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;

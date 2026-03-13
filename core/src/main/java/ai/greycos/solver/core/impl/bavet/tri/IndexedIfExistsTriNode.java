@@ -39,6 +39,6 @@ public final class IndexedIfExistsTriNode<A, B, C, D>
 
   @Override
   protected boolean testFiltering(TriTuple<A, B, C> leftTuple, UniTuple<D> rightTuple) {
-    return filtering.test(leftTuple.factA, leftTuple.factB, leftTuple.factC, rightTuple.factA);
+    return filtering.test(leftTuple.getA(), leftTuple.getB(), leftTuple.getC(), rightTuple.getA());
   }
 }

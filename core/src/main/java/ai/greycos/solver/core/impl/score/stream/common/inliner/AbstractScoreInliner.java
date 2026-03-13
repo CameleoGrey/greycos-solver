@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.score.stream.common.inliner;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -13,25 +13,23 @@ import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.api.score.constraint.Indictment;
 import ai.greycos.solver.core.api.score.stream.Constraint;
-import ai.greycos.solver.core.impl.score.buildin.BendableBigDecimalScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.BendableLongScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.BendableScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardMediumSoftBigDecimalScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardMediumSoftLongScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardMediumSoftScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardSoftBigDecimalScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardSoftLongScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.HardSoftScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.SimpleBigDecimalScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.SimpleLongScoreDefinition;
-import ai.greycos.solver.core.impl.score.buildin.SimpleScoreDefinition;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.constraint.DefaultConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.constraint.DefaultIndictment;
+import ai.greycos.solver.core.impl.score.definition.BendableBigDecimalScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.BendableScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.HardMediumSoftBigDecimalScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.HardMediumSoftScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.HardSoftBigDecimalScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.HardSoftScoreDefinition;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.SimpleBigDecimalScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
-import ai.greycos.solver.core.impl.util.CollectionUtils;
 import ai.greycos.solver.core.impl.util.ElementAwareLinkedList;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Keeps track of the working score and constraint matches for a single constraint session. Every
@@ -39,117 +37,56 @@ import ai.greycos.solver.core.impl.util.ElementAwareLinkedList;
  *
  * @param <Score_>
  */
+@NullMarked
 public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
 
-  @Deprecated(forRemoval = true)
-  private static final String CUSTOM_SCORE_INLINER_CLASS_PROPERTY_NAME =
-      "ai.greycos.solver.score.stream.inliner";
-
+  @SuppressWarnings({"unchecked", "rawtypes"})
   public static <Score_ extends Score<Score_>, ScoreInliner_ extends AbstractScoreInliner<Score_>>
       ScoreInliner_ buildScoreInliner(
           ScoreDefinition<Score_> scoreDefinition,
           Map<Constraint, Score_> constraintWeightMap,
           ConstraintMatchPolicy constraintMatchPolicy) {
-    if (scoreDefinition instanceof SimpleScoreDefinition) {
-      return (ScoreInliner_)
-          new SimpleScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
-    } else if (scoreDefinition instanceof SimpleLongScoreDefinition) {
-      return (ScoreInliner_)
-          new SimpleLongScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
-    } else if (scoreDefinition instanceof SimpleBigDecimalScoreDefinition) {
-      return (ScoreInliner_)
-          new SimpleBigDecimalScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
-    } else if (scoreDefinition instanceof HardSoftScoreDefinition) {
-      return (ScoreInliner_)
-          new HardSoftScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
-    } else if (scoreDefinition instanceof HardSoftLongScoreDefinition) {
-      return (ScoreInliner_)
-          new HardSoftLongScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
-    } else if (scoreDefinition instanceof HardSoftBigDecimalScoreDefinition) {
-      return (ScoreInliner_)
-          new HardSoftBigDecimalScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
-    } else if (scoreDefinition instanceof HardMediumSoftScoreDefinition) {
-      return (ScoreInliner_)
-          new HardMediumSoftScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
-    } else if (scoreDefinition instanceof HardMediumSoftLongScoreDefinition) {
-      return (ScoreInliner_)
-          new HardMediumSoftLongScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
-    } else if (scoreDefinition instanceof HardMediumSoftBigDecimalScoreDefinition) {
-      return (ScoreInliner_)
-          new HardMediumSoftBigDecimalScoreInliner(
-              (Map) constraintWeightMap, constraintMatchPolicy);
-    } else if (scoreDefinition instanceof BendableScoreDefinition bendableScoreDefinition) {
-      return (ScoreInliner_)
-          new BendableScoreInliner(
-              (Map) constraintWeightMap,
-              constraintMatchPolicy,
-              bendableScoreDefinition.getHardLevelsSize(),
-              bendableScoreDefinition.getSoftLevelsSize());
-    } else if (scoreDefinition instanceof BendableLongScoreDefinition bendableScoreDefinition) {
-      return (ScoreInliner_)
-          new BendableLongScoreInliner(
-              (Map) constraintWeightMap,
-              constraintMatchPolicy,
-              bendableScoreDefinition.getHardLevelsSize(),
-              bendableScoreDefinition.getSoftLevelsSize());
-    } else if (scoreDefinition
-        instanceof BendableBigDecimalScoreDefinition bendableScoreDefinition) {
-      return (ScoreInliner_)
-          new BendableBigDecimalScoreInliner(
-              (Map) constraintWeightMap,
-              constraintMatchPolicy,
-              bendableScoreDefinition.getHardLevelsSize(),
-              bendableScoreDefinition.getSoftLevelsSize());
-    } else {
-      var customScoreInlinerClassName =
-          System.getProperty(CUSTOM_SCORE_INLINER_CLASS_PROPERTY_NAME);
-      if (customScoreInlinerClassName == null) {
-        throw new UnsupportedOperationException(
-            "Unknown score definition class ("
-                + scoreDefinition.getClass().getCanonicalName()
-                + ").\n"
-                + "If you're attempting to use a custom score, "
-                + "provide your "
-                + AbstractScoreInliner.class.getSimpleName()
-                + " implementation using the '"
-                + CUSTOM_SCORE_INLINER_CLASS_PROPERTY_NAME
-                + "' system property.\n"
-                + "Note: support for custom scores will be removed in GreyCOS 2.0.");
-      }
-      try {
-        var customScoreInlinerClass = Class.forName(customScoreInlinerClassName);
-        if (!AbstractScoreInliner.class.isAssignableFrom(customScoreInlinerClass)) {
-          throw new IllegalStateException(
-              "Custom score inliner class ("
-                  + customScoreInlinerClassName
-                  + ") does not extend "
-                  + AbstractScoreInliner.class.getCanonicalName()
-                  + ".\n"
-                  + "Note: support for custom scores will be removed in GreyCOS 2.0.");
-        }
-        return ((Class<ScoreInliner_>) customScoreInlinerClass).getConstructor().newInstance();
-      } catch (ClassNotFoundException
-          | NoSuchMethodException
-          | InstantiationException
-          | IllegalAccessException
-          | InvocationTargetException cause) {
-        throw new IllegalStateException(
-            "Custom score inliner class ("
-                + customScoreInlinerClassName
-                + ") can not be instantiated.\n"
-                + "Maybe add a no-arg public constructor?\n"
-                + "Note: support for custom scores will be removed in GreyCOS 2.0.",
-            cause);
-      }
-    }
+    return (ScoreInliner_)
+        switch (scoreDefinition) {
+          case SimpleScoreDefinition simpleScoreDefinition ->
+              new SimpleScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
+          case SimpleBigDecimalScoreDefinition simpleBigDecimalScoreDefinition ->
+              new SimpleBigDecimalScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
+          case HardSoftScoreDefinition hardSoftScoreDefinition ->
+              new HardSoftScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
+          case HardSoftBigDecimalScoreDefinition hardSoftBigDecimalScoreDefinition ->
+              new HardSoftBigDecimalScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
+          case HardMediumSoftScoreDefinition hardMediumSoftScoreDefinition ->
+              new HardMediumSoftScoreInliner((Map) constraintWeightMap, constraintMatchPolicy);
+          case HardMediumSoftBigDecimalScoreDefinition hardMediumSoftBigDecimalScoreDefinition ->
+              new HardMediumSoftBigDecimalScoreInliner(
+                  (Map) constraintWeightMap, constraintMatchPolicy);
+          case BendableScoreDefinition bendableScoreDefinition ->
+              new BendableScoreInliner(
+                  (Map) constraintWeightMap,
+                  constraintMatchPolicy,
+                  bendableScoreDefinition.getHardLevelsSize(),
+                  bendableScoreDefinition.getSoftLevelsSize());
+          case BendableBigDecimalScoreDefinition bendableScoreDefinition ->
+              new BendableBigDecimalScoreInliner(
+                  (Map) constraintWeightMap,
+                  constraintMatchPolicy,
+                  bendableScoreDefinition.getHardLevelsSize(),
+                  bendableScoreDefinition.getSoftLevelsSize());
+          default ->
+              throw new UnsupportedOperationException(
+                  "Impossible state: Unknown score definition class (%s)."
+                      .formatted(scoreDefinition.getClass().getCanonicalName()));
+        };
   }
 
   protected final ConstraintMatchPolicy constraintMatchPolicy;
   protected final Map<Constraint, Score_> constraintWeightMap;
   private final Map<Constraint, ElementAwareLinkedList<ConstraintMatchCarrier<Score_>>>
       constraintMatchMap;
-  private Map<String, ConstraintMatchTotal<Score_>> constraintIdToConstraintMatchTotalMap = null;
-  private Map<Object, Indictment<Score_>> indictmentMap = null;
+  private @Nullable Map<String, ConstraintMatchTotal<Score_>>
+      constraintIdToConstraintMatchTotalMap = null;
+  private @Nullable Map<Object, Indictment<Score_>> indictmentMap = null;
 
   protected AbstractScoreInliner(
       Map<Constraint, Score_> constraintWeightMap, ConstraintMatchPolicy constraintMatchPolicy) {
@@ -157,7 +94,7 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
     constraintWeightMap.forEach(this::validateConstraintWeight);
     this.constraintWeightMap = constraintWeightMap;
     if (constraintMatchPolicy.isEnabled()) {
-      this.constraintMatchMap = CollectionUtils.newIdentityHashMap(constraintWeightMap.size());
+      this.constraintMatchMap = new IdentityHashMap<>(constraintWeightMap.size());
       for (var constraint : constraintWeightMap.keySet()) {
         // Ensure that even constraints without matches have their entry.
         this.constraintMatchMap.put(constraint, new ElementAwareLinkedList<>());
@@ -189,11 +126,10 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
   public abstract WeightedScoreImpacter<Score_, ?> buildWeightedScoreImpacter(
       AbstractConstraint<?, ?, ?> constraint);
 
-  protected final UndoScoreImpacter addConstraintMatch(
+  protected final ScoreImpact<Score_> addConstraintMatch(
       Constraint constraint,
-      Score_ score,
       ConstraintMatchSupplier<Score_> constraintMatchSupplier,
-      UndoScoreImpacter undoScoreImpact) {
+      ScoreImpact<Score_> scoreImpact) {
     var constraintMatchList = getConstraintMatchList(constraint);
     /*
      * Creating a constraint match is a heavy operation which may yet be undone.
@@ -201,13 +137,28 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
      */
     var entry =
         constraintMatchList.add(
-            new ConstraintMatchCarrier<>(constraintMatchSupplier, constraint, score));
+            new ConstraintMatchCarrier<>(constraintMatchSupplier, constraint, scoreImpact));
     clearMaps();
-    return () -> {
-      undoScoreImpact.run();
+    return new WrappingScoreImpact<>(this, scoreImpact, entry);
+  }
+
+  private record WrappingScoreImpact<Score_ extends Score<Score_>>(
+      AbstractScoreInliner<Score_> inliner,
+      ScoreImpact<Score_> delegate,
+      ElementAwareLinkedList.Entry<ConstraintMatchCarrier<Score_>> entry)
+      implements ScoreImpact<Score_> {
+
+    @Override
+    public void undo() {
+      delegate.undo();
       entry.remove();
-      clearMaps();
-    };
+      inliner.clearMaps();
+    }
+
+    @Override
+    public Score_ toScore() {
+      return delegate.toScore();
+    }
   }
 
   private ElementAwareLinkedList<ConstraintMatchCarrier<Score_>> getConstraintMatchList(
@@ -254,7 +205,7 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
         constraintMatchTotal.addConstraintMatch(constraintMatch);
       }
       constraintIdToConstraintMatchTotalMap.put(
-          constraint.getConstraintRef().constraintId(), constraintMatchTotal);
+          constraint.getConstraintRef().constraintName(), constraintMatchTotal);
     }
     this.constraintIdToConstraintMatchTotalMap = constraintIdToConstraintMatchTotalMap;
   }
@@ -280,9 +231,7 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
               == null) { // Users may have sent null, or it came from the default mapping.
             continue;
           }
-          var indictment =
-              (DefaultIndictment<Score_>)
-                  getIndictment(workingIndictmentMap, constraintMatch, indictedObject);
+          var indictment = getIndictment(workingIndictmentMap, constraintMatch, indictedObject);
           /*
            * Optimization: In order to not have to go over the indicted object list and remove duplicates,
            * we use a method that will silently skip duplicate constraint matches.
@@ -317,16 +266,16 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
 
     private final Constraint constraint;
     private final ConstraintMatchSupplier<Score_> constraintMatchSupplier;
-    private final Score_ score;
-    private ConstraintMatch<Score_> constraintMatch;
+    private final ScoreImpact<Score_> scoreImpact;
+    private @Nullable ConstraintMatch<Score_> constraintMatch;
 
     private ConstraintMatchCarrier(
         ConstraintMatchSupplier<Score_> constraintMatchSupplier,
         Constraint constraint,
-        Score_ score) {
+        ScoreImpact<Score_> scoreImpact) {
       this.constraint = constraint;
       this.constraintMatchSupplier = constraintMatchSupplier;
-      this.score = score;
+      this.scoreImpact = scoreImpact;
     }
 
     @Override
@@ -334,7 +283,7 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
       if (constraintMatch == null) {
         // Repeated requests for score explanation should not create the same constraint match over
         // and over.
-        constraintMatch = constraintMatchSupplier.apply(constraint, score);
+        constraintMatch = constraintMatchSupplier.apply(constraint, scoreImpact.toScore());
       }
       return constraintMatch;
     }

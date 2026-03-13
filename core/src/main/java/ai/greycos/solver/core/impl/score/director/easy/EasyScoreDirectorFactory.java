@@ -4,6 +4,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirector;
@@ -24,7 +25,9 @@ public final class EasyScoreDirectorFactory<Solution_, Score_ extends Score<Scor
 
   public static <Solution_, Score_ extends Score<Score_>>
       EasyScoreDirectorFactory<Solution_, Score_> buildScoreDirectorFactory(
-          SolutionDescriptor<Solution_> solutionDescriptor, ScoreDirectorFactoryConfig config) {
+          SolutionDescriptor<Solution_> solutionDescriptor,
+          ScoreDirectorFactoryConfig config,
+          EnvironmentMode environmentMode) {
     var easyScoreCalculatorClass = config.getEasyScoreCalculatorClass();
     if (easyScoreCalculatorClass == null
         || !EasyScoreCalculator.class.isAssignableFrom(easyScoreCalculatorClass)) {
@@ -40,16 +43,29 @@ public final class EasyScoreDirectorFactory<Solution_, Score_ extends Score<Scor
         "easyScoreCalculatorClass",
         config.getEasyScoreCalculatorCustomProperties(),
         "easyScoreCalculatorCustomProperties");
-    return new EasyScoreDirectorFactory<>(solutionDescriptor, easyScoreCalculator);
+    return new EasyScoreDirectorFactory<>(solutionDescriptor, easyScoreCalculator, environmentMode);
+  }
+
+  public static <Solution_, Score_ extends Score<Score_>>
+      EasyScoreDirectorFactory<Solution_, Score_> buildScoreDirectorFactory(
+          SolutionDescriptor<Solution_> solutionDescriptor, ScoreDirectorFactoryConfig config) {
+    return buildScoreDirectorFactory(solutionDescriptor, config, null);
   }
 
   private final EasyScoreCalculator<Solution_, Score_> easyScoreCalculator;
 
   public EasyScoreDirectorFactory(
       SolutionDescriptor<Solution_> solutionDescriptor,
-      EasyScoreCalculator<Solution_, Score_> easyScoreCalculator) {
-    super(solutionDescriptor);
+      EasyScoreCalculator<Solution_, Score_> easyScoreCalculator,
+      EnvironmentMode environmentMode) {
+    super(solutionDescriptor, environmentMode);
     this.easyScoreCalculator = easyScoreCalculator;
+  }
+
+  public EasyScoreDirectorFactory(
+      SolutionDescriptor<Solution_> solutionDescriptor,
+      EasyScoreCalculator<Solution_, Score_> easyScoreCalculator) {
+    this(solutionDescriptor, easyScoreCalculator, null);
   }
 
   @Override

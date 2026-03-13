@@ -4,7 +4,7 @@ import static ai.greycos.solver.core.testcotwin.shadow.concurrent.TestdataConcur
 
 import java.time.Duration;
 
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 
 import org.jspecify.annotations.NonNull;

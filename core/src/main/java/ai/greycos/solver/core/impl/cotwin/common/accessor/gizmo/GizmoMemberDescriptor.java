@@ -3,14 +3,13 @@ package ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
 
 import io.quarkus.gizmo2.Expr;
 import io.quarkus.gizmo2.creator.BlockCreator;
@@ -29,6 +28,7 @@ public final class GizmoMemberDescriptor {
   /** The type of the read method parameter. Null if the method does not accept a parameter. */
   private final Type methodParameterType;
 
+  private final AccessorInfo accessorInfo;
   private final GizmoMemberHandler memberHandler;
 
   /** Should only be used for metadata (i.e. Generic Type and Annotated Element). */
@@ -38,26 +38,12 @@ public final class GizmoMemberDescriptor {
   private final MethodDesc setter;
 
   public GizmoMemberDescriptor(Member member) {
-    this(member, false);
+    this(member, AccessorInfo.withReturnValueAndArguments());
   }
 
-  public GizmoMemberDescriptor(Member member, boolean methodWithParameter) {
+  public GizmoMemberDescriptor(Member member, AccessorInfo accessorInfo) {
     Class<?> declaringClass = member.getDeclaringClass();
-    if (!Modifier.isPublic(member.getModifiers())) {
-      throw new IllegalStateException(
-          """
-                    Member (%s) of class (%s) is not public and cotwinAccessType is %s.
-                    %sMaybe use cotwinAccessType %s instead of %s."""
-              .formatted(
-                  member.getName(),
-                  member.getDeclaringClass().getName(),
-                  CotwinAccessType.GIZMO,
-                  ((member instanceof Field)
-                      ? "Maybe put the annotations onto the public getter of the field.\n"
-                      : ""),
-                  CotwinAccessType.REFLECTION,
-                  CotwinAccessType.GIZMO));
-    }
+    this.accessorInfo = accessorInfo;
     if (member instanceof Field field) {
       var fieldDescriptor = FieldDesc.of(field);
       this.name = member.getName();
@@ -65,12 +51,18 @@ public final class GizmoMemberDescriptor {
       this.setter = null;
       this.methodParameterType = null;
     } else if (member instanceof Method method) {
+      if (!java.lang.reflect.Modifier.isPublic(method.getModifiers())) {
+        throw new IllegalStateException(
+            "Member (%s) of class (%s) is not public."
+                .formatted(method.getName(), declaringClass.getName()));
+      }
       var methodDescriptor = MethodDesc.of(method);
       this.name =
           ReflectionHelper.isGetterMethod(method)
               ? ReflectionHelper.getGetterPropertyName(member)
               : member.getName();
-      this.methodParameterType = getMethodParameterType(method, methodWithParameter);
+      this.methodParameterType =
+          getMethodParameterType(method, accessorInfo.readMethodWithParameter());
       this.memberHandler =
           GizmoMemberHandler.of(declaringClass, (Class<?>) methodParameterType, methodDescriptor);
       this.setter = lookupSetter(methodDescriptor, declaringClass, name).orElse(null);
@@ -80,12 +72,14 @@ public final class GizmoMemberDescriptor {
     this.metadataHandler = this.memberHandler;
   }
 
-  public GizmoMemberDescriptor(String name, FieldDesc fieldDescriptor, Class<?> declaringClass) {
+  public GizmoMemberDescriptor(
+      String name, FieldDesc fieldDescriptor, Class<?> declaringClass, AccessorInfo accessorInfo) {
     this.name = name;
     this.memberHandler = GizmoMemberHandler.of(declaringClass, name, fieldDescriptor, true);
     this.metadataHandler = this.memberHandler;
     this.setter = null;
     this.methodParameterType = null;
+    this.accessorInfo = accessorInfo;
   }
 
   public GizmoMemberDescriptor(
@@ -94,7 +88,8 @@ public final class GizmoMemberDescriptor {
       MethodDesc metadataDescriptor,
       Type methodParameterType,
       Class<?> declaringClass,
-      MethodDesc setterDescriptor) {
+      MethodDesc setterDescriptor,
+      AccessorInfo accessorInfo) {
     this.name = name;
     this.memberHandler =
         GizmoMemberHandler.of(declaringClass, (Class<?>) methodParameterType, memberDescriptor);
@@ -104,6 +99,7 @@ public final class GizmoMemberDescriptor {
             : GizmoMemberHandler.of(declaringClass, metadataDescriptor);
     this.methodParameterType = methodParameterType;
     this.setter = setterDescriptor;
+    this.accessorInfo = accessorInfo;
   }
 
   public GizmoMemberDescriptor(
@@ -111,13 +107,15 @@ public final class GizmoMemberDescriptor {
       MethodDesc memberDescriptor,
       Type methodParameterType,
       Class<?> declaringClass,
-      MethodDesc setterDescriptor) {
+      MethodDesc setterDescriptor,
+      AccessorInfo accessorInfo) {
     this.name = name;
     this.memberHandler =
         GizmoMemberHandler.of(declaringClass, (Class<?>) methodParameterType, memberDescriptor);
     this.metadataHandler = this.memberHandler;
     this.methodParameterType = methodParameterType;
     this.setter = setterDescriptor;
+    this.accessorInfo = accessorInfo;
   }
 
   public GizmoMemberDescriptor(
@@ -133,6 +131,7 @@ public final class GizmoMemberDescriptor {
     this.metadataHandler = GizmoMemberHandler.of(declaringClass, name, metadataDescriptor, true);
     this.methodParameterType = methodParameterType;
     this.setter = setterDescriptor;
+    this.accessorInfo = AccessorInfo.of(MemberAccessorType.FIELD_OR_READ_METHOD);
   }
 
   public static Type getMethodParameterType(Method method, boolean methodWithParameter) {
@@ -239,8 +238,9 @@ public final class GizmoMemberDescriptor {
 
   private static Optional<MethodDesc> lookupSetter(
       Object memberDescriptor, Class<?> declaringClass, String name) {
-    if (memberDescriptor instanceof MethodDesc) {
-      return Optional.ofNullable(ReflectionHelper.getSetterMethod(declaringClass, name))
+    if (memberDescriptor instanceof MethodDesc methodDesc) {
+      var returnType = GizmoMemberHandler.resolveType(declaringClass, methodDesc.returnType());
+      return Optional.ofNullable(ReflectionHelper.getSetterMethod(declaringClass, returnType, name))
           .map(MethodDesc::of);
     } else {
       return Optional.empty();
@@ -265,6 +265,10 @@ public final class GizmoMemberDescriptor {
 
   public Type getMethodParameterType() {
     return methodParameterType;
+  }
+
+  public AccessorInfo getAccessorInfo() {
+    return accessorInfo;
   }
 
   @Override

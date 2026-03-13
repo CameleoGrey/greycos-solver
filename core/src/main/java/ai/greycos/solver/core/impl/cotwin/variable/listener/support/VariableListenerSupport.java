@@ -2,11 +2,9 @@ package ai.greycos.solver.core.impl.cotwin.variable.listener.support;
 
 import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.BASIC;
 import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.CASCADING_UPDATE;
-import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.CUSTOM_LISTENER;
 import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.DECLARATIVE;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -14,15 +12,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.IndexShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.cascade.CascadingUpdateShadowVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.custom.LegacyCustomShadowVariableBasicVariableListener;
-import ai.greycos.solver.core.impl.cotwin.variable.custom.LegacyCustomShadowVariableListVariableListener;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.DefaultShadowVariableSession;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.DefaultShadowVariableSessionFactory;
@@ -31,7 +28,6 @@ import ai.greycos.solver.core.impl.cotwin.variable.declarative.TopologicalOrderG
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.index.IndexShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.listener.SourcedVariableListener;
 import ai.greycos.solver.core.impl.cotwin.variable.listener.support.violation.ShadowVariablesAssert;
@@ -41,6 +37,7 @@ import ai.greycos.solver.core.impl.cotwin.variable.supply.Demand;
 import ai.greycos.solver.core.impl.cotwin.variable.supply.Supply;
 import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.util.LinkedIdentityHashSet;
 
 import org.jspecify.annotations.NonNull;
@@ -100,7 +97,7 @@ public final class VariableListenerSupport<Solution_> implements SupplyManager {
             ? scoreDirector.getSolutionDescriptor().getEntityDescriptors().stream()
                 .flatMap(e -> e.getDeclaredCascadingUpdateShadowVariableDescriptors().stream())
                 .toList()
-            : Collections.emptyList();
+            : Collections.<CascadingUpdateShadowVariableDescriptor<Solution_>>emptyList();
     var hasCascadingUpdates = !cascadingUpdateShadowVarDescriptorList.isEmpty();
     this.listVariableChangedNotificationList = new ArrayList<>();
     this.unassignedValueWithEmptyInverseEntitySet =
@@ -109,12 +106,20 @@ public final class VariableListenerSupport<Solution_> implements SupplyManager {
     // Existing dependencies rely on this list
     // to ensure consistency in supporting all available shadow variable types
     // See ShadowVariableUpdateHelper
-    this.supportedShadowVariableTypeList =
-        List.of(BASIC, CUSTOM_LISTENER, CASCADING_UPDATE, DECLARATIVE);
+    this.supportedShadowVariableTypeList = List.of(BASIC, CASCADING_UPDATE, DECLARATIVE);
   }
 
   public List<ShadowVariableType> getSupportedShadowVariableTypes() {
     return supportedShadowVariableTypeList;
+  }
+
+  @Override
+  public Consumer<Object> getStateChangeNotifier() {
+    var notifier = scoreDirector.getNeighborhoodNotifier();
+    if (notifier == null) {
+      return ignored -> {};
+    }
+    return notifier;
   }
 
   public void linkVariableListeners() {
@@ -122,7 +127,7 @@ public final class VariableListenerSupport<Solution_> implements SupplyManager {
         listVariableDescriptor == null ? null : demand(listVariableDescriptor.getStateDemand());
     scoreDirector.getSolutionDescriptor().getEntityDescriptors().stream()
         .map(EntityDescriptor::getDeclaredShadowVariableDescriptors)
-        .flatMap(Collection::stream)
+        .flatMap(descriptors -> descriptors.stream())
         .filter(ShadowVariableDescriptor::hasVariableListener)
         .sorted(Comparator.comparingInt(ShadowVariableDescriptor::getGlobalShadowOrder))
         .forEach(
@@ -281,12 +286,7 @@ public final class VariableListenerSupport<Solution_> implements SupplyManager {
   public void resetWorkingSolutionWithoutUpdatingShadows() {
     for (var notifiable : notifiableRegistry.getAll()) {
       if (notifiable instanceof EntityNotifiable<?> entityNotifiable) {
-        if (!(entityNotifiable.getVariableListener()
-                instanceof LegacyCustomShadowVariableBasicVariableListener
-            || entityNotifiable.getVariableListener()
-                instanceof LegacyCustomShadowVariableListVariableListener)) {
-          notifiable.resetWorkingSolution();
-        }
+        notifiable.resetWorkingSolution();
       } else {
         notifiable.resetWorkingSolution();
       }

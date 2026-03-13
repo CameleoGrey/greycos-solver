@@ -6,12 +6,11 @@ import java.util.Collection;
 import java.util.List;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
 import ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -25,97 +24,14 @@ import org.jspecify.annotations.Nullable;
  *
  * @param <Score_> the actual score type
  */
+@NullMarked
 public final class ConstraintMatch<Score_ extends Score<Score_>>
     implements Comparable<ConstraintMatch<Score_>> {
 
   private final ConstraintRef constraintRef;
-  private final ConstraintJustification justification;
-  private final List<Object> indictedObjectList;
+  private final @Nullable ConstraintJustification justification;
+  private final List<@Nullable Object> indictedObjectList;
   private final Score_ score;
-
-  /**
-   * @deprecated Prefer {@link ConstraintMatch#ConstraintMatch(ConstraintRef,
-   *     ConstraintJustification, Collection, Score)}.
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param justificationList never null, sometimes empty
-   * @param score never null
-   */
-  @Deprecated(forRemoval = true)
-  public ConstraintMatch(
-      String constraintPackage,
-      String constraintName,
-      List<Object> justificationList,
-      Score_ score) {
-    this(
-        constraintPackage,
-        constraintName,
-        DefaultConstraintJustification.of(score, justificationList),
-        justificationList,
-        score);
-  }
-
-  /**
-   * @deprecated Prefer {@link ConstraintMatch#ConstraintMatch(ConstraintRef,
-   *     ConstraintJustification, Collection, Score)}.
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param justification never null
-   * @param score never null
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  public ConstraintMatch(
-      String constraintPackage,
-      String constraintName,
-      ConstraintJustification justification,
-      Collection<Object> indictedObjectList,
-      Score_ score) {
-    this(
-        ConstraintRef.of(constraintPackage, constraintName),
-        justification,
-        indictedObjectList,
-        score);
-  }
-
-  /**
-   * @deprecated Prefer {@link ConstraintMatch#ConstraintMatch(ConstraintRef,
-   *     ConstraintJustification, Collection, Score)}.
-   * @param constraint never null
-   * @param justification never null
-   * @param score never null
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  public ConstraintMatch(
-      Constraint constraint,
-      ConstraintJustification justification,
-      Collection<Object> indictedObjectList,
-      Score_ score) {
-    this(constraint.getConstraintRef(), justification, indictedObjectList, score);
-  }
-
-  /**
-   * @deprecated Prefer {@link ConstraintMatch#ConstraintMatch(ConstraintRef,
-   *     ConstraintJustification, Collection, Score)}.
-   * @param constraintId never null
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param justification never null
-   * @param score never null
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  public ConstraintMatch(
-      String constraintId,
-      String constraintPackage,
-      String constraintName,
-      ConstraintJustification justification,
-      Collection<Object> indictedObjectList,
-      Score_ score) {
-    this(
-        new ConstraintRef(constraintPackage, constraintName, constraintId),
-        justification,
-        indictedObjectList,
-        score);
-  }
 
   /**
    * @param constraintRef unique identifier of the constraint
@@ -124,10 +40,10 @@ public final class ConstraintMatch<Score_ extends Score<Score_>>
    * @param score penalty or reward associated with the constraint match
    */
   public ConstraintMatch(
-      @NonNull ConstraintRef constraintRef,
+      ConstraintRef constraintRef,
       @Nullable ConstraintJustification justification,
-      @NonNull Collection<Object> indictedObjectList,
-      @NonNull Score_ score) {
+      Collection<Object> indictedObjectList,
+      Score_ score) {
     this.constraintRef = requireNonNull(constraintRef);
     this.justification = justification;
     this.indictedObjectList =
@@ -137,67 +53,8 @@ public final class ConstraintMatch<Score_ extends Score<Score_>>
     this.score = requireNonNull(score);
   }
 
-  public @NonNull ConstraintRef getConstraintRef() {
+  public ConstraintRef getConstraintRef() {
     return constraintRef;
-  }
-
-  /**
-   * @deprecated Prefer {@link #getConstraintRef()} instead.
-   * @return maybe null
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  public String getConstraintPackage() {
-    return constraintRef.packageName();
-  }
-
-  /**
-   * @deprecated Prefer {@link #getConstraintRef()} instead.
-   * @return never null
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  public String getConstraintName() {
-    return constraintRef.constraintName();
-  }
-
-  /**
-   * @deprecated Prefer {@link #getConstraintRef()} instead.
-   * @return never null
-   */
-  @Deprecated(forRemoval = true, since = "1.4.0")
-  public String getConstraintId() {
-    return constraintRef.constraintId();
-  }
-
-  /**
-   * Return a list of justifications for the constraint.
-   *
-   * <p>This method has a different meaning based on which score director the constraint comes from.
-   *
-   * <ul>
-   *   <li>For constraint streams, it returns a list of facts from the matching tuple for backwards
-   *       compatibility (eg. [A, B] for a bi stream), unless a custom justification mapping was
-   *       provided, in which case it throws an exception, pointing users towards {@link
-   *       #getJustification()}.
-   *   <li>For incremental score calculation, it returns what the calculator is implemented to
-   *       return.
-   * </ul>
-   *
-   * @deprecated Prefer {@link #getJustification()} or {@link #getIndictedObjectList()}.
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  public List<Object> getJustificationList() {
-    if (justification
-        instanceof
-        DefaultConstraintJustification constraintJustification) { // No custom function provided.
-      return constraintJustification.getFacts();
-    } else {
-      throw new IllegalStateException(
-          "Cannot retrieve list of facts from a custom constraint justification ("
-              + justification
-              + ").\n"
-              + "Use ConstraintMatch#getJustification() method instead.");
-    }
   }
 
   /**
@@ -214,6 +71,7 @@ public final class ConstraintMatch<Score_ extends Score<Score_>>
    *   <li>It may return null, if justification support was disabled altogether.
    * </ul>
    */
+  @SuppressWarnings("unchecked")
   public <Justification_ extends ConstraintJustification>
       @Nullable Justification_ getJustification() {
     return (Justification_) justification;
@@ -235,11 +93,11 @@ public final class ConstraintMatch<Score_ extends Score<Score_>>
    *
    * @return may be empty or contain null
    */
-  public @NonNull List<Object> getIndictedObjectList() {
+  public List<@Nullable Object> getIndictedObjectList() {
     return indictedObjectList;
   }
 
-  public @NonNull Score_ getScore() {
+  public Score_ getScore() {
     return score;
   }
 
@@ -248,7 +106,7 @@ public final class ConstraintMatch<Score_ extends Score<Score_>>
   // ************************************************************************
 
   public String getIdentificationString() {
-    return getConstraintRef().constraintId() + "/" + justification;
+    return getConstraintRef().constraintName() + "/" + justification;
   }
 
   @Override

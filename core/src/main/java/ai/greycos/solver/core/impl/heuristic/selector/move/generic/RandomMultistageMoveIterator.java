@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.heuristic.move.CompositeMove;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
@@ -32,14 +32,14 @@ public class RandomMultistageMoveIterator<Solution_> implements Iterator<Move<So
   private static final Logger LOGGER = LoggerFactory.getLogger(RandomMultistageMoveIterator.class);
 
   private final List<MoveSelector<Solution_>> stageSelectors;
-  private final Random random;
+  private final RandomGenerator random;
 
   private static final int CACHE_THRESHOLD = 1000;
 
   private final List<List<Move<Solution_>>> cachedMoves;
 
   public RandomMultistageMoveIterator(
-      @NonNull List<MoveSelector<Solution_>> stageSelectors, @NonNull Random random) {
+      @NonNull List<MoveSelector<Solution_>> stageSelectors, @NonNull RandomGenerator random) {
     this.stageSelectors = List.copyOf(stageSelectors);
     this.random = random;
     this.cachedMoves = new ArrayList<>(stageSelectors.size());

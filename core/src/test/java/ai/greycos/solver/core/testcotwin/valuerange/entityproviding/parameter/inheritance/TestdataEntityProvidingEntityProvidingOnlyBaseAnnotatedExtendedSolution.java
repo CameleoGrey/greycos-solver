@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 

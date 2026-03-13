@@ -37,7 +37,7 @@ import ai.greycos.solver.core.api.function.ToLongQuadFunction;
 import ai.greycos.solver.core.api.function.ToLongTriFunction;
 import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.function.TriPredicate;
-import ai.greycos.solver.core.api.score.buildin.hardsoftbigdecimal.HardSoftBigDecimalScore;
+import ai.greycos.solver.core.api.score.HardSoftBigDecimalScore;
 import ai.greycos.solver.core.api.score.stream.bi.BiConstraintCollector;
 import ai.greycos.solver.core.api.score.stream.common.ConnectedRangeChain;
 import ai.greycos.solver.core.api.score.stream.common.LoadBalance;

@@ -28,7 +28,6 @@ class GreyCOSProcessorSolverInvalidNearbyClassTest {
               "quarkus.greycos.solver.nearby-distance-meter-class",
               DummyDistanceMeter.class.getName())
           .overrideConfigKey("quarkus.greycos.solver.move-thread-count", "2")
-          .overrideConfigKey("quarkus.greycos.solver.cotwin-access-type", "REFLECTION")
           .overrideConfigKey("quarkus.greycos.solver.termination.spent-limit", "4h")
           .overrideConfigKey("quarkus.greycos.solver.termination.unimproved-spent-limit", "5h")
           .overrideConfigKey("quarkus.greycos.solver.termination.best-score-limit", "0")
@@ -58,7 +57,6 @@ class GreyCOSProcessorSolverInvalidNearbyClassTest {
               "quarkus.greycos.solver.nearby-distance-meter-class",
               TestdataQuarkusSolution.class.getName())
           .overrideConfigKey("quarkus.greycos.solver.move-thread-count", "2")
-          .overrideConfigKey("quarkus.greycos.solver.cotwin-access-type", "REFLECTION")
           .overrideConfigKey("quarkus.greycos.solver.termination.spent-limit", "4h")
           .overrideConfigKey("quarkus.greycos.solver.termination.unimproved-spent-limit", "5h")
           .overrideConfigKey("quarkus.greycos.solver.termination.best-score-limit", "0")

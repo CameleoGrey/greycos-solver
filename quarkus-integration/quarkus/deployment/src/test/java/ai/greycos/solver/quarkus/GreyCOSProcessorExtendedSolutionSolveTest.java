@@ -10,8 +10,7 @@ import java.util.stream.IntStream;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.score.ScoreManager;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
@@ -46,8 +45,7 @@ class GreyCOSProcessorExtendedSolutionSolveTest {
                           TestdataQuarkusConstraintProvider.class));
 
   @Inject SolverFactory<TestdataQuarkusSolution> solverFactory;
-  @Inject SolverManager<TestdataQuarkusSolution, Long> solverManager;
-  @Inject ScoreManager<TestdataQuarkusSolution, SimpleScore> scoreManager;
+  @Inject SolverManager<TestdataQuarkusSolution> solverManager;
   @Inject SolutionManager<TestdataQuarkusSolution, SimpleScore> solutionManager;
 
   @Test
@@ -62,8 +60,8 @@ class GreyCOSProcessorExtendedSolutionSolveTest {
     // There is only one SolverFactory instance
     assertSame(
         solverFactory,
-        ((DefaultSolverManager<TestdataQuarkusSolution, Long>) solverManager).getSolverFactory());
-    assertNotNull(scoreManager);
+        ((DefaultSolverManager<TestdataQuarkusSolution>) solverManager).getSolverFactory());
+    assertNotNull(solutionManager);
   }
 
   @Test

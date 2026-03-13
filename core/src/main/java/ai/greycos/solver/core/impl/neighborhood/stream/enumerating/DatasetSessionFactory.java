@@ -73,6 +73,6 @@ public final class DatasetSessionFactory<Solution_> {
       // TODO implement node network visualization
       throw new UnsupportedOperationException("Not implemented yet");
     }
-    return AbstractNodeBuildHelper.buildNodeNetwork(nodeList, declaredClassToNodeMap);
+    return AbstractNodeBuildHelper.buildNodeNetwork(nodeList, declaredClassToNodeMap, buildHelper);
   }
 }

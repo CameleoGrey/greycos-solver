@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * @see PlanningId
@@ -13,16 +13,14 @@ import ai.greycos.solver.core.api.score.director.ScoreDirector;
 public class LookUpManager {
 
   private final LookUpStrategyResolver lookUpStrategyResolver;
-
-  private Map<Object, Object> idToWorkingObjectMap;
+  private final Map<Object, Object> idToWorkingObjectMap = new HashMap<>();
 
   public LookUpManager(LookUpStrategyResolver lookUpStrategyResolver) {
     this.lookUpStrategyResolver = lookUpStrategyResolver;
-    reset();
   }
 
   public void reset() {
-    idToWorkingObjectMap = new HashMap<>();
+    idToWorkingObjectMap.clear();
   }
 
   public void addWorkingObject(Object workingObject) {
@@ -38,7 +36,6 @@ public class LookUpManager {
   /**
    * As defined by {@link ScoreDirector#lookUpWorkingObject(Object)}.
    *
-   * @param externalObject sometimes null
    * @return null if externalObject is null
    * @throws IllegalArgumentException if there is no workingObject for externalObject, if it cannot
    *     be looked up or if the externalObject's class is not supported
@@ -56,8 +53,7 @@ public class LookUpManager {
   /**
    * As defined by {@link ScoreDirector#lookUpWorkingObjectOrReturnNull(Object)}.
    *
-   * @param externalObject sometimes null
-   * @return null if externalObject is null or if there is no workingObject for externalObject
+   * @return null if externalObject is null, or if there is no workingObject for externalObject
    * @throws IllegalArgumentException if it cannot be looked up or if the externalObject's class is
    *     not supported
    * @throws IllegalStateException if it cannot be looked up

@@ -3,11 +3,11 @@ package ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.bavet.common.index.Indexer;
 import ai.greycos.solver.core.impl.bavet.common.index.IndexerFactory;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
-import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractLeftDatasetInstance.UnwrappingIterator;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -23,9 +23,9 @@ public abstract class AbstractRightDatasetInstance<Solution_, Right_>
       AbstractDataset<Solution_> parent,
       IndexerFactory.KeysExtractor<UniTuple<Right_>> compositeKeyExtractor,
       int compositeKeyStoreIndex,
-      int rightMostPositionStoreIndex,
+      int entryStoreIndex,
       Indexer<UniTuple<Right_>> indexer) {
-    super(parent, rightMostPositionStoreIndex);
+    super(parent, entryStoreIndex);
     this.compositeKeyExtractor = compositeKeyExtractor;
     this.compositeKeyStoreIndex = compositeKeyStoreIndex;
     this.indexer = indexer;
@@ -33,6 +33,12 @@ public abstract class AbstractRightDatasetInstance<Solution_, Right_>
 
   @Override
   public void insert(UniTuple<Right_> tuple) {
+    if (tuple.getStore(compositeKeyStoreIndex) != null) {
+      throw new IllegalStateException(
+          "Impossible state: the input for the tuple (%s) was already added in the tupleStore."
+              .formatted(tuple));
+    }
+
     var compositeKey = compositeKeyExtractor.apply(tuple);
     tuple.setStore(entryStoreIndex, indexer.put(compositeKey, tuple));
     tuple.setStore(compositeKeyStoreIndex, compositeKey);
@@ -41,6 +47,13 @@ public abstract class AbstractRightDatasetInstance<Solution_, Right_>
   @Override
   public void update(UniTuple<Right_> tuple) {
     var oldCompositeKey = tuple.getStore(compositeKeyStoreIndex);
+    if (oldCompositeKey == null) {
+      // No fail fast if null because we don't track which tuples made it through the filter
+      // predicate(s).
+      insert(tuple);
+      return;
+    }
+
     var newCompositeKey = compositeKeyExtractor.apply(tuple);
     if (!Objects.equals(oldCompositeKey, newCompositeKey)) {
       indexer.remove(oldCompositeKey, tuple.getStore(entryStoreIndex));
@@ -51,24 +64,27 @@ public abstract class AbstractRightDatasetInstance<Solution_, Right_>
 
   @Override
   public void retract(UniTuple<Right_> tuple) {
-    indexer.remove(tuple.removeStore(compositeKeyStoreIndex), tuple.removeStore(entryStoreIndex));
+    var compositeKey = tuple.removeStore(compositeKeyStoreIndex);
+    if (compositeKey == null) {
+      // No fail fast if null because we don't track which tuples made it through the filter
+      // predicate(s).
+      return;
+    }
+
+    indexer.remove(compositeKey, tuple.removeStore(entryStoreIndex));
   }
 
   public Iterator<UniTuple<Right_>> iterator(Object compositeKey) {
-    var list = indexer.asList(compositeKey);
-    return new UnwrappingIterator<>(list.iterator());
+    return indexer.iterator(compositeKey);
   }
 
-  public DefaultUniqueRandomSequence<UniTuple<Right_>> buildRandomSequence(Object compositeKey) {
-    return new DefaultUniqueRandomSequence<>(indexer.asList(compositeKey));
+  public Iterator<UniTuple<Right_>> randomIterator(
+      Object compositeKey, RandomGenerator workingRandom) {
+    return indexer.randomIterator(compositeKey, workingRandom);
   }
 
-  public FilteredUniqueRandomSequence<UniTuple<Right_>> buildRandomSequence(
-      Object compositeKey, Predicate<UniTuple<Right_>> predicate) {
-    return new FilteredUniqueRandomSequence<>(indexer.asList(compositeKey), predicate);
-  }
-
-  public int size(Object compositeKey) {
-    return indexer.size(compositeKey);
+  public Iterator<UniTuple<Right_>> randomIterator(
+      Object compositeKey, RandomGenerator workingRandom, Predicate<UniTuple<Right_>> predicate) {
+    return indexer.randomIterator(compositeKey, workingRandom, predicate);
   }
 }

@@ -3,8 +3,8 @@ package ai.greycos.solver.core.testcotwin;
 import java.util.ArrayList;
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * Test {@link SolutionPartitioner} implementation that partitions a {@link TestdataSolution} into

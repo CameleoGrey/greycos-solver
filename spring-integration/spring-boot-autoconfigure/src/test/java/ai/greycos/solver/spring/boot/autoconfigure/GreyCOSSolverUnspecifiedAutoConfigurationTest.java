@@ -2,15 +2,12 @@ package ai.greycos.solver.spring.boot.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-import ai.greycos.solver.spring.boot.autoconfigure.chained.constraints.TestdataChainedSpringConstraintProvider;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleConstraintProviderSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleEasyScoreConstraintSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleIncrementalScoreConstraintSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleSolutionsSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.NoEntitySpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.NoSolutionSpringTestConfiguration;
-import ai.greycos.solver.spring.boot.autoconfigure.dummy.chained.constraints.easy.DummyChainedSpringEasyScore;
-import ai.greycos.solver.spring.boot.autoconfigure.dummy.chained.constraints.incremental.DummyChainedSpringIncrementalScore;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.normal.constraints.easy.DummySpringEasyScore;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.normal.constraints.incremental.DummySpringIncrementalScore;
 import ai.greycos.solver.spring.boot.autoconfigure.invalid.solution.InvalidSolutionSpringTestConfiguration;
@@ -107,7 +104,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            DummyChainedSpringEasyScore.class.getSimpleName(),
+            "DummyChainedSpringEasyScore",
             DummySpringEasyScore.class.getSimpleName(),
             "that implements EasyScoreCalculator were found in the classpath.");
   }
@@ -124,7 +121,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            TestdataChainedSpringConstraintProvider.class.getSimpleName(),
+            "TestdataChainedSpringConstraintProvider",
             TestdataSpringConstraintProvider.class.getSimpleName(),
             "that implements ConstraintProvider were found in the classpath.");
   }
@@ -142,7 +139,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            DummyChainedSpringIncrementalScore.class.getSimpleName(),
+            "DummyChainedSpringIncrementalScore",
             DummySpringIncrementalScore.class.getSimpleName(),
             "that implements IncrementalScoreCalculator were found in the classpath.");
   }
@@ -159,7 +156,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            DummyChainedSpringEasyScore.class.getSimpleName(),
+            "DummyChainedSpringEasyScore",
             DummySpringEasyScore.class.getSimpleName(),
             "that implements EasyScoreCalculator were found in the classpath");
   }
@@ -177,7 +174,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            TestdataChainedSpringConstraintProvider.class.getSimpleName(),
+            "TestdataChainedSpringConstraintProvider",
             TestdataSpringConstraintProvider.class.getSimpleName(),
             "that implements ConstraintProvider were found in the classpath.");
   }
@@ -196,7 +193,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            DummyChainedSpringIncrementalScore.class.getSimpleName(),
+            "DummyChainedSpringIncrementalScore",
             DummySpringIncrementalScore.class.getSimpleName(),
             "that implements IncrementalScoreCalculator were found in the classpath.");
   }

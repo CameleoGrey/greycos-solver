@@ -1,6 +1,6 @@
 package ai.greycos.solver.spring.boot.autoconfigure.invalid;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NonNull;
 

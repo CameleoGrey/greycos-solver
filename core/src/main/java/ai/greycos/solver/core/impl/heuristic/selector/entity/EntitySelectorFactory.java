@@ -1,12 +1,10 @@
 package ai.greycos.solver.core.impl.heuristic.selector.entity;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.cotwin.common.ComparatorFactory;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
@@ -21,7 +19,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.ValueRangeRecorderI
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.ComparatorFactorySelectionSorter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.ComparatorSelectionSorter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
-import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandomFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.CachingEntitySelector;
@@ -183,8 +180,8 @@ public class EntitySelectorFactory<Solution_>
                 config.getNearbySelectionConfig(),
                 config.getFilterClass(),
                 config.getSorterManner(),
-                determineComparatorClass(config),
-                determineComparatorFactoryClass(config),
+                config.getComparatorClass(),
+                config.getComparatorFactoryClass(),
                 config.getSorterOrder(),
                 config.getSorterClass(),
                 config.getProbabilityWeightFactoryClass(),
@@ -232,59 +229,6 @@ public class EntitySelectorFactory<Solution_>
     return true;
   }
 
-  private static String determineComparatorPropertyName(EntitySelectorConfig entitySelectorConfig) {
-    var sorterComparatorClass = entitySelectorConfig.getSorterComparatorClass();
-    var comparatorClass = entitySelectorConfig.getComparatorClass();
-    if (sorterComparatorClass != null && comparatorClass != null) {
-      throw new IllegalArgumentException(
-          "The entitySelectorConfig (%s) cannot have a %s (%s) and %s (%s) at the same time."
-              .formatted(
-                  entitySelectorConfig,
-                  "sorterComparatorClass",
-                  sorterComparatorClass,
-                  "comparatorClass",
-                  comparatorClass));
-    }
-    return sorterComparatorClass != null ? "sorterComparatorClass" : "comparatorClass";
-  }
-
-  private static Class<? extends Comparator> determineComparatorClass(
-      EntitySelectorConfig entitySelectorConfig) {
-    var propertyName = determineComparatorPropertyName(entitySelectorConfig);
-    if (propertyName.equals("sorterComparatorClass")) {
-      return entitySelectorConfig.getSorterComparatorClass();
-    } else {
-      return entitySelectorConfig.getComparatorClass();
-    }
-  }
-
-  private static String determineComparatorFactoryPropertyName(
-      EntitySelectorConfig entitySelectorConfig) {
-    var weightFactoryClass = entitySelectorConfig.getSorterWeightFactoryClass();
-    var comparatorFactoryClass = entitySelectorConfig.getComparatorFactoryClass();
-    if (weightFactoryClass != null && comparatorFactoryClass != null) {
-      throw new IllegalArgumentException(
-          "The entitySelectorConfig (%s) cannot have a %s (%s) and %s (%s) at the same time."
-              .formatted(
-                  entitySelectorConfig,
-                  "sorterWeightFactoryClass",
-                  weightFactoryClass,
-                  "comparatorFactoryClass",
-                  comparatorFactoryClass));
-    }
-    return weightFactoryClass != null ? "sorterWeightFactoryClass" : "comparatorFactoryClass";
-  }
-
-  private static Class<? extends ComparatorFactory> determineComparatorFactoryClass(
-      EntitySelectorConfig entitySelectorConfig) {
-    var propertyName = determineComparatorFactoryPropertyName(entitySelectorConfig);
-    if (propertyName.equals("sorterWeightFactoryClass")) {
-      return entitySelectorConfig.getSorterWeightFactoryClass();
-    } else {
-      return entitySelectorConfig.getComparatorFactoryClass();
-    }
-  }
-
   private EntitySelector<Solution_> buildBaseEntitySelector(
       EntityDescriptor<Solution_> entityDescriptor,
       SelectionCacheType minimumCacheType,
@@ -323,6 +267,10 @@ public class EntitySelectorFactory<Solution_>
     } else {
       var valueSelectorConfig =
           new ValueSelectorConfig().withMimicSelectorRef(valueRangeRecorderId.recorderId());
+      if (entitySelector.getEntityDescriptor().hasBothListAndBasicVariables()) {
+        valueSelectorConfig.setVariableName(
+            entitySelector.getEntityDescriptor().getListVariableDescriptor().getVariableName());
+      }
       var replayingValueSelector =
           (IterableValueSelector<Solution_>)
               ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
@@ -332,8 +280,38 @@ public class EntitySelectorFactory<Solution_>
                       minimumCacheType,
                       selectionOrder);
       return new FilteringEntityByValueSelector<>(
-          entitySelector, replayingValueSelector, randomSelection);
+          entitySelector, replayingValueSelector, randomSelection, false);
     }
+  }
+
+  public static <Solution_>
+      EntitySelector<Solution_> applyEntityValueRangeFilteringForExhaustiveSearch(
+          HeuristicConfigPolicy<Solution_> configPolicy,
+          EntitySelector<Solution_> entitySelector,
+          ValueRangeRecorderId valueRangeRecorderId,
+          SelectionCacheType minimumCacheType,
+          SelectionOrder selectionOrder) {
+    if (valueRangeRecorderId == null
+        || valueRangeRecorderId.recorderId() == null
+        || valueRangeRecorderId.basicVariable()) {
+      return entitySelector;
+    }
+    var valueSelectorConfig =
+        new ValueSelectorConfig().withMimicSelectorRef(valueRangeRecorderId.recorderId());
+    if (entitySelector.getEntityDescriptor().hasBothListAndBasicVariables()) {
+      valueSelectorConfig.setVariableName(
+          entitySelector.getEntityDescriptor().getListVariableDescriptor().getVariableName());
+    }
+    var replayingValueSelector =
+        (IterableValueSelector<Solution_>)
+            ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
+                .buildValueSelector(
+                    configPolicy,
+                    entitySelector.getEntityDescriptor(),
+                    minimumCacheType,
+                    selectionOrder);
+    return new FilteringEntityByValueSelector<>(
+        entitySelector, replayingValueSelector, false, true);
   }
 
   private EntitySelector<Solution_> applyNearbySelection(
@@ -401,9 +379,7 @@ public class EntitySelectorFactory<Solution_>
       var filterList =
           new ArrayList<SelectionFilter<Solution_, Object>>(filterClass == null ? 1 : 2);
       if (filterClass != null) {
-        SelectionFilter<Solution_, Object> selectionFilter =
-            instanceCache.newInstance(config, "filterClass", filterClass);
-        filterList.add(selectionFilter);
+        filterList.add(instanceCache.newInstance(config, "filterClass", filterClass));
       }
       // Filter out pinned entities
       if (entityDescriptor.hasEffectiveMovableEntityFilter()) {
@@ -424,10 +400,8 @@ public class EntitySelectorFactory<Solution_>
 
   protected void validateSorting(SelectionOrder resolvedSelectionOrder) {
     var sorterManner = config.getSorterManner();
-    var comparatorClass = determineComparatorClass(config);
-    var comparatorPropertyName = determineComparatorPropertyName(config);
-    var comparatorFactoryPropertyName = determineComparatorFactoryPropertyName(config);
-    var comparatorFactoryClass = determineComparatorFactoryClass(config);
+    var comparatorClass = config.getComparatorClass();
+    var comparatorFactoryClass = config.getComparatorFactoryClass();
     var sorterOrder = config.getSorterOrder();
     var sorterClass = config.getSorterClass();
     if ((sorterManner != null
@@ -439,44 +413,31 @@ public class EntitySelectorFactory<Solution_>
       throw new IllegalArgumentException(
           """
                     The entitySelectorConfig (%s) with sorterManner (%s) \
-                    and %s (%s) and %s (%s) and sorterOrder (%s) and sorterClass (%s) \
+                    and comparatorClass (%s) and comparatorFactoryClass (%s) and sorterOrder (%s) and sorterClass (%s) \
                     has a resolvedSelectionOrder (%s) that is not %s."""
               .formatted(
                   config,
                   sorterManner,
-                  comparatorPropertyName,
                   comparatorClass,
-                  comparatorFactoryPropertyName,
                   comparatorFactoryClass,
                   sorterOrder,
                   sorterClass,
                   resolvedSelectionOrder,
                   SelectionOrder.SORTED));
     }
+    assertNotSorterMannerAnd(config, "comparatorClass", EntitySelectorConfig::getComparatorClass);
+    assertNotSorterClassAnd(config, "comparatorClass", EntitySelectorConfig::getComparatorClass);
     assertNotSorterMannerAnd(
-        config, comparatorPropertyName, EntitySelectorFactory::determineComparatorClass);
-    assertNotSorterMannerAnd(
-        config,
-        comparatorFactoryPropertyName,
-        EntitySelectorFactory::determineComparatorFactoryClass);
+        config, "comparatorFactoryClass", EntitySelectorConfig::getComparatorFactoryClass);
+    assertNotSorterClassAnd(
+        config, "comparatorFactoryClass", EntitySelectorConfig::getComparatorFactoryClass);
     assertNotSorterMannerAnd(config, "sorterClass", EntitySelectorConfig::getSorterClass);
     assertNotSorterMannerAnd(config, "sorterOrder", EntitySelectorConfig::getSorterOrder);
-    assertNotSorterClassAnd(
-        config, comparatorPropertyName, EntitySelectorFactory::determineComparatorClass);
-    assertNotSorterClassAnd(
-        config,
-        comparatorFactoryPropertyName,
-        EntitySelectorFactory::determineComparatorFactoryClass);
     assertNotSorterClassAnd(config, "sorterOrder", EntitySelectorConfig::getSorterOrder);
     if (comparatorClass != null && comparatorFactoryClass != null) {
       throw new IllegalArgumentException(
-          "The entitySelectorConfig (%s) has both a %s (%s) and a %s (%s)."
-              .formatted(
-                  config,
-                  comparatorPropertyName,
-                  comparatorClass,
-                  comparatorFactoryPropertyName,
-                  comparatorFactoryClass));
+          "The entitySelectorConfig (%s) has both a comparatorClass (%s) and a comparatorFactoryClass (%s)."
+              .formatted(config, comparatorClass, comparatorFactoryClass));
     }
   }
 
@@ -514,8 +475,8 @@ public class EntitySelectorFactory<Solution_>
     if (resolvedSelectionOrder == SelectionOrder.SORTED) {
       SelectionSorter<Solution_, Object> sorter;
       var sorterManner = config.getSorterManner();
-      var comparatorClass = determineComparatorClass(config);
-      var comparatorFactoryClass = determineComparatorFactoryClass(config);
+      var comparatorClass = config.getComparatorClass();
+      var comparatorFactoryClass = config.getComparatorFactoryClass();
       if (sorterManner != null) {
         var entityDescriptor = entitySelector.getEntityDescriptor();
         if (!EntitySelectorConfig.hasSorter(sorterManner, entityDescriptor)) {
@@ -524,15 +485,13 @@ public class EntitySelectorFactory<Solution_>
         sorter = EntitySelectorConfig.determineSorter(sorterManner, entityDescriptor);
       } else if (comparatorClass != null) {
         var sorterComparator =
-            instanceCache.newInstance(
-                config, determineComparatorPropertyName(config), comparatorClass);
+            instanceCache.newInstance(config, "comparatorClass", comparatorClass);
         sorter =
             new ComparatorSelectionSorter<>(
                 sorterComparator, SelectionSorterOrder.resolve(config.getSorterOrder()));
       } else if (comparatorFactoryClass != null) {
         var comparatorFactory =
-            instanceCache.newInstance(
-                config, determineComparatorFactoryPropertyName(config), comparatorFactoryClass);
+            instanceCache.newInstance(config, "comparatorFactoryClass", comparatorFactoryClass);
         sorter =
             new ComparatorFactorySelectionSorter<>(
                 comparatorFactory, SelectionSorterOrder.resolve(config.getSorterOrder()));
@@ -542,15 +501,13 @@ public class EntitySelectorFactory<Solution_>
         throw new IllegalArgumentException(
             """
                         The entitySelectorConfig (%s) with resolvedSelectionOrder (%s) needs \
-                        a sorterManner (%s) or a %s (%s) or a %s (%s) \
+                        a sorterManner (%s) or a comparatorClass (%s) or a comparatorFactoryClass (%s) \
                         or a sorterClass (%s)."""
                 .formatted(
                     config,
                     resolvedSelectionOrder,
                     sorterManner,
-                    determineComparatorPropertyName(config),
                     comparatorClass,
-                    determineComparatorFactoryPropertyName(config),
                     comparatorFactoryClass,
                     config.getSorterClass()));
       }
@@ -591,12 +548,14 @@ public class EntitySelectorFactory<Solution_>
                 + config.getProbabilityWeightFactoryClass()
                 + ").");
       }
-      SelectionProbabilityWeightFactory<Solution_, Object> probabilityWeightFactory =
-          instanceCache.newInstance(
-              config, "probabilityWeightFactoryClass", config.getProbabilityWeightFactoryClass());
       entitySelector =
           new ProbabilityEntitySelector<>(
-              entitySelector, resolvedCacheType, probabilityWeightFactory);
+              entitySelector,
+              resolvedCacheType,
+              instanceCache.newInstance(
+                  config,
+                  "probabilityWeightFactoryClass",
+                  config.getProbabilityWeightFactoryClass()));
     }
     return entitySelector;
   }

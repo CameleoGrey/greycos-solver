@@ -6,7 +6,7 @@ import ai.greycos.solver.core.impl.bavet.common.tuple.BiTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.DataNodeBuildHelper;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.BiEnumeratingPredicate;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsPredicate;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -14,12 +14,12 @@ import org.jspecify.annotations.NullMarked;
 final class FilterBiEnumeratingStream<Solution_, A, B>
     extends AbstractBiEnumeratingStream<Solution_, A, B> {
 
-  private final BiEnumeratingPredicate<Solution_, A, B> filter;
+  private final BiNeighborhoodsPredicate<Solution_, A, B> filter;
 
   public FilterBiEnumeratingStream(
       EnumeratingStreamFactory<Solution_> enumeratingStreamFactory,
       AbstractBiEnumeratingStream<Solution_, A, B> parent,
-      BiEnumeratingPredicate<Solution_, A, B> filter) {
+      BiNeighborhoodsPredicate<Solution_, A, B> filter) {
     super(enumeratingStreamFactory, parent);
     this.filter = Objects.requireNonNull(filter, "The filter cannot be null.");
   }

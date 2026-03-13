@@ -4,9 +4,8 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.solver.ProblemSizeStatistics;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
@@ -32,7 +31,7 @@ import org.jspecify.annotations.Nullable;
  * with the clone; failing to follow this rule will result in score corruptions as the cached value
  * ranges reference objects from the original working solution pre-clone.
  *
- * @see CountableValueRange
+ * @see ValueRange
  * @see ValueRangeProvider
  */
 @NullMarked
@@ -140,7 +139,7 @@ public final class ValueRangeManager<Solution_> {
    *
    * @throws IllegalStateException if called before {@link #reset(Object)} is called
    */
-  public <Value_> CountableValueRange<Value_> getFromSolution(
+  public <Value_> ValueRange<Value_> getFromSolution(
       ValueRangeDescriptor<Solution_> valueRangeDescriptor) {
     if (cachedWorkingSolution == null) {
       throw new IllegalStateException(
@@ -150,7 +149,7 @@ public final class ValueRangeManager<Solution_> {
     return getFromSolution(valueRangeDescriptor, cachedWorkingSolution);
   }
 
-  public <Value_> CountableValueRange<Value_> getFromSolution(
+  public <Value_> ValueRange<Value_> getFromSolution(
       ValueRangeDescriptor<Solution_> valueRangeDescriptor,
       @Nullable SelectionSorter<Solution_, Value_> sorter) {
     if (cachedWorkingSolution == null) {
@@ -161,12 +160,12 @@ public final class ValueRangeManager<Solution_> {
     return getFromSolution(valueRangeDescriptor, cachedWorkingSolution, sorter);
   }
 
-  public <Value_> CountableValueRange<Value_> getFromSolution(
+  public <Value_> ValueRange<Value_> getFromSolution(
       ValueRangeDescriptor<Solution_> valueRangeDescriptor, Solution_ solution) {
     return getFromSolution(valueRangeDescriptor, solution, null);
   }
 
-  public <Value_> CountableValueRange<Value_> getFromSolution(
+  public <Value_> ValueRange<Value_> getFromSolution(
       ValueRangeDescriptor<Solution_> valueRangeDescriptor,
       Solution_ solution,
       @Nullable SelectionSorter<Solution_, Value_> sorter) {
@@ -177,7 +176,7 @@ public final class ValueRangeManager<Solution_> {
   /**
    * @throws IllegalStateException if called before {@link #reset(Object)} is called
    */
-  public <Entity_, Value_> CountableValueRange<Value_> getFromEntity(
+  public <Entity_, Value_> ValueRange<Value_> getFromEntity(
       ValueRangeDescriptor<Solution_> valueRangeDescriptor, Entity_ entity) {
     return getFromEntity(valueRangeDescriptor, entity, null);
   }
@@ -185,7 +184,7 @@ public final class ValueRangeManager<Solution_> {
   /**
    * @throws IllegalStateException if called before {@link #reset(Object)} is called
    */
-  public <Entity_, Value_> CountableValueRange<Value_> getFromEntity(
+  public <Entity_, Value_> ValueRange<Value_> getFromEntity(
       ValueRangeDescriptor<Solution_> valueRangeDescriptor,
       Entity_ entity,
       @Nullable SelectionSorter<Solution_, Value_> sorter) {

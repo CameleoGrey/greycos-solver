@@ -11,10 +11,9 @@ import java.util.List;
 import java.util.Objects;
 
 import ai.greycos.solver.core.api.cotwin.variable.CascadingUpdateShadowVariable;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
-import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
@@ -22,6 +21,7 @@ import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor
 import ai.greycos.solver.core.impl.cotwin.variable.listener.VariableListenerWithSources;
 import ai.greycos.solver.core.impl.cotwin.variable.supply.Demand;
 import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 public final class CascadingUpdateShadowVariableDescriptor<Solution_>
     extends ShadowVariableDescriptor<Solution_> {
@@ -159,7 +159,7 @@ public final class CascadingUpdateShadowVariableDescriptor<Solution_>
             .getMemberAccessorFactory()
             .buildAndCacheMemberAccessor(
                 allSourceMethodMembers.get(0),
-                MemberAccessorFactory.MemberAccessorType.VOID_METHOD,
+                MemberAccessorType.VOID_METHOD,
                 null,
                 descriptorPolicy.getCotwinAccessType());
     firstTargetVariableDescriptor = targetVariableDescriptorList.get(0);

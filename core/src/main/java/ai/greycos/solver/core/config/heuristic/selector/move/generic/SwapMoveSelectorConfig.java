@@ -2,8 +2,8 @@ package ai.greycos.solver.core.config.heuristic.selector.move.generic;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.function.Consumer;
+import java.util.random.RandomGenerator;
 
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
@@ -123,7 +123,8 @@ public class SwapMoveSelectorConfig extends MoveSelectorConfig<SwapMoveSelectorC
 
   @Override
   public @NonNull SwapMoveSelectorConfig enableNearbySelection(
-      @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter, @NonNull Random random) {
+      @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
+      @NonNull RandomGenerator random) {
     return NearbyUtil.enable(this, distanceMeter, random);
   }
 

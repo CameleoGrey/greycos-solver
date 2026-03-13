@@ -6,7 +6,7 @@ import java.util.Objects;
 
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import ai.greycos.solver.core.preview.api.move.SolutionView;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.BiEnumeratingPredicate;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsPredicate;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -14,10 +14,10 @@ import org.jspecify.annotations.NullMarked;
 final class FilteringIterator<Solution_, A, B> implements Iterator<UniTuple<B>> {
 
   @SuppressWarnings("rawtypes")
-  private static final UniTuple EMPTY_TUPLE = new UniTuple<>(null, 0);
+  private static final UniTuple EMPTY_TUPLE = UniTuple.of(0);
 
   private final SolutionView<Solution_> solutionView;
-  private final BiEnumeratingPredicate<Solution_, A, B> filter;
+  private final BiNeighborhoodsPredicate<Solution_, A, B> filter;
   private final UniTuple<A> leftTuple;
   private final Iterator<UniTuple<B>> rightTupleIterator;
 
@@ -28,7 +28,7 @@ final class FilteringIterator<Solution_, A, B> implements Iterator<UniTuple<B>> 
   private UniTuple<B> next = EMPTY_TUPLE;
 
   public FilteringIterator(
-      BiEnumeratingPredicate<Solution_, A, B> filter,
+      BiNeighborhoodsPredicate<Solution_, A, B> filter,
       SolutionView<Solution_> solutionView,
       UniTuple<A> leftTuple,
       Iterator<UniTuple<B>> rightTupleIterator) {
@@ -45,10 +45,10 @@ final class FilteringIterator<Solution_, A, B> implements Iterator<UniTuple<B>> 
       return true;
     }
 
-    var leftFact = leftTuple.factA;
+    var leftFact = leftTuple.getA();
     while (rightTupleIterator.hasNext()) {
       var rightTuple = rightTupleIterator.next();
-      var rightFact = rightTuple.factA;
+      var rightFact = rightTuple.getA();
       if (filter.test(solutionView, leftFact, rightFact)) {
         hasNext = true;
         next = rightTuple;

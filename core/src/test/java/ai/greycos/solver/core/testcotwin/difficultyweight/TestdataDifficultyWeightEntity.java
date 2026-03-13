@@ -6,7 +6,7 @@ import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 
-@PlanningEntity(difficultyWeightFactoryClass = TestdataDifficultyFactory.class)
+@PlanningEntity(comparatorFactoryClass = TestdataDifficultyFactory.class)
 public class TestdataDifficultyWeightEntity extends TestdataObject {
 
   public static EntityDescriptor<TestdataDifficultyWeightSolution> buildEntityDescriptor() {

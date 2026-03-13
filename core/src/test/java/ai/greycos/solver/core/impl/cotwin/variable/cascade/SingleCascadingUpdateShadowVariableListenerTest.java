@@ -6,8 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import ai.greycos.solver.core.testcotwin.cascade.single.TestdataSingleCascadingEntity;
 import ai.greycos.solver.core.testcotwin.cascade.single.TestdataSingleCascadingSolution;
 import ai.greycos.solver.core.testcotwin.shadow.wrongcascade.TestdataCascadingInvalidField;
-import ai.greycos.solver.core.testcotwin.shadow.wrongcascade.TestdataCascadingInvalidPiggyback;
-import ai.greycos.solver.core.testcotwin.shadow.wrongcascade.TestdataCascadingInvalidSource;
 import ai.greycos.solver.core.testcotwin.shadow.wrongcascade.TestdataCascadingWrongMethod;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
@@ -33,24 +31,6 @@ class SingleCascadingUpdateShadowVariableListenerTest {
         .withMessageContaining(
             "has an @CascadingUpdateShadowVariable annotated property (cascadeValue)")
         .withMessageContaining("but the method \"value\" cannot be found");
-    assertThatIllegalArgumentException()
-        .isThrownBy(TestdataCascadingInvalidSource::buildEntityDescriptor)
-        .withMessageContaining(
-            "The entityClass (class ai.greycos.solver.core.testcotwin.shadow.wrongcascade.TestdataCascadingInvalidSource)")
-        .withMessageContaining("has a @ShadowVariable annotated property (cascadeValue2)")
-        .withMessageContaining(
-            "with sourceVariableName (cascadeValue) which cannot be used as source")
-        .withMessageContaining(
-            "Shadow variables such as @CascadingUpdateShadowVariable are not allowed to be used as source")
-        .withMessageContaining(
-            "Maybe check if cascadeValue is annotated with @CascadingUpdateShadowVariable");
-    assertThatIllegalArgumentException()
-        .isThrownBy(TestdataCascadingInvalidPiggyback::buildEntityDescriptor)
-        .withMessageContainingAll(
-            "The entityClass (class ai.greycos.solver.core.testcotwin.shadow.wrongcascade.TestdataCascadingInvalidPiggyback)",
-            "has a @PiggybackShadowVariable annotated property (cascadeValue2)",
-            "with refVariable (TestdataCascadingInvalidPiggyback.cascadeValue) that",
-            "lacks a VariableListener @ShadowVariable annotation.");
   }
 
   @Test

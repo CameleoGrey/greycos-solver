@@ -2,16 +2,17 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ruin;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Random;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
-import ai.greycos.solver.core.impl.heuristic.move.NoChangeMove;
+import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateConstructionHeuristicPhaseBuilder;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.impl.util.CollectionUtils;
 
 final class ListRuinRecreateMoveIterator<Solution_>
     extends UpcomingSelectionIterator<Move<Solution_>> {
@@ -23,7 +24,7 @@ final class ListRuinRecreateMoveIterator<Solution_>
   private final ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
   private final int minimumRuinedCount;
   private final int maximumRuinedCount;
-  private final Random workingRandom;
+  private final RandomGenerator workingRandom;
 
   public ListRuinRecreateMoveIterator(
       IterableValueSelector<Solution_> valueSelector,
@@ -32,7 +33,7 @@ final class ListRuinRecreateMoveIterator<Solution_>
       ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply,
       int minimumRuinedCount,
       int maximumRuinedCount,
-      Random workingRandom) {
+      RandomGenerator workingRandom) {
     this.valueSelector = valueSelector;
     this.constructionHeuristicPhaseBuilder = constructionHeuristicPhaseBuilder;
     this.solverScope = solverScope;
@@ -47,15 +48,15 @@ final class ListRuinRecreateMoveIterator<Solution_>
     var valueIterator = valueSelector.iterator();
     var ruinedCount = workingRandom.nextInt(minimumRuinedCount, maximumRuinedCount + 1);
     var selectedValueList = new ArrayList<>(ruinedCount);
-    var affectedEntitySet = CollectionUtils.newLinkedHashSet(ruinedCount);
+    var affectedEntitySet = new LinkedHashSet<Object>(ruinedCount);
     var selectedValueSet =
-        Collections.newSetFromMap(CollectionUtils.newIdentityHashMap(ruinedCount));
+        Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>(ruinedCount));
     for (var i = 0; i < ruinedCount; i++) {
       var remainingAttempts = ruinedCount;
       while (true) {
         if (!valueIterator.hasNext()) {
           // Bail out; cannot select enough unique elements.
-          return NoChangeMove.getInstance();
+          return SelectorBasedNoChangeMove.getInstance();
         }
         var selectedValue = valueIterator.next();
         if (selectedValueSet.add(selectedValue)) {
@@ -70,11 +71,11 @@ final class ListRuinRecreateMoveIterator<Solution_>
         }
         if (remainingAttempts == 0) {
           // Bail out; cannot select enough unique elements.
-          return NoChangeMove.getInstance();
+          return SelectorBasedNoChangeMove.getInstance();
         }
       }
     }
-    return new ListRuinRecreateMove<>(
+    return new SelectorBasedListRuinRecreateMove<>(
         listVariableStateSupply.getSourceVariableDescriptor(),
         constructionHeuristicPhaseBuilder,
         solverScope,

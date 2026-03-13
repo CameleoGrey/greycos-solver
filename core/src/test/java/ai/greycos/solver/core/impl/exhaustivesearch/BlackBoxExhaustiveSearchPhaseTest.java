@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.SolverFactory;
@@ -91,7 +91,7 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.DEPTH_FIRST,
             EntitySorterManner.NONE,
-            ValueSorterManner.DECREASING_STRENGTH,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "32--", "321-", "32-1", "31--", "312-", "31-2", "3-2-", "312-",
                 "3213")),
@@ -99,14 +99,14 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.DEPTH_FIRST,
             EntitySorterManner.NONE,
-            ValueSorterManner.INCREASING_STRENGTH,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "12--", "123-", "12-3", "13--", "132-", "13-2", "1-2-", "132-",
                 "1231")),
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.DEPTH_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
+            EntitySorterManner.DESCENDING,
             ValueSorterManner.NONE,
             Arrays.asList(
                 "----", "1---", "1-3-", "123-", "1-32", "1-2-", "132-", "1-23", "13--", "132-",
@@ -114,16 +114,16 @@ class BlackBoxExhaustiveSearchPhaseTest {
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.DEPTH_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.DECREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "3-2-", "312-", "3-21", "3-1-", "321-", "3-12", "32--", "321-",
                 "3123")),
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.DEPTH_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.INCREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "1-2-", "132-", "1-23", "1-3-", "123-", "1-32", "12--", "123-",
                 "1321")));
@@ -143,7 +143,7 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.BREADTH_FIRST,
             EntitySorterManner.NONE,
-            ValueSorterManner.DECREASING_STRENGTH,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "2---", "1---", "-3--", "-2--", "-1--", "--3-", "--2-", "--1-",
                 "----")),
@@ -151,14 +151,14 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.BREADTH_FIRST,
             EntitySorterManner.NONE,
-            ValueSorterManner.INCREASING_STRENGTH,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "2---", "3---", "-1--", "-2--", "-3--", "--1-", "--2-", "--3-",
                 "----")),
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.BREADTH_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
+            EntitySorterManner.DESCENDING,
             ValueSorterManner.NONE,
             Arrays.asList(
                 "----", "1---", "3---", "2---", "--1-", "--3-", "--2-", "-1--", "-3--", "-2--",
@@ -166,16 +166,16 @@ class BlackBoxExhaustiveSearchPhaseTest {
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.BREADTH_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.DECREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "2---", "1---", "--3-", "--2-", "--1-", "-3--", "-2--", "-1--",
                 "----")),
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.BREADTH_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.INCREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "2---", "3---", "--1-", "--2-", "--3-", "-1--", "-2--", "-3--",
                 "----")));
@@ -195,7 +195,7 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.SCORE_FIRST,
             EntitySorterManner.NONE,
-            ValueSorterManner.DECREASING_STRENGTH,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "32--", "321-", "32-1", "31--", "312-", "31-2", "3-2-", "312-",
                 "3213")),
@@ -203,14 +203,14 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.SCORE_FIRST,
             EntitySorterManner.NONE,
-            ValueSorterManner.INCREASING_STRENGTH,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "12--", "123-", "12-3", "13--", "132-", "13-2", "1-2-", "132-",
                 "1231")),
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.SCORE_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
+            EntitySorterManner.DESCENDING,
             ValueSorterManner.NONE,
             Arrays.asList(
                 "----", "1---", "1-3-", "123-", "1-32", "1-2-", "132-", "1-23", "13--", "132-",
@@ -218,16 +218,16 @@ class BlackBoxExhaustiveSearchPhaseTest {
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.SCORE_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.DECREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "3-2-", "312-", "3-21", "3-1-", "321-", "3-12", "32--", "321-",
                 "3123")),
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.SCORE_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.INCREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "1-2-", "132-", "1-23", "1-3-", "123-", "1-32", "12--", "123-",
                 "1321")));
@@ -247,7 +247,7 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.OPTIMISTIC_BOUND_FIRST,
             EntitySorterManner.NONE,
-            ValueSorterManner.DECREASING_STRENGTH,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "32--", "321-", "32-1", "31--", "312-", "31-2", "3-2-", "312-",
                 "3213")),
@@ -255,14 +255,14 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.OPTIMISTIC_BOUND_FIRST,
             EntitySorterManner.NONE,
-            ValueSorterManner.INCREASING_STRENGTH,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "12--", "123-", "12-3", "13--", "132-", "13-2", "1-2-", "132-",
                 "1231")),
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.OPTIMISTIC_BOUND_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
+            EntitySorterManner.DESCENDING,
             ValueSorterManner.NONE,
             Arrays.asList(
                 "----", "1---", "1-3-", "123-", "1-32", "1-2-", "132-", "1-23", "13--", "132-",
@@ -270,16 +270,16 @@ class BlackBoxExhaustiveSearchPhaseTest {
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.OPTIMISTIC_BOUND_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.DECREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "3-2-", "312-", "3-21", "3-1-", "321-", "3-12", "32--", "321-",
                 "3123")),
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.OPTIMISTIC_BOUND_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.INCREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "1-2-", "132-", "1-23", "1-3-", "123-", "1-32", "12--", "123-",
                 "1321")));
@@ -299,7 +299,7 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.ORIGINAL_ORDER,
             EntitySorterManner.NONE,
-            ValueSorterManner.DECREASING_STRENGTH,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "33--", "333-", "332-", "32--", "321-", "32-1", "31--", "312-",
                 "3321")),
@@ -307,14 +307,14 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.ORIGINAL_ORDER,
             EntitySorterManner.NONE,
-            ValueSorterManner.INCREASING_STRENGTH,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "11--", "111-", "112-", "12--", "123-", "12-3", "13--", "132-",
                 "1123")),
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.ORIGINAL_ORDER,
-            EntitySorterManner.DECREASING_DIFFICULTY,
+            EntitySorterManner.DESCENDING,
             ValueSorterManner.NONE,
             Arrays.asList(
                 "----", "1---", "1-1-", "111-", "131-", "1-3-", "123-", "1-32", "1-2-", "132-",
@@ -322,16 +322,16 @@ class BlackBoxExhaustiveSearchPhaseTest {
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.ORIGINAL_ORDER,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.DECREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "3-3-", "333-", "323-", "3-2-", "312-", "3-21", "3-1-", "321-",
                 "3231")),
         toObjectArray(
             ExhaustiveSearchType.BRANCH_AND_BOUND,
             NodeExplorationType.ORIGINAL_ORDER,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.INCREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "1-1-", "111-", "121-", "1-2-", "132-", "1-23", "1-3-", "123-",
                 "1213")));
@@ -355,7 +355,7 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRUTE_FORCE,
             null,
             EntitySorterManner.NONE,
-            ValueSorterManner.DECREASING_STRENGTH,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "33--", "333-", "332-", "331-", "33-3", "33-2", "33-1", "32--",
                 "3321")),
@@ -363,14 +363,14 @@ class BlackBoxExhaustiveSearchPhaseTest {
             ExhaustiveSearchType.BRUTE_FORCE,
             null,
             EntitySorterManner.NONE,
-            ValueSorterManner.INCREASING_STRENGTH,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "11--", "111-", "112-", "113-", "11-1", "11-2", "11-3", "12--",
                 "1123")),
         toObjectArray(
             ExhaustiveSearchType.BRUTE_FORCE,
             null,
-            EntitySorterManner.DECREASING_DIFFICULTY,
+            EntitySorterManner.DESCENDING,
             ValueSorterManner.NONE,
             Arrays.asList(
                 "----", "1---", "1-1-", "111-", "131-", "121-", "1-11", "1-13", "1-12", "1-3-",
@@ -378,16 +378,16 @@ class BlackBoxExhaustiveSearchPhaseTest {
         toObjectArray(
             ExhaustiveSearchType.BRUTE_FORCE,
             null,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.DECREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.DESCENDING,
             Arrays.asList(
                 "----", "3---", "3-3-", "333-", "323-", "313-", "3-33", "3-32", "3-31", "3-2-",
                 "3231")),
         toObjectArray(
             ExhaustiveSearchType.BRUTE_FORCE,
             null,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.INCREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.ASCENDING,
             Arrays.asList(
                 "----", "1---", "1-1-", "111-", "121-", "131-", "1-11", "1-12", "1-13", "1-2-",
                 "1213")));
@@ -398,26 +398,26 @@ class BlackBoxExhaustiveSearchPhaseTest {
         toObjectArray(
             ExhaustiveSearchType.BRUTE_FORCE,
             NodeExplorationType.DEPTH_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.DECREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.DESCENDING,
             null),
         toObjectArray(
             ExhaustiveSearchType.BRUTE_FORCE,
             NodeExplorationType.BREADTH_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.DECREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.DESCENDING,
             null),
         toObjectArray(
             ExhaustiveSearchType.BRUTE_FORCE,
             NodeExplorationType.SCORE_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.DECREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.DESCENDING,
             null),
         toObjectArray(
             ExhaustiveSearchType.BRUTE_FORCE,
             NodeExplorationType.OPTIMISTIC_BOUND_FIRST,
-            EntitySorterManner.DECREASING_DIFFICULTY,
-            ValueSorterManner.DECREASING_STRENGTH,
+            EntitySorterManner.DESCENDING,
+            ValueSorterManner.DESCENDING,
             null));
   }
 

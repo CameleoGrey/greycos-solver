@@ -3,17 +3,14 @@ package ai.greycos.solver.spring.boot.autoconfigure.invalid.type;
 import java.util.List;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
-import ai.greycos.solver.core.api.cotwin.variable.AnchorShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.CustomShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PiggybackShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
-import ai.greycos.solver.spring.boot.autoconfigure.invalid.VariableListener;
 
 public class InvalidFieldTestdataSpringEntity {
 
@@ -24,10 +21,7 @@ public class InvalidFieldTestdataSpringEntity {
 
   @PlanningListVariable private List<String> values;
 
-  @AnchorShadowVariable(sourceVariableName = "source")
   private String anchorShadow;
-
-  @CustomShadowVariable private String custom;
 
   @IndexShadowVariable(sourceVariableName = "source")
   private int indexShadow;
@@ -38,14 +32,16 @@ public class InvalidFieldTestdataSpringEntity {
   @NextElementShadowVariable(sourceVariableName = "source")
   private String next;
 
-  @PiggybackShadowVariable(shadowVariableName = "variable")
-  private String piggy;
-
   @PreviousElementShadowVariable(sourceVariableName = "source")
   private String previous;
 
-  @ShadowVariable(sourceVariableName = "source", variableListenerClass = VariableListener.class)
-  private String shadow;
+  @ShadowVariable(supplierName = "updateCustomShadow")
+  private String customShadow;
+
+  @ShadowSources("value")
+  public String updateCustomShadow() {
+    return "customShadow";
+  }
 
   // ************************************************************************
   // Getters/setters
@@ -83,14 +79,6 @@ public class InvalidFieldTestdataSpringEntity {
     this.anchorShadow = anchorShadow;
   }
 
-  public String getCustom() {
-    return custom;
-  }
-
-  public void setCustom(String custom) {
-    this.custom = custom;
-  }
-
   public int getIndexShadow() {
     return indexShadow;
   }
@@ -115,14 +103,6 @@ public class InvalidFieldTestdataSpringEntity {
     this.next = next;
   }
 
-  public String getPiggy() {
-    return piggy;
-  }
-
-  public void setPiggy(String piggy) {
-    this.piggy = piggy;
-  }
-
   public String getPrevious() {
     return previous;
   }
@@ -131,11 +111,11 @@ public class InvalidFieldTestdataSpringEntity {
     this.previous = previous;
   }
 
-  public String getShadow() {
-    return shadow;
+  public String getCustomShadow() {
+    return customShadow;
   }
 
-  public void setShadow(String shadow) {
-    this.shadow = shadow;
+  public void setCustomShadow(String customShadow) {
+    this.customShadow = customShadow;
   }
 }

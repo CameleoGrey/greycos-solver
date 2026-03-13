@@ -66,15 +66,15 @@ public final class Group0Mapping4CollectorBiNode<
 
   @Override
   protected QuadTuple<A, B, C, D> createOutTuple(Void groupKey) {
-    return new QuadTuple<>(null, null, null, null, outputStoreSize);
+    return QuadTuple.of(outputStoreSize);
   }
 
   @Override
   protected void updateOutTupleToResult(
       QuadTuple<A, B, C, D> outTuple, Quadruple<A, B, C, D> result) {
-    outTuple.factA = result.a();
-    outTuple.factB = result.b();
-    outTuple.factC = result.c();
-    outTuple.factD = result.d();
+    outTuple.setA(result.a());
+    outTuple.setB(result.b());
+    outTuple.setC(result.c());
+    outTuple.setD(result.d());
   }
 }

@@ -6,7 +6,7 @@ import ai.greycos.solver.core.impl.bavet.bi.MapBiToBiNode;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.DataNodeBuildHelper;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.bridge.AftBridgeBiEnumeratingStream;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.BiEnumeratingMapper;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsMapper;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -15,15 +15,15 @@ import org.jspecify.annotations.Nullable;
 final class BiMapBiEnumeratingStream<Solution_, A, B, NewA, NewB>
     extends AbstractBiEnumeratingStream<Solution_, NewA, NewB> {
 
-  private final BiEnumeratingMapper<Solution_, A, B, NewA> mappingFunctionA;
-  private final BiEnumeratingMapper<Solution_, A, B, NewB> mappingFunctionB;
+  private final BiNeighborhoodsMapper<Solution_, A, B, NewA> mappingFunctionA;
+  private final BiNeighborhoodsMapper<Solution_, A, B, NewB> mappingFunctionB;
   private @Nullable AftBridgeBiEnumeratingStream<Solution_, NewA, NewB> aftStream;
 
   public BiMapBiEnumeratingStream(
       EnumeratingStreamFactory<Solution_> enumeratingStreamFactory,
       AbstractBiEnumeratingStream<Solution_, A, B> parent,
-      BiEnumeratingMapper<Solution_, A, B, NewA> mappingFunctionA,
-      BiEnumeratingMapper<Solution_, A, B, NewB> mappingFunctionB) {
+      BiNeighborhoodsMapper<Solution_, A, B, NewA> mappingFunctionA,
+      BiNeighborhoodsMapper<Solution_, A, B, NewB> mappingFunctionB) {
     super(enumeratingStreamFactory, parent);
     this.mappingFunctionA = mappingFunctionA;
     this.mappingFunctionB = mappingFunctionB;

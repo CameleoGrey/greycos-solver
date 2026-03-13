@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.cotwin.valuerange.buildin;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import ai.greycos.solver.core.impl.cotwin.valuerange.AbstractCountableValueRange;
@@ -55,13 +55,13 @@ public final class EmptyValueRange<T> extends AbstractCountableValueRange<T> {
 
   @SuppressWarnings("unchecked")
   @Override
-  public Iterator<T> createRandomIterator(Random workingRandom) {
+  public Iterator<T> createRandomIterator(RandomGenerator workingRandom) {
     return (Iterator<T>) EmptyIterator.INSTANCE;
   }
 
   @Override
   public int hashCode() {
-    return 7; // All instances are equal.
+    return 0; // All instances are equal.
   }
 
   @Override

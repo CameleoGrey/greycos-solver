@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner;
@@ -96,7 +96,7 @@ class QueuedEntityPlacerFactoryTest {
     var configPolicy =
         buildHeuristicConfigPolicy(
             TestdataDifficultyWeightSolution.buildSolutionDescriptor(),
-            EntitySorterManner.DECREASING_DIFFICULTY_IF_AVAILABLE);
+            EntitySorterManner.DESCENDING_IF_AVAILABLE);
     QueuedEntityPlacerConfig placerConfig =
         QueuedEntityPlacerFactory.unfoldNew(configPolicy, List.of(primaryMoveSelectorConfig));
     var entityPlacer =
@@ -104,7 +104,7 @@ class QueuedEntityPlacerFactoryTest {
     var entitySelectorConfig = entityPlacer.buildEntitySelectorConfig(configPolicy);
     assertThat(entitySelectorConfig.getSelectionOrder()).isEqualTo(SelectionOrder.SORTED);
     assertThat(entitySelectorConfig.getSorterManner())
-        .isEqualTo(EntitySorterManner.DECREASING_DIFFICULTY_IF_AVAILABLE);
+        .isEqualTo(EntitySorterManner.DESCENDING_IF_AVAILABLE);
   }
 
   private TestdataMultiVarSolution generateTestdataSolution() {

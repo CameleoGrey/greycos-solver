@@ -3,8 +3,8 @@ package ai.greycos.solver.core.impl.localsearch.decider.acceptor.simulatedanneal
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
-import ai.greycos.solver.core.api.score.buildin.hardmediumsoft.HardMediumSoftScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.HardMediumSoftScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.AbstractAcceptorTest;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;

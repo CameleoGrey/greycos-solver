@@ -12,11 +12,6 @@
   <name>GreyCOS Solver Quarkus Benchmark - Deployment</name>
   <description>Quarkus deployment module for greycos-solver-quarkus-benchmark.</description>
   <url>https://github.com/CameleoGrey/greycos-solver</url>
-
-  <properties>
-    <java.module.name>ai.greycos.solver.quarkus.benchmark.deployment</java.module.name>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -25,10 +20,6 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-arc-deployment</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-awt-deployment</artifactId>
     </dependency>
     <dependency>
       <groupId>ai.greycos.solver</groupId>
@@ -57,11 +48,6 @@
     <dependency>
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>ai.greycos.solver</groupId>
-      <artifactId>greycos-solver-test</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

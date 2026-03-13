@@ -11,7 +11,7 @@ import ai.greycos.solver.core.testcotwin.common.TestSortableFactory;
 import ai.greycos.solver.core.testcotwin.common.TestSortableObject;
 import ai.greycos.solver.core.testcotwin.common.TestdataSortableValue;
 
-@PlanningEntity(difficultyWeightFactoryClass = TestSortableFactory.class)
+@PlanningEntity(comparatorFactoryClass = TestSortableFactory.class)
 public class TestdataFactorySortableEntityProvidingEntity extends TestdataObject
     implements TestSortableObject {
 

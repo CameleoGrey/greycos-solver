@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>ai.greycos.solver</groupId>
+    <artifactId>greycos-solver-build-parent</artifactId>
+    <version>999-SNAPSHOT</version>
+    <relativePath>../../build/build-parent/pom.xml</relativePath>
+  </parent>
+
+  <artifactId>greycos-solver-benchmark-aggregator</artifactId>
+
+  <name>GreyCOS Solver Benchmark Aggregator</name>
+  <description>
+    GreyCOS solves planning problems.
+    This lightweight, embeddable planning engine implements powerful and scalable algorithms
+    to optimize business resource scheduling and planning.
+
+    This module contains the benchmark aggregator,
+    building blocks of a desktop application that would allow to merge different benchmark reports.
+    This module is not covered by our backwards compatibility promise.
+  </description>
+  <url>https://github.com/CameleoGrey/greycos-solver</url>
+  <dependencies>
+    <dependency>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-benchmark</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <java.awt.headless>true</java.awt.headless>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

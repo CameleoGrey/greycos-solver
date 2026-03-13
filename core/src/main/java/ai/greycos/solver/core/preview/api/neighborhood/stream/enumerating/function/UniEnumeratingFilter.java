@@ -1,13 +1,9 @@
 package ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function;
 
-import java.util.function.BiPredicate;
-import java.util.function.Predicate;
-
-import ai.greycos.solver.core.preview.api.move.SolutionView;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.function.UniNeighborhoodsPredicate;
 
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 
 /**
  * A filter that can be applied to a {@link UniEnumeratingStream} to filter out pairs of data,
@@ -18,18 +14,4 @@ import org.jspecify.annotations.Nullable;
  */
 @NullMarked
 public interface UniEnumeratingFilter<Solution_, A>
-    extends BiPredicate<SolutionView<Solution_>, A> {
-
-  @Override
-  boolean test(SolutionView<Solution_> solutionView, @Nullable A a);
-
-  @Override
-  default UniEnumeratingFilter<Solution_, A> and(
-      BiPredicate<? super SolutionView<Solution_>, ? super A> other) {
-    return (UniEnumeratingFilter<Solution_, A>) BiPredicate.super.and(other);
-  }
-
-  default Predicate<A> toPredicate(SolutionView<Solution_> solutionView) {
-    return a -> test(solutionView, a);
-  }
-}
+    extends UniNeighborhoodsPredicate<Solution_, A> {}

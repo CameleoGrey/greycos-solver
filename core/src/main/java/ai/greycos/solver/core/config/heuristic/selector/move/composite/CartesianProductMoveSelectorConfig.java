@@ -17,9 +17,6 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarChang
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainChangeMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainSwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.TailChainSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
@@ -77,12 +74,6 @@ public class CartesianProductMoveSelectorConfig
         name = ListMultistageMoveSelectorConfig.XML_ELEMENT_NAME,
         type = ListMultistageMoveSelectorConfig.class),
     @XmlElement(
-        name = SubChainChangeMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = SubChainChangeMoveSelectorConfig.class),
-    @XmlElement(
-        name = SubChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = SubChainSwapMoveSelectorConfig.class),
-    @XmlElement(
         name = SubListChangeMoveSelectorConfig.XML_ELEMENT_NAME,
         type = SubListChangeMoveSelectorConfig.class),
     @XmlElement(
@@ -91,9 +82,6 @@ public class CartesianProductMoveSelectorConfig
     @XmlElement(
         name = SwapMoveSelectorConfig.XML_ELEMENT_NAME,
         type = SwapMoveSelectorConfig.class),
-    @XmlElement(
-        name = TailChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = TailChainSwapMoveSelectorConfig.class),
     @XmlElement(
         name = UnionMoveSelectorConfig.XML_ELEMENT_NAME,
         type = UnionMoveSelectorConfig.class)
@@ -111,24 +99,6 @@ public class CartesianProductMoveSelectorConfig
   public CartesianProductMoveSelectorConfig(
       @NonNull List<@NonNull MoveSelectorConfig> moveSelectorConfigList) {
     this.moveSelectorConfigList = moveSelectorConfigList;
-  }
-
-  /**
-   * @deprecated Prefer {@link #getMoveSelectorList()}.
-   * @return sometimes null
-   */
-  @Deprecated
-  public List<MoveSelectorConfig> getMoveSelectorConfigList() {
-    return getMoveSelectorList();
-  }
-
-  /**
-   * @deprecated Prefer {@link #setMoveSelectorList(List)}.
-   * @param moveSelectorConfigList sometimes null
-   */
-  @Deprecated
-  public void setMoveSelectorConfigList(List<MoveSelectorConfig> moveSelectorConfigList) {
-    setMoveSelectorList(moveSelectorConfigList);
   }
 
   public @Nullable List<@NonNull MoveSelectorConfig> getMoveSelectorList() {

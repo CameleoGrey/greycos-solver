@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.config.heuristic.selector.move;
 
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 
@@ -19,5 +19,6 @@ public interface NearbyAutoConfigurationEnabled<Config_ extends MoveSelectorConf
    * @return new instance with the Nearby Selection settings properly configured
    */
   @NonNull Config_ enableNearbySelection(
-      @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter, @NonNull Random random);
+      @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
+      @NonNull RandomGenerator random);
 }

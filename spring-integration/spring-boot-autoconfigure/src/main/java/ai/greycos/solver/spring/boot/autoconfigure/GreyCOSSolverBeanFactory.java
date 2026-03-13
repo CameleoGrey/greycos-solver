@@ -3,11 +3,13 @@ package ai.greycos.solver.spring.boot.autoconfigure;
 import java.util.function.BiFunction;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.ScoreManager;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintMetaModel;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier;
+import ai.greycos.solver.core.api.score.stream.test.MultiConstraintVerification;
+import ai.greycos.solver.core.api.score.stream.test.SingleConstraintVerification;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
@@ -19,9 +21,6 @@ import ai.greycos.solver.core.impl.solver.DefaultSolverFactory;
 import ai.greycos.solver.jackson.api.GreyCOSJacksonModule;
 import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
 import ai.greycos.solver.spring.boot.autoconfigure.config.SolverManagerProperties;
-import ai.greycos.solver.test.api.score.stream.ConstraintVerifier;
-import ai.greycos.solver.test.api.score.stream.MultiConstraintVerification;
-import ai.greycos.solver.test.api.score.stream.SingleConstraintVerification;
 
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.BeansException;
@@ -95,8 +94,7 @@ public class GreyCOSSolverBeanFactory implements ApplicationContextAware, Enviro
   @Bean
   @Lazy
   @ConditionalOnMissingBean
-  public <Solution_, ProblemId_> SolverManager<Solution_, ProblemId_> solverManager(
-      SolverFactory solverFactory) {
+  public <Solution_> SolverManager<Solution_> solverManager(SolverFactory solverFactory) {
     // TODO supply ThreadFactory
     if (solverFactory == null) {
       return null;
@@ -108,19 +106,6 @@ public class GreyCOSSolverBeanFactory implements ApplicationContextAware, Enviro
       solverManagerConfig.setParallelSolverCount(solverManagerProperties.getParallelSolverCount());
     }
     return SolverManager.create(solverFactory, solverManagerConfig);
-  }
-
-  @Bean
-  @Lazy
-  @ConditionalOnMissingBean
-  @Deprecated(forRemoval = true)
-  /**
-   * @deprecated Use {@link SolutionManager} instead.
-   */
-  public <Solution_, Score_ extends Score<Score_>> ScoreManager<Solution_, Score_> scoreManager() {
-    failInjectionWithMultipleSolvers(ScoreManager.class.getName());
-    SolverFactory<Solution_> solverFactory = context.getBean(SolverFactory.class);
-    return ScoreManager.create(solverFactory);
   }
 
   @Bean
@@ -184,7 +169,6 @@ public class GreyCOSSolverBeanFactory implements ApplicationContextAware, Enviro
 
     @Bean
     @Lazy
-    @SuppressWarnings("unchecked")
     <ConstraintProvider_ extends ConstraintProvider, SolutionClass_>
         ConstraintVerifier<ConstraintProvider_, SolutionClass_> constraintVerifier() {
       // Using SolverConfig as an injected parameter here leads to an injection failure on an empty

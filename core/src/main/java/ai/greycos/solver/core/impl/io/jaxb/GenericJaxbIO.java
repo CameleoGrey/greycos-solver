@@ -4,13 +4,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.Writer;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -39,8 +36,6 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -49,9 +44,8 @@ import org.xml.sax.SAXException;
 import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
 
-public final class GenericJaxbIO<T> implements JaxbIO<T> {
+public final class GenericJaxbIO<T> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(GenericJaxbIO.class);
   private static final int DEFAULT_INDENTATION = 2;
 
   private static final String ERR_MSG_WRITE =
@@ -88,7 +82,56 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
     }
   }
 
-  @Override
+  public static DocumentBuilderFactory createDocumentBuilderFactory() {
+    try {
+      var factory = DocumentBuilderFactory.newInstance();
+      factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+      factory.setXIncludeAware(false);
+      factory.setNamespaceAware(true);
+      return factory;
+    } catch (ParserConfigurationException e) {
+      throw new IllegalArgumentException(
+          "Failed to create a secure %s instance."
+              .formatted(DocumentBuilderFactory.class.getSimpleName()),
+          e);
+    }
+  }
+
+  public static TransformerFactory createTransformerFactory() {
+    var factory = TransformerFactory.newInstance();
+    factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+    factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+    return factory;
+  }
+
+  public static SchemaFactory createSchemaFactory(Class<?> rootClass, String schemaResource) {
+    var schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+    try {
+      schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+      schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+      return schemaFactory;
+    } catch (SAXNotSupportedException | SAXNotRecognizedException saxException) {
+      throw new GreyCOSXmlSerializationException(
+          "Failed to configure the %s to validate an XML for a root class (%s) using the (%s) XML Schema."
+              .formatted(SchemaFactory.class.getSimpleName(), rootClass.getName(), schemaResource),
+          saxException);
+    }
+  }
+
+  public static Validator createValidator(Schema schema, Class<?> rootClass) {
+    try {
+      var validator = schema.newValidator();
+      validator.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+      validator.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+      return validator;
+    } catch (SAXNotSupportedException | SAXNotRecognizedException saxException) {
+      throw new GreyCOSXmlSerializationException(
+          "Failed to configure the %s to validate an XML for a root class (%s)."
+              .formatted(Validator.class.getSimpleName(), rootClass.getName()),
+          saxException);
+    }
+  }
+
   public T read(Reader reader) {
     Objects.requireNonNull(reader);
     try {
@@ -110,34 +153,24 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
   }
 
   private Schema readSchemaResource(String schemaResource) {
-    String nonNullSchemaResource = Objects.requireNonNull(schemaResource);
-    URL schemaResourceUrl = GenericJaxbIO.class.getResource(nonNullSchemaResource);
+    Objects.requireNonNull(schemaResource);
+    var schemaResourceUrl = GenericJaxbIO.class.getResource(schemaResource);
     if (schemaResourceUrl == null) {
       throw new IllegalArgumentException(
           "The XML schema ("
-              + nonNullSchemaResource
+              + schemaResource
               + ") does not exist.\n"
               + "Maybe build the sources with Maven first?");
     }
-    SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-    try {
-      schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-      schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
-    } catch (SAXNotSupportedException | SAXNotRecognizedException saxException) {
-      String errorMessage =
-          String.format(
-              "Failed to configure the %s to validate an XML for a root class (%s) using the (%s) XML Schema.",
-              SchemaFactory.class.getSimpleName(), rootClass.getName(), schemaResource);
-      throw new GreyCOSXmlSerializationException(errorMessage, saxException);
-    }
 
     try {
+      SchemaFactory schemaFactory = createSchemaFactory(rootClass, schemaResource);
       return schemaFactory.newSchema(schemaResourceUrl);
     } catch (SAXException saxException) {
       String errorMessage =
           String.format(
               "Failed to read an XML Schema resource (%s) to validate an XML for a root class (%s).",
-              nonNullSchemaResource, rootClass.getName());
+              schemaResource, rootClass.getName());
       throw new GreyCOSXmlSerializationException(errorMessage, saxException);
     }
   }
@@ -234,23 +267,15 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
   }
 
   public Document parseXml(Reader reader) {
-    DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
-    documentBuilderFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
-    documentBuilderFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-    documentBuilderFactory.setNamespaceAware(true);
-    DocumentBuilder builder;
-    try {
-      builder = documentBuilderFactory.newDocumentBuilder();
+    try (Reader nonNullReader = Objects.requireNonNull(reader)) {
+      DocumentBuilder builder = createDocumentBuilderFactory().newDocumentBuilder();
+      return builder.parse(new InputSource(nonNullReader));
     } catch (ParserConfigurationException e) {
       String errorMessage =
           String.format(
               "Failed to create a %s instance to parse an XML for a root class (%s).",
               DocumentBuilder.class.getSimpleName(), rootClass.getName());
       throw new GreyCOSXmlSerializationException(errorMessage, e);
-    }
-
-    try (Reader nonNullReader = Objects.requireNonNull(reader)) {
-      return builder.parse(new InputSource(nonNullReader));
     } catch (SAXException saxException) {
       String errorMessage =
           String.format("Failed to parse an XML for a root class (%s).", rootClass.getName());
@@ -280,7 +305,7 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
   }
 
   public void validate(Document document, Schema schema) {
-    Validator validator = Objects.requireNonNull(schema).newValidator();
+    Validator validator = createValidator(Objects.requireNonNull(schema), rootClass);
     try {
       validator.validate(new DOMSource(Objects.requireNonNull(document)));
     } catch (SAXException saxException) {
@@ -298,7 +323,6 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
     }
   }
 
-  @Override
   public void write(T root, Writer writer) {
     write(root, writer, null);
   }
@@ -335,14 +359,8 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
   }
 
   private void formatXml(DOMResult domResult, Source transformationTemplate, Writer writer) {
-    /*
-     * The code is not vulnerable to XXE-based attacks as it does not process any external XML nor XSL input.
-     * Should the transformerFactory be used for such purposes, it has to be appropriately secured:
-     * https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A4-XML_External_Entities_(XXE)
-     */
-    @SuppressWarnings({"java:S2755", "java:S4435"})
-    TransformerFactory transformerFactory = TransformerFactory.newInstance();
     try {
+      TransformerFactory transformerFactory = createTransformerFactory();
       Transformer transformer =
           transformationTemplate == null
               ? transformerFactory.newTransformer()
@@ -361,29 +379,28 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
   private Document overrideNamespaces(
       Document document, ElementNamespaceOverride... elementNamespaceOverrides) {
     Document nonNullDocument = Objects.requireNonNull(document);
-    final Map<String, String> elementNamespaceOverridesMap = new HashMap<>();
+    var elementNamespaceOverridesMap = new HashMap<String, String>();
     for (ElementNamespaceOverride namespaceOverride :
         Objects.requireNonNull(elementNamespaceOverrides)) {
       elementNamespaceOverridesMap.put(
-          namespaceOverride.getElementLocalName(), namespaceOverride.getNamespaceOverride());
+          namespaceOverride.elementLocalName(), namespaceOverride.namespaceOverride());
     }
 
-    final Deque<NamespaceOverride> preOrderNodes = new LinkedList<>();
+    var preOrderNodes = new LinkedList<NamespaceOverride>();
     preOrderNodes.push(new NamespaceOverride(nonNullDocument.getDocumentElement(), null));
     while (!preOrderNodes.isEmpty()) {
       NamespaceOverride currentNodeOverride = preOrderNodes.pop();
-      Node currentNode = currentNodeOverride.node;
+      Node currentNode = currentNodeOverride.node();
       final String elementLocalName =
           currentNode.getLocalName() == null
               ? currentNode.getNodeName()
               : currentNode.getLocalName();
 
-      // Is there any override defined for the current node?
       String detectedNamespaceOverride = elementNamespaceOverridesMap.get(elementLocalName);
       String effectiveNamespaceOverride =
           detectedNamespaceOverride != null
               ? detectedNamespaceOverride
-              : currentNodeOverride.namespace;
+              : currentNodeOverride.namespace();
 
       if (effectiveNamespaceOverride != null) {
         nonNullDocument.renameNode(currentNode, effectiveNamespaceOverride, elementLocalName);
@@ -413,13 +430,5 @@ public final class GenericJaxbIO<T> implements JaxbIO<T> {
     }
   }
 
-  private static final class NamespaceOverride {
-    private final Node node;
-    private final String namespace;
-
-    private NamespaceOverride(Node node, String namespace) {
-      this.node = node;
-      this.namespace = namespace;
-    }
-  }
+  private record NamespaceOverride(Node node, String namespace) {}
 }

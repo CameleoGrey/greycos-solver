@@ -13,7 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.heuristic.selector.entity.pillar.SubPillarConfigPolicy;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;

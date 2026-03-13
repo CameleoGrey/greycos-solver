@@ -1,11 +1,12 @@
 package ai.greycos.solver.core.impl.score.stream.common.inliner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Collections;
 import java.util.Map;
 
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
@@ -26,18 +27,18 @@ class HardSoftScoreInlinerTest
   void impactHard() {
     var constraintWeight = HardSoftScore.ofHard(90);
     var impacter = buildScoreImpacter(constraintWeight);
-    var scoreInliner = (AbstractScoreInliner<HardSoftScore>) impacter.getContext().parent;
+    var scoreInliner = (AbstractScoreInliner<HardSoftScore>) impacter.getContext().inliner;
 
-    var undo1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    var impact1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(90, 0));
 
-    var undo2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
+    var impact2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(270, 0));
 
-    undo2.run();
+    impact2.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(90, 0));
 
-    undo1.run();
+    impact1.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(0, 0));
   }
 
@@ -45,18 +46,18 @@ class HardSoftScoreInlinerTest
   void impactSoft() {
     var constraintWeight = HardSoftScore.ofSoft(90);
     var impacter = buildScoreImpacter(constraintWeight);
-    var scoreInliner = (AbstractScoreInliner<HardSoftScore>) impacter.getContext().parent;
+    var scoreInliner = (AbstractScoreInliner<HardSoftScore>) impacter.getContext().inliner;
 
-    var undo1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    var impact1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(0, 90));
 
-    var undo2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
+    var impact2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(0, 270));
 
-    undo2.run();
+    impact2.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(0, 90));
 
-    undo1.run();
+    impact1.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(0, 0));
   }
 
@@ -64,19 +65,37 @@ class HardSoftScoreInlinerTest
   void impactAll() {
     var constraintWeight = HardSoftScore.of(10, 100);
     var impacter = buildScoreImpacter(constraintWeight);
-    var scoreInliner = (AbstractScoreInliner<HardSoftScore>) impacter.getContext().parent;
+    var scoreInliner = (AbstractScoreInliner<HardSoftScore>) impacter.getContext().inliner;
 
-    var undo1 = impacter.impactScore(10, ConstraintMatchSupplier.empty());
+    var impact1 = impacter.impactScore(10, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(100, 1_000));
 
-    var undo2 = impacter.impactScore(20, ConstraintMatchSupplier.empty());
+    var impact2 = impacter.impactScore(20, ConstraintMatchSupplier.empty());
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(300, 3_000));
 
-    undo2.run();
+    impact2.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(100, 1_000));
 
-    undo1.run();
+    impact1.undo();
     assertThat(scoreInliner.extractScore()).isEqualTo(HardSoftScore.of(0, 0));
+  }
+
+  @Test
+  void impactAllMatchWeightOverflow() {
+    var constraintWeight = HardSoftScore.of(10, 100);
+    var impacter = buildScoreImpacter(constraintWeight);
+    assertThatThrownBy(
+            () -> impacter.impactScore(Integer.MAX_VALUE, ConstraintMatchSupplier.empty()))
+        .isInstanceOf(ArithmeticException.class);
+  }
+
+  @Test
+  void impactAllTotalOverflow() {
+    var constraintWeight = HardSoftScore.of(Integer.MAX_VALUE, Integer.MAX_VALUE);
+    var impacter = buildScoreImpacter(constraintWeight);
+    impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    assertThatThrownBy(() -> impacter.impactScore(1, ConstraintMatchSupplier.empty()))
+        .isInstanceOf(ArithmeticException.class);
   }
 
   @Override

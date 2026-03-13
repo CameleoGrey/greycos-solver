@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.bavet.common;
 
 import java.util.function.Supplier;
 
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.score.stream.bavet.common.BavetPrecomputeBuildHelper;
 
@@ -10,7 +10,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @NullMarked
-public abstract class AbstractPrecomputeNode<Tuple_ extends AbstractTuple> extends AbstractNode
+public abstract class AbstractPrecomputeNode<Tuple_ extends Tuple> extends AbstractNode
     implements BavetRootNode<Object> {
   private final RecordAndReplayPropagator<Tuple_> recordAndReplayPropagator;
   private final Class<?>[] sourceClasses;
@@ -23,6 +23,11 @@ public abstract class AbstractPrecomputeNode<Tuple_ extends AbstractTuple> exten
         new RecordAndReplayPropagator<>(
             precomputeBuildHelperSupplier, this::remapTuple, nextNodesTupleLifecycle);
     this.sourceClasses = sourceClasses;
+  }
+
+  @Override
+  public StreamKind getStreamKind() {
+    return StreamKind.PRECOMPUTE;
   }
 
   @Override

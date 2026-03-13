@@ -4,14 +4,14 @@ import java.util.Collection;
 import java.util.Collections;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * Makes no changes.
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
-public final class NoChangeMove<Solution_> extends AbstractMove<Solution_> {
+public class NoChangeMove<Solution_> extends AbstractMove<Solution_> {
 
   public static final NoChangeMove<?> INSTANCE = new NoChangeMove<>();
 
@@ -19,7 +19,7 @@ public final class NoChangeMove<Solution_> extends AbstractMove<Solution_> {
     return (NoChangeMove<Solution_>) INSTANCE;
   }
 
-  private NoChangeMove() {
+  NoChangeMove() {
     // No external instances allowed.
   }
 

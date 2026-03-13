@@ -7,6 +7,7 @@ import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.calculator.ConstraintMatchAwareIncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirectorFactory;
@@ -26,7 +27,9 @@ public final class IncrementalScoreDirectorFactory<Solution_, Score_ extends Sco
 
   public static <Solution_, Score_ extends Score<Score_>>
       IncrementalScoreDirectorFactory<Solution_, Score_> buildScoreDirectorFactory(
-          SolutionDescriptor<Solution_> solutionDescriptor, ScoreDirectorFactoryConfig config) {
+          SolutionDescriptor<Solution_> solutionDescriptor,
+          ScoreDirectorFactoryConfig config,
+          EnvironmentMode environmentMode) {
     if (!IncrementalScoreCalculator.class.isAssignableFrom(
         config.getIncrementalScoreCalculatorClass())) {
       throw new IllegalArgumentException(
@@ -49,7 +52,14 @@ public final class IncrementalScoreDirectorFactory<Solution_, Score_ extends Sco
               config.getIncrementalScoreCalculatorCustomProperties(),
               "incrementalScoreCalculatorCustomProperties");
           return incrementalScoreCalculator;
-        });
+        },
+        environmentMode);
+  }
+
+  public static <Solution_, Score_ extends Score<Score_>>
+      IncrementalScoreDirectorFactory<Solution_, Score_> buildScoreDirectorFactory(
+          SolutionDescriptor<Solution_> solutionDescriptor, ScoreDirectorFactoryConfig config) {
+    return buildScoreDirectorFactory(solutionDescriptor, config, null);
   }
 
   private final Supplier<IncrementalScoreCalculator<Solution_, Score_>>
@@ -57,9 +67,16 @@ public final class IncrementalScoreDirectorFactory<Solution_, Score_ extends Sco
 
   public IncrementalScoreDirectorFactory(
       SolutionDescriptor<Solution_> solutionDescriptor,
-      Supplier<IncrementalScoreCalculator<Solution_, Score_>> incrementalScoreCalculatorSupplier) {
-    super(solutionDescriptor);
+      Supplier<IncrementalScoreCalculator<Solution_, Score_>> incrementalScoreCalculatorSupplier,
+      EnvironmentMode environmentMode) {
+    super(solutionDescriptor, environmentMode);
     this.incrementalScoreCalculatorSupplier = incrementalScoreCalculatorSupplier;
+  }
+
+  public IncrementalScoreDirectorFactory(
+      SolutionDescriptor<Solution_> solutionDescriptor,
+      Supplier<IncrementalScoreCalculator<Solution_, Score_>> incrementalScoreCalculatorSupplier) {
+    this(solutionDescriptor, incrementalScoreCalculatorSupplier, null);
   }
 
   @Override

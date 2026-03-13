@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.Objects;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 /**
  * Abstract superclass for {@link Move}, suggested starting point to implement undo moves.

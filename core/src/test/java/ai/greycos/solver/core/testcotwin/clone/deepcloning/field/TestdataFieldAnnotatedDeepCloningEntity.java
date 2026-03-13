@@ -7,10 +7,8 @@ import java.util.Map;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.cloner.DeepPlanningClone;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
-import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.testcotwin.DummyVariableListener;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 
@@ -31,13 +29,9 @@ public class TestdataFieldAnnotatedDeepCloningEntity extends TestdataObject {
   @PlanningVariable(valueRangeProviderRefs = "valueRange")
   private TestdataValue value;
 
-  @DeepPlanningClone
-  @ShadowVariable(variableListenerClass = DummyVariableListener.class, sourceVariableName = "value")
-  private List<String> shadowVariableList;
+  @DeepPlanningClone private List<String> shadowVariableList;
 
-  @DeepPlanningClone
-  @ShadowVariable(variableListenerClass = DummyVariableListener.class, sourceVariableName = "value")
-  private Map<String, String> shadowVariableMap;
+  @DeepPlanningClone private Map<String, String> shadowVariableMap;
 
   @DeepPlanningClone private Map<List<String>, String> stringListToStringMap = new HashMap<>();
 

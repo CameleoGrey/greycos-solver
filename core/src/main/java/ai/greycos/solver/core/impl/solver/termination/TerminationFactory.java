@@ -50,15 +50,8 @@ public final class TerminationFactory<Solution_> {
   @SuppressWarnings("unchecked")
   public <Score_ extends Score<Score_>> @Nullable Termination<Solution_> buildTermination(
       HeuristicConfigPolicy<Solution_> configPolicy) {
-    List<Termination<Solution_>> terminationList = new ArrayList<>();
-    if (terminationConfig.getTerminationClass() != null) {
-      Termination<Solution_> termination =
-          ConfigUtils.newInstance(
-              terminationConfig, "terminationClass", terminationConfig.getTerminationClass());
-      terminationList.add(termination);
-    }
-
-    terminationList.addAll(buildTimeBasedTermination(configPolicy));
+    List<Termination<Solution_>> terminationList =
+        new ArrayList<>(buildTimeBasedTermination(configPolicy));
 
     if (terminationConfig.getBestScoreLimit() != null) {
       ScoreDefinition<Score_> scoreDefinition = configPolicy.getScoreDefinition();
@@ -178,16 +171,19 @@ public final class TerminationFactory<Solution_> {
   @SuppressWarnings("unchecked")
   @Nullable Termination<Solution_> buildTerminationFromList(
       List<Termination<Solution_>> terminationList) {
-    if (terminationList.size() == 1) {
-      return terminationList.get(0);
-    }
-    var terminationArray = terminationList.toArray(new Termination[0]);
-    var compositionStyle =
-        Objects.requireNonNullElse(
-            terminationConfig.getTerminationCompositionStyle(), TerminationCompositionStyle.OR);
-    return switch (compositionStyle) {
-      case AND -> UniversalTermination.and(terminationArray);
-      case OR -> UniversalTermination.or(terminationArray);
+    return switch (terminationList.size()) {
+      case 0 -> null;
+      case 1 -> terminationList.getFirst();
+      default -> {
+        var terminationArray = terminationList.toArray(new Termination[0]);
+        var compositionStyle =
+            Objects.requireNonNullElse(
+                terminationConfig.getTerminationCompositionStyle(), TerminationCompositionStyle.OR);
+        yield switch (compositionStyle) {
+          case AND -> UniversalTermination.and(terminationArray);
+          case OR -> UniversalTermination.or(terminationArray);
+        };
+      }
     };
   }
 }

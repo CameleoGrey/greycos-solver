@@ -256,6 +256,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       SolverTermination<Solution_> solverTermination) {
     var localSearchConfig = new LocalSearchPhaseConfig();
     localSearchConfig.setLocalSearchType(islandModelConfig.getLocalSearchType());
+    localSearchConfig.setMoveThreadCount(islandModelConfig.getMoveThreadCount());
 
     var moveSelectorConfig = islandModelConfig.getMoveSelectorConfig();
     if (moveSelectorConfig != null) {
@@ -278,8 +279,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     if (terminationConfig != null) {
       localSearchConfig.setTerminationConfig(terminationConfig.copyConfig());
     }
-
-    localSearchConfig.setMoveThreadCount(islandModelConfig.getMoveThreadCount());
 
     return PhaseFactory.buildPhases(
         List.of(localSearchConfig), agentConfigPolicy, bestSolutionRecaller, solverTermination);
@@ -317,8 +316,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         .withEntitySorterManner(basePolicy.getEntitySorterManner())
         .withValueSorterManner(basePolicy.getValueSorterManner())
         .withReinitializeVariableFilterEnabled(basePolicy.isReinitializeVariableFilterEnabled())
-        .withInitializedChainedValueFilterEnabled(
-            basePolicy.isInitializedChainedValueFilterEnabled())
         .withUnassignedValuesAllowed(basePolicy.isUnassignedValuesAllowed())
         .build();
   }

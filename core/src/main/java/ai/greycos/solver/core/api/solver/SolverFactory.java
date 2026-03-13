@@ -7,7 +7,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.impl.solver.DefaultSolverFactory;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -21,6 +21,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
+@NullMarked
 public interface SolverFactory<Solution_> {
 
   // ************************************************************************
@@ -36,8 +37,7 @@ public interface SolverFactory<Solution_> {
    * @return subsequent changes to the config have no effect on the returned instance
    * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
    */
-  static <Solution_> @NonNull SolverFactory<Solution_> createFromXmlResource(
-      @NonNull String solverConfigResource) {
+  static <Solution_> SolverFactory<Solution_> createFromXmlResource(String solverConfigResource) {
     SolverConfig solverConfig = SolverConfig.createFromXmlResource(solverConfigResource);
     return new DefaultSolverFactory<>(solverConfig);
   }
@@ -52,8 +52,8 @@ public interface SolverFactory<Solution_> {
    * @return subsequent changes to the config have no effect on the returned instance
    * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
    */
-  static <Solution_> @NonNull SolverFactory<Solution_> createFromXmlResource(
-      @NonNull String solverConfigResource, @Nullable ClassLoader classLoader) {
+  static <Solution_> SolverFactory<Solution_> createFromXmlResource(
+      String solverConfigResource, @Nullable ClassLoader classLoader) {
     SolverConfig solverConfig =
         SolverConfig.createFromXmlResource(solverConfigResource, classLoader);
     return new DefaultSolverFactory<>(solverConfig);
@@ -69,8 +69,7 @@ public interface SolverFactory<Solution_> {
    * @return subsequent changes to the config have no effect on the returned instance
    * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
    */
-  static <Solution_> @NonNull SolverFactory<Solution_> createFromXmlFile(
-      @NonNull File solverConfigFile) {
+  static <Solution_> SolverFactory<Solution_> createFromXmlFile(File solverConfigFile) {
     SolverConfig solverConfig = SolverConfig.createFromXmlFile(solverConfigFile);
     return new DefaultSolverFactory<>(solverConfig);
   }
@@ -83,8 +82,8 @@ public interface SolverFactory<Solution_> {
    * @return subsequent changes to the config have no effect on the returned instance
    * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
    */
-  static <Solution_> @NonNull SolverFactory<Solution_> createFromXmlFile(
-      @NonNull File solverConfigFile, @Nullable ClassLoader classLoader) {
+  static <Solution_> SolverFactory<Solution_> createFromXmlFile(
+      File solverConfigFile, @Nullable ClassLoader classLoader) {
     SolverConfig solverConfig = SolverConfig.createFromXmlFile(solverConfigFile, classLoader);
     return new DefaultSolverFactory<>(solverConfig);
   }
@@ -100,7 +99,7 @@ public interface SolverFactory<Solution_> {
    * @return subsequent changes to the config have no effect on the returned instance
    * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
    */
-  static <Solution_> @NonNull SolverFactory<Solution_> create(@NonNull SolverConfig solverConfig) {
+  static <Solution_> SolverFactory<Solution_> create(SolverConfig solverConfig) {
     Objects.requireNonNull(solverConfig);
     // Defensive copy of solverConfig, because the DefaultSolverFactory doesn't internalize it yet
     solverConfig = new SolverConfig(solverConfig);
@@ -112,7 +111,7 @@ public interface SolverFactory<Solution_> {
   // ************************************************************************
 
   /** Creates a new {@link Solver} instance. */
-  default @NonNull Solver<Solution_> buildSolver() {
+  default Solver<Solution_> buildSolver() {
     return this.buildSolver(new SolverConfigOverride<>());
   }
 
@@ -121,5 +120,5 @@ public interface SolverFactory<Solution_> {
    *
    * @param configOverride includes settings that override the default configuration
    */
-  @NonNull Solver<Solution_> buildSolver(@NonNull SolverConfigOverride<Solution_> configOverride);
+  Solver<Solution_> buildSolver(SolverConfigOverride<Solution_> configOverride);
 }

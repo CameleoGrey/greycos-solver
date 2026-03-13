@@ -9,9 +9,8 @@ import java.util.concurrent.ExecutionException;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.score.ScoreManager;
-import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverJob;
@@ -47,14 +46,13 @@ class GreyCOSProcessorGizmoKitchenSinkTest {
                           DummyVariableListener.class));
 
   @Inject SolverFactory<TestDataKitchenSinkSolution> solverFactory;
-  @Inject SolverManager<TestDataKitchenSinkSolution, Long> solverManager;
-  @Inject ScoreManager<TestDataKitchenSinkSolution, SimpleScore> scoreManager;
+  @Inject SolverManager<TestDataKitchenSinkSolution> solverManager;
   @Inject SolutionManager<TestDataKitchenSinkSolution, SimpleScore> solutionManager;
 
   @Test
   void singletonSolverFactory() {
     assertNotNull(solverFactory);
-    assertNotNull(scoreManager);
+    assertNotNull(solutionManager);
     // There is only one ScoreDirectorFactory instance
     assertSame(
         ((DefaultSolverFactory<?>) solverFactory).getScoreDirectorFactory(),
@@ -63,8 +61,7 @@ class GreyCOSProcessorGizmoKitchenSinkTest {
     // There is only one SolverFactory instance
     assertSame(
         solverFactory,
-        ((DefaultSolverManager<TestDataKitchenSinkSolution, Long>) solverManager)
-            .getSolverFactory());
+        ((DefaultSolverManager<TestDataKitchenSinkSolution>) solverManager).getSolverFactory());
   }
 
   @Test
@@ -75,9 +72,9 @@ class GreyCOSProcessorGizmoKitchenSinkTest {
             Collections.emptyList(),
             "Test",
             Collections.emptyList(),
-            HardSoftLongScore.ZERO);
+            HardSoftScore.ZERO);
 
-    SolverJob<TestDataKitchenSinkSolution, Long> solverJob = solverManager.solve(1L, problem);
+    SolverJob<TestDataKitchenSinkSolution> solverJob = solverManager.solve(1L, problem);
     TestDataKitchenSinkSolution solution = solverJob.getFinalBestSolution();
     assertNotNull(solution);
     assertEquals(1, solution.getPlanningEntityProperty().testGetIntVariable());

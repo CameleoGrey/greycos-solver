@@ -14,34 +14,13 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @XmlType(
-    propOrder = {
-      "minimumSubListSize",
-      "maximumSubListSize",
-      "selectReversingMoveToo",
-      "subListSelectorConfig",
-      "destinationSelectorConfig"
-    })
+    propOrder = {"selectReversingMoveToo", "subListSelectorConfig", "destinationSelectorConfig"})
 public class SubListChangeMoveSelectorConfig
     extends MoveSelectorConfig<SubListChangeMoveSelectorConfig> {
 
   public static final String XML_ELEMENT_NAME = "subListChangeMoveSelector";
 
-  /**
-   * @deprecated The minimumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of GreyCOS. Use {@link
-   *     SubListSelectorConfig#getMinimumSubListSize()} instead.
-   */
-  @Deprecated(forRemoval = true)
-  protected Integer minimumSubListSize = null;
-
-  /**
-   * @deprecated The maximumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of GreyCOS. Use {@link
-   *     SubListSelectorConfig#getMaximumSubListSize()} instead.
-   */
-  @Deprecated(forRemoval = true)
-  protected Integer maximumSubListSize = null;
-
+  @XmlElement(name = "selectReversingMoveToo")
   private Boolean selectReversingMoveToo = null;
 
   @XmlElement(name = "subListSelector")
@@ -49,46 +28,6 @@ public class SubListChangeMoveSelectorConfig
 
   @XmlElement(name = "destinationSelector")
   private DestinationSelectorConfig destinationSelectorConfig = null;
-
-  /**
-   * @deprecated The minimumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of GreyCOS. Use {@link
-   *     SubListSelectorConfig#getMinimumSubListSize()} instead.
-   */
-  @Deprecated(forRemoval = true)
-  public Integer getMinimumSubListSize() {
-    return minimumSubListSize;
-  }
-
-  /**
-   * @deprecated The minimumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of GreyCOS. Use {@link
-   *     SubListSelectorConfig#setMinimumSubListSize(Integer)} instead.
-   */
-  @Deprecated(forRemoval = true)
-  public void setMinimumSubListSize(Integer minimumSubListSize) {
-    this.minimumSubListSize = minimumSubListSize;
-  }
-
-  /**
-   * @deprecated The maximumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of GreyCOS. Use {@link
-   *     SubListSelectorConfig#getMaximumSubListSize()} instead.
-   */
-  @Deprecated(forRemoval = true)
-  public Integer getMaximumSubListSize() {
-    return maximumSubListSize;
-  }
-
-  /**
-   * @deprecated The maximumSubListSize on the SubListChangeMoveSelectorConfig is deprecated and
-   *     will be removed in a future major version of GreyCOS. Use {@link
-   *     SubListSelectorConfig#setMaximumSubListSize(Integer)} instead.
-   */
-  @Deprecated(forRemoval = true)
-  public void setMaximumSubListSize(Integer maximumSubListSize) {
-    this.maximumSubListSize = maximumSubListSize;
-  }
 
   public @Nullable Boolean getSelectReversingMoveToo() {
     return selectReversingMoveToo;
@@ -145,12 +84,6 @@ public class SubListChangeMoveSelectorConfig
   public @NonNull SubListChangeMoveSelectorConfig inherit(
       @NonNull SubListChangeMoveSelectorConfig inheritedConfig) {
     super.inherit(inheritedConfig);
-    this.minimumSubListSize =
-        ConfigUtils.inheritOverwritableProperty(
-            minimumSubListSize, inheritedConfig.minimumSubListSize);
-    this.maximumSubListSize =
-        ConfigUtils.inheritOverwritableProperty(
-            maximumSubListSize, inheritedConfig.maximumSubListSize);
     this.selectReversingMoveToo =
         ConfigUtils.inheritOverwritableProperty(
             selectReversingMoveToo, inheritedConfig.selectReversingMoveToo);

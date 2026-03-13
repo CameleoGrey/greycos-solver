@@ -1,8 +1,8 @@
 package ai.greycos.solver.core.impl.cotwin.entity.descriptor;
 
-import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory.MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER;
-import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory.MemberAccessorType.FIELD_OR_READ_METHOD;
-import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory.MemberAccessorType.FIELD_OR_READ_METHOD_WITH_OPTIONAL_PARAMETER;
+import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType.FIELD_OR_GETTER_METHOD_WITH_SETTER;
+import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType.FIELD_OR_READ_METHOD;
+import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType.FIELD_OR_READ_METHOD_WITH_OPTIONAL_PARAMETER;
 import static ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptorValidator.assertNotMixedInheritance;
 import static ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptorValidator.assertSingleInheritance;
 import static ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptorValidator.assertValidPlanningVariables;
@@ -15,27 +15,25 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SequencedCollection;
+import java.util.SequencedMap;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.cotwin.entity.PinningFilter;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningPinToIndex;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.cotwin.variable.AnchorShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.CascadingUpdateShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.CustomShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PiggybackShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
@@ -48,11 +46,8 @@ import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import ai.greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.CompositeValueRangeDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.anchor.AnchorShadowVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.IndexShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.cascade.CascadingUpdateShadowVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.custom.CustomShadowVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.custom.LegacyCustomShadowVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.custom.PiggybackShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.DeclarativeShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.ShadowVariablesInconsistentVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
@@ -60,7 +55,6 @@ import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDes
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.index.IndexShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.nextprev.NextElementShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.nextprev.PreviousElementShadowVariableDescriptor;
@@ -68,7 +62,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.Comparato
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.ComparatorSelectionSorter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import ai.greycos.solver.core.impl.move.MoveDirector;
-import ai.greycos.solver.core.impl.util.CollectionUtils;
 import ai.greycos.solver.core.impl.util.MutableInt;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningEntityMetaModel;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.UniEnumeratingFilter;
@@ -87,14 +80,10 @@ public class EntityDescriptor<Solution_> {
     PlanningVariable.class,
     PlanningListVariable.class,
     InverseRelationShadowVariable.class,
-    AnchorShadowVariable.class,
     IndexShadowVariable.class,
     PreviousElementShadowVariable.class,
     NextElementShadowVariable.class,
     ShadowVariable.class,
-    ShadowVariable.List.class,
-    PiggybackShadowVariable.class,
-    CustomShadowVariable.class,
     CascadingUpdateShadowVariable.class,
     ShadowVariablesInconsistent.class
   };
@@ -117,9 +106,11 @@ public class EntityDescriptor<Solution_> {
   private SelectionSorter<Solution_, Object> descendingSorter;
 
   // Only declared variable descriptors, excludes inherited variable descriptors
-  private Map<String, GenuineVariableDescriptor<Solution_>> declaredGenuineVariableDescriptorMap;
-  private Map<String, ShadowVariableDescriptor<Solution_>> declaredShadowVariableDescriptorMap;
-  private Map<String, CascadingUpdateShadowVariableDescriptor<Solution_>>
+  private SequencedMap<String, GenuineVariableDescriptor<Solution_>>
+      declaredGenuineVariableDescriptorMap;
+  private SequencedMap<String, ShadowVariableDescriptor<Solution_>>
+      declaredShadowVariableDescriptorMap;
+  private SequencedMap<String, CascadingUpdateShadowVariableDescriptor<Solution_>>
       declaredCascadingUpdateShadowVariableDecriptorMap;
 
   private List<MovableFilter<Solution_>> declaredPinEntityFilterList;
@@ -131,13 +122,15 @@ public class EntityDescriptor<Solution_> {
   private PlanningPinToIndexReader effectivePlanningPinToIndexReader;
 
   // Caches the inherited and declared variable descriptors
-  private Map<String, GenuineVariableDescriptor<Solution_>> effectiveGenuineVariableDescriptorMap;
-  private Map<String, ShadowVariableDescriptor<Solution_>> effectiveShadowVariableDescriptorMap;
-  private Map<String, VariableDescriptor<Solution_>> effectiveVariableDescriptorMap;
-  // Duplicate of effectiveGenuineVariableDescriptorMap.values() for faster iteration on the hot
-  // path.
+  private SequencedMap<String, GenuineVariableDescriptor<Solution_>>
+      effectiveGenuineVariableDescriptorMap;
+  private SequencedMap<String, ShadowVariableDescriptor<Solution_>>
+      effectiveShadowVariableDescriptorMap;
+  private SequencedMap<String, VariableDescriptor<Solution_>> effectiveVariableDescriptorMap;
+  private List<VariableDescriptor<Solution_>> declaredVariableDescriptorList;
   private List<GenuineVariableDescriptor<Solution_>> effectiveGenuineVariableDescriptorList;
-  private List<ListVariableDescriptor<Solution_>> effectiveGenuineListVariableDescriptorList;
+  private List<BasicVariableDescriptor<Solution_>> effectiveBasicVariableDescriptorList;
+  private List<ListVariableDescriptor<Solution_>> effectiveListVariableDescriptorList;
 
   private final UniEnumeratingFilter<Solution_, Object> entityMovablePredicate =
       (solutionView, entity) -> {
@@ -211,7 +204,7 @@ public class EntityDescriptor<Solution_> {
     processEntityAnnotations();
     declaredGenuineVariableDescriptorMap = new LinkedHashMap<>();
     declaredShadowVariableDescriptorMap = new LinkedHashMap<>();
-    declaredCascadingUpdateShadowVariableDecriptorMap = new HashMap<>();
+    declaredCascadingUpdateShadowVariableDecriptorMap = new LinkedHashMap<>();
     declaredPinEntityFilterList = new ArrayList<>(2);
     // Only iterate declared fields and methods, not inherited members, to avoid registering the
     // same one twice
@@ -256,111 +249,35 @@ public class EntityDescriptor<Solution_> {
                       new IllegalStateException(
                           "Impossible state as the previous if block would fail first."));
     }
-    processMovable(entityAnnotation);
     processSorting(entityAnnotation);
-  }
-
-  /**
-   * @deprecated Remove in the next major version of GreyCOS Solver.
-   */
-  @Deprecated(forRemoval = true, since = "1.23.0")
-  private void processMovable(PlanningEntity entityAnnotation) {
-    if (entityAnnotation == null) {
-      return;
-    }
-    var pinningFilterClass = entityAnnotation.pinningFilter();
-    var hasPinningFilter = pinningFilterClass != PlanningEntity.NullPinningFilter.class;
-    if (hasPinningFilter) {
-      var pinningFilter =
-          ConfigUtils.newInstance(
-              this::toString,
-              "pinningFilterClass",
-              (Class<? extends PinningFilter<Solution_, Object>>) pinningFilterClass);
-      declaredMovableEntityFilter =
-          (solution, selection) -> !pinningFilter.accept(solution, selection);
-    }
   }
 
   private void processSorting(PlanningEntity entityAnnotation) {
     if (entityAnnotation == null) {
       return;
     }
-    var difficultyComparatorClass = entityAnnotation.difficultyComparatorClass();
-    if (difficultyComparatorClass != null
-        && PlanningEntity.NullComparator.class.isAssignableFrom(difficultyComparatorClass)) {
-      difficultyComparatorClass = null;
-    }
     var comparatorClass = entityAnnotation.comparatorClass();
     if (comparatorClass != null
         && PlanningEntity.NullComparator.class.isAssignableFrom(comparatorClass)) {
       comparatorClass = null;
-    }
-    if (difficultyComparatorClass != null && comparatorClass != null) {
-      throw new IllegalStateException(
-          "The entityClass (%s) cannot have a %s (%s) and a %s (%s) at the same time."
-              .formatted(
-                  getEntityClass(),
-                  "difficultyComparatorClass",
-                  difficultyComparatorClass.getName(),
-                  "comparatorClass",
-                  comparatorClass.getName()));
-    }
-    var difficultyWeightFactoryClass = entityAnnotation.difficultyWeightFactoryClass();
-    if (difficultyWeightFactoryClass != null
-        && PlanningEntity.NullComparatorFactory.class.isAssignableFrom(
-            difficultyWeightFactoryClass)) {
-      difficultyWeightFactoryClass = null;
     }
     var comparatorFactoryClass = entityAnnotation.comparatorFactoryClass();
     if (comparatorFactoryClass != null
         && PlanningEntity.NullComparatorFactory.class.isAssignableFrom(comparatorFactoryClass)) {
       comparatorFactoryClass = null;
     }
-    if (difficultyWeightFactoryClass != null && comparatorFactoryClass != null) {
+    if (comparatorClass != null && comparatorFactoryClass != null) {
       throw new IllegalStateException(
-          "The entityClass (%s) cannot have a %s (%s) and a %s (%s) at the same time."
-              .formatted(
-                  getEntityClass(),
-                  "difficultyWeightFactoryClass",
-                  difficultyWeightFactoryClass.getName(),
-                  "comparatorFactoryClass",
-                  comparatorFactoryClass.getName()));
+          "The entityClass (%s) cannot have a comparatorClass (%s) and a comparatorFactoryClass (%s) at the same time."
+              .formatted(entityClass, comparatorClass.getName(), comparatorFactoryClass.getName()));
     }
-    // Selected settings
-    var selectedComparatorPropertyName = "comparatorClass";
-    var selectedComparatorClass = comparatorClass;
-    var selectedComparatorFactoryPropertyName = "comparatorFactoryClass";
-    var selectedComparatorFactoryClass = comparatorFactoryClass;
-    if (difficultyComparatorClass != null) {
-      selectedComparatorPropertyName = "difficultyComparatorClass";
-      selectedComparatorClass = difficultyComparatorClass;
-    }
-    if (difficultyWeightFactoryClass != null) {
-      selectedComparatorFactoryPropertyName = "difficultyWeightFactoryClass";
-      selectedComparatorFactoryClass = difficultyWeightFactoryClass;
-    }
-    if (selectedComparatorClass != null && selectedComparatorFactoryClass != null) {
-      throw new IllegalStateException(
-          "The entityClass (%s) cannot have a %s (%s) and a %s (%s) at the same time."
-              .formatted(
-                  entityClass,
-                  selectedComparatorPropertyName,
-                  selectedComparatorClass.getName(),
-                  selectedComparatorFactoryPropertyName,
-                  selectedComparatorFactoryClass.getName()));
-    }
-    if (selectedComparatorClass != null) {
-      var comparator =
-          ConfigUtils.newInstance(
-              this::toString, selectedComparatorPropertyName, selectedComparatorClass);
+    if (comparatorClass != null) {
+      var comparator = ConfigUtils.newInstance(this::toString, "comparatorClass", comparatorClass);
       descendingSorter =
           new ComparatorSelectionSorter<>(comparator, SelectionSorterOrder.DESCENDING);
-    } else if (selectedComparatorFactoryClass != null) {
+    } else if (comparatorFactoryClass != null) {
       var comparator =
-          ConfigUtils.newInstance(
-              this::toString,
-              selectedComparatorFactoryPropertyName,
-              selectedComparatorFactoryClass);
+          ConfigUtils.newInstance(this::toString, "comparatorFactoryClass", comparatorFactoryClass);
       descendingSorter =
           new ComparatorFactorySelectionSorter<>(comparator, SelectionSorterOrder.DESCENDING);
     }
@@ -480,10 +397,6 @@ public class EntityDescriptor<Solution_> {
           new InverseRelationShadowVariableDescriptor<>(
               nextVariableDescriptorOrdinal, this, memberAccessor);
       declaredShadowVariableDescriptorMap.put(memberName, variableDescriptor);
-    } else if (variableAnnotationClass.equals(AnchorShadowVariable.class)) {
-      var variableDescriptor =
-          new AnchorShadowVariableDescriptor<>(nextVariableDescriptorOrdinal, this, memberAccessor);
-      declaredShadowVariableDescriptorMap.put(memberName, variableDescriptor);
     } else if (variableAnnotationClass.equals(IndexShadowVariable.class)) {
       var variableDescriptor =
           new IndexShadowVariableDescriptor<>(nextVariableDescriptorOrdinal, this, memberAccessor);
@@ -498,19 +411,10 @@ public class EntityDescriptor<Solution_> {
           new NextElementShadowVariableDescriptor<>(
               nextVariableDescriptorOrdinal, this, memberAccessor);
       declaredShadowVariableDescriptorMap.put(memberName, variableDescriptor);
-    } else if (variableAnnotationClass.equals(ShadowVariable.class)
-        || variableAnnotationClass.equals(ShadowVariable.List.class)) {
-      ShadowVariableDescriptor<Solution_> variableDescriptor;
-      var annotation = memberAccessor.getAnnotation(ShadowVariable.class);
-      if (annotation != null && !annotation.supplierName().isEmpty()) {
-        variableDescriptor =
-            new DeclarativeShadowVariableDescriptor<>(
-                nextVariableDescriptorOrdinal, this, memberAccessor);
-      } else {
-        variableDescriptor =
-            new CustomShadowVariableDescriptor<>(
-                nextVariableDescriptorOrdinal, this, memberAccessor);
-      }
+    } else if (variableAnnotationClass.equals(ShadowVariable.class)) {
+      ShadowVariableDescriptor<Solution_> variableDescriptor =
+          new DeclarativeShadowVariableDescriptor<>(
+              nextVariableDescriptorOrdinal, this, memberAccessor);
       declaredShadowVariableDescriptorMap.put(memberName, variableDescriptor);
     } else if (variableAnnotationClass.equals(CascadingUpdateShadowVariable.class)) {
       var variableDescriptor =
@@ -534,16 +438,6 @@ public class EntityDescriptor<Solution_> {
           new ShadowVariablesInconsistentVariableDescriptor<>(
               nextVariableDescriptorOrdinal, this, memberAccessor);
       shadowVariablesInconsistentDescriptor = variableDescriptor;
-      declaredShadowVariableDescriptorMap.put(memberName, variableDescriptor);
-    } else if (variableAnnotationClass.equals(PiggybackShadowVariable.class)) {
-      var variableDescriptor =
-          new PiggybackShadowVariableDescriptor<>(
-              nextVariableDescriptorOrdinal, this, memberAccessor);
-      declaredShadowVariableDescriptorMap.put(memberName, variableDescriptor);
-    } else if (variableAnnotationClass.equals(CustomShadowVariable.class)) {
-      var variableDescriptor =
-          new LegacyCustomShadowVariableDescriptor<>(
-              nextVariableDescriptorOrdinal, this, memberAccessor);
       declaredShadowVariableDescriptorMap.put(memberName, variableDescriptor);
     } else {
       throw new IllegalStateException(
@@ -682,26 +576,38 @@ public class EntityDescriptor<Solution_> {
     }
     effectiveShadowVariableDescriptorMap.putAll(declaredShadowVariableDescriptorMap);
     effectiveVariableDescriptorMap =
-        CollectionUtils.newLinkedHashMap(
+        new LinkedHashMap<>(
             effectiveGenuineVariableDescriptorMap.size()
                 + effectiveShadowVariableDescriptorMap.size());
     effectiveVariableDescriptorMap.putAll(effectiveGenuineVariableDescriptorMap);
     effectiveVariableDescriptorMap.putAll(effectiveShadowVariableDescriptorMap);
+    declaredVariableDescriptorList =
+        Stream.concat(
+                declaredGenuineVariableDescriptorMap.values().stream(),
+                declaredShadowVariableDescriptorMap.values().stream())
+            .map(variableDescriptor -> (VariableDescriptor<Solution_>) variableDescriptor)
+            .toList();
     effectiveGenuineVariableDescriptorList =
-        new ArrayList<>(effectiveGenuineVariableDescriptorMap.values());
-    effectiveGenuineListVariableDescriptorList =
+        List.copyOf(effectiveGenuineVariableDescriptorMap.values());
+    effectiveBasicVariableDescriptorList =
         effectiveGenuineVariableDescriptorList.stream()
-            .filter(VariableDescriptor::isListVariable)
-            .map(l -> (ListVariableDescriptor<Solution_>) l)
+            .flatMap(
+                descriptor ->
+                    descriptor instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor
+                        ? Stream.of(basicVariableDescriptor)
+                        : Stream.empty())
+            .toList();
+    effectiveListVariableDescriptorList =
+        effectiveGenuineVariableDescriptorList.stream()
+            .flatMap(
+                descriptor ->
+                    descriptor instanceof ListVariableDescriptor<Solution_> listVariableDescriptor
+                        ? Stream.of(listVariableDescriptor)
+                        : Stream.empty())
             .toList();
   }
 
   private void createEffectiveMovableEntitySelectionFilter() {
-    if (declaredMovableEntityFilter != null && !hasAnyDeclaredGenuineVariableDescriptor()) {
-      throw new IllegalStateException(
-          "The entityClass (%s) has a movableEntitySelectionFilterClass (%s), but it has no declared genuine variables, only shadow variables."
-              .formatted(entityClass, declaredMovableEntityFilter.getClass()));
-    }
     var movableFilterList = new ArrayList<MovableFilter<Solution_>>();
     // TODO Also add in child entity selectors
     for (var inheritedEntityDescriptor : effectiveInheritedEntityDescriptorList) {
@@ -709,9 +615,6 @@ public class EntityDescriptor<Solution_> {
         // Includes movable and pinned
         movableFilterList.add(inheritedEntityDescriptor.effectiveMovableEntityFilter);
       }
-    }
-    if (declaredMovableEntityFilter != null) {
-      movableFilterList.add(declaredMovableEntityFilter);
     }
     movableFilterList.addAll(declaredPinEntityFilterList);
     if (movableFilterList.isEmpty()) {
@@ -814,8 +717,8 @@ public class EntityDescriptor<Solution_> {
     return descendingSorter;
   }
 
-  public Collection<String> getGenuineVariableNameSet() {
-    return effectiveGenuineVariableDescriptorMap.keySet();
+  public SequencedCollection<String> getGenuineVariableNameSet() {
+    return effectiveGenuineVariableDescriptorMap.sequencedKeySet();
   }
 
   public GenuineVariableDescriptor<Solution_> getGenuineVariableDescriptor(String variableName) {
@@ -827,58 +730,67 @@ public class EntityDescriptor<Solution_> {
     return shadowVariablesInconsistentDescriptor;
   }
 
-  public boolean hasBothGenuineListAndBasicVariables() {
+  public boolean hasBothListAndBasicVariables() {
     if (!isGenuine()) {
       return false;
     }
-    return hasAnyGenuineListVariables() && hasAnyGenuineBasicVariables();
+    return hasAnyListVariables() && hasAnyBasicVariables();
+  }
+
+  public boolean hasBothGenuineListAndBasicVariables() {
+    return hasBothListAndBasicVariables();
+  }
+
+  public boolean hasAnyBasicVariables() {
+    if (!isGenuine()) {
+      return false;
+    }
+    return !effectiveBasicVariableDescriptorList.isEmpty();
   }
 
   public boolean hasAnyGenuineBasicVariables() {
-    if (!isGenuine()) {
-      return false;
-    }
-    return getDeclaredGenuineVariableDescriptors().stream()
-        .anyMatch(descriptor -> !descriptor.isListVariable());
+    return hasAnyBasicVariables();
   }
 
-  public boolean hasAnyGenuineChainedVariables() {
+  public boolean hasAnyListVariables() {
     if (!isGenuine()) {
       return false;
     }
-    return getDeclaredGenuineVariableDescriptors().stream()
-        .filter(descriptor -> descriptor instanceof BasicVariableDescriptor<Solution_>)
-        .map(descriptor -> (BasicVariableDescriptor<Solution_>) descriptor)
-        .anyMatch(BasicVariableDescriptor::isChained);
+    return getListVariableDescriptor() != null;
   }
 
   public boolean hasAnyGenuineListVariables() {
-    if (!isGenuine()) {
-      return false;
-    }
-    return getGenuineListVariableDescriptor() != null;
+    return hasAnyListVariables();
   }
 
   public boolean isGenuine() {
     return !effectiveGenuineVariableDescriptorMap.isEmpty();
   }
 
-  public ListVariableDescriptor<Solution_> getGenuineListVariableDescriptor() {
-    if (effectiveGenuineListVariableDescriptorList.isEmpty()) {
+  public ListVariableDescriptor<Solution_> getListVariableDescriptor() {
+    if (effectiveListVariableDescriptorList.isEmpty()) {
       return null;
     }
     // Earlier validation guarantees there will only ever be one.
-    return effectiveGenuineListVariableDescriptorList.get(0);
+    return effectiveListVariableDescriptorList.get(0);
+  }
+
+  public ListVariableDescriptor<Solution_> getGenuineListVariableDescriptor() {
+    return getListVariableDescriptor();
   }
 
   public List<GenuineVariableDescriptor<Solution_>> getGenuineVariableDescriptorList() {
     return effectiveGenuineVariableDescriptorList;
   }
 
+  public List<BasicVariableDescriptor<Solution_>> getBasicVariableDescriptorList() {
+    return effectiveBasicVariableDescriptorList;
+  }
+
+  @SuppressWarnings("unchecked")
   public List<GenuineVariableDescriptor<Solution_>> getGenuineBasicVariableDescriptorList() {
-    return effectiveGenuineVariableDescriptorList.stream()
-        .filter(descriptor -> !descriptor.isListVariable())
-        .toList();
+    return (List<GenuineVariableDescriptor<Solution_>>)
+        (List<?>) effectiveBasicVariableDescriptorList;
   }
 
   public long getGenuineVariableCount() {
@@ -952,13 +864,7 @@ public class EntityDescriptor<Solution_> {
   }
 
   public Collection<VariableDescriptor<Solution_>> getDeclaredVariableDescriptors() {
-    Collection<VariableDescriptor<Solution_>> variableDescriptors =
-        new ArrayList<>(
-            declaredGenuineVariableDescriptorMap.size()
-                + declaredShadowVariableDescriptorMap.size());
-    variableDescriptors.addAll(declaredGenuineVariableDescriptorMap.values());
-    variableDescriptors.addAll(declaredShadowVariableDescriptorMap.values());
-    return variableDescriptors;
+    return declaredVariableDescriptorList;
   }
 
   public String buildInvalidVariableNameExceptionMessage(String variableName) {

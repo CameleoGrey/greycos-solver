@@ -21,10 +21,6 @@
   </description>
   <url>https://github.com/CameleoGrey/greycos-solver</url>
 
-  <properties>
-    <java.module.name>ai.greycos.solver.jaxb</java.module.name>
-  </properties>
-
   <dependencies>
     <!-- Internal dependencies -->
     <dependency>
@@ -36,10 +32,6 @@
       <artifactId>greycos-solver-core</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>ai.greycos.solver</groupId>
-      <artifactId>greycos-solver-persistence-common</artifactId>
     </dependency>
     <!-- External dependencies -->
     <!-- Logging -->

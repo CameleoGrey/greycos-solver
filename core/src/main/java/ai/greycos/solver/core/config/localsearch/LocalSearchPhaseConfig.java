@@ -17,9 +17,6 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarChang
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainChangeMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.SubChainSwapMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.chained.TailChainSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
@@ -38,10 +35,10 @@ import org.jspecify.annotations.Nullable;
 
 @XmlType(
     propOrder = {
+      "moveThreadCount",
       "localSearchType",
       "moveSelectorConfig",
       "neighborhoodProviderClass",
-      "moveThreadCount",
       "acceptorConfig",
       "foragerConfig"
     })
@@ -53,6 +50,7 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
   // and also because the input config file should match the output config file
 
   protected LocalSearchType localSearchType = null;
+  protected String moveThreadCount = null;
 
   @XmlElements({
     @XmlElement(
@@ -90,12 +88,6 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
         name = ListMultistageMoveSelectorConfig.XML_ELEMENT_NAME,
         type = ListMultistageMoveSelectorConfig.class),
     @XmlElement(
-        name = SubChainChangeMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = SubChainChangeMoveSelectorConfig.class),
-    @XmlElement(
-        name = SubChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = SubChainSwapMoveSelectorConfig.class),
-    @XmlElement(
         name = SubListChangeMoveSelectorConfig.XML_ELEMENT_NAME,
         type = SubListChangeMoveSelectorConfig.class),
     @XmlElement(
@@ -104,9 +96,6 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
     @XmlElement(
         name = SwapMoveSelectorConfig.XML_ELEMENT_NAME,
         type = SwapMoveSelectorConfig.class),
-    @XmlElement(
-        name = TailChainSwapMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = TailChainSwapMoveSelectorConfig.class),
     @XmlElement(
         name = UnionMoveSelectorConfig.XML_ELEMENT_NAME,
         type = UnionMoveSelectorConfig.class)
@@ -121,9 +110,6 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
   @XmlElement(name = "forager")
   private LocalSearchForagerConfig foragerConfig = null;
 
-  @XmlElement(name = "moveThreadCount")
-  protected String moveThreadCount = null;
-
   // ************************************************************************
   // Constructors and simple getters/setters
   // ************************************************************************
@@ -134,6 +120,14 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
 
   public void setLocalSearchType(@Nullable LocalSearchType localSearchType) {
     this.localSearchType = localSearchType;
+  }
+
+  public @Nullable String getMoveThreadCount() {
+    return moveThreadCount;
+  }
+
+  public void setMoveThreadCount(@Nullable String moveThreadCount) {
+    this.moveThreadCount = moveThreadCount;
   }
 
   public @Nullable MoveSelectorConfig getMoveSelectorConfig() {
@@ -183,14 +177,6 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
     this.foragerConfig = foragerConfig;
   }
 
-  public @Nullable String getMoveThreadCount() {
-    return moveThreadCount;
-  }
-
-  public void setMoveThreadCount(@Nullable String moveThreadCount) {
-    this.moveThreadCount = moveThreadCount;
-  }
-
   // ************************************************************************
   // With methods
   // ************************************************************************
@@ -198,6 +184,11 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
   public @NonNull LocalSearchPhaseConfig withLocalSearchType(
       @NonNull LocalSearchType localSearchType) {
     this.localSearchType = localSearchType;
+    return this;
+  }
+
+  public @NonNull LocalSearchPhaseConfig withMoveThreadCount(@NonNull String moveThreadCount) {
+    this.moveThreadCount = moveThreadCount;
     return this;
   }
 
@@ -226,17 +217,15 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
     return this;
   }
 
-  public @NonNull LocalSearchPhaseConfig withMoveThreadCount(@NonNull String moveThreadCount) {
-    this.moveThreadCount = moveThreadCount;
-    return this;
-  }
-
   @Override
   public @NonNull LocalSearchPhaseConfig inherit(@NonNull LocalSearchPhaseConfig inheritedConfig) {
     super.inherit(inheritedConfig);
     localSearchType =
         ConfigUtils.inheritOverwritableProperty(
             localSearchType, inheritedConfig.getLocalSearchType());
+    moveThreadCount =
+        ConfigUtils.inheritOverwritableProperty(
+            moveThreadCount, inheritedConfig.getMoveThreadCount());
     setMoveSelectorConfig(
         ConfigUtils.inheritOverwritableProperty(
             getMoveSelectorConfig(), inheritedConfig.getMoveSelectorConfig()));
@@ -245,9 +234,6 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
             getNeighborhoodProviderClass(), inheritedConfig.getNeighborhoodProviderClass()));
     acceptorConfig = ConfigUtils.inheritConfig(acceptorConfig, inheritedConfig.getAcceptorConfig());
     foragerConfig = ConfigUtils.inheritConfig(foragerConfig, inheritedConfig.getForagerConfig());
-    moveThreadCount =
-        ConfigUtils.inheritOverwritableProperty(
-            moveThreadCount, inheritedConfig.getMoveThreadCount());
     return this;
   }
 

@@ -41,8 +41,7 @@ class GreyCOSBenchmarkProcessorMissingSpentLimitNoGlobalTerminationTest {
         PlannerBenchmarkConfig.createFromXmlResource(
             "solverBenchmarkConfigSpentLimitPerBenchmarkNoGlobalTermination.xml");
     assertThatThrownBy(
-            () ->
-                new GreyCOSBenchmarkRecorder().benchmarkConfigSupplier(benchmarkConfig, null).get())
+            () -> new GreyCOSBenchmarkRecorder(null).benchmarkConfigSupplier(benchmarkConfig).get())
         .hasMessage(
             "At least one of the solver benchmarks is not configured to terminate. "
                 + "At least one of the properties "

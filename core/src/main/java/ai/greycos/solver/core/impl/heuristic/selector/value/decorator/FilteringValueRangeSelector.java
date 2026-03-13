@@ -5,8 +5,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Random;
 import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
@@ -408,7 +408,7 @@ public final class FilteringValueRangeSelector<Solution_>
   private class RandomFilteringValueRangeIterator<Entity_, Value_>
       extends AbstractFilteringValueRangeIterator<Entity_, Value_> {
 
-    private final Random workingRandom;
+    private final RandomGenerator workingRandom;
     private int maxBailoutSize;
     private Value_ replayedValue;
     private List<Value_> reachableValueList = null;
@@ -417,7 +417,7 @@ public final class FilteringValueRangeSelector<Solution_>
         Supplier<Value_> upcomingValueSupplier,
         ReachableValues<Entity_, Value_> reachableValues,
         ListVariableStateSupply<Solution_, Entity_, Value_> listVariableStateSupply,
-        Random workingRandom,
+        RandomGenerator workingRandom,
         boolean checkSourceAndDestination) {
       super(
           upcomingValueSupplier,

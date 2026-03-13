@@ -14,7 +14,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import ai.greycos.solver.core.impl.cotwin.solution.cloner.DeepCloningUtils;
-import ai.greycos.solver.core.impl.cotwin.solution.cloner.PlanningCloneable;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 
 public final class GizmoCloningUtils {
@@ -48,12 +47,10 @@ public final class GizmoCloningUtils {
           }
         }
 
-        // Ignore Collections, Maps, and PlanningCloneables, as there is collection/map/clonable
-        // logic to clone them.
+        // Ignore Collections and Maps, as there is collection/map specific code for them.
         if (DeepCloningUtils.isFieldDeepCloned(solutionDescriptor, field, clazz)
             && !Collection.class.isAssignableFrom(field.getType())
             && !Map.class.isAssignableFrom(field.getType())
-            && !PlanningCloneable.class.isAssignableFrom(field.getType())
             && !deepClonedClassSet.contains(field.getType())) {
           classesToProcess.add(field.getType());
           deepClonedClassSet.add(field.getType());

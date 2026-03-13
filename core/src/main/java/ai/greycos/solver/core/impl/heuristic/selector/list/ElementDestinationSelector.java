@@ -42,8 +42,10 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
 
   private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final EntitySelector<Solution_> entitySelector;
+  private final IterableValueSelector<Solution_> replayingValueSelector;
   private final IterableValueSelector<Solution_> valueSelector;
   private final boolean randomSelection;
+  private final boolean isExhaustiveSearch;
 
   private ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
 
@@ -51,17 +53,28 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
       EntitySelector<Solution_> entitySelector,
       IterableValueSelector<Solution_> valueSelector,
       boolean randomSelection) {
+    this(entitySelector, null, valueSelector, randomSelection, false);
+  }
+
+  public ElementDestinationSelector(
+      EntitySelector<Solution_> entitySelector,
+      IterableValueSelector<Solution_> replayingValueSelector,
+      IterableValueSelector<Solution_> valueSelector,
+      boolean randomSelection,
+      boolean isExhaustiveSearch) {
     this.listVariableDescriptor =
         (ListVariableDescriptor<Solution_>) valueSelector.getVariableDescriptor();
     this.entitySelector = entitySelector;
     var selector =
         filterPinnedListPlanningVariableValuesWithIndex(
             valueSelector, this::getListVariableStateSupply);
+    this.replayingValueSelector = replayingValueSelector;
     this.valueSelector =
         listVariableDescriptor.allowsUnassignedValues()
             ? filterUnassignedValues(selector)
             : selector;
     this.randomSelection = randomSelection;
+    this.isExhaustiveSearch = isExhaustiveSearch;
     phaseLifecycleSupport.addEventListener(this.entitySelector);
     phaseLifecycleSupport.addEventListener(this.valueSelector);
   }
@@ -118,6 +131,10 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
   @Override
   public Iterator<ElementPosition> iterator() {
     if (randomSelection) {
+      if (isExhaustiveSearch) {
+        throw new IllegalStateException(
+            "Impossible state: the random selector cannot be applied to the exhaustive search.");
+      }
       var allowsUnassignedValues = listVariableDescriptor.allowsUnassignedValues();
 
       // In case of list var which allows unassigned values, we need to exclude unassigned elements.
@@ -128,6 +145,7 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
       return new ElementPositionRandomIterator<>(
           listVariableStateSupply,
           entitySelector,
+          replayingValueSelector != null ? replayingValueSelector.iterator() : null,
           valueSelector,
           workingRandom,
           totalSize,
@@ -136,30 +154,34 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
       if (entitySelector.getSize() == 0) {
         return Collections.emptyIterator();
       }
-      // Start with the first unpinned value of each entity, or zero if no pinning.
-      // Entity selector is guaranteed to return only unpinned entities.
-      Stream<ElementPosition> stream =
-          StreamSupport.stream(entitySelector.spliterator(), false)
-              .map(
-                  entity ->
-                      ElementPosition.of(
-                          entity, listVariableDescriptor.getFirstUnpinnedIndex(entity)));
-      // Filter guarantees that we only get values that are actually in one of the lists.
-      // Value selector guarantees only unpinned values.
-      // Simplify tests.
-      stream =
-          Stream.concat(
-              stream,
-              StreamSupport.stream(valueSelector.spliterator(), false)
-                  .map(v -> listVariableStateSupply.getElementPosition(v).ensureAssigned())
-                  .map(
-                      positionInList ->
-                          ElementPosition.of(positionInList.entity(), positionInList.index() + 1)));
-      // If the list variable allows unassigned values, add the option of unassigning.
-      if (listVariableDescriptor.allowsUnassignedValues()) {
-        stream = Stream.concat(stream, Stream.of(ElementPosition.unassigned()));
+      if (isExhaustiveSearch) {
+        Stream<ElementPosition> stream =
+            StreamSupport.stream(entitySelector.spliterator(), false)
+                .map(
+                    entity ->
+                        ElementPosition.of(entity, listVariableDescriptor.getListSize(entity)));
+        return stream.iterator();
+      } else {
+        Stream<ElementPosition> stream =
+            StreamSupport.stream(entitySelector.spliterator(), false)
+                .map(
+                    entity ->
+                        ElementPosition.of(
+                            entity, listVariableDescriptor.getFirstUnpinnedIndex(entity)));
+        stream =
+            Stream.concat(
+                stream,
+                StreamSupport.stream(valueSelector.spliterator(), false)
+                    .map(v -> listVariableStateSupply.getElementPosition(v).ensureAssigned())
+                    .map(
+                        positionInList ->
+                            ElementPosition.of(
+                                positionInList.entity(), positionInList.index() + 1)));
+        if (listVariableDescriptor.allowsUnassignedValues()) {
+          stream = Stream.concat(stream, Stream.of(ElementPosition.unassigned()));
+        }
+        return stream.iterator();
       }
-      return stream.iterator();
     }
   }
 
@@ -199,12 +221,13 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
     return o instanceof ElementDestinationSelector<?> that
         && randomSelection == that.randomSelection
         && Objects.equals(entitySelector, that.entitySelector)
+        && Objects.equals(replayingValueSelector, that.replayingValueSelector)
         && Objects.equals(valueSelector, that.valueSelector);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(entitySelector, valueSelector, randomSelection);
+    return Objects.hash(entitySelector, replayingValueSelector, valueSelector, randomSelection);
   }
 
   @Override

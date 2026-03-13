@@ -7,10 +7,10 @@ import java.util.List;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeFactory;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 
@@ -55,23 +55,23 @@ public class TestdataAnonymousValueRangeSolution extends TestdataObject {
   // ************************************************************************
 
   @ValueRangeProvider
-  public CountableValueRange<Integer> createIntValueRange() {
+  public ValueRange<Integer> createIntValueRange() {
     return ValueRangeFactory.createIntValueRange(0, 3);
   }
 
   @ValueRangeProvider
-  public CountableValueRange<Long> createLongValueRange() {
+  public ValueRange<Long> createLongValueRange() {
     return ValueRangeFactory.createLongValueRange(1_000L, 1_003L);
   }
 
   @ValueRangeProvider
-  public CountableValueRange<BigInteger> createBigIntegerValueRange() {
+  public ValueRange<BigInteger> createBigIntegerValueRange() {
     return ValueRangeFactory.createBigIntegerValueRange(
         BigInteger.valueOf(1_000_000L), BigInteger.valueOf(1_000_003L));
   }
 
   @ValueRangeProvider
-  public CountableValueRange<BigDecimal> createBigDecimalValueRange() {
+  public ValueRange<BigDecimal> createBigDecimalValueRange() {
     return ValueRangeFactory.createBigDecimalValueRange(
         new BigDecimal("0.00"), new BigDecimal("0.03"));
   }

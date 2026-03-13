@@ -1,0 +1,30 @@
+type: specs.openrewrite.org/v1beta/recipe
+name: ai.greycos.solver.migration.ChangeVersion
+displayName: Change the GreyCOS Solver version
+description: 'Replaces the version of GreyCOS Solver'
+recipeList:
+  - org.openrewrite.maven.ChangePropertyValue:
+      key: "version.ai.greycos.solver"
+      newValue: "${project.version}"
+      addIfMissing: false
+      trustParent: true
+  - org.openrewrite.maven.ChangePropertyValue:
+      key: "version.greycos"
+      newValue: "${project.version}"
+      addIfMissing: false
+      trustParent: true
+  - org.openrewrite.maven.ChangePropertyValue:
+      key: "ai.greycos.solver.version"
+      newValue: "${project.version}"
+      addIfMissing: false
+      trustParent: true
+  - org.openrewrite.maven.ChangePropertyValue:
+      key: "greycos.version"
+      newValue: "${project.version}"
+      addIfMissing: false
+      trustParent: true
+  - org.openrewrite.maven.ChangePropertyValue:
+      key: "greycosVersion"
+      newValue: "${project.version}"
+      addIfMissing: false
+      trustParent: true

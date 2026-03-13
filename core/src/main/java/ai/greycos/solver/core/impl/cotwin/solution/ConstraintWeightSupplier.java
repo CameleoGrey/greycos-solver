@@ -2,18 +2,16 @@ package ai.greycos.solver.core.impl.cotwin.solution;
 
 import java.util.Set;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfiguration;
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 
 public sealed interface ConstraintWeightSupplier<Solution_, Score_ extends Score<Score_>>
-    permits OverridesBasedConstraintWeightSupplier,
-        ConstraintConfigurationBasedConstraintWeightSupplier {
+    permits OverridesBasedConstraintWeightSupplier {
 
   void initialize(
       SolutionDescriptor<Solution_> solutionDescriptor,
@@ -31,8 +29,7 @@ public sealed interface ConstraintWeightSupplier<Solution_, Score_ extends Score
   void validate(Solution_ workingSolution, Set<ConstraintRef> userDefinedConstraints);
 
   /**
-   * The class that carries the constraint weights. It will either be annotated by {@link
-   * ConstraintConfiguration}, or be {@link ConstraintWeightOverrides}.
+   * The class that carries the constraint weights. It will be {@link ConstraintWeightOverrides}.
    *
    * @return never null
    */
@@ -43,8 +40,7 @@ public sealed interface ConstraintWeightSupplier<Solution_, Score_ extends Score
   /**
    * Get the weight for the constraint if known to the supplier. Supplies may choose not to provide
    * a value for unknown constraints, which is the case for {@link
-   * OverridesBasedConstraintWeightSupplier}. {@link
-   * ConstraintConfigurationBasedConstraintWeightSupplier} will always provide a value.
+   * OverridesBasedConstraintWeightSupplier}.
    *
    * @param constraintRef never null
    * @param workingSolution never null

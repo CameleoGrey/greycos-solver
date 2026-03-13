@@ -6,7 +6,7 @@ import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testcotwin.pinned.TestdataPinnedEntity;
 
-@PlanningEntity(pinningFilter = TestdataExtendedPinningFilter.class)
+@PlanningEntity
 public class TestdataExtendedPinnedEntity extends TestdataPinnedEntity {
 
   private TestdataValue subValue;

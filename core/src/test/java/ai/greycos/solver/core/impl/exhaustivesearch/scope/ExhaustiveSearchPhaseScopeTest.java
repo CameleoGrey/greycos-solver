@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.TreeSet;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.comparator.AbstractNodeComparatorTest;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.comparator.ScoreFirstNodeComparator;
 import ai.greycos.solver.core.impl.score.director.InnerScore;

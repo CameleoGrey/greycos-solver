@@ -37,7 +37,7 @@ class GreyCOSProcessorDeclarativeShadowSolutionListSolveTest {
                           TestdataQuarkusDeclarativeShadowVariableListValue.class,
                           TestdataQuarkusDeclarativeShadowVariableListConstraintProvider.class));
 
-  @Inject SolverManager<TestdataQuarkusDeclarativeShadowVariableListSolution, Long> solverManager;
+  @Inject SolverManager<TestdataQuarkusDeclarativeShadowVariableListSolution> solverManager;
 
   @Test
   void solve() throws ExecutionException, InterruptedException {

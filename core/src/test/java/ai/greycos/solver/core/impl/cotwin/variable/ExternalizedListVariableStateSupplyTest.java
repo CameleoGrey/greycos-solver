@@ -23,7 +23,8 @@ class ExternalizedListVariableStateSupplyTest {
   void initializeRoundTrip() {
     var variableDescriptor =
         TestdataAllowsUnassignedValuesListEntity.buildVariableDescriptorForValueList();
-    try (var supply = new ExternalizedListVariableStateSupply<>(variableDescriptor)) {
+    try (var supply =
+        new ExternalizedListVariableStateSupply<>(variableDescriptor, ignored -> {})) {
 
       var v1 = new TestdataAllowsUnassignedValuesListValue("1");
       var v2 = new TestdataAllowsUnassignedValuesListValue("2");
@@ -56,7 +57,8 @@ class ExternalizedListVariableStateSupplyTest {
   void assignRoundTrip() {
     var variableDescriptor =
         TestdataAllowsUnassignedValuesListEntity.buildVariableDescriptorForValueList();
-    try (var supply = new ExternalizedListVariableStateSupply<>(variableDescriptor)) {
+    try (var supply =
+        new ExternalizedListVariableStateSupply<>(variableDescriptor, ignored -> {})) {
 
       var v1 = new TestdataAllowsUnassignedValuesListValue("1");
       var v2 = new TestdataAllowsUnassignedValuesListValue("2");

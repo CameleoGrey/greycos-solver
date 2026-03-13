@@ -13,7 +13,7 @@
   <artifactId>greycos-solver-tools-parent</artifactId>
   <packaging>pom</packaging>
 
-  <name>GreyCOS Solver tools parent</name>
+  <name>GreyCOS Solver Tools Parent</name>
   <description>
     GreyCOS solves planning problems.
     This lightweight, embeddable planning engine implements powerful and scalable algorithms
@@ -25,6 +25,9 @@
 
   <modules>
     <module>webui</module>
+    <module>benchmark</module>
+    <module>benchmark-aggregator</module>
+    <module>migration</module>
   </modules>
 
 </project>

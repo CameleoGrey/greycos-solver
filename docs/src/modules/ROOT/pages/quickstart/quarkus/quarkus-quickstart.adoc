@@ -231,7 +231,7 @@ First update your build tool configuration:
 Maven::
 +
 --
-Add a `greycos-solver-test` dependency in your `pom.xml`:
+Add the subsequent dependency in your `pom.xml`:
 [source,xml,subs=attributes+]
 ----
     <dependency>
@@ -239,27 +239,15 @@ Add a `greycos-solver-test` dependency in your `pom.xml`:
       <artifactId>quarkus-junit5</artifactId>
       <scope>test</scope>
     </dependency>
-    <dependency>
-        <groupId>io.rest-assured</groupId>
-        <artifactId>rest-assured</artifactId>
-        <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>ai.greycos.solver</groupId>
-      <artifactId>greycos-solver-test</artifactId>
-      <version>{greycos-solver-version}</version>
-      <scope>test</scope>
-    </dependency>
 ----
 --
 Gradle::
 +
 --
-Add the subsequent dependencies to your `build.gradle`:
+Add the subsequent dependency to your `build.gradle`:
 [source,groovy,subs=attributes+]
 ----
     testImplementation "io.quarkus:quarkus-junit5"
-    testImplementation "ai.greycos.solver:greycos-solver-test:{greycos-solver-version}"
 ----
 --
 ====
@@ -315,9 +303,11 @@ class TimetableResourceTest {
     @Test
     void solveDemoDataUntilFeasible() throws IOException {
         // Provide the same input data shown in the text above.
-        Timetable testTimetable = new ObjectMapper()
-                .findAndRegisterModules()
-                .readValue(new File("src/test/resources/testing-timetable.json"), Timetable.class);
+        ObjectMapper objectMapper = JsonMapper.builder()
+                .findAndAddModules()
+                .build();
+        Timetable testTimetable = objectMapper.readValue(
+                new File("src/test/resources/testing-timetable.json"), Timetable.class);
 
         Timetable solution = given()
                 .contentType(ContentType.JSON)

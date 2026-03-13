@@ -7,12 +7,13 @@ import java.util.List;
 import java.util.Objects;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.impl.move.AbstractMove;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -135,12 +136,12 @@ public class ListSwapMove<Solution_, Entity_, Value_> extends AbstractMove<Solut
   }
 
   @Override
-  public ListSwapMove<Solution_, Entity_, Value_> rebase(Rebaser rebaser) {
+  public ListSwapMove<Solution_, Entity_, Value_> rebase(Lookup lookup) {
     return new ListSwapMove<>(
         variableMetaModel,
-        rebaser.rebase(leftEntity),
+        lookup.lookUpWorkingObject(leftEntity),
         leftIndex,
-        rebaser.rebase(rightEntity),
+        lookup.lookUpWorkingObject(rightEntity),
         rightIndex);
   }
 

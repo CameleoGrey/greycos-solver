@@ -1,36 +1,26 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.generic;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableDemand;
-import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableSupply;
-import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractOriginalSwapIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractRandomSwapIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.chained.ChainedSwapMove;
-import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 
 public class SwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
 
   protected final EntitySelector<Solution_> leftEntitySelector;
   protected final EntitySelector<Solution_> rightEntitySelector;
-  protected final List<GenuineVariableDescriptor<Solution_>> variableDescriptorList;
+  protected final List<? extends GenuineVariableDescriptor<Solution_>> variableDescriptorList;
   protected final boolean randomSelection;
-
-  protected final boolean anyChained;
-  protected List<SingletonInverseVariableSupply> inverseVariableSupplyList = null;
 
   public SwapMoveSelector(
       EntitySelector<Solution_> leftEntitySelector,
       EntitySelector<Solution_> rightEntitySelector,
-      List<GenuineVariableDescriptor<Solution_>> variableDescriptorList,
+      List<? extends GenuineVariableDescriptor<Solution_>> variableDescriptorList,
       boolean randomSelection) {
     this.leftEntitySelector = leftEntitySelector;
     this.rightEntitySelector = rightEntitySelector;
@@ -48,7 +38,6 @@ public class SwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> 
               + rightEntityDescriptor.getEntityClass()
               + ").");
     }
-    boolean anyChained = false;
     if (variableDescriptorList.isEmpty()) {
       throw new IllegalStateException(
           "The selector ("
@@ -71,14 +60,7 @@ public class SwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> 
                 + leftEntityDescriptor.getEntityClass()
                 + ").");
       }
-      boolean isChained =
-          variableDescriptor instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor
-              && basicVariableDescriptor.isChained();
-      if (isChained) {
-        anyChained = true;
-      }
     }
-    this.anyChained = anyChained;
     phaseLifecycleSupport.addEventListener(leftEntitySelector);
     if (leftEntitySelector != rightEntitySelector) {
       phaseLifecycleSupport.addEventListener(rightEntitySelector);
@@ -87,37 +69,7 @@ public class SwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> 
 
   @Override
   public boolean supportsPhaseAndSolverCaching() {
-    return !anyChained;
-  }
-
-  @Override
-  public void solvingStarted(SolverScope<Solution_> solverScope) {
-    super.solvingStarted(solverScope);
-    if (anyChained) {
-      inverseVariableSupplyList = new ArrayList<>(variableDescriptorList.size());
-      SupplyManager supplyManager = solverScope.getScoreDirector().getSupplyManager();
-      for (GenuineVariableDescriptor<Solution_> variableDescriptor : variableDescriptorList) {
-        SingletonInverseVariableSupply inverseVariableSupply;
-        boolean isChained =
-            variableDescriptor instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor
-                && basicVariableDescriptor.isChained();
-        if (isChained) {
-          inverseVariableSupply =
-              supplyManager.demand(new SingletonInverseVariableDemand<>(variableDescriptor));
-        } else {
-          inverseVariableSupply = null;
-        }
-        inverseVariableSupplyList.add(inverseVariableSupply);
-      }
-    }
-  }
-
-  @Override
-  public void solvingEnded(SolverScope<Solution_> solverScope) {
-    super.solvingEnded(solverScope);
-    if (anyChained) {
-      inverseVariableSupplyList = null;
-    }
+    return true;
   }
 
   // ************************************************************************
@@ -148,13 +100,8 @@ public class SwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> 
         @Override
         protected Move<Solution_> newSwapSelection(
             Object leftSubSelection, Object rightSubSelection) {
-          return anyChained
-              ? new ChainedSwapMove<>(
-                  variableDescriptorList,
-                  inverseVariableSupplyList,
-                  leftSubSelection,
-                  rightSubSelection)
-              : new SwapMove<>(variableDescriptorList, leftSubSelection, rightSubSelection);
+          return new SelectorBasedSwapMove<>(
+              variableDescriptorList, leftSubSelection, rightSubSelection);
         }
       };
     } else {
@@ -162,13 +109,8 @@ public class SwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> 
         @Override
         protected Move<Solution_> newSwapSelection(
             Object leftSubSelection, Object rightSubSelection) {
-          return anyChained
-              ? new ChainedSwapMove<>(
-                  variableDescriptorList,
-                  inverseVariableSupplyList,
-                  leftSubSelection,
-                  rightSubSelection)
-              : new SwapMove<>(variableDescriptorList, leftSubSelection, rightSubSelection);
+          return new SelectorBasedSwapMove<>(
+              variableDescriptorList, leftSubSelection, rightSubSelection);
         }
       };
     }

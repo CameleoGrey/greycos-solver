@@ -2,14 +2,16 @@ package ai.greycos.solver.core.impl.cotwin.valuerange.buildin.primlong;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.cotwin.valuerange.AbstractCountableValueRange;
 import ai.greycos.solver.core.impl.cotwin.valuerange.util.ValueRangeIterator;
 import ai.greycos.solver.core.impl.solver.random.RandomUtils;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public final class LongValueRange extends AbstractCountableValueRange<Long> {
 
   private final long from;
@@ -83,7 +85,7 @@ public final class LongValueRange extends AbstractCountableValueRange<Long> {
   }
 
   @Override
-  public boolean contains(Long value) {
+  public boolean contains(@Nullable Long value) {
     if (value == null || value < from || value >= to) {
       return false;
     }
@@ -103,7 +105,7 @@ public final class LongValueRange extends AbstractCountableValueRange<Long> {
   }
 
   @Override
-  public @NonNull Iterator<Long> createOriginalIterator() {
+  public Iterator<Long> createOriginalIterator() {
     return new OriginalLongValueRangeIterator();
   }
 
@@ -128,16 +130,16 @@ public final class LongValueRange extends AbstractCountableValueRange<Long> {
   }
 
   @Override
-  public @NonNull Iterator<Long> createRandomIterator(@NonNull Random workingRandom) {
+  public Iterator<Long> createRandomIterator(RandomGenerator workingRandom) {
     return new RandomLongValueRangeIterator(workingRandom);
   }
 
   private class RandomLongValueRangeIterator extends ValueRangeIterator<Long> {
 
-    private final Random workingRandom;
+    private final RandomGenerator workingRandom;
     private final long size = getSize();
 
-    public RandomLongValueRangeIterator(Random workingRandom) {
+    public RandomLongValueRangeIterator(RandomGenerator workingRandom) {
       this.workingRandom = workingRandom;
     }
 
@@ -158,19 +160,24 @@ public final class LongValueRange extends AbstractCountableValueRange<Long> {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof LongValueRange that)) {
-      return false;
+    // We do not use Objects.equals(...) due to https://bugs.openjdk.org/browse/JDK-8015417.
+    if (this == o) {
+      return true;
     }
-    return from == that.from && to == that.to && incrementUnit == that.incrementUnit;
+    return o instanceof LongValueRange that
+        && from == that.from
+        && to == that.to
+        && incrementUnit == that.incrementUnit;
   }
 
   @Override
   public int hashCode() {
-    var hash = 7;
+    // We do not use Objects.hash(...) because it creates an array each time.
+    // We do not use Objects.hashCode() due to https://bugs.openjdk.org/browse/JDK-8015417.
+    var hash = 1;
     hash = 31 * hash + Long.hashCode(from);
     hash = 31 * hash + Long.hashCode(to);
-    hash = 31 * hash + Long.hashCode(incrementUnit);
-    return hash;
+    return 31 * hash + Long.hashCode(incrementUnit);
   }
 
   @Override

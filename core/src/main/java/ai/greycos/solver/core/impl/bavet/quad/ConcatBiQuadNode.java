@@ -31,9 +31,9 @@ public final class ConcatBiQuadNode<A, B, C, D>
 
   @Override
   protected QuadTuple<A, B, C, D> getOutTupleFromLeft(BiTuple<A, B> leftTuple) {
-    var factA = leftTuple.factA;
-    var factB = leftTuple.factB;
-    return new QuadTuple<>(
+    var factA = leftTuple.getA();
+    var factB = leftTuple.getB();
+    return QuadTuple.of(
         factA,
         factB,
         paddingFunctionC.apply(factA, factB),
@@ -43,22 +43,26 @@ public final class ConcatBiQuadNode<A, B, C, D>
 
   @Override
   protected QuadTuple<A, B, C, D> getOutTupleFromRight(QuadTuple<A, B, C, D> rightTuple) {
-    return new QuadTuple<>(
-        rightTuple.factA, rightTuple.factB, rightTuple.factC, rightTuple.factD, outputStoreSize);
+    return QuadTuple.of(
+        rightTuple.getA(),
+        rightTuple.getB(),
+        rightTuple.getC(),
+        rightTuple.getD(),
+        outputStoreSize);
   }
 
   @Override
   protected void updateOutTupleFromLeft(BiTuple<A, B> leftTuple, QuadTuple<A, B, C, D> outTuple) {
-    outTuple.factA = leftTuple.factA;
-    outTuple.factB = leftTuple.factB;
+    outTuple.setA(leftTuple.getA());
+    outTuple.setB(leftTuple.getB());
   }
 
   @Override
   protected void updateOutTupleFromRight(
       QuadTuple<A, B, C, D> rightTuple, QuadTuple<A, B, C, D> outTuple) {
-    outTuple.factA = rightTuple.factA;
-    outTuple.factB = rightTuple.factB;
-    outTuple.factC = rightTuple.factC;
-    outTuple.factD = rightTuple.factD;
+    outTuple.setA(rightTuple.getA());
+    outTuple.setB(rightTuple.getB());
+    outTuple.setC(rightTuple.getC());
+    outTuple.setD(rightTuple.getD());
   }
 }

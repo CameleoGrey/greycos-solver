@@ -1,5 +1,7 @@
 package ai.greycos.solver.core.impl.bavet.common.tuple;
 
+import static ai.greycos.solver.core.impl.bavet.common.ConstraintNodeProfileId.Qualifier;
+
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.BiPredicate;
@@ -7,22 +9,28 @@ import java.util.function.Predicate;
 
 import ai.greycos.solver.core.api.function.QuadPredicate;
 import ai.greycos.solver.core.api.function.TriPredicate;
+import ai.greycos.solver.core.impl.bavet.common.AbstractNode;
+import ai.greycos.solver.core.impl.bavet.common.BavetStream;
+import ai.greycos.solver.core.impl.bavet.common.ConstraintNodeProfileId;
+import ai.greycos.solver.core.impl.bavet.common.InnerConstraintProfiler;
+import ai.greycos.solver.core.impl.bavet.common.StreamKind;
+import ai.greycos.solver.core.impl.score.stream.bavet.common.Scorer;
 
-public interface TupleLifecycle<Tuple_ extends AbstractTuple> {
+public interface TupleLifecycle<Tuple_ extends Tuple> {
 
-  static <Tuple_ extends AbstractTuple> TupleLifecycle<Tuple_> ofLeft(
+  static <Tuple_ extends Tuple> TupleLifecycle<Tuple_> ofLeft(
       LeftTupleLifecycle<Tuple_> leftTupleLifecycle) {
     return new LeftTupleLifecycleImpl<>(leftTupleLifecycle);
   }
 
-  static <Tuple_ extends AbstractTuple> TupleLifecycle<Tuple_> ofRight(
+  static <Tuple_ extends Tuple> TupleLifecycle<Tuple_> ofRight(
       RightTupleLifecycle<Tuple_> rightTupleLifecycle) {
     return new RightTupleLifecycleImpl<>(rightTupleLifecycle);
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})
   @SafeVarargs
-  static <Tuple_ extends AbstractTuple> TupleLifecycle<Tuple_> aggregate(
+  static <Tuple_ extends Tuple> TupleLifecycle<Tuple_> aggregate(
       TupleLifecycle<Tuple_>... tupleLifecycles) {
     var distinctTupleLifecycles =
         Arrays.stream(Objects.requireNonNull(tupleLifecycles))
@@ -37,30 +45,68 @@ public interface TupleLifecycle<Tuple_ extends AbstractTuple> {
 
   static <A> TupleLifecycle<UniTuple<A>> conditionally(
       TupleLifecycle<UniTuple<A>> tupleLifecycle, Predicate<A> predicate) {
-    return new ConditionalTupleLifecycle<>(tupleLifecycle, tuple -> predicate.test(tuple.factA));
+    return new ConditionalTupleLifecycle<>(tupleLifecycle, tuple -> predicate.test(tuple.getA()));
   }
 
   static <A, B> TupleLifecycle<BiTuple<A, B>> conditionally(
       TupleLifecycle<BiTuple<A, B>> tupleLifecycle, BiPredicate<A, B> predicate) {
     return new ConditionalTupleLifecycle<>(
-        tupleLifecycle, tuple -> predicate.test(tuple.factA, tuple.factB));
+        tupleLifecycle, tuple -> predicate.test(tuple.getA(), tuple.getB()));
   }
 
   static <A, B, C> TupleLifecycle<TriTuple<A, B, C>> conditionally(
       TupleLifecycle<TriTuple<A, B, C>> tupleLifecycle, TriPredicate<A, B, C> predicate) {
     return new ConditionalTupleLifecycle<>(
-        tupleLifecycle, tuple -> predicate.test(tuple.factA, tuple.factB, tuple.factC));
+        tupleLifecycle, tuple -> predicate.test(tuple.getA(), tuple.getB(), tuple.getC()));
   }
 
   static <A, B, C, D> TupleLifecycle<QuadTuple<A, B, C, D>> conditionally(
       TupleLifecycle<QuadTuple<A, B, C, D>> tupleLifecycle, QuadPredicate<A, B, C, D> predicate) {
     return new ConditionalTupleLifecycle<>(
         tupleLifecycle,
-        tuple -> predicate.test(tuple.factA, tuple.factB, tuple.factC, tuple.factD));
+        tuple -> predicate.test(tuple.getA(), tuple.getB(), tuple.getC(), tuple.getD()));
   }
 
-  static <Tuple_ extends AbstractTuple> TupleLifecycle<Tuple_> recording() {
+  static <Tuple_ extends Tuple> TupleLifecycle<Tuple_> recording() {
     return new RecordingTupleLifecycle<>();
+  }
+
+  static <Stream_ extends BavetStream, Tuple_ extends Tuple> TupleLifecycle<Tuple_> profiling(
+      InnerConstraintProfiler constraintProfiler,
+      long lifecycleId,
+      Stream_ stream,
+      TupleLifecycle<Tuple_> delegate) {
+    if (delegate instanceof AggregatedTupleLifecycle) {
+      return delegate;
+    }
+
+    var streamKind = StreamKind.FILTER;
+    var qualifier = Qualifier.NONE;
+
+    if (delegate instanceof AbstractNode node) {
+      streamKind = node.getStreamKind();
+      qualifier = Qualifier.NODE;
+    } else if (delegate instanceof LeftTupleLifecycleImpl<?> leftTupleLifecycle
+        && leftTupleLifecycle.leftTupleLifecycle() instanceof AbstractNode node) {
+      streamKind = node.getStreamKind();
+      qualifier = Qualifier.LEFT_INPUT;
+    } else if (delegate instanceof RightTupleLifecycleImpl<?> rightTupleLifecycle
+        && rightTupleLifecycle.rightTupleLifecycle() instanceof AbstractNode node) {
+      streamKind = node.getStreamKind();
+      qualifier = Qualifier.RIGHT_INPUT;
+    } else if (delegate instanceof RecordingTupleLifecycle<Tuple_>) {
+      streamKind = StreamKind.PRECOMPUTE;
+      qualifier = Qualifier.NODE;
+    } else if (delegate instanceof Scorer<Tuple_>) {
+      streamKind = StreamKind.SCORING;
+    } else if (!(delegate instanceof ConditionalTupleLifecycle<Tuple_>)) {
+      throw new IllegalStateException(
+          "Impossible state: encounter tuple lifecycle (%s) which is not a node and is not a known lifecycle implementation."
+              .formatted(delegate.getClass()));
+    }
+    var profileId =
+        new ConstraintNodeProfileId(lifecycleId, streamKind, qualifier, stream.getLocationSet());
+    return new ProfilingTupleLifecycle<>(constraintProfiler, profileId, delegate);
   }
 
   void insert(Tuple_ tuple);

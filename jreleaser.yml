@@ -45,10 +45,6 @@ deploy:
           - "target/staging-deploy"
         artifactOverrides:
           - groupId: ai.greycos.solver
-            artifactId: greycos-solver-spring-boot-starter
-            sourceJar: false
-            javadocJar: false
-          - groupId: ai.greycos.solver
             artifactId: greycos-solver-ide-config
             sourceJar: true
             javadocJar: false

@@ -1,6 +1,8 @@
 package ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo;
 
 import java.lang.constant.ClassDesc;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -88,5 +90,29 @@ interface GizmoMemberHandler {
     // "L" + className + ";"
     var classDescriptor = classDesc.descriptorString();
     return classDescriptor.substring(1, classDescriptor.length() - 1).replace('/', '.');
+  }
+
+  static Class<?> resolveType(Class<?> declaringClass, ClassDesc classDesc) {
+    try {
+      return classDesc.resolveConstantDesc(MethodHandles.publicLookup().in(declaringClass));
+    } catch (ReflectiveOperationException e) {
+      if (!classDesc.isArray()) {
+        try {
+          return Thread.currentThread().getContextClassLoader().loadClass(getTypeName(classDesc));
+        } catch (ClassNotFoundException ex) {
+          throw new IllegalStateException(
+              "Unable to resolve type (%s) referenced from class (%s)."
+                  .formatted(getTypeName(classDesc), declaringClass.getCanonicalName()),
+              ex);
+        }
+      }
+      var componentType = resolveType(declaringClass, classDesc.componentType());
+      var descriptorText = classDesc.descriptorString();
+      var arrayDepth = 0;
+      while (arrayDepth < descriptorText.length() && descriptorText.charAt(arrayDepth) == '[') {
+        arrayDepth++;
+      }
+      return Array.newInstance(componentType, new int[arrayDepth]).getClass();
+    }
   }
 }

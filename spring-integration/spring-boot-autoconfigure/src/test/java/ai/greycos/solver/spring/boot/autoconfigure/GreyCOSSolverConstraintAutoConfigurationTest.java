@@ -5,8 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Collections;
 import java.util.stream.IntStream;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.ConstraintMetaModel;
+import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
@@ -16,7 +17,6 @@ import ai.greycos.solver.spring.boot.autoconfigure.normal.NormalSpringTestConfig
 import ai.greycos.solver.spring.boot.autoconfigure.normal.constraints.TestdataSpringConstraintProvider;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringEntity;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution;
-import ai.greycos.solver.test.api.score.stream.ConstraintVerifier;
 
 import org.assertj.core.api.AssertionsForClassTypes;
 import org.junit.jupiter.api.Test;

@@ -13,11 +13,6 @@
   <name>GreyCOS Solver Quarkus - Deployment</name>
   <description>Quarkus deployment module for greycos-solver-quarkus.</description>
   <url>https://github.com/CameleoGrey/greycos-solver</url>
-
-  <properties>
-    <java.module.name>ai.greycos.solver.quarkus.deployment</java.module.name>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -56,11 +51,6 @@
       <groupId>ai.greycos.solver</groupId>
       <artifactId>greycos-solver-core</artifactId>
       <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>ai.greycos.solver</groupId>
-      <artifactId>greycos-solver-test</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

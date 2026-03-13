@@ -5,8 +5,6 @@ import java.util.function.Function;
 
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.bavet.bi.FlattenLastBiNode;
-import ai.greycos.solver.core.impl.bavet.common.AbstractFlattenLastNode;
-import ai.greycos.solver.core.impl.bavet.common.tuple.BiTuple;
 import ai.greycos.solver.core.impl.score.stream.bavet.BavetConstraintFactory;
 import ai.greycos.solver.core.impl.score.stream.bavet.common.ConstraintNodeBuildHelper;
 import ai.greycos.solver.core.impl.score.stream.bavet.common.bridge.BavetAftBridgeBiConstraintStream;
@@ -44,7 +42,7 @@ final class BavetFlattenLastBiConstraintStream<Solution_, A, B, NewB>
     assertEmptyChildStreamList();
     int inputStoreIndex = buildHelper.reserveTupleStoreIndex(parent.getTupleSource());
     int outputStoreSize = buildHelper.extractTupleStoreSize(flattenLastStream);
-    AbstractFlattenLastNode<BiTuple<A, B>, BiTuple<A, NewB>, B, NewB> node =
+    var node =
         new FlattenLastBiNode<>(
             inputStoreIndex,
             mappingFunction,

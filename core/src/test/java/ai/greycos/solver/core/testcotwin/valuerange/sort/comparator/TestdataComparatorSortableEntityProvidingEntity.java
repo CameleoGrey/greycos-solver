@@ -11,13 +11,13 @@ import ai.greycos.solver.core.testcotwin.common.TestSortableComparator;
 import ai.greycos.solver.core.testcotwin.common.TestSortableObject;
 import ai.greycos.solver.core.testcotwin.common.TestdataSortableValue;
 
-@PlanningEntity(difficultyComparatorClass = TestSortableComparator.class)
+@PlanningEntity(comparatorClass = TestSortableComparator.class)
 public class TestdataComparatorSortableEntityProvidingEntity extends TestdataObject
     implements TestSortableObject {
 
   @PlanningVariable(
       valueRangeProviderRefs = "valueRange",
-      strengthComparatorClass = TestSortableComparator.class)
+      comparatorClass = TestSortableComparator.class)
   private TestdataSortableValue value;
 
   @ValueRangeProvider(id = "valueRange")

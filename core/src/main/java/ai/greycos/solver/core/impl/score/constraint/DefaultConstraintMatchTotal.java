@@ -37,7 +37,7 @@ public final class DefaultConstraintMatchTotal<Score_ extends Score<Score_>>
    */
   @Deprecated(forRemoval = true, since = "1.4.0")
   public DefaultConstraintMatchTotal(String constraintPackage, String constraintName) {
-    this(ConstraintRef.of(constraintPackage, constraintName));
+    this(ConstraintRef.of(constraintName));
   }
 
   /**
@@ -63,7 +63,7 @@ public final class DefaultConstraintMatchTotal<Score_ extends Score<Score_>>
   @Deprecated(forRemoval = true, since = "1.4.0")
   public DefaultConstraintMatchTotal(
       String constraintPackage, String constraintName, Score_ constraintWeight) {
-    this(ConstraintRef.of(constraintPackage, constraintName), constraintWeight);
+    this(ConstraintRef.of(constraintName), constraintWeight);
   }
 
   public DefaultConstraintMatchTotal(ConstraintRef constraintRef, Score_ constraintWeight) {

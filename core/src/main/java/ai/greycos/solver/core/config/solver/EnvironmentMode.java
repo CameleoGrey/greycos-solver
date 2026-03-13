@@ -150,14 +150,6 @@ public enum EnvironmentMode {
     };
   }
 
-  /**
-   * @deprecated Use {@link #isFullyAsserted()} instead.
-   */
-  @Deprecated(forRemoval = true, since = "1.20.0")
-  public boolean isNonIntrusiveFullAsserted() {
-    return isFullyAsserted();
-  }
-
   public boolean isIntrusivelyAsserted() {
     return switch (this) {
       // STEP_ASSERT = former FAST_ASSERT
@@ -166,14 +158,6 @@ public enum EnvironmentMode {
       case NON_INTRUSIVE_FULL_ASSERT, PHASE_ASSERT, NO_ASSERT, NON_REPRODUCIBLE, REPRODUCIBLE ->
           false;
     };
-  }
-
-  /**
-   * @deprecated Use {@link #isIntrusivelyAsserted()} instead.
-   */
-  @Deprecated(forRemoval = true, since = "1.20.0")
-  public boolean isIntrusiveFastAsserted() {
-    return isIntrusivelyAsserted();
   }
 
   public boolean isReproducible() {

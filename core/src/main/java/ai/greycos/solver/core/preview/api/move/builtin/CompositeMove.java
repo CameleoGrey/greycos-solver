@@ -5,11 +5,11 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.util.CollectionUtils;
 import ai.greycos.solver.core.preview.api.move.Move;
 import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -57,10 +57,10 @@ public final class CompositeMove<Solution_> implements Move<Solution_> {
 
   @SuppressWarnings("unchecked")
   @Override
-  public Move<Solution_> rebase(Rebaser rebaser) {
+  public Move<Solution_> rebase(Lookup lookup) {
     Move<Solution_>[] rebasedMoves = new Move[moves.length];
     for (var i = 0; i < moves.length; i++) {
-      rebasedMoves[i] = moves[i].rebase(rebaser);
+      rebasedMoves[i] = moves[i].rebase(lookup);
     }
     return new CompositeMove<>(rebasedMoves);
   }

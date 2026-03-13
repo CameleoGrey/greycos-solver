@@ -49,9 +49,7 @@ public abstract class AbstractPhaseFactory<
         TerminationFactory.<Solution_>create(terminationConfig_)
             .buildTermination(configPolicy, phaseTermination);
     var inapplicableTerminationList =
-        !(this instanceof NoChangePhaseFactory<?>)
-                && resultingTermination
-                    instanceof UniversalTermination<Solution_> universalTermination
+        resultingTermination instanceof UniversalTermination<Solution_> universalTermination
             ? universalTermination.getPhaseTerminationsInapplicableTo(getPhaseScopeClass())
             : Collections.emptyList();
     var phaseName =
@@ -141,6 +139,15 @@ public abstract class AbstractPhaseFactory<
           availableProcessorCount);
     }
     return resolvedMoveThreadCount;
+  }
+
+  protected @Nullable Integer resolveMoveThreadCount(
+      @Nullable String phaseMoveThreadCount,
+      @Nullable Integer solverMoveThreadCount,
+      boolean enforceMaximum) {
+    return phaseMoveThreadCount == null
+        ? solverMoveThreadCount
+        : resolveMoveThreadCount(phaseMoveThreadCount, enforceMaximum);
   }
 
   protected int getAvailableProcessors() {

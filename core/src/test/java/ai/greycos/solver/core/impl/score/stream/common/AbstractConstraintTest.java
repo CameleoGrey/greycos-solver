@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.score.stream.common;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.testconstraint.TestConstraint;
 import ai.greycos.solver.core.testconstraint.TestConstraintFactory;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;

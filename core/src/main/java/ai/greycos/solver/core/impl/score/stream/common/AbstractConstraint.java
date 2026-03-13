@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintConfiguration;
 import ai.greycos.solver.core.api.score.IBendableScore;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
@@ -39,8 +38,6 @@ public abstract class AbstractConstraint<
    * @param constraintRef never null
    * @param description never null
    * @param constraintGroup never null
-   * @param defaultConstraintWeight if null, it means legacy constraint configuration code; will
-   *     require {@link ConstraintConfiguration} to be present.
    * @param scoreImpactType never null
    * @param justificationMapping never null
    * @param indictedObjectsMapping never null
@@ -89,41 +86,16 @@ public abstract class AbstractConstraint<
   @SuppressWarnings("unchecked")
   private <Score_ extends Score<Score_>> Score_ determineConstraintWeight(Solution_ solution) {
     var solutionDescriptor = constraintFactory.getSolutionDescriptor();
-    var hasConstraintWeight = defaultConstraintWeight != null;
     var constraintWeightSupplier = solutionDescriptor.<Score_>getConstraintWeightSupplier();
-    var hasConstraintWeightSupplier = constraintWeightSupplier != null;
-
-    if (!hasConstraintWeight) {
-      // Branch only possible using the deprecated ConstraintConfiguration and
-      // penalizeConfigurable(...).
-      if (solution == null) {
-        /*
-         * In constraint verifier API, we allow for testing constraint providers without having a planning solution.
-         * However, constraint weights may be using ConstraintConfiguration
-         * and in that case the solution is required to read the weights from.
-         * For these cases, we set the constraint weight to the softest possible value, just to make sure that the
-         * constraint is not ignored.
-         * The actual value is not used in any way.
-         */
-        return (Score_) solutionDescriptor.getScoreDefinition().getOneSoftestScore();
-      } else if (hasConstraintWeightSupplier) { // Legacy constraint configuration.
-        return constraintWeightSupplier.getConstraintWeight(constraintRef, solution);
-      } else {
-        throw new UnsupportedOperationException(
-            "Impossible state: no %s for constraint (%s)."
-                .formatted(ConstraintConfiguration.class.getSimpleName(), constraintRef));
+    if (constraintWeightSupplier != null) {
+      var weight = constraintWeightSupplier.getConstraintWeight(constraintRef, solution);
+      if (weight != null) {
+        return weight;
       }
-    } else { // Overridable constraint weight using ConstraintWeights.
-      if (hasConstraintWeightSupplier) {
-        var weight = constraintWeightSupplier.getConstraintWeight(constraintRef, solution);
-        if (weight != null) {
-          return weight;
-        }
-      }
-      AbstractConstraint.validateWeight(
-          solutionDescriptor, constraintRef, (Score_) defaultConstraintWeight);
-      return (Score_) defaultConstraintWeight;
     }
+    AbstractConstraint.validateWeight(
+        solutionDescriptor, constraintRef, (Score_) defaultConstraintWeight);
+    return (Score_) defaultConstraintWeight;
   }
 
   public final void assertCorrectImpact(int impact) {

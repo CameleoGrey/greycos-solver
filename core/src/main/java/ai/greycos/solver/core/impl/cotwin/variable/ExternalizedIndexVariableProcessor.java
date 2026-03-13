@@ -2,7 +2,6 @@ package ai.greycos.solver.core.impl.cotwin.variable;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.impl.cotwin.variable.index.IndexShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 
 final class ExternalizedIndexVariableProcessor<Solution_> {
@@ -14,32 +13,34 @@ final class ExternalizedIndexVariableProcessor<Solution_> {
     this.shadowVariableDescriptor = shadowVariableDescriptor;
   }
 
-  public void addElement(
+  public boolean addElement(
       InnerScoreDirector<Solution_, ?> scoreDirector, Object element, Integer index) {
-    updateIndex(scoreDirector, element, index);
+    return updateIndex(scoreDirector, element, index);
   }
 
-  public void removeElement(InnerScoreDirector<Solution_, ?> scoreDirector, Object element) {
-    updateIndex(scoreDirector, element, null);
+  public boolean removeElement(InnerScoreDirector<Solution_, ?> scoreDirector, Object element) {
+    return updateIndex(scoreDirector, element, null);
   }
 
-  public void unassignElement(InnerScoreDirector<Solution_, ?> scoreDirector, Object element) {
-    removeElement(scoreDirector, element);
+  public boolean unassignElement(InnerScoreDirector<Solution_, ?> scoreDirector, Object element) {
+    return removeElement(scoreDirector, element);
   }
 
-  public void changeElement(
+  public boolean changeElement(
       InnerScoreDirector<Solution_, ?> scoreDirector, Object element, Integer index) {
-    updateIndex(scoreDirector, element, index);
+    return updateIndex(scoreDirector, element, index);
   }
 
-  private void updateIndex(
+  private boolean updateIndex(
       InnerScoreDirector<Solution_, ?> scoreDirector, Object element, Integer index) {
     var oldIndex = getIndex(element);
     if (!Objects.equals(oldIndex, index)) {
       scoreDirector.beforeVariableChanged(shadowVariableDescriptor, element);
       shadowVariableDescriptor.setValue(element, index);
       scoreDirector.afterVariableChanged(shadowVariableDescriptor, element);
+      return true;
     }
+    return false;
   }
 
   public Integer getIndex(Object planningValue) {

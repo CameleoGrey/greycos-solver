@@ -1,10 +1,9 @@
 package ai.greycos.solver.core.impl.bavet.common;
 
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.LeftTupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.RightTupleLifecycle;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 
-public abstract class AbstractTwoInputNode<
-        LeftTuple_ extends AbstractTuple, RightTuple_ extends AbstractTuple>
+public abstract class AbstractTwoInputNode<LeftTuple_ extends Tuple, RightTuple_ extends Tuple>
     extends AbstractNode
     implements LeftTupleLifecycle<LeftTuple_>, RightTupleLifecycle<RightTuple_> {}

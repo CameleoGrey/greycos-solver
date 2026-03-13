@@ -3,11 +3,14 @@ package ai.greycos.solver.core.impl.score.stream.common.inliner;
 import java.math.BigDecimal;
 import java.util.Map;
 
-import ai.greycos.solver.core.api.score.buildin.hardsoftbigdecimal.HardSoftBigDecimalScore;
+import ai.greycos.solver.core.api.score.HardSoftBigDecimalScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 final class HardSoftBigDecimalScoreInliner extends AbstractScoreInliner<HardSoftBigDecimalScore> {
 
   BigDecimal hardScore = BigDecimal.ZERO;
@@ -22,9 +25,8 @@ final class HardSoftBigDecimalScoreInliner extends AbstractScoreInliner<HardSoft
   @Override
   public WeightedScoreImpacter<HardSoftBigDecimalScore, ?> buildWeightedScoreImpacter(
       AbstractConstraint<?, ?, ?> constraint) {
-    HardSoftBigDecimalScore constraintWeight = constraintWeightMap.get(constraint);
-    HardSoftBigDecimalScoreContext context =
-        new HardSoftBigDecimalScoreContext(this, constraint, constraintWeight);
+    var constraintWeight = constraintWeightMap.get(constraint);
+    var context = new HardSoftBigDecimalScoreContext(this, constraint, constraintWeight);
     if (constraintWeight.softScore().equals(BigDecimal.ZERO)) {
       return WeightedScoreImpacter.of(context, HardSoftBigDecimalScoreContext::changeHardScoreBy);
     } else if (constraintWeight.hardScore().equals(BigDecimal.ZERO)) {

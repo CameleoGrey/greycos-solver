@@ -1,37 +1,43 @@
 package ai.greycos.solver.core.impl.score.stream.common.inliner;
 
+import java.util.Objects;
+
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
 public abstract class ScoreContext<
     Score_ extends Score<Score_>, ScoreInliner_ extends AbstractScoreInliner<Score_>> {
 
-  protected final ScoreInliner_ parent;
-  protected final AbstractConstraint<?, ?, ?> constraint;
+  private final AbstractConstraint<?, ?, ?> constraint;
   protected final Score_ constraintWeight;
-  protected final ConstraintMatchPolicy constraintMatchPolicy;
+  protected final ScoreInliner_ inliner;
 
   protected ScoreContext(
-      ScoreInliner_ parent, AbstractConstraint<?, ?, ?> constraint, Score_ constraintWeight) {
-    this.parent = parent;
+      ScoreInliner_ inliner, AbstractConstraint<?, ?, ?> constraint, Score_ constraintWeight) {
     this.constraint = constraint;
     this.constraintWeight = constraintWeight;
-    this.constraintMatchPolicy = parent.constraintMatchPolicy;
+    this.inliner = inliner;
   }
 
-  public AbstractConstraint<?, ?, ?> getConstraint() {
+  public final AbstractConstraint<?, ?, ?> getConstraint() {
     return constraint;
   }
 
-  public Score_ getConstraintWeight() {
+  public final Score_ getConstraintWeight() {
     return constraintWeight;
   }
 
-  protected UndoScoreImpacter impactWithConstraintMatch(
-      UndoScoreImpacter undoScoreImpact,
-      Score_ score,
-      ConstraintMatchSupplier<Score_> constraintMatchSupplier) {
-    return parent.addConstraintMatch(constraint, score, constraintMatchSupplier, undoScoreImpact);
+  protected final ScoreImpact<Score_> possiblyAddConstraintMatch(
+      ScoreImpact<Score_> scoreImpact,
+      @Nullable ConstraintMatchSupplier<Score_> constraintMatchSupplier) {
+    if (!inliner.constraintMatchPolicy.isEnabled()) {
+      return scoreImpact;
+    }
+    return inliner.addConstraintMatch(
+        constraint, Objects.requireNonNull(constraintMatchSupplier), scoreImpact);
   }
 }

@@ -2,9 +2,9 @@ package ai.greycos.solver.jackson.api.score;
 
 import java.io.IOException;
 
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.jackson.api.score.buildin.hardsoft.HardSoftScoreJacksonSerializer;
+import ai.greycos.solver.jackson.api.score.buildin.HardSoftScoreJacksonSerializer;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;

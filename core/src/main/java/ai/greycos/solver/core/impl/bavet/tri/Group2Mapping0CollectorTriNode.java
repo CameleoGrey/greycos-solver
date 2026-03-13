@@ -31,17 +31,16 @@ public final class Group2Mapping0CollectorTriNode<OldA, OldB, OldC, A, B>
       TriFunction<OldA, OldB, OldC, A> groupKeyMappingA,
       TriFunction<OldA, OldB, OldC, B> groupKeyMappingB,
       TriTuple<OldA, OldB, OldC> tuple) {
-    OldA oldA = tuple.factA;
-    OldB oldB = tuple.factB;
-    OldC oldC = tuple.factC;
-    A a = groupKeyMappingA.apply(oldA, oldB, oldC);
-    B b = groupKeyMappingB.apply(oldA, oldB, oldC);
-    return new Pair<>(a, b);
+    var oldA = tuple.getA();
+    var oldB = tuple.getB();
+    var oldC = tuple.getC();
+    return new Pair<>(
+        groupKeyMappingA.apply(oldA, oldB, oldC), groupKeyMappingB.apply(oldA, oldB, oldC));
   }
 
   @Override
   protected BiTuple<A, B> createOutTuple(Pair<A, B> groupKey) {
-    return new BiTuple<>(groupKey.key(), groupKey.value(), outputStoreSize);
+    return BiTuple.of(groupKey.key(), groupKey.value(), outputStoreSize);
   }
 
   @Override

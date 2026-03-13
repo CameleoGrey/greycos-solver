@@ -5,7 +5,6 @@ import java.math.RoundingMode;
 import java.util.Objects;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.impl.score.buildin.HardSoftScoreDefinition;
 
 /**
  * Abstract superclass for {@link ScoreDefinition}.

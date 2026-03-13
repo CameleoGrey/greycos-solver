@@ -2,9 +2,7 @@ package ai.greycos.solver.core.impl.cotwin.lookup;
 
 import java.util.Map;
 
-import ai.greycos.solver.core.api.cotwin.lookup.LookUpStrategyType;
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
-import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 
 public final class NoneLookUpStrategy implements LookUpStrategy {
 
@@ -21,37 +19,17 @@ public final class NoneLookUpStrategy implements LookUpStrategy {
   @Override
   public <E> E lookUpWorkingObject(Map<Object, Object> idToWorkingObjectMap, E externalObject) {
     throw new IllegalArgumentException(
-        "The externalObject ("
-            + externalObject
-            + ") cannot be looked up. Some functionality, such as multithreaded solving, requires this ability.\n"
-            + "Maybe add a @"
-            + PlanningId.class.getSimpleName()
-            + " annotation on an identifier property of the class ("
-            + externalObject.getClass()
-            + ").\n"
-            + "Or otherwise, maybe change the @"
-            + PlanningSolution.class.getSimpleName()
-            + " annotation's "
-            + LookUpStrategyType.class.getSimpleName()
-            + " (not recommended).");
+        """
+        The externalObject (%s) cannot be looked up.
+        Some functionality, such as multithreaded solving, requires this ability.
+        Maybe add a @%s annotation on an identifier property of the class (%s)."""
+            .formatted(
+                externalObject, PlanningId.class.getSimpleName(), externalObject.getClass()));
   }
 
   @Override
   public <E> E lookUpWorkingObjectIfExists(
       Map<Object, Object> idToWorkingObjectMap, E externalObject) {
-    throw new IllegalArgumentException(
-        "The externalObject ("
-            + externalObject
-            + ") cannot be looked up. Some functionality, such as multithreaded solving, requires this ability.\n"
-            + "Maybe add a @"
-            + PlanningId.class.getSimpleName()
-            + " annotation on an identifier property of the class ("
-            + externalObject.getClass()
-            + ").\n"
-            + "Or otherwise, maybe change the @"
-            + PlanningSolution.class.getSimpleName()
-            + " annotation's "
-            + LookUpStrategyType.class.getSimpleName()
-            + " (not recommended).");
+    return lookUpWorkingObject(idToWorkingObjectMap, externalObject);
   }
 }

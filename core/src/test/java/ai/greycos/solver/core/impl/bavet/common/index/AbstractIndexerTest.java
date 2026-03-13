@@ -8,6 +8,10 @@ abstract class AbstractIndexerTest {
   record Person(String gender, int age) {}
 
   protected <T> List<T> getTuples(Indexer<T> indexer, Object... objectProperties) {
+    return forEachToTuples(indexer, objectProperties);
+  }
+
+  protected <T> List<T> forEachToTuples(Indexer<T> indexer, Object... objectProperties) {
     var properties =
         switch (objectProperties.length) {
           case 0 -> CompositeKey.none();

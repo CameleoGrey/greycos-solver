@@ -6,10 +6,8 @@ import java.util.Map;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.cloner.DeepPlanningClone;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
-import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.testcotwin.DummyVariableListener;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 
@@ -139,7 +137,6 @@ public class TestdataDeepCloningEntity extends TestdataObject {
   }
 
   @DeepPlanningClone
-  @ShadowVariable(variableListenerClass = DummyVariableListener.class, sourceVariableName = "value")
   public List<String> getShadowVariableList() {
     return shadowVariableList;
   }
@@ -149,7 +146,6 @@ public class TestdataDeepCloningEntity extends TestdataObject {
   }
 
   @DeepPlanningClone
-  @ShadowVariable(variableListenerClass = DummyVariableListener.class, sourceVariableName = "value")
   public Map<String, String> getShadowVariableMap() {
     return shadowVariableMap;
   }

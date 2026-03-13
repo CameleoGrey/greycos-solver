@@ -54,7 +54,10 @@ public final class BavetConstraintStreamScoreDirectorFactory<
         config.getConstraintProviderCustomProperties(),
         "constraintProviderCustomProperties");
     return new BavetConstraintStreamScoreDirectorFactory<>(
-        solutionDescriptor, constraintProvider, environmentMode);
+        solutionDescriptor,
+        constraintProvider,
+        environmentMode,
+        Boolean.TRUE.equals(config.getConstraintStreamProfilingEnabled()));
   }
 
   private static Class<? extends ConstraintProvider> getConstraintProviderClass(
@@ -87,17 +90,21 @@ public final class BavetConstraintStreamScoreDirectorFactory<
 
   private final BavetConstraintSessionFactory<Solution_, Score_> constraintSessionFactory;
   private final ConstraintMetaModel constraintMetaModel;
+  private final boolean constraintStreamProfilingEnabled;
 
   public BavetConstraintStreamScoreDirectorFactory(
       SolutionDescriptor<Solution_> solutionDescriptor,
       ConstraintProvider constraintProvider,
-      EnvironmentMode environmentMode) {
-    super(solutionDescriptor);
+      EnvironmentMode environmentMode,
+      boolean constraintStreamProfilingEnabled) {
+    super(solutionDescriptor, environmentMode);
+    this.constraintStreamProfilingEnabled = constraintStreamProfilingEnabled;
     var constraintFactory = new BavetConstraintFactory<>(solutionDescriptor, environmentMode);
     constraintMetaModel =
         DefaultConstraintMetaModel.of(constraintFactory.buildConstraints(constraintProvider));
     constraintSessionFactory =
-        new BavetConstraintSessionFactory<>(solutionDescriptor, constraintMetaModel);
+        new BavetConstraintSessionFactory<>(
+            solutionDescriptor, constraintMetaModel, constraintStreamProfilingEnabled);
   }
 
   public BavetConstraintSession<Score_> newSession(

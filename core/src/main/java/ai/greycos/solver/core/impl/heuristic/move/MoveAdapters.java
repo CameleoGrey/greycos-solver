@@ -3,8 +3,9 @@ package ai.greycos.solver.core.impl.heuristic.move;
 import java.util.Iterator;
 import java.util.function.Predicate;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.move.MoveDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -17,15 +18,14 @@ import org.jspecify.annotations.NullMarked;
 public final class MoveAdapters {
 
   public static <Solution_> ai.greycos.solver.core.impl.heuristic.move.Move<Solution_> toLegacyMove(
-      ai.greycos.solver.core.preview.api.move.Move<Solution_> newMove) {
-    if (newMove instanceof Move<Solution_> legacyMove) {
+      Move<Solution_> move) {
+    if (move instanceof ai.greycos.solver.core.impl.heuristic.move.Move<Solution_> legacyMove) {
       return legacyMove;
     }
-    return new NewMoveAdapter<>(newMove);
+    return new NewMoveAdapter<>(move);
   }
 
-  public static <Solution_> ai.greycos.solver.core.preview.api.move.Move<Solution_> unadapt(
-      ai.greycos.solver.core.preview.api.move.Move<Solution_> possibleLegacyMove) {
+  public static <Solution_> Move<Solution_> unadapt(Move<Solution_> possibleLegacyMove) {
     if (possibleLegacyMove instanceof NewMoveAdapter<Solution_> newMoveAdapter) {
       return newMoveAdapter.newMove();
     }
@@ -34,17 +34,17 @@ public final class MoveAdapters {
 
   public static <Solution_>
       Iterator<ai.greycos.solver.core.impl.heuristic.move.Move<Solution_>> toLegacyMoveIterator(
-          Iterator<ai.greycos.solver.core.preview.api.move.Move<Solution_>> newIterator) {
-    return new NewIteratorAdapter<>(newIterator);
+          Iterator<Move<Solution_>> moveIterator) {
+    return new NewIteratorAdapter<>(moveIterator);
   }
 
   /**
    * Used to determine if a move is doable. A move is only doable if:
    *
    * <ul>
-   *   <li>It is a new {@link ai.greycos.solver.core.preview.api.move.Move}.
-   *   <li>It is a legacy move and its {@link AbstractMove#isMoveDoable(ScoreDirector)} return
-   *       {@code true}.
+   *   <li>It is a non-selector-based preview {@link Move}.
+   *   <li>It is a selector-based move and its {@link
+   *       AbstractSelectorBasedMove#isMoveDoable(ScoreDirector)} returns {@code true}.
    * </ul>
    *
    * @param moveDirector never null
@@ -52,23 +52,19 @@ public final class MoveAdapters {
    * @return true if the move is doable
    */
   public static <Solution_> boolean isDoable(
-      MoveDirector<Solution_, ?> moveDirector,
-      ai.greycos.solver.core.preview.api.move.Move<Solution_> move) {
-    if (move instanceof Move<Solution_> legacyMove) {
-      return legacyMove.isMoveDoable(moveDirector.getScoreDirector());
-    } else {
-      return true; // New moves are always doable.
+      MoveDirector<Solution_, ?> moveDirector, Move<Solution_> move) {
+    if (move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove) {
+      return selectorBasedMove.isMoveDoable(moveDirector.getScoreDirector());
     }
+    return true;
   }
 
   public static <Solution_> boolean testWhenLegacyMove(
-      ai.greycos.solver.core.preview.api.move.Move<Solution_> move,
-      Predicate<Move<Solution_>> predicate) {
-    if (move instanceof Move<Solution_> legacyMove) {
+      Move<Solution_> move, Predicate<Move<Solution_>> predicate) {
+    if (move instanceof ai.greycos.solver.core.impl.heuristic.move.Move<Solution_> legacyMove) {
       return predicate.test(legacyMove);
-    } else {
-      return false;
     }
+    return false;
   }
 
   private MoveAdapters() {

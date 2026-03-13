@@ -7,11 +7,10 @@ import ai.greycos.solver.core.config.solver.SolverConfig;
 
 import org.w3c.dom.Document;
 
-public class SolverConfigIO implements JaxbIO<SolverConfig> {
+public class SolverConfigIO {
   private static final String SOLVER_XSD_RESOURCE = "/solver.xsd";
   private final GenericJaxbIO<SolverConfig> genericJaxbIO = new GenericJaxbIO<>(SolverConfig.class);
 
-  @Override
   public SolverConfig read(Reader reader) {
     Document document = genericJaxbIO.parseXml(reader);
     String rootElementNamespace = document.getDocumentElement().getNamespaceURI();
@@ -22,7 +21,7 @@ public class SolverConfigIO implements JaxbIO<SolverConfig> {
       // If not, add the missing namespace to maintain backward compatibility.
       return genericJaxbIO.readOverridingNamespace(
           document,
-          ElementNamespaceOverride.of(SolverConfig.XML_ELEMENT_NAME, SolverConfig.XML_NAMESPACE));
+          new ElementNamespaceOverride(SolverConfig.XML_ELEMENT_NAME, SolverConfig.XML_NAMESPACE));
     } else { // If there is an unexpected namespace, fail fast.
       String errorMessage =
           String.format(
@@ -33,7 +32,6 @@ public class SolverConfigIO implements JaxbIO<SolverConfig> {
     }
   }
 
-  @Override
   public void write(SolverConfig solverConfig, Writer writer) {
     genericJaxbIO.writeWithoutNamespaces(solverConfig, writer);
   }

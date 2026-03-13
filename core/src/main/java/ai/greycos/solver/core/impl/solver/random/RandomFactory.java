@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.solver.random;
 
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 /**
  * @see DefaultRandomFactory
@@ -10,5 +10,5 @@ public interface RandomFactory {
   /**
    * @return never null
    */
-  Random createRandom();
+  RandomGenerator createRandom();
 }

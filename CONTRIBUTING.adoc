@@ -26,7 +26,7 @@ Use one of the following ways to build this project:
 
 * :receipt: *build-doc*: `./mvnw clean install` in the `docs` directory creates asciidoctor documentation `docs/target/html_single/index.html` (~2 min)
 
-* :mechanical_arm: *build-all*: `./mvnw clean install -Dfull` runs all checks and creates documentation and distribution files (~20 min)
+* :mechanical_arm: *build-all*: `./mvnw clean install -Dfull` runs all checks and creates documentation and distribution files (~20 min). It requires JDK 25+ to build properly.
 
 
 === Set up your development environment

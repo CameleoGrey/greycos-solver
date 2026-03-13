@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.move;
 import java.util.Collection;
 import java.util.Collections;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testutil.CodeAssertable;
 

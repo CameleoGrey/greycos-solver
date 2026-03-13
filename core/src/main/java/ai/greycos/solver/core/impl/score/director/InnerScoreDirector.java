@@ -6,6 +6,7 @@ import static java.util.stream.Collectors.toList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
@@ -19,7 +20,6 @@ import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
 import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.constraint.Indictment;
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
 import ai.greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
@@ -37,6 +37,7 @@ import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 import ai.greycos.solver.core.preview.api.move.Move;
+import ai.greycos.solver.core.preview.api.move.SolutionView;
 
 import org.jspecify.annotations.Nullable;
 
@@ -128,6 +129,10 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    */
   void setMoveRepository(@Nullable MoveRepository<Solution_> moveRepository);
 
+  default NeighborhoodNotifier<Solution_> getNeighborhoodNotifier() {
+    return null;
+  }
+
   /**
    * Calculates the {@link Score} and updates the {@link PlanningSolution working solution}
    * accordingly.
@@ -201,6 +206,13 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    * @param assertMoveScoreFromScratch true will hurt performance
    * @return never null
    */
+  default InnerScore<Score_> executeTemporaryMove(
+      Move<Solution_> move,
+      @Nullable Consumer<SolutionView<Solution_>> consumer,
+      boolean assertMoveScoreFromScratch) {
+    return executeTemporaryMove(move, assertMoveScoreFromScratch);
+  }
+
   InnerScore<Score_> executeTemporaryMove(Move<Solution_> move, boolean assertMoveScoreFromScratch);
 
   /**

@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.solver.random;
 
-import java.util.Random;
+import java.util.List;
+import java.util.random.RandomGenerator;
 
 public class RandomUtils {
 
@@ -12,7 +13,7 @@ public class RandomUtils {
    * @return like {@link Random#nextInt(int)} but for a long
    * @see Random#nextInt(int)
    */
-  public static long nextLong(Random random, long n) {
+  public static long nextLong(RandomGenerator random, long n) {
     // This code is based on java.util.Random#nextInt(int)'s javadoc.
     if (n <= 0L) {
       throw new IllegalArgumentException("n must be positive");
@@ -38,12 +39,21 @@ public class RandomUtils {
    * @return like {@link Random#nextInt(int)} but for a double
    * @see Random#nextInt(int)
    */
-  public static double nextDouble(Random random, double n) {
+  public static double nextDouble(RandomGenerator random, double n) {
     // This code is based on java.util.Random#nextInt(int)'s javadoc.
     if (n <= 0.0) {
       throw new IllegalArgumentException("n must be positive");
     }
     return random.nextDouble() * n;
+  }
+
+  public static <T> void shuffle(List<T> list, RandomGenerator random) {
+    for (int i = list.size() - 1; i > 0; i--) {
+      int swapIndex = random.nextInt(i + 1);
+      T current = list.get(i);
+      list.set(i, list.get(swapIndex));
+      list.set(swapIndex, current);
+    }
   }
 
   private RandomUtils() {}

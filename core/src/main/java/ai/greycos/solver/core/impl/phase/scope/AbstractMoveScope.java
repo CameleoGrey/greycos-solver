@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.phase.scope;
 
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
@@ -67,7 +67,7 @@ public abstract class AbstractMoveScope<Solution_> {
     return getStepScope().getWorkingSolution();
   }
 
-  public Random getWorkingRandom() {
+  public RandomGenerator getWorkingRandom() {
     return getStepScope().getWorkingRandom();
   }
 

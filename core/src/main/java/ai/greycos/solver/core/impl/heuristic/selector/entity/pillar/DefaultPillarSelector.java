@@ -11,7 +11,6 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheTyp
 import ai.greycos.solver.core.config.heuristic.selector.entity.pillar.SubPillarConfigPolicy;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SubPillarType;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
@@ -60,14 +59,6 @@ public final class DefaultPillarSelector<Solution_> extends AbstractSelector<Sol
                 + ") which is not equal to the entitySelector's entityClass ("
                 + entityClass
                 + ").");
-      }
-      boolean isChained =
-          variableDescriptor instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor
-              && basicVariableDescriptor.isChained();
-      if (isChained) {
-        throw new IllegalStateException(
-            "The selector (%s) has a variableDescriptor (%s) which is chained (%s)."
-                .formatted(this, variableDescriptor, isChained));
       }
     }
     if (entitySelector.isNeverEnding()) {

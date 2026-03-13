@@ -4,9 +4,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
 
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.preview.api.move.Move;
 import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testutil.CodeAssertable;
 
@@ -39,7 +39,7 @@ public final class DummyMove implements Move<TestdataSolution>, CodeAssertable {
   }
 
   @Override
-  public Move<TestdataSolution> rebase(Rebaser rebaser) {
+  public Move<TestdataSolution> rebase(Lookup lookup) {
     return this;
   }
 

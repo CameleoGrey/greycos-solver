@@ -1,14 +1,14 @@
 package ai.greycos.solver.core.impl.score.director.stream;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirectorSemanticsTest;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactoryFactory;
-import ai.greycos.solver.core.testcotwin.constraintconfiguration.TestdataConstraintConfigurationSolution;
-import ai.greycos.solver.core.testcotwin.constraintconfiguration.TestdataConstraintWeightConstraintProvider;
+import ai.greycos.solver.core.testcotwin.constraintweightoverrides.TestdataConstraintWeightOverridesConstraintProvider;
+import ai.greycos.solver.core.testcotwin.constraintweightoverrides.TestdataConstraintWeightOverridesSolution;
 import ai.greycos.solver.core.testcotwin.list.pinned.TestdataPinnedListConstraintProvider;
 import ai.greycos.solver.core.testcotwin.list.pinned.TestdataPinnedListSolution;
 import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListConstraintProvider;
@@ -18,14 +18,14 @@ final class ConstraintStreamsBavetScoreDirectorSemanticsTest
     extends AbstractScoreDirectorSemanticsTest {
 
   @Override
-  protected ScoreDirectorFactory<TestdataConstraintConfigurationSolution, SimpleScore>
+  protected ScoreDirectorFactory<TestdataConstraintWeightOverridesSolution, SimpleScore>
       buildScoreDirectorFactoryWithConstraintConfiguration(
-          SolutionDescriptor<TestdataConstraintConfigurationSolution> solutionDescriptor) {
+          SolutionDescriptor<TestdataConstraintWeightOverridesSolution> solutionDescriptor) {
     var scoreDirectorFactoryConfig =
         new ScoreDirectorFactoryConfig()
-            .withConstraintProviderClass(TestdataConstraintWeightConstraintProvider.class);
+            .withConstraintProviderClass(TestdataConstraintWeightOverridesConstraintProvider.class);
     var scoreDirectorFactoryFactory =
-        new ScoreDirectorFactoryFactory<TestdataConstraintConfigurationSolution, SimpleScore>(
+        new ScoreDirectorFactoryFactory<TestdataConstraintWeightOverridesSolution, SimpleScore>(
             scoreDirectorFactoryConfig);
     return scoreDirectorFactoryFactory.buildScoreDirectorFactory(
         EnvironmentMode.PHASE_ASSERT, solutionDescriptor);

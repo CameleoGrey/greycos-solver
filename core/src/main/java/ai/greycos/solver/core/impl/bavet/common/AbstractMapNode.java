@@ -1,11 +1,10 @@
 package ai.greycos.solver.core.impl.bavet.common;
 
-import ai.greycos.solver.core.impl.bavet.common.tuple.AbstractTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
 
-public abstract class AbstractMapNode<
-        InTuple_ extends AbstractTuple, OutTuple_ extends AbstractTuple>
+public abstract class AbstractMapNode<InTuple_ extends Tuple, OutTuple_ extends Tuple>
     extends AbstractNode implements TupleLifecycle<InTuple_> {
 
   private final int inputStoreIndex;
@@ -20,6 +19,11 @@ public abstract class AbstractMapNode<
   }
 
   @Override
+  public StreamKind getStreamKind() {
+    return StreamKind.MAP;
+  }
+
+  @Override
   public final void insert(InTuple_ tuple) {
     if (tuple.getStore(inputStoreIndex) != null) {
       throw new IllegalStateException(
@@ -27,7 +31,7 @@ public abstract class AbstractMapNode<
               + tuple
               + ") was already added in the tupleStore.");
     }
-    OutTuple_ outTuple = map(tuple);
+    var outTuple = map(tuple);
     tuple.setStore(inputStoreIndex, outTuple);
     propagationQueue.insert(outTuple);
   }
@@ -46,7 +50,7 @@ public abstract class AbstractMapNode<
     remap(tuple, outTuple);
     // Update must be propagated even if outTuple did not change, since if it is a planning
     // entity, the entity's planning variable might have changed.
-    TupleState previousState = outTuple.state;
+    var previousState = outTuple.getState();
     if (previousState == TupleState.CREATING || previousState == TupleState.UPDATING) {
       // Already in the queue in the correct state.
       return;
@@ -69,7 +73,8 @@ public abstract class AbstractMapNode<
       return;
     }
     propagationQueue.retract(
-        outTuple, outTuple.state == TupleState.CREATING ? TupleState.ABORTING : TupleState.DYING);
+        outTuple,
+        outTuple.getState() == TupleState.CREATING ? TupleState.ABORTING : TupleState.DYING);
   }
 
   @Override

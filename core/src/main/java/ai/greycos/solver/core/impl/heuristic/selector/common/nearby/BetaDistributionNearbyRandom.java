@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import java.util.Objects;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.jspecify.annotations.NonNull;
@@ -25,7 +25,7 @@ public final class BetaDistributionNearbyRandom implements NearbyRandom {
   }
 
   @Override
-  public int nextInt(@NonNull Random random, int nearbySize) {
+  public int nextInt(@NonNull RandomGenerator random, int nearbySize) {
     double p = betaDistribution.sample();
     double x = nearbySize * p;
     int next = (int) x;

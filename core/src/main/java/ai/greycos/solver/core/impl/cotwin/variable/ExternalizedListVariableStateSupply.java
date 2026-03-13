@@ -1,9 +1,9 @@
 package ai.greycos.solver.core.impl.cotwin.variable;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.index.IndexShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.nextprev.NextElementShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.nextprev.PreviousElementShadowVariableDescriptor;
@@ -27,9 +27,9 @@ final class ExternalizedListVariableStateSupply<Solution_, Entity_>
   @Nullable private Solution_ workingSolution;
 
   public ExternalizedListVariableStateSupply(
-      ListVariableDescriptor<Solution_> sourceVariableDescriptor) {
+      ListVariableDescriptor<Solution_> sourceVariableDescriptor, Consumer<Object> notifier) {
     this.sourceVariableDescriptor = sourceVariableDescriptor;
-    this.listVariableState = new ListVariableState<>(sourceVariableDescriptor);
+    this.listVariableState = new ListVariableState<>(sourceVariableDescriptor, notifier);
   }
 
   @Override

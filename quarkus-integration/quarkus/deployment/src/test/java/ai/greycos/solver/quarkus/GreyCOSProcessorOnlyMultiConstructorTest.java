@@ -39,7 +39,7 @@ class GreyCOSProcessorOnlyMultiConstructorTest {
                           OnlyMultiArgsConstructorEntity.class.getName(),
                           ") must have a no-args constructor so it can be constructed by GreyCOS."));
 
-  @Inject SolverManager<PrivateNoArgsConstructorSolution, Long> solverManager;
+  @Inject SolverManager<PrivateNoArgsConstructorSolution> solverManager;
 
   @Test
   void canConstructBeansWithPrivateConstructors() {

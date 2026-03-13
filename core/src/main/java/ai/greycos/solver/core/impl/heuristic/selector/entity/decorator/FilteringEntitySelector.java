@@ -4,7 +4,6 @@ import java.util.Iterator;
 import java.util.ListIterator;
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
@@ -12,6 +11,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSe
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionListIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 public final class FilteringEntitySelector<Solution_>
     extends AbstractDemandEnabledSelector<Solution_> implements EntitySelector<Solution_> {

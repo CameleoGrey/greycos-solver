@@ -6,11 +6,12 @@ import java.util.List;
 import java.util.Objects;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import ai.greycos.solver.core.impl.move.AbstractMove;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
 import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
-import ai.greycos.solver.core.preview.api.move.Rebaser;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -53,11 +54,11 @@ public class ChangeMove<Solution_, Entity_, Value_> extends AbstractMove<Solutio
   }
 
   @Override
-  public ChangeMove<Solution_, Entity_, Value_> rebase(Rebaser rebaser) {
+  public ChangeMove<Solution_, Entity_, Value_> rebase(Lookup lookup) {
     return new ChangeMove<>(
         variableMetaModel,
-        Objects.requireNonNull(rebaser.rebase(entity)),
-        rebaser.rebase(toPlanningValue));
+        Objects.requireNonNull(lookup.lookUpWorkingObject(entity)),
+        lookup.lookUpWorkingObject(toPlanningValue));
   }
 
   @Override

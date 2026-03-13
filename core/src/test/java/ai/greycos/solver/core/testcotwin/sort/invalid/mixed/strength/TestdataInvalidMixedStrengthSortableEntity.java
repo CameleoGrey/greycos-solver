@@ -12,8 +12,8 @@ public class TestdataInvalidMixedStrengthSortableEntity extends TestdataObject {
 
   @PlanningVariable(
       valueRangeProviderRefs = "valueRange",
-      strengthComparatorClass = DummyValueComparator.class,
-      strengthWeightFactoryClass = DummyWeightValueFactory.class)
+      comparatorClass = DummyValueComparator.class,
+      comparatorFactoryClass = DummyWeightValueFactory.class)
   private TestdataSortableValue value;
 
   private int difficulty;

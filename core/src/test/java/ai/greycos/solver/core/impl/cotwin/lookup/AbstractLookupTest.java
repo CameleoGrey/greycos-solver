@@ -1,7 +1,6 @@
 package ai.greycos.solver.core.impl.cotwin.lookup;
 
-import ai.greycos.solver.core.api.cotwin.common.CotwinAccessType;
-import ai.greycos.solver.core.api.cotwin.lookup.LookUpStrategyType;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorFactory;
 import ai.greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 
@@ -25,7 +24,7 @@ abstract class AbstractLookupTest {
       LookUpStrategyType lookUpStrategyType) {
     DescriptorPolicy descriptorPolicy = new DescriptorPolicy();
     descriptorPolicy.setMemberAccessorFactory(new MemberAccessorFactory());
-    descriptorPolicy.setCotwinAccessType(CotwinAccessType.REFLECTION);
+    descriptorPolicy.setCotwinAccessType(CotwinAccessType.FORCE_REFLECTION);
     return new LookUpStrategyResolver(descriptorPolicy, lookUpStrategyType);
   }
 }

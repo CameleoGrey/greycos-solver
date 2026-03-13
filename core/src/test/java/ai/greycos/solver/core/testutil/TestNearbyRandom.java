@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.testutil;
 
 import java.util.Objects;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
 
@@ -26,7 +26,7 @@ public class TestNearbyRandom implements NearbyRandom {
   }
 
   @Override
-  public int nextInt(Random random, int nearbySize) {
+  public int nextInt(RandomGenerator random, int nearbySize) {
     return random.nextInt(nearbySize);
   }
 

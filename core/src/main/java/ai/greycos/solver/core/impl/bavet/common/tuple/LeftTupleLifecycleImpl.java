@@ -2,8 +2,8 @@ package ai.greycos.solver.core.impl.bavet.common.tuple;
 
 import java.util.Objects;
 
-record LeftTupleLifecycleImpl<Tuple_ extends AbstractTuple>(
-    LeftTupleLifecycle<Tuple_> leftTupleLifecycle) implements TupleLifecycle<Tuple_> {
+record LeftTupleLifecycleImpl<Tuple_ extends Tuple>(LeftTupleLifecycle<Tuple_> leftTupleLifecycle)
+    implements TupleLifecycle<Tuple_> {
 
   LeftTupleLifecycleImpl {
     Objects.requireNonNull(leftTupleLifecycle);

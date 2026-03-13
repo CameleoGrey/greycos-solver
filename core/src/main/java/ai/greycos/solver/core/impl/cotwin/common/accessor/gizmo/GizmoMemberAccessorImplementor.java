@@ -156,7 +156,7 @@ public final class GizmoMemberAccessorImplementor {
     }
     final MutableReference<byte @NonNull []> classBytecodeHolder = new MutableReference<>(null);
     ClassOutput classOutput = (path, byteCode) -> classBytecodeHolder.setValue(byteCode);
-    var descriptor = new GizmoMemberDescriptor(member, accessorInfo.readMethodWithParameter());
+    var descriptor = new GizmoMemberDescriptor(member, accessorInfo);
     GizmoMemberInfo memberInfo =
         new GizmoMemberInfo(
             descriptor,

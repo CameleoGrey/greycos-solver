@@ -1,6 +1,5 @@
 package ai.greycos.solver.core.api.score.stream;
 
-import ai.greycos.solver.core.api.cotwin.constraintweight.ConstraintWeight;
 import ai.greycos.solver.core.api.score.Score;
 
 import org.jspecify.annotations.NonNull;

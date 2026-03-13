@@ -7,10 +7,12 @@ import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.UnassignedElement;
+import ai.greycos.solver.core.preview.api.move.SolutionView;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.EnumeratingStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function.UniEnumeratingFilter;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.function.UniNeighborhoodsPredicate;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.sampling.UniSamplingStream;
 
 import org.jspecify.annotations.NullMarked;
@@ -23,8 +25,8 @@ public interface MoveStreamFactory<Solution_> {
    * ProblemFactCollectionProperty problem facts} or {@link PlanningEntity planning entities}.
    *
    * <p>If the sourceClass is a {@link PlanningEntity}, then it is automatically {@link
-   * UniEnumeratingStream#filter(UniEnumeratingFilter) filtered} to only contain entities which are
-   * not pinned.
+   * UniEnumeratingStream#filter(UniNeighborhoodsPredicate) filtered} to only contain entities which
+   * are not pinned.
    *
    * <p>If the sourceClass is a shadow entity (an entity without any genuine planning variables),
    * and if there exists a genuine {@link PlanningEntity} with a {@link PlanningListVariable} which
@@ -34,8 +36,10 @@ public interface MoveStreamFactory<Solution_> {
    * <p>This stream returns genuine entities regardless of whether they have any null genuine
    * planning variables. This stream returns shadow entities regardless of whether they are assigned
    * to any genuine entity. They can easily be {@link
-   * UniEnumeratingStream#filter(UniEnumeratingFilter) filtered out}.
+   * UniEnumeratingStream#filter(UniNeighborhoodsPredicate) filtered out}.
    *
+   * @param sourceClass the class of the instances to enumerate
+   * @param includeNull if true, the stream will include a single null element
    * @return A stream containing a tuple for each of the entities as described above.
    * @see PlanningPin An annotation to mark the entire entity as pinned.
    * @see PlanningPinToIndex An annotation to specify only a portion of {@link PlanningListVariable}
@@ -55,18 +59,81 @@ public interface MoveStreamFactory<Solution_> {
       Class<A> sourceClass, boolean includeNull);
 
   /**
+   * Enumerate all values assigned to any entity's {@link PlanningListVariable}. Unlike {@link
+   * #forEachAssignedValue(PlanningListVariableMetaModel)}, this will include pinned values. You can
+   * use {@link SolutionView#getPositionOf(PlanningListVariableMetaModel, Object)} later downstream
+   * to get the position of the value in an entity's list variable, if needed.
+   *
+   * @param variableMetaModel the meta model of the list variable to enumerate
+   * @return enumerating stream with all values as defined above
+   * @see PlanningPin An annotation to mark the entire entity as pinned.
+   * @see PlanningPinToIndex An annotation to specify only a portion of {@link PlanningListVariable}
+   *     is pinned.
+   */
+  <Entity_, Value_> UniEnumeratingStream<Solution_, Value_> forEachAssignedValueUnfiltered(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel);
+
+  /**
+   * Enumerate all values assigned to any entity's {@link PlanningListVariable}. This will not
+   * include any pinned positions or fully pinned entities. You can use {@link
+   * SolutionView#getPositionOf(PlanningListVariableMetaModel, Object)} later downstream to get the
+   * position of the value in an entity's list variable, if needed.
+   *
+   * @param variableMetaModel the meta model of the list variable to enumerate
+   * @return enumerating stream with all values as defined above
+   * @see PlanningPin An annotation to mark the entire entity as pinned.
+   * @see PlanningPinToIndex An annotation to specify only a portion of {@link PlanningListVariable}
+   *     is pinned.
+   */
+  <Entity_, Value_> UniEnumeratingStream<Solution_, Value_> forEachAssignedValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel);
+
+  /**
+   * Enumerate all possible positions of a list variable to which a value can be assigned. This will
+   * include one position past the current end of the list, allowing for assigning at the end of a
+   * list. It will not include any pinned positions or fully pinned entities, as well as {@link
+   * UnassignedElement}. To include {@link UnassignedElement}, use {@link
+   * #forEachDestinationIncludingUnassigned(PlanningListVariableMetaModel)} instead.
+   *
+   * @param variableMetaModel the meta model of the list variable to enumerate
+   * @return enumerating stream with positions as defined above
+   * @see ElementPosition Read more about element positions.
+   * @see PlanningPin An annotation to mark the entire entity as pinned.
+   * @see PlanningPinToIndex An annotation to specify only a portion of {@link PlanningListVariable}
+   *     is pinned.
+   */
+  <Entity_, Value_> UniEnumeratingStream<Solution_, PositionInList> forEachDestination(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel);
+
+  /**
+   * As defined by {@link #forEachDestination(PlanningListVariableMetaModel)}, but also includes a
+   * single {@link UnassignedElement} position if the list variable allows unassigned values. If the
+   * list variable does not allow unassigned values, then this method behaves exactly the same as
+   * {@link #forEachDestination(PlanningListVariableMetaModel)}.
+   */
+  <Entity_, Value_>
+      UniEnumeratingStream<Solution_, ElementPosition> forEachDestinationIncludingUnassigned(
+          PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel);
+
+  <A> UniSamplingStream<Solution_, A> pick(UniEnumeratingStream<Solution_, A> enumeratingStream);
+
+  /**
    * Enumerate all possible positions of a list variable to which a value can be assigned. This will
    * eliminate all positions on {@link PlanningPin pinned entities}, as well as all {@link
    * PlanningPinToIndex pinned indexes}. If the list variable {@link
    * PlanningListVariable#allowsUnassignedValues() allows unassigned values}, the resulting stream
    * will include a single instance of {@link UnassignedElement} instance.
    *
+   * <p><strong>Will be removed right before this API is moved out of preview.</strong>
+   *
    * @param variableMetaModel the meta model of the list variable to enumerate
    * @return enumerating stream with all assignable positions of a given list variable
    * @see ElementPosition Read more about element positions.
+   * @deprecated Use {@link #forEachDestinationIncludingUnassigned(PlanningListVariableMetaModel)}
+   *     instead, or see if {@link #forEachDestination(PlanningListVariableMetaModel)} or {@link
+   *     #forEachAssignedValue(PlanningListVariableMetaModel)} fits your needs better.
    */
+  @Deprecated(forRemoval = true)
   <Entity_, Value_> UniEnumeratingStream<Solution_, ElementPosition> forEachAssignablePosition(
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel);
-
-  <A> UniSamplingStream<Solution_, A> pick(UniEnumeratingStream<Solution_, A> enumeratingStream);
 }

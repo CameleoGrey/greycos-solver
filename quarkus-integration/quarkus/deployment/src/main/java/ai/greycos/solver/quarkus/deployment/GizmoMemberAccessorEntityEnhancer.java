@@ -33,6 +33,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
 import ai.greycos.solver.core.impl.cotwin.common.ReflectionHelper;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
+import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.AccessorInfo;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberAccessorFactory;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberAccessorImplementor;
@@ -112,7 +113,7 @@ final class GizmoMemberAccessorEntityEnhancer {
             false,
             Thread.currentThread().getContextClassLoader());
     var fieldMember = declaringClass.getDeclaredField(fieldInfo.name());
-    var member = createMemberDescriptorForField(fieldMember, transformers);
+    var member = createMemberDescriptorForField(fieldMember, transformers, false);
     var memberInfo =
         new GizmoMemberInfo(
             member,
@@ -128,7 +129,7 @@ final class GizmoMemberAccessorEntityEnhancer {
     return generatedClassName;
   }
 
-  private void addVirtualFieldGetter(
+  private void addVirtualFieldGetterAndSetter(
       Class<?> classInfo,
       Field fieldInfo,
       BuildProducer<BytecodeTransformerBuildItem> transformers) {
@@ -234,7 +235,8 @@ final class GizmoMemberAccessorEntityEnhancer {
               memberDescriptor,
               methodParameterType,
               declaringClass,
-              setterDescriptor.orElse(null));
+              setterDescriptor.orElse(null),
+              accessorInfo);
     } else {
       setterDescriptor =
           addVirtualMethodGetter(
@@ -252,7 +254,8 @@ final class GizmoMemberAccessorEntityEnhancer {
               memberDescriptor,
               methodParameterType,
               declaringClass,
-              setterDescriptor.orElse(null));
+              setterDescriptor.orElse(null),
+              accessorInfo);
     }
     Class<? extends Annotation> annotationClass = null;
     if (accessorInfo.returnTypeRequired() || annotationInstance != null) {
@@ -477,7 +480,7 @@ final class GizmoMemberAccessorEntityEnhancer {
           continue;
         }
         solutionFieldToMemberDescriptor.put(
-            field, createMemberDescriptorForField(field, transformers));
+            field, createMemberDescriptorForField(field, transformers, true));
       }
       currentClass = currentClass.getSuperclass();
     }
@@ -488,8 +491,9 @@ final class GizmoMemberAccessorEntityEnhancer {
   }
 
   private GizmoMemberDescriptor createMemberDescriptorForField(
-      Field field, BuildProducer<BytecodeTransformerBuildItem> transformers) {
-    if (Modifier.isFinal(field.getModifiers())) {
+      Field field, BuildProducer<BytecodeTransformerBuildItem> transformers, boolean isForCloning) {
+    var isFinal = Modifier.isFinal(field.getModifiers());
+    if (isFinal) {
       makeFieldNonFinal(field, transformers);
     }
 
@@ -498,10 +502,16 @@ final class GizmoMemberAccessorEntityEnhancer {
     var name = field.getName();
 
     // Not being recorded, so can use Type and annotated element directly
-    if (Modifier.isPublic(field.getModifiers())) {
-      return new GizmoMemberDescriptor(name, memberDescriptor, declaringClass);
+    if ((ReflectionHelper.hasGetterMethod(declaringClass, name)
+            || Modifier.isPublic(field.getModifiers()))
+        && !isForCloning) {
+      return new GizmoMemberDescriptor(
+          name,
+          memberDescriptor,
+          declaringClass,
+          AccessorInfo.of(MemberAccessorType.FIELD_OR_READ_METHOD));
     } else {
-      addVirtualFieldGetter(declaringClass, field, transformers);
+      addVirtualFieldGetterAndSetter(declaringClass, field, transformers);
       var getterName = getVirtualGetterName(true, name);
       var getterDescriptor =
           ClassMethodDesc.of(
@@ -572,7 +582,7 @@ final class GizmoMemberAccessorEntityEnhancer {
                         makeConstructorAccessible(beanClass, transformers);
                         var beanClassHandle = Const.of(beanClass);
                         blockCreator.if_(
-                            blockCreator.objEquals(beanClassHandle, query),
+                            blockCreator.exprEquals(beanClassHandle, query),
                             isQueryBranch -> isQueryBranch.return_(isQueryBranch.new_(beanClass)));
                       }
                       blockCreator.returnNull();

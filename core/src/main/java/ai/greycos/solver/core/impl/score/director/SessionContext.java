@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.score.director;
 
-import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
+import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.preview.api.move.SolutionView;
@@ -29,8 +29,7 @@ public record SessionContext<Solution_>(
         scoreDirector.getSupplyManager());
   }
 
-  public <T> CountableValueRange<T> getValueRange(
-      ValueRangeDescriptor<Solution_> valueRangeDescriptor) {
+  public <T> ValueRange<T> getValueRange(ValueRangeDescriptor<Solution_> valueRangeDescriptor) {
     return valueRangeManager.getFromSolution(valueRangeDescriptor);
   }
 }

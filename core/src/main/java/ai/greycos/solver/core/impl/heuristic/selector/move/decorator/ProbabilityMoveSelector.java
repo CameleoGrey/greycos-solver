@@ -4,7 +4,6 @@ import java.util.Iterator;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
@@ -12,6 +11,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifec
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.solver.random.RandomUtils;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 

@@ -9,9 +9,9 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
 import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;

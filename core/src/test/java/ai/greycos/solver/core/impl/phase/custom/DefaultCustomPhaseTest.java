@@ -3,11 +3,10 @@ package ai.greycos.solver.core.impl.phase.custom;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
-import java.util.function.BooleanSupplier;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.phase.PhaseCommand;
+import ai.greycos.solver.core.api.solver.phase.PhaseCommandContext;
 import ai.greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
@@ -64,10 +63,9 @@ class DefaultCustomPhaseTest {
   private static final class LoopingPhaseCommand implements PhaseCommand<TestdataSolution> {
 
     @Override
-    public void changeWorkingSolution(
-        ScoreDirector<TestdataSolution> scoreDirector, BooleanSupplier isPhaseTerminated) {
+    public void changeWorkingSolution(PhaseCommandContext<TestdataSolution> context) {
       while (true) {
-        if (isPhaseTerminated.getAsBoolean()) { // Terminate when signal received.
+        if (context.isPhaseTerminated()) { // Terminate when signal received.
           return;
         }
       }

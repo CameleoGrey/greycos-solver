@@ -2,10 +2,10 @@ package ai.greycos.solver.core.impl.cotwin.score.descriptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import ai.greycos.solver.core.api.score.buildin.simple.SimpleScore;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.impl.score.buildin.SimpleScoreDefinition;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
+import ai.greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;

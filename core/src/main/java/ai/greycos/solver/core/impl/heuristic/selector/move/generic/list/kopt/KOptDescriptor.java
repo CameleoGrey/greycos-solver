@@ -12,8 +12,6 @@ import java.util.stream.IntStream;
 import ai.greycos.solver.core.api.function.TriPredicate;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.index.IndexVariableSupply;
-import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.SingletonInverseVariableSupply;
 
 /**
  * @param k the number of edges being added
@@ -183,8 +181,10 @@ record KOptDescriptor<Node_>(
     }
 
     var combinedList = computeCombinedList(listVariableDescriptor, listVariableStateSupply);
-    IndexVariableSupply indexVariableSupply =
-        node -> combinedList.getIndexOfValue(listVariableStateSupply, node);
+    var indexVariableSupply =
+        new DelegatingListVariableStateSupply<>(
+            listVariableStateSupply,
+            node -> combinedList.getIndexOfValue(listVariableStateSupply, node));
     var entityListSize = combinedList.size();
     List<FlipSublistAction> out = new ArrayList<>();
     var originalToCurrentIndexList = new int[entityListSize];
@@ -445,20 +445,21 @@ record KOptDescriptor<Node_>(
   @SuppressWarnings("unchecked")
   private static <Node_> FlipSublistAction getListReversalMoveForEdgePair(
       ListVariableDescriptor<?> listVariableDescriptor,
-      IndexVariableSupply indexVariableSupply,
+      ListVariableStateSupply<?, Object, Object> indexVariableSupply,
       int[] originalToCurrentIndexList,
       Node_ firstEdgeStart,
       Node_ firstEdgeEnd,
       Node_ secondEdgeStart,
       Node_ secondEdgeEnd) {
     var originalFirstEdgeStartIndex =
-        indexOf(originalToCurrentIndexList, indexVariableSupply.getIndex(firstEdgeStart));
+        indexOf(originalToCurrentIndexList, indexVariableSupply.getIndexOrElse(firstEdgeStart, -1));
     var originalFirstEdgeEndIndex =
-        indexOf(originalToCurrentIndexList, indexVariableSupply.getIndex(firstEdgeEnd));
+        indexOf(originalToCurrentIndexList, indexVariableSupply.getIndexOrElse(firstEdgeEnd, -1));
     var originalSecondEdgeStartIndex =
-        indexOf(originalToCurrentIndexList, indexVariableSupply.getIndex(secondEdgeStart));
+        indexOf(
+            originalToCurrentIndexList, indexVariableSupply.getIndexOrElse(secondEdgeStart, -1));
     var originalSecondEdgeEndIndex =
-        indexOf(originalToCurrentIndexList, indexVariableSupply.getIndex(secondEdgeEnd));
+        indexOf(originalToCurrentIndexList, indexVariableSupply.getIndexOrElse(secondEdgeEnd, -1));
 
     var firstEndpoint =
         ((originalFirstEdgeStartIndex + 1) % originalToCurrentIndexList.length)
@@ -480,7 +481,7 @@ record KOptDescriptor<Node_>(
   @SuppressWarnings("unchecked")
   private MultipleDelegateList<Node_> computeCombinedList(
       ListVariableDescriptor<?> listVariableDescriptor,
-      SingletonInverseVariableSupply inverseVariableSupply) {
+      ListVariableStateSupply<?, Object, Object> inverseVariableSupply) {
     var entityToEntityIndex = new IdentityHashMap<Object, Integer>();
     for (var i = 1; i < removedEdges.length; i++) {
       entityToEntityIndex.computeIfAbsent(

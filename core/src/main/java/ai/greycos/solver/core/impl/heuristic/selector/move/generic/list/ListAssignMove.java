@@ -4,12 +4,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 
-public final class ListAssignMove<Solution_> extends AbstractMove<Solution_> {
+public class ListAssignMove<Solution_> extends AbstractMove<Solution_> {
 
   private final ListVariableDescriptor<Solution_> variableDescriptor;
   private final Object planningValue;

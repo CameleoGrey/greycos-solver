@@ -3,10 +3,10 @@ package ai.greycos.solver.core.impl.heuristic.move;
 import java.util.Collection;
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.move.MoveDirector;
 import ai.greycos.solver.core.impl.move.VariableChangeRecordingScoreDirector;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.NullMarked;

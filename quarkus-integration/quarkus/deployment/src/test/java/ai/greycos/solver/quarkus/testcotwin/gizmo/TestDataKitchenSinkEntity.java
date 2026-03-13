@@ -6,10 +6,7 @@ import java.util.List;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.cotwin.variable.CustomShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PiggybackShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PlanningVariableReference;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariablesInconsistent;
@@ -25,28 +22,10 @@ public class TestDataKitchenSinkEntity {
   private String groupId;
   private Integer intVariable;
 
-  @CustomShadowVariable(
-      variableListenerClass = DummyVariableListener.class,
-      sources = {
-        @PlanningVariableReference(
-            entityClass = TestDataKitchenSinkEntity.class,
-            variableName = "stringVariable")
-      })
-  private String shadow1;
-
-  @ShadowVariable(
-      variableListenerClass = DummyVariableListener.class,
-      sourceEntityClass = TestDataKitchenSinkEntity.class,
-      sourceVariableName = "stringVariable")
-  private String shadow2;
-
   @ShadowVariable(supplierName = "copyStringVariable")
   private String declarativeShadowVariable;
 
   @ShadowVariablesInconsistent private boolean isInconsistent;
-
-  @PiggybackShadowVariable(shadowVariableName = "shadow2")
-  private String piggybackShadow;
 
   @PlanningVariable(valueRangeProviderRefs = {"names"})
   private String stringVariable;

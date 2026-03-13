@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.heuristic.selector.common.nearby;
 
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import org.jspecify.annotations.NonNull;
 
@@ -10,7 +10,7 @@ import org.jspecify.annotations.NonNull;
  */
 public interface NearbyRandom {
 
-  int nextInt(@NonNull Random random, int nearbySize);
+  int nextInt(@NonNull RandomGenerator random, int nearbySize);
 
   int getOverallSizeMaximum();
 }

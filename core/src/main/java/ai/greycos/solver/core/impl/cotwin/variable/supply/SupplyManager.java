@@ -1,7 +1,11 @@
 package ai.greycos.solver.core.impl.cotwin.variable.supply;
 
+import java.util.function.Consumer;
+
 /** Provides a {@link Supply} for subsystems that submit a {@link Demand}. */
 public interface SupplyManager {
+
+  Consumer<Object> getStateChangeNotifier();
 
   /**
    * Returns the {@link Supply} for a {@link Demand}, preferably an existing one. If the {@link

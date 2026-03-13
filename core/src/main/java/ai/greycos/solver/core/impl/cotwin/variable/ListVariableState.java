@@ -2,9 +2,9 @@ package ai.greycos.solver.core.impl.cotwin.variable;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.index.IndexShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.nextprev.NextElementShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.nextprev.PreviousElementShadowVariableDescriptor;
@@ -16,6 +16,7 @@ import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 final class ListVariableState<Solution_> {
 
   private final ListVariableDescriptor<Solution_> sourceVariableDescriptor;
+  private final Consumer<Object> notifier;
 
   private ExternalizedIndexVariableProcessor<Solution_> externalizedIndexProcessor = null;
   private ExternalizedListInverseVariableProcessor<Solution_> externalizedInverseProcessor = null;
@@ -29,8 +30,10 @@ final class ListVariableState<Solution_> {
   private int unassignedCount = 0;
   private Map<Object, MutablePosition> elementPositionMap;
 
-  public ListVariableState(ListVariableDescriptor<Solution_> sourceVariableDescriptor) {
+  public ListVariableState(
+      ListVariableDescriptor<Solution_> sourceVariableDescriptor, Consumer<Object> notifier) {
     this.sourceVariableDescriptor = sourceVariableDescriptor;
+    this.notifier = notifier;
   }
 
   public void linkShadowVariable(
@@ -143,19 +146,29 @@ final class ListVariableState<Solution_> {
                 .formatted(sourceVariableDescriptor, element, index, oldPosition));
       }
     }
+    var elementUpdateSent = false;
     if (externalizedIndexProcessor != null) {
-      externalizedIndexProcessor.addElement(scoreDirector, element, index);
+      elementUpdateSent = externalizedIndexProcessor.addElement(scoreDirector, element, index);
     }
     if (externalizedInverseProcessor != null) {
-      externalizedInverseProcessor.addElement(scoreDirector, entity, element);
+      elementUpdateSent =
+          externalizedInverseProcessor.addElement(scoreDirector, entity, element)
+              || elementUpdateSent;
     }
     if (externalizedPreviousElementProcessor != null) {
-      externalizedPreviousElementProcessor.setElement(scoreDirector, elements, element, index);
+      elementUpdateSent =
+          externalizedPreviousElementProcessor.setElement(scoreDirector, elements, element, index)
+              || elementUpdateSent;
     }
     if (externalizedNextElementProcessor != null) {
-      externalizedNextElementProcessor.setElement(scoreDirector, elements, element, index);
+      elementUpdateSent =
+          externalizedNextElementProcessor.setElement(scoreDirector, elements, element, index)
+              || elementUpdateSent;
     }
     unassignedCount--;
+    if (!elementUpdateSent) {
+      notifier.accept(element);
+    }
   }
 
   public void removeElement(Object entity, Object element, int index) {
@@ -197,37 +210,56 @@ final class ListVariableState<Solution_> {
                 .formatted(sourceVariableDescriptor, element));
       }
     }
+    var elementUpdateSent = false;
     if (externalizedIndexProcessor != null) {
-      externalizedIndexProcessor.unassignElement(scoreDirector, element);
+      elementUpdateSent = externalizedIndexProcessor.unassignElement(scoreDirector, element);
     }
     if (externalizedInverseProcessor != null) {
-      externalizedInverseProcessor.unassignElement(scoreDirector, element);
+      elementUpdateSent =
+          externalizedInverseProcessor.unassignElement(scoreDirector, element) || elementUpdateSent;
     }
     if (externalizedPreviousElementProcessor != null) {
-      externalizedPreviousElementProcessor.unsetElement(scoreDirector, element);
+      elementUpdateSent =
+          externalizedPreviousElementProcessor.unsetElement(scoreDirector, element)
+              || elementUpdateSent;
     }
     if (externalizedNextElementProcessor != null) {
-      externalizedNextElementProcessor.unsetElement(scoreDirector, element);
+      elementUpdateSent =
+          externalizedNextElementProcessor.unsetElement(scoreDirector, element)
+              || elementUpdateSent;
     }
     unassignedCount++;
+    if (!elementUpdateSent) {
+      notifier.accept(element);
+    }
   }
 
   public boolean changeElement(Object entity, List<Object> elements, int index) {
     var element = elements.get(index);
     var difference = processElementPosition(entity, element, index);
+    var elementUpdateSent = false;
     if (difference.indexChanged && externalizedIndexProcessor != null) {
-      externalizedIndexProcessor.changeElement(scoreDirector, element, index);
+      elementUpdateSent = externalizedIndexProcessor.changeElement(scoreDirector, element, index);
     }
     if (difference.entityChanged && externalizedInverseProcessor != null) {
-      externalizedInverseProcessor.changeElement(scoreDirector, entity, element);
+      elementUpdateSent =
+          externalizedInverseProcessor.changeElement(scoreDirector, entity, element)
+              || elementUpdateSent;
     }
     // Next and previous still might have changed, even if the index and entity did not.
     // Those are based on what happened elsewhere in the list.
     if (externalizedPreviousElementProcessor != null) {
-      externalizedPreviousElementProcessor.setElement(scoreDirector, elements, element, index);
+      elementUpdateSent =
+          externalizedPreviousElementProcessor.setElement(scoreDirector, elements, element, index)
+              || elementUpdateSent;
     }
     if (externalizedNextElementProcessor != null) {
-      externalizedNextElementProcessor.setElement(scoreDirector, elements, element, index);
+      elementUpdateSent =
+          externalizedNextElementProcessor.setElement(scoreDirector, elements, element, index)
+              || elementUpdateSent;
+    }
+    if (!elementUpdateSent) {
+      notifier.accept(element);
     }
     return difference.anythingChanged;
   }
@@ -408,6 +440,11 @@ final class ListVariableState<Solution_> {
         position = ElementPosition.of(entity, index);
       }
       return position;
+    }
+
+    @Override
+    public String toString() {
+      return entity + "[" + index + "]";
     }
   }
 }
