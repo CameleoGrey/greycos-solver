@@ -1,5 +1,7 @@
 package ai.greycos.solver.core.impl.move;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -189,6 +191,35 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     return element;
   }
 
+  @Override
+  public <Entity_, Value_> Value_ replaceValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ sourceEntity,
+      int sourceIndex,
+      Entity_ destinationEntity,
+      int destinationIndex) {
+    if (destinationEntity == sourceEntity) {
+      return replaceValue(variableMetaModel, sourceEntity, sourceIndex, destinationIndex);
+    }
+
+    var variableDescriptor = extractVariableDescriptor(variableMetaModel);
+    var toReplace = (Value_) variableDescriptor.getElement(destinationEntity, destinationIndex);
+    externalScoreDirector.beforeListVariableElementUnassigned(variableDescriptor, toReplace);
+    externalScoreDirector.beforeListVariableChanged(
+        variableDescriptor, destinationEntity, destinationIndex, destinationIndex + 1);
+    externalScoreDirector.beforeListVariableChanged(
+        variableDescriptor, sourceEntity, sourceIndex, sourceIndex + 1);
+    var toMove = variableDescriptor.removeElement(sourceEntity, sourceIndex);
+    variableDescriptor.setElement(destinationEntity, destinationIndex, toMove);
+    externalScoreDirector.afterListVariableChanged(
+        variableDescriptor, sourceEntity, sourceIndex, sourceIndex);
+    externalScoreDirector.afterListVariableChanged(
+        variableDescriptor, destinationEntity, destinationIndex, destinationIndex + 1);
+    externalScoreDirector.afterListVariableElementUnassigned(variableDescriptor, toReplace);
+    externalScoreDirector.triggerVariableListeners();
+    return toReplace;
+  }
+
   @SuppressWarnings("unchecked")
   @Override
   public final <Entity_, Value_> Value_ moveValueInList(
@@ -201,36 +232,95 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
           "When moving values in the same list, sourceIndex (%d) and destinationIndex (%d) must be different."
               .formatted(sourceIndex, destinationIndex));
     } else if (sourceIndex < 0 || destinationIndex < 0) {
-      throw new IllegalArgumentException(
+      throw new IndexOutOfBoundsException(
           "The sourceIndex (%d) and destinationIndex (%d) must both be >= 0."
               .formatted(sourceIndex, destinationIndex));
     }
-
-    var fromIndex = Math.min(sourceIndex, destinationIndex);
-    var toIndex = Math.max(sourceIndex, destinationIndex) + 1;
 
     var variableDescriptor = extractVariableDescriptor(variableMetaModel);
     var list = variableDescriptor.getValue(sourceEntity);
     var listSize = list.size();
     if (sourceIndex >= listSize) {
-      throw new IllegalArgumentException(
+      throw new IndexOutOfBoundsException(
           "The sourceIndex (%d) must be less than the list size (%d)."
               .formatted(sourceIndex, listSize));
-    } else if (destinationIndex > listSize - 1) {
-      throw new IllegalArgumentException(
-          "The destinationIndex (%d) must be less than or equal to the list size minus one (%d)."
-              .formatted(destinationIndex, listSize - 1));
+    } else if (destinationIndex >= listSize) {
+      throw new IndexOutOfBoundsException(
+          "The destinationIndex (%d) must be less than the list size (%d)."
+              .formatted(destinationIndex, listSize));
     }
 
+    var fromIndex = Math.min(sourceIndex, destinationIndex);
+    var toIndex = Math.max(sourceIndex, destinationIndex) + 1;
     externalScoreDirector.beforeListVariableChanged(
         variableDescriptor, sourceEntity, fromIndex, toIndex);
-    Value_ element = (Value_) list.remove(sourceIndex);
-    list.add(destinationIndex, element);
+    moveInList(list, sourceIndex, destinationIndex);
     externalScoreDirector.afterListVariableChanged(
         variableDescriptor, sourceEntity, fromIndex, toIndex);
     externalScoreDirector.triggerVariableListeners();
 
-    return element;
+    return (Value_) list.get(destinationIndex);
+  }
+
+  @Override
+  public <Entity_, Value_> Value_ replaceValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ entity,
+      int sourceIndex,
+      int destinationIndex) {
+    if (sourceIndex == destinationIndex) {
+      throw new IllegalArgumentException(
+          "When replacing values in the same list, sourceIndex (%d) and destinationIndex (%d) must be different."
+              .formatted(sourceIndex, destinationIndex));
+    } else if (sourceIndex < 0 || destinationIndex < 0) {
+      throw new IndexOutOfBoundsException(
+          "The sourceIndex (%d) and destinationIndex (%d) must both be >= 0."
+              .formatted(sourceIndex, destinationIndex));
+    }
+
+    var variableDescriptor = extractVariableDescriptor(variableMetaModel);
+    var fromIndex = Math.min(sourceIndex, destinationIndex);
+    var toIndex = Math.max(sourceIndex, destinationIndex) + 1;
+    var list = variableDescriptor.getValue(entity);
+    var toReplace = (Value_) list.get(destinationIndex);
+    externalScoreDirector.beforeListVariableElementUnassigned(variableDescriptor, toReplace);
+    externalScoreDirector.beforeListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
+    if (destinationIndex > sourceIndex) {
+      // Remove from sourceIndex after setting the destination to preserve index validity.
+      list.set(destinationIndex, list.get(sourceIndex));
+      list.remove(sourceIndex);
+    } else {
+      list.set(destinationIndex, list.remove(sourceIndex));
+    }
+    externalScoreDirector.afterListVariableChanged(
+        variableDescriptor, entity, fromIndex, toIndex - 1);
+    externalScoreDirector.afterListVariableElementUnassigned(variableDescriptor, toReplace);
+    externalScoreDirector.triggerVariableListeners();
+    return toReplace;
+  }
+
+  /**
+   * Moves the element at index {@code from} to index {@code to} in a list, choosing a fast path
+   * based on the move's distance and position within the list.
+   *
+   * @param list the list to mutate; assumes an ArrayList-backed list
+   * @param from index of the element to move
+   * @param to index the element should occupy after the move
+   */
+  private static <T> void moveInList(List<T> list, int from, int to) {
+    var distance = Math.abs(from - to);
+    if (distance == 1) {
+      Collections.swap(list, from, to);
+      return;
+    }
+    var distanceTimesEight = distance * 8L;
+    var lowerIndex = Math.min(from, to);
+    var tailLength = list.size() - lowerIndex;
+    if (distanceTimesEight < tailLength) {
+      Collections.rotate(list.subList(lowerIndex, lowerIndex + distance + 1), from < to ? -1 : 1);
+    } else {
+      list.add(to, list.remove(from));
+    }
   }
 
   @Override
@@ -291,8 +381,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
 
     externalScoreDirector.beforeListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
     var list = variableDescriptor.getValue(entity);
-    var oldLeftElement = list.set(leftIndex, variableDescriptor.getElement(entity, rightIndex));
-    list.set(rightIndex, oldLeftElement);
+    Collections.swap(list, leftIndex, rightIndex);
     externalScoreDirector.afterListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
     externalScoreDirector.triggerVariableListeners();
   }
