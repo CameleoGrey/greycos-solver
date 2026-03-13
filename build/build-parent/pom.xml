@@ -41,7 +41,7 @@
     <version.asciidoctor.plugin>3.2.0</version.asciidoctor.plugin>
     <version.asciidoctor.plugin.pdf>2.3.23</version.asciidoctor.plugin.pdf>
     <version.assembly.plugin>3.8.0</version.assembly.plugin>
-    <version.compiler.plugin>3.14.1</version.compiler.plugin>
+    <version.compiler.plugin>3.15.0</version.compiler.plugin>
     <version.dependency.plugin>3.9.0</version.dependency.plugin>
     <version.exec.plugin>3.6.2</version.exec.plugin>
     <version.enforcer.plugin>3.6.2</version.enforcer.plugin>
