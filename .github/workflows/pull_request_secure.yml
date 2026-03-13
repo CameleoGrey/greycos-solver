@@ -29,6 +29,7 @@ on:
 jobs:
   # Check if the user is a member of the organization; if so, allow the PR to sail through.
   known_user:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -49,6 +50,7 @@ jobs:
           echo "Authorized user: ${{ steps.auth_check.outputs.authorized }}"
   # If the user is not a member, require a member to approve the PR.
   approval_required:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     needs: known_user
     environment:
       ${{
@@ -63,6 +65,7 @@ jobs:
     steps:
       - run: true
   integration-tests:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     needs: approval_required
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -123,6 +126,7 @@ jobs:
           show: "fail"
         if: always()
   enterprise-java:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     needs: approval_required
     name: Enterprise Edition (Java)
     runs-on: ubuntu-latest
@@ -161,6 +165,7 @@ jobs:
         if: always()
 
   sonarcloud:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     needs: approval_required
     name: SonarCloud
     runs-on: ubuntu-latest

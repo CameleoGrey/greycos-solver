@@ -20,6 +20,7 @@ on:
 
 jobs:
   known_user:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,6 +40,7 @@ jobs:
           echo "Authorized user: ${{ steps.auth_check.outputs.authorized }}"
 
   approval_required:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     needs: known_user
     environment:
       ${{
@@ -54,6 +56,7 @@ jobs:
       - run: true
 
   build_documentation:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
