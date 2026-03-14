@@ -1,0 +1,115 @@
+package ai.greycos.solver.core.impl.heuristic.selector.move.generic;
+
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockRebasingScoreDirector;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
+import static org.mockito.Mockito.mock;
+
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
+import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
+
+import org.junit.jupiter.api.Test;
+
+class SelectorBasedRuinRecreateMoveTest {
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  @Test
+  void rebase() {
+    var variableDescriptor = TestdataEntity.buildVariableDescriptorForValue();
+
+    var v1 = new TestdataValue("v1");
+    var v2 = new TestdataValue("v2");
+    var e1 = new TestdataEntity("e1", v1);
+    var e2 = new TestdataEntity("e2", null);
+    var e3 = new TestdataEntity("e3", v1);
+
+    var destinationV1 = new TestdataValue("v1");
+    var destinationV2 = new TestdataValue("v2");
+    var destinationE1 = new TestdataEntity("e1", destinationV1);
+    var destinationE2 = new TestdataEntity("e2", null);
+    var destinationE3 = new TestdataEntity("e3", destinationV1);
+
+    var destinationScoreDirector =
+        mockRebasingScoreDirector(
+            variableDescriptor.getEntityDescriptor().getSolutionDescriptor(),
+            new Object[][] {
+              {v1, destinationV1},
+              {v2, destinationV2},
+              {e1, destinationE1},
+              {e2, destinationE2},
+              {e3, destinationE3},
+            });
+
+    var move =
+        new SelectorBasedRuinRecreateMove<TestdataSolution>(
+            mock(GenuineVariableDescriptor.class),
+            mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
+            mock(SolverScope.class),
+            Arrays.asList(e1, e2, e3),
+            new LinkedHashSet<>(Set.of(v1, v2)));
+    var rebasedMove = move.rebase(destinationScoreDirector);
+
+    assertThat(rebasedMove).isInstanceOf(SelectorBasedRuinRecreateMove.class);
+    assertSoftly(
+        softly -> {
+          softly
+              .assertThat((Iterable) rebasedMove.getPlanningEntities())
+              .containsExactlyElementsOf(List.of(destinationE1, destinationE2, destinationE3));
+          softly
+              .assertThat((Iterable) rebasedMove.getPlanningValues())
+              .containsExactlyInAnyOrderElementsOf(Set.of(destinationV1, destinationV2));
+        });
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void equality() {
+    var v1 = new TestdataValue("v1");
+    var v2 = new TestdataValue("v2");
+    var e1 = new TestdataEntity("e1", v1);
+    var e2 = new TestdataEntity("e2", null);
+
+    var descriptor = mock(GenuineVariableDescriptor.class);
+    var move =
+        new SelectorBasedRuinRecreateMove<TestdataSolution>(
+            descriptor,
+            mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
+            mock(SolverScope.class),
+            List.of(e1),
+            new LinkedHashSet<>(Set.of(v1)));
+    var sameMove =
+        new SelectorBasedRuinRecreateMove<TestdataSolution>(
+            descriptor,
+            mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
+            mock(SolverScope.class),
+            List.of(e1),
+            new LinkedHashSet<>(Set.of(v1)));
+    assertThat(move).isEqualTo(sameMove);
+
+    var differentMove =
+        new SelectorBasedRuinRecreateMove<TestdataSolution>(
+            descriptor,
+            mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
+            mock(SolverScope.class),
+            List.of(e1),
+            new LinkedHashSet<>(Set.of(v2)));
+    assertThat(move).isNotEqualTo(differentMove);
+
+    var anotherDifferentMove =
+        new SelectorBasedRuinRecreateMove<TestdataSolution>(
+            descriptor,
+            mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
+            mock(SolverScope.class),
+            List.of(e2),
+            new LinkedHashSet<>(Set.of(v1)));
+    assertThat(move).isNotEqualTo(anotherDifferentMove);
+  }
+}

@@ -116,6 +116,27 @@ public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
         rebasedAffectedValueSet);
   }
 
+  protected GenuineVariableDescriptor<Solution_> getGenuineVariableDescriptor() {
+    return genuineVariableDescriptor;
+  }
+
+  protected RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>
+      getConstructionHeuristicPhaseBuilder() {
+    return constructionHeuristicPhaseBuilder;
+  }
+
+  protected SolverScope<Solution_> getSolverScope() {
+    return solverScope;
+  }
+
+  protected List<Object> getRuinedEntityList() {
+    return ruinedEntityList;
+  }
+
+  protected Set<Object> getAffectedValueSet() {
+    return affectedValueSet;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;

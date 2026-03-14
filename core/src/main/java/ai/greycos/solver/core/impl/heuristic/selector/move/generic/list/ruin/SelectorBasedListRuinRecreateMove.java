@@ -4,7 +4,10 @@ import java.util.List;
 import java.util.Set;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateConstructionHeuristicPhaseBuilder;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 
 import org.jspecify.annotations.NullMarked;
@@ -24,5 +27,19 @@ public class SelectorBasedListRuinRecreateMove<Solution_> extends ListRuinRecrea
         solverScope,
         ruinedValueList,
         affectedEntitySet);
+  }
+
+  @Override
+  public Move<Solution_> rebase(ScoreDirector<Solution_> destinationScoreDirector) {
+    var rebasedListVariableDescriptor =
+        ((InnerScoreDirector<Solution_, ?>) destinationScoreDirector)
+            .getSolutionDescriptor()
+            .getListVariableDescriptor();
+    return new SelectorBasedListRuinRecreateMove<>(
+        rebasedListVariableDescriptor,
+        getConstructionHeuristicPhaseBuilder(),
+        getSolverScope(),
+        rebaseList(getRuinedValueList(), destinationScoreDirector),
+        rebaseSet(getAffectedEntitySet(), destinationScoreDirector));
   }
 }

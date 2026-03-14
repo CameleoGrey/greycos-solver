@@ -170,13 +170,13 @@ record KOptDescriptor<Node_>(
    *   <li>When there are no oriented pairs and no hurdles, the algorithm is completed.
    * </ul>
    */
-  public <Solution_> KOptListMove<Solution_> getKOptListMove(
+  public <Solution_> SelectorBasedKOptListMove<Solution_> getKOptListMove(
       ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply) {
     var listVariableDescriptor = listVariableStateSupply.getSourceVariableDescriptor();
     if (!isFeasible()) {
       // A KOptListMove move with an empty flip move list is not feasible, since if executed, it's a
       // no-op.
-      return new KOptListMove<>(
+      return new SelectorBasedKOptListMove<>(
           listVariableDescriptor, this, new MultipleDelegateList<>(), List.of(), 0, new int[] {});
     }
 
@@ -315,7 +315,7 @@ record KOptDescriptor<Node_>(
             .toArray();
 
     newEndIndices[newEndIndices.length - 1] = originalToCurrentIndexList.length - 1;
-    return new KOptListMove<>(
+    return new SelectorBasedKOptListMove<>(
         listVariableDescriptor, this, combinedList, out, startElementShift, newEndIndices);
   }
 

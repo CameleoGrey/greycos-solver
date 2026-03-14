@@ -356,10 +356,6 @@ public class SolverScope<Solution_> {
 
     // Set the best solution to the solution with shadow variable updated.
     setBestSolution(scoreDirector.cloneSolution(scoreDirector.getWorkingSolution()));
-
-    // Also initialize the best score for this solution
-    InnerScore<?> bestScore = scoreDirector.calculateScore();
-    setBestScore(bestScore);
   }
 
   public SolverScope<Solution_> createChildThreadSolverScope(ChildThreadType childThreadType) {

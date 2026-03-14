@@ -300,6 +300,10 @@ public class TwoOptListMove<Solution_> extends AbstractMove<Solution_> {
     return firstEntity;
   }
 
+  protected ListVariableDescriptor<Solution_> getVariableDescriptor() {
+    return variableDescriptor;
+  }
+
   public Object getSecondEntity() {
     return secondEntity;
   }

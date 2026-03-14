@@ -53,7 +53,7 @@ public class KOptListMove<Solution_> extends AbstractMove<Solution_> {
     originalEntities = combinedList.delegateEntities;
   }
 
-  private KOptListMove(
+  KOptListMove(
       ListVariableDescriptor<Solution_> listVariableDescriptor,
       KOptDescriptor<?> descriptor,
       List<FlipSublistAction> equivalent2Opts,
@@ -85,6 +85,26 @@ public class KOptListMove<Solution_> extends AbstractMove<Solution_> {
 
   KOptDescriptor<?> getDescriptor() {
     return descriptor;
+  }
+
+  ListVariableDescriptor<Solution_> getListVariableDescriptor() {
+    return listVariableDescriptor;
+  }
+
+  List<FlipSublistAction> getEquivalent2Opts() {
+    return equivalent2Opts;
+  }
+
+  int getPostShiftAmount() {
+    return postShiftAmount;
+  }
+
+  int[] getNewEndIndices() {
+    return newEndIndices;
+  }
+
+  Object[] getOriginalEntities() {
+    return originalEntities;
   }
 
   @Override

@@ -35,7 +35,7 @@ public class TestdataAllowsUnassignedValuesListEntity extends TestdataObject {
     for (int i = 0; i < valueList.size(); i++) {
       var testdataListValue = valueList.get(i);
       testdataListValue.setEntity(this);
-      testdataListValue.setIndex(valueList.indexOf(testdataListValue));
+      testdataListValue.setIndex(i);
       if (i != 0) {
         testdataListValue.setPrevious(valueList.get(i - 1));
       }

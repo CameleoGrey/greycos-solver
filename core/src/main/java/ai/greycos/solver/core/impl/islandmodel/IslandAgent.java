@@ -76,6 +76,7 @@ public class IslandAgent<Solution_> implements Runnable {
 
       islandScope.setWorkingRandom(random);
       islandScope.setInitialSolution(initialSolution);
+      islandScope.getSolver().solvingStarted(islandScope);
 
       for (Phase<Solution_> phase : phases) {
         if (shouldTerminate()) {
@@ -107,6 +108,7 @@ public class IslandAgent<Solution_> implements Runnable {
         phase.solvingEnded(islandScope);
       }
 
+      islandScope.getSolver().solvingEnded(islandScope);
       phasesCompleted = true;
       markAsDead();
     } catch (Exception e) {

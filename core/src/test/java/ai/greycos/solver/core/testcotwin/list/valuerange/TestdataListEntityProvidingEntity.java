@@ -58,11 +58,11 @@ public class TestdataListEntityProvidingEntity extends TestdataObject {
   }
 
   public TestdataListEntityProvidingEntity setUpShadowVariables() {
-    valueList.forEach(
-        testdataListValue -> {
-          testdataListValue.setEntity(this);
-          testdataListValue.setIndex(valueList.indexOf(testdataListValue));
-        });
+    for (int i = 0; i < valueList.size(); i++) {
+      var testdataListValue = valueList.get(i);
+      testdataListValue.setEntity(this);
+      testdataListValue.setIndex(i);
+    }
     return this;
   }
 
