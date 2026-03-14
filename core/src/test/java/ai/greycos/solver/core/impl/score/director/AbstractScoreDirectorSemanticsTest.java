@@ -160,8 +160,7 @@ public abstract class AbstractScoreDirectorSemanticsTest {
             softly.assertThat(score1.raw().score()).isEqualTo(1);
             softly
                 .assertThat(scoreDirector.getConstraintMatchTotalMap())
-                .containsOnlyKeys(
-                    "ai.greycos.solver.core.testcotwin.constraintweightoverrides/First weight");
+                .containsOnlyKeys("First weight");
           });
 
       // Make sure nothing matches, but the constraint is still present.
@@ -176,8 +175,7 @@ public abstract class AbstractScoreDirectorSemanticsTest {
             softly.assertThat(score2.raw().score()).isZero();
             softly
                 .assertThat(scoreDirector.getConstraintMatchTotalMap())
-                .containsOnlyKeys(
-                    "ai.greycos.solver.core.testcotwin.constraintweightoverrides/First weight");
+                .containsOnlyKeys("First weight");
           });
     }
   }

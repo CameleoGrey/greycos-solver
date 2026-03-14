@@ -55,7 +55,7 @@ class HardSoftScoreDefinitionTest {
     var optimisticBound =
         scoreDefinition.buildOptimisticBound(
             InitializingScoreTrend.buildUniformTrend(InitializingScoreTrendLevel.ONLY_DOWN, 2),
-            HardSoftScore.of(-1, -2));
+            HardSoftScore.of(-1L, -2L));
     assertThat(optimisticBound.hardScore()).isEqualTo(-1L);
     assertThat(optimisticBound.softScore()).isEqualTo(-2L);
   }

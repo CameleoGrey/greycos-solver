@@ -39,7 +39,7 @@ class ReachableValuesTest {
     var reachableValues =
         scoreDirector
             .getValueRangeManager()
-            .getReachableValues(entityDescriptor.getGenuineListVariableDescriptor());
+            .getReachableValues(entityDescriptor.getListVariableDescriptor());
 
     assertThat(reachableValues.extractEntitiesAsList(v1)).containsExactlyInAnyOrder(a);
     assertThat(reachableValues.extractEntitiesAsList(v2)).containsExactlyInAnyOrder(a, b);
@@ -78,7 +78,7 @@ class ReachableValuesTest {
     var reachableValues =
         scoreDirector
             .getValueRangeManager()
-            .getReachableValues(entityDescriptor.getGenuineListVariableDescriptor());
+            .getReachableValues(entityDescriptor.getListVariableDescriptor());
 
     assertThat(reachableValues.extractValuesAsList(v1)).containsExactlyInAnyOrder(v2, v3);
     assertThat(reachableValues.extractValuesAsList(v2)).containsExactlyInAnyOrder(v1, v3);

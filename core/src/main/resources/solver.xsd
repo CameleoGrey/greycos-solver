@@ -1569,6 +1569,8 @@
         
     <xs:restriction base="xs:string">
             
+      <xs:enumeration value="PLANNING_SOLUTION_DIFF"/>
+            
       <xs:enumeration value="NEIGHBORHOODS"/>
           
     </xs:restriction>

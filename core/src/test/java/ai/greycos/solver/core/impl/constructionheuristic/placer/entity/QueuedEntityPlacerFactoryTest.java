@@ -27,9 +27,9 @@ import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
-import ai.greycos.solver.core.testcotwin.difficultyweight.TestdataDifficultyWeightSolution;
 import ai.greycos.solver.core.testcotwin.multivar.TestdataMultiVarEntity;
 import ai.greycos.solver.core.testcotwin.multivar.TestdataMultiVarSolution;
+import ai.greycos.solver.core.testcotwin.sort.comparator.TestdataComparatorSortableSolution;
 
 import org.junit.jupiter.api.Test;
 
@@ -95,12 +95,12 @@ class QueuedEntityPlacerFactoryTest {
             .withValueSelectorConfig(new ValueSelectorConfig("primaryValue"));
     var configPolicy =
         buildHeuristicConfigPolicy(
-            TestdataDifficultyWeightSolution.buildSolutionDescriptor(),
+            TestdataComparatorSortableSolution.buildSolutionDescriptor(),
             EntitySorterManner.DESCENDING_IF_AVAILABLE);
     QueuedEntityPlacerConfig placerConfig =
         QueuedEntityPlacerFactory.unfoldNew(configPolicy, List.of(primaryMoveSelectorConfig));
     var entityPlacer =
-        new QueuedEntityPlacerFactory<TestdataDifficultyWeightSolution>(placerConfig);
+        new QueuedEntityPlacerFactory<TestdataComparatorSortableSolution>(placerConfig);
     var entitySelectorConfig = entityPlacer.buildEntitySelectorConfig(configPolicy);
     assertThat(entitySelectorConfig.getSelectionOrder()).isEqualTo(SelectionOrder.SORTED);
     assertThat(entitySelectorConfig.getSorterManner())

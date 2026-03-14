@@ -27,24 +27,24 @@ class DefaultIndictmentTest {
     assertThat(indictment.getScore()).isEqualTo(SimpleScore.ZERO);
 
     ConstraintMatch<SimpleScore> match1 =
-        buildConstraintMatch("package1", "constraint1", SimpleScore.of(-1), e1);
+        buildConstraintMatch("constraint1", SimpleScore.of(-1), e1);
     indictment.addConstraintMatch(match1);
     assertThat(indictment.getScore()).isEqualTo(SimpleScore.of(-1));
     // Different constraintName
     ConstraintMatch<SimpleScore> match2 =
-        buildConstraintMatch("package1", "constraint2", SimpleScore.of(-20), e1);
+        buildConstraintMatch("constraint2", SimpleScore.of(-20), e1);
     indictment.addConstraintMatch(match2);
     assertThat(indictment.getScore()).isEqualTo(SimpleScore.of(-21));
     indictment.addConstraintMatch(
-        buildConstraintMatch("package1", "constraint3", SimpleScore.of(-300), e1, e2));
+        buildConstraintMatch("constraint3", SimpleScore.of(-300), e1, e2));
     assertThat(indictment.getScore()).isEqualTo(SimpleScore.of(-321));
     // Different justification
     indictment.addConstraintMatch(
-        buildConstraintMatch("package1", "constraint3", SimpleScore.of(-4000), e1, e3));
+        buildConstraintMatch("constraint3", SimpleScore.of(-4000), e1, e3));
     assertThat(indictment.getScore()).isEqualTo(SimpleScore.of(-4321));
     // Almost duplicate, but e2 and e1 are in reverse order, so different justification
     indictment.addConstraintMatch(
-        buildConstraintMatch("package1", "constraint3", SimpleScore.of(-50000), e2, e1));
+        buildConstraintMatch("constraint3", SimpleScore.of(-50000), e2, e1));
     assertThat(indictment.getScore()).isEqualTo(SimpleScore.of(-54321));
 
     indictment.removeConstraintMatch(match2);
@@ -63,7 +63,7 @@ class DefaultIndictmentTest {
 
     // Add a constraint match with a default justification
     ConstraintMatch<SimpleScore> match1 =
-        buildConstraintMatch("package1", "constraint1", SimpleScore.of(-1), e1, e2);
+        buildConstraintMatch("constraint1", SimpleScore.of(-1), e1, e2);
     indictment.addConstraintMatch(match1);
 
     assertThat(indictment.getJustificationList()).hasSize(1);
@@ -79,12 +79,7 @@ class DefaultIndictmentTest {
     // Add another constraint match with a custom justification
     ConstraintMatch<SimpleScore> match2 =
         buildConstraintMatch(
-            "package1",
-            "constraint1",
-            SimpleScore.of(-1),
-            new TestConstraintJustification(e1, e3),
-            e1,
-            e3);
+            "constraint1", SimpleScore.of(-1), new TestConstraintJustification(e1, e3), e1, e3);
     indictment.addConstraintMatch(match2);
 
     assertThat(indictment.getJustificationList()).hasSize(2);
@@ -107,26 +102,18 @@ class DefaultIndictmentTest {
   }
 
   private <Score_ extends Score<Score_>> ConstraintMatch<Score_> buildConstraintMatch(
-      String constraintPackage, String constraintName, Score_ score, Object... indictments) {
+      String constraintName, Score_ score, Object... indictments) {
     return buildConstraintMatch(
-        constraintPackage,
-        constraintName,
-        score,
-        DefaultConstraintJustification.of(score, indictments),
-        indictments);
+        constraintName, score, DefaultConstraintJustification.of(score, indictments), indictments);
   }
 
   private <Score_ extends Score<Score_>> ConstraintMatch<Score_> buildConstraintMatch(
-      String constraintPackage,
       String constraintName,
       Score_ score,
       ConstraintJustification justification,
       Object... indictments) {
     return new ConstraintMatch<>(
-        ConstraintRef.of(constraintPackage, constraintName),
-        justification,
-        Arrays.asList(indictments),
-        score);
+        ConstraintRef.of(constraintName), justification, Arrays.asList(indictments), score);
   }
 
   @Test

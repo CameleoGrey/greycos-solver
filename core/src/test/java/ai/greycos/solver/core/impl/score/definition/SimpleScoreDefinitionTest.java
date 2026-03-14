@@ -48,7 +48,7 @@ class SimpleScoreDefinitionTest {
     var optimisticBound =
         scoreDefinition.buildOptimisticBound(
             InitializingScoreTrend.buildUniformTrend(InitializingScoreTrendLevel.ONLY_DOWN, 1),
-            SimpleScore.of(-1));
+            SimpleScore.of(-1L));
     assertThat(optimisticBound.score()).isEqualTo(-1L);
   }
 

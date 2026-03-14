@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 
 import ai.greycos.solver.core.api.score.SimpleScore;
+import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
@@ -37,6 +38,7 @@ class UnassignedListValueSelectorTest {
     var solution = new TestdataListSolution();
     solution.setEntityList(List.of(entity));
     solution.setValueList(List.of(v1, v2, v3, v4, v5));
+    SolutionManager.updateShadowVariables(solution);
 
     var scoreDirector = mockScoreDirector(TestdataListSolution.buildSolutionDescriptor());
     scoreDirector.setWorkingSolution(solution);

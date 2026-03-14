@@ -20,7 +20,7 @@ class BendableScoreDefinitionTest {
   @Test
   void getSoftestOneScore() {
     var score = new BendableScoreDefinition(1, 2).getOneSoftestScore();
-    assertThat(score).isEqualTo(BendableScore.of(new long[1], new long[] {0, 1}));
+    assertThat(score).isEqualTo(BendableScore.of(new long[1], new long[] {0L, 1L}));
   }
 
   @Test
@@ -73,9 +73,9 @@ class BendableScoreDefinitionTest {
 
   @Test
   void createScoreWithIllegalArgument() {
-    var bendableScoreDefinition = new BendableScoreDefinition(2, 3);
+    var bendableLongScoreDefinition = new BendableScoreDefinition(2, 3);
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> bendableScoreDefinition.createScore(1, 2, 3));
+        .isThrownBy(() -> bendableLongScoreDefinition.createScore(1, 2, 3));
   }
 
   @Test
@@ -85,17 +85,17 @@ class BendableScoreDefinitionTest {
     var levelSize = hardLevelSize + softLevelSize;
     var scores = new long[levelSize];
     for (var i = 0; i < levelSize; i++) {
-      scores[i] = i;
+      scores[i] = ((long) Integer.MAX_VALUE) + i;
     }
-    var bendableScoreDefinition = new BendableScoreDefinition(hardLevelSize, softLevelSize);
-    var bendableScore = bendableScoreDefinition.createScore(scores);
-    assertThat(bendableScore.hardLevelsSize()).isEqualTo(hardLevelSize);
-    assertThat(bendableScore.softLevelsSize()).isEqualTo(softLevelSize);
+    var bendableLongScoreDefinition = new BendableScoreDefinition(hardLevelSize, softLevelSize);
+    var bendableLongScore = bendableLongScoreDefinition.createScore(scores);
+    assertThat(bendableLongScore.hardLevelsSize()).isEqualTo(hardLevelSize);
+    assertThat(bendableLongScore.softLevelsSize()).isEqualTo(softLevelSize);
     for (var i = 0; i < levelSize; i++) {
       if (i < hardLevelSize) {
-        assertThat(bendableScore.hardScore(i)).isEqualTo(scores[i]);
+        assertThat(bendableLongScore.hardScore(i)).isEqualTo(scores[i]);
       } else {
-        assertThat(bendableScore.softScore(i - hardLevelSize)).isEqualTo(scores[i]);
+        assertThat(bendableLongScore.softScore(i - hardLevelSize)).isEqualTo(scores[i]);
       }
     }
   }
@@ -164,8 +164,8 @@ class BendableScoreDefinitionTest {
     assertThat(scoreDefinition.divideBySanitizedDivisor(dividend, zeroDivisor)).isEqualTo(dividend);
     var oneDivisor = scoreDefinition.getOneSoftestScore();
     assertThat(scoreDefinition.divideBySanitizedDivisor(dividend, oneDivisor)).isEqualTo(dividend);
-    var tenDivisor = scoreDefinition.createScore(10, 10);
+    var tenDivisor = scoreDefinition.getOneSoftestScore();
     assertThat(scoreDefinition.divideBySanitizedDivisor(dividend, tenDivisor))
-        .isEqualTo(scoreDefinition.createScore(0, 1));
+        .isEqualTo(scoreDefinition.createScore(0, 10));
   }
 }

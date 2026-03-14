@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.cotwin.common.accessor;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 
 import java.lang.reflect.Member;
@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 class MemberAccessorFactoryTest {
 
   @Test
-  void fieldAnnotatedEntity() throws NoSuchFieldException {
+  void fieldAnnotatedEntityWithPublicGetter() throws NoSuchFieldException {
     MemberAccessor memberAccessor =
         MemberAccessorFactory.buildMemberAccessor(
             TestdataFieldAnnotatedEntity.class.getDeclaredField("value"),
@@ -44,9 +44,8 @@ class MemberAccessorFactoryTest {
   }
 
   @Test
-  void privateField() throws NoSuchFieldException {
-    assertThatIllegalArgumentException()
-        .isThrownBy(
+  void privateField() {
+    assertThatCode(
             () ->
                 MemberAccessorFactory.buildMemberAccessor(
                     TestdataVisibilityModifierSolution.class.getDeclaredField("privateField"),
@@ -54,7 +53,12 @@ class MemberAccessorFactoryTest {
                     ProblemFactProperty.class,
                     CotwinAccessType.FORCE_REFLECTION,
                     null))
-        .withMessageContaining("does not have a public getter method");
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContainingAll(
+            "The @ProblemFactProperty annotated field",
+            "privateField",
+            TestdataVisibilityModifierSolution.class.getCanonicalName(),
+            "is not public and does not have a public getter method");
   }
 
   @Test

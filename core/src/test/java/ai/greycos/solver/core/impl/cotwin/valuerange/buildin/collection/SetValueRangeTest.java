@@ -11,7 +11,6 @@ import java.util.LinkedHashSet;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
 import ai.greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
 import ai.greycos.solver.core.impl.cotwin.valuerange.sort.SelectionSorterAdapter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.ComparatorFactorySelectionSorter;
@@ -100,34 +99,28 @@ class SetValueRangeTest {
             new ComparatorFactorySelectionSorter<>(
                 solution -> integerComparator, SelectionSorterOrder.DESCENDING));
     assertAllElementsOfIterator(
-        ((CountableValueRange<Integer>) createRange(-15, 25, 0, 1, -1).sort(ascComparatorSorter))
-            .createOriginalIterator(),
+        createRange(-15, 25, 0, 1, -1).sort(ascComparatorSorter).createOriginalIterator(),
         -15,
         -1,
         0,
         1,
         25);
     assertAllElementsOfIterator(
-        ((CountableValueRange<Integer>)
-                createRange(-15, 25, 0, 1, -1).sort(ascComparatorFactorySorter))
-            .createOriginalIterator(),
+        createRange(-15, 25, 0, 1, -1).sort(ascComparatorFactorySorter).createOriginalIterator(),
         -15,
         -1,
         0,
         1,
         25);
     assertAllElementsOfIterator(
-        ((CountableValueRange<Integer>) createRange(-15, 25, 0, 1, -1).sort(descComparatorSorter))
-            .createOriginalIterator(),
+        createRange(-15, 25, 0, 1, -1).sort(descComparatorSorter).createOriginalIterator(),
         25,
         1,
         0,
         -1,
         -15);
     assertAllElementsOfIterator(
-        ((CountableValueRange<Integer>)
-                createRange(-15, 25, 0, 1, -1).sort(descComparatorFactorySorter))
-            .createOriginalIterator(),
+        createRange(-15, 25, 0, 1, -1).sort(descComparatorFactorySorter).createOriginalIterator(),
         25,
         1,
         0,

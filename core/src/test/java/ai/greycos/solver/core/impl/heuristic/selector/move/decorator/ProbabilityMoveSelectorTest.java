@@ -58,8 +58,10 @@ class ProbabilityMoveSelectorTest {
     InnerScoreDirector scoreDirector = mock(InnerScoreDirector.class);
     when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
     when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
-    SolverScope<TestdataSolution> solverScope =
-        SelectorTestUtils.solvingStarted(moveSelector, scoreDirector, workingRandom);
+    SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
+    when(solverScope.getWorkingRandom()).thenReturn(workingRandom);
+    when(solverScope.getScoreDirector()).thenReturn((InnerScoreDirector) scoreDirector);
+    moveSelector.solvingStarted(solverScope);
     AbstractPhaseScope<TestdataSolution> phaseScopeA =
         PlannerTestUtils.delegatingPhaseScope(solverScope);
     moveSelector.phaseStarted(phaseScopeA);

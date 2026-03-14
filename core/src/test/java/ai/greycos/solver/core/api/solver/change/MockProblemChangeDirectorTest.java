@@ -13,31 +13,21 @@ class MockProblemChangeDirectorTest {
 
   @Test
   void problemChange() {
-    final TestdataLavishEntityGroup entityGroupOne =
-        new TestdataLavishEntityGroup("entityGroupOne");
-    final TestdataLavishValueGroup valueGroupOne = new TestdataLavishValueGroup("valueGroupOne");
-    final TestdataLavishEntity addedEntity =
-        new TestdataLavishEntity("newly added entity", entityGroupOne);
-    final TestdataLavishEntity removedEntity =
-        new TestdataLavishEntity("entity to remove", entityGroupOne);
-    final TestdataLavishValue addedFact =
-        new TestdataLavishValue("newly added fact", valueGroupOne);
-    final TestdataLavishValue removedFact =
-        new TestdataLavishValue("fact to remove", valueGroupOne);
-    final TestdataLavishEntity changedEntity =
-        new TestdataLavishEntity("changed entity", entityGroupOne);
-    final TestdataLavishValue changedFact =
-        new TestdataLavishValue("changed entity value", valueGroupOne);
+    var entityGroupOne = new TestdataLavishEntityGroup("entityGroupOne");
+    var valueGroupOne = new TestdataLavishValueGroup("valueGroupOne");
+    var addedEntity = new TestdataLavishEntity("newly added entity", entityGroupOne);
+    var removedEntity = new TestdataLavishEntity("entity to remove", entityGroupOne);
+    var addedFact = new TestdataLavishValue("newly added fact", valueGroupOne);
+    var removedFact = new TestdataLavishValue("fact to remove", valueGroupOne);
+    var changedEntity = new TestdataLavishEntity("changed entity", entityGroupOne);
+    var changedFact = new TestdataLavishValue("changed entity value", valueGroupOne);
 
     // Working solution counterparts.
-    final TestdataLavishEntity removedWorkingEntity =
-        new TestdataLavishEntity("working entity to remove", entityGroupOne);
-    final TestdataLavishValue removedWorkingFact =
-        new TestdataLavishValue("working fact to remove", valueGroupOne);
-    final TestdataLavishEntity changedWorkingEntity =
-        new TestdataLavishEntity("working changed entity", entityGroupOne);
+    var removedWorkingEntity = new TestdataLavishEntity("working entity to remove", entityGroupOne);
+    var removedWorkingFact = new TestdataLavishValue("working fact to remove", valueGroupOne);
+    var changedWorkingEntity = new TestdataLavishEntity("working changed entity", entityGroupOne);
 
-    MockProblemChangeDirector mockProblemChangeDirector = new MockProblemChangeDirector();
+    var mockProblemChangeDirector = new MockProblemChangeDirector();
     // Configure look-up mocks.
     mockProblemChangeDirector
         .whenLookingUp(removedEntity)
@@ -69,7 +59,7 @@ class MockProblemChangeDirectorTest {
               removedFact, workingSolution.getValueList()::remove);
         });
 
-    TestdataLavishSolution testdataSolution = TestdataLavishSolution.generateSolution();
+    var testdataSolution = TestdataLavishSolution.generateSolution();
     testdataSolution.getEntityList().add(removedWorkingEntity);
     testdataSolution.getEntityList().add(changedWorkingEntity);
     testdataSolution.getValueList().add(removedWorkingFact);
@@ -77,15 +67,11 @@ class MockProblemChangeDirectorTest {
     problemChange.doChange(testdataSolution, mockProblemChangeDirector);
 
     SoftAssertions.assertSoftly(
-        (softAssertions) -> {
-          softAssertions
-              .assertThat(testdataSolution.getEntityList())
-              .doesNotContain(removedWorkingEntity);
-          softAssertions
-              .assertThat(testdataSolution.getValueList())
-              .doesNotContain(removedWorkingFact);
-          softAssertions.assertThat(changedWorkingEntity.getValue()).isEqualTo(changedFact);
-          softAssertions.assertThat(changedWorkingEntity.getEntityGroup()).isNull();
+        softly -> {
+          softly.assertThat(testdataSolution.getEntityList()).doesNotContain(removedWorkingEntity);
+          softly.assertThat(testdataSolution.getValueList()).doesNotContain(removedWorkingFact);
+          softly.assertThat(changedWorkingEntity.getValue()).isEqualTo(changedFact);
+          softly.assertThat(changedWorkingEntity.getEntityGroup()).isNull();
         });
   }
 }

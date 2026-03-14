@@ -1,12 +1,14 @@
 package ai.greycos.solver.core.impl.cotwin.solution.descriptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
+import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.equals.TestdataEqualsByCodeEasyScoreCalculator;
@@ -25,6 +27,29 @@ import org.junit.jupiter.api.Test;
 class PlanningSolutionDiffTest {
 
   @Nested
+  @DisplayName("Diff of two solutions called without the preview feature enabled")
+  class PlanningSolutionDiffPreviewNotEnabledTest {
+
+    private final SolutionManager<TestdataEqualsByCodeSolution, SimpleScore> solutionManager =
+        SolutionManager.create(
+            SolverFactory.create(
+                new SolverConfig()
+                    .withSolutionClass(TestdataEqualsByCodeSolution.class)
+                    .withEntityClasses(TestdataEqualsByCodeEntity.class)
+                    .withEasyScoreCalculatorClass(TestdataEqualsByCodeEasyScoreCalculator.class)));
+
+    @Test
+    void failsFast() {
+      assertThatThrownBy(
+              () ->
+                  solutionManager.diff(
+                      new TestdataEqualsByCodeSolution(), new TestdataEqualsByCodeSolution()))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining(PreviewFeature.PLANNING_SOLUTION_DIFF.name());
+    }
+  }
+
+  @Nested
   @DisplayName("Diff of two solutions of same class with a single basic variable")
   class BasicVariablePlanningSolutionDiffTest {
 
@@ -32,6 +57,7 @@ class PlanningSolutionDiffTest {
         SolutionManager.create(
             SolverFactory.create(
                 new SolverConfig()
+                    .withPreviewFeature(PreviewFeature.PLANNING_SOLUTION_DIFF)
                     .withSolutionClass(TestdataEqualsByCodeSolution.class)
                     .withEntityClasses(TestdataEqualsByCodeEntity.class)
                     .withEasyScoreCalculatorClass(TestdataEqualsByCodeEasyScoreCalculator.class)));
@@ -176,6 +202,7 @@ class PlanningSolutionDiffTest {
         SolutionManager.create(
             SolverFactory.create(
                 new SolverConfig()
+                    .withPreviewFeature(PreviewFeature.PLANNING_SOLUTION_DIFF)
                     .withSolutionClass(TestdataEqualsByCodeListSolution.class)
                     .withEntityClasses(
                         TestdataEqualsByCodeListEntity.class, TestdataEqualsByCodeListValue.class)

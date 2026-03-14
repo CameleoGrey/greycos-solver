@@ -5,15 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.mock;
 
-import java.util.Comparator;
-
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
-import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorterWeightFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.ProbabilityEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.ShufflingEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.SortingEntitySelector;
@@ -21,6 +18,8 @@ import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
+import ai.greycos.solver.core.testcotwin.common.DummyEntityComparator;
+import ai.greycos.solver.core.testcotwin.common.DummyEntityComparatorFactory;
 
 import org.junit.jupiter.api.Test;
 
@@ -196,8 +195,7 @@ class EntitySelectorFactoryTest {
   @Test
   void applySorting_withComparatorFactoryClass() {
     EntitySelectorConfig entitySelectorConfig =
-        new EntitySelectorConfig()
-            .withComparatorFactoryClass(DummySelectionComparatorFactory.class);
+        new EntitySelectorConfig().withComparatorFactoryClass(DummyEntityComparatorFactory.class);
     applySorting(entitySelectorConfig);
   }
 
@@ -258,22 +256,6 @@ class EntitySelectorFactoryTest {
     public double createProbabilityWeight(
         ScoreDirector<TestdataSolution> scoreDirector, TestdataEntity selection) {
       return 0.0;
-    }
-  }
-
-  public static class DummySelectionComparatorFactory
-      implements SelectionSorterWeightFactory<TestdataSolution, TestdataEntity> {
-
-    @Override
-    public Comparable createSorterWeight(TestdataSolution solution, TestdataEntity selection) {
-      return 0;
-    }
-  }
-
-  public static class DummyEntityComparator implements Comparator<TestdataEntity> {
-    @Override
-    public int compare(TestdataEntity testdataEntity, TestdataEntity testdataEntity2) {
-      return 0;
     }
   }
 }

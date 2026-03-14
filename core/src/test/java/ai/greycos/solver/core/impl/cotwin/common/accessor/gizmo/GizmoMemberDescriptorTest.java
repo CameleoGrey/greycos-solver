@@ -24,20 +24,16 @@ import io.quarkus.gizmo2.desc.MethodDesc;
 class GizmoMemberDescriptorTest {
 
   @Test
-  void testThatCreatingDescriptorForPrivateMembersFail() {
-    assertThatCode(
-            () ->
-                new GizmoMemberDescriptor(
-                    TestdataFieldAnnotatedEntity.class.getDeclaredField("value")))
-        .hasMessage(
-            "Member ("
-                + "value"
-                + ") of class ("
-                + TestdataFieldAnnotatedEntity.class.getName()
-                + ") is not public and cotwinAccessType is GIZMO.\n"
-                + "Maybe put the annotations onto the public getter of the field.\n"
-                + "Maybe use cotwinAccessType REFLECTION instead of GIZMO.");
+  void testCreatingDescriptorForPrivateFieldWithPublicAccessorsWork() throws NoSuchFieldException {
+    var descriptor =
+        new GizmoMemberDescriptor(TestdataFieldAnnotatedEntity.class.getDeclaredField("value"));
+    assertThat(descriptor.getDeclaringClassName())
+        .isEqualTo(TestdataFieldAnnotatedEntity.class.getName());
+    assertThat(descriptor.getName()).isEqualTo("value");
+  }
 
+  @Test
+  void testThatCreatingDescriptorForPrivateMembersFail() {
     assertThatCode(
             () ->
                 new GizmoMemberDescriptor(
@@ -48,8 +44,7 @@ class GizmoMemberDescriptorTest {
                 + "getPrivateProperty"
                 + ") of class ("
                 + TestdataVisibilityModifierSolution.class.getName()
-                + ") is not public and cotwinAccessType is GIZMO.\n"
-                + "Maybe use cotwinAccessType REFLECTION instead of GIZMO.");
+                + ") is not public.");
   }
 
   @Test

@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.cotwin.lookup;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.testcotwin.clone.lookup.TestdataObjectEnum;
@@ -25,7 +26,10 @@ class LookUpStrategyIdOrFailTest extends AbstractLookupTest {
     lookUpManager.addWorkingObject(object);
     lookUpManager.removeWorkingObject(object);
     // The removed object cannot be looked up
-    assertThat(lookUpManager.lookUpWorkingObjectOrReturnNull(object)).isNull();
+    assertThatThrownBy(() -> lookUpManager.lookUpWorkingObject(object))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("externalObject")
+        .hasMessageContaining("no known workingObject");
   }
 
   @Test
@@ -34,7 +38,10 @@ class LookUpStrategyIdOrFailTest extends AbstractLookupTest {
     lookUpManager.addWorkingObject(object);
     lookUpManager.removeWorkingObject(object);
     // The removed object cannot be looked up
-    assertThat(lookUpManager.lookUpWorkingObjectOrReturnNull(object)).isNull();
+    assertThatThrownBy(() -> lookUpManager.lookUpWorkingObject(object))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("externalObject")
+        .hasMessageContaining("no known workingObject");
   }
 
   @Test
@@ -106,7 +113,10 @@ class LookUpStrategyIdOrFailTest extends AbstractLookupTest {
   @Test
   void lookUpWithoutAdding() {
     TestdataObjectIntegerId object = new TestdataObjectIntegerId(0);
-    assertThat(lookUpManager.lookUpWorkingObjectOrReturnNull(object)).isNull();
+    assertThatThrownBy(() -> lookUpManager.lookUpWorkingObject(object))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("externalObject")
+        .hasMessageContaining("no known workingObject");
   }
 
   @Test

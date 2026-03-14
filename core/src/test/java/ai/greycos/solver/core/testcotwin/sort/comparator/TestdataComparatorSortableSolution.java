@@ -20,9 +20,7 @@ public class TestdataComparatorSortableSolution {
 
   public static SolutionDescriptor<TestdataComparatorSortableSolution> buildSolutionDescriptor() {
     return SolutionDescriptor.buildSolutionDescriptor(
-        TestdataComparatorSortableSolution.class,
-        TestdataComparatorSortableEntity.class,
-        TestdataSortableValue.class);
+        TestdataComparatorSortableSolution.class, TestdataComparatorSortableEntity.class);
   }
 
   public static TestdataComparatorSortableSolution generateSolution(

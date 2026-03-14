@@ -106,15 +106,15 @@ class SolverConfigTest {
 
   @Test
   void whiteCharsInClassName() {
-    var solutionClassName = "ai.greycos.solver.core.testcotwin.TestdataSolution";
+    var solutionClassName = TestdataSolution.class.getName();
     // Intentionally included white chars around the class name.
     var xmlFragment =
         """
-                <solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
+                <solver xmlns="%s">
                     <solutionClass>  %s\s
                     </solutionClass>
                 </solver>"""
-            .formatted(solutionClassName);
+            .formatted(SolverConfig.XML_NAMESPACE, solutionClassName);
     var solverConfig = solverConfigIO.read(new StringReader(xmlFragment));
     assertThat(solverConfig.getSolutionClass().getName()).isEqualTo(solutionClassName);
   }
@@ -163,9 +163,9 @@ class SolverConfigTest {
   void withEnablePreviewFeatureSet() {
     var solverConfig = new SolverConfig();
     assertThat(solverConfig.getEnablePreviewFeatureSet()).isNull();
-    solverConfig.withPreviewFeature(PreviewFeature.NEIGHBORHOODS);
+    solverConfig.withPreviewFeature(PreviewFeature.PLANNING_SOLUTION_DIFF);
     assertThat(solverConfig.getEnablePreviewFeatureSet())
-        .hasSameElementsAs(List.of(PreviewFeature.NEIGHBORHOODS));
+        .hasSameElementsAs(List.of(PreviewFeature.PLANNING_SOLUTION_DIFF));
   }
 
   @Test

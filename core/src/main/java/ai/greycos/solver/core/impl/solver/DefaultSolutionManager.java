@@ -16,6 +16,7 @@ import ai.greycos.solver.core.api.solver.SolutionUpdatePolicy;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
+import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import ai.greycos.solver.core.impl.cotwin.variable.listener.support.violation.VariableSnapshotTotal;
 import ai.greycos.solver.core.impl.score.DefaultScoreExplanation;
@@ -173,6 +174,7 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
 
   @Override
   public PlanningSolutionDiff<Solution_> diff(Solution_ oldSolution, Solution_ newSolution) {
+    solverFactory.ensurePreviewFeature(PreviewFeature.PLANNING_SOLUTION_DIFF);
     return solverFactory.getSolutionDescriptor().diff(oldSolution, newSolution);
   }
 

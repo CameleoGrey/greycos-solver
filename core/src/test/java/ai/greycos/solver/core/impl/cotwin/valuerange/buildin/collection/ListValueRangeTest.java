@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Random;
 
-import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
 import ai.greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
 import ai.greycos.solver.core.impl.cotwin.valuerange.sort.SelectionSorterAdapter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.ComparatorFactorySelectionSorter;
@@ -117,8 +116,8 @@ class ListValueRangeTest {
             new ComparatorFactorySelectionSorter<>(
                 solution -> integerComparator, SelectionSorterOrder.DESCENDING));
     assertAllElementsOfIterator(
-        ((CountableValueRange<Integer>)
-                new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1)).sort(ascComparatorSorter))
+        new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1))
+            .sort(ascComparatorSorter)
             .createOriginalIterator(),
         -15,
         -1,
@@ -126,9 +125,8 @@ class ListValueRangeTest {
         1,
         25);
     assertAllElementsOfIterator(
-        ((CountableValueRange<Integer>)
-                new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1))
-                    .sort(ascComparatorFactorySorter))
+        new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1))
+            .sort(ascComparatorFactorySorter)
             .createOriginalIterator(),
         -15,
         -1,
@@ -136,8 +134,8 @@ class ListValueRangeTest {
         1,
         25);
     assertAllElementsOfIterator(
-        ((CountableValueRange<Integer>)
-                new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1)).sort(descComparatorSorter))
+        new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1))
+            .sort(descComparatorSorter)
             .createOriginalIterator(),
         25,
         1,
@@ -145,9 +143,8 @@ class ListValueRangeTest {
         -1,
         -15);
     assertAllElementsOfIterator(
-        ((CountableValueRange<Integer>)
-                new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1))
-                    .sort(descComparatorFactorySorter))
+        new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1))
+            .sort(descComparatorFactorySorter)
             .createOriginalIterator(),
         25,
         1,

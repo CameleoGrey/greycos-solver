@@ -5,6 +5,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.Objects;
 
@@ -51,6 +52,24 @@ public final class ReflectionBeanPropertyMemberAccessor extends AbstractMemberAc
       setterMethod =
           ReflectionHelper.getDeclaredSetterMethod(
               declaringClass, getterMethod.getReturnType(), propertyName);
+      if (setterMethod == null) {
+        throw new IllegalStateException(
+            "The getterMethod (%s) does not have a matching setterMethod on class (%s)."
+                .formatted(getterMethod.getName(), declaringClass.getName()));
+      }
+      var getterAccessModifier = getAccessModifier(getterMethod);
+      var setterAccessModifier = getAccessModifier(setterMethod);
+      if (!getterAccessModifier.equals(setterAccessModifier)) {
+        throw new IllegalStateException(
+            ("The getterMethod (%s) has access modifier (%s) that does not match the setterMethod (%s) "
+                    + "with access modifier (%s) on class (%s).")
+                .formatted(
+                    getterMethod.getName(),
+                    getterAccessModifier,
+                    setterMethod.getName(),
+                    setterAccessModifier,
+                    declaringClass.getName()));
+      }
       try {
         this.setterMethod.setAccessible(true);
         this.setterMethodHandle = lookup.unreflect(setterMethod).asFixedArity();
@@ -157,5 +176,18 @@ public final class ReflectionBeanPropertyMemberAccessor extends AbstractMemberAc
   @Override
   public String toString() {
     return "bean property " + propertyName + " on " + getterMethod.getDeclaringClass();
+  }
+
+  private static String getAccessModifier(Method method) {
+    var modifiers = method.getModifiers();
+    if (Modifier.isPublic(modifiers)) {
+      return "public";
+    } else if (Modifier.isProtected(modifiers)) {
+      return "protected";
+    } else if (Modifier.isPrivate(modifiers)) {
+      return "private";
+    } else {
+      return "package-private";
+    }
   }
 }

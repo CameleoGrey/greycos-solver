@@ -16,6 +16,7 @@ package ai.greycos.solver.core.config.solver;
  * features themselves.
  */
 public enum PreviewFeature {
+  PLANNING_SOLUTION_DIFF,
   /**
    * Unlike other preview features, Neighborhoods are an active research project. It is intended to
    * simplify the creation of custom moves, eventually replacing move selectors. The component is

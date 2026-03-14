@@ -37,6 +37,7 @@ import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -98,7 +99,10 @@ class EnvironmentModeTest {
   }
 
   @ParameterizedTest(name = "{0}")
-  @EnumSource(EnvironmentMode.class)
+  @EnumSource(
+      value = EnvironmentMode.class,
+      names = {"FAST_ASSERT", "REPRODUCIBLE"},
+      mode = EnumSource.Mode.EXCLUDE)
   void corruptedUndoShadowVariableListener(EnvironmentMode environmentMode) {
     var solverConfig =
         new SolverConfig()
@@ -135,7 +139,7 @@ class EnvironmentModeTest {
                 "Variables that are different between before and undo",
                 "Actual value (v2) of variable valueClone on CorruptedUndoShadowEntity entity (CorruptedUndoShadowEntity) differs from expected (v1)");
       }
-      case FULL_ASSERT, STEP_ASSERT, FAST_ASSERT -> {
+      case FULL_ASSERT, STEP_ASSERT -> {
         // STEP_ASSERT does not create snapshots since it is not intrusive, and hence it can only
         // detect the undo corruption and not what caused it
         var e1 = new CorruptedUndoShadowEntity("e1");
@@ -158,7 +162,7 @@ class EnvironmentModeTest {
                         new CorruptedUndoShadowSolution(List.of(e1, e2), List.of(v1, v2))))
             .withMessageContainingAll("corrupted undoMove");
       }
-      case PHASE_ASSERT, NO_ASSERT, NON_REPRODUCIBLE, NON_INTRUSIVE_FULL_ASSERT, REPRODUCIBLE -> {
+      case PHASE_ASSERT, NO_ASSERT, NON_REPRODUCIBLE, NON_INTRUSIVE_FULL_ASSERT -> {
         var e1 = new CorruptedUndoShadowEntity("e1");
         var e2 = new CorruptedUndoShadowEntity("e2");
         var v1 = new CorruptedUndoShadowValue("v1");
@@ -180,6 +184,16 @@ class EnvironmentModeTest {
                         true));
       }
     }
+  }
+
+  @Test
+  void corruptedUndoShadowVariableListenerDeprecatedFastAssert() {
+    assertCorruptedUndoShadowVariableListenerThrows(EnvironmentMode.FAST_ASSERT);
+  }
+
+  @Test
+  void corruptedUndoShadowVariableListenerDeprecatedReproducible() {
+    assertCorruptedUndoShadowVariableListenerDoesNotThrow(EnvironmentMode.REPRODUCIBLE);
   }
 
   @ParameterizedTest(name = "{0}")
@@ -217,6 +231,49 @@ class EnvironmentModeTest {
         ((DefaultSolver<TestdataSolution>) solver1).getRandomFactory(),
         ((DefaultSolver<TestdataSolution>) solver2).getRandomFactory());
     assertDifferentScoreSeries(solver1, solver2);
+  }
+
+  private void assertCorruptedUndoShadowVariableListenerThrows(EnvironmentMode environmentMode) {
+    var solverConfig = buildCorruptedUndoShadowSolverConfig(environmentMode);
+    var solution = buildCorruptedUndoShadowSolution();
+    assertThatExceptionOfType(IllegalStateException.class)
+        .isThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution))
+        .withMessageContainingAll("corrupted undoMove");
+  }
+
+  private void assertCorruptedUndoShadowVariableListenerDoesNotThrow(
+      EnvironmentMode environmentMode) {
+    var solverConfig = buildCorruptedUndoShadowSolverConfig(environmentMode);
+    var solution = buildCorruptedUndoShadowSolution();
+    assertThatNoException().isThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, true));
+  }
+
+  private static SolverConfig buildCorruptedUndoShadowSolverConfig(
+      EnvironmentMode environmentMode) {
+    return new SolverConfig()
+        .withEnvironmentMode(environmentMode)
+        .withSolutionClass(CorruptedUndoShadowSolution.class)
+        .withEntityClasses(CorruptedUndoShadowEntity.class, CorruptedUndoShadowValue.class)
+        .withScoreDirectorFactory(
+            new ScoreDirectorFactoryConfig()
+                .withEasyScoreCalculatorClass(CorruptedUndoShadowEasyScoreCalculator.class))
+        .withTerminationConfig(new TerminationConfig().withScoreCalculationCountLimit(10L));
+  }
+
+  private static CorruptedUndoShadowSolution buildCorruptedUndoShadowSolution() {
+    var e1 = new CorruptedUndoShadowEntity("e1");
+    var e2 = new CorruptedUndoShadowEntity("e2");
+    var v1 = new CorruptedUndoShadowValue("v1");
+    var v2 = new CorruptedUndoShadowValue("v2");
+
+    e1.setValue(v1);
+    e1.setValueClone(v1);
+    v1.setEntities(new ArrayList<>(List.of(e1)));
+
+    e2.setValue(v2);
+    e2.setValueClone(v2);
+    v2.setEntities(new ArrayList<>(List.of(e2)));
+    return new CorruptedUndoShadowSolution(List.of(e1, e2), List.of(v1, v2));
   }
 
   private void assertIllegalStateExceptionWhileSolving(

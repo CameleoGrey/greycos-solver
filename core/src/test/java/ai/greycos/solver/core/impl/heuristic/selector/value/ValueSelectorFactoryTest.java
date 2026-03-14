@@ -7,7 +7,6 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -23,7 +22,6 @@ import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
-import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorterWeightFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.AssignedListValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.IterableFromEntityPropertyValueSelector;
@@ -38,6 +36,8 @@ import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.common.DummyValueComparator;
+import ai.greycos.solver.core.testcotwin.common.DummyValueComparatorFactory;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
 import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
 
@@ -290,7 +290,7 @@ class ValueSelectorFactoryTest {
     ValueSelectorConfig valueSelectorConfig =
         new ValueSelectorConfig()
             .withCacheType(SelectionCacheType.PHASE)
-            .withComparatorFactoryClass(DummySelectionComparatorFactory.class);
+            .withComparatorFactoryClass(DummyValueComparatorFactory.class);
     applySorting(valueSelectorConfig, true);
     applySorting(valueSelectorConfig, false);
   }
@@ -410,22 +410,6 @@ class ValueSelectorFactoryTest {
     public double createProbabilityWeight(
         ScoreDirector<TestdataSolution> scoreDirector, TestdataValue selection) {
       return 0.0;
-    }
-  }
-
-  public static class DummySelectionComparatorFactory
-      implements SelectionSorterWeightFactory<TestdataSolution, TestdataValue> {
-
-    @Override
-    public Comparable createSorterWeight(TestdataSolution solution, TestdataValue selection) {
-      return 0;
-    }
-  }
-
-  public static class DummyValueComparator implements Comparator<TestdataValue> {
-    @Override
-    public int compare(TestdataValue testdataValue, TestdataValue testdataValue2) {
-      return 0;
     }
   }
 

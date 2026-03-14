@@ -23,6 +23,6 @@ class NullOverridesTest {
     constraintVerifier
         .verifyThat(TestdataConstraintWeightOverridesConstraintProvider::firstConstraint)
         .given()
-        .penalizesBy(0);
+        .rewardsWith(0);
   }
 }

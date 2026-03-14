@@ -50,19 +50,21 @@ class ReflectionMethodExtendedMemberAccessorTest {
                 "getValueList",
                 TestdataEntityProvidingEntityProvidingOnlyBaseAnnotatedExtendedSolution.class));
     assertMemberWithInheritance(
-        member, TestdataEntityProvidingEntityProvidingOnlyBaseAnnotatedExtendedSolution.class);
+        member,
+        TestdataEntityProvidingEntityProvidingOnlyBaseAnnotatedExtendedSolution.class,
+        "getValueList");
     var otherMember =
         new ReflectionMethodExtendedMemberAccessor(
             TestdataEntityProvidingOnlyBaseAnnotatedChildEntity.class.getMethod(
                 "getOtherValueList", TestdataEntityProvidingOnlyBaseAnnotatedSolution.class));
     assertMemberWithInheritance(
-        otherMember, TestdataEntityProvidingOnlyBaseAnnotatedSolution.class);
+        otherMember, TestdataEntityProvidingOnlyBaseAnnotatedSolution.class, "getOtherValueList");
   }
 
   void assertMemberWithInheritance(
-      ReflectionMethodExtendedMemberAccessor member, Class<?> solutionClass) {
+      ReflectionMethodExtendedMemberAccessor member, Class<?> solutionClass, String memberName) {
 
-    assertThat(member.getName()).isEqualTo(member.getName());
+    assertThat(member.getName()).isEqualTo(memberName);
     assertThat(member.getType()).isEqualTo(List.class);
     assertThat(member.getAnnotation(ValueRangeProvider.class)).isNotNull();
     assertThat(member.getGetterMethodParameterType()).isEqualTo(solutionClass);

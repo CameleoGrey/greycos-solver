@@ -105,7 +105,7 @@ class GizmoMemberAccessorFactoryTest {
                   new GizmoClassLoader());
             })
         .hasMessage(
-            "When using the cotwinAccessType (GIZMO) the classpath or modulepath must contain "
+            "When using the cotwinAccessType (FORCE_GIZMO) the classpath or modulepath must contain "
                 + "io.quarkus.gizmo:gizmo2.\nMaybe add a dependency to io.quarkus.gizmo:gizmo2.");
   }
 }

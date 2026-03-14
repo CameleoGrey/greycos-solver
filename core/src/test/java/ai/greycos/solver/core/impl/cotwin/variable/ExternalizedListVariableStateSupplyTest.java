@@ -3,10 +3,13 @@ package ai.greycos.solver.core.impl.cotwin.variable;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
@@ -16,6 +19,7 @@ import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassi
 import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 class ExternalizedListVariableStateSupplyTest {
 
@@ -23,8 +27,9 @@ class ExternalizedListVariableStateSupplyTest {
   void initializeRoundTrip() {
     var variableDescriptor =
         TestdataAllowsUnassignedValuesListEntity.buildVariableDescriptorForValueList();
-    try (var supply =
-        new ExternalizedListVariableStateSupply<>(variableDescriptor, ignored -> {})) {
+    @SuppressWarnings("unchecked")
+    var notifier = (Consumer<Object>) mock(Consumer.class);
+    try (var supply = new ExternalizedListVariableStateSupply<>(variableDescriptor, notifier)) {
 
       var v1 = new TestdataAllowsUnassignedValuesListValue("1");
       var v2 = new TestdataAllowsUnassignedValuesListValue("2");
@@ -50,6 +55,11 @@ class ExternalizedListVariableStateSupplyTest {
             softly.assertThat(supply.isAssigned(v2)).isFalse();
             softly.assertThat(supply.isAssigned(v3)).isFalse();
           });
+
+      verify(notifier).accept(v1);
+      verifyNoMoreInteractions(notifier);
+      // v2 and v3 are not visited since they are unassigned so their state isn't updated
+      // by initialization
     }
   }
 
@@ -57,8 +67,9 @@ class ExternalizedListVariableStateSupplyTest {
   void assignRoundTrip() {
     var variableDescriptor =
         TestdataAllowsUnassignedValuesListEntity.buildVariableDescriptorForValueList();
-    try (var supply =
-        new ExternalizedListVariableStateSupply<>(variableDescriptor, ignored -> {})) {
+    @SuppressWarnings("unchecked")
+    var notifier = (Consumer<Object>) mock(Consumer.class);
+    try (var supply = new ExternalizedListVariableStateSupply<>(variableDescriptor, notifier)) {
 
       var v1 = new TestdataAllowsUnassignedValuesListValue("1");
       var v2 = new TestdataAllowsUnassignedValuesListValue("2");
@@ -90,6 +101,12 @@ class ExternalizedListVariableStateSupplyTest {
                 .isEqualTo(ElementPosition.unassigned());
           });
 
+      verify(notifier).accept(v1);
+      verifyNoMoreInteractions(notifier);
+      // v2 and v3 are not visited since they are unassigned so their state isn't updated
+      // by initialization
+      Mockito.reset(notifier);
+
       supply.afterListElementUnassigned(scoreDirector, v1);
       assertSoftly(
           softly -> {
@@ -104,6 +121,9 @@ class ExternalizedListVariableStateSupplyTest {
                 .assertThat(supply.getElementPosition(v3))
                 .isEqualTo(ElementPosition.unassigned());
           });
+
+      verify(notifier).accept(v1);
+      verifyNoMoreInteractions(notifier);
 
       // Cannot unassign again.
       assertThatThrownBy(() -> supply.afterListElementUnassigned(scoreDirector, v1))
