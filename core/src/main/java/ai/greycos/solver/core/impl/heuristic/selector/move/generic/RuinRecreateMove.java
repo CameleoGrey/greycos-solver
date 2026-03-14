@@ -11,6 +11,7 @@ import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.move.VariableChangeRecordingScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 
 public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
@@ -41,12 +42,21 @@ public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
   @Override
   protected void doMoveOnGenuineVariables(ScoreDirector<Solution_> scoreDirector) {
     recordedNewValues = new Object[ruinedEntityList.size()];
-    var variableName = genuineVariableDescriptor.getVariableName();
 
     for (var ruinedEntity : ruinedEntityList) {
-      scoreDirector.beforeVariableChanged(ruinedEntity, variableName);
+      if (scoreDirector instanceof VariableDescriptorAwareScoreDirector<Solution_> variableAware) {
+        variableAware.beforeVariableChanged(genuineVariableDescriptor, ruinedEntity);
+      } else {
+        scoreDirector.beforeVariableChanged(
+            ruinedEntity, genuineVariableDescriptor.getVariableName());
+      }
       genuineVariableDescriptor.setValue(ruinedEntity, null);
-      scoreDirector.afterVariableChanged(ruinedEntity, variableName);
+      if (scoreDirector instanceof VariableDescriptorAwareScoreDirector<Solution_> variableAware) {
+        variableAware.afterVariableChanged(genuineVariableDescriptor, ruinedEntity);
+      } else {
+        scoreDirector.afterVariableChanged(
+            ruinedEntity, genuineVariableDescriptor.getVariableName());
+      }
     }
     scoreDirector.triggerVariableListeners();
 

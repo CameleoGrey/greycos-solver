@@ -1,4 +1,4 @@
-package ai.greycos.solver.core.testcotwin.shadow.invalid;
+package ai.greycos.solver.core.testcotwin.shadow.invalid.parameter;
 
 import java.util.List;
 
@@ -10,33 +10,33 @@ import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 
 @PlanningSolution
-public class TestdataInvalidDeclarativeSolution extends TestdataObject {
-  @PlanningEntityCollectionProperty List<TestdataInvalidDeclarativeEntity> entities;
+public class TestdataInvalidDeclarativeParameterSolution extends TestdataObject {
+  @PlanningEntityCollectionProperty List<TestdataInvalidDeclarativeParameterEntity> entities;
 
   @PlanningEntityCollectionProperty @ValueRangeProvider
-  List<TestdataInvalidDeclarativeValue> values;
+  List<TestdataInvalidDeclarativeParameterValue> values;
 
   @PlanningScore SimpleScore score;
 
-  public TestdataInvalidDeclarativeSolution() {}
+  public TestdataInvalidDeclarativeParameterSolution() {}
 
-  public TestdataInvalidDeclarativeSolution(String code) {
+  public TestdataInvalidDeclarativeParameterSolution(String code) {
     super(code);
   }
 
-  public List<TestdataInvalidDeclarativeEntity> getEntities() {
+  public List<TestdataInvalidDeclarativeParameterEntity> getEntities() {
     return entities;
   }
 
-  public void setEntities(List<TestdataInvalidDeclarativeEntity> entities) {
+  public void setEntities(List<TestdataInvalidDeclarativeParameterEntity> entities) {
     this.entities = entities;
   }
 
-  public List<TestdataInvalidDeclarativeValue> getValues() {
+  public List<TestdataInvalidDeclarativeParameterValue> getValues() {
     return values;
   }
 
-  public void setValues(List<TestdataInvalidDeclarativeValue> values) {
+  public void setValues(List<TestdataInvalidDeclarativeParameterValue> values) {
     this.values = values;
   }
 

@@ -56,11 +56,11 @@ public class SolutionManagerTest {
 
   public static final SolverFactory<TestdataShadowedSolution> SOLVER_FACTORY =
       SolverFactory.createFromXmlResource(
-          "ai.greycos.solver/core/api/solver/testdataShadowedSolverConfig.xml");
+          "ai/greycos/solver/core/api/solver/testdataShadowedSolverConfig.xml");
   public static final SolverFactory<TestdataAllowsUnassignedSolution>
       SOLVER_FACTORY_OVERCONSTRAINED =
           SolverFactory.createFromXmlResource(
-              "ai.greycos.solver/core/api/solver/testdataOverconstrainedSolverConfig.xml");
+              "ai/greycos/solver/core/api/solver/testdataOverconstrainedSolverConfig.xml");
   public static final SolverFactory<TestdataShadowedSolution> SOLVER_FACTORY_SHADOWED =
       SolverFactory.create(
           new SolverConfig()
@@ -450,7 +450,7 @@ public class SolutionManagerTest {
           softly.assertThat(scoreExplanation.getSummary()).isNotBlank();
           softly
               .assertThat(scoreExplanation.getConstraintMatchTotalMap())
-              .containsOnlyKeys("ai.greycos.solver.core.testcotwin.shadow/testConstraint");
+              .containsOnlyKeys("testConstraint");
           softly
               .assertThat(scoreExplanation.getIndictmentMap())
               .containsOnlyKeys(solution.getEntityList().toArray());

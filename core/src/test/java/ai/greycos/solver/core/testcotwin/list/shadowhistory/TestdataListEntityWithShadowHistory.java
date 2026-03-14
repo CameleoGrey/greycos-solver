@@ -64,4 +64,8 @@ public class TestdataListEntityWithShadowHistory extends TestdataObject {
   public List<TestdataListValueWithShadowHistory> getValueList() {
     return valueList;
   }
+
+  public void setValueList(List<TestdataListValueWithShadowHistory> valueList) {
+    this.valueList = valueList;
+  }
 }

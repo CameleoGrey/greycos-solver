@@ -27,6 +27,9 @@ import ai.greycos.solver.core.testcotwin.shadow.extended.TestdataDeclarativeExte
 import ai.greycos.solver.core.testcotwin.shadow.invalid.TestdataInvalidDeclarativeEntity;
 import ai.greycos.solver.core.testcotwin.shadow.invalid.TestdataInvalidDeclarativeSolution;
 import ai.greycos.solver.core.testcotwin.shadow.invalid.TestdataInvalidDeclarativeValue;
+import ai.greycos.solver.core.testcotwin.shadow.invalid.parameter.TestdataInvalidDeclarativeParameterEntity;
+import ai.greycos.solver.core.testcotwin.shadow.invalid.parameter.TestdataInvalidDeclarativeParameterSolution;
+import ai.greycos.solver.core.testcotwin.shadow.invalid.parameter.TestdataInvalidDeclarativeParameterValue;
 
 import org.junit.jupiter.api.Test;
 
@@ -690,6 +693,20 @@ class RootVariableSourceTest {
   }
 
   @Test
+  void invalidParameter() {
+    assertThatCode(
+            () ->
+                SolutionDescriptor.buildSolutionDescriptor(
+                        TestdataInvalidDeclarativeParameterSolution.class,
+                        TestdataInvalidDeclarativeParameterEntity.class,
+                        TestdataInvalidDeclarativeParameterValue.class)
+                    .getMetaModel())
+        .hasMessageContaining(
+            "Maybe you included a parameter which is not a planning solution "
+                + "(ai.greycos.solver.core.testcotwin.shadow.invalid.parameter.TestdataInvalidDeclarativeParameterSolution)?");
+  }
+
+  @Test
   void preferGetterWhenFieldTheSameType() {
     record TestClass(String name) {
       public String getName() {
@@ -784,19 +801,19 @@ class RootVariableSourceTest {
                     planningSolutionMetaModel,
                     TestdataInvalidDeclarativeValue.class,
                     "shadow",
-                    "isInconsistent",
+                    "inconsistent",
                     DEFAULT_MEMBER_ACCESSOR_FACTORY,
                     DEFAULT_DESCRIPTOR_POLICY))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContainingAll(
-            "The source path (isInconsistent) starting from root class (%s) accesses a @%s property (isInconsistent)"
+            "The source path (inconsistent) starting from root class (%s) accesses a @%s property (inconsistent)"
                 .formatted(
                     TestdataInvalidDeclarativeValue.class.getCanonicalName(),
                     ShadowVariablesInconsistent.class.getSimpleName()),
             "Supplier methods are only called when all of their dependencies are consistent",
             "reading @%s properties are not needed since they are guaranteed to be false"
                 .formatted(ShadowVariablesInconsistent.class.getSimpleName()),
-            "Maybe remove the source path (isInconsistent) from the @%s?"
+            "Maybe remove the source path (inconsistent) from the @%s?"
                 .formatted(ShadowSources.class.getSimpleName()));
   }
 

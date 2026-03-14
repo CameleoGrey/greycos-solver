@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import ai.greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
+import ai.greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoClassLoader;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberDescriptor;
 import ai.greycos.solver.core.impl.cotwin.solution.cloner.DeepCloningUtils;
@@ -393,13 +394,14 @@ public class GizmoSolutionClonerImplementor {
                     """
                                 which is not a known subclass of the solution class (%s).
                                 The known subclasses are: %s.
-                                Maybe use DomainAccessType.REFLECTION?
+                                Maybe use %s.REFLECTION?
                                 """
                         .formatted(
                             clonerDescriptor.solutionDescriptor.getSolutionClass(),
                             solutionClassSet.stream()
                                 .map(Class::getName)
-                                .collect(Collectors.joining(", ", "[", "]")));
+                                .collect(Collectors.joining(", ", "[", "]")),
+                            CotwinAccessType.class.getSimpleName());
                 var APPEND =
                     MethodDesc.of(StringBuilder.class, "append", StringBuilder.class, Object.class);
 

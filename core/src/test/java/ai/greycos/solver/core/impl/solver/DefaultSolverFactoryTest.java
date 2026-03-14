@@ -6,10 +6,13 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverConfigOverride;
+import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 import ai.greycos.solver.core.impl.solver.random.RandomFactory;
+import ai.greycos.solver.core.testcotwin.TestdataConstraintProvider;
+import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.invalid.noentity.TestdataNoEntitySolution;
 
@@ -95,6 +98,22 @@ class DefaultSolverFactoryTest {
         .hasMessageContaining("The moveThreadCount")
         .hasMessageContaining("resulted in a resolvedMoveThreadCount")
         .hasMessageContaining("that is lower than 1.");
+  }
+
+  @Test
+  void testConstraintProfilingSupportedInSingleThreadedMode() {
+    SolverConfig solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withScoreDirectorFactory(
+                new ScoreDirectorFactoryConfig()
+                    .withConstraintProviderClass(TestdataConstraintProvider.class)
+                    .withConstraintStreamProfilingEnabled(true));
+    assertThatCode(
+            () ->
+                new DefaultSolverFactory<>(solverConfig).buildSolver(new SolverConfigOverride<>()))
+        .doesNotThrowAnyException();
   }
 
   // ************************************************************************

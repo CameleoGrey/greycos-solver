@@ -44,11 +44,10 @@ public abstract class AbstractSelectorBasedMove<Solution_>
 
   @Override
   public String describe() {
-    var simpleName = getClass().getSimpleName();
-    if (simpleName.startsWith("SelectorBased")) {
-      return simpleName.substring("SelectorBased".length());
-    }
-    return simpleName;
+    var description = ((Move<Solution_>) this).getSimpleMoveTypeDescription();
+    return description.startsWith("SelectorBased")
+        ? description.substring("SelectorBased".length())
+        : description;
   }
 
   protected <Value_> ValueRange<Value_> extractValueRangeFromEntity(

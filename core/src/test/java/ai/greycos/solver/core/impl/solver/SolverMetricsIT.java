@@ -915,12 +915,20 @@ class SolverMetricsIT extends AbstractMeterTest {
     SolverFactory<TestdataSolution> solverFactory = SolverFactory.create(solverConfig);
     Solver<TestdataSolution> solver = solverFactory.buildSolver();
     var moveCountPerChange = new AtomicLong();
+    var debug = new AtomicReference<String>();
     ((DefaultSolver<TestdataSolution>) solver)
         .addPhaseLifecycleListener(
             new PhaseLifecycleListenerAdapter<>() {
               @Override
               public void solvingEnded(SolverScope<TestdataSolution> solverScope) {
                 meterRegistry.publish();
+                debug.set(
+                    "types="
+                        + solverScope.getMoveCountTypes()
+                        + ", counts="
+                        + solverScope.getMoveEvaluationCountPerType()
+                        + ", meters="
+                        + meterRegistry.getMeters().stream().map(Meter::getId).toList());
                 var changeMoveKey = "ChangeMove(TestdataEntity.value)";
                 if (solverScope.getMoveCountTypes().contains(changeMoveKey)) {
                   var counter =
@@ -932,7 +940,7 @@ class SolverMetricsIT extends AbstractMeterTest {
               }
             });
     solver.solve(problem);
-    assertThat(moveCountPerChange.get()).isPositive();
+    assertThat(moveCountPerChange.get()).withFailMessage(debug.get()).isPositive();
   }
 
   @Test

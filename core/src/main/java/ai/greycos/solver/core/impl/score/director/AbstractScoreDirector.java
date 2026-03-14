@@ -25,6 +25,7 @@ import ai.greycos.solver.core.impl.cotwin.lookup.LookUpManager;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.InnerVariableListener;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.listener.support.VariableListenerSupport;
@@ -270,6 +271,12 @@ public abstract class AbstractScoreDirector<
               ? workingObjectLookupVisitor
               : entityAndFactVisitor.andThen(workingObjectLookupVisitor);
     }
+    // One-time check of value ranges to ensure assigned planning values are included
+    // in the solution range or any entity value range.
+    entityAndFactVisitor =
+        entityAndFactVisitor == null
+            ? this::assertValueRangeForEntity
+            : entityAndFactVisitor.andThen(this::assertValueRangeForEntity);
     // This visits all the facts, applying the visitor if non-null.
     if (entityAndFactVisitor != null) {
       solutionDescriptor.visitAllProblemFacts(workingSolution, entityAndFactVisitor);
@@ -547,6 +554,9 @@ public abstract class AbstractScoreDirector<
       neighborhoodsBasedMoveRepository.update(entity);
     }
     variableListenerSupport.afterVariableChanged(variableDescriptor, entity);
+    if (isStepAssertOrMore()) {
+      assertValueRangeForBasicVariables(entity);
+    }
   }
 
   @Override
@@ -620,6 +630,10 @@ public abstract class AbstractScoreDirector<
     if (moveRepository
         instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {
       neighborhoodsBasedMoveRepository.update(entity);
+    }
+    if (isStepAssertOrMore()) {
+      var valueList = variableDescriptor.getValue(entity).subList(fromIndex, toIndex);
+      assertValueRangeForListVariable(entity, valueList);
     }
   }
 
@@ -819,6 +833,96 @@ public abstract class AbstractScoreDirector<
   public void assertPredictedScoreFromScratch(
       InnerScore<Score_> workingScore, Object completedAction) {
     assertScoreFromScratch(workingScore, completedAction, true);
+  }
+
+  private boolean isStepAssertOrMore() {
+    return scoreDirectorFactory.environmentMode != null
+        && scoreDirectorFactory.environmentMode.isStepAssertOrMore();
+  }
+
+  private void assertValueRangeForEntity(Object entity) {
+    assertValueRangeForBasicVariables(entity);
+    var listVariableDescriptor = getSolutionDescriptor().getListVariableDescriptor();
+    if (listVariableDescriptor == null) {
+      return;
+    }
+    if (!listVariableDescriptor.getEntityDescriptor().matchesEntity(entity)) {
+      return;
+    }
+    var valueList = listVariableDescriptor.getValue(entity);
+    assertValueRangeForListVariable(entity, valueList);
+  }
+
+  private void assertValueRangeForBasicVariables(Object entity) {
+    var entityDescriptor = getSolutionDescriptor().findEntityDescriptor(entity.getClass());
+    if (entityDescriptor == null) {
+      // It may be called for a shadow entity.
+      return;
+    }
+    var basicVariableDescriptorList = entityDescriptor.getBasicVariableDescriptorList();
+    assertValueRangeForBasicVariables(this, basicVariableDescriptorList, entity);
+  }
+
+  private void assertValueRangeForListVariable(Object entity, List<Object> valueList) {
+    var entityDescriptor = getSolutionDescriptor().findEntityDescriptor(entity.getClass());
+    if (entityDescriptor == null) {
+      // It may be called for a shadow entity.
+      return;
+    }
+    var listVariableDescriptor = entityDescriptor.getListVariableDescriptor();
+    if (listVariableDescriptor == null) {
+      // The entity has no genuine list variable.
+      return;
+    }
+    assertValueRangeForListVariable(this, listVariableDescriptor, entity, valueList);
+  }
+
+  private static <Solution_> void assertValueRangeForBasicVariables(
+      InnerScoreDirector<Solution_, ?> scoreDirector,
+      List<BasicVariableDescriptor<Solution_>> basicVariableDescriptorList,
+      Object entity) {
+    if (basicVariableDescriptorList.isEmpty()) {
+      return;
+    }
+    for (var variableDescriptor : basicVariableDescriptorList) {
+      var value = variableDescriptor.getValue(entity);
+      if (value == null) {
+        continue;
+      }
+      var valueRange =
+          scoreDirector
+              .getValueRangeManager()
+              .getFromEntity(variableDescriptor.getValueRangeDescriptor(), entity);
+      if (!valueRange.contains(value)) {
+        throw new IllegalStateException(
+            "The value (%s) from the planning variable (%s) has been assigned to the entity (%s), but it is outside of the related value range %s."
+                .formatted(value, variableDescriptor.getVariableName(), entity, valueRange));
+      }
+    }
+  }
+
+  private static <Solution_> void assertValueRangeForListVariable(
+      InnerScoreDirector<Solution_, ?> scoreDirector,
+      ListVariableDescriptor<Solution_> variableDescriptor,
+      Object entity,
+      List<@Nullable Object> valueList) {
+    if (valueList.isEmpty()) {
+      return;
+    }
+    var valueRange =
+        scoreDirector
+            .getValueRangeManager()
+            .getFromEntity(variableDescriptor.getValueRangeDescriptor(), entity);
+    for (var value : valueList) {
+      if (value == null) {
+        continue;
+      }
+      if (!valueRange.contains(value)) {
+        throw new IllegalStateException(
+            "The value (%s) from the planning variable (%s) has been assigned to the entity (%s), but it is outside of the related value range %s."
+                .formatted(value, variableDescriptor.getVariableName(), entity, valueRange));
+      }
+    }
   }
 
   private void assertScoreFromScratch(

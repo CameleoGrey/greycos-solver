@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Random;
 
-import ai.greycos.solver.core.impl.heuristic.move.NoChangeMove;
+import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
 import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
@@ -663,6 +663,6 @@ class ListSwapMoveSelectorTest {
     // next as true
     var iterator = moveSelector.iterator();
     assertThat(iterator.hasNext()).isTrue();
-    assertThat(iterator.next()).isSameAs(NoChangeMove.getInstance());
+    assertThat(iterator.next()).isSameAs(SelectorBasedNoChangeMove.getInstance());
   }
 }
