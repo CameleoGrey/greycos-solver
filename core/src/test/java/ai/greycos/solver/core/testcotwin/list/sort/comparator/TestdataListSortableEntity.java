@@ -6,16 +6,16 @@ import java.util.List;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
-import ai.greycos.solver.core.testcotwin.common.TestSortableComparator;
 import ai.greycos.solver.core.testcotwin.common.TestSortableObject;
+import ai.greycos.solver.core.testcotwin.common.TestSortableObjectComparator;
 import ai.greycos.solver.core.testcotwin.common.TestdataSortableValue;
 
-@PlanningEntity(comparatorClass = TestSortableComparator.class)
+@PlanningEntity(comparatorClass = TestSortableObjectComparator.class)
 public class TestdataListSortableEntity extends TestdataObject implements TestSortableObject {
 
   @PlanningListVariable(
       valueRangeProviderRefs = "valueRange",
-      comparatorClass = TestSortableComparator.class)
+      comparatorClass = TestSortableObjectComparator.class)
   private List<TestdataSortableValue> valueList;
 
   private int difficulty;

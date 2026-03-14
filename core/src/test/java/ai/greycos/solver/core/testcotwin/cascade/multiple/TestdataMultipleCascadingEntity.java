@@ -34,17 +34,15 @@ public class TestdataMultipleCascadingEntity extends TestdataObject {
 
   TestdataMultipleCascadingEntity setUpShadowVariables() {
     if (valueList != null && !valueList.isEmpty()) {
-      int i = 0;
-      var previous = valueList.get(i);
-      var current = valueList.get(i);
-      while (current != null) {
+      TestdataMultipleCascadingValue previous = null;
+      for (var current : valueList) {
         current.setEntity(this);
         current.setPrevious(previous);
+        current.setNext(null);
         if (previous != null) {
           previous.setNext(current);
         }
         previous = current;
-        current = ++i < valueList.size() ? valueList.get(i) : null;
       }
       for (var v : valueList) {
         v.updateCascadeValue();

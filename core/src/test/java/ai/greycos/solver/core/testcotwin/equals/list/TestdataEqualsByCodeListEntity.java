@@ -31,11 +31,14 @@ public class TestdataEqualsByCodeListEntity extends TestdataEqualsByCodeListObje
   }
 
   TestdataEqualsByCodeListEntity setUpShadowVariables() {
-    valueList.forEach(
-        testdataEqualsByCodeListValue -> {
-          testdataEqualsByCodeListValue.setEntity(this);
-          testdataEqualsByCodeListValue.setIndex(valueList.indexOf(testdataEqualsByCodeListValue));
-        });
+    if (valueList == null) {
+      return this;
+    }
+    for (int i = 0; i < valueList.size(); i++) {
+      var testdataEqualsByCodeListValue = valueList.get(i);
+      testdataEqualsByCodeListValue.setEntity(this);
+      testdataEqualsByCodeListValue.setIndex(i);
+    }
     return this;
   }
 

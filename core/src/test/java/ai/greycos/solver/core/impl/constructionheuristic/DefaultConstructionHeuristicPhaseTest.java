@@ -35,7 +35,7 @@ import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testcotwin.common.DummyHardSoftEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.common.TestdataObjectSortableDescendingComparator;
-import ai.greycos.solver.core.testcotwin.common.TestdataObjectSortableDescendingFactory;
+import ai.greycos.solver.core.testcotwin.common.TestdataObjectSortableDescendingComparatorFactory;
 import ai.greycos.solver.core.testcotwin.list.TestDistanceMeter;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
 import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
@@ -1532,7 +1532,8 @@ class DefaultConstructionHeuristicPhaseTest {
                                         .withSelectionOrder(SelectionOrder.SORTED)
                                         .withCacheType(SelectionCacheType.PHASE)
                                         .withComparatorFactoryClass(
-                                            TestdataObjectSortableDescendingFactory.class))
+                                            TestdataObjectSortableDescendingComparatorFactory
+                                                .class))
                                 .withValueSelectorConfig(
                                     new ValueSelectorConfig()
                                         .withMimicSelectorRef("sortedValueSelector"))
@@ -1555,7 +1556,8 @@ class DefaultConstructionHeuristicPhaseTest {
                                         .withSelectionOrder(SelectionOrder.SORTED)
                                         .withCacheType(SelectionCacheType.PHASE)
                                         .withComparatorFactoryClass(
-                                            TestdataObjectSortableDescendingFactory.class))
+                                            TestdataObjectSortableDescendingComparatorFactory
+                                                .class))
                                 .withValueSelectorConfig(
                                     new ValueSelectorConfig()
                                         .withMimicSelectorRef("sortedValueSelector"))
@@ -1635,7 +1637,7 @@ class DefaultConstructionHeuristicPhaseTest {
                 .orElseThrow(IllegalArgumentException::new);
         assertThat(entity.getValueList()).hasSize(1);
         assertThat(
-                TestdataObjectSortableDescendingFactory.extractCode(
+                TestdataObjectSortableDescendingComparator.extractCode(
                     entity.getValueList().get(0).getCode()))
             .isEqualTo(phaseConfig.expected[i]);
       }
@@ -1661,7 +1663,8 @@ class DefaultConstructionHeuristicPhaseTest {
                                         .withSelectionOrder(SelectionOrder.SORTED)
                                         .withCacheType(SelectionCacheType.PHASE)
                                         .withComparatorFactoryClass(
-                                            TestdataObjectSortableDescendingFactory.class)))),
+                                            TestdataObjectSortableDescendingComparatorFactory
+                                                .class)))),
             new int[] {2, 1, 0},
             // Only values are sorted in descending order
             false));
@@ -1682,7 +1685,8 @@ class DefaultConstructionHeuristicPhaseTest {
                                         .withSelectionOrder(SelectionOrder.SORTED)
                                         .withCacheType(SelectionCacheType.PHASE)
                                         .withComparatorFactoryClass(
-                                            TestdataObjectSortableDescendingFactory.class)))),
+                                            TestdataObjectSortableDescendingComparatorFactory
+                                                .class)))),
             new int[] {2, 1, 0},
             // Only values are sorted in descending order
             false));
@@ -1752,7 +1756,8 @@ class DefaultConstructionHeuristicPhaseTest {
                 .findFirst()
                 .orElseThrow(IllegalArgumentException::new);
         assertThat(entity.getValue()).isNotNull();
-        assertThat(TestdataObjectSortableDescendingFactory.extractCode(entity.getValue().getCode()))
+        assertThat(
+                TestdataObjectSortableDescendingComparator.extractCode(entity.getValue().getCode()))
             .isEqualTo(phaseConfig.expected[i]);
       }
     }
@@ -1843,7 +1848,7 @@ class DefaultConstructionHeuristicPhaseTest {
         .hasMessageContaining(
             "cannot have a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
         .hasMessageContaining(
-            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueFactory) at the same time.");
+            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparatorFactory) at the same time.");
   }
 
   @Test
@@ -1861,7 +1866,7 @@ class DefaultConstructionHeuristicPhaseTest {
         .hasMessageContaining(
             "cannot have a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
         .hasMessageContaining(
-            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyWeightValueFactory) at the same time.");
+            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparatorFactory) at the same time.");
 
     // Comparator and Factory properties
     var otherSolverConfig =
@@ -1876,7 +1881,7 @@ class DefaultConstructionHeuristicPhaseTest {
         .hasMessageContaining(
             "cannot have a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
         .hasMessageContaining(
-            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueFactory) at the same time.");
+            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparatorFactory) at the same time.");
   }
 
   @Test
@@ -1901,7 +1906,8 @@ class DefaultConstructionHeuristicPhaseTest {
                                             .withSelectionOrder(SelectionOrder.SORTED)
                                             .withCacheType(SelectionCacheType.PHASE)
                                             .withComparatorFactoryClass(
-                                                TestdataObjectSortableDescendingFactory.class)
+                                                TestdataObjectSortableDescendingComparatorFactory
+                                                    .class)
                                             .withNearbySelectionConfig(
                                                 new NearbySelectionConfig()
                                                     .withOriginValueSelectorConfig(

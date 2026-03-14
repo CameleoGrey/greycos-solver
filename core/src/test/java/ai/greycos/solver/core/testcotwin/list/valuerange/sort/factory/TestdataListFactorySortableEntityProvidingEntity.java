@@ -8,17 +8,17 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProper
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
-import ai.greycos.solver.core.testcotwin.common.TestSortableFactory;
 import ai.greycos.solver.core.testcotwin.common.TestSortableObject;
+import ai.greycos.solver.core.testcotwin.common.TestSortableObjectComparatorFactory;
 import ai.greycos.solver.core.testcotwin.common.TestdataSortableValue;
 
-@PlanningEntity(comparatorFactoryClass = TestSortableFactory.class)
+@PlanningEntity(comparatorFactoryClass = TestSortableObjectComparatorFactory.class)
 public class TestdataListFactorySortableEntityProvidingEntity extends TestdataObject
     implements TestSortableObject {
 
   @PlanningListVariable(
       valueRangeProviderRefs = "valueRange",
-      comparatorFactoryClass = TestSortableFactory.class)
+      comparatorFactoryClass = TestSortableObjectComparatorFactory.class)
   private List<TestdataSortableValue> valueList;
 
   @ValueRangeProvider(id = "valueRange")

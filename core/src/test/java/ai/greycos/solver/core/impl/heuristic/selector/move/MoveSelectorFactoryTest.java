@@ -22,7 +22,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.ShufflingMo
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.SortingMoveSelector;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
-import ai.greycos.solver.core.testcotwin.common.DummyValueFactory;
+import ai.greycos.solver.core.testcotwin.common.DummyValueComparatorFactory;
 
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
@@ -270,7 +270,7 @@ class MoveSelectorFactoryTest {
     final MoveSelector<TestdataSolution> baseMoveSelector = SelectorTestUtils.mockMoveSelector();
     DummyMoveSelectorConfig moveSelectorConfig = new DummyMoveSelectorConfig();
     moveSelectorConfig.setSorterOrder(SelectionSorterOrder.ASCENDING);
-    moveSelectorConfig.setComparatorFactoryClass(DummyValueFactory.class);
+    moveSelectorConfig.setComparatorFactoryClass(DummyValueComparatorFactory.class);
 
     DummyMoveSelectorFactory moveSelectorFactory =
         new DummyMoveSelectorFactory(moveSelectorConfig, baseMoveSelector);

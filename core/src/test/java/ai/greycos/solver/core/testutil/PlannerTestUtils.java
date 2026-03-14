@@ -28,6 +28,7 @@ import ai.greycos.solver.core.config.score.trend.InitializingScoreTrendLevel;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.move.MoveDirector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.DummySimpleScoreEasyScoreCalculator;
@@ -168,6 +169,7 @@ public final class PlannerTestUtils {
       InnerScoreDirector<Solution_, Score_> mockRebasingScoreDirector(
           SolutionDescriptor<Solution_> solutionDescriptor, Object[][] lookUpMappings) {
     InnerScoreDirector<Solution_, Score_> scoreDirector = mock(InnerScoreDirector.class);
+    MoveDirector<Solution_, Score_> moveDirector = new MoveDirector<>(scoreDirector);
     when(scoreDirector.getSolutionDescriptor()).thenReturn(solutionDescriptor);
     when(scoreDirector.lookUpWorkingObject(any()))
         .thenAnswer(
@@ -184,6 +186,7 @@ public final class PlannerTestUtils {
               throw new IllegalStateException(
                   "No method mocked for parameter (" + externalObject + ").");
             });
+    when(scoreDirector.getMoveDirector()).thenReturn(moveDirector);
     return scoreDirector;
   }
 

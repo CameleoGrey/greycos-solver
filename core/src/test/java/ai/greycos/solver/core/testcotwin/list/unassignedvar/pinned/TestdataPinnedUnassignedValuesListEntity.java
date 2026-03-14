@@ -36,13 +36,9 @@ public class TestdataPinnedUnassignedValuesListEntity extends TestdataObject {
     for (int i = 0; i < valueList.size(); i++) {
       var testdataListValue = valueList.get(i);
       testdataListValue.setEntity(this);
-      testdataListValue.setIndex(valueList.indexOf(testdataListValue));
-      if (i != 0) {
-        testdataListValue.setPrevious(valueList.get(i - 1));
-      }
-      if (i != valueList.size() - 1) {
-        testdataListValue.setNext(valueList.get(i + 1));
-      }
+      testdataListValue.setIndex(i);
+      testdataListValue.setPrevious(i == 0 ? null : valueList.get(i - 1));
+      testdataListValue.setNext(i == valueList.size() - 1 ? null : valueList.get(i + 1));
     }
     return this;
   }

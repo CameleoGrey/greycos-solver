@@ -33,10 +33,12 @@ public class TestdataPinnedNoShadowsListEntity extends TestdataObject {
   }
 
   TestdataPinnedNoShadowsListEntity setUpShadowVariables() {
-    valueList.forEach(
-        testdataListValue -> {
-          testdataListValue.setIndex(valueList.indexOf(testdataListValue));
-        });
+    if (valueList == null) {
+      return this;
+    }
+    for (int i = 0; i < valueList.size(); i++) {
+      valueList.get(i).setIndex(i);
+    }
     return this;
   }
 

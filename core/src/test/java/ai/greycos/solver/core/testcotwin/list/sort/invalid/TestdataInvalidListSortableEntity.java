@@ -7,7 +7,7 @@ import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 import ai.greycos.solver.core.testcotwin.common.DummyValueComparator;
-import ai.greycos.solver.core.testcotwin.common.DummyValueFactory;
+import ai.greycos.solver.core.testcotwin.common.DummyValueComparatorFactory;
 import ai.greycos.solver.core.testcotwin.common.TestdataSortableValue;
 
 @PlanningEntity
@@ -16,7 +16,7 @@ public class TestdataInvalidListSortableEntity extends TestdataObject {
   @PlanningListVariable(
       valueRangeProviderRefs = "valueRange",
       comparatorClass = DummyValueComparator.class,
-      comparatorFactoryClass = DummyValueFactory.class)
+      comparatorFactoryClass = DummyValueComparatorFactory.class)
   private List<TestdataSortableValue> valueList;
 
   private int difficulty;
