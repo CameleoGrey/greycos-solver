@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.move;
 import java.util.List;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -33,5 +34,16 @@ public final class SelectorBasedCompositeMove<Solution_> extends CompositeMove<S
   public static <Solution_, Move_ extends Move<Solution_>> Move<Solution_> buildMove(
       List<Move_> moveList) {
     return buildMove(moveList.toArray(new Move[0]));
+  }
+
+  @Override
+  public SelectorBasedCompositeMove<Solution_> rebase(
+      ScoreDirector<Solution_> destinationScoreDirector) {
+    var moves = getMoves();
+    Move<Solution_>[] rebasedMoves = new Move[moves.length];
+    for (int i = 0; i < moves.length; i++) {
+      rebasedMoves[i] = moves[i].rebase(destinationScoreDirector);
+    }
+    return new SelectorBasedCompositeMove<>(rebasedMoves);
   }
 }

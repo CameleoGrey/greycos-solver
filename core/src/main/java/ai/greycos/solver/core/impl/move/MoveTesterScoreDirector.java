@@ -1,5 +1,6 @@
 package ai.greycos.solver.core.impl.move;
 
+import java.util.Collections;
 import java.util.Map;
 
 import ai.greycos.solver.core.api.score.Score;
@@ -26,22 +27,22 @@ final class MoveTesterScoreDirector<Solution_, Score_ extends Score<Score_>>
 
   @Override
   public InnerScore<Score_> calculateScore() {
-    throw new UnsupportedOperationException();
+    return InnerScore.fullyAssigned(scoreDirectorFactory.getScoreDefinition().getZeroScore());
   }
 
   @Override
   public Map<String, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap() {
-    throw new UnsupportedOperationException();
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<Object, Indictment<Score_>> getIndictmentMap() {
-    throw new UnsupportedOperationException();
+    return Collections.emptyMap();
   }
 
   @Override
   public boolean requiresFlushing() {
-    throw new UnsupportedOperationException();
+    return false;
   }
 
   @NullMarked
@@ -63,7 +64,7 @@ final class MoveTesterScoreDirector<Solution_, Score_ extends Score<Score_>>
 
     @Override
     public MoveTesterScoreDirector<Solution_, Score_> buildDerived() {
-      return build();
+      throw new UnsupportedOperationException();
     }
   }
 }

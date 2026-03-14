@@ -90,6 +90,10 @@ public class SubListChangeMove<Solution_> extends AbstractMove<Solution_> {
     return destinationIndex;
   }
 
+  protected ListVariableDescriptor<Solution_> getVariableDescriptor() {
+    return variableDescriptor;
+  }
+
   @Override
   public boolean isMoveDoable(ScoreDirector<Solution_> scoreDirector) {
     var sameEntity = destinationEntity == sourceEntity;

@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.move;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -20,4 +21,10 @@ public final class SelectorBasedNoChangeMove<Solution_> extends NoChangeMove<Sol
   }
 
   private SelectorBasedNoChangeMove() {}
+
+  @Override
+  public SelectorBasedNoChangeMove<Solution_> rebase(
+      ScoreDirector<Solution_> destinationScoreDirector) {
+    return getInstance();
+  }
 }

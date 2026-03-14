@@ -39,6 +39,10 @@ public class ListAssignMove<Solution_> extends AbstractMove<Solution_> {
     return planningValue;
   }
 
+  protected ListVariableDescriptor<Solution_> getVariableDescriptor() {
+    return variableDescriptor;
+  }
+
   @Override
   public Collection<?> getPlanningEntities() {
     return List.of(destinationEntity);

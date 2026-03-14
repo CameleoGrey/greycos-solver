@@ -50,6 +50,10 @@ public class PillarSwapMove<Solution_> extends AbstractMove<Solution_> {
     return rightPillar;
   }
 
+  protected List<GenuineVariableDescriptor<Solution_>> getVariableDescriptorList() {
+    return variableDescriptorList;
+  }
+
   // ************************************************************************
   // Worker methods
   // ************************************************************************

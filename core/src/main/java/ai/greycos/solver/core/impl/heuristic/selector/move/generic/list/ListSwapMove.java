@@ -106,6 +106,10 @@ public class ListSwapMove<Solution_> extends AbstractMove<Solution_> {
     return variableDescriptor.getElement(rightEntity, rightIndex);
   }
 
+  protected ListVariableDescriptor<Solution_> getVariableDescriptor() {
+    return variableDescriptor;
+  }
+
   // ************************************************************************
   // Worker methods
   // ************************************************************************

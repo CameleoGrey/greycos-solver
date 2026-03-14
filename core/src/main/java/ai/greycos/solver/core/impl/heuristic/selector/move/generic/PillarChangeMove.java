@@ -45,6 +45,10 @@ public class PillarChangeMove<Solution_> extends AbstractMove<Solution_> {
     return toPlanningValue;
   }
 
+  protected GenuineVariableDescriptor<Solution_> getVariableDescriptor() {
+    return variableDescriptor;
+  }
+
   // ************************************************************************
   // Worker methods
   // ************************************************************************

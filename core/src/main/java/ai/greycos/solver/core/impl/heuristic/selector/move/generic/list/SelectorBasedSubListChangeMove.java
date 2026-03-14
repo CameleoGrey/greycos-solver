@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.list.SubList;
+import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -33,5 +34,19 @@ public class SelectorBasedSubListChangeMove<Solution_> extends SubListChangeMove
         destinationEntity,
         destinationIndex,
         reversing);
+  }
+
+  @Override
+  public SelectorBasedSubListChangeMove<Solution_> rebase(
+      ScoreDirector<Solution_> destinationScoreDirector) {
+    var rebased = super.rebase(destinationScoreDirector);
+    return new SelectorBasedSubListChangeMove<>(
+        getVariableDescriptor(),
+        rebased.getSourceEntity(),
+        rebased.getFromIndex(),
+        rebased.getSubListSize(),
+        rebased.getDestinationEntity(),
+        rebased.getDestinationIndex(),
+        rebased.isReversing());
   }
 }
