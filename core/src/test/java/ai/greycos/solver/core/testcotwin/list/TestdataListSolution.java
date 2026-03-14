@@ -8,7 +8,9 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.score.SimpleScore;
+import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 
 @PlanningSolution
 public class TestdataListSolution {
@@ -16,6 +18,10 @@ public class TestdataListSolution {
   public static SolutionDescriptor<TestdataListSolution> buildSolutionDescriptor() {
     return SolutionDescriptor.buildSolutionDescriptor(
         TestdataListSolution.class, TestdataListEntity.class, TestdataListValue.class);
+  }
+
+  public static PlanningSolutionMetaModel<TestdataListSolution> buildMetaModel() {
+    return buildSolutionDescriptor().getMetaModel();
   }
 
   public static TestdataListSolution generateInitializedSolution(int valueCount, int entityCount) {
@@ -50,7 +56,7 @@ public class TestdataListSolution {
     for (int i = 0; i < valueList.size(); i++) {
       entityList.get(i % entityList.size()).getValueList().add(valueList.get(i));
     }
-    entityList.forEach(TestdataListEntity::setUpShadowVariables);
+    SolutionManager.updateShadowVariables(this);
     return this;
   }
 

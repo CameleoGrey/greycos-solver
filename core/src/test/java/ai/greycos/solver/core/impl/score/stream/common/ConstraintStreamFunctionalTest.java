@@ -164,6 +164,10 @@ public interface ConstraintStreamFunctionalTest {
     // Quad can't be expanded, so don't force it.
   }
 
+  default void flatten() {
+    // Flatten is currently covered only on Bi functional tests in GreyCOS.
+  }
+
   void flattenLastWithDuplicates();
 
   void flattenLastWithoutDuplicates();

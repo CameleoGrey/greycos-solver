@@ -103,15 +103,13 @@ class HardMediumSoftScoreInlinerTest
   void impactAllMatchWeightOverflow() {
     var constraintWeight = HardMediumSoftScore.of(10, 100, 1_000);
     var impacter = buildScoreImpacter(constraintWeight);
-    assertThatThrownBy(
-            () -> impacter.impactScore(Integer.MAX_VALUE, ConstraintMatchSupplier.empty()))
+    assertThatThrownBy(() -> impacter.impactScore(Long.MAX_VALUE, ConstraintMatchSupplier.empty()))
         .isInstanceOf(ArithmeticException.class);
   }
 
   @Test
   void impactAllTotalOverflow() {
-    var constraintWeight =
-        HardMediumSoftScore.of(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE);
+    var constraintWeight = HardMediumSoftScore.of(Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE);
     var impacter = buildScoreImpacter(constraintWeight);
     impacter.impactScore(1, ConstraintMatchSupplier.empty());
     assertThatThrownBy(() -> impacter.impactScore(1, ConstraintMatchSupplier.empty()))

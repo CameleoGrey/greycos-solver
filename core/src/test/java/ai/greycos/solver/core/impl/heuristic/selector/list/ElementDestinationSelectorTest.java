@@ -377,7 +377,7 @@ class ElementDestinationSelectorTest {
     var v3 = new TestdataPinnedUnassignedValuesListValue("3");
     var v4 = new TestdataPinnedUnassignedValuesListValue("4");
     var v5 = new TestdataPinnedUnassignedValuesListValue("5");
-    var v6 = new TestdataPinnedUnassignedValuesListValue("5");
+    var v6 = new TestdataPinnedUnassignedValuesListValue("6");
     var unassignedValue = new TestdataPinnedUnassignedValuesListValue("7");
     var a = TestdataPinnedUnassignedValuesListEntity.createWithValues("A", v1, v2);
     var b = TestdataPinnedUnassignedValuesListEntity.createWithValues("B");
@@ -389,7 +389,7 @@ class ElementDestinationSelectorTest {
 
     var solution = new TestdataPinnedUnassignedValuesListSolution();
     solution.setEntityList(List.of(a, b, c, d));
-    solution.setValueList(List.of(v1, v2, v3, v3, v4, v5, unassignedValue));
+    solution.setValueList(List.of(v1, v2, v3, v4, v5, v6, unassignedValue));
 
     var random =
         new TestRandom(

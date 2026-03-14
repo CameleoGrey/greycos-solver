@@ -2239,6 +2239,39 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
 
   @Override
   @TestTemplate
+  public void flatten() {
+    TestdataLavishSolution solution = TestdataLavishSolution.generateSolution(1, 1, 2, 2);
+    TestdataLavishEntity entity1 = solution.getFirstEntity();
+    TestdataLavishEntity entity2 = solution.getEntityList().get(1);
+    TestdataLavishEntityGroup group1 = solution.getFirstEntityGroup();
+    TestdataLavishEntityGroup group2 = solution.getEntityGroupList().get(1);
+
+    InnerScoreDirector<TestdataLavishSolution, SimpleScore> scoreDirector =
+        buildScoreDirector(
+            factory ->
+                factory
+                    .forEachUniquePair(TestdataLavishEntity.class)
+                    .flatten((a, b) -> asList(a.getEntityGroup(), b.getEntityGroup(), group2))
+                    .penalize(SimpleScore.ONE)
+                    .asConstraint(TEST_CONSTRAINT_NAME));
+
+    // From scratch
+    scoreDirector.setWorkingSolution(solution);
+    assertScore(
+        scoreDirector,
+        assertMatch(entity1, entity2, group1),
+        assertMatch(entity1, entity2, group1),
+        assertMatch(entity1, entity2, group2));
+
+    // Incremental
+    scoreDirector.beforeEntityRemoved(entity1);
+    solution.getEntityList().remove(entity1);
+    scoreDirector.afterEntityRemoved(entity1);
+    assertScore(scoreDirector);
+  }
+
+  @Override
+  @TestTemplate
   public void flattenLastWithDuplicates() {
     TestdataLavishSolution solution = TestdataLavishSolution.generateSolution(1, 1, 2, 3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
@@ -2391,6 +2424,8 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
         new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
     TestdataLavishValue value3 =
         new TestdataLavishValue("MyValue 3", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
+    solution.getValueList().add(value3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
     TestdataLavishEntity entity2 =
         new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
@@ -2440,6 +2475,8 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
         new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
     TestdataLavishValue value3 =
         new TestdataLavishValue("MyValue 3", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
+    solution.getValueList().add(value3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
     TestdataLavishEntity entity2 =
         new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
@@ -2490,6 +2527,8 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
         new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
     TestdataLavishValue value3 =
         new TestdataLavishValue("MyValue 3", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
+    solution.getValueList().add(value3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
     TestdataLavishEntity entity2 =
         new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
@@ -2543,6 +2582,8 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
         new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
     TestdataLavishValue value3 =
         new TestdataLavishValue("MyValue 3", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
+    solution.getValueList().add(value3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
     TestdataLavishEntity entity2 =
         new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
@@ -2596,6 +2637,8 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
         new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
     TestdataLavishValue value3 =
         new TestdataLavishValue("MyValue 3", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
+    solution.getValueList().add(value3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
     TestdataLavishEntity entity2 =
         new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
@@ -2650,6 +2693,8 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
         new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
     TestdataLavishValue value3 =
         new TestdataLavishValue("MyValue 3", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
+    solution.getValueList().add(value3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
     TestdataLavishEntity entity2 =
         new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
@@ -2704,6 +2749,8 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
         new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
     TestdataLavishValue value3 =
         new TestdataLavishValue("MyValue 3", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
+    solution.getValueList().add(value3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
     TestdataLavishEntity entity2 =
         new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
@@ -2763,6 +2810,8 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
         new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
     TestdataLavishValue value3 =
         new TestdataLavishValue("MyValue 3", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
+    solution.getValueList().add(value3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
     TestdataLavishEntity entity2 =
         new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
@@ -2823,6 +2872,8 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
         new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
     TestdataLavishValue value3 =
         new TestdataLavishValue("MyValue 3", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
+    solution.getValueList().add(value3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
     TestdataLavishEntity entity2 =
         new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
@@ -2890,6 +2941,8 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
         new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
     TestdataLavishValue value3 =
         new TestdataLavishValue("MyValue 3", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
+    solution.getValueList().add(value3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
     TestdataLavishEntity entity2 =
         new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
@@ -2958,6 +3011,8 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
         new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
     TestdataLavishValue value3 =
         new TestdataLavishValue("MyValue 3", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
+    solution.getValueList().add(value3);
     TestdataLavishEntity entity1 = solution.getFirstEntity();
     TestdataLavishEntity entity2 =
         new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
@@ -3021,6 +3076,7 @@ public abstract class AbstractBiConstraintStreamTest extends AbstractConstraintS
     var solution = TestdataLavishSolution.generateSolution(2, 5, 1, 1);
     var value1 = solution.getFirstValue();
     var value2 = new TestdataLavishValue("MyValue 2", solution.getFirstValueGroup());
+    solution.getValueList().add(value2);
     var entity1 = solution.getFirstEntity();
     var entity2 = new TestdataLavishEntity("MyEntity 2", solution.getFirstEntityGroup(), value2);
     solution.getEntityList().add(entity2);

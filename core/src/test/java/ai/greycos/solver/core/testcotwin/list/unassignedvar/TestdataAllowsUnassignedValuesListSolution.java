@@ -9,6 +9,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 
 @PlanningSolution
 public class TestdataAllowsUnassignedValuesListSolution {
@@ -19,6 +20,11 @@ public class TestdataAllowsUnassignedValuesListSolution {
         TestdataAllowsUnassignedValuesListSolution.class,
         TestdataAllowsUnassignedValuesListEntity.class,
         TestdataAllowsUnassignedValuesListValue.class);
+  }
+
+  public static PlanningSolutionMetaModel<TestdataAllowsUnassignedValuesListSolution>
+      buildMetaModel() {
+    return buildSolutionDescriptor().getMetaModel();
   }
 
   public static TestdataAllowsUnassignedValuesListSolution generateUninitializedSolution(

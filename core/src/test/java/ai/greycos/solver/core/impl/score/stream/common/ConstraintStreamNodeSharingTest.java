@@ -195,6 +195,18 @@ public interface ConstraintStreamNodeSharingTest {
 
   void sameParentSameFunctionMap();
 
+  default void differentParentSameFunctionFlatten() {
+    // Flatten is currently covered only on Bi streams in GreyCOS.
+  }
+
+  default void sameParentDifferentFunctionFlatten() {
+    // Flatten is currently covered only on Bi streams in GreyCOS.
+  }
+
+  default void sameParentSameFunctionFlatten() {
+    // Flatten is currently covered only on Bi streams in GreyCOS.
+  }
+
   void differentParentSameFunctionFlattenLast();
 
   void sameParentDifferentFunctionFlattenLast();

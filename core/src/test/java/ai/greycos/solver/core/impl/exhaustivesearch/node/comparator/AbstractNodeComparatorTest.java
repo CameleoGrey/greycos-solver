@@ -13,18 +13,18 @@ import ai.greycos.solver.core.impl.score.director.InnerScore;
 
 public abstract class AbstractNodeComparatorTest {
 
-  protected ExhaustiveSearchNode buildNode(
+  protected <Solution_> ExhaustiveSearchNode<Solution_> buildNode(
       int depth, InnerScore<SimpleScore> score, long parentBreadth, long breadth) {
     return buildNode(depth, score, InnerScore.fullyAssigned(score.raw()), parentBreadth, breadth);
   }
 
-  protected ExhaustiveSearchNode buildNode(
+  protected <Solution_> ExhaustiveSearchNode<Solution_> buildNode(
       int depth, String score, long parentBreadth, long breadth) {
     return buildNode(
         depth, InnerScore.fullyAssigned(SimpleScore.parseScore(score)), parentBreadth, breadth);
   }
 
-  protected ExhaustiveSearchNode buildNode(
+  protected <Solution_> ExhaustiveSearchNode<Solution_> buildNode(
       int depth,
       InnerScore<SimpleScore> score,
       int optimisticBound,
@@ -38,7 +38,7 @@ public abstract class AbstractNodeComparatorTest {
         breadth);
   }
 
-  protected ExhaustiveSearchNode buildNode(
+  protected <Solution_> ExhaustiveSearchNode<Solution_> buildNode(
       int depth, String score, int optimisticBound, long parentBreadth, long breadth) {
     return buildNode(
         depth,
@@ -48,7 +48,7 @@ public abstract class AbstractNodeComparatorTest {
         breadth);
   }
 
-  protected ExhaustiveSearchNode buildNode(
+  protected <Solution_> ExhaustiveSearchNode<Solution_> buildNode(
       int depth,
       InnerScore<SimpleScore> score,
       InnerScore<SimpleScore> optimisticBound,
@@ -64,8 +64,8 @@ public abstract class AbstractNodeComparatorTest {
     return node;
   }
 
-  protected static void assertLesser(
-      Comparator<ExhaustiveSearchNode> comparator, ExhaustiveSearchNode a, ExhaustiveSearchNode b) {
+  protected static <Solution_> void assertLesser(
+      Comparator comparator, ExhaustiveSearchNode<Solution_> a, ExhaustiveSearchNode<Solution_> b) {
     assertSoftly(
         softly -> {
           softly
@@ -79,8 +79,8 @@ public abstract class AbstractNodeComparatorTest {
         });
   }
 
-  protected static void assertScoreCompareToOrder(
-      Comparator<ExhaustiveSearchNode> comparator, ExhaustiveSearchNode... nodes) {
+  protected static <Solution_> void assertScoreCompareToOrder(
+      Comparator comparator, ExhaustiveSearchNode<Solution_>... nodes) {
     for (var i = 0; i < nodes.length; i++) {
       for (var j = i + 1; j < nodes.length; j++) {
         assertLesser(comparator, nodes[i], nodes[j]);

@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Iterator;
 
 import ai.greycos.solver.core.impl.constructionheuristic.placer.Placement;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.SelectorBasedChangeMove;
 import ai.greycos.solver.core.preview.api.move.Move;
 
 final class PlacementAssertions {
@@ -17,15 +17,15 @@ final class PlacementAssertions {
     assertThat(iterator).isNotNull();
     for (String valueCode : valueCodes) {
       assertThat(iterator).hasNext();
-      ChangeMove<Solution_> move = adapt(iterator.next());
+      SelectorBasedChangeMove<Solution_> move = adapt(iterator.next());
       assertCode(entityCode, move.getEntity());
       assertCode(valueCode, move.getToPlanningValue());
     }
     assertThat(iterator).isExhausted();
   }
 
-  static <Solution_> ChangeMove<Solution_> adapt(Move<Solution_> move) {
-    return (ChangeMove<Solution_>) move;
+  static <Solution_> SelectorBasedChangeMove<Solution_> adapt(Move<Solution_> move) {
+    return (SelectorBasedChangeMove<Solution_>) move;
   }
 
   static <Solution_> void assertValuePlacement(
@@ -34,7 +34,7 @@ final class PlacementAssertions {
     assertThat(iterator).isNotNull();
     for (String entityCode : entityCodes) {
       assertThat(iterator).hasNext();
-      ChangeMove<Solution_> move = adapt(iterator.next());
+      SelectorBasedChangeMove<Solution_> move = adapt(iterator.next());
       assertCode(entityCode, move.getEntity());
       assertCode(valueCode, move.getToPlanningValue());
     }

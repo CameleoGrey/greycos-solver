@@ -44,4 +44,20 @@ public class TestdataScoreNotEqualSolution
     }
     return clone;
   }
+
+  public SimpleScore getScore() {
+    return score;
+  }
+
+  public void setScore(SimpleScore score) {
+    this.score = score;
+  }
+
+  public TestdataEntity getEntity() {
+    return entity;
+  }
+
+  public void setEntity(TestdataEntity entity) {
+    this.entity = entity;
+  }
 }

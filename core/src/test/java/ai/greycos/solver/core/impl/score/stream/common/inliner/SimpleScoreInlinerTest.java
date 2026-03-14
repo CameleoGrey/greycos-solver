@@ -45,14 +45,13 @@ class SimpleScoreInlinerTest extends AbstractScoreInlinerTest<TestdataSolution, 
   void impactMatchWeightOverflow() {
     var constraintWeight = SimpleScore.of(10);
     var impacter = buildScoreImpacter(constraintWeight);
-    assertThatThrownBy(
-            () -> impacter.impactScore(Integer.MAX_VALUE, ConstraintMatchSupplier.empty()))
+    assertThatThrownBy(() -> impacter.impactScore(Long.MAX_VALUE, ConstraintMatchSupplier.empty()))
         .isInstanceOf(ArithmeticException.class);
   }
 
   @Test
   void impactTotalOverflow() {
-    var constraintWeight = SimpleScore.of(Integer.MAX_VALUE);
+    var constraintWeight = SimpleScore.of(Long.MAX_VALUE);
     var impacter = buildScoreImpacter(constraintWeight);
     impacter.impactScore(1, ConstraintMatchSupplier.empty());
     assertThatThrownBy(() -> impacter.impactScore(1, ConstraintMatchSupplier.empty()))

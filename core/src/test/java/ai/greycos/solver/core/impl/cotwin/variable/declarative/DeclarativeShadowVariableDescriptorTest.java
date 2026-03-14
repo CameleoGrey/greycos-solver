@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 
 import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
-import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningEntityMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.GenuineEntityMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ class DeclarativeShadowVariableDescriptorTest {
     record Example(int fact) {}
 
     var solutionMetamodel = Mockito.mock(PlanningSolutionMetaModel.class);
-    var exampleMetamodel = Mockito.mock(PlanningEntityMetaModel.class);
+    var exampleMetamodel = Mockito.mock(GenuineEntityMetaModel.class);
     var calculator = Mockito.mock(MemberAccessor.class);
 
     when(solutionMetamodel.entity(Example.class)).thenReturn(exampleMetamodel);
@@ -50,7 +50,7 @@ class DeclarativeShadowVariableDescriptorTest {
   @SuppressWarnings({"rawtype", "unchecked"})
   void groupKeyMemberForEntityPropertyForVariable() {
     var solutionMetamodel = Mockito.mock(PlanningSolutionMetaModel.class);
-    var exampleMetamodel = Mockito.mock(PlanningEntityMetaModel.class);
+    var exampleMetamodel = Mockito.mock(GenuineEntityMetaModel.class);
     var calculator = Mockito.mock(MemberAccessor.class);
 
     when(solutionMetamodel.entity(BadExample.class)).thenReturn(exampleMetamodel);

@@ -103,14 +103,13 @@ class BendableScoreInlinerTest
   void impactAllMatchWeightOverflow() {
     var constraintWeight = buildScore(100, 1_000, 10_000);
     var impacter = buildScoreImpacter(constraintWeight);
-    assertThatThrownBy(
-            () -> impacter.impactScore(Integer.MAX_VALUE, ConstraintMatchSupplier.empty()))
+    assertThatThrownBy(() -> impacter.impactScore(Long.MAX_VALUE, ConstraintMatchSupplier.empty()))
         .isInstanceOf(ArithmeticException.class);
   }
 
   @Test
   void impactAllTotalOverflow() {
-    var constraintWeight = buildScore(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE);
+    var constraintWeight = buildScore(Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE);
     var impacter = buildScoreImpacter(constraintWeight);
     impacter.impactScore(1, ConstraintMatchSupplier.empty());
     assertThatThrownBy(() -> impacter.impactScore(1, ConstraintMatchSupplier.empty()))
@@ -129,7 +128,7 @@ class BendableScoreInlinerTest
     return new BendableScoreInliner(constraintWeightMap, constraintMatchPolicy, 1, 2);
   }
 
-  private BendableScore buildScore(int hard, int soft1, int soft2) {
+  private BendableScore buildScore(long hard, long soft1, long soft2) {
     return BendableScore.of(new long[] {hard}, new long[] {soft1, soft2});
   }
 }

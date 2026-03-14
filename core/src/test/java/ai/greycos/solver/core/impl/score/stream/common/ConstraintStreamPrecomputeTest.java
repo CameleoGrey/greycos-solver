@@ -21,6 +21,14 @@ public interface ConstraintStreamPrecomputeTest {
 
   void groupBy();
 
+  default void flatten() {
+    // Flatten is currently covered only on Bi stream precompute tests in GreyCOS.
+  }
+
+  default void flattenNewInstances() {
+    // Flatten is currently covered only on Bi stream precompute tests in GreyCOS.
+  }
+
   void flattenLast();
 
   void flattenLastNewInstances();

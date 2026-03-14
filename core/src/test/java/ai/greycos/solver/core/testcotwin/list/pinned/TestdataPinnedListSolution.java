@@ -9,6 +9,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.score.SimpleScore;
+import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 
 @PlanningSolution
@@ -54,7 +55,7 @@ public class TestdataPinnedListSolution {
     for (int i = 0; i < valueList.size(); i++) {
       entityList.get(i % entityList.size()).getValueList().add(valueList.get(i));
     }
-    entityList.forEach(TestdataPinnedListEntity::setUpShadowVariables);
+    SolutionManager.updateShadowVariables(this);
     return this;
   }
 
