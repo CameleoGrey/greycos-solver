@@ -4,6 +4,9 @@ import java.util.Comparator;
 
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 public class TestdataObjectSortableDescendingComparator implements Comparator<TestdataObject> {
 
   @Override

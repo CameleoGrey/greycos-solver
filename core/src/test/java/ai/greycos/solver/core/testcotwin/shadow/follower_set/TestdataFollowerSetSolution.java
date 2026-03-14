@@ -10,6 +10,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testcotwin.shadow.follower.TestdataLeaderEntity;
@@ -21,6 +22,10 @@ public class TestdataFollowerSetSolution extends TestdataObject {
         TestdataFollowerSetSolution.class,
         TestdataLeaderEntity.class,
         TestdataFollowerSetEntity.class);
+  }
+
+  public static PlanningSolutionMetaModel<TestdataFollowerSetSolution> buildMetaModel() {
+    return getSolutionDescriptor().getMetaModel();
   }
 
   @PlanningEntityCollectionProperty List<TestdataLeaderEntity> leaders;

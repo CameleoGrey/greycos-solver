@@ -55,6 +55,14 @@ public class TestdataMultiEntityDependencyEntity {
     this.readyTime = readyTime;
   }
 
+  public TestdataMultiEntityDependencyDelay getDelay() {
+    return delay;
+  }
+
+  public void setDelay(TestdataMultiEntityDependencyDelay delay) {
+    this.delay = delay;
+  }
+
   @ShadowSources("delay")
   public LocalDateTime readyTimeSupplier() {
     if (delay == null) {

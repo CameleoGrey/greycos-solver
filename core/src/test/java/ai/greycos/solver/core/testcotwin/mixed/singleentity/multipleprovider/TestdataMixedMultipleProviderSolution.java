@@ -19,7 +19,10 @@ public class TestdataMixedMultipleProviderSolution {
   public static SolutionDescriptor<TestdataMixedMultipleProviderSolution>
       buildSolutionDescriptor() {
     return SolutionDescriptor.buildSolutionDescriptor(
-        TestdataMixedMultipleProviderSolution.class, TestdataMixedMultipleProviderEntity.class);
+        TestdataMixedMultipleProviderSolution.class,
+        TestdataMixedMultipleProviderEntity.class,
+        TestdataValue.class,
+        TestdataOtherValue.class);
   }
 
   public static TestdataMixedMultipleProviderSolution generateUninitializedSolution(

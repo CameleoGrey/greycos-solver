@@ -4,6 +4,9 @@ import java.util.Comparator;
 
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 public class DummyValueComparator implements Comparator<TestdataValue> {
 
   @Override

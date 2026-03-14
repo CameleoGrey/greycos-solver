@@ -51,4 +51,8 @@ public class TestdataOnlyChildAnnotatedExtendedSolution extends TestdataOnlyChil
   public List<TestdataOnlyChildAnnotatedChildEntity> getEntityList() {
     return (List<TestdataOnlyChildAnnotatedChildEntity>) super.getEntityList();
   }
+
+  public void getEntityList(List<TestdataOnlyChildAnnotatedChildEntity> entityList) {
+    super.setEntityList(entityList);
+  }
 }

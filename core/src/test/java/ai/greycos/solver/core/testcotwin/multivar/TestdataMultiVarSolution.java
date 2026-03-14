@@ -10,6 +10,7 @@ import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 
@@ -19,6 +20,10 @@ public class TestdataMultiVarSolution extends TestdataObject {
   public static SolutionDescriptor<TestdataMultiVarSolution> buildSolutionDescriptor() {
     return SolutionDescriptor.buildSolutionDescriptor(
         TestdataMultiVarSolution.class, TestdataMultiVarEntity.class);
+  }
+
+  public static PlanningSolutionMetaModel<TestdataMultiVarSolution> buildMetaModel() {
+    return buildSolutionDescriptor().getMetaModel();
   }
 
   public static TestdataMultiVarSolution generateSolution(

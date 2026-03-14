@@ -8,6 +8,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 
 @PlanningSolution
 public class TestdataListEntityProvidingSolution {
@@ -17,6 +18,10 @@ public class TestdataListEntityProvidingSolution {
         TestdataListEntityProvidingSolution.class,
         TestdataListEntityProvidingEntity.class,
         TestdataListEntityProvidingValue.class);
+  }
+
+  public static PlanningSolutionMetaModel<TestdataListEntityProvidingSolution> buildMetaModel() {
+    return buildSolutionDescriptor().getMetaModel();
   }
 
   public static TestdataListEntityProvidingSolution generateSolution(
