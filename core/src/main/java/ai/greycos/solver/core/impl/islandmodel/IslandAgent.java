@@ -38,7 +38,6 @@ public class IslandAgent<Solution_> implements Runnable {
   private volatile AgentStatus status = AgentStatus.ALIVE;
   private volatile BitSet aliveBits;
   private volatile int stepsUntilNextMigration;
-  private volatile boolean phasesCompleted = false;
 
   public IslandAgent(
       int agentId,
@@ -79,11 +78,6 @@ public class IslandAgent<Solution_> implements Runnable {
       islandScope.getSolver().solvingStarted(islandScope);
 
       for (Phase<Solution_> phase : phases) {
-        if (shouldTerminate()) {
-          LOGGER.info("Agent {} terminating early due to global termination", agentId);
-          break;
-        }
-
         LOGGER.debug("Agent {} running phase: {}", agentId, phase.getClass().getSimpleName());
 
         MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
@@ -109,7 +103,6 @@ public class IslandAgent<Solution_> implements Runnable {
       }
 
       islandScope.getSolver().solvingEnded(islandScope);
-      phasesCompleted = true;
       markAsDead();
     } catch (Exception e) {
       LOGGER.error("Agent {} encountered unexpected error", agentId, e);
@@ -119,20 +112,8 @@ public class IslandAgent<Solution_> implements Runnable {
       completionLatch.countDown();
     }
 
-    awaitAllAgents();
+    awaitAllAgentsAndRelayMigrations();
     LOGGER.info("Agent {} terminated", agentId);
-  }
-
-  private void performMigration() throws InterruptedException {
-    if (agentId % 2 == 0) {
-      sendMigration();
-      receiveMigration();
-    } else {
-      receiveMigration();
-      sendMigration();
-    }
-
-    stepsUntilNextMigration = config.getMigrationFrequency();
   }
 
   void checkAndPerformMigration() {
@@ -141,7 +122,7 @@ public class IslandAgent<Solution_> implements Runnable {
     if (stepsUntilNextMigration <= 0) {
       try {
         LOGGER.debug("Agent {} triggering migration", agentId);
-        performMigrationWithTimeout(null);
+        performMigrationWithTimeout();
       } catch (InterruptedException e) {
         LOGGER.info("Agent {} interrupted during migration", agentId);
         Thread.currentThread().interrupt();
@@ -149,16 +130,15 @@ public class IslandAgent<Solution_> implements Runnable {
     }
   }
 
-  private AgentUpdate<Solution_> performMigrationWithTimeout(AgentUpdate<Solution_> pendingMessage)
-      throws InterruptedException {
+  private AgentUpdate<Solution_> performMigrationWithTimeout() throws InterruptedException {
     AgentUpdate<Solution_> receivedMessage;
 
     if (agentId % 2 == 0) {
-      sendMigrationWithTimeout(pendingMessage);
+      sendMigrationWithTimeout();
       receivedMessage = receiveMigrationWithTimeout();
     } else {
       receivedMessage = receiveMigrationWithTimeout();
-      sendMigrationWithTimeout(pendingMessage);
+      sendMigrationWithTimeout();
     }
 
     stepsUntilNextMigration = config.getMigrationFrequency();
@@ -287,8 +267,7 @@ public class IslandAgent<Solution_> implements Runnable {
     return update;
   }
 
-  private AgentUpdate<Solution_> sendMigrationWithTimeout(AgentUpdate<Solution_> messageToSend)
-      throws InterruptedException {
+  private AgentUpdate<Solution_> sendMigrationWithTimeout() throws InterruptedException {
     if (status == AgentStatus.DEAD) {
       AgentUpdate<Solution_> receivedUpdate = receiver.tryReceive();
       if (receivedUpdate != null) {
@@ -353,12 +332,30 @@ public class IslandAgent<Solution_> implements Runnable {
     aliveBits.set(agentId, status == AgentStatus.ALIVE);
   }
 
-  private void awaitAllAgents() {
-    try {
-      completionLatch.await();
-    } catch (InterruptedException e) {
-      LOGGER.info("Agent {} interrupted while waiting for peers", agentId);
-      Thread.currentThread().interrupt();
+  private void awaitAllAgentsAndRelayMigrations() {
+    long relayTimeoutMs = Math.max(1L, Math.min(config.getMigrationTimeout(), 50L));
+    while (completionLatch.getCount() > 0) {
+      try {
+        relayMigrationMessage(relayTimeoutMs);
+      } catch (InterruptedException e) {
+        LOGGER.info("Agent {} interrupted while relaying for peers", agentId);
+        Thread.currentThread().interrupt();
+        return;
+      }
+    }
+  }
+
+  private void relayMigrationMessage(long timeoutMs) throws InterruptedException {
+    AgentUpdate<Solution_> update = receiver.tryReceive(timeoutMs, TimeUnit.MILLISECONDS);
+    if (update == null) {
+      return;
+    }
+    applyIncomingAliveBits(update.getAliveBits());
+    aliveBits.clear(agentId);
+    updateAliveAgentsCount();
+    boolean forwarded = sender.send(update, timeoutMs, TimeUnit.MILLISECONDS);
+    if (!forwarded) {
+      LOGGER.trace("Agent {} dropped relay migration due to full outbound channel", agentId);
     }
   }
 
@@ -367,16 +364,11 @@ public class IslandAgent<Solution_> implements Runnable {
     LOGGER.trace("Agent {} sees {} alive agents in status vector", agentId, aliveCount);
   }
 
-  private boolean shouldTerminate() {
-    if (!phasesCompleted) {
-      return false;
-    }
-    return aliveBits.isEmpty();
-  }
-
   private void markAsDead() {
     status = AgentStatus.DEAD;
-    aliveBits.clear(agentId);
+    if (aliveBits != null) {
+      aliveBits.clear(agentId);
+    }
     LOGGER.info("Agent {} marked as DEAD", agentId);
   }
 
@@ -399,8 +391,6 @@ public class IslandAgent<Solution_> implements Runnable {
         + agentId
         + ", status="
         + status
-        + ", phasesCompleted="
-        + phasesCompleted
         + ", phaseCount="
         + phases.size()
         + '}';

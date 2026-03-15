@@ -22,14 +22,15 @@ import ai.greycos.solver.core.impl.solver.scope.SolverScope;
  *
  * @param <Solution_> solution type
  */
-public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
+public class GlobalBestPropagator<Solution_>
+    implements Consumer<SharedGlobalState.BestSolutionSnapshot<Solution_>> {
 
   private final SharedGlobalState<Solution_> globalState;
   private final SolverScope<Solution_> mainSolverScope;
   private final SolverEventSupport<Solution_> solverEventSupport;
   private final EventProducerId eventProducerId;
+  private final Object updateLock = new Object();
 
-  private volatile Solution_ lastKnownBestSolution;
   private volatile Score<?> lastKnownBestScore;
 
   public GlobalBestPropagator(
@@ -52,24 +53,22 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
   }
 
   @Override
-  public void accept(Solution_ newGlobalBest) {
-    if (newGlobalBest == null) {
+  public void accept(SharedGlobalState.BestSolutionSnapshot<Solution_> snapshot) {
+    if (snapshot == null) {
       return;
     }
 
-    var newGlobalBestScore = globalState.getBestScore();
-    if (newGlobalBestScore == null) {
-      return;
-    }
+    var newGlobalBest = snapshot.getSolution();
+    var newGlobalBestScore = snapshot.getScore();
 
-    boolean shouldUpdate = shouldUpdateMainSolverScope(newGlobalBestScore);
+    synchronized (updateLock) {
+      if (!shouldUpdateMainSolverScope(newGlobalBestScore)) {
+        return;
+      }
 
-    if (shouldUpdate) {
       var clonedSolution = updateMainSolverScope(newGlobalBest, newGlobalBestScore);
-      fireBestSolutionChangedEvent(clonedSolution);
-
-      lastKnownBestSolution = clonedSolution;
       lastKnownBestScore = newGlobalBestScore;
+      fireBestSolutionChangedEvent(clonedSolution);
     }
   }
 
@@ -78,8 +77,7 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
       return true;
     }
 
-    @SuppressWarnings("unchecked")
-    var comparisonResult = ((Score) newGlobalBestScore).compareTo((Score) lastKnownBestScore);
+    int comparisonResult = compareScores(newGlobalBestScore, lastKnownBestScore);
     return comparisonResult > 0;
   }
 
@@ -99,5 +97,10 @@ public class GlobalBestPropagator<Solution_> implements Consumer<Solution_> {
 
   private void fireBestSolutionChangedEvent(Solution_ newBestSolution) {
     solverEventSupport.fireBestSolutionChanged(mainSolverScope, eventProducerId, newBestSolution);
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static int compareScores(Score<?> left, Score<?> right) {
+    return ((Score) left).compareTo((Score) right);
   }
 }

@@ -30,8 +30,12 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_> {
 
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
-    bestSolutionRecaller.solvingEnded(solverScope);
-    globalTermination.solvingEnded(solverScope);
+    try {
+      bestSolutionRecaller.solvingEnded(solverScope);
+      globalTermination.solvingEnded(solverScope);
+    } finally {
+      solverScope.getScoreDirector().close();
+    }
   }
 
   @Override

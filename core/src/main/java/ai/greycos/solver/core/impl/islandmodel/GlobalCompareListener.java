@@ -54,14 +54,15 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
   }
 
   private void checkAndAdoptGlobalBest(LocalSearchStepScope<Solution_> stepScope) {
-    Solution_ globalBest = globalState.getBestSolution();
-    if (globalBest == null) {
+    var globalSnapshot = globalState.getBestSnapshot();
+    if (globalSnapshot == null) {
       return;
     }
+    Solution_ globalBest = globalSnapshot.getSolution();
 
     var phaseScope = stepScope.getPhaseScope();
     var currentInnerScore = phaseScope.getBestScore();
-    var globalScore = globalState.getBestScore();
+    var globalScore = globalSnapshot.getScore();
 
     if (globalScore == null || currentInnerScore == null) {
       return;

@@ -15,6 +15,7 @@ import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import ai.greycos.solver.core.config.phase.PhaseConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.phase.AbstractPhase;
@@ -93,6 +94,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
   @Override
   public void solve(SolverScope<Solution_> solverScope) {
+    var phaseScope = new IslandModelPhaseScope<>(solverScope, phaseIndex);
+    boolean phaseLifecycleStarted = false;
     try {
       LOGGER.info(
           "{}Island Model phase ({}) starting with {} islands",
@@ -100,7 +103,11 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           phaseIndex,
           islandCount);
 
+      phaseStarted(phaseScope);
+      phaseLifecycleStarted = true;
+
       this.solverScope = solverScope;
+      globalState.reset();
 
       var initialSolution = solverScope.getBestSolution();
       var innerScore = solverScope.getBestScore();
@@ -133,6 +140,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
             logIndentation,
             phaseIndex);
       }
+      phaseScope.endingNow();
 
     } catch (Exception e) {
       LOGGER.error(
@@ -145,6 +153,9 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     } finally {
       if (globalBestPropagator != null) {
         globalBestPropagator.stop();
+      }
+      if (phaseLifecycleStarted) {
+        phaseEnded(phaseScope);
       }
     }
   }
@@ -254,6 +265,19 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       HeuristicConfigPolicy<Solution_> agentConfigPolicy,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
+    var configuredPhaseConfigList = islandModelConfig.getPhaseConfigList();
+    if (configuredPhaseConfigList != null && !configuredPhaseConfigList.isEmpty()) {
+      var copiedPhaseConfigList = copyPhaseConfigList(configuredPhaseConfigList);
+      return PhaseFactory.buildPhases(
+          copiedPhaseConfigList, agentConfigPolicy, bestSolutionRecaller, solverTermination);
+    }
+
+    var localSearchConfig = buildDefaultLocalSearchPhaseConfig();
+    return PhaseFactory.buildPhases(
+        List.of(localSearchConfig), agentConfigPolicy, bestSolutionRecaller, solverTermination);
+  }
+
+  private LocalSearchPhaseConfig buildDefaultLocalSearchPhaseConfig() {
     var localSearchConfig = new LocalSearchPhaseConfig();
     localSearchConfig.setLocalSearchType(islandModelConfig.getLocalSearchType());
     localSearchConfig.setMoveThreadCount(islandModelConfig.getMoveThreadCount());
@@ -279,9 +303,16 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     if (terminationConfig != null) {
       localSearchConfig.setTerminationConfig(terminationConfig.copyConfig());
     }
+    return localSearchConfig;
+  }
 
-    return PhaseFactory.buildPhases(
-        List.of(localSearchConfig), agentConfigPolicy, bestSolutionRecaller, solverTermination);
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static List<PhaseConfig> copyPhaseConfigList(List<PhaseConfig<?>> phaseConfigList) {
+    var copiedPhaseConfigList = new ArrayList<PhaseConfig>(phaseConfigList.size());
+    for (var phaseConfig : phaseConfigList) {
+      copiedPhaseConfigList.add(phaseConfig.copyConfig());
+    }
+    return copiedPhaseConfigList;
   }
 
   private SolverTermination<Solution_> createAgentTermination(SolverScope<Solution_> solverScope) {

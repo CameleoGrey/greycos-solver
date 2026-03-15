@@ -48,17 +48,20 @@ class SharedGlobalStateTest {
   void observerIsNotifiedOnUpdate() {
     SharedGlobalState<String> state = new SharedGlobalState<>();
     AtomicReference<String> notifiedSolution = new AtomicReference<>();
+    AtomicReference<SimpleScore> notifiedScore = new AtomicReference<>();
     AtomicReference<Integer> notificationCount = new AtomicReference<>(0);
 
     state.addObserver(
-        solution -> {
-          notifiedSolution.set(solution);
+        snapshot -> {
+          notifiedSolution.set(snapshot.getSolution());
+          notifiedScore.set((SimpleScore) snapshot.getScore());
           notificationCount.getAndSet(notificationCount.get() + 1);
         });
 
     state.tryUpdate("test solution", SimpleScore.of(10));
 
     assertThat(notifiedSolution.get()).isEqualTo("test solution");
+    assertThat(notifiedScore.get()).isEqualTo(SimpleScore.of(10));
     assertThat(notificationCount.get()).isEqualTo(1);
   }
 
@@ -67,7 +70,7 @@ class SharedGlobalStateTest {
     SharedGlobalState<String> state = new SharedGlobalState<>();
     AtomicReference<Integer> notificationCount = new AtomicReference<>(0);
 
-    state.addObserver(solution -> notificationCount.getAndSet(notificationCount.get() + 1));
+    state.addObserver(snapshot -> notificationCount.getAndSet(notificationCount.get() + 1));
 
     state.tryUpdate("first", SimpleScore.of(10));
     state.tryUpdate("second", SimpleScore.of(5));
@@ -91,7 +94,7 @@ class SharedGlobalStateTest {
   @Test
   void getObserversReturnsCopy() {
     SharedGlobalState<String> state = new SharedGlobalState<>();
-    state.addObserver(solution -> {});
+    state.addObserver(snapshot -> {});
 
     List observers1 = state.getObservers();
     List observers2 = state.getObservers();
@@ -116,5 +119,17 @@ class SharedGlobalStateTest {
     assertThatThrownBy(() -> state.tryUpdate("solution", null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("Candidate score cannot be null");
+  }
+
+  @Test
+  void getBestSnapshotProvidesConsistentState() {
+    SharedGlobalState<String> state = new SharedGlobalState<>();
+
+    state.tryUpdate("solution", SimpleScore.of(10));
+    var snapshot = state.getBestSnapshot();
+
+    assertThat(snapshot).isNotNull();
+    assertThat(snapshot.getSolution()).isEqualTo("solution");
+    assertThat(snapshot.getScore()).isEqualTo(SimpleScore.of(10));
   }
 }

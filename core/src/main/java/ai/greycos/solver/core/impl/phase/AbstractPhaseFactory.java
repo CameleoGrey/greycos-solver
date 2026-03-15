@@ -16,6 +16,7 @@ import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import ai.greycos.solver.core.impl.exhaustivesearch.scope.ExhaustiveSearchPhaseScope;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import ai.greycos.solver.core.impl.islandmodel.IslandModelPhaseScope;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import ai.greycos.solver.core.impl.phase.custom.scope.CustomPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
@@ -87,7 +88,7 @@ public abstract class AbstractPhaseFactory<
     } else if (phaseConfig instanceof CustomPhaseConfig) {
       return CustomPhaseScope.class;
     } else if (phaseConfig instanceof IslandModelPhaseConfig) {
-      return null;
+      return IslandModelPhaseScope.class;
     } else if (phaseConfig instanceof LocalSearchPhaseConfig) {
       return LocalSearchPhaseScope.class;
     } else if (phaseConfig instanceof ExhaustiveSearchPhaseConfig) {
