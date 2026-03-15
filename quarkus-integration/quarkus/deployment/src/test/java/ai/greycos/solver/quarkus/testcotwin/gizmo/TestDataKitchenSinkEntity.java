@@ -25,7 +25,7 @@ public class TestDataKitchenSinkEntity {
   @ShadowVariable(supplierName = "copyStringVariable")
   private String declarativeShadowVariable;
 
-  @ShadowVariablesInconsistent private boolean isInconsistent;
+  @ShadowVariablesInconsistent private boolean inconsistent;
 
   @PlanningVariable(valueRangeProviderRefs = {"names"})
   private String stringVariable;
@@ -49,18 +49,54 @@ public class TestDataKitchenSinkEntity {
     return stringVariable;
   }
 
+  public String getGroupId() {
+    return groupId;
+  }
+
+  public void setGroupId(String groupId) {
+    this.groupId = groupId;
+  }
+
+  public String getDeclarativeShadowVariable() {
+    return declarativeShadowVariable;
+  }
+
+  public void setDeclarativeShadowVariable(String declarativeShadowVariable) {
+    this.declarativeShadowVariable = declarativeShadowVariable;
+  }
+
+  public boolean isInconsistent() {
+    return inconsistent;
+  }
+
+  public void setInconsistent(boolean inconsistent) {
+    this.inconsistent = inconsistent;
+  }
+
+  public String getStringVariable() {
+    return stringVariable;
+  }
+
+  public void setStringVariable(String stringVariable) {
+    this.stringVariable = stringVariable;
+  }
+
+  public void setPinned(boolean pinned) {
+    isPinned = pinned;
+  }
+
   @ShadowSources(value = "stringVariable", alignmentKey = "groupId")
-  private String copyStringVariable() {
+  public String copyStringVariable() {
     return stringVariable;
   }
 
   @PlanningPin
-  private boolean isPinned() {
+  public boolean isPinned() {
     return isPinned;
   }
 
   @ValueRangeProvider(id = "ints")
-  private List<Integer> myIntValueRange() {
+  public List<Integer> myIntValueRange() {
     return Collections.singletonList(1);
   }
 

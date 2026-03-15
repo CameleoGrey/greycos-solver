@@ -27,7 +27,6 @@
     <dependency>
       <groupId>io.quarkus.gizmo</groupId>
       <artifactId>gizmo2</artifactId>
-      <optional>true</optional>
     </dependency>
 
     <!-- ASM for bytecode manipulation (node sharing) -->

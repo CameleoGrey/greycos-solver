@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningPin;
@@ -99,6 +100,17 @@ public class GreyCOSSolverAutoConfiguration
         PreviousElementShadowVariable.class,
         ShadowVariable.class,
         CascadingUpdateShadowVariable.class
+      };
+  // We filter out abstract classes and anything we use internally.
+  static final Predicate<Class<?>> UNIQUENESS_PREDICATE =
+      clazz -> {
+        if (Modifier.isAbstract(clazz.getModifiers())) {
+          return false;
+        }
+        var pkg = clazz.getPackageName();
+        // Only user classes should count, and classes from our own testcotwin, which may
+        // legally be employed by tests.
+        return !pkg.startsWith("ai.greycos.solver.core") || pkg.contains(".test");
       };
   private ApplicationContext context;
   private ClassLoader beanClassLoader;
@@ -396,9 +408,7 @@ public class GreyCOSSolverAutoConfiguration
     // Multiple classes and single solver
     try {
       var classes =
-          entityScanner.scan(PlanningSolution.class).stream()
-              .filter(c -> !Modifier.isAbstract(c.getModifiers()))
-              .toList();
+          entityScanner.scan(PlanningSolution.class).stream().filter(UNIQUENESS_PREDICATE).toList();
       var firstConfig = solverConfigMap.values().stream().findFirst().orElse(null);
       if (classes.size() > 1
           && solverConfigMap.size() == 1
@@ -500,11 +510,17 @@ public class GreyCOSSolverAutoConfiguration
       IncludeAbstractClassesEntityScanner entityScanner,
       Map<String, SolverConfig> solverConfigMap) {
     List<Class<? extends EasyScoreCalculator>> simpleScoreClassList =
-        entityScanner.findImplementingClassList(EasyScoreCalculator.class);
+        entityScanner.findImplementingClassList(EasyScoreCalculator.class).stream()
+            .filter(UNIQUENESS_PREDICATE)
+            .toList();
     List<Class<? extends ConstraintProvider>> constraintScoreClassList =
-        entityScanner.findImplementingClassList(ConstraintProvider.class);
+        entityScanner.findImplementingClassList(ConstraintProvider.class).stream()
+            .filter(UNIQUENESS_PREDICATE)
+            .toList();
     List<Class<? extends IncrementalScoreCalculator>> incrementalScoreClassList =
-        entityScanner.findImplementingClassList(IncrementalScoreCalculator.class);
+        entityScanner.findImplementingClassList(IncrementalScoreCalculator.class).stream()
+            .filter(UNIQUENESS_PREDICATE)
+            .toList();
     // No score calculators
     if (simpleScoreClassList.isEmpty()
         && constraintScoreClassList.isEmpty()

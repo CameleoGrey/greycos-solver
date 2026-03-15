@@ -21,6 +21,14 @@ public class TestdataQuarkusDeclarativeShadowVariableListEntity {
     this.values = new ArrayList<>();
   }
 
+  public List<TestdataQuarkusDeclarativeShadowVariableListValue> getValues() {
+    return values;
+  }
+
+  public void setValues(List<TestdataQuarkusDeclarativeShadowVariableListValue> values) {
+    this.values = values;
+  }
+
   @Override
   public String toString() {
     return name + " " + values;

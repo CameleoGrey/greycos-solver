@@ -5,7 +5,7 @@
     <entityClass>ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringEntity</entityClass>
     <scoreDirectorFactory>
         <easyScoreCalculatorClass>
-            ai.greycos.solver.spring.boot.autoconfigure.dummy.chained.constraints.easy.DummyChainedSpringEasyScore
+            ai.greycos.solver.spring.boot.autoconfigure.dummy.gizmo.constraints.easy.DummyGizmoEasyScore
         </easyScoreCalculatorClass>
     </scoreDirectorFactory>
 </solver>

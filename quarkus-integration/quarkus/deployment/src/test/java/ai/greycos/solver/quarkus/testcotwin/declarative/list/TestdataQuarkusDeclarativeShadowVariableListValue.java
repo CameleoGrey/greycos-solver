@@ -20,7 +20,7 @@ public class TestdataQuarkusDeclarativeShadowVariableListValue {
   @ShadowVariable(supplierName = "startTimeSupplier")
   private Integer startTime;
 
-  @ShadowVariablesInconsistent private boolean isInconsistent;
+  @ShadowVariablesInconsistent private boolean inconsistent;
 
   public TestdataQuarkusDeclarativeShadowVariableListValue() {}
 
@@ -43,15 +43,40 @@ public class TestdataQuarkusDeclarativeShadowVariableListValue {
   }
 
   public boolean isInconsistent() {
-    return isInconsistent;
+    return inconsistent;
   }
 
   public void setInconsistent(boolean inconsistent) {
-    this.isInconsistent = inconsistent;
+    this.inconsistent = inconsistent;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public List<TestdataQuarkusDeclarativeShadowVariableListValue> getDependencies() {
+    return dependencies;
+  }
+
+  public void setDependencies(
+      List<TestdataQuarkusDeclarativeShadowVariableListValue> dependencies) {
+    this.dependencies = dependencies;
+  }
+
+  public TestdataQuarkusDeclarativeShadowVariableListValue getPrevious() {
+    return previous;
+  }
+
+  public void setPrevious(TestdataQuarkusDeclarativeShadowVariableListValue previous) {
+    this.previous = previous;
   }
 
   @ShadowSources({"previous.startTime", "dependencies[].startTime"})
-  private Integer startTimeSupplier() {
+  public Integer startTimeSupplier() {
     if (previous == null) {
       return 0;
     }

@@ -33,7 +33,7 @@ public class StringLengthVariableListener
   public void afterVariableChanged(
       @NonNull ScoreDirector<TestdataStringLengthShadowSolution> scoreDirector,
       @NonNull TestdataListValueShadowEntity entity) {
-    int oldLength = (entity.getLength() != null) ? entity.getLength() : 0;
+    int oldLength = entity.getLength();
     int newLength =
         entity.getEntity() != null
             ? entity.getEntity().getValues().stream()

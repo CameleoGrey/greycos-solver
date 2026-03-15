@@ -8,6 +8,6 @@ import org.springframework.context.annotation.Configuration;
     basePackages = {
       "ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin",
       "ai.greycos.solver.spring.boot.autoconfigure.dummy.normal.constraints.incremental",
-      "ai.greycos.solver.spring.boot.autoconfigure.dummy.chained.constraints.incremental"
+      "ai.greycos.solver.spring.boot.autoconfigure.dummy.gizmo.constraints.incremental"
     })
 public class MultipleIncrementalScoreConstraintSpringTestConfiguration {}

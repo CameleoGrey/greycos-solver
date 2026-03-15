@@ -1,7 +1,10 @@
 package ai.greycos.solver.quarkus.benchmark.it.cotwin;
 
+import java.util.Objects;
+
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 
@@ -13,8 +16,11 @@ public class TestdataListValueShadowEntity {
   @InverseRelationShadowVariable(sourceVariableName = "values")
   private TestdataStringLengthShadowEntity entity;
 
+  @PreviousElementShadowVariable(sourceVariableName = "values")
+  private TestdataListValueShadowEntity previousValue;
+
   @ShadowVariable(supplierName = "lengthSupplier")
-  private Integer length;
+  private int length;
 
   public TestdataListValueShadowEntity() {}
 
@@ -38,23 +44,28 @@ public class TestdataListValueShadowEntity {
     this.entity = entity;
   }
 
-  public Integer getLength() {
+  public int getLength() {
     return length;
   }
 
-  public void setLength(Integer length) {
+  public void setLength(int length) {
     this.length = length;
   }
 
-  @ShadowSources("entity.values[].value")
-  public Integer lengthSupplier() {
-    if (entity == null || entity.getValues() == null) {
-      return 0;
+  public TestdataListValueShadowEntity getPreviousValue() {
+    return previousValue;
+  }
+
+  public void setPreviousValue(TestdataListValueShadowEntity previousValue) {
+    this.previousValue = previousValue;
+  }
+
+  @ShadowSources("previousValue.length")
+  public int lengthSupplier() {
+    int out = Objects.requireNonNullElse(value, "").length();
+    if (previousValue != null) {
+      out += previousValue.getLength();
     }
-    return entity.getValues().stream()
-        .map(TestdataListValueShadowEntity::getValue)
-        .filter(value -> value != null)
-        .mapToInt(String::length)
-        .sum();
+    return out;
   }
 }

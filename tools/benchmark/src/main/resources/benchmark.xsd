@@ -659,6 +659,9 @@
         <xs:sequence>
                               
           
+          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
+                              
+          
           <xs:element minOccurs="0" name="constructionHeuristicType" type="tns:constructionHeuristicType"/>
                               
           
@@ -2432,6 +2435,9 @@
         <xs:sequence>
                               
           
+          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
+                              
+          
           <xs:element minOccurs="0" name="localSearchType" type="tns:localSearchType"/>
                               
           
@@ -2568,6 +2574,9 @@
             
     
     <xs:restriction base="xs:string">
+                  
+      
+      <xs:enumeration value="PLANNING_SOLUTION_DIFF"/>
                   
       
       <xs:enumeration value="NEIGHBORHOODS"/>

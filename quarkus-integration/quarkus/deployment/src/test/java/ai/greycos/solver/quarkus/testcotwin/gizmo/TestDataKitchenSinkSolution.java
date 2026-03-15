@@ -42,4 +42,41 @@ public class TestDataKitchenSinkSolution {
   public TestDataKitchenSinkEntity getPlanningEntityProperty() {
     return planningEntityProperty;
   }
+
+  public void setPlanningEntityProperty(TestDataKitchenSinkEntity planningEntityProperty) {
+    this.planningEntityProperty = planningEntityProperty;
+  }
+
+  public List<TestDataKitchenSinkEntity> getPlanningEntityListProperty() {
+    return planningEntityListProperty;
+  }
+
+  public void setPlanningEntityListProperty(
+      List<TestDataKitchenSinkEntity> planningEntityListProperty) {
+    this.planningEntityListProperty = planningEntityListProperty;
+  }
+
+  public String getProblemFactProperty() {
+    return problemFactProperty;
+  }
+
+  public void setProblemFactProperty(String problemFactProperty) {
+    this.problemFactProperty = problemFactProperty;
+  }
+
+  public List<String> getProblemFactListProperty() {
+    return problemFactListProperty;
+  }
+
+  public void setProblemFactListProperty(List<String> problemFactListProperty) {
+    this.problemFactListProperty = problemFactListProperty;
+  }
+
+  public HardSoftScore getScore() {
+    return score;
+  }
+
+  public void setScore(HardSoftScore score) {
+    this.score = score;
+  }
 }
