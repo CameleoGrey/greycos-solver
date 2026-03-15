@@ -10,6 +10,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -134,6 +137,34 @@ class ThrottlingSolverEventListenerTest {
     verify(delegate, never()).bestSolutionChanged(event1);
     verify(delegate, never()).bestSolutionChanged(event2);
     assertThat(deliveredEvent.get()).isSameAs(event3);
+    listener.close();
+  }
+
+  @Test
+  void continuousRapidEvents_deliverPeriodically() throws InterruptedException {
+    SolverEventListener<String> delegate = mock(SolverEventListener.class);
+    var deliveryCount = new AtomicInteger(0);
+    var lastDeliveredEvent = new AtomicReference<BestSolutionChangedEvent<String>>();
+
+    doAnswer(
+            invocation -> {
+              deliveryCount.incrementAndGet();
+              lastDeliveredEvent.set(invocation.getArgument(0));
+              return null;
+            })
+        .when(delegate)
+        .bestSolutionChanged(any());
+
+    var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
+
+    for (int i = 0; i < 10; i++) {
+      listener.bestSolutionChanged(createEvent("solution" + i));
+      Thread.sleep(40);
+    }
+    Thread.sleep(THROTTLE_DURATION.toMillis() + WAIT_TOLERANCE.toMillis());
+
+    assertThat(deliveryCount.get()).isGreaterThanOrEqualTo(2);
+    assertThat(lastDeliveredEvent.get().getNewBestSolution()).isEqualTo("solution9");
     listener.close();
   }
 
@@ -388,6 +419,68 @@ class ThrottlingSolverEventListenerTest {
       executor.awaitTermination(1, TimeUnit.SECONDS);
       listener.close();
     }
+  }
+
+  @Test
+  void terminateWhileDeliveryInProgress_flushesPendingEventWithoutLoss()
+      throws InterruptedException {
+    SolverEventListener<String> delegate = mock(SolverEventListener.class);
+    var firstDeliveryStarted = new CountDownLatch(1);
+    var allowFirstDeliveryToFinish = new CountDownLatch(1);
+    List<String> deliveredSolutions = Collections.synchronizedList(new ArrayList<>());
+    var deliveryCount = new AtomicInteger(0);
+
+    doAnswer(
+            invocation -> {
+              var event = invocation.<BestSolutionChangedEvent<String>>getArgument(0);
+              if (deliveryCount.getAndIncrement() == 0) {
+                firstDeliveryStarted.countDown();
+                allowFirstDeliveryToFinish.await();
+              }
+              deliveredSolutions.add(event.getNewBestSolution());
+              return null;
+            })
+        .when(delegate)
+        .bestSolutionChanged(any());
+
+    var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
+    listener.bestSolutionChanged(createEvent("solution1"));
+
+    assertThat(
+            firstDeliveryStarted.await(
+                THROTTLE_DURATION.toMillis() + WAIT_TOLERANCE.toMillis(), TimeUnit.MILLISECONDS))
+        .isTrue();
+
+    listener.bestSolutionChanged(createEvent("solution2"));
+    var terminationThread = new Thread(listener::terminateAndDeliverPending);
+    terminationThread.start();
+    allowFirstDeliveryToFinish.countDown();
+    terminationThread.join(TimeUnit.SECONDS.toMillis(1));
+
+    assertThat(terminationThread.isAlive()).isFalse();
+    assertThat(deliveredSolutions).containsExactly("solution1", "solution2");
+    listener.close();
+  }
+
+  @Test
+  void subMillisecondDuration_isAccepted() throws InterruptedException {
+    SolverEventListener<String> delegate = mock(SolverEventListener.class);
+    var event = createEvent("solution1");
+    var delivered = new CountDownLatch(1);
+
+    doAnswer(
+            invocation -> {
+              delivered.countDown();
+              return null;
+            })
+        .when(delegate)
+        .bestSolutionChanged(event);
+
+    var listener = ThrottlingSolverEventListener.of(delegate, Duration.ofNanos(1));
+    listener.bestSolutionChanged(event);
+
+    assertThat(delivered.await(1, TimeUnit.SECONDS)).isTrue();
+    listener.close();
   }
 
   private BestSolutionChangedEvent<String> createEvent(String solution) {

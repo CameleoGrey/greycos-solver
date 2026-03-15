@@ -10,6 +10,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -132,6 +135,34 @@ class ThrottlingBestSolutionEventConsumerTest {
     verify(delegate, never()).accept(event1);
     verify(delegate, never()).accept(event2);
     assertThat(deliveredEvent.get()).isSameAs(event3);
+    throttler.close();
+  }
+
+  @Test
+  void continuousRapidEvents_deliverPeriodically() throws InterruptedException {
+    Consumer<NewBestSolutionEvent<String>> delegate = mock(Consumer.class);
+    var deliveryCount = new AtomicInteger(0);
+    var lastDeliveredEvent = new AtomicReference<NewBestSolutionEvent<String>>();
+
+    doAnswer(
+            invocation -> {
+              deliveryCount.incrementAndGet();
+              lastDeliveredEvent.set(invocation.getArgument(0));
+              return null;
+            })
+        .when(delegate)
+        .accept(any());
+
+    var throttler = ThrottlingBestSolutionEventConsumer.of(delegate, THROTTLE_DURATION);
+
+    for (int i = 0; i < 10; i++) {
+      throttler.accept(createEvent("solution" + i));
+      Thread.sleep(40);
+    }
+    Thread.sleep(THROTTLE_DURATION.toMillis() + WAIT_TOLERANCE.toMillis());
+
+    assertThat(deliveryCount.get()).isGreaterThanOrEqualTo(2);
+    assertThat(lastDeliveredEvent.get().solution()).isEqualTo("solution9");
     throttler.close();
   }
 
@@ -386,6 +417,68 @@ class ThrottlingBestSolutionEventConsumerTest {
       executor.awaitTermination(1, TimeUnit.SECONDS);
       throttler.close();
     }
+  }
+
+  @Test
+  void terminateWhileDeliveryInProgress_flushesPendingEventWithoutLoss()
+      throws InterruptedException {
+    Consumer<NewBestSolutionEvent<String>> delegate = mock(Consumer.class);
+    var firstDeliveryStarted = new CountDownLatch(1);
+    var allowFirstDeliveryToFinish = new CountDownLatch(1);
+    List<String> deliveredSolutions = Collections.synchronizedList(new ArrayList<>());
+    var deliveryCount = new AtomicInteger(0);
+
+    doAnswer(
+            invocation -> {
+              var event = invocation.<NewBestSolutionEvent<String>>getArgument(0);
+              if (deliveryCount.getAndIncrement() == 0) {
+                firstDeliveryStarted.countDown();
+                allowFirstDeliveryToFinish.await();
+              }
+              deliveredSolutions.add(event.solution());
+              return null;
+            })
+        .when(delegate)
+        .accept(any());
+
+    var throttler = ThrottlingBestSolutionEventConsumer.of(delegate, THROTTLE_DURATION);
+    throttler.accept(createEvent("solution1"));
+
+    assertThat(
+            firstDeliveryStarted.await(
+                THROTTLE_DURATION.toMillis() + WAIT_TOLERANCE.toMillis(), TimeUnit.MILLISECONDS))
+        .isTrue();
+
+    throttler.accept(createEvent("solution2"));
+    var terminationThread = new Thread(throttler::terminateAndDeliverPending);
+    terminationThread.start();
+    allowFirstDeliveryToFinish.countDown();
+    terminationThread.join(TimeUnit.SECONDS.toMillis(1));
+
+    assertThat(terminationThread.isAlive()).isFalse();
+    assertThat(deliveredSolutions).containsExactly("solution1", "solution2");
+    throttler.close();
+  }
+
+  @Test
+  void subMillisecondDuration_isAccepted() throws InterruptedException {
+    Consumer<NewBestSolutionEvent<String>> delegate = mock(Consumer.class);
+    var event = createEvent("solution1");
+    var delivered = new CountDownLatch(1);
+
+    doAnswer(
+            invocation -> {
+              delivered.countDown();
+              return null;
+            })
+        .when(delegate)
+        .accept(event);
+
+    var throttler = ThrottlingBestSolutionEventConsumer.of(delegate, Duration.ofNanos(1));
+    throttler.accept(event);
+
+    assertThat(delivered.await(1, TimeUnit.SECONDS)).isTrue();
+    throttler.close();
   }
 
   private NewBestSolutionEvent<String> createEvent(String solution) {

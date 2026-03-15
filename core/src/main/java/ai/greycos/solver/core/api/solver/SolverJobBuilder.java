@@ -81,8 +81,10 @@ public interface SolverJobBuilder<Solution_> {
    * Sets a throttled best solution consumer.
    *
    * <p>The delegate consumer will receive at most one event per {@code throttleDuration}. If
-   * multiple events arrive during the interval, only the last is delivered. The final best solution
-   * is always delivered regardless of throttle.
+   * multiple events arrive during the interval, only the last one seen so far is delivered. Under a
+   * sustained stream of rapid best solution updates, the latest event is delivered once per
+   * throttle interval until the stream subsides. The final best solution is always delivered
+   * regardless of throttle.
    *
    * <p>This is useful to prevent system overload during rapid solution improvement phases, where
    * hundreds of best solution events may arrive within seconds.

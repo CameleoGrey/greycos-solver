@@ -875,12 +875,12 @@ From the above, you can see how this feature allows building blocks to share fun
 This feature helps you avoid overloading your system with best solution events,
 especially in the early phase of the solving process when the solver is typically improving the solution very rapidly.
 
-To enable event throttling, use `ThrottlingBestSolutionEventConsumer` when starting a new `SolverJob` using `SolverManager`:
+To enable event throttling, use `withThrottledBestSolutionEventConsumer(...)`
+when starting a new `SolverJob` using `SolverManager`:
 
 [source,java,options="nowrap"]
 ----
 ...
-import ai.greycos.solver.core.api.ThrottlingBestSolutionEventConsumer;
 import java.time.Duration;
 ...
 
@@ -889,17 +889,15 @@ public class TimetableService {
     private SolverManager<Timetable, Long> solverManager;
 
     public String solve(Timetable problem) {
-        var bestSolutionEventConsumer = ThrottlingBestSolutionEventConsumer.of(
-            event -> {
-               // Your custom event handling code goes here.
-            },
-            Duration.ofSeconds(1)); // Throttle to 1 event per second.
-
         String jobId = ...;
         solverManager.solveBuilder()
                 .withProblemId(jobId)
                 .withProblem(problem)
-                .withBestSolutionEventConsumer(bestSolutionEventConsumer)
+                .withThrottledBestSolutionEventConsumer(
+                        event -> {
+                           // Your custom event handling code goes here.
+                        },
+                        Duration.ofSeconds(1))
                 .run(); // Start the solver job and listen to best solutions, with throttling.
         return jobId;
     }
@@ -910,10 +908,11 @@ public class TimetableService {
 This will ensure that your system will never receive more than one best solution event per second.
 Some other important points to note:
 
-- If multiple events arrive during the pre-defined 1-second interval, only the last event will be delivered.
+- If multiple events arrive during the pre-defined 1-second interval, only the last event in that interval will be delivered.
+- If best solution events keep arriving continuously, the latest event will be delivered once per throttle interval.
 - When the `SolverJob` terminates, the last event received will be delivered regardless of the throttle,
 unless it was already delivered before.
-- If your consumer throws an exception, we will still count the event as delivered.
+- If your consumer throws an exception, GreyCOS Solver will still count the event as delivered and continue throttling future events.
 - If the system is too occupied to start and execute new threads,
 event delivery will be delayed until a thread can be started.
 

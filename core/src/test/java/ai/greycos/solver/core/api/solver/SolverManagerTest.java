@@ -897,6 +897,9 @@ class SolverManagerTest {
     doReturn(solverJobBuilder).when(solverJobBuilder).withExceptionHandler(any());
     doReturn(solverJobBuilder).when(solverJobBuilder).withProblemFinder(any());
     doReturn(solverJobBuilder).when(solverJobBuilder).withBestSolutionEventConsumer(any());
+    doCallRealMethod()
+        .when(solverJobBuilder)
+        .withThrottledBestSolutionEventConsumer(any(Consumer.class), any(Duration.class));
 
     doCallRealMethod().when(solverManager).solve(any(Long.class), any(TestdataSolution.class));
     solverManager.solve(1L, mock(TestdataSolution.class));
@@ -918,6 +921,10 @@ class SolverManagerTest {
     verify(solverJobBuilder, times(3)).withProblemId(anyLong());
     verify(solverJobBuilder, times(3)).withProblem(any());
     verify(solverJobBuilder, times(1)).withBestSolutionEventConsumer(any());
+
+    solverJobBuilder.withThrottledBestSolutionEventConsumer(
+        mock(Consumer.class), Duration.ofMillis(1));
+    verify(solverJobBuilder, times(2)).withBestSolutionEventConsumer(any());
   }
 
   @Test

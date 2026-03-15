@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -151,6 +153,43 @@ class ConsumerSupportTest {
     assertThat(futureProblemChange).isCompleted();
 
     assertThatExceptionOfType(CancellationException.class).isThrownBy(pendingProblemChange::get);
+  }
+
+  @Test
+  @Timeout(60)
+  void throttledBestSolutionConsumer_receivesFinalBestSolutionBeforeFinalConsumer()
+      throws InterruptedException {
+    BestSolutionHolder<TestdataSolution> bestSolutionHolder = new BestSolutionHolder<>();
+    AtomicReference<TestdataSolution> intermediateBestSolutionRef = new AtomicReference<>();
+    AtomicReference<TestdataSolution> finalBestSolutionRef = new AtomicReference<>();
+    CountDownLatch intermediateConsumed = new CountDownLatch(1);
+    CountDownLatch finalConsumed = new CountDownLatch(1);
+    consumerSupport =
+        new ConsumerSupport<>(
+            1L,
+            ThrottlingBestSolutionEventConsumer.of(
+                event -> {
+                  intermediateBestSolutionRef.set(event.solution());
+                  intermediateConsumed.countDown();
+                },
+                Duration.ofDays(1)),
+            event -> {
+              finalBestSolutionRef.set(event.solution());
+              finalConsumed.countDown();
+            },
+            null,
+            null,
+            null,
+            bestSolutionHolder);
+
+    TestdataSolution finalBestSolution = TestdataSolution.generateSolution();
+    consumeIntermediateBestSolution(finalBestSolution);
+    consumerSupport.consumeFinalBestSolution(finalBestSolution);
+
+    assertThat(intermediateConsumed.await(1, TimeUnit.SECONDS)).isTrue();
+    assertThat(finalConsumed.await(1, TimeUnit.SECONDS)).isTrue();
+    assertThat(intermediateBestSolutionRef.get()).isSameAs(finalBestSolution);
+    assertThat(finalBestSolutionRef.get()).isSameAs(finalBestSolution);
   }
 
   private CompletableFuture<Void> addProblemChange(
