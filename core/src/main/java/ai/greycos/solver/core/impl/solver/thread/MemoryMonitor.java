@@ -60,24 +60,31 @@ public class MemoryMonitor {
     }
 
     double memoryUsagePercentage = (double) usedMemory / maxMemory;
+    double memoryUsagePercent = memoryUsagePercentage * 100.0;
 
     if (memoryUsagePercentage >= emergencyThreshold) {
       memoryPressureEmergencies.incrementAndGet();
       LOGGER.warn(
-          "Memory usage is at CRITICAL level: {:.1%} ({} MB / {} MB)",
-          memoryUsagePercentage, usedMemory / (1024 * 1024), maxMemory / (1024 * 1024));
+          "Memory usage is at EMERGENCY level: {}% ({} MB / {} MB)",
+          String.format("%.1f", memoryUsagePercent),
+          usedMemory / (1024 * 1024),
+          maxMemory / (1024 * 1024));
       return MemoryPressureLevel.EMERGENCY;
     } else if (memoryUsagePercentage >= criticalThreshold) {
       memoryPressureCriticals.incrementAndGet();
       LOGGER.warn(
-          "Memory usage is at CRITICAL level: {:.1%} ({} MB / {} MB)",
-          memoryUsagePercentage, usedMemory / (1024 * 1024), maxMemory / (1024 * 1024));
+          "Memory usage is at CRITICAL level: {}% ({} MB / {} MB)",
+          String.format("%.1f", memoryUsagePercent),
+          usedMemory / (1024 * 1024),
+          maxMemory / (1024 * 1024));
       return MemoryPressureLevel.CRITICAL;
     } else if (memoryUsagePercentage >= warningThreshold) {
       memoryPressureWarnings.incrementAndGet();
       LOGGER.warn(
-          "Memory usage is at WARNING level: {:.1%} ({} MB / {} MB)",
-          memoryUsagePercentage, usedMemory / (1024 * 1024), maxMemory / (1024 * 1024));
+          "Memory usage is at WARNING level: {}% ({} MB / {} MB)",
+          String.format("%.1f", memoryUsagePercent),
+          usedMemory / (1024 * 1024),
+          maxMemory / (1024 * 1024));
       return MemoryPressureLevel.WARNING;
     }
 

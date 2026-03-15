@@ -50,11 +50,12 @@ public class MultithreadingMonitor {
     }
 
     long currentTime = System.currentTimeMillis();
-    if (currentTime - lastHealthCheck.get() < healthCheckInterval) {
+    long lastCheck = lastHealthCheck.get();
+    if (currentTime - lastCheck < healthCheckInterval) {
       return;
     }
 
-    if (lastHealthCheck.compareAndSet(currentTime - healthCheckInterval, currentTime)) {
+    if (lastHealthCheck.compareAndSet(lastCheck, currentTime)) {
       HealthStatus healthStatus = getHealthStatus();
 
       if (logHealthStatus) {
@@ -79,11 +80,12 @@ public class MultithreadingMonitor {
     }
 
     long currentTime = System.currentTimeMillis();
-    if (currentTime - lastDetailedReport.get() < detailedReportInterval) {
+    long lastReport = lastDetailedReport.get();
+    if (currentTime - lastReport < detailedReportInterval) {
       return;
     }
 
-    if (lastDetailedReport.compareAndSet(currentTime - detailedReportInterval, currentTime)) {
+    if (lastDetailedReport.compareAndSet(lastReport, currentTime)) {
       MonitoringReport report = getDetailedReport();
 
       if (logDetailedReports) {

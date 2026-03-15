@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.localsearch.decider;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -56,9 +57,8 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   protected CyclicBarrier moveThreadBarrier;
   protected ExecutorService executor;
   protected List<MoveThreadRunner<Solution_, ?>> moveThreadRunnerList;
+  protected MoveLookup<Solution_> moveLookup;
   protected volatile boolean fallbackToSingleThreaded = false;
-  protected volatile int consecutiveFailures = 0;
-  protected static final int MAX_CONSECUTIVE_FAILURES = 3;
 
   public MultiThreadedLocalSearchDecider(
       String logIndentation,
@@ -79,13 +79,13 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   public void phaseStarted(LocalSearchPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
     fallbackToSingleThreaded = false;
-    consecutiveFailures = 0;
 
     // Initialize thread-safe queues and barriers
     operationQueue =
         new ArrayBlockingQueue<>(selectedMoveBufferSize + moveThreadCount + moveThreadCount);
     resultQueue = new OrderByMoveIndexBlockingQueue<>(selectedMoveBufferSize + moveThreadCount);
     moveThreadBarrier = new CyclicBarrier(moveThreadCount);
+    moveLookup = new MoveLookup<>(selectedMoveBufferSize);
 
     // Create and start move threads
     InnerScoreDirector<Solution_, ?> scoreDirector = phaseScope.getScoreDirector();
@@ -132,14 +132,20 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       }
       operationQueue = null;
       resultQueue = null;
-      moveThreadRunnerList = null;
-      throw e;
+      moveLookup = null;
+      moveThreadRunnerList = List.of();
+      return;
     }
   }
 
   @Override
   public void phaseEnded(LocalSearchPhaseScope<Solution_> phaseScope) {
     super.phaseEnded(phaseScope);
+
+    if (operationQueue == null || resultQueue == null || moveThreadRunnerList == null) {
+      moveLookup = null;
+      return;
+    }
 
     DestroyOperation<Solution_> destroyOperation = new DestroyOperation<>();
     for (int i = 0; i < moveThreadCount; i++) {
@@ -156,6 +162,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
 
     operationQueue = null;
     resultQueue = null;
+    moveLookup = null;
     moveThreadRunnerList = null;
   }
 
@@ -182,6 +189,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
 
     var pending = stepScope.getPhaseScope().getSolverScope().consumePendingMove();
     if (pending != null) {
+      clearMoveEvaluationOperations(stepIndex);
       resetOnPendingMove = pending.requiresReset();
       var move = pending.move();
       var score =
@@ -197,7 +205,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       int selectMoveIndex = 0;
       int movesInPlay = 0;
       Iterator<Move<Solution_>> moveIterator = moveRepository.iterator();
-      var moveLookup = new MoveLookup<Solution_>(selectedMoveBufferSize);
+      moveLookup.reset();
       boolean stoppedForagingEarly = false;
 
       do {
@@ -253,7 +261,6 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       Thread.currentThread().interrupt();
       return ForageResult.STOP;
     } catch (RuntimeException e) {
-      consecutiveFailures++;
       logger.error(
           "{}            Move thread threw exception while waiting for result: {}",
           logIndentation,
@@ -265,26 +272,6 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       fallbackToSingleThreaded = true;
       return ForageResult.STOP;
     }
-
-    if (result.getThrowable() != null) {
-      consecutiveFailures++;
-      logger.error(
-          "{}            Move thread ({}) threw exception: {}",
-          logIndentation,
-          result.getMoveThreadIndex(),
-          result.getThrowable());
-      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-        logger.warn(
-            "{}            Too many consecutive failures ({}), falling back to single-threaded mode",
-            logIndentation,
-            consecutiveFailures);
-        fallbackToSingleThreaded = true;
-        return ForageResult.STOP;
-      }
-      return ForageResult.CONTINUE;
-    }
-
-    consecutiveFailures = 0;
 
     if (stepIndex != result.getStepIndex()) {
       throw new IllegalStateException(
@@ -419,6 +406,11 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       int slot = moveIndex % moveBySlot.length;
       moveBySlot[slot] = move;
       moveIndexBySlot[slot] = moveIndex;
+    }
+
+    private void reset() {
+      Arrays.fill(moveBySlot, null);
+      Arrays.fill(moveIndexBySlot, Integer.MIN_VALUE);
     }
 
     private Move<Solution_> take(int moveIndex) {

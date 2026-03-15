@@ -60,11 +60,12 @@ public class AdaptiveThreadPoolManager {
     }
 
     long currentTime = System.currentTimeMillis();
-    if (currentTime - lastAdjustmentTime.get() < adjustmentInterval) {
+    long lastAdjustment = lastAdjustmentTime.get();
+    if (currentTime - lastAdjustment < adjustmentInterval) {
       return;
     }
 
-    if (lastAdjustmentTime.compareAndSet(currentTime - adjustmentInterval, currentTime)) {
+    if (lastAdjustmentTime.compareAndSet(lastAdjustment, currentTime)) {
       performThreadAdjustment();
     }
   }
@@ -125,12 +126,15 @@ public class AdaptiveThreadPoolManager {
     if (efficiency < performanceThreshold * 100) {
       // Poor efficiency, reduce threads
       targetThreads = Math.max(minThreadCount, currentThreads - 1);
-      LOGGER.debug("Low efficiency ({:.2f}%), reducing threads to {}", efficiency, targetThreads);
+      LOGGER.debug(
+          "Low efficiency ({}%), reducing threads to {}",
+          String.format("%.2f", efficiency), targetThreads);
     } else if (efficiency > 95 && currentThreads < maxThreadCount) {
       // High efficiency, consider increasing threads
       targetThreads = Math.min(maxThreadCount, currentThreads + 1);
       LOGGER.debug(
-          "High efficiency ({:.2f}%), increasing threads to {}", efficiency, targetThreads);
+          "High efficiency ({}%), increasing threads to {}",
+          String.format("%.2f", efficiency), targetThreads);
     }
 
     // Check if system can handle more threads
