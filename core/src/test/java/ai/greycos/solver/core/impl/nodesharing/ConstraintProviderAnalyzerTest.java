@@ -47,4 +47,37 @@ class ConstraintProviderAnalyzerTest {
     assertThat(analysis1).isNotNull();
     assertThat(analysis2).isNotNull();
   }
+
+  @Test
+  void analyzeSimpleProviderDetectsEquivalentInlineLambdas() {
+    ConstraintProviderAnalyzer analyzer =
+        new ConstraintProviderAnalyzer(SimpleConstraintProvider.class);
+
+    LambdaAnalysis analysis = analyzer.analyze();
+
+    assertThat(analysis.getShareableLambdaGroupCount()).isEqualTo(1);
+    assertThat(analysis.getShareableLambdaCount()).isEqualTo(2);
+  }
+
+  @Test
+  void analyzeComplexProviderDetectsEquivalentInlineLambdas() {
+    ConstraintProviderAnalyzer analyzer =
+        new ConstraintProviderAnalyzer(ComplexConstraintProvider.class);
+
+    LambdaAnalysis analysis = analyzer.analyze();
+
+    assertThat(analysis.getShareableLambdaGroupCount()).isEqualTo(1);
+    assertThat(analysis.getShareableLambdaCount()).isEqualTo(3);
+  }
+
+  @Test
+  void analyzeCapturedProviderSkipsCapturedLambdas() {
+    ConstraintProviderAnalyzer analyzer =
+        new ConstraintProviderAnalyzer(CapturedArgumentProvider.class);
+
+    LambdaAnalysis analysis = analyzer.analyze();
+
+    assertThat(analysis.getShareableLambdaGroupCount()).isZero();
+    assertThat(analysis.getShareableLambdaCount()).isZero();
+  }
 }

@@ -33,6 +33,13 @@ class NodeSharingValidatorTest {
   }
 
   @Test
+  void validateNonPublicExternalAccess() {
+    assertThatThrownBy(() -> NodeSharingValidator.validate(NonPublicAccessConstraintProvider.class))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("non-public");
+  }
+
+  @Test
   void validateErrorMessageFormat() {
     var exception =
         assertThatThrownBy(() -> NodeSharingValidator.validate(FinalConstraintProvider.class))

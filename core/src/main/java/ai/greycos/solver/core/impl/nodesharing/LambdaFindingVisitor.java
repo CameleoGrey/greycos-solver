@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import org.objectweb.asm.ConstantDynamic;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -23,14 +22,18 @@ public class LambdaFindingVisitor extends MethodVisitor {
   private static final String METAFACTORY = "metafactory";
   private static final String ALT_METAFACTORY = "altMetafactory";
 
-  private final String className;
   private final String methodName;
+  private final LambdaImplementationCanonicalizer implementationCanonicalizer;
   private final List<LambdaInfo> lambdas = new ArrayList<>();
 
-  public LambdaFindingVisitor(String className, String methodName) {
+  public LambdaFindingVisitor(
+      String className,
+      String methodName,
+      LambdaImplementationCanonicalizer implementationCanonicalizer) {
     super(Opcodes.ASM9);
-    this.className = Objects.requireNonNull(className);
+    Objects.requireNonNull(className);
     this.methodName = Objects.requireNonNull(methodName);
+    this.implementationCanonicalizer = Objects.requireNonNull(implementationCanonicalizer);
   }
 
   @Override
@@ -68,18 +71,19 @@ public class LambdaFindingVisitor extends MethodVisitor {
     String functionalInterfaceClass = returnType.getClassName();
 
     List<Object> capturedArgs = new ArrayList<>();
-    for (int i = 3; i < bootstrapMethodArguments.length; i++) {
-      Object arg = bootstrapMethodArguments[i];
-      if (!(arg instanceof ConstantDynamic)) {
-        capturedArgs.add(arg);
-      }
+    for (Type capturedArgumentType : Type.getArgumentTypes(invokedynamicDescriptor)) {
+      capturedArgs.add(capturedArgumentType.getDescriptor());
     }
+    LambdaKey shareableKey =
+        implementationCanonicalizer.buildKey(invokedynamicDescriptor, bootstrapMethodArguments);
 
     return new LambdaInfo(
         methodName,
         lambdas.size(),
         functionalInterfaceClass,
-        getImplementationMethodName(implementationMethodHandle),
+        shareableKey == null
+            ? getImplementationMethodName(implementationMethodHandle)
+            : shareableKey.getImplementationMethod(),
         implementationMethodType.getDescriptor(),
         capturedArgs);
   }

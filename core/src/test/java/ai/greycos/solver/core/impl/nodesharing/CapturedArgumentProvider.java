@@ -6,8 +6,10 @@ import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 
 /**
- * ConstraintProvider with lambdas capturing variables for testing node sharing. Verifies that
- * captured arguments are correctly included in lambda key calculation.
+ * ConstraintProvider with lambdas capturing instance state for testing node sharing.
+ *
+ * <p>Captured lambdas must not be shared as class-level fields because that would leak one
+ * instance's state into another.
  */
 public class CapturedArgumentProvider implements ConstraintProvider {
 

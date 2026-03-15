@@ -38,7 +38,10 @@ public final class ConstraintProviderAnalyzer {
             "Cannot find class file for " + constraintProviderClass.getName());
       }
 
-      ClassReader reader = new ClassReader(is);
+      byte[] classBytecode = is.readAllBytes();
+      ClassReader reader = new ClassReader(classBytecode);
+      LambdaImplementationCanonicalizer implementationCanonicalizer =
+          new LambdaImplementationCanonicalizer(className, classBytecode);
       List<LambdaInfo> allLambdas = new ArrayList<>();
 
       reader.accept(
@@ -51,7 +54,7 @@ public final class ConstraintProviderAnalyzer {
                 return null;
               }
 
-              return new LambdaFindingVisitor(className, name) {
+              return new LambdaFindingVisitor(className, name, implementationCanonicalizer) {
                 @Override
                 public void visitEnd() {
                   allLambdas.addAll(getLambdas());
@@ -74,6 +77,9 @@ public final class ConstraintProviderAnalyzer {
     Map<LambdaKey, List<LambdaInfo>> grouped = new HashMap<>();
 
     for (LambdaInfo lambda : lambdas) {
+      if (!lambda.getCapturedArguments().isEmpty()) {
+        continue;
+      }
       LambdaKey key = lambda.getKey();
       grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(lambda);
     }
