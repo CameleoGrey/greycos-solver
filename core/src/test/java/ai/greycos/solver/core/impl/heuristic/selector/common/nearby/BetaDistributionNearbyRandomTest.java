@@ -76,4 +76,15 @@ class BetaDistributionNearbyRandomTest {
     BetaDistributionNearbyRandom random = new BetaDistributionNearbyRandom(1.0, 5.0);
     assertEquals(Integer.MAX_VALUE, random.getOverallSizeMaximum());
   }
+
+  @Test
+  void usesProvidedRandomGenerator() {
+    BetaDistributionNearbyRandom random = new BetaDistributionNearbyRandom(2.0, 3.0);
+    Random rng1 = new Random(37);
+    Random rng2 = new Random(37);
+
+    for (int i = 0; i < 100; i++) {
+      assertEquals(random.nextInt(rng1, 200), random.nextInt(rng2, 200));
+    }
+  }
 }

@@ -15,18 +15,18 @@ public final class BetaDistributionNearbyRandom implements NearbyRandom {
   private final @NonNull BetaDistribution betaDistribution;
 
   public BetaDistributionNearbyRandom(double alpha, double beta) {
-    this.betaDistribution = new BetaDistribution(alpha, beta);
     if (alpha <= 0.0) {
       throw new IllegalArgumentException("The alpha (" + alpha + ") must be positive.");
     }
     if (beta <= 0.0) {
       throw new IllegalArgumentException("The beta (" + beta + ") must be positive.");
     }
+    this.betaDistribution = new BetaDistribution(alpha, beta);
   }
 
   @Override
   public int nextInt(@NonNull RandomGenerator random, int nearbySize) {
-    double p = betaDistribution.sample();
+    double p = betaDistribution.inverseCumulativeProbability(random.nextDouble());
     double x = nearbySize * p;
     int next = (int) x;
     if (next >= nearbySize) {

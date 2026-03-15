@@ -282,8 +282,12 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
     if (originEntitySelector != null) {
       originIterator = originEntitySelector.endingIterator();
     } else if (originSubListSelector != null) {
-      // SubListSelector doesn't have endingIterator(), use iterator() instead
-      originIterator = originSubListSelector.iterator();
+      /*
+       * Sub-list origins are typically replaying selectors and can be recording-dependent or
+       * effectively never-ending at this stage. They can't be enumerated safely for eager
+       * initialization.
+       */
+      return;
     } else if (originValueSelector != null) {
       originIterator = originValueSelector.endingIterator(null);
     } else {

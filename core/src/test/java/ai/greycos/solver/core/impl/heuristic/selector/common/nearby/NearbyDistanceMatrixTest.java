@@ -242,4 +242,64 @@ class NearbyDistanceMatrixTest {
     matrix.addAllDestinations(origin);
     assertThat(matrix.getDestination(origin, 0)).isNotNull();
   }
+
+  @Test
+  void testStrictDestinationSizeDisabled_AllowsLargerActualSize() {
+    List<Point> destinations = Arrays.asList(new Point(1, 0), new Point(2, 0), new Point(3, 0));
+
+    NearbyDistanceMatrix<Point, Point> matrix =
+        new NearbyDistanceMatrix<>(
+            new EuclideanDistanceMeter(),
+            1,
+            origin -> destinations.iterator(),
+            origin -> 1,
+            Integer.MAX_VALUE,
+            false);
+
+    Point origin = new Point(0, 0);
+    matrix.addAllDestinations(origin);
+
+    assertThat(matrix.getDestinationSize(origin)).isEqualTo(3);
+    assertThat(matrix.getDestination(origin, 0)).isNotNull();
+    assertThat(matrix.getDestination(origin, 2)).isNotNull();
+  }
+
+  @Test
+  void testStrictDestinationSizeDisabled_AllowsSmallerActualSize() {
+    List<Point> destinations = Arrays.asList(new Point(1, 0));
+
+    NearbyDistanceMatrix<Point, Point> matrix =
+        new NearbyDistanceMatrix<>(
+            new EuclideanDistanceMeter(),
+            1,
+            origin -> destinations.iterator(),
+            origin -> 3,
+            Integer.MAX_VALUE,
+            false);
+
+    Point origin = new Point(0, 0);
+    matrix.addAllDestinations(origin);
+
+    assertThat(matrix.getDestinationSize(origin)).isEqualTo(1);
+    assertThat(matrix.getDestination(origin, 0)).isNotNull();
+  }
+
+  @Test
+  void testStrictDestinationSizeEnabled_RejectsMismatchedSize() {
+    List<Point> destinations = Arrays.asList(new Point(1, 0), new Point(2, 0), new Point(3, 0));
+
+    NearbyDistanceMatrix<Point, Point> matrix =
+        new NearbyDistanceMatrix<>(
+            new EuclideanDistanceMeter(),
+            1,
+            origin -> destinations.iterator(),
+            origin -> 1,
+            Integer.MAX_VALUE,
+            true);
+
+    Point origin = new Point(0, 0);
+    assertThatThrownBy(() -> matrix.addAllDestinations(origin))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("destinationIterator's size");
+  }
 }
