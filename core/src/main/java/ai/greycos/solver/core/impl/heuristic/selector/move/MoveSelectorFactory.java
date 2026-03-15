@@ -8,13 +8,11 @@ import ai.greycos.solver.core.config.heuristic.selector.move.composite.UnionMove
 import ai.greycos.solver.core.config.heuristic.selector.move.factory.MoveIteratorFactoryConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.factory.MoveListFactoryConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
@@ -26,7 +24,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.composite.UnionMoveSe
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorFactoryFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveListFactoryFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMoveSelectorFactory;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.MultistageMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.PillarChangeMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.PillarSwapMoveSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateMoveSelectorFactory;
@@ -81,13 +78,6 @@ public interface MoveSelectorFactory<Solution_> {
     } else if (moveSelectorConfig
         instanceof CartesianProductMoveSelectorConfig cartesianProductMoveSelectorConfig) {
       return new CartesianProductMoveSelectorFactory<>(cartesianProductMoveSelectorConfig);
-    } else if (moveSelectorConfig
-        instanceof MultistageMoveSelectorConfig multistageMoveSelectorConfig) {
-      return new MultistageMoveSelectorFactory<>(multistageMoveSelectorConfig);
-    } else if (moveSelectorConfig
-        instanceof ListMultistageMoveSelectorConfig listMultistageMoveSelectorConfig) {
-      return new ai.greycos.solver.core.impl.heuristic.selector.move.generic.list
-          .ListMultistageMoveSelectorFactory<>(listMultistageMoveSelectorConfig);
     } else {
       throw new IllegalArgumentException(
           String.format(

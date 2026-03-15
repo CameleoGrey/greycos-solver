@@ -15,13 +15,11 @@ import ai.greycos.solver.core.config.heuristic.selector.move.NearbyAutoConfigura
 import ai.greycos.solver.core.config.heuristic.selector.move.factory.MoveIteratorFactoryConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.factory.MoveListFactoryConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
-import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
@@ -72,12 +70,6 @@ public class UnionMoveSelectorConfig extends MoveSelectorConfig<UnionMoveSelecto
     @XmlElement(
         name = ListRuinRecreateMoveSelectorConfig.XML_ELEMENT_NAME,
         type = ListRuinRecreateMoveSelectorConfig.class),
-    @XmlElement(
-        name = MultistageMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = MultistageMoveSelectorConfig.class),
-    @XmlElement(
-        name = ListMultistageMoveSelectorConfig.XML_ELEMENT_NAME,
-        type = ListMultistageMoveSelectorConfig.class),
     @XmlElement(
         name = SubListChangeMoveSelectorConfig.XML_ELEMENT_NAME,
         type = SubListChangeMoveSelectorConfig.class),
