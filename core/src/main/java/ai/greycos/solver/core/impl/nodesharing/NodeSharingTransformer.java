@@ -140,7 +140,11 @@ public final class NodeSharingTransformer {
         if (fieldName != null && fieldDescriptor != null) {
           var fv =
               cv.visitField(
-                  Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC, fieldName, fieldDescriptor, null, null);
+                  Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL,
+                  fieldName,
+                  fieldDescriptor,
+                  null,
+                  null);
           if (fv != null) {
             fv.visitEnd();
           }

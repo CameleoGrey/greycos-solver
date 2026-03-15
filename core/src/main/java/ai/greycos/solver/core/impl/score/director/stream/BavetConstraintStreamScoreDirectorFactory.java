@@ -67,22 +67,13 @@ public final class BavetConstraintStreamScoreDirectorFactory<
       LOGGER.info(
           "Automatic node sharing enabled for ConstraintProvider: {}",
           providedConstraintProviderClass.getName());
-      try {
-        var nodeSharer = new DefaultConstraintProviderNodeSharer();
-        Class<? extends ConstraintProvider> transformedClass =
-            nodeSharer.buildNodeSharedConstraintProvider(providedConstraintProviderClass);
-        LOGGER.info(
-            "Successfully applied node sharing transformation. Transformed class: {}",
-            transformedClass.getName());
-        return transformedClass;
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Node sharing transformation failed for {}. Falling back to original class. Error: {}",
-            providedConstraintProviderClass.getName(),
-            e.getMessage());
-        // Fall back to original class
-        return providedConstraintProviderClass;
-      }
+      var nodeSharer = new DefaultConstraintProviderNodeSharer();
+      Class<? extends ConstraintProvider> transformedClass =
+          nodeSharer.buildNodeSharedConstraintProvider(providedConstraintProviderClass);
+      LOGGER.info(
+          "Successfully applied node sharing transformation. Transformed class: {}",
+          transformedClass.getName());
+      return transformedClass;
     } else {
       return providedConstraintProviderClass;
     }

@@ -13,7 +13,8 @@ class NodeSharedClassLoaderTest {
 
   @Test
   void defineNodeSharedClassReturnsClass() throws IOException {
-    NodeSharedClassLoader classLoader = new NodeSharedClassLoader();
+    NodeSharedClassLoader classLoader =
+        new NodeSharedClassLoader(SimpleConstraintProvider.class.getClassLoader());
 
     // Use actual bytecode from the class file
     byte[] bytecode = readClassFile(SimpleConstraintProvider.class);
@@ -27,7 +28,8 @@ class NodeSharedClassLoaderTest {
 
   @Test
   void defineNodeSharedClassCaching() throws IOException {
-    NodeSharedClassLoader classLoader = new NodeSharedClassLoader();
+    NodeSharedClassLoader classLoader =
+        new NodeSharedClassLoader(SimpleConstraintProvider.class.getClassLoader());
 
     byte[] bytecode = readClassFile(SimpleConstraintProvider.class);
 
@@ -42,7 +44,8 @@ class NodeSharedClassLoaderTest {
 
   @Test
   void defineNodeSharedClassDifferentClasses() throws IOException {
-    NodeSharedClassLoader classLoader = new NodeSharedClassLoader();
+    NodeSharedClassLoader classLoader =
+        new NodeSharedClassLoader(SimpleConstraintProvider.class.getClassLoader());
 
     byte[] bytecode1 = readClassFile(SimpleConstraintProvider.class);
     byte[] bytecode2 = readClassFile(ComplexConstraintProvider.class);
@@ -56,6 +59,18 @@ class NodeSharedClassLoaderTest {
     assertThat(result1).isNotSameAs(result2);
     assertThat(result1.getName()).isEqualTo(SimpleConstraintProvider.class.getName());
     assertThat(result2.getName()).isEqualTo(ComplexConstraintProvider.class.getName());
+  }
+
+  @Test
+  void defineNodeSharedClassKeepsConfiguredParentClassLoader() throws IOException {
+    ClassLoader parent = new ClassLoader(SimpleConstraintProvider.class.getClassLoader()) {};
+    NodeSharedClassLoader classLoader = new NodeSharedClassLoader(parent);
+    byte[] bytecode = readClassFile(SimpleConstraintProvider.class);
+
+    Class<? extends ConstraintProvider> result =
+        classLoader.defineNodeSharedClass(SimpleConstraintProvider.class, bytecode);
+
+    assertThat(result.getClassLoader().getParent()).isSameAs(parent);
   }
 
   private byte[] readClassFile(Class<?> clazz) throws IOException {

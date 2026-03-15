@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.nodesharing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +56,14 @@ class AutomaticNodeSharingBehaviorTest {
     assertThat(transformedClass.getDeclaredFields())
         .filteredOn(field -> field.getName().startsWith("$"))
         .hasSize(1);
+    assertThat(transformedClass.getDeclaredFields())
+        .filteredOn(field -> field.getName().startsWith("$"))
+        .allSatisfy(
+            field -> {
+              assertThat(Modifier.isPrivate(field.getModifiers())).isTrue();
+              assertThat(Modifier.isStatic(field.getModifiers())).isTrue();
+              assertThat(Modifier.isFinal(field.getModifiers())).isTrue();
+            });
     assertThat(transformedPredicates.get(0).test("x")).isTrue();
     assertThat(transformedPredicates.get(0).test("")).isFalse();
   }

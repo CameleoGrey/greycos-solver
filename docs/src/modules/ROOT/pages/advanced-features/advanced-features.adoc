@@ -803,7 +803,7 @@ The Java Virtual Machine is free to (and often does) create different instances 
 This severely limits the effectiveness of node sharing, since the only way to know two lambdas are equal is to compare their references.
 
 When automatic node sharing is used, the `ConstraintProvider` class is transformed so
-captureless lambdas are accessed via a cached static field.
+captureless lambdas are accessed via a cached static final field.
 Lambdas that capture instance state or runtime arguments are left untouched to preserve semantics.
 Consider the following input class:
 
@@ -839,7 +839,7 @@ When automatic node sharing is enabled, the class will be transformed to look li
 [source,java,options="nowrap"]
 ----
 public class MyConstraintProvider implements ConstraintProvider {
-    private static Predicate<Shift> $predicate1 = shift -> shift.getEmployee().getName().equals("Ann");
+    private static final Predicate<Shift> $predicate1 = shift -> shift.getEmployee().getName().equals("Ann");
 
     public Constraint[] defineConstraints(ConstraintFactory constraintFactory) {
         return new Constraint[] {

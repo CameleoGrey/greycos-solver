@@ -1,5 +1,8 @@
 package ai.greycos.solver.core.impl.nodesharing;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 
 import org.slf4j.Logger;
@@ -17,10 +20,12 @@ public final class DefaultConstraintProviderNodeSharer {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DefaultConstraintProviderNodeSharer.class);
 
-  private final NodeSharedClassLoader classLoader;
+  private static final Object BOOTSTRAP_CLASS_LOADER_KEY = new Object();
+
+  private final Map<Object, NodeSharedClassLoader> classLoaderMap;
 
   public DefaultConstraintProviderNodeSharer() {
-    this.classLoader = new NodeSharedClassLoader();
+    this.classLoaderMap = new ConcurrentHashMap<>();
   }
 
   public <T extends ConstraintProvider> Class<T> buildNodeSharedConstraintProvider(
@@ -36,7 +41,8 @@ public final class DefaultConstraintProviderNodeSharer {
       LOGGER.debug("Bytecode transformation completed for {}", constraintProviderClass.getName());
 
       Class<T> transformedClass =
-          classLoader.defineNodeSharedClass(constraintProviderClass, transformedBytecode);
+          getClassLoader(constraintProviderClass)
+              .defineNodeSharedClass(constraintProviderClass, transformedBytecode);
       LOGGER.info(
           "Successfully created node-shared ConstraintProvider: {} -> {}",
           constraintProviderClass.getSimpleName(),
@@ -57,9 +63,16 @@ public final class DefaultConstraintProviderNodeSharer {
       throw new IllegalStateException(
           "Failed to create node-shared ConstraintProvider for "
               + constraintProviderClass.getName()
-              + ". Falling back to original class. Error: "
+              + ". Error: "
               + e.getMessage(),
           e);
     }
+  }
+
+  private NodeSharedClassLoader getClassLoader(Class<?> constraintProviderClass) {
+    ClassLoader parentClassLoader = constraintProviderClass.getClassLoader();
+    Object cacheKey = parentClassLoader == null ? BOOTSTRAP_CLASS_LOADER_KEY : parentClassLoader;
+    return classLoaderMap.computeIfAbsent(
+        cacheKey, ignored -> new NodeSharedClassLoader(parentClassLoader));
   }
 }

@@ -105,6 +105,31 @@ class ScoreDirectorFactoryFactoryTest {
     assertThat(scoreDirectorFactory).isInstanceOf(BavetConstraintStreamScoreDirectorFactory.class);
   }
 
+  @Test
+  void constraintStreamsAutomaticNodeSharingFailsFastOnInvalidProvider() {
+    var config =
+        new ScoreDirectorFactoryConfig()
+            .withConstraintProviderClass(InvalidAutomaticNodeSharingConstraintProvider.class)
+            .withConstraintStreamAutomaticNodeSharing(true);
+
+    assertThatExceptionOfType(IllegalArgumentException.class)
+        .isThrownBy(() -> buildTestdataScoreDirectoryFactory(config))
+        .withMessageContaining("must not be final")
+        .withMessageContaining("automatic node sharing");
+  }
+
+  @Test
+  void constraintStreamsDisabledAutomaticNodeSharingKeepsInvalidProviderUsable() {
+    var config =
+        new ScoreDirectorFactoryConfig()
+            .withConstraintProviderClass(InvalidAutomaticNodeSharingConstraintProvider.class)
+            .withConstraintStreamAutomaticNodeSharing(false);
+
+    var scoreDirectorFactory = buildTestdataScoreDirectoryFactory(config);
+
+    assertThat(scoreDirectorFactory).isInstanceOf(BavetConstraintStreamScoreDirectorFactory.class);
+  }
+
   public static class TestCustomPropertiesEasyScoreCalculator
       implements EasyScoreCalculator<TestdataSolution, SimpleScore> {
 
@@ -185,6 +210,15 @@ class ScoreDirectorFactoryFactoryTest {
   }
 
   public static class TestdataConstraintProvider implements ConstraintProvider {
+    @Override
+    public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+      return new Constraint[0];
+    }
+  }
+
+  public static final class InvalidAutomaticNodeSharingConstraintProvider
+      implements ConstraintProvider {
+
     @Override
     public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
       return new Constraint[0];
