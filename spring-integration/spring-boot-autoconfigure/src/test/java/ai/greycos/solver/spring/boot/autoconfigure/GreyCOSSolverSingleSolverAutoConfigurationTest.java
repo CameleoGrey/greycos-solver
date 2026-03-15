@@ -238,9 +238,9 @@ class GreyCOSSolverSingleSolverAutoConfigurationTest {
                     .run(context -> context.getBean(SolverFactory.class)))
         .hasMessageContainingAll(
             "@ShadowVariable (value1AndValue2)",
-            "supplierMethod (value1AndValue2Supplier) that does not exist",
+            "supplierName (value1AndValue2Supplier) that does not exist",
             "inside its declaring class (ai.greycos.solver.spring.boot.autoconfigure.missingsuppliervariable.cotwin.TestdataSpringMissingSupplierVariableEntity).",
-            "Maybe you misspelled the supplierMethod name?");
+            "Maybe you misspelled the supplierName name?");
   }
 
   @Test

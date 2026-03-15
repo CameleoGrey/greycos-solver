@@ -15,10 +15,10 @@
     <name>First Fit</name>
     <subSingleCount>1</subSingleCount>
     <solverConfig>
-      <solutionClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution</solutionClass>
-      <entityClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity</entityClass>
+      <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+      <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -63,10 +63,10 @@
     <name>First Fit Decreasing</name>
     <subSingleCount>1</subSingleCount>
     <solverConfig>
-      <solutionClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution</solutionClass>
-      <entityClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity</entityClass>
+      <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+      <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -111,10 +111,10 @@
     <name>Tabu Search</name>
     <subSingleCount>1</subSingleCount>
     <solverConfig>
-      <solutionClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution</solutionClass>
-      <entityClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity</entityClass>
+      <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+      <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -177,10 +177,10 @@
     <name>Late Acceptance</name>
     <subSingleCount>1</subSingleCount>
     <solverConfig>
-      <solutionClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution</solutionClass>
-      <entityClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity</entityClass>
+      <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+      <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -243,10 +243,10 @@
     <name>Tabu Search Nearby</name>
     <subSingleCount>1</subSingleCount>
     <solverConfig>
-      <solutionClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution</solutionClass>
-      <entityClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity</entityClass>
+      <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+      <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -262,7 +262,7 @@
             <valueSelector>
               <nearbySelection>
                 <originEntitySelector mimicSelectorRef="entitySelector1"/>
-                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
+                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
                 <parabolicDistributionSizeMaximum>40</parabolicDistributionSizeMaximum>
               </nearbySelection>
             </valueSelector>
@@ -272,7 +272,7 @@
             <secondaryEntitySelector>
               <nearbySelection>
                 <originEntitySelector mimicSelectorRef="entitySelector2"/>
-                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
+                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
                 <parabolicDistributionSizeMaximum>40</parabolicDistributionSizeMaximum>
               </nearbySelection>
             </secondaryEntitySelector>
@@ -282,7 +282,7 @@
             <valueSelector>
               <nearbySelection>
                 <originEntitySelector mimicSelectorRef="entitySelector3"/>
-                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
+                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
                 <parabolicDistributionSizeMaximum>40</parabolicDistributionSizeMaximum>
               </nearbySelection>
             </valueSelector>
@@ -331,10 +331,10 @@
     <name>Late Acceptance Nearby</name>
     <subSingleCount>1</subSingleCount>
     <solverConfig>
-      <solutionClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedSolution</solutionClass>
-      <entityClass>ai.greycos.solver.core.testcotwin.chained.TestdataChainedEntity</entityClass>
+      <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+      <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -350,7 +350,7 @@
             <valueSelector>
               <nearbySelection>
                 <originEntitySelector mimicSelectorRef="entitySelector1"/>
-                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
+                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
                 <parabolicDistributionSizeMaximum>40</parabolicDistributionSizeMaximum>
               </nearbySelection>
             </valueSelector>
@@ -360,7 +360,7 @@
             <secondaryEntitySelector>
               <nearbySelection>
                 <originEntitySelector mimicSelectorRef="entitySelector2"/>
-                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
+                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
                 <parabolicDistributionSizeMaximum>40</parabolicDistributionSizeMaximum>
               </nearbySelection>
             </secondaryEntitySelector>
@@ -370,7 +370,7 @@
             <valueSelector>
               <nearbySelection>
                 <originEntitySelector mimicSelectorRef="entitySelector3"/>
-                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
+                <nearbyDistanceMeterClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyDistanceNearbyMeter</nearbyDistanceMeterClass>
                 <parabolicDistributionSizeMaximum>40</parabolicDistributionSizeMaximum>
               </nearbySelection>
             </valueSelector>

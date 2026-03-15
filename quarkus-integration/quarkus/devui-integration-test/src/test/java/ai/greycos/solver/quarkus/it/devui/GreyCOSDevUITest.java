@@ -129,11 +129,7 @@ public class GreyCOSDevUITest extends DevUIJsonRPCTest {
     JsonNode constraintsResponse = super.executeJsonRPCMethod("getConstraints");
     assertThat(constraintsResponse.get("default"))
         .containsExactly(
-            new TextNode(
-                TestdataStringLengthShadowSolution.class.getPackage().getName()
-                    + "/Don't assign 2 entities the same value."),
-            new TextNode(
-                TestdataStringLengthShadowSolution.class.getPackage().getName()
-                    + "/Maximize value length"));
+            new TextNode("Don't assign 2 entities the same value."),
+            new TextNode("Maximize value length"));
   }
 }

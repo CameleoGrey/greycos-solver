@@ -10,11 +10,11 @@ import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -141,7 +141,7 @@ public class IncludeAbstractClassesEntityScanner extends EntityScanner {
       return null;
     }
     return solutionClassSet.stream()
-        .filter(c -> !Modifier.isAbstract(c.getModifiers()))
+        .filter(GreyCOSSolverAutoConfiguration.UNIQUENESS_PREDICATE)
         .findFirst()
         .orElse(null);
   }
@@ -173,13 +173,18 @@ public class IncludeAbstractClassesEntityScanner extends EntityScanner {
 
   private Set<Class<?>> findAllClassesUsingClassLoader(ClassLoader classLoader, String packageName)
       throws IOException {
-    try (InputStream stream = classLoader.getResourceAsStream(packageName.replaceAll("[.]", "/"));
+    InputStream stream = classLoader.getResourceAsStream(packageName.replaceAll("[.]", "/"));
+    if (stream == null) {
+      return Set.of();
+    }
+    try (stream;
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
       return reader
           .lines()
           .filter(line -> line.endsWith(".class"))
           .map(className -> packageName + "." + className.substring(0, className.lastIndexOf('.')))
           .map(className -> getClass(classLoader, className))
+          .filter(Objects::nonNull)
           .collect(Collectors.toSet());
     }
   }

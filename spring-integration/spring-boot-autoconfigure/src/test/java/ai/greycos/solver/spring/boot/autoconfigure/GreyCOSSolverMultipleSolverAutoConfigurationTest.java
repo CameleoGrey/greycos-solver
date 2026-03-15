@@ -24,8 +24,12 @@ import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleIncrementalScor
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleSolutionsSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.NoEntitySpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.NoSolutionSpringTestConfiguration;
+import ai.greycos.solver.spring.boot.autoconfigure.dummy.gizmo.constraints.easy.DummyGizmoEasyScore;
+import ai.greycos.solver.spring.boot.autoconfigure.dummy.gizmo.constraints.incremental.DummyGizmoIncrementalScore;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.normal.constraints.easy.DummySpringEasyScore;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.normal.constraints.incremental.DummySpringIncrementalScore;
+import ai.greycos.solver.spring.boot.autoconfigure.gizmo.constraints.TestdataGizmoConstraintProvider;
+import ai.greycos.solver.spring.boot.autoconfigure.gizmo.cotwin.TestdataGizmoSpringSolution;
 import ai.greycos.solver.spring.boot.autoconfigure.invalid.entity.InvalidEntitySpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.invalid.solution.InvalidSolutionSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.invalid.type.InvalidEntityTypeSpringTestConfiguration;
@@ -515,7 +519,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a PlanningSolution class, yet there are multiple available",
-            "TestdataChainedSpringSolution",
+            TestdataGizmoSpringSolution.class.getSimpleName(),
             TestdataSpringSolution.class.getSimpleName(),
             "on the classpath.");
   }
@@ -534,7 +538,9 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
         .cause()
         .message()
         .contains(
-            "Unused classes ([ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin.TestdataChainedSpringSolution]) found with a @PlanningSolution annotation.");
+            "Unused classes (["
+                + TestdataGizmoSpringSolution.class.getCanonicalName()
+                + "]) found with a @PlanningSolution annotation.");
   }
 
   @Test
@@ -582,7 +588,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a EasyScoreCalculator score calculator class, yet there are multiple available",
-            "DummyChainedSpringEasyScore",
+            DummyGizmoEasyScore.class.getSimpleName(),
             DummySpringEasyScore.class.getSimpleName(),
             "on the classpath.");
   }
@@ -603,7 +609,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a ConstraintProvider score calculator class, yet there are multiple available",
-            "TestdataChainedSpringConstraintProvider",
+            TestdataGizmoConstraintProvider.class.getSimpleName(),
             TestdataSpringConstraintProvider.class.getSimpleName(),
             "on the classpath.");
   }
@@ -625,7 +631,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a IncrementalScoreCalculator score calculator class, yet there are multiple available",
-            "DummyChainedSpringIncrementalScore",
+            DummyGizmoIncrementalScore.class.getSimpleName(),
             DummySpringIncrementalScore.class.getSimpleName(),
             "on the classpath.");
   }
@@ -646,7 +652,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a EasyScoreCalculator score calculator class, yet there are multiple available",
-            "DummyChainedSpringEasyScore",
+            DummyGizmoEasyScore.class.getSimpleName(),
             DummySpringEasyScore.class.getSimpleName(),
             "on the classpath.");
   }
@@ -667,7 +673,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a ConstraintProvider score calculator class, yet there are multiple available",
-            "TestdataChainedSpringConstraintProvider",
+            TestdataGizmoConstraintProvider.class.getSimpleName(),
             TestdataSpringConstraintProvider.class.getSimpleName(),
             "on the classpath.");
   }
@@ -689,7 +695,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
             "solver2",
             "solver1",
             "don't specify a IncrementalScoreCalculator score calculator class, yet there are multiple available",
-            "DummyChainedSpringIncrementalScore",
+            DummyGizmoIncrementalScore.class.getSimpleName(),
             DummySpringIncrementalScore.class.getSimpleName(),
             "on the classpath.");
   }
@@ -728,7 +734,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
         .message()
         .contains(
             "Unused classes (["
-                + "ai.greycos.solver.spring.boot.autoconfigure.chained.constraints.TestdataChainedSpringConstraintProvider"
+                + TestdataGizmoConstraintProvider.class.getCanonicalName()
                 + "]) that implements ConstraintProvider were found.");
   }
 

@@ -8,6 +8,6 @@ import org.springframework.context.annotation.Configuration;
     basePackages = {
       "ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin",
       "ai.greycos.solver.spring.boot.autoconfigure.normal.constraints",
-      "ai.greycos.solver.spring.boot.autoconfigure.chained.constraints"
+      "ai.greycos.solver.spring.boot.autoconfigure.gizmo.constraints"
     })
 public class MultipleConstraintProviderSpringTestConfiguration {}

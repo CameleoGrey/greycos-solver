@@ -7,6 +7,6 @@ import org.springframework.context.annotation.Configuration;
 @EntityScan(
     basePackages = {
       "ai.greycos.solver.spring.boot.autoconfigure.normal.cotwin",
-      "ai.greycos.solver.spring.boot.autoconfigure.chained.cotwin"
+      "ai.greycos.solver.spring.boot.autoconfigure.gizmo.cotwin"
     })
 public class MultipleSolutionsSpringTestConfiguration {}

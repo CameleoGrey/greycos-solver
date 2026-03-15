@@ -8,8 +8,12 @@ import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleIncrementalScor
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.MultipleSolutionsSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.NoEntitySpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.NoSolutionSpringTestConfiguration;
+import ai.greycos.solver.spring.boot.autoconfigure.dummy.gizmo.constraints.easy.DummyGizmoEasyScore;
+import ai.greycos.solver.spring.boot.autoconfigure.dummy.gizmo.constraints.incremental.DummyGizmoIncrementalScore;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.normal.constraints.easy.DummySpringEasyScore;
 import ai.greycos.solver.spring.boot.autoconfigure.dummy.normal.constraints.incremental.DummySpringIncrementalScore;
+import ai.greycos.solver.spring.boot.autoconfigure.gizmo.constraints.TestdataGizmoConstraintProvider;
+import ai.greycos.solver.spring.boot.autoconfigure.gizmo.cotwin.TestdataGizmoSpringSolution;
 import ai.greycos.solver.spring.boot.autoconfigure.invalid.solution.InvalidSolutionSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.NoConstraintsSpringTestConfiguration;
 import ai.greycos.solver.spring.boot.autoconfigure.normal.constraints.TestdataSpringConstraintProvider;
@@ -60,7 +64,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple classes",
-            "TestdataChainedSpringSolution",
+            TestdataGizmoSpringSolution.class.getSimpleName(),
             "TestdataSpringSolution",
             "found in the classpath with a @PlanningSolution annotation.");
   }
@@ -104,7 +108,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            "DummyChainedSpringEasyScore",
+            DummyGizmoEasyScore.class.getSimpleName(),
             DummySpringEasyScore.class.getSimpleName(),
             "that implements EasyScoreCalculator were found in the classpath.");
   }
@@ -121,7 +125,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            "TestdataChainedSpringConstraintProvider",
+            TestdataGizmoConstraintProvider.class.getSimpleName(),
             TestdataSpringConstraintProvider.class.getSimpleName(),
             "that implements ConstraintProvider were found in the classpath.");
   }
@@ -139,7 +143,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            "DummyChainedSpringIncrementalScore",
+            DummyGizmoIncrementalScore.class.getSimpleName(),
             DummySpringIncrementalScore.class.getSimpleName(),
             "that implements IncrementalScoreCalculator were found in the classpath.");
   }
@@ -156,7 +160,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            "DummyChainedSpringEasyScore",
+            DummyGizmoEasyScore.class.getSimpleName(),
             DummySpringEasyScore.class.getSimpleName(),
             "that implements EasyScoreCalculator were found in the classpath");
   }
@@ -174,7 +178,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            "TestdataChainedSpringConstraintProvider",
+            TestdataGizmoConstraintProvider.class.getSimpleName(),
             TestdataSpringConstraintProvider.class.getSimpleName(),
             "that implements ConstraintProvider were found in the classpath.");
   }
@@ -193,7 +197,7 @@ class GreyCOSSolverUnspecifiedAutoConfigurationTest {
         .message()
         .contains(
             "Multiple score calculator classes",
-            "DummyChainedSpringIncrementalScore",
+            DummyGizmoIncrementalScore.class.getSimpleName(),
             DummySpringIncrementalScore.class.getSimpleName(),
             "that implements IncrementalScoreCalculator were found in the classpath.");
   }
