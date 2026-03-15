@@ -1,8 +1,6 @@
 package ai.greycos.solver.core.impl.localsearch.decider;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -58,6 +56,9 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   protected CyclicBarrier moveThreadBarrier;
   protected ExecutorService executor;
   protected List<MoveThreadRunner<Solution_, ?>> moveThreadRunnerList;
+  protected volatile boolean fallbackToSingleThreaded = false;
+  protected volatile int consecutiveFailures = 0;
+  protected static final int MAX_CONSECUTIVE_FAILURES = 3;
 
   public MultiThreadedLocalSearchDecider(
       String logIndentation,
@@ -77,6 +78,8 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   @Override
   public void phaseStarted(LocalSearchPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
+    fallbackToSingleThreaded = false;
+    consecutiveFailures = 0;
 
     // Initialize thread-safe queues and barriers
     operationQueue =
@@ -89,25 +92,48 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     executor = createThreadPoolExecutor();
     moveThreadRunnerList = new ArrayList<>(moveThreadCount);
 
-    for (int moveThreadIndex = 0; moveThreadIndex < moveThreadCount; moveThreadIndex++) {
-      MoveThreadRunner<Solution_, ?> moveThreadRunner =
-          new MoveThreadRunner<>(
-              logIndentation,
-              moveThreadIndex,
-              true,
-              operationQueue,
-              resultQueue,
-              moveThreadBarrier,
-              assertMoveScoreFromScratch,
-              assertExpectedUndoMoveScore,
-              assertStepScoreFromScratch,
-              assertExpectedStepScore,
-              assertShadowVariablesAreNotStaleAfterStep);
-      moveThreadRunnerList.add(moveThreadRunner);
-      executor.submit(moveThreadRunner);
+    try {
+      for (int moveThreadIndex = 0; moveThreadIndex < moveThreadCount; moveThreadIndex++) {
+        MoveThreadRunner<Solution_, ?> moveThreadRunner =
+            new MoveThreadRunner<>(
+                logIndentation,
+                moveThreadIndex,
+                true,
+                operationQueue,
+                resultQueue,
+                moveThreadBarrier,
+                assertMoveScoreFromScratch,
+                assertExpectedUndoMoveScore,
+                assertStepScoreFromScratch,
+                assertExpectedStepScore,
+                assertShadowVariablesAreNotStaleAfterStep);
+        moveThreadRunnerList.add(moveThreadRunner);
+        executor.submit(moveThreadRunner);
 
-      // Send setup operation to initialize the thread
-      enqueueOperation(new SetupOperation<>(scoreDirector));
+        // Send setup operation to initialize the thread
+        enqueueOperation(new SetupOperation<>(scoreDirector));
+      }
+    } catch (RuntimeException | Error e) {
+      logger.error(
+          "{}            Failed to initialize move threads, falling back to single-threaded mode: {}",
+          logIndentation,
+          e.getMessage(),
+          e);
+      shutdownMoveThreads();
+      fallbackToSingleThreaded = true;
+
+      if (moveThreadBarrier != null) {
+        try {
+          moveThreadBarrier.reset();
+        } catch (Exception barrierException) {
+          // Ignore barrier exceptions during cleanup.
+        }
+        moveThreadBarrier = null;
+      }
+      operationQueue = null;
+      resultQueue = null;
+      moveThreadRunnerList = null;
+      throw e;
     }
   }
 
@@ -145,6 +171,12 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
 
   @Override
   public void decideNextStep(LocalSearchStepScope<Solution_> stepScope) {
+    if (fallbackToSingleThreaded) {
+      logger.debug("{}            Falling back to single-threaded mode", logIndentation);
+      super.decideNextStep(stepScope);
+      return;
+    }
+
     int stepIndex = stepScope.getStepIndex();
     resultQueue.startNextStep(stepIndex);
 
@@ -163,38 +195,39 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       stepScope.setAcceptedMoveCount(1L);
     } else {
       int selectMoveIndex = 0;
-      int nextForagingMoveIndex = 0;
       int movesInPlay = 0;
       Iterator<Move<Solution_>> moveIterator = moveRepository.iterator();
-      Deque<Move<Solution_>> inFlightMoveQueue = new ArrayDeque<>(selectedMoveBufferSize);
+      var moveLookup = new MoveLookup<Solution_>(selectedMoveBufferSize);
+      boolean stoppedForagingEarly = false;
 
       do {
         boolean hasNextMove = moveIterator.hasNext();
         if (movesInPlay > 0 && (selectMoveIndex >= selectedMoveBufferSize || !hasNextMove)) {
-          if (forageResult(stepScope, stepIndex, nextForagingMoveIndex, inFlightMoveQueue)) {
+          var forageResult = forageResult(stepScope, stepIndex, moveLookup);
+          movesInPlay--;
+          if (forageResult != ForageResult.CONTINUE) {
+            stoppedForagingEarly = true;
             break;
           }
-          nextForagingMoveIndex++;
-          movesInPlay--;
         }
         if (hasNextMove) {
           var move = moveIterator.next();
-          inFlightMoveQueue.addLast(move);
+          moveLookup.put(selectMoveIndex, move);
           var legacyMove = MoveAdapters.toLegacyMove(move);
           enqueueOperation(new MoveEvaluationOperation<>(stepIndex, selectMoveIndex, legacyMove));
           selectMoveIndex++;
           movesInPlay++;
         }
       } while (movesInPlay > 0);
-      inFlightMoveQueue.clear();
+      if (stoppedForagingEarly && movesInPlay > 0) {
+        clearMoveEvaluationOperations(stepIndex);
+      }
       // Pick the best move from the results
       pickMove(stepScope);
     }
 
-    clearMoveEvaluationOperations();
-
     // If we have a step, apply it to all threads
-    if (stepScope.getStep() != null) {
+    if (stepScope.getStep() != null && !fallbackToSingleThreaded) {
       InnerScoreDirector<Solution_, ?> scoreDirector = stepScope.getScoreDirector();
       if (scoreDirector.requiresFlushing() && stepIndex % 100 == 99) {
         // Flush delayed score director state periodically to avoid unbounded buildup.
@@ -211,18 +244,47 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     }
   }
 
-  private boolean forageResult(
-      LocalSearchStepScope<Solution_> stepScope,
-      int stepIndex,
-      int expectedMoveIndex,
-      Deque<Move<Solution_>> inFlightMoveQueue) {
+  private ForageResult forageResult(
+      LocalSearchStepScope<Solution_> stepScope, int stepIndex, MoveLookup<Solution_> moveLookup) {
     OrderByMoveIndexBlockingQueue.MoveResult<Solution_> result;
     try {
       result = resultQueue.take();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return true;
+      return ForageResult.STOP;
+    } catch (RuntimeException e) {
+      consecutiveFailures++;
+      logger.error(
+          "{}            Move thread threw exception while waiting for result: {}",
+          logIndentation,
+          e.getMessage(),
+          e);
+      logger.warn(
+          "{}            Falling back to single-threaded mode after move thread failure.",
+          logIndentation);
+      fallbackToSingleThreaded = true;
+      return ForageResult.STOP;
     }
+
+    if (result.getThrowable() != null) {
+      consecutiveFailures++;
+      logger.error(
+          "{}            Move thread ({}) threw exception: {}",
+          logIndentation,
+          result.getMoveThreadIndex(),
+          result.getThrowable());
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        logger.warn(
+            "{}            Too many consecutive failures ({}), falling back to single-threaded mode",
+            logIndentation,
+            consecutiveFailures);
+        fallbackToSingleThreaded = true;
+        return ForageResult.STOP;
+      }
+      return ForageResult.CONTINUE;
+    }
+
+    consecutiveFailures = 0;
 
     if (stepIndex != result.getStepIndex()) {
       throw new IllegalStateException(
@@ -232,17 +294,8 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
               + result.getStepIndex()
               + ").");
     }
-    if (expectedMoveIndex != result.getMoveIndex()) {
-      throw new IllegalStateException(
-          "Impossible situation: expected moveIndex ("
-              + expectedMoveIndex
-              + ") differs from result moveIndex ("
-              + result.getMoveIndex()
-              + ").");
-    }
-
     int foragingMoveIndex = result.getMoveIndex();
-    Move<Solution_> foragingMove = inFlightMoveQueue.pollFirst();
+    Move<Solution_> foragingMove = moveLookup.take(foragingMoveIndex);
     if (foragingMove == null) {
       foragingMove = result.getMove().rebase(stepScope.getScoreDirector().getMoveDirector());
     }
@@ -272,12 +325,15 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
           foragingMove);
       forager.addMove(moveScope);
       if (forager.isQuitEarly()) {
-        return true;
+        return ForageResult.STOP_FORAGING;
       }
     }
 
     stepScope.getPhaseScope().getSolverScope().checkYielding();
-    return termination.isPhaseTerminated(stepScope.getPhaseScope());
+    if (termination.isPhaseTerminated(stepScope.getPhaseScope())) {
+      return ForageResult.STOP_FORAGING;
+    }
+    return ForageResult.CONTINUE;
   }
 
   private void shutdownMoveThreads() {
@@ -287,11 +343,19 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   }
 
   private void enqueueOperation(MoveThreadOperation<Solution_> operation) {
-    operationQueue.add(operation);
+    try {
+      operationQueue.put(operation);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while enqueueing move thread operation.", e);
+    }
   }
 
-  private void clearMoveEvaluationOperations() {
-    operationQueue.removeIf(operation -> operation instanceof MoveEvaluationOperation);
+  private void clearMoveEvaluationOperations(int stepIndex) {
+    operationQueue.removeIf(
+        operation ->
+            operation instanceof MoveEvaluationOperation
+                && ((MoveEvaluationOperation<?>) operation).getStepIndex() == stepIndex);
   }
 
   @Override
@@ -325,5 +389,47 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
 
   public boolean isAssertShadowVariablesAreNotStaleAfterStep() {
     return assertShadowVariablesAreNotStaleAfterStep;
+  }
+
+  private enum ForageResult {
+    CONTINUE,
+    STOP_FORAGING,
+    STOP
+  }
+
+  private static final class MoveLookup<Solution_> {
+
+    private final Move<Solution_>[] moveBySlot;
+    private final int[] moveIndexBySlot;
+
+    @SuppressWarnings("unchecked")
+    private MoveLookup(int capacity) {
+      if (capacity <= 0) {
+        throw new IllegalArgumentException(
+            "Move lookup capacity (" + capacity + ") must be greater than 0.");
+      }
+      moveBySlot = (Move<Solution_>[]) new Move[capacity];
+      moveIndexBySlot = new int[capacity];
+      for (int i = 0; i < capacity; i++) {
+        moveIndexBySlot[i] = Integer.MIN_VALUE;
+      }
+    }
+
+    private void put(int moveIndex, Move<Solution_> move) {
+      int slot = moveIndex % moveBySlot.length;
+      moveBySlot[slot] = move;
+      moveIndexBySlot[slot] = moveIndex;
+    }
+
+    private Move<Solution_> take(int moveIndex) {
+      int slot = moveIndex % moveBySlot.length;
+      if (moveIndexBySlot[slot] != moveIndex) {
+        return null;
+      }
+      var move = moveBySlot[slot];
+      moveBySlot[slot] = null;
+      moveIndexBySlot[slot] = Integer.MIN_VALUE;
+      return move;
+    }
   }
 }

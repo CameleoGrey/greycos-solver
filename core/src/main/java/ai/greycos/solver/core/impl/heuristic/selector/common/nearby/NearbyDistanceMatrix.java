@@ -147,7 +147,7 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
     }
 
     if (actualSize > 1) {
-      sortByDistance(destinationBuffer, distanceBuffer, 0, actualSize - 1);
+      heapSortByDistance(destinationBuffer, distanceBuffer, actualSize);
     }
     Destination[] sorted = (Destination[]) new Object[actualSize];
     System.arraycopy(destinationBuffer, 0, sorted, 0, actualSize);
@@ -158,6 +158,7 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
   private Destination[] computePartialSort(@NonNull Origin origin, int k, int expectedSize) {
     Object[] heapDestinations = new Object[k];
     double[] heapDistances = new double[k];
+    int[] heapInsertionOrders = new int[k];
     int heapSize = 0;
 
     Iterator<Destination> destinationIterator = destinationIteratorProvider.apply(origin);
@@ -166,17 +167,24 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
     while (destinationIterator.hasNext()) {
       Destination destination = destinationIterator.next();
       double distance = nearbyDistanceMeter.getNearbyDistance(origin, destination);
+      int insertionOrder = actualSize;
       actualSize++;
 
       if (heapSize < k) {
         heapDestinations[heapSize] = destination;
         heapDistances[heapSize] = distance;
-        siftUpMaxHeap(heapDestinations, heapDistances, heapSize);
+        heapInsertionOrders[heapSize] = insertionOrder;
+        siftUpMaxHeapByDistanceThenOrder(
+            heapDestinations, heapDistances, heapInsertionOrders, heapSize);
         heapSize++;
-      } else if (Double.compare(distance, heapDistances[0]) < 0) {
+      } else if (compareDistanceThenOrder(
+              distance, insertionOrder, heapDistances[0], heapInsertionOrders[0])
+          < 0) {
         heapDestinations[0] = destination;
         heapDistances[0] = distance;
-        siftDownMaxHeap(heapDestinations, heapDistances, heapSize, 0);
+        heapInsertionOrders[0] = insertionOrder;
+        siftDownMaxHeapByDistanceThenOrder(
+            heapDestinations, heapDistances, heapInsertionOrders, heapSize, 0);
       }
     }
 
@@ -189,8 +197,19 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
               + ").");
     }
 
-    if (heapSize > 1) {
-      sortByDistance(heapDestinations, heapDistances, 0, heapSize - 1);
+    if (heapSize < 2) {
+      if (heapSize == heapDestinations.length) {
+        return (Destination[]) heapDestinations;
+      }
+      Destination[] result = (Destination[]) new Object[heapSize];
+      if (heapSize > 0) {
+        System.arraycopy(heapDestinations, 0, result, 0, heapSize);
+      }
+      return result;
+    }
+    heapSortByDistanceThenOrder(heapDestinations, heapDistances, heapInsertionOrders, heapSize);
+    if (heapSize == heapDestinations.length) {
+      return (Destination[]) heapDestinations;
     }
     Destination[] result = (Destination[]) new Object[heapSize];
     System.arraycopy(heapDestinations, 0, result, 0, heapSize);
@@ -207,78 +226,140 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
     return previousCapacity << 1;
   }
 
-  private static void siftUpMaxHeap(Object[] destinations, double[] distances, int index) {
-    int current = index;
-    while (current > 0) {
-      int parent = (current - 1) >>> 1;
-      if (Double.compare(distances[parent], distances[current]) >= 0) {
-        return;
-      }
-      swap(destinations, distances, parent, current);
-      current = parent;
+  private static int compareDistanceThenOrder(
+      double leftDistance, int leftOrder, double rightDistance, int rightOrder) {
+    int distanceComparison = Double.compare(leftDistance, rightDistance);
+    if (distanceComparison != 0) {
+      return distanceComparison;
+    }
+    return Integer.compare(leftOrder, rightOrder);
+  }
+
+  private static void heapSortByDistance(
+      Object[] heapDestinations, double[] heapDistances, int heapSize) {
+    for (int index = (heapSize >>> 1) - 1; index >= 0; index--) {
+      siftDownMaxHeapByDistance(heapDestinations, heapDistances, heapSize, index);
+    }
+    for (int end = heapSize - 1; end > 0; end--) {
+      swapHeapElements(heapDestinations, heapDistances, 0, end);
+      siftDownMaxHeapByDistance(heapDestinations, heapDistances, end, 0);
     }
   }
 
-  private static void siftDownMaxHeap(
-      Object[] destinations, double[] distances, int size, int index) {
-    int current = index;
+  private static void siftDownMaxHeapByDistance(
+      Object[] heapDestinations, double[] heapDistances, int heapSize, int index) {
+    int parentIndex = index;
     while (true) {
-      int leftChild = (current << 1) + 1;
-      if (leftChild >= size) {
+      int leftChildIndex = (parentIndex << 1) + 1;
+      if (leftChildIndex >= heapSize) {
         return;
       }
-      int rightChild = leftChild + 1;
-      int maxChild = leftChild;
-      if (rightChild < size && Double.compare(distances[rightChild], distances[leftChild]) > 0) {
-        maxChild = rightChild;
+      int rightChildIndex = leftChildIndex + 1;
+      int largestIndex = leftChildIndex;
+      if (rightChildIndex < heapSize
+          && Double.compare(heapDistances[rightChildIndex], heapDistances[leftChildIndex]) > 0) {
+        largestIndex = rightChildIndex;
       }
-      if (Double.compare(distances[current], distances[maxChild]) >= 0) {
+      if (Double.compare(heapDistances[parentIndex], heapDistances[largestIndex]) >= 0) {
         return;
       }
-      swap(destinations, distances, current, maxChild);
-      current = maxChild;
+      swapHeapElements(heapDestinations, heapDistances, parentIndex, largestIndex);
+      parentIndex = largestIndex;
     }
   }
 
-  private static void sortByDistance(
-      Object[] destinations, double[] distances, int lowInclusive, int highInclusive) {
-    int left = lowInclusive;
-    int right = highInclusive;
-    double pivot = distances[(lowInclusive + highInclusive) >>> 1];
-
-    while (left <= right) {
-      while (Double.compare(distances[left], pivot) < 0) {
-        left++;
+  private static void siftUpMaxHeapByDistanceThenOrder(
+      Object[] heapDestinations, double[] heapDistances, int[] heapInsertionOrders, int index) {
+    int childIndex = index;
+    while (childIndex > 0) {
+      int parentIndex = (childIndex - 1) >>> 1;
+      if (compareDistanceThenOrder(
+              heapDistances[childIndex],
+              heapInsertionOrders[childIndex],
+              heapDistances[parentIndex],
+              heapInsertionOrders[parentIndex])
+          <= 0) {
+        return;
       }
-      while (Double.compare(distances[right], pivot) > 0) {
-        right--;
-      }
-      if (left <= right) {
-        swap(destinations, distances, left, right);
-        left++;
-        right--;
-      }
-    }
-
-    if (lowInclusive < right) {
-      sortByDistance(destinations, distances, lowInclusive, right);
-    }
-    if (left < highInclusive) {
-      sortByDistance(destinations, distances, left, highInclusive);
+      swapHeapElements(
+          heapDestinations, heapDistances, heapInsertionOrders, childIndex, parentIndex);
+      childIndex = parentIndex;
     }
   }
 
-  private static void swap(
-      Object[] destinations, double[] distances, int leftIndex, int rightIndex) {
-    if (leftIndex == rightIndex) {
-      return;
+  private static void siftDownMaxHeapByDistanceThenOrder(
+      Object[] heapDestinations,
+      double[] heapDistances,
+      int[] heapInsertionOrders,
+      int heapSize,
+      int index) {
+    int parentIndex = index;
+    while (true) {
+      int leftChildIndex = (parentIndex << 1) + 1;
+      if (leftChildIndex >= heapSize) {
+        return;
+      }
+      int rightChildIndex = leftChildIndex + 1;
+      int largestIndex = leftChildIndex;
+      if (rightChildIndex < heapSize
+          && compareDistanceThenOrder(
+                  heapDistances[rightChildIndex],
+                  heapInsertionOrders[rightChildIndex],
+                  heapDistances[leftChildIndex],
+                  heapInsertionOrders[leftChildIndex])
+              > 0) {
+        largestIndex = rightChildIndex;
+      }
+      if (compareDistanceThenOrder(
+              heapDistances[parentIndex],
+              heapInsertionOrders[parentIndex],
+              heapDistances[largestIndex],
+              heapInsertionOrders[largestIndex])
+          >= 0) {
+        return;
+      }
+      swapHeapElements(
+          heapDestinations, heapDistances, heapInsertionOrders, parentIndex, largestIndex);
+      parentIndex = largestIndex;
     }
-    Object destination = destinations[leftIndex];
-    destinations[leftIndex] = destinations[rightIndex];
-    destinations[rightIndex] = destination;
+  }
 
-    double distance = distances[leftIndex];
-    distances[leftIndex] = distances[rightIndex];
-    distances[rightIndex] = distance;
+  private static void heapSortByDistanceThenOrder(
+      Object[] heapDestinations, double[] heapDistances, int[] heapInsertionOrders, int heapSize) {
+    for (int end = heapSize - 1; end > 0; end--) {
+      swapHeapElements(heapDestinations, heapDistances, heapInsertionOrders, 0, end);
+      siftDownMaxHeapByDistanceThenOrder(
+          heapDestinations, heapDistances, heapInsertionOrders, end, 0);
+    }
+  }
+
+  private static void swapHeapElements(
+      Object[] heapDestinations,
+      double[] heapDistances,
+      int[] heapInsertionOrders,
+      int leftIndex,
+      int rightIndex) {
+    Object destination = heapDestinations[leftIndex];
+    heapDestinations[leftIndex] = heapDestinations[rightIndex];
+    heapDestinations[rightIndex] = destination;
+
+    double distance = heapDistances[leftIndex];
+    heapDistances[leftIndex] = heapDistances[rightIndex];
+    heapDistances[rightIndex] = distance;
+
+    int insertionOrder = heapInsertionOrders[leftIndex];
+    heapInsertionOrders[leftIndex] = heapInsertionOrders[rightIndex];
+    heapInsertionOrders[rightIndex] = insertionOrder;
+  }
+
+  private static void swapHeapElements(
+      Object[] heapDestinations, double[] heapDistances, int leftIndex, int rightIndex) {
+    Object destination = heapDestinations[leftIndex];
+    heapDestinations[leftIndex] = heapDestinations[rightIndex];
+    heapDestinations[rightIndex] = destination;
+
+    double distance = heapDistances[leftIndex];
+    heapDistances[leftIndex] = heapDistances[rightIndex];
+    heapDistances[rightIndex] = distance;
   }
 }

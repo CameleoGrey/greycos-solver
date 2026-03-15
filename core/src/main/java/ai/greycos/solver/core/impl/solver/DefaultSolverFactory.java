@@ -106,6 +106,8 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
     var solverScope = new SolverScope<Solution_>(clock);
     var monitoringConfig = solverConfig.determineMetricConfig();
     solverScope.setMonitoringTags(Tags.empty());
+    solverScope.setConstraintMatchMetricSampleInterval(
+        monitoringConfig.determineConstraintMatchMetricSampleInterval());
     var solverMetricList = Objects.requireNonNull(monitoringConfig.getSolverMetricList());
     var metricsRequiringConstraintMatchSet = Collections.<SolverMetric>emptyList();
     if (!solverMetricList.isEmpty()) {

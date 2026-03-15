@@ -34,6 +34,8 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
 
   protected final VariableDescriptorAwareScoreDirector<Solution_> externalScoreDirector;
   private final InnerScoreDirector<Solution_, Score_> backingScoreDirector;
+  private @Nullable EphemeralMoveDirector<Solution_, Score_> reusableEphemeralMoveDirector = null;
+  private boolean reusableEphemeralMoveDirectorInUse = false;
 
   public MoveDirector(InnerScoreDirector<Solution_, Score_> scoreDirector) {
     this.backingScoreDirector = Objects.requireNonNull(scoreDirector);
@@ -442,31 +444,35 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
   }
 
   public final InnerScore<Score_> executeTemporary(Move<Solution_> move) {
-    var ephemeralMoveDirector = ephemeral();
+    var ephemeralMoveDirector = borrowEphemeralMoveDirector();
     ephemeralMoveDirector.execute(move);
     var score = backingScoreDirector.calculateScore();
     ephemeralMoveDirector.close(); // This undoes the move.
+    releaseEphemeralMoveDirector(ephemeralMoveDirector);
     return score;
   }
 
   public <Result_> @Nullable Result_ executeTemporary(
       Move<Solution_> move,
       TemporaryMovePostprocessor<Solution_, Score_, @Nullable Result_> postprocessor) {
-    try (var ephemeralMoveDirector = ephemeral()) {
-      ephemeralMoveDirector.execute(move);
-      var score = backingScoreDirector.calculateScore();
-      return postprocessor.apply(score, ephemeralMoveDirector.createUndoMove());
-    }
+    var ephemeralMoveDirector = borrowEphemeralMoveDirector();
+    ephemeralMoveDirector.execute(move);
+    var score = backingScoreDirector.calculateScore();
+    var result = postprocessor.apply(score, ephemeralMoveDirector.createUndoMove());
+    ephemeralMoveDirector.close(); // This undoes the move.
+    releaseEphemeralMoveDirector(ephemeralMoveDirector);
+    return result;
   }
 
   public <Result_> @Nullable Result_ executeTemporary(
       Move<Solution_> move,
       Function<Solution_, @Nullable Result_> postprocessor,
       boolean guaranteeFreshScore) {
-    var ephemeralMoveDirector = ephemeral();
+    var ephemeralMoveDirector = borrowEphemeralMoveDirector();
     ephemeralMoveDirector.execute(move);
     var result = postprocessor.apply(backingScoreDirector.getWorkingSolution());
     ephemeralMoveDirector.close(); // This undoes the move.
+    releaseEphemeralMoveDirector(ephemeralMoveDirector);
     if (guaranteeFreshScore) {
       backingScoreDirector.calculateScore();
     }
@@ -566,6 +572,24 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
    */
   final EphemeralMoveDirector<Solution_, Score_> ephemeral() {
     return new EphemeralMoveDirector<>(backingScoreDirector);
+  }
+
+  private EphemeralMoveDirector<Solution_, Score_> borrowEphemeralMoveDirector() {
+    if (reusableEphemeralMoveDirectorInUse) {
+      return ephemeral();
+    }
+    if (reusableEphemeralMoveDirector == null) {
+      reusableEphemeralMoveDirector = ephemeral();
+    }
+    reusableEphemeralMoveDirectorInUse = true;
+    return reusableEphemeralMoveDirector;
+  }
+
+  private void releaseEphemeralMoveDirector(
+      EphemeralMoveDirector<Solution_, Score_> ephemeralMoveDirector) {
+    if (ephemeralMoveDirector == reusableEphemeralMoveDirector) {
+      reusableEphemeralMoveDirectorInUse = false;
+    }
   }
 
   @Override

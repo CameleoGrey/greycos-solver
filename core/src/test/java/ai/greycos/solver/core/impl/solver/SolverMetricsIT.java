@@ -23,6 +23,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
+import ai.greycos.solver.core.api.score.stream.Constraint;
+import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
+import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.phase.PhaseCommand;
@@ -705,12 +708,116 @@ class SolverMetricsIT extends AbstractMeterTest {
         .isEqualTo(3);
   }
 
+  @Test
+  void constraintMatchTotalStepScoreMetricsWithoutSampling() {
+    var meterRegistry = new TestMeterRegistry();
+    Metrics.addRegistry(meterRegistry);
+
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
+    solverConfig.setScoreDirectorFactoryConfig(
+        new ScoreDirectorFactoryConfig()
+            .withConstraintProviderClass(ConstraintMatchMetricTestConstraintProvider.class));
+    solverConfig.setMonitoringConfig(
+        new MonitoringConfig()
+            .withSolverMetricList(List.of(SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE))
+            .withConstraintMatchMetricSampleInterval(1));
+    ((LocalSearchPhaseConfig) solverConfig.getPhaseConfigList().get(1))
+        .setTerminationConfig(new TerminationConfig().withStepCountLimit(4));
+
+    var solution = new TestdataSolution("s1");
+    var v1 = new TestdataValue("v1");
+    var v2 = new TestdataValue("v2");
+    solution.setValueList(Arrays.asList(v1, v2));
+    solution.setEntityList(
+        Arrays.asList(new TestdataEntity("e1", v1), new TestdataEntity("e2", v1)));
+
+    var metricSeenDuringStep = new AtomicBoolean(false);
+    var solver = SolverFactory.<TestdataSolution>create(solverConfig).buildSolver();
+    ((DefaultSolver<TestdataSolution>) solver)
+        .addPhaseLifecycleListener(
+            new PhaseLifecycleListenerAdapter<>() {
+              @Override
+              public void stepEnded(AbstractStepScope<TestdataSolution> stepScope) {
+                meterRegistry.publish();
+                if (findConstraintStepScoreGauge(meterRegistry) != null) {
+                  metricSeenDuringStep.set(true);
+                }
+              }
+            });
+
+    solver.solve(solution);
+
+    meterRegistry.publish();
+    assertThat(metricSeenDuringStep).isTrue();
+    assertThat(findConstraintStepScoreGauge(meterRegistry)).isNotNull();
+  }
+
+  @Test
+  void constraintMatchTotalStepScoreMetricsSampledAndFlushedOnPhaseEnd() {
+    var meterRegistry = new TestMeterRegistry();
+    Metrics.addRegistry(meterRegistry);
+
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
+    solverConfig.setScoreDirectorFactoryConfig(
+        new ScoreDirectorFactoryConfig()
+            .withConstraintProviderClass(ConstraintMatchMetricTestConstraintProvider.class));
+    solverConfig.setMonitoringConfig(
+        new MonitoringConfig()
+            .withSolverMetricList(List.of(SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE))
+            .withConstraintMatchMetricSampleInterval(100));
+    ((LocalSearchPhaseConfig) solverConfig.getPhaseConfigList().get(1))
+        .setTerminationConfig(new TerminationConfig().withStepCountLimit(4));
+
+    var solution = new TestdataSolution("s1");
+    var v1 = new TestdataValue("v1");
+    var v2 = new TestdataValue("v2");
+    solution.setValueList(Arrays.asList(v1, v2));
+    solution.setEntityList(
+        Arrays.asList(new TestdataEntity("e1", v1), new TestdataEntity("e2", v1)));
+
+    var metricSeenDuringStep = new AtomicBoolean(false);
+    var solver = SolverFactory.<TestdataSolution>create(solverConfig).buildSolver();
+    ((DefaultSolver<TestdataSolution>) solver)
+        .addPhaseLifecycleListener(
+            new PhaseLifecycleListenerAdapter<>() {
+              @Override
+              public void stepEnded(AbstractStepScope<TestdataSolution> stepScope) {
+                meterRegistry.publish();
+                if (findConstraintStepScoreGauge(meterRegistry) != null) {
+                  metricSeenDuringStep.set(true);
+                }
+              }
+            });
+
+    solver.solve(solution);
+
+    meterRegistry.publish();
+    assertThat(metricSeenDuringStep).isFalse();
+    assertThat(findConstraintStepScoreGauge(meterRegistry)).isNotNull();
+  }
+
   public static class ErrorThrowingEasyScoreCalculator
       implements EasyScoreCalculator<TestdataSolution, SimpleScore> {
 
     @Override
     public @NonNull SimpleScore calculateScore(@NonNull TestdataSolution testdataSolution) {
       throw new IllegalStateException("Thrown exception in constraint provider");
+    }
+  }
+
+  public static class ConstraintMatchMetricTestConstraintProvider implements ConstraintProvider {
+
+    @Override
+    public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+      return new Constraint[] {
+        constraintFactory
+            .forEach(TestdataEntity.class)
+            .filter(entity -> entity.getValue() != null && "v1".equals(entity.getValue().getCode()))
+            .penalize(SimpleScore.ONE)
+            .asConstraint("Penalize V1")
+      };
     }
   }
 
@@ -1064,5 +1171,20 @@ class SolverMetricsIT extends AbstractMeterTest {
     assertThat(moveCountPerChange.get()).isPositive();
     assertThat(moveCountPerSwap.get()).isPositive();
     assertThat(moveCountPer2Opt.get()).isPositive();
+  }
+
+  private static io.micrometer.core.instrument.Gauge findConstraintStepScoreGauge(
+      TestMeterRegistry meterRegistry) {
+    return meterRegistry.getMeters().stream()
+        .filter(
+            meter ->
+                meter
+                    .getId()
+                    .getName()
+                    .equals(SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE.getMeterId() + ".score"))
+        .filter(meter -> meter.getId().getTag("constraint.name") != null)
+        .map(io.micrometer.core.instrument.Gauge.class::cast)
+        .findFirst()
+        .orElse(null);
   }
 }

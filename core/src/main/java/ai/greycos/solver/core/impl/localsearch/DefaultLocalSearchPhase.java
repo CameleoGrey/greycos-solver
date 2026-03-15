@@ -37,9 +37,7 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
   protected final LocalSearchDecider<Solution_> decider;
   protected final AtomicLong acceptedMoveCountPerStep = new AtomicLong(0);
   protected final AtomicLong selectedMoveCountPerStep = new AtomicLong(0);
-  protected final Map<Tags, AtomicLong> constraintMatchTotalTagsToStepCount =
-      new ConcurrentHashMap<>();
-  protected final Map<Tags, AtomicLong> constraintMatchTotalTagsToBestCount =
+  protected final Map<String, ConstraintMatchMetricHandle> constraintIdToMetricHandleMap =
       new ConcurrentHashMap<>();
   protected final Map<Tags, ScoreLevels> constraintMatchTotalStepScoreMap =
       new ConcurrentHashMap<>();
@@ -199,71 +197,110 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   private void collectMetrics(LocalSearchStepScope<Solution_> stepScope) {
-    var phaseScope = stepScope.getPhaseScope();
-    var solverScope = phaseScope.getSolverScope();
+    var solverScope = stepScope.getPhaseScope().getSolverScope();
     if (solverScope.isMetricEnabled(SolverMetric.MOVE_COUNT_PER_STEP)) {
       acceptedMoveCountPerStep.set(stepScope.getAcceptedMoveCount());
       selectedMoveCountPerStep.set(stepScope.getSelectedMoveCount());
     }
-    if (solverScope.isMetricEnabled(SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE)
-        || solverScope.isMetricEnabled(SolverMetric.CONSTRAINT_MATCH_TOTAL_BEST_SCORE)) {
-      var scoreDirector = stepScope.getScoreDirector();
+    collectConstraintMatchTotalMetrics(solverScope, stepScope.getStepIndex(), false);
+  }
+
+  private void collectConstraintMatchTotalMetrics(
+      SolverScope<Solution_> solverScope, long stepIndex, boolean force) {
+    if (!isConstraintMatchMetricEnabled(solverScope)) {
+      return;
+    }
+    if (!force
+        && !isConstraintMatchMetricSamplingStep(
+            stepIndex, solverScope.getConstraintMatchMetricSampleInterval())) {
+      return;
+    }
+    var scoreDirector = solverScope.getScoreDirector();
+    if (scoreDirector.getConstraintMatchPolicy().isEnabled()) {
       var scoreDefinition = solverScope.getScoreDefinition();
-      if (scoreDirector.getConstraintMatchPolicy().isEnabled()) {
-        for (ConstraintMatchTotal<?> constraintMatchTotal :
-            scoreDirector.getConstraintMatchTotalMap().values()) {
-          var tags =
-              solverScope
-                  .getMonitoringTags()
-                  .and("constraint.name", constraintMatchTotal.getConstraintRef().constraintName());
+      var bestMetricEnabled =
+          solverScope.isMetricEnabled(SolverMetric.CONSTRAINT_MATCH_TOTAL_BEST_SCORE);
+      var stepMetricEnabled =
+          solverScope.isMetricEnabled(SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE);
+      for (ConstraintMatchTotal<?> constraintMatchTotal :
+          scoreDirector.getConstraintMatchTotalMap().values()) {
+        var handle =
+            getOrCreateConstraintMatchMetricHandle(
+                solverScope, constraintMatchTotal, bestMetricEnabled, stepMetricEnabled);
+        if (bestMetricEnabled) {
           collectConstraintMatchTotalMetrics(
               SolverMetric.CONSTRAINT_MATCH_TOTAL_BEST_SCORE,
-              tags,
-              constraintMatchTotalTagsToBestCount,
+              handle.tags(),
+              handle.bestCount(),
               constraintMatchTotalBestScoreMap,
               constraintMatchTotal,
-              scoreDefinition,
-              solverScope);
+              scoreDefinition);
+        }
+        if (stepMetricEnabled) {
           collectConstraintMatchTotalMetrics(
               SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE,
-              tags,
-              constraintMatchTotalTagsToStepCount,
+              handle.tags(),
+              handle.stepCount(),
               constraintMatchTotalStepScoreMap,
               constraintMatchTotal,
-              scoreDefinition,
-              solverScope);
+              scoreDefinition);
         }
       }
     }
   }
 
+  private ConstraintMatchMetricHandle getOrCreateConstraintMatchMetricHandle(
+      SolverScope<Solution_> solverScope,
+      ConstraintMatchTotal<?> constraintMatchTotal,
+      boolean bestMetricEnabled,
+      boolean stepMetricEnabled) {
+    var constraintRef = constraintMatchTotal.getConstraintRef();
+    return constraintIdToMetricHandleMap.computeIfAbsent(
+        constraintRef.constraintId(),
+        ignored ->
+            new ConstraintMatchMetricHandle(
+                solverScope
+                    .getMonitoringTags()
+                    .and(
+                        "constraint.package",
+                        constraintRef.packageName(),
+                        "constraint.name",
+                        constraintRef.constraintName()),
+                bestMetricEnabled,
+                stepMetricEnabled));
+  }
+
   private <Score_ extends Score<Score_>> void collectConstraintMatchTotalMetrics(
       SolverMetric metric,
       Tags tags,
-      Map<Tags, AtomicLong> countMap,
+      AtomicLong count,
       Map<Tags, ScoreLevels> scoreMap,
       ConstraintMatchTotal<Score_> constraintMatchTotal,
-      ScoreDefinition<Score_> scoreDefinition,
-      SolverScope<Solution_> solverScope) {
-    if (solverScope.isMetricEnabled(metric)) {
-      if (countMap.containsKey(tags)) {
-        countMap.get(tags).set(constraintMatchTotal.getConstraintMatchCount());
-      } else {
-        var count = new AtomicLong(constraintMatchTotal.getConstraintMatchCount());
-        countMap.put(tags, count);
-        Metrics.gauge(metric.getMeterId() + ".count", tags, count);
-      }
-      SolverMetricUtil.registerScore(
-          metric,
-          tags,
-          scoreDefinition,
-          scoreMap,
-          InnerScore.fullyAssigned(constraintMatchTotal.getScore()));
-    }
+      ScoreDefinition<Score_> scoreDefinition) {
+    count.set(constraintMatchTotal.getConstraintMatchCount());
+    SolverMetricUtil.registerScore(
+        metric,
+        tags,
+        scoreDefinition,
+        scoreMap,
+        InnerScore.fullyAssigned(constraintMatchTotal.getScore()));
+  }
+
+  private static boolean isConstraintMatchMetricEnabled(SolverScope<?> solverScope) {
+    return solverScope.isMetricEnabled(SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE)
+        || solverScope.isMetricEnabled(SolverMetric.CONSTRAINT_MATCH_TOTAL_BEST_SCORE);
+  }
+
+  private static boolean isConstraintMatchMetricSamplingStep(long stepIndex, int sampleInterval) {
+    return sampleInterval <= 1 || (stepIndex + 1) % sampleInterval == 0;
   }
 
   @Override
   public void phaseEnded(LocalSearchPhaseScope<Solution_> phaseScope) {
+    var solverScope = phaseScope.getSolverScope();
+    if (solverScope.getConstraintMatchMetricSampleInterval() > 1) {
+      collectConstraintMatchTotalMetrics(solverScope, phaseScope.getNextStepIndex(), true);
+    }
     super.phaseEnded(phaseScope);
     decider.phaseEnded(phaseScope);
     phaseScope.endingNow();
@@ -288,6 +325,41 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
   public void solvingError(SolverScope<Solution_> solverScope, Exception exception) {
     super.solvingError(solverScope, exception);
     decider.solvingError(solverScope, exception);
+  }
+
+  private static final class ConstraintMatchMetricHandle {
+    private final Tags tags;
+    private final AtomicLong bestCount = new AtomicLong();
+    private final AtomicLong stepCount = new AtomicLong();
+
+    private ConstraintMatchMetricHandle(
+        Tags tags, boolean bestMetricEnabled, boolean stepMetricEnabled) {
+      this.tags = tags;
+      if (bestMetricEnabled) {
+        Metrics.gauge(
+            SolverMetric.CONSTRAINT_MATCH_TOTAL_BEST_SCORE.getMeterId() + ".count",
+            tags,
+            bestCount);
+      }
+      if (stepMetricEnabled) {
+        Metrics.gauge(
+            SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE.getMeterId() + ".count",
+            tags,
+            stepCount);
+      }
+    }
+
+    private Tags tags() {
+      return tags;
+    }
+
+    private AtomicLong bestCount() {
+      return bestCount;
+    }
+
+    private AtomicLong stepCount() {
+      return stepCount;
+    }
   }
 
   public static class Builder<Solution_> extends AbstractPhaseBuilder<Solution_> {

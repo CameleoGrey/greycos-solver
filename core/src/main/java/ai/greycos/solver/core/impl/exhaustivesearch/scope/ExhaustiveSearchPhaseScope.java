@@ -1,7 +1,10 @@
 package ai.greycos.solver.core.impl.exhaustivesearch.scope;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.NavigableMap;
 import java.util.SortedSet;
+import java.util.TreeMap;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
@@ -18,12 +21,14 @@ public final class ExhaustiveSearchPhaseScope<Solution_> extends AbstractPhaseSc
 
   private List<ExhaustiveSearchLayer> layerList;
   private SortedSet<ExhaustiveSearchNode> expandableNodeQueue;
+  private final NavigableMap<InnerScore<?>, List<ExhaustiveSearchNode>> optimisticBoundBuckets;
   private InnerScore<?> bestPessimisticBound;
 
   private ExhaustiveSearchStepScope<Solution_> lastCompletedStepScope;
 
   public ExhaustiveSearchPhaseScope(SolverScope<Solution_> solverScope, int phaseIndex) {
     super(solverScope, phaseIndex, false);
+    optimisticBoundBuckets = new TreeMap<>(ExhaustiveSearchPhaseScope::compareInnerScore);
     lastCompletedStepScope = new ExhaustiveSearchStepScope<>(this, -1);
   }
 
@@ -41,6 +46,7 @@ public final class ExhaustiveSearchPhaseScope<Solution_> extends AbstractPhaseSc
 
   public void setExpandableNodeQueue(SortedSet<ExhaustiveSearchNode> expandableNodeQueue) {
     this.expandableNodeQueue = expandableNodeQueue;
+    optimisticBoundBuckets.clear();
   }
 
   @SuppressWarnings("unchecked")
@@ -75,18 +81,90 @@ public final class ExhaustiveSearchPhaseScope<Solution_> extends AbstractPhaseSc
     var castBestPessimisticBound = this.<Score_>getBestPessimisticBound();
     if (pessimisticBound.compareTo(castBestPessimisticBound) > 0) {
       bestPessimisticBound = pessimisticBound;
-      // Prune the queue
-      // TODO optimize this because expandableNodeQueue is too long to iterate
-      expandableNodeQueue.removeIf(
-          node -> {
-            var optimistic = node.<Score_>getOptimisticBound();
-            return optimistic.compareTo(pessimisticBound) <= 0;
-          });
+      pruneDominatedBuckets(pessimisticBound);
     }
   }
 
   public void addExpandableNode(ExhaustiveSearchNode moveNode) {
-    expandableNodeQueue.add(moveNode);
+    if (!expandableNodeQueue.add(moveNode)) {
+      return;
+    }
     moveNode.setExpandable(true);
+    addToBoundBucket(moveNode);
+  }
+
+  public ExhaustiveSearchNode pollExpandableNode() {
+    while (!expandableNodeQueue.isEmpty()) {
+      var node = expandableNodeQueue.last();
+      expandableNodeQueue.remove(node);
+      removeFromBoundBucket(node);
+
+      if (isDominatedByBestBound(node)) {
+        node.setExpandable(false);
+        continue;
+      }
+      node.setExpandable(false);
+      return node;
+    }
+    return null;
+  }
+
+  private void addToBoundBucket(ExhaustiveSearchNode node) {
+    var optimisticBound = node.getOptimisticBound();
+    if (optimisticBound == null) {
+      return;
+    }
+    optimisticBoundBuckets.computeIfAbsent(optimisticBound, ignored -> new ArrayList<>()).add(node);
+  }
+
+  private void removeFromBoundBucket(ExhaustiveSearchNode node) {
+    var optimisticBound = node.getOptimisticBound();
+    if (optimisticBound == null) {
+      return;
+    }
+    var bucket = optimisticBoundBuckets.get(optimisticBound);
+    if (bucket == null) {
+      return;
+    }
+    bucket.remove(node);
+    if (bucket.isEmpty()) {
+      optimisticBoundBuckets.remove(optimisticBound);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private <Score_ extends Score<Score_>> void pruneDominatedBuckets(
+      InnerScore<Score_> pessimisticBound) {
+    var dominatedBuckets = optimisticBoundBuckets.headMap(pessimisticBound, true);
+    if (dominatedBuckets.isEmpty()) {
+      return;
+    }
+    var doomedNodes = new ArrayList<ExhaustiveSearchNode>();
+    for (var bucket : dominatedBuckets.values()) {
+      doomedNodes.addAll(bucket);
+    }
+    dominatedBuckets.clear();
+    for (var doomedNode : doomedNodes) {
+      if (expandableNodeQueue.remove(doomedNode)) {
+        doomedNode.setExpandable(false);
+      }
+    }
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static int compareInnerScore(InnerScore<?> left, InnerScore<?> right) {
+    return ((Comparable) left).compareTo(right);
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private boolean isDominatedByBestBound(ExhaustiveSearchNode node) {
+    if (bestPessimisticBound == null) {
+      return false;
+    }
+    var optimisticBound = node.getOptimisticBound();
+    if (optimisticBound == null) {
+      return false;
+    }
+    return ((Comparable) optimisticBound).compareTo(bestPessimisticBound) <= 0;
   }
 }

@@ -475,11 +475,18 @@ For more detailed monitoring, GreyCOS Solver can be configured to monitor additi
   <monitoring>
     <metric>BEST_SCORE</metric>
     <metric>SCORE_CALCULATION_COUNT</metric>
+    <constraintMatchMetricSampleInterval>1</constraintMatchMetricSampleInterval>
     ...
   </monitoring>
   ...
 </solver>
 ----
+
+For heavy constraint match monitoring (`CONSTRAINT_MATCH_TOTAL_BEST_SCORE` and
+`CONSTRAINT_MATCH_TOTAL_STEP_SCORE`), set `constraintMatchMetricSampleInterval`
+to collect these metrics every N local search steps.
+The default value is `1` (collect every step), and the solver always flushes
+the latest value at local search phase end.
 
 The following metrics are available:
 

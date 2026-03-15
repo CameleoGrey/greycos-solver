@@ -1,5 +1,6 @@
 package ai.greycos.solver.core.impl.bavet.common;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,6 +31,9 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Propagator {
 
+  private static final int MAX_REUSABLE_TUPLE_LIST_POOL_SIZE = 256;
+  private static final int MAX_REUSABLE_TUPLE_LIST_SIZE = 1024;
+
   private final Set<Object> retractQueue;
   private final Set<Object> insertQueue;
 
@@ -43,6 +47,9 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
   private final Map<Object, List<Tuple_>> objectToOutputTuplesMap;
   private final Set<Object> alreadyUpdatingSet = Collections.newSetFromMap(new IdentityHashMap<>());
   private final Map<Class<?>, Boolean> objectClassToIsEntitySourceClassMap;
+  private final Map<Class<?>, List<BavetRootNode<?>>> rootNodesByClassScratch;
+  private final IdentityHashMap<Tuple_, Tuple_> internalTupleToOutputTupleMapScratch;
+  private final ArrayDeque<ArrayList<Tuple_>> reusableTupleListPool;
 
   private final StaticPropagationQueue<Tuple_> propagationQueue;
 
@@ -61,6 +68,9 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
     this.objectClassToIsEntitySourceClassMap = new HashMap<>();
     this.seenEntitySet = CollectionUtils.newIdentityHashSet(size);
     this.seenFactSet = CollectionUtils.newIdentityHashSet(size);
+    this.rootNodesByClassScratch = new HashMap<>();
+    this.internalTupleToOutputTupleMapScratch = new IdentityHashMap<>(size);
+    this.reusableTupleListPool = new ArrayDeque<>();
 
     this.propagationQueue = new StaticPropagationQueue<>(nextNodesTupleLifecycle);
   }
@@ -92,7 +102,9 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
     // The propagation queue deduplicates updates internally.
     var outTupleList = objectToOutputTuplesMap.get(object);
     if (outTupleList != null) {
-      outTupleList.forEach(propagationQueue::update);
+      for (int i = 0, outTupleListSize = outTupleList.size(); i < outTupleListSize; i++) {
+        propagationQueue.update(outTupleList.get(i));
+      }
     }
   }
 
@@ -109,7 +121,7 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
     if (!retractQueue.isEmpty() || !insertQueue.isEmpty()) {
       var precomputeBuildHelper = precomputeBuildHelperSupplier.get();
       var internalNodeNetwork = precomputeBuildHelper.getNodeNetwork();
-      var objectClassToRootNodes = new HashMap<Class<?>, List<BavetRootNode<?>>>();
+      rootNodesByClassScratch.clear();
       var recordingTupleLifecycle = precomputeBuildHelper.getRecordingTupleLifecycle();
 
       invalidateCache();
@@ -117,13 +129,13 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
       seenFactSet.removeAll(retractQueue);
 
       for (var entity : seenEntitySet) {
-        for (var rootNode : getRootNodes(entity, internalNodeNetwork, objectClassToRootNodes)) {
+        for (var rootNode : getRootNodes(entity, internalNodeNetwork, rootNodesByClassScratch)) {
           rootNode.insert(entity);
         }
       }
 
       for (var fact : seenFactSet) {
-        for (var rootNode : getRootNodes(fact, internalNodeNetwork, objectClassToRootNodes)) {
+        for (var rootNode : getRootNodes(fact, internalNodeNetwork, rootNodesByClassScratch)) {
           rootNode.insert(fact);
         }
       }
@@ -137,7 +149,7 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
         } else {
           seenFactSet.add(object);
         }
-        for (var rootNode : getRootNodes(object, internalNodeNetwork, objectClassToRootNodes)) {
+        for (var rootNode : getRootNodes(object, internalNodeNetwork, rootNodesByClassScratch)) {
           rootNode.insert(object);
         }
       }
@@ -148,7 +160,7 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
       // settle the inner node network, so the inserts/retracts do not interfere
       // with the recording of the first object's tuples
       internalNodeNetwork.settle();
-      recalculateTuples(internalNodeNetwork, objectClassToRootNodes, recordingTupleLifecycle);
+      recalculateTuples(internalNodeNetwork, rootNodesByClassScratch, recordingTupleLifecycle);
 
       propagationQueue.propagateRetracts();
     }
@@ -164,7 +176,7 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
             object.getClass(),
             clazz -> {
               var out = new ArrayList<BavetRootNode<?>>();
-              internalNodeNetwork.getRootNodesAcceptingType(object.getClass()).forEach(out::add);
+              internalNodeNetwork.getRootNodesAcceptingType(clazz).forEach(out::add);
               return out;
             });
   }
@@ -204,7 +216,12 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
   }
 
   private void invalidateCache() {
-    objectToOutputTuplesMap.values().stream().flatMap(List::stream).forEach(this::retractIfPresent);
+    for (var tupleList : objectToOutputTuplesMap.values()) {
+      for (int i = 0, tupleListSize = tupleList.size(); i < tupleListSize; i++) {
+        retractIfPresent(tupleList.get(i));
+      }
+      recycleTupleList(tupleList);
+    }
     objectToOutputTuplesMap.clear();
   }
 
@@ -212,26 +229,52 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
       NodeNetwork internalNodeNetwork,
       Map<Class<?>, List<BavetRootNode<?>>> classToRootNodeList,
       RecordingTupleLifecycle<Tuple_> recordingTupleLifecycle) {
-    var internalTupleToOutputTupleMap = new IdentityHashMap<Tuple_, Tuple_>(seenEntitySet.size());
+    internalTupleToOutputTupleMapScratch.clear();
     for (var invalidated : seenEntitySet) {
-      var mappedTuples = new ArrayList<Tuple_>();
+      var mappedTuples = borrowTupleList();
       try (var unusedActiveRecordingLifecycle =
           recordingTupleLifecycle.recordInto(
               new TupleRecorder<>(
-                  mappedTuples, internalTupleToOutputTupleMapper, internalTupleToOutputTupleMap))) {
+                  mappedTuples,
+                  internalTupleToOutputTupleMapper,
+                  internalTupleToOutputTupleMapScratch))) {
         // Do a fake update on the object and settle the network; this will update precisely the
         // tuples mapped to this node, which will then be recorded
-        classToRootNodeList
-            .get(invalidated.getClass())
-            .forEach(node -> ((BavetRootNode<Object>) node).update(invalidated));
+        var rootNodeList = classToRootNodeList.get(invalidated.getClass());
+        for (int i = 0, rootNodeListSize = rootNodeList.size(); i < rootNodeListSize; i++) {
+          ((BavetRootNode<Object>) rootNodeList.get(i)).update(invalidated);
+        }
         internalNodeNetwork.settle();
       }
       if (mappedTuples.isEmpty()) {
-        objectToOutputTuplesMap.remove(invalidated);
+        recycleTupleList(mappedTuples);
+        objectToOutputTuplesMap.put(invalidated, Collections.emptyList());
       } else {
         objectToOutputTuplesMap.put(invalidated, mappedTuples);
       }
     }
-    objectToOutputTuplesMap.values().stream().flatMap(List::stream).forEach(this::insertIfAbsent);
+    for (var tupleList : objectToOutputTuplesMap.values()) {
+      for (int i = 0, tupleListSize = tupleList.size(); i < tupleListSize; i++) {
+        insertIfAbsent(tupleList.get(i));
+      }
+    }
+  }
+
+  private ArrayList<Tuple_> borrowTupleList() {
+    var tupleList = reusableTupleListPool.pollLast();
+    return tupleList != null ? tupleList : new ArrayList<>();
+  }
+
+  @SuppressWarnings("unchecked")
+  private void recycleTupleList(List<Tuple_> tupleList) {
+    if (tupleList instanceof ArrayList<?> arrayList) {
+      int tupleListSize = tupleList.size();
+      var reusableTupleList = (ArrayList<Tuple_>) arrayList;
+      reusableTupleList.clear();
+      if (tupleListSize <= MAX_REUSABLE_TUPLE_LIST_SIZE
+          && reusableTupleListPool.size() < MAX_REUSABLE_TUPLE_LIST_POOL_SIZE) {
+        reusableTupleListPool.addLast(reusableTupleList);
+      }
+    }
   }
 }

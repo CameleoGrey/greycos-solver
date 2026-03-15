@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.move;
 
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -50,9 +50,7 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
       ScoreDirector<Solution_> backingScoreDirector, boolean requiresIndexCache) {
     this.backingScoreDirector = (InnerScoreDirector<Solution_, Score_>) backingScoreDirector;
     this.cache = requiresIndexCache ? new IdentityHashMap<>() : null;
-    // Intentional LinkedList; fast clear, no allocations upfront,
-    // will most often only carry a small number of items.
-    this.variableChanges = new LinkedList<>();
+    this.variableChanges = new ArrayList<>();
   }
 
   private VariableChangeRecordingScoreDirector(
@@ -76,10 +74,8 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
     if (changeCount == 0) {
       return;
     }
-    var listIterator = variableChanges.listIterator(changeCount);
-    while (listIterator.hasPrevious()) { // Iterate in reverse.
-      var changeAction = listIterator.previous();
-      changeAction.undo(backingScoreDirector);
+    for (var i = changeCount - 1; i >= 0; i--) {
+      variableChanges.get(i).undo(backingScoreDirector);
     }
     Objects.requireNonNull(backingScoreDirector).triggerVariableListeners();
     variableChanges.clear();
@@ -121,11 +117,7 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
     var list = variableDescriptor.getValue(entity);
     variableChanges.add(
         new ListVariableBeforeChangeAction<>(
-            entity,
-            List.copyOf(list.subList(fromIndex, toIndex)),
-            fromIndex,
-            toIndex,
-            variableDescriptor));
+            entity, (List<Object>) list, fromIndex, toIndex, variableDescriptor));
     if (backingScoreDirector != null) {
       backingScoreDirector.beforeListVariableChanged(
           variableDescriptor, entity, fromIndex, toIndex);

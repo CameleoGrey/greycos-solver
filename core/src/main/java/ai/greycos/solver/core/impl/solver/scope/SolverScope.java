@@ -50,6 +50,7 @@ public class SolverScope<Solution_> {
   private final AtomicLong endingSystemTimeMillis = resetAtomicLongTimeMillis(new AtomicLong());
 
   private Set<SolverMetric> solverMetricSet = Collections.emptySet();
+  private int constraintMatchMetricSampleInterval = 1;
   private Tags monitoringTags;
   private int startingSolverCount;
   private RandomGenerator workingRandom;
@@ -144,6 +145,20 @@ public class SolverScope<Solution_> {
 
   public void setSolverMetricSet(EnumSet<SolverMetric> solverMetricSet) {
     this.solverMetricSet = solverMetricSet;
+  }
+
+  public int getConstraintMatchMetricSampleInterval() {
+    return constraintMatchMetricSampleInterval;
+  }
+
+  public void setConstraintMatchMetricSampleInterval(int constraintMatchMetricSampleInterval) {
+    if (constraintMatchMetricSampleInterval < 1) {
+      throw new IllegalArgumentException(
+          "The constraintMatchMetricSampleInterval ("
+              + constraintMatchMetricSampleInterval
+              + ") must be at least 1.");
+    }
+    this.constraintMatchMetricSampleInterval = constraintMatchMetricSampleInterval;
   }
 
   public int getStartingSolverCount() {
@@ -364,6 +379,8 @@ public class SolverScope<Solution_> {
     childThreadSolverScope.bestScore.set(null);
     childThreadSolverScope.monitoringTags = monitoringTags;
     childThreadSolverScope.solverMetricSet = solverMetricSet;
+    childThreadSolverScope.constraintMatchMetricSampleInterval =
+        constraintMatchMetricSampleInterval;
     childThreadSolverScope.startingSolverCount = startingSolverCount;
     childThreadSolverScope.solver = solver; // Inherit solver reference
     // TODO FIXME use RandomFactory

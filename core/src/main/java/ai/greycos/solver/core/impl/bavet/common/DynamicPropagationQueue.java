@@ -26,6 +26,7 @@ final class DynamicPropagationQueue<
   private final List<Carrier_> dirtyList;
   private final BitSet retractQueue;
   private final BitSet insertQueue;
+  private final BitSet insertAndRetractQueueScratch;
   private final TupleLifecycle<Tuple_> nextNodesTupleLifecycle;
 
   private DynamicPropagationQueue(
@@ -41,6 +42,7 @@ final class DynamicPropagationQueue<
     // retract.
     this.retractQueue = new BitSet(size);
     this.insertQueue = new BitSet(size);
+    this.insertAndRetractQueueScratch = new BitSet(size);
     this.nextNodesTupleLifecycle = nextNodesTupleLifecycle;
   }
 
@@ -153,7 +155,7 @@ final class DynamicPropagationQueue<
   @Override
   public void propagateUpdates() {
     var dirtyListSize = dirtyList.size();
-    var insertAndRetractQueue = buildInsertAndRetractQueue(insertQueue, retractQueue);
+    var insertAndRetractQueue = buildInsertAndRetractQueue();
     if (insertAndRetractQueue == null) { // Iterate over the entire list more efficiently.
       for (var i = 0; i < dirtyListSize; i++) {
         // Not using enhanced for loop in order not to create so many iterators in the hot path.
@@ -168,7 +170,7 @@ final class DynamicPropagationQueue<
     }
   }
 
-  private static BitSet buildInsertAndRetractQueue(BitSet insertQueue, BitSet retractQueue) {
+  private BitSet buildInsertAndRetractQueue() {
     var noInserts = insertQueue.isEmpty();
     var noRetracts = retractQueue.isEmpty();
     if (noInserts && noRetracts) {
@@ -178,10 +180,10 @@ final class DynamicPropagationQueue<
     } else if (noRetracts) {
       return insertQueue;
     } else {
-      var updateQueue = new BitSet(Math.max(insertQueue.length(), retractQueue.length()));
-      updateQueue.or(insertQueue);
-      updateQueue.or(retractQueue);
-      return updateQueue;
+      insertAndRetractQueueScratch.clear();
+      insertAndRetractQueueScratch.or(insertQueue);
+      insertAndRetractQueueScratch.or(retractQueue);
+      return insertAndRetractQueueScratch;
     }
   }
 

@@ -82,6 +82,8 @@
         <xs:sequence>
                     
           <xs:element maxOccurs="unbounded" minOccurs="0" name="metric" type="tns:solverMetric"/>
+                    
+          <xs:element minOccurs="0" name="constraintMatchMetricSampleInterval" type="xs:int"/>
                   
         </xs:sequence>
               

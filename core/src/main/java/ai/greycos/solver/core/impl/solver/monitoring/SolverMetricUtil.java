@@ -29,33 +29,33 @@ public final class SolverMetricUtil {
       Map<Tags, ScoreLevels> tagToScoreLevels,
       InnerScore<Score_> innerScore) {
     var levelValues = innerScore.raw().toLevelNumbers();
-    if (tagToScoreLevels.containsKey(tags)) {
-      // Set new score levels for the previously registered gauges to read.
-      var scoreLevels = tagToScoreLevels.get(tags);
-      scoreLevels.setUnassignedCount(innerScore.unassignedCount());
-      for (var i = 0; i < levelValues.length; i++) {
-        scoreLevels.setLevelValue(i, levelValues[i]);
-      }
-    } else {
-      var levelLabels = getLevelLabels(scoreDefinition);
-      var scoreLevels = new Number[levelLabels.length];
-      System.arraycopy(levelValues, 0, scoreLevels, 0, levelValues.length);
-      var result = new ScoreLevels(innerScore.unassignedCount(), scoreLevels);
-      tagToScoreLevels.put(tags, result);
-
-      // Register the gauges to read the score levels.
-      Metrics.gauge(
-          getGaugeName(metric, UNASSIGNED_COUNT_LABEL),
-          tags,
-          result.unassignedCount,
-          AtomicInteger::doubleValue);
-      for (var i = 0; i < levelValues.length; i++) {
-        Metrics.gauge(
-            getGaugeName(metric, levelLabels[i]),
+    var scoreLevels =
+        tagToScoreLevels.computeIfAbsent(
             tags,
-            result.levelValues[i],
-            ref -> ref.get().doubleValue());
-      }
+            ignored -> {
+              var levelLabels = getLevelLabels(scoreDefinition);
+              var initialLevels = new Number[levelLabels.length];
+              System.arraycopy(levelValues, 0, initialLevels, 0, levelValues.length);
+              var result = new ScoreLevels(innerScore.unassignedCount(), initialLevels);
+
+              Metrics.gauge(
+                  getGaugeName(metric, UNASSIGNED_COUNT_LABEL),
+                  tags,
+                  result.unassignedCount,
+                  AtomicInteger::doubleValue);
+              for (var i = 0; i < levelValues.length; i++) {
+                Metrics.gauge(
+                    getGaugeName(metric, levelLabels[i]),
+                    tags,
+                    result.levelValues[i],
+                    ref -> ref.get().doubleValue());
+              }
+              return result;
+            });
+
+    scoreLevels.setUnassignedCount(innerScore.unassignedCount());
+    for (var i = 0; i < levelValues.length; i++) {
+      scoreLevels.setLevelValue(i, levelValues[i]);
     }
   }
 
