@@ -58,21 +58,21 @@ public class PartitionQueue<Solution_> implements Iterable<PartitionChangeMove<S
     PartitionChangedEvent<Solution_> event =
         new PartitionChangedEvent<>(partIndex, eventIndex, move);
     moveEventMap.put(event.getPartIndex(), event);
-    queue.add(event);
+    enqueueEvent(event);
   }
 
   public void addFinish(int partIndex, long partCalculationCount) {
     long eventIndex = nextEventIndexMap.get(partIndex).getAndIncrement();
     PartitionChangedEvent<Solution_> event =
         new PartitionChangedEvent<>(partIndex, eventIndex, partCalculationCount);
-    queue.add(event);
+    enqueueEvent(event);
   }
 
   public void addExceptionThrown(int partIndex, Throwable throwable) {
     long eventIndex = nextEventIndexMap.get(partIndex).getAndIncrement();
     PartitionChangedEvent<Solution_> event =
         new PartitionChangedEvent<>(partIndex, eventIndex, throwable);
-    queue.add(event);
+    enqueueEvent(event);
   }
 
   public long getPartsCalculationCount() {
@@ -82,6 +82,15 @@ public class PartitionQueue<Solution_> implements Iterable<PartitionChangeMove<S
   @Override
   public Iterator<PartitionChangeMove<Solution_>> iterator() {
     return new PartitionQueueIterator();
+  }
+
+  private void enqueueEvent(PartitionChangedEvent<Solution_> event) {
+    try {
+      queue.put(event);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Partition queue producer thread was interrupted.", e);
+    }
   }
 
   private class PartitionQueueIterator

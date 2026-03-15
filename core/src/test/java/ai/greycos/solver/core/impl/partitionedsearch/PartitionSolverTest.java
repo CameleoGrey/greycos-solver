@@ -3,16 +3,18 @@ package ai.greycos.solver.core.impl.partitionedsearch;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.phase.Phase;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecallerFactory;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.impl.solver.termination.ChildThreadPlumbingTermination;
 import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
@@ -37,32 +39,29 @@ class PartitionSolverTest {
 
     assertThat(partitionSolver.getPartIndex()).isEqualTo(5);
     assertThat(partitionSolver.getSolverScope()).isSameAs(solverScope);
+    assertThat(solverScope.getSolver()).isSameAs(partitionSolver);
     assertThat(partitionSolver.isSolving()).isFalse();
     assertThat(partitionSolver.isTerminateEarly()).isFalse();
   }
 
   @Test
-  void setBestSolutionChangedListener() {
+  void solvingEndedClosesScoreDirector() {
     BestSolutionRecaller<TestdataSolution> bestSolutionRecaller =
         BestSolutionRecallerFactory.create()
             .buildBestSolutionRecaller(EnvironmentMode.REPRODUCIBLE);
-    UniversalTermination<TestdataSolution> termination = null;
+    UniversalTermination<TestdataSolution> termination = new ChildThreadPlumbingTermination<>();
     List<Phase<TestdataSolution>> phaseList = List.of();
     SolverScope<TestdataSolution> solverScope = new SolverScope<>();
+    @SuppressWarnings("unchecked")
+    InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    solverScope.setScoreDirector(scoreDirector);
 
     var partitionSolver =
         new PartitionSolver<>(bestSolutionRecaller, termination, phaseList, solverScope, 0);
 
-    var listenerRef = new AtomicReference<Object>();
-    partitionSolver.setBestSolutionChangedListener(
-        (eventProducerId, solution) -> listenerRef.set(solution));
+    partitionSolver.solvingEnded(solverScope);
 
-    assertThat(listenerRef.get()).isNull();
-
-    // Trigger listener by setting a solution
-    TestdataSolution solution = new TestdataSolution();
-    partitionSolver.setBestSolutionChangedListener(
-        (eventProducerId, newBestSolution) -> listenerRef.set(newBestSolution));
+    verify(scoreDirector).close();
   }
 
   @Test

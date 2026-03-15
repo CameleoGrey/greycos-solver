@@ -1,11 +1,9 @@
 package ai.greycos.solver.core.impl.partitionedsearch;
 
 import java.util.List;
-import java.util.function.BiConsumer;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
-import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.solver.AbstractSolver;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
@@ -29,8 +27,6 @@ public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
   private final SolverScope<Solution_> solverScope;
   private final int partIndex;
 
-  private BiConsumer<EventProducerId, Solution_> bestSolutionChangedListener;
-
   public PartitionSolver(
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       UniversalTermination<Solution_> termination,
@@ -40,15 +36,8 @@ public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
     super(bestSolutionRecaller, termination, phaseList);
     this.solverScope = solverScope;
     this.partIndex = partIndex;
-  }
-
-  /**
-   * Sets the listener to be notified when best solution changes.
-   *
-   * @param listener The listener
-   */
-  public void setBestSolutionChangedListener(BiConsumer<EventProducerId, Solution_> listener) {
-    this.bestSolutionChangedListener = listener;
+    // Child phases must notify the child solver, not the parent solver.
+    this.solverScope.setSolver(this);
   }
 
   @Override
@@ -57,7 +46,7 @@ public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
     try {
       solverScope.setBestSolution(initialSolution);
       solvingStarted(solverScope);
-      runPhases();
+      runPhases(solverScope);
       solvingEnded(solverScope);
       return solverScope.getBestSolution();
     } finally {
@@ -97,22 +86,10 @@ public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
         "The PartitionSolver does not support problem changes.");
   }
 
-  private void runPhases() {
-    for (Phase<Solution_> phase : phaseList) {
-      phase.solve(solverScope);
-
-      Solution_ newBestSolution = solverScope.getBestSolution();
-      if (newBestSolution != null && bestSolutionChangedListener != null) {
-        bestSolutionChangedListener.accept(
-            phase.getEventProducerIdSupplier().apply(0), newBestSolution);
-      }
-
-      solverScope.setWorkingSolutionFromBestSolution();
-
-      if (globalTermination.isSolverTerminated(solverScope)) {
-        break;
-      }
-    }
+  @Override
+  public void solvingEnded(SolverScope<Solution_> solverScope) {
+    super.solvingEnded(solverScope);
+    solverScope.getScoreDirector().close();
   }
 
   public long getScoreCalculationCount() {

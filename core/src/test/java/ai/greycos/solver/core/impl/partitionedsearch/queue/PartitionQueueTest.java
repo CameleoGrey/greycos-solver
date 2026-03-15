@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -253,6 +254,38 @@ class PartitionQueueTest {
 
     assertThat(moves).isEmpty();
     assertThat(queue.getPartsCalculationCount()).isEqualTo(300);
+  }
+
+  @Test
+  void producerBackpressureDoesNotFailWhenQueueIsTemporarilyFull() throws Exception {
+    var queue = new PartitionQueue<TestdataSolution>(1);
+    var executor = Executors.newSingleThreadExecutor();
+
+    try {
+      Future<?> producer =
+          executor.submit(
+              () -> {
+                for (int i = 0; i < 250; i++) {
+                  queue.addMove(0, createMove(0));
+                }
+                queue.addFinish(0, 123L);
+              });
+
+      // Allow producer to fill the queue before we begin consuming.
+      Thread.sleep(100);
+
+      List<PartitionChangeMove<TestdataSolution>> moves = new ArrayList<>();
+      for (PartitionChangeMove<TestdataSolution> move : queue) {
+        moves.add(move);
+      }
+
+      producer.get(5, TimeUnit.SECONDS);
+      assertThat(moves).isNotEmpty();
+      assertThat(queue.getPartsCalculationCount()).isEqualTo(123L);
+    } finally {
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+    }
   }
 
   @Test

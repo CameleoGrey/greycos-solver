@@ -14,6 +14,10 @@ import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
+import ai.greycos.solver.core.impl.partitionedsearch.scope.PartitionedSearchPhaseScope;
+import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
+import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import ai.greycos.solver.core.impl.solver.DefaultSolver;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataSolutionPartitioner;
@@ -30,6 +34,38 @@ import org.junit.jupiter.api.Timeout;
 class DefaultPartitionedSearchPhaseTest {
 
   // Existing tests (above)
+
+  @Test
+  @Timeout(10)
+  void phaseStartedExposesPartCount() {
+    final int partSize = 3;
+    final int entityCount = 7; // 3 partitions with part size 3
+    final int expectedPartCount = 3;
+
+    System.setProperty("testPartitionSize", String.valueOf(partSize));
+    try {
+      SolverFactory<TestdataSolution> solverFactory =
+          createSolverFactory(false, SolverConfig.MOVE_THREAD_COUNT_NONE);
+      @SuppressWarnings("unchecked")
+      DefaultSolver<TestdataSolution> solver =
+          (DefaultSolver<TestdataSolution>) solverFactory.buildSolver();
+      @SuppressWarnings("unchecked")
+      PartitionedSearchPhase<TestdataSolution> partitionedSearchPhase =
+          (PartitionedSearchPhase<TestdataSolution>) solver.getPhaseList().get(0);
+      partitionedSearchPhase.addPhaseLifecycleListener(
+          new PhaseLifecycleListenerAdapter<>() {
+            @Override
+            public void phaseStarted(AbstractPhaseScope<TestdataSolution> phaseScope) {
+              var partitionedScope = (PartitionedSearchPhaseScope<TestdataSolution>) phaseScope;
+              assertThat(partitionedScope.getPartCount()).isEqualTo(expectedPartCount);
+            }
+          });
+
+      solver.solve(createSolution(entityCount, 5));
+    } finally {
+      System.clearProperty("testPartitionSize");
+    }
+  }
 
   @Test
   @Timeout(10)

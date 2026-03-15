@@ -100,15 +100,13 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     }
 
     var phaseScope = new PartitionedSearchPhaseScope<>(solverScope, phaseIndex);
-    phaseScope.setPartCount(null);
-    phaseStarted(phaseScope);
-
     List<Solution_> partList =
         solutionPartitioner.splitWorkingSolution(
             phaseScope.getScoreDirector(), runnablePartThreadLimit);
 
     int partCount = partList.size();
     phaseScope.setPartCount(partCount);
+    phaseStarted(phaseScope);
     if (partCount == 0) {
       logger.warn(
           "{}Partitioned Search phase ({}) produced 0 partitions. Skipping.",
@@ -270,8 +268,8 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
         new PartitionSolver<>(
             bestSolutionRecaller, partTermination, phaseList, partSolverScope, partIndex);
 
-    partitionSolver.setBestSolutionChangedListener(
-        (eventProducerId, newBestSolution) -> {
+    partitionSolver.addEventListener(
+        bestSolutionChangedEvent -> {
           InnerScoreDirector<Solution_, ?> childScoreDirector = partSolverScope.getScoreDirector();
           PartitionChangeMove<Solution_> move =
               PartitionChangeMove.createMove(childScoreDirector, partIndex);
