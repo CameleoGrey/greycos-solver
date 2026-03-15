@@ -1,6 +1,8 @@
 package ai.greycos.solver.core.impl.constructionheuristic.decider;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -31,9 +33,6 @@ import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.impl.solver.thread.ThreadUtils;
 import ai.greycos.solver.core.preview.api.move.Move;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Multithreaded implementation of ConstructionHeuristicDecider that evaluates moves in parallel
  * using multiple worker threads. This decider coordinates move evaluation across threads while
@@ -43,9 +42,6 @@ import org.slf4j.LoggerFactory;
  */
 public class MultiThreadedConstructionHeuristicDecider<Solution_>
     extends ConstructionHeuristicDecider<Solution_> {
-
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(MultiThreadedConstructionHeuristicDecider.class);
 
   protected final ThreadFactory threadFactory;
   protected final int moveThreadCount;
@@ -60,10 +56,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   protected CyclicBarrier moveThreadBarrier;
   protected ExecutorService executor;
   protected List<MoveThreadRunner<Solution_, ?>> moveThreadRunnerList;
-
-  protected volatile boolean fallbackToSingleThreaded = false;
-  protected volatile int consecutiveFailures = 0;
-  protected static final int MAX_CONSECUTIVE_FAILURES = 3;
 
   public MultiThreadedConstructionHeuristicDecider(
       String logIndentation,
@@ -82,9 +74,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   public void phaseStarted(ConstructionHeuristicPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
 
-    fallbackToSingleThreaded = false;
-    consecutiveFailures = 0;
-
     operationQueue =
         new ArrayBlockingQueue<>(selectedMoveBufferSize + moveThreadCount + moveThreadCount);
     resultQueue = new OrderByMoveIndexBlockingQueue<>(selectedMoveBufferSize + moveThreadCount);
@@ -94,47 +83,23 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     executor = createThreadPoolExecutor();
     moveThreadRunnerList = new ArrayList<>(moveThreadCount);
 
-    try {
-      for (int moveThreadIndex = 0; moveThreadIndex < moveThreadCount; moveThreadIndex++) {
-        MoveThreadRunner<Solution_, ?> moveThreadRunner =
-            new MoveThreadRunner<>(
-                logIndentation,
-                moveThreadIndex,
-                true,
-                operationQueue,
-                resultQueue,
-                moveThreadBarrier,
-                assertMoveScoreFromScratch,
-                assertExpectedUndoMoveScore,
-                assertStepScoreFromScratch,
-                assertExpectedStepScore,
-                assertShadowVariablesAreNotStaleAfterStep);
-        moveThreadRunnerList.add(moveThreadRunner);
-        executor.submit(moveThreadRunner);
-        operationQueue.add(new SetupOperation<>(scoreDirector));
-      }
-    } catch (RuntimeException | Error e) {
-      LOGGER.error(
-          "{}            Failed to initialize move threads, falling back to single-threaded mode: {}",
-          logIndentation,
-          e.getMessage(),
-          e);
-      shutdownMoveThreads();
-      fallbackToSingleThreaded = true;
-
-      if (moveThreadBarrier != null) {
-        try {
-          moveThreadBarrier.reset();
-        } catch (Exception barrierException) {
-          // Ignore barrier exceptions during cleanup
-        }
-        moveThreadBarrier = null;
-      }
-      operationQueue = null;
-      resultQueue = null;
-      moveThreadRunnerList = null;
-
-      throw e;
+    for (int moveThreadIndex = 0; moveThreadIndex < moveThreadCount; moveThreadIndex++) {
+      MoveThreadRunner<Solution_, ?> moveThreadRunner =
+          new MoveThreadRunner<>(
+              logIndentation,
+              moveThreadIndex,
+              false,
+              operationQueue,
+              resultQueue,
+              moveThreadBarrier,
+              assertMoveScoreFromScratch,
+              assertExpectedUndoMoveScore,
+              assertStepScoreFromScratch,
+              assertExpectedStepScore,
+              assertShadowVariablesAreNotStaleAfterStep);
+      moveThreadRunnerList.add(moveThreadRunner);
+      executor.submit(moveThreadRunner);
+      operationQueue.add(new SetupOperation<>(scoreDirector));
     }
   }
 
@@ -175,30 +140,26 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   @Override
   public void decideNextStep(
       ConstructionHeuristicStepScope<Solution_> stepScope, Iterator<Move<Solution_>> moveIterator) {
-    if (fallbackToSingleThreaded) {
-      LOGGER.debug("{}            Falling back to single-threaded mode", logIndentation);
-      super.decideNextStep(stepScope, moveIterator);
-      return;
-    }
-
     int stepIndex = stepScope.getStepIndex();
     resultQueue.startNextStep(stepIndex);
 
     int selectMoveIndex = 0;
+    int nextForagingMoveIndex = 0;
     int movesInPlay = 0;
-    var selectedMoveList = new ArrayList<Move<Solution_>>(selectedMoveBufferSize);
+    Deque<Move<Solution_>> inFlightMoveQueue = new ArrayDeque<>(selectedMoveBufferSize);
 
     do {
       boolean hasNextMove = moveIterator.hasNext();
       if (movesInPlay > 0 && (selectMoveIndex >= selectedMoveBufferSize || !hasNextMove)) {
-        if (forageResult(stepScope, stepIndex, selectedMoveList)) {
+        if (forageResult(stepScope, stepIndex, nextForagingMoveIndex, inFlightMoveQueue)) {
           break;
         }
+        nextForagingMoveIndex++;
         movesInPlay--;
       }
       if (hasNextMove) {
         var move = moveIterator.next();
-        selectedMoveList.add(move);
+        inFlightMoveQueue.addLast(move);
         var legacyMove = MoveAdapters.toLegacyMove(move);
         operationQueue.add(new MoveEvaluationOperation<>(stepIndex, selectMoveIndex, legacyMove));
         selectMoveIndex++;
@@ -207,11 +168,16 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     } while (movesInPlay > 0);
 
     operationQueue.clear();
+    inFlightMoveQueue.clear();
 
     pickMove(stepScope);
 
     if (stepScope.getStep() != null) {
       var scoreDirector = stepScope.getScoreDirector();
+      if (scoreDirector.requiresFlushing() && stepIndex % 100 == 99) {
+        // Flush delayed score director state periodically to avoid unbounded buildup.
+        scoreDirector.calculateScore();
+      }
       var legacyStep = MoveAdapters.toLegacyMove(stepScope.getStep());
       var stepOperation =
           new ApplyStepOperation<>(stepIndex + 1, legacyStep, stepScope.getScore().raw());
@@ -225,7 +191,8 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   private boolean forageResult(
       ConstructionHeuristicStepScope<Solution_> stepScope,
       int stepIndex,
-      List<Move<Solution_>> selectedMoveList) {
+      int expectedMoveIndex,
+      Deque<Move<Solution_>> inFlightMoveQueue) {
     OrderByMoveIndexBlockingQueue.MoveResult<Solution_> result;
     try {
       result = resultQueue.take();
@@ -234,29 +201,6 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
       return true;
     }
 
-    if (result.getThrowable() != null) {
-      consecutiveFailures++;
-      LOGGER.error(
-          "{}            Move thread ({}) threw exception: {}",
-          logIndentation,
-          result.getMoveThreadIndex(),
-          result.getThrowable());
-
-      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-        LOGGER.warn(
-            "{}            Too many consecutive failures ({}), "
-                + "falling back to single-threaded mode",
-            logIndentation,
-            consecutiveFailures);
-        fallbackToSingleThreaded = true;
-        return true;
-      }
-      return false;
-    }
-
-    consecutiveFailures = 0;
-
-    // Step index must match exactly
     if (stepIndex != result.getStepIndex()) {
       throw new IllegalStateException(
           "Impossible situation: solverThread's stepIndex ("
@@ -265,13 +209,17 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
               + result.getStepIndex()
               + ").");
     }
+    if (expectedMoveIndex != result.getMoveIndex()) {
+      throw new IllegalStateException(
+          "Impossible situation: expected moveIndex ("
+              + expectedMoveIndex
+              + ") differs from result moveIndex ("
+              + result.getMoveIndex()
+              + ").");
+    }
 
     int foragingMoveIndex = result.getMoveIndex();
-    Move<Solution_> foragingMove = null;
-    if (selectedMoveList != null && foragingMoveIndex < selectedMoveList.size()) {
-      foragingMove = selectedMoveList.get(foragingMoveIndex);
-      selectedMoveList.set(foragingMoveIndex, null);
-    }
+    Move<Solution_> foragingMove = inFlightMoveQueue.pollFirst();
     if (foragingMove == null) {
       foragingMove = result.getMove().rebase(stepScope.getScoreDirector().getMoveDirector());
     }
@@ -280,11 +228,8 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
         new ConstructionHeuristicMoveScope<>(stepScope, foragingMoveIndex, foragingMove);
 
     if (!result.isMoveDoable()) {
-      LOGGER.trace(
-          "{}        Move index ({}) not doable, ignoring move ({}).",
-          logIndentation,
-          foragingMoveIndex,
-          foragingMove);
+      throw new IllegalStateException(
+          "Impossible situation: Construction Heuristics move is not doable.");
     } else {
       @SuppressWarnings("unchecked")
       var score = (Score<?>) result.getScore();

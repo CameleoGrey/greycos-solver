@@ -8,9 +8,6 @@ import java.util.concurrent.BlockingQueue;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.heuristic.move.Move;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Thread-safe queue for move results that ensures moves are processed in the correct order. This
  * queue handles result aggregation from multiple move threads and provides exception propagation.
@@ -19,8 +16,6 @@ import org.slf4j.LoggerFactory;
  *     ai.greycos.solver.core.api.cotwin.solution.PlanningSolution} annotation
  */
 public class OrderByMoveIndexBlockingQueue<Solution_> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(OrderByMoveIndexBlockingQueue.class);
 
   public static class MoveResult<Solution_> {
     private final int moveThreadIndex;

@@ -116,10 +116,8 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
   public void run() {
     try {
       int stepIndex = -1;
-      Score_ lastStepScore = null;
       while (true) {
         MoveThreadOperation<Solution_> operation;
-        long operationStartTime = System.nanoTime();
         try {
           operation = operationQueue.take();
         } catch (InterruptedException e) {
@@ -148,7 +146,7 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
             scoreDirector =
                 parentScoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
             stepIndex = 0;
-            lastStepScore = scoreDirector.calculateScore().raw();
+            scoreDirector.calculateScore();
             try {
               moveThreadBarrier.await();
             } catch (InterruptedException | BrokenBarrierException e) {
@@ -166,15 +164,6 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
                     moveThreadIndex,
                     e);
               }
-            }
-            try {
-              parentScoreDirector.close();
-            } catch (Exception e) {
-              LOGGER.warn(
-                  "{}            Move thread ({}) failed to close parent score director during setup.",
-                  logIndentation,
-                  moveThreadIndex,
-                  e);
             }
             throw throwable;
           }
@@ -198,7 +187,6 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           Score_ score = applyStepOperation.getScore();
           step.doMoveOnly(scoreDirector);
           predictWorkingStepScore(step, InnerScore.fullyAssigned(score));
-          lastStepScore = score;
           try {
             moveThreadBarrier.await();
           } catch (InterruptedException | BrokenBarrierException e) {
