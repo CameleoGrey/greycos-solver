@@ -33,6 +33,18 @@ public class BoundedChannel<T> {
     return queue.offer(message);
   }
 
+  /**
+   * Best-effort latest-value send for bounded channels. If full, evicts one stale message and tries
+   * again.
+   */
+  public boolean replace(T message) {
+    if (queue.offer(message)) {
+      return true;
+    }
+    queue.poll();
+    return queue.offer(message);
+  }
+
   public T tryReceive() {
     return queue.poll();
   }

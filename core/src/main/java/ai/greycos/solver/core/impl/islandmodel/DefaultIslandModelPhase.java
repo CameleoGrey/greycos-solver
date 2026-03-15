@@ -8,7 +8,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntFunction;
 
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
@@ -17,6 +16,7 @@ import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.phase.PhaseConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
+import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.phase.AbstractPhase;
 import ai.greycos.solver.core.impl.phase.Phase;
@@ -108,13 +108,14 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
       this.solverScope = solverScope;
       globalState.reset();
+      warnAboutPotentialThreadOversubscription();
 
       var initialSolution = solverScope.getBestSolution();
       var innerScore = solverScope.getBestScore();
       if (innerScore == null) {
         innerScore = solverScope.calculateScore();
       }
-      globalState.tryUpdate(initialSolution, innerScore.raw());
+      globalState.tryUpdate(initialSolution, innerScore);
 
       globalBestPropagator =
           new GlobalBestPropagator<>(
@@ -161,15 +162,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   private void createAndRunAgents(SolverScope<Solution_> solverScope) {
-    var threadCounter = new AtomicInteger(0);
-    var executor =
-        Executors.newFixedThreadPool(
-            islandCount,
-            runnable -> {
-              Thread thread = new Thread(runnable);
-              thread.setName("island-agent-" + threadCounter.getAndIncrement());
-              return thread;
-            });
+    var threadFactory = configPolicy.buildThreadFactory(ChildThreadType.PART_THREAD);
+    var executor = Executors.newFixedThreadPool(islandCount, threadFactory);
     var random = solverScope.getWorkingRandom();
     var completionLatch = new CountDownLatch(islandCount);
     var futures = new ArrayList<Future<?>>(islandCount);
@@ -268,6 +262,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     var configuredPhaseConfigList = islandModelConfig.getPhaseConfigList();
     if (configuredPhaseConfigList != null && !configuredPhaseConfigList.isEmpty()) {
       var copiedPhaseConfigList = copyPhaseConfigList(configuredPhaseConfigList);
+      normalizeInnerPhaseMoveThreadCount(copiedPhaseConfigList);
       return PhaseFactory.buildPhases(
           copiedPhaseConfigList, agentConfigPolicy, bestSolutionRecaller, solverTermination);
     }
@@ -280,7 +275,11 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   private LocalSearchPhaseConfig buildDefaultLocalSearchPhaseConfig() {
     var localSearchConfig = new LocalSearchPhaseConfig();
     localSearchConfig.setLocalSearchType(islandModelConfig.getLocalSearchType());
-    localSearchConfig.setMoveThreadCount(islandModelConfig.getMoveThreadCount());
+    var configuredMoveThreadCount = islandModelConfig.getMoveThreadCount();
+    localSearchConfig.setMoveThreadCount(
+        configuredMoveThreadCount != null
+            ? configuredMoveThreadCount
+            : SolverConfig.MOVE_THREAD_COUNT_NONE);
 
     var moveSelectorConfig = islandModelConfig.getMoveSelectorConfig();
     if (moveSelectorConfig != null) {
@@ -313,6 +312,35 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       copiedPhaseConfigList.add(phaseConfig.copyConfig());
     }
     return copiedPhaseConfigList;
+  }
+
+  @SuppressWarnings("rawtypes")
+  private void normalizeInnerPhaseMoveThreadCount(List<PhaseConfig> phaseConfigList) {
+    for (var phaseConfig : phaseConfigList) {
+      if (phaseConfig instanceof LocalSearchPhaseConfig localSearchPhaseConfig
+          && localSearchPhaseConfig.getMoveThreadCount() == null) {
+        var configuredMoveThreadCount = islandModelConfig.getMoveThreadCount();
+        localSearchPhaseConfig.setMoveThreadCount(
+            configuredMoveThreadCount != null
+                ? configuredMoveThreadCount
+                : SolverConfig.MOVE_THREAD_COUNT_NONE);
+      }
+    }
+  }
+
+  private void warnAboutPotentialThreadOversubscription() {
+    if (islandCount <= 1) {
+      return;
+    }
+    var moveThreadCount = islandModelConfig.getMoveThreadCount();
+    if (moveThreadCount != null && !SolverConfig.MOVE_THREAD_COUNT_NONE.equals(moveThreadCount)) {
+      LOGGER.warn(
+          "Island model is configured with islandCount={} and moveThreadCount='{}'. "
+              + "This can oversubscribe CPUs; consider using moveThreadCount='{}' for islands.",
+          islandCount,
+          moveThreadCount,
+          SolverConfig.MOVE_THREAD_COUNT_NONE);
+    }
   }
 
   private SolverTermination<Solution_> createAgentTermination(SolverScope<Solution_> solverScope) {

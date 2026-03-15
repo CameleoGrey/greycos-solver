@@ -217,6 +217,32 @@ class DefaultIslandModelPhaseTest {
         .hasMessageContaining("Island agent");
   }
 
+  @Test
+  void invalidReceiveGlobalUpdateFrequencyFailsFast() {
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
+    var phaseConfig = new IslandModelPhaseConfig().withIslandCount(1);
+    phaseConfig.setReceiveGlobalUpdateFrequency(0);
+    solverConfig.setPhaseConfigList(Collections.singletonList(phaseConfig));
+
+    assertThatThrownBy(() -> SolverFactory.<TestdataSolution>create(solverConfig).buildSolver())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Receive global update frequency must be at least 1");
+  }
+
+  @Test
+  void invalidDeprecatedCompareGlobalFrequencyFailsFast() {
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
+    var phaseConfig = new IslandModelPhaseConfig().withIslandCount(1);
+    phaseConfig.setCompareGlobalFrequency(0);
+    solverConfig.setPhaseConfigList(Collections.singletonList(phaseConfig));
+
+    assertThatThrownBy(() -> SolverFactory.<TestdataSolution>create(solverConfig).buildSolver())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Compare global frequency must be at least 1");
+  }
+
   private static TestdataSolution createSolution(String code, int valueCount) {
     TestdataSolution solution = new TestdataSolution(code);
     var valueList = new java.util.ArrayList<TestdataValue>(valueCount);

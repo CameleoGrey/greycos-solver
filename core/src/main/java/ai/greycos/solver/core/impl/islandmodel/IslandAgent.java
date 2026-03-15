@@ -7,7 +7,6 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.localsearch.LocalSearchPhase;
 import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
@@ -80,8 +79,10 @@ public class IslandAgent<Solution_> implements Runnable {
       for (Phase<Solution_> phase : phases) {
         LOGGER.debug("Agent {} running phase: {}", agentId, phase.getClass().getSimpleName());
 
-        MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
-        phase.addPhaseLifecycleListener(migrationTrigger);
+        if (phase instanceof LocalSearchPhase) {
+          MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
+          phase.addPhaseLifecycleListener(migrationTrigger);
+        }
 
         GlobalBestUpdater<Solution_> globalBestUpdater =
             new GlobalBestUpdater<>(globalState, agentId);
@@ -120,110 +121,35 @@ public class IslandAgent<Solution_> implements Runnable {
     stepsUntilNextMigration--;
 
     if (stepsUntilNextMigration <= 0) {
-      try {
-        LOGGER.debug("Agent {} triggering migration", agentId);
-        performMigrationWithTimeout();
-      } catch (InterruptedException e) {
-        LOGGER.info("Agent {} interrupted during migration", agentId);
-        Thread.currentThread().interrupt();
-      }
+      LOGGER.debug("Agent {} triggering migration", agentId);
+      performMigration();
     }
   }
 
-  private AgentUpdate<Solution_> performMigrationWithTimeout() throws InterruptedException {
-    AgentUpdate<Solution_> receivedMessage;
-
-    if (agentId % 2 == 0) {
-      sendMigrationWithTimeout();
-      receivedMessage = receiveMigrationWithTimeout();
-    } else {
-      receivedMessage = receiveMigrationWithTimeout();
-      sendMigrationWithTimeout();
-    }
-
+  private AgentUpdate<Solution_> performMigration() {
+    sendMigrationNonBlocking();
+    var receivedMessage = receiveMigrationNonBlocking();
     stepsUntilNextMigration = config.getMigrationFrequency();
     return receivedMessage;
   }
 
-  private void sendMigration() throws InterruptedException {
-    if (status == AgentStatus.DEAD) {
-      AgentUpdate<Solution_> receivedUpdate = receiver.tryReceive();
-      if (receivedUpdate != null) {
-        sender.send(receivedUpdate);
-      }
-      return;
-    }
-
-    Solution_ migrant = getCurrentBestSolution();
-    AgentUpdate<Solution_> update =
-        new AgentUpdate<>(agentId, deepClone(migrant), snapshotAliveBits());
-
-    LOGGER.debug("Agent {} sending migration", agentId);
-    sender.send(update);
-  }
-
-  private void receiveMigration() throws InterruptedException {
-    AgentUpdate<Solution_> update = receiver.receive();
-
-    applyIncomingAliveBits(update.getAliveBits());
-
-    updateAliveAgentsCount();
-
-    if (status == AgentStatus.DEAD) {
-      LOGGER.debug("Agent {} (DEAD) forwarding migration", agentId);
-      sender.send(update);
-      return;
-    }
-
-    Solution_ migrant = update.getMigrant();
-    var migrantScore = islandScope.getScoreDirector().getSolutionDescriptor().getScore(migrant);
-    var currentScore =
-        islandScope.getScoreDirector().getSolutionDescriptor().getScore(getCurrentBestSolution());
-
-    if (migrantScore != null && currentScore != null) {
-      @SuppressWarnings("unchecked")
-      var migrantScoreCast = (Score) migrantScore;
-      @SuppressWarnings("unchecked")
-      var currentScoreCast = (Score) currentScore;
-      int comparisonResult = migrantScoreCast.compareTo(currentScoreCast);
-      if (comparisonResult > 0) {
-        LOGGER.info(
-            "Agent {} received better migrant from agent {} (score: {} vs {})",
-            agentId,
-            update.getAgentId(),
-            migrantScore,
-            currentScore);
-        scheduleAdoption(migrant);
-      } else {
-        LOGGER.debug(
-            "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
-            agentId,
-            update.getAgentId(),
-            currentScore,
-            migrantScore);
-      }
-    }
-  }
-
-  private AgentUpdate<Solution_> receiveMigrationWithTimeout() throws InterruptedException {
+  private AgentUpdate<Solution_> receiveMigrationNonBlocking() {
     AgentUpdate<Solution_> update;
 
     if (status == AgentStatus.DEAD) {
-      update = receiver.tryReceive(config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
+      update = receiver.tryReceive();
       if (update == null) {
-        LOGGER.trace("Agent {} timeout waiting for migration message", agentId);
         return null;
       }
       applyIncomingAliveBits(update.getAliveBits());
       updateAliveAgentsCount();
       LOGGER.debug("Agent {} (DEAD) forwarding migration", agentId);
-      sender.send(update, config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
+      sender.replace(update);
       return update;
     }
 
-    update = receiver.tryReceive(config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
+    update = receiver.tryReceive();
     if (update == null) {
-      LOGGER.trace("Agent {} timeout waiting for migration message", agentId);
       return null;
     }
 
@@ -237,53 +163,49 @@ public class IslandAgent<Solution_> implements Runnable {
     }
 
     Solution_ migrant = update.getMigrant();
-    var migrantInnerScore = calculateScore(migrant);
+    var migrantInnerScore = update.getMigrantScore();
     var currentInnerScore = getCurrentBestScore();
 
-    if (migrantInnerScore != null && currentInnerScore != null) {
-      @SuppressWarnings("unchecked")
-      var migrantScore = (Score) migrantInnerScore.raw();
-      @SuppressWarnings("unchecked")
-      var currentScore = (Score) currentInnerScore.raw();
-      int comparisonResult = migrantScore.compareTo(currentScore);
-      if (comparisonResult > 0) {
-        LOGGER.info(
-            "Agent {} received better migrant from agent {} (score: {} vs {})",
-            agentId,
-            update.getAgentId(),
-            migrantScore,
-            currentScore);
-        scheduleAdoption(migrant);
-      } else {
-        LOGGER.debug(
-            "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
-            agentId,
-            update.getAgentId(),
-            currentScore,
-            migrantScore);
-      }
+    int comparisonResult = compareInnerScores(migrantInnerScore, currentInnerScore);
+    if (comparisonResult > 0) {
+      LOGGER.info(
+          "Agent {} received better migrant from agent {} (score: {} vs {})",
+          agentId,
+          update.getAgentId(),
+          migrantInnerScore.raw(),
+          currentInnerScore.raw());
+      scheduleAdoption(migrant, migrantInnerScore);
+    } else {
+      LOGGER.debug(
+          "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
+          agentId,
+          update.getAgentId(),
+          currentInnerScore.raw(),
+          migrantInnerScore.raw());
     }
 
     return update;
   }
 
-  private AgentUpdate<Solution_> sendMigrationWithTimeout() throws InterruptedException {
+  private AgentUpdate<Solution_> sendMigrationNonBlocking() {
     if (status == AgentStatus.DEAD) {
       AgentUpdate<Solution_> receivedUpdate = receiver.tryReceive();
       if (receivedUpdate != null) {
-        sender.send(receivedUpdate, config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
+        sender.replace(receivedUpdate);
       }
       return receivedUpdate;
     }
 
     Solution_ migrant = getCurrentBestSolution();
+    var migrantScore = getCurrentBestScore();
     AgentUpdate<Solution_> updateToSend =
-        new AgentUpdate<>(agentId, deepClone(migrant), snapshotAliveBits());
+        new AgentUpdate<>(agentId, migrant, migrantScore, snapshotAliveBits());
     LOGGER.debug("Agent {} sending migration", agentId);
 
-    boolean sent = sender.send(updateToSend, config.getMigrationTimeout(), TimeUnit.MILLISECONDS);
+    boolean sent = sender.replace(updateToSend);
     if (!sent) {
-      LOGGER.warn("Agent {} failed to send migration within timeout", agentId);
+      LOGGER.trace(
+          "Agent {} dropped migration update due to concurrent channel contention", agentId);
     }
     return updateToSend;
   }
@@ -293,33 +215,16 @@ public class IslandAgent<Solution_> implements Runnable {
   }
 
   private InnerScore<?> getCurrentBestScore() {
-    return islandScope.getBestScore();
-  }
-
-  private InnerScore<?> calculateScore(Solution_ solution) {
-    if (solution == null) {
-      return null;
-    }
-    var score = islandScope.getScoreDirector().getSolutionDescriptor().getScore(solution);
+    var score = islandScope.getBestScore();
     if (score == null) {
-      return null;
+      throw new IllegalStateException("Agent " + agentId + " has no current best score.");
     }
-    @SuppressWarnings("unchecked")
-    var scoreCast = (Score) score;
-    return InnerScore.fullyAssigned(scoreCast);
+    return score;
   }
 
-  private void scheduleAdoption(Solution_ migrant) {
+  private void scheduleAdoption(Solution_ migrant, InnerScore<?> migrantScore) {
     var syncMove = SolutionSyncMove.createMove(islandScope.getScoreDirector(), migrant);
-    islandScope.setPendingMove(syncMove, true);
-  }
-
-  @SuppressWarnings("unchecked")
-  private Solution_ deepClone(Solution_ solution) {
-    if (solution == null) {
-      return null;
-    }
-    return islandScope.getScoreDirector().cloneSolution(solution);
+    islandScope.setPendingMoveIfBetter(syncMove, migrantScore, true);
   }
 
   private BitSet snapshotAliveBits() {
@@ -333,7 +238,7 @@ public class IslandAgent<Solution_> implements Runnable {
   }
 
   private void awaitAllAgentsAndRelayMigrations() {
-    long relayTimeoutMs = Math.max(1L, Math.min(config.getMigrationTimeout(), 50L));
+    long relayTimeoutMs = Math.max(1L, Math.min(config.getMigrationTimeout(), 250L));
     while (completionLatch.getCount() > 0) {
       try {
         relayMigrationMessage(relayTimeoutMs);
@@ -370,6 +275,11 @@ public class IslandAgent<Solution_> implements Runnable {
       aliveBits.clear(agentId);
     }
     LOGGER.info("Agent {} marked as DEAD", agentId);
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static int compareInnerScores(InnerScore<?> left, InnerScore<?> right) {
+    return ((InnerScore) left).compareTo((InnerScore) right);
   }
 
   public int getAgentId() {

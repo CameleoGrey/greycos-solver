@@ -7,6 +7,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.impl.score.director.InnerScore;
 
 /**
  * Thread-safe shared state for island model, tracking global best solution across all islands. Uses
@@ -16,9 +17,9 @@ public class SharedGlobalState<Solution_> {
 
   public static final class BestSolutionSnapshot<Solution_> {
     private final Solution_ solution;
-    private final Score<?> score;
+    private final InnerScore<?> score;
 
-    private BestSolutionSnapshot(Solution_ solution, Score<?> score) {
+    private BestSolutionSnapshot(Solution_ solution, InnerScore<?> score) {
       this.solution = Objects.requireNonNull(solution, "Best solution cannot be null");
       this.score = Objects.requireNonNull(score, "Best score cannot be null");
     }
@@ -28,6 +29,10 @@ public class SharedGlobalState<Solution_> {
     }
 
     public Score<?> getScore() {
+      return score.raw();
+    }
+
+    public InnerScore<?> getInnerScore() {
       return score;
     }
   }
@@ -38,13 +43,13 @@ public class SharedGlobalState<Solution_> {
   private final List<Consumer<BestSolutionSnapshot<Solution_>>> observers =
       new CopyOnWriteArrayList<>();
 
-  public boolean tryUpdate(Solution_ candidate, Score<?> candidateScore) {
+  public boolean tryUpdate(Solution_ candidate, InnerScore<?> candidateScore) {
     Objects.requireNonNull(candidate, "Candidate solution cannot be null");
     Objects.requireNonNull(candidateScore, "Candidate score cannot be null");
 
     var currentSnapshot = bestSnapshot;
     if (currentSnapshot != null) {
-      int comparison = compareScores(candidateScore, currentSnapshot.getScore());
+      int comparison = compareScores(candidateScore, currentSnapshot.getInnerScore());
       if (comparison <= 0) {
         return false;
       }
@@ -54,7 +59,7 @@ public class SharedGlobalState<Solution_> {
     synchronized (lock) {
       currentSnapshot = bestSnapshot;
       if (currentSnapshot != null) {
-        int comparison = compareScores(candidateScore, currentSnapshot.getScore());
+        int comparison = compareScores(candidateScore, currentSnapshot.getInnerScore());
         if (comparison <= 0) {
           return false;
         }
@@ -75,6 +80,11 @@ public class SharedGlobalState<Solution_> {
   public Score<?> getBestScore() {
     var snapshot = bestSnapshot;
     return snapshot == null ? null : snapshot.getScore();
+  }
+
+  public InnerScore<?> getBestInnerScore() {
+    var snapshot = bestSnapshot;
+    return snapshot == null ? null : snapshot.getInnerScore();
   }
 
   public BestSolutionSnapshot<Solution_> getBestSnapshot() {
@@ -111,8 +121,8 @@ public class SharedGlobalState<Solution_> {
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})
-  private static int compareScores(Score<?> left, Score<?> right) {
-    return ((Score) left).compareTo((Score) right);
+  private static int compareScores(InnerScore<?> left, InnerScore<?> right) {
+    return ((InnerScore) left).compareTo((InnerScore) right);
   }
 
   @Override

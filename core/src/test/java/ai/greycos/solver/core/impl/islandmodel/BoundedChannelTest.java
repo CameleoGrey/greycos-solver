@@ -82,4 +82,14 @@ class BoundedChannelTest {
     String received = channel.tryReceive();
     assertThat(received).isEqualTo("message");
   }
+
+  @Test
+  void replaceOverwritesWhenChannelIsFull() throws InterruptedException {
+    BoundedChannel<String> channel = new BoundedChannel<>(1);
+    channel.send("old");
+
+    boolean replaced = channel.replace("new");
+    assertThat(replaced).isTrue();
+    assertThat(channel.receive()).isEqualTo("new");
+  }
 }

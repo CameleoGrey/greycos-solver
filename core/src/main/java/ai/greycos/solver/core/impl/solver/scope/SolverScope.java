@@ -120,7 +120,26 @@ public class SolverScope<Solution_> {
   }
 
   public void setPendingMove(Move<Solution_> move, boolean requiresReset) {
-    pendingMove.set(new PendingMove<>(move, requiresReset));
+    pendingMove.set(new PendingMove<>(move, requiresReset, null));
+  }
+
+  public void setPendingMoveIfBetter(
+      Move<Solution_> move, InnerScore<?> score, boolean requiresReset) {
+    Objects.requireNonNull(move, "The pending move must not be null.");
+    Objects.requireNonNull(score, "The pending move score must not be null.");
+    var candidate = new PendingMove<>(move, requiresReset, score);
+    while (true) {
+      var current = pendingMove.get();
+      if (current != null && current.score() != null) {
+        var comparison = compareInnerScores(score, current.score());
+        if (comparison <= 0) {
+          return;
+        }
+      }
+      if (pendingMove.compareAndSet(current, candidate)) {
+        return;
+      }
+    }
   }
 
   public PendingMove<Solution_> consumePendingMove() {
@@ -452,10 +471,12 @@ public class SolverScope<Solution_> {
   public static final class PendingMove<Solution_> {
     private final Move<Solution_> move;
     private final boolean requiresReset;
+    private final InnerScore<?> score;
 
-    private PendingMove(Move<Solution_> move, boolean requiresReset) {
+    private PendingMove(Move<Solution_> move, boolean requiresReset, InnerScore<?> score) {
       this.move = move;
       this.requiresReset = requiresReset;
+      this.score = score;
     }
 
     public Move<Solution_> move() {
@@ -465,5 +486,14 @@ public class SolverScope<Solution_> {
     public boolean requiresReset() {
       return requiresReset;
     }
+
+    public InnerScore<?> score() {
+      return score;
+    }
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static int compareInnerScores(InnerScore<?> left, InnerScore<?> right) {
+    return ((InnerScore) left).compareTo((InnerScore) right);
   }
 }

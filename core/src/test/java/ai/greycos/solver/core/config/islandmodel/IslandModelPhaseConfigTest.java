@@ -68,6 +68,27 @@ class IslandModelPhaseConfigTest {
   }
 
   @Test
+  void childInheritsMigrationAndGlobalOptionsFromParentWhenNull() {
+    IslandModelPhaseConfig child = new IslandModelPhaseConfig();
+    IslandModelPhaseConfig parent =
+        new IslandModelPhaseConfig()
+            .withMigrationFrequency(50)
+            .withCompareGlobalEnabled(false)
+            .withReceiveGlobalUpdateFrequency(25)
+            .withMigrationTimeout(500L);
+
+    child.inherit(parent);
+
+    assertSoftly(
+        softly -> {
+          softly.assertThat(child.getMigrationFrequency()).isEqualTo(50);
+          softly.assertThat(child.getCompareGlobalEnabled()).isFalse();
+          softly.assertThat(child.getReceiveGlobalUpdateFrequency()).isEqualTo(25);
+          softly.assertThat(child.getMigrationTimeout()).isEqualTo(500L);
+        });
+  }
+
+  @Test
   void childInheritsPhaseConfigListFromParentWhenNull() {
     LocalSearchPhaseConfig innerPhase = new LocalSearchPhaseConfig();
     IslandModelPhaseConfig child = new IslandModelPhaseConfig();
@@ -106,5 +127,38 @@ class IslandModelPhaseConfigTest {
 
     original.setIslandCount(16);
     assertThat(copy.getIslandCount()).isEqualTo(8);
+  }
+
+  @Test
+  void copyConfigPreservesMigrationAndGlobalOptions() {
+    IslandModelPhaseConfig original =
+        new IslandModelPhaseConfig()
+            .withMigrationFrequency(9)
+            .withCompareGlobalEnabled(false)
+            .withReceiveGlobalUpdateFrequency(7)
+            .withMigrationTimeout(11L);
+
+    IslandModelPhaseConfig copy = original.copyConfig();
+
+    assertSoftly(
+        softly -> {
+          softly.assertThat(copy.getMigrationFrequency()).isEqualTo(9);
+          softly.assertThat(copy.getCompareGlobalEnabled()).isFalse();
+          softly.assertThat(copy.getReceiveGlobalUpdateFrequency()).isEqualTo(7);
+          softly.assertThat(copy.getMigrationTimeout()).isEqualTo(11L);
+        });
+
+    original.setMigrationFrequency(12);
+    original.setCompareGlobalEnabled(true);
+    original.setReceiveGlobalUpdateFrequency(17);
+    original.setMigrationTimeout(19L);
+
+    assertSoftly(
+        softly -> {
+          softly.assertThat(copy.getMigrationFrequency()).isEqualTo(9);
+          softly.assertThat(copy.getCompareGlobalEnabled()).isFalse();
+          softly.assertThat(copy.getReceiveGlobalUpdateFrequency()).isEqualTo(7);
+          softly.assertThat(copy.getMigrationTimeout()).isEqualTo(11L);
+        });
   }
 }

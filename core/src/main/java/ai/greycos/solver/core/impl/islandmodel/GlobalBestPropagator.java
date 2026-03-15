@@ -3,7 +3,6 @@ package ai.greycos.solver.core.impl.islandmodel;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.solver.event.SolverEventSupport;
@@ -31,7 +30,7 @@ public class GlobalBestPropagator<Solution_>
   private final EventProducerId eventProducerId;
   private final Object updateLock = new Object();
 
-  private volatile Score<?> lastKnownBestScore;
+  private volatile InnerScore<?> lastKnownBestScore;
 
   public GlobalBestPropagator(
       SharedGlobalState<Solution_> globalState,
@@ -59,7 +58,7 @@ public class GlobalBestPropagator<Solution_>
     }
 
     var newGlobalBest = snapshot.getSolution();
-    var newGlobalBestScore = snapshot.getScore();
+    var newGlobalBestScore = snapshot.getInnerScore();
 
     synchronized (updateLock) {
       if (!shouldUpdateMainSolverScope(newGlobalBestScore)) {
@@ -72,7 +71,7 @@ public class GlobalBestPropagator<Solution_>
     }
   }
 
-  private boolean shouldUpdateMainSolverScope(Score<?> newGlobalBestScore) {
+  private boolean shouldUpdateMainSolverScope(InnerScore<?> newGlobalBestScore) {
     if (lastKnownBestScore == null) {
       return true;
     }
@@ -81,14 +80,14 @@ public class GlobalBestPropagator<Solution_>
     return comparisonResult > 0;
   }
 
-  private Solution_ updateMainSolverScope(Solution_ newBestSolution, Score<?> newBestScore) {
+  private Solution_ updateMainSolverScope(Solution_ newBestSolution, InnerScore<?> newBestScore) {
     var clonedSolution = mainSolverScope.getScoreDirector().cloneSolution(newBestSolution);
 
     // Update main solver scope
     mainSolverScope.setBestSolution(clonedSolution);
 
     @SuppressWarnings("unchecked")
-    var innerScore = InnerScore.fullyAssigned((Score) newBestScore);
+    var innerScore = (InnerScore<?>) newBestScore;
     mainSolverScope.setBestScore(innerScore);
 
     mainSolverScope.setBestSolutionTimeMillis(mainSolverScope.getClock().millis());
@@ -100,7 +99,7 @@ public class GlobalBestPropagator<Solution_>
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})
-  private static int compareScores(Score<?> left, Score<?> right) {
-    return ((Score) left).compareTo((Score) right);
+  private static int compareScores(InnerScore<?> left, InnerScore<?> right) {
+    return ((InnerScore) left).compareTo((InnerScore) right);
   }
 }

@@ -1,9 +1,9 @@
 package ai.greycos.solver.core.impl.islandmodel;
 
-import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import ai.greycos.solver.core.impl.score.director.InnerScore;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,38 +62,29 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
 
     var phaseScope = stepScope.getPhaseScope();
     var currentInnerScore = phaseScope.getBestScore();
-    var globalScore = globalSnapshot.getScore();
+    var globalInnerScore = globalSnapshot.getInnerScore();
 
-    if (globalScore == null || currentInnerScore == null) {
+    if (globalInnerScore == null || currentInnerScore == null) {
       return;
     }
 
-    @SuppressWarnings("unchecked")
-    var currentScore = (Score) currentInnerScore.raw();
-    @SuppressWarnings("unchecked")
-    var globalScoreCast = (Score) globalScore;
-
-    int comparisonResult = globalScoreCast.compareTo(currentScore);
+    int comparisonResult = compareInnerScores(globalInnerScore, currentInnerScore);
 
     if (comparisonResult > 0) {
       LOGGER.info(
           "Agent {} adopting global best (score: {} vs {})",
           agentId,
-          globalScoreCast,
-          currentScore);
+          globalInnerScore.raw(),
+          currentInnerScore.raw());
 
-      Solution_ clonedGlobalBest = deepClone(globalBest, stepScope);
-      var syncMove = SolutionSyncMove.createMove(stepScope.getScoreDirector(), clonedGlobalBest);
+      var syncMove = SolutionSyncMove.createMove(stepScope.getScoreDirector(), globalBest);
       var solverScope = stepScope.getPhaseScope().getSolverScope();
-      solverScope.setPendingMove(syncMove, true);
+      solverScope.setPendingMoveIfBetter(syncMove, globalInnerScore, true);
     }
   }
 
-  @SuppressWarnings("unchecked")
-  private Solution_ deepClone(Solution_ solution, LocalSearchStepScope<Solution_> stepScope) {
-    if (solution == null) {
-      return null;
-    }
-    return stepScope.getScoreDirector().cloneSolution(solution);
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static int compareInnerScores(InnerScore<?> left, InnerScore<?> right) {
+    return ((InnerScore) left).compareTo((InnerScore) right);
   }
 }

@@ -1,6 +1,5 @@
 package ai.greycos.solver.core.impl.islandmodel;
 
-import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
@@ -18,7 +17,7 @@ public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<
 
   private final SharedGlobalState<Solution_> globalState;
   private final int agentId;
-  private Score<?> previousBestScore;
+  private InnerScore<?> previousBestScore;
 
   public GlobalBestUpdater(SharedGlobalState<Solution_> globalState, int agentId) {
     this.globalState = globalState;
@@ -41,16 +40,15 @@ public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<
     boolean shouldUpdate = shouldUpdateGlobalBest(stepScope, bestScore);
 
     if (shouldUpdate) {
-      var localBestScore = bestScore.raw();
-      previousBestScore = localBestScore;
-      boolean updated = globalState.tryUpdate(bestSolution, localBestScore);
+      previousBestScore = bestScore;
+      boolean updated = globalState.tryUpdate(bestSolution, bestScore);
 
       if (updated) {
         long timeSpentMs = solverScope.getTimeMillisSpent();
         LOGGER.debug(
             "Agent {} updated global best (score: {}, time spent: {} ms, step index: {})",
             agentId,
-            localBestScore,
+            bestScore.raw(),
             timeSpentMs,
             stepScope.getStepIndex());
       }
@@ -68,10 +66,13 @@ public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<
       return true;
     }
 
-    @SuppressWarnings("unchecked")
-    var currentScore = (Score) currentBestScore.raw();
-    int comparisonResult = currentScore.compareTo((Score) previousBestScore);
+    int comparisonResult = compareInnerScores(currentBestScore, previousBestScore);
 
     return comparisonResult > 0;
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static int compareInnerScores(InnerScore<?> left, InnerScore<?> right) {
+    return ((InnerScore) left).compareTo((InnerScore) right);
   }
 }

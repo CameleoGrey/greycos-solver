@@ -3,6 +3,8 @@ package ai.greycos.solver.core.impl.islandmodel;
 import java.util.BitSet;
 import java.util.Objects;
 
+import ai.greycos.solver.core.impl.score.director.InnerScore;
+
 /**
  * Message sent between island agents during migration. Contains agent's best solution (migrant) and
  * status vector of all agents.
@@ -11,11 +13,13 @@ public class AgentUpdate<Solution_> {
 
   private final int agentId;
   private final Solution_ migrant;
+  private final InnerScore<?> migrantScore;
   private final BitSet aliveBits;
 
-  public AgentUpdate(int agentId, Solution_ migrant, BitSet aliveBits) {
+  public AgentUpdate(int agentId, Solution_ migrant, InnerScore<?> migrantScore, BitSet aliveBits) {
     this.agentId = agentId;
     this.migrant = Objects.requireNonNull(migrant, "Migrant cannot be null");
+    this.migrantScore = Objects.requireNonNull(migrantScore, "Migrant score cannot be null");
     this.aliveBits =
         (BitSet) Objects.requireNonNull(aliveBits, "Alive bits cannot be null").clone();
   }
@@ -26,6 +30,10 @@ public class AgentUpdate<Solution_> {
 
   public Solution_ getMigrant() {
     return migrant;
+  }
+
+  public InnerScore<?> getMigrantScore() {
+    return migrantScore;
   }
 
   public BitSet getAliveBits() {
@@ -43,12 +51,13 @@ public class AgentUpdate<Solution_> {
     AgentUpdate<?> that = (AgentUpdate<?>) o;
     return agentId == that.agentId
         && Objects.equals(migrant, that.migrant)
+        && Objects.equals(migrantScore, that.migrantScore)
         && Objects.equals(aliveBits, that.aliveBits);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(agentId, migrant, aliveBits);
+    return Objects.hash(agentId, migrant, migrantScore, aliveBits);
   }
 
   @Override
@@ -58,6 +67,8 @@ public class AgentUpdate<Solution_> {
         + agentId
         + ", migrant="
         + migrant
+        + ", migrantScore="
+        + migrantScore
         + ", aliveBits="
         + aliveBits
         + '}';

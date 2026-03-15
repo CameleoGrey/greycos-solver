@@ -105,6 +105,19 @@ public class DefaultIslandModelPhaseFactory<Solution_>
           "Migration frequency must be at least 1, but was: " + migrationFrequency);
     }
 
+    Integer receiveGlobalUpdateFrequency = config.getReceiveGlobalUpdateFrequency();
+    if (receiveGlobalUpdateFrequency != null && receiveGlobalUpdateFrequency < 1) {
+      throw new IllegalArgumentException(
+          "Receive global update frequency must be at least 1, but was: "
+              + receiveGlobalUpdateFrequency);
+    }
+
+    Integer compareGlobalFrequency = config.getCompareGlobalFrequency();
+    if (compareGlobalFrequency != null && compareGlobalFrequency < 1) {
+      throw new IllegalArgumentException(
+          "Compare global frequency must be at least 1, but was: " + compareGlobalFrequency);
+    }
+
     Long migrationTimeout = config.getMigrationTimeout();
     if (migrationTimeout != null && migrationTimeout < 1) {
       throw new IllegalArgumentException(

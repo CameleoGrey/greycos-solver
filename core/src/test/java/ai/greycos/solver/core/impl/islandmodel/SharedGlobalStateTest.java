@@ -8,6 +8,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 import ai.greycos.solver.core.api.score.SimpleScore;
+import ai.greycos.solver.core.impl.score.director.InnerScore;
 
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,7 @@ class SharedGlobalStateTest {
                 try {
                   startLatch.await();
                   SimpleScore score = SimpleScore.of(scoreValue);
-                  state.tryUpdate("solution" + scoreValue, score);
+                  state.tryUpdate("solution" + scoreValue, InnerScore.fullyAssigned(score));
                 } catch (InterruptedException e) {
                   Thread.currentThread().interrupt();
                 } finally {
@@ -58,7 +59,7 @@ class SharedGlobalStateTest {
           notificationCount.getAndSet(notificationCount.get() + 1);
         });
 
-    state.tryUpdate("test solution", SimpleScore.of(10));
+    state.tryUpdate("test solution", InnerScore.fullyAssigned(SimpleScore.of(10)));
 
     assertThat(notifiedSolution.get()).isEqualTo("test solution");
     assertThat(notifiedScore.get()).isEqualTo(SimpleScore.of(10));
@@ -72,8 +73,8 @@ class SharedGlobalStateTest {
 
     state.addObserver(snapshot -> notificationCount.getAndSet(notificationCount.get() + 1));
 
-    state.tryUpdate("first", SimpleScore.of(10));
-    state.tryUpdate("second", SimpleScore.of(5));
+    state.tryUpdate("first", InnerScore.fullyAssigned(SimpleScore.of(10)));
+    state.tryUpdate("second", InnerScore.fullyAssigned(SimpleScore.of(5)));
 
     assertThat(notificationCount.get()).isEqualTo(1);
   }
@@ -82,7 +83,7 @@ class SharedGlobalStateTest {
   void resetClearsState() {
     SharedGlobalState<String> state = new SharedGlobalState<>();
 
-    state.tryUpdate("solution", SimpleScore.of(10));
+    state.tryUpdate("solution", InnerScore.fullyAssigned(SimpleScore.of(10)));
     assertThat(state.getBestSolution()).isNotNull();
     assertThat(state.getBestScore()).isNotNull();
 
@@ -107,7 +108,7 @@ class SharedGlobalStateTest {
   void updateRejectsNullSolution() {
     SharedGlobalState<String> state = new SharedGlobalState<>();
 
-    assertThatThrownBy(() -> state.tryUpdate(null, SimpleScore.of(10)))
+    assertThatThrownBy(() -> state.tryUpdate(null, InnerScore.fullyAssigned(SimpleScore.of(10))))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("Candidate solution cannot be null");
   }
@@ -125,11 +126,22 @@ class SharedGlobalStateTest {
   void getBestSnapshotProvidesConsistentState() {
     SharedGlobalState<String> state = new SharedGlobalState<>();
 
-    state.tryUpdate("solution", SimpleScore.of(10));
+    state.tryUpdate("solution", InnerScore.fullyAssigned(SimpleScore.of(10)));
     var snapshot = state.getBestSnapshot();
 
     assertThat(snapshot).isNotNull();
     assertThat(snapshot.getSolution()).isEqualTo("solution");
     assertThat(snapshot.getScore()).isEqualTo(SimpleScore.of(10));
+  }
+
+  @Test
+  void fullyAssignedScoreBeatsHigherRawScoreWithUnassignedValues() {
+    SharedGlobalState<String> state = new SharedGlobalState<>();
+
+    state.tryUpdate("fullyAssigned", InnerScore.fullyAssigned(SimpleScore.of(0)));
+    state.tryUpdate("unassigned", InnerScore.withUnassignedCount(SimpleScore.of(1000), 1));
+
+    assertThat(state.getBestSolution()).isEqualTo("fullyAssigned");
+    assertThat(state.getBestScore()).isEqualTo(SimpleScore.of(0));
   }
 }

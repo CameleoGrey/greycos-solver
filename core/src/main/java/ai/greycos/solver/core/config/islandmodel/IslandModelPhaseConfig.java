@@ -152,20 +152,20 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   private Integer islandCount = null;
 
   @XmlElement(name = "migrationFrequency")
-  private Integer migrationFrequency = Integer.MAX_VALUE;
+  private Integer migrationFrequency = null;
 
   @XmlElement(name = "compareGlobalEnabled")
-  private Boolean compareGlobalEnabled = true;
+  private Boolean compareGlobalEnabled = null;
 
   @XmlElement(name = "receiveGlobalUpdateFrequency")
-  private Integer receiveGlobalUpdateFrequency = 400;
+  private Integer receiveGlobalUpdateFrequency = null;
 
   @Deprecated
   @XmlElement(name = "compareGlobalFrequency")
   private Integer compareGlobalFrequency = null;
 
   @XmlElement(name = "migrationTimeout")
-  private Long migrationTimeout = 1000L;
+  private Long migrationTimeout = null;
 
   public @Nullable Integer getIslandCount() {
     return islandCount;
