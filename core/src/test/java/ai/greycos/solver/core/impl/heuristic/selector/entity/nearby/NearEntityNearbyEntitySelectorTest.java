@@ -54,9 +54,9 @@ class NearEntityNearbyEntitySelectorTest {
             else if (destination == australia) return 0.0;
             else if (destination == brazil) return 60.0;
           } else if (origin == brazil) {
-            if (destination == morocco) return 50.0;
-            else if (destination == spain) return 51.0;
-            else if (destination == australia) return 60.0;
+            if (destination == morocco) return 55.0;
+            else if (destination == spain) return 53.0;
+            else if (destination == australia) return 61.0;
             else if (destination == brazil) return 0.0;
           }
           return Double.MAX_VALUE;
@@ -64,7 +64,7 @@ class NearEntityNearbyEntitySelectorTest {
 
     var mimicReplayingEntitySelector =
         SelectorTestUtils.mockReplayingEntitySelector(
-            entityDescriptor, morocco, morocco, morocco, morocco);
+            entityDescriptor, morocco, spain, australia, brazil, morocco);
 
     NearEntityNearbyEntitySelector<TestdataSolution> entitySelector =
         new NearEntityNearbyEntitySelector<>(
@@ -82,10 +82,10 @@ class NearEntityNearbyEntitySelectorTest {
         PlannerTestUtils.delegatingStepScope(phaseScopeA);
     entitySelector.stepStarted(stepScopeA1);
     var iterator = entitySelector.iterator();
-    assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Morocco");
     assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
-    assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Australia");
-    assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Morocco");
+    assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Brazil");
+    assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
+    assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
     assertThat(entitySelector.isNeverEnding()).isTrue();
     entitySelector.stepEnded(stepScopeA1);
     entitySelector.phaseEnded(phaseScopeA);
@@ -112,6 +112,21 @@ class NearEntityNearbyEntitySelectorTest {
             else if (destination == spain) return 1.0;
             else if (destination == australia) return 100.0;
             else if (destination == brazil) return 50.0;
+          } else if (origin == spain) {
+            if (destination == morocco) return 1.0;
+            else if (destination == spain) return 0.0;
+            else if (destination == australia) return 101.0;
+            else if (destination == brazil) return 51.0;
+          } else if (origin == australia) {
+            if (destination == morocco) return 100.0;
+            else if (destination == spain) return 101.0;
+            else if (destination == australia) return 0.0;
+            else if (destination == brazil) return 60.0;
+          } else if (origin == brazil) {
+            if (destination == morocco) return 55.0;
+            else if (destination == spain) return 53.0;
+            else if (destination == australia) return 61.0;
+            else if (destination == brazil) return 0.0;
           }
           return Double.MAX_VALUE;
         };
@@ -139,7 +154,69 @@ class NearEntityNearbyEntitySelectorTest {
     AbstractStepScope<TestdataSolution> stepScopeA1 =
         PlannerTestUtils.delegatingStepScope(phaseScopeA);
     entitySelector.stepStarted(stepScopeA1);
-    assertAllCodesOfEntitySelector(entitySelector, "Morocco", "Spain", "Australia", "Brazil");
+    assertAllCodesOfEntitySelector(entitySelector, "Spain", "Brazil", "Spain");
+    entitySelector.stepEnded(stepScopeA1);
+    entitySelector.phaseEnded(phaseScopeA);
+    entitySelector.solvingEnded(solverScope);
+  }
+
+  @Test
+  void randomSelectionRespectsMaxNearbySortSize() {
+    final TestdataEntity morocco = new TestdataEntity("Morocco");
+    final TestdataEntity spain = new TestdataEntity("Spain");
+    final TestdataEntity australia = new TestdataEntity("Australia");
+    final TestdataEntity brazil = new TestdataEntity("Brazil");
+
+    EntityDescriptor<TestdataSolution> entityDescriptor =
+        SelectorTestUtils.mockEntityDescriptor(TestdataEntity.class);
+    var childEntitySelector =
+        SelectorTestUtils.mockEntitySelector(entityDescriptor, morocco, spain, australia, brazil);
+    when(childEntitySelector.isNeverEnding()).thenReturn(true);
+
+    NearbyDistanceMeter<TestdataEntity, TestdataEntity> meter =
+        (origin, destination) -> {
+          if (origin == morocco) {
+            if (destination == morocco) return 0.0;
+            else if (destination == spain) return 1.0;
+            else if (destination == australia) return 100.0;
+            else if (destination == brazil) return 50.0;
+          }
+          return Double.MAX_VALUE;
+        };
+
+    var mimicReplayingEntitySelector =
+        SelectorTestUtils.mockReplayingEntitySelector(entityDescriptor, morocco, morocco, morocco);
+
+    NearEntityNearbyEntitySelector<TestdataSolution> entitySelector =
+        new NearEntityNearbyEntitySelector<>(
+            childEntitySelector,
+            mimicReplayingEntitySelector,
+            meter,
+            new TestNearbyRandom(),
+            true,
+            2,
+            false);
+
+    TestRandom workingRandom = new TestRandom(0, 0, 0);
+
+    InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    SolverScope<TestdataSolution> solverScope =
+        SelectorTestUtils.solvingStarted(entitySelector, scoreDirector, workingRandom);
+    AbstractPhaseScope<TestdataSolution> phaseScopeA =
+        PlannerTestUtils.delegatingPhaseScope(solverScope);
+    entitySelector.phaseStarted(phaseScopeA);
+    AbstractStepScope<TestdataSolution> stepScopeA1 =
+        PlannerTestUtils.delegatingStepScope(phaseScopeA);
+    entitySelector.stepStarted(stepScopeA1);
+
+    var iterator = entitySelector.iterator();
+    assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
+    workingRandom.assertIntBoundJustRequested(1);
+    assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
+    workingRandom.assertIntBoundJustRequested(1);
+    assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
+    workingRandom.assertIntBoundJustRequested(1);
+
     entitySelector.stepEnded(stepScopeA1);
     entitySelector.phaseEnded(phaseScopeA);
     entitySelector.solvingEnded(solverScope);

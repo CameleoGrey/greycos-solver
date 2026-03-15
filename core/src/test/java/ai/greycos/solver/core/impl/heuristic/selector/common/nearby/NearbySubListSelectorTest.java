@@ -5,19 +5,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
-import ai.greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
-import ai.greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.list.RandomSubListSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.list.SubList;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
-import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
@@ -60,25 +55,18 @@ class NearbySubListSelectorTest {
     var childSubListSelector =
         new RandomSubListSelector<>(entitySelector, childValueSelector, 3, 5);
 
-    var configPolicy = mock(HeuristicConfigPolicy.class);
-    when(configPolicy.getRandom()).thenReturn(new TestRandom(new double[0]));
-
-    var classInstanceCache = mock(ClassInstanceCache.class);
-    when(configPolicy.getClassInstanceCache()).thenReturn(classInstanceCache);
-    when(classInstanceCache.newInstance(any(), any(), any(Class.class))).thenReturn(meter);
-
-    var nearbyConfig = new NearbySelectionConfig();
-    nearbyConfig.setNearbyDistanceMeterClass(meter.getClass());
+    var originSubListSelector =
+        SelectorTestUtils.mockReplayingSubListSelector(variableDescriptor, new SubList(e1, 0, 1));
 
     NearbySubListSelector<TestdataSolution> nearbySubListSelector =
         new NearbySubListSelector<>(
-            new SubListSelectorConfig(),
-            configPolicy,
-            nearbyConfig,
-            SelectionCacheType.JUST_IN_TIME,
-            SelectionOrder.ORIGINAL,
-            variableDescriptor,
-            childSubListSelector);
+            childSubListSelector,
+            originSubListSelector,
+            meter,
+            null,
+            false,
+            Integer.MAX_VALUE,
+            false);
 
     TestRandom testRandom = new TestRandom(new double[0]);
 

@@ -21,6 +21,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.Comparato
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandomFactory;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySelectionTuning;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.CachingEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntityByEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntityByValueSelector;
@@ -330,6 +331,12 @@ public class EntitySelectorFactory<Solution_>
             nearbySelectionConfig.getNearbyDistanceMeterClass());
     var nearbyRandom =
         NearbyRandomFactory.create(nearbySelectionConfig).buildNearbyRandom(randomSelection);
+    int maxNearbySortSize =
+        randomSelection
+            ? NearbySelectionTuning.calculateMaxNearbySortSize(nearbySelectionConfig)
+            : Integer.MAX_VALUE;
+    boolean eagerInitialization =
+        NearbySelectionTuning.isEagerInitialization(nearbySelectionConfig);
 
     if (nearbySelectionConfig.getOriginEntitySelectorConfig() != null) {
       var originEntitySelector =
@@ -337,7 +344,13 @@ public class EntitySelectorFactory<Solution_>
                   nearbySelectionConfig.getOriginEntitySelectorConfig())
               .buildEntitySelector(configPolicy, minimumCacheType, resolvedSelectionOrder);
       return new NearEntityNearbyEntitySelector<>(
-          entitySelector, originEntitySelector, nearbyDistanceMeter, nearbyRandom, randomSelection);
+          entitySelector,
+          originEntitySelector,
+          nearbyDistanceMeter,
+          nearbyRandom,
+          randomSelection,
+          maxNearbySortSize,
+          eagerInitialization);
     } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {
       var originValueSelector =
           ValueSelectorFactory.<Solution_>create(
@@ -360,7 +373,9 @@ public class EntitySelectorFactory<Solution_>
           (IterableValueSelector<Solution_>) originValueSelector,
           nearbyDistanceMeter,
           nearbyRandom,
-          randomSelection);
+          randomSelection,
+          maxNearbySortSize,
+          eagerInitialization);
     } else {
       throw new IllegalArgumentException(
           "The entitySelectorConfig ("

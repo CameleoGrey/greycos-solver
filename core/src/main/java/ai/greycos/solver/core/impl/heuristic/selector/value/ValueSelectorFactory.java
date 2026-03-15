@@ -23,6 +23,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.Selection
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandomFactory;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySelectionTuning;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.AssignedListValueSelector;
@@ -610,6 +611,12 @@ public class ValueSelectorFactory<Solution_>
             nearbySelectionConfig.getNearbyDistanceMeterClass());
     var nearbyRandom =
         NearbyRandomFactory.create(nearbySelectionConfig).buildNearbyRandom(randomSelection);
+    int maxNearbySortSize =
+        randomSelection
+            ? NearbySelectionTuning.calculateMaxNearbySortSize(nearbySelectionConfig)
+            : Integer.MAX_VALUE;
+    boolean eagerInitialization =
+        NearbySelectionTuning.isEagerInitialization(nearbySelectionConfig);
 
     if (nearbySelectionConfig.getOriginEntitySelectorConfig() != null) {
       var originEntitySelector =
@@ -629,7 +636,9 @@ public class ValueSelectorFactory<Solution_>
           originEntitySelector,
           nearbyDistanceMeter,
           nearbyRandom,
-          randomSelection);
+          randomSelection,
+          maxNearbySortSize,
+          eagerInitialization);
     } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {
       var originValueSelector =
           ValueSelectorFactory.<Solution_>create(
@@ -657,7 +666,9 @@ public class ValueSelectorFactory<Solution_>
           (IterableValueSelector<Solution_>) originValueSelector,
           nearbyDistanceMeter,
           nearbyRandom,
-          randomSelection);
+          randomSelection,
+          maxNearbySortSize,
+          eagerInitialization);
     } else {
       throw new IllegalArgumentException(
           "The valueSelectorConfig ("

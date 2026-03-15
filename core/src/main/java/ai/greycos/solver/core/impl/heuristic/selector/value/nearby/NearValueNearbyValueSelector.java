@@ -24,12 +24,32 @@ public final class NearValueNearbyValueSelector<Solution_>
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
       @Nullable NearbyRandom nearbyRandom,
       boolean randomSelection) {
+    this(
+        childValueSelector,
+        originValueSelector,
+        nearbyDistanceMeter,
+        nearbyRandom,
+        randomSelection,
+        Integer.MAX_VALUE,
+        false);
+  }
+
+  public NearValueNearbyValueSelector(
+      @NonNull IterableValueSelector<Solution_> childValueSelector,
+      @NonNull IterableValueSelector<Solution_> originValueSelector,
+      @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
+      @Nullable NearbyRandom nearbyRandom,
+      boolean randomSelection,
+      int maxNearbySortSize,
+      boolean eagerInitialization) {
     super(
         childValueSelector,
         castToMimicReplayingValueSelector(originValueSelector),
         nearbyDistanceMeter,
         nearbyRandom,
-        randomSelection);
+        randomSelection,
+        maxNearbySortSize,
+        eagerInitialization);
   }
 
   private static <Solution_> IterableValueSelector<Solution_> castToMimicReplayingValueSelector(
@@ -50,6 +70,11 @@ public final class NearValueNearbyValueSelector<Solution_>
   }
 
   @Override
+  protected @NonNull Iterator<Object> endingOriginIteratorForInitialization() {
+    return replayingSelector.endingIterator(null);
+  }
+
+  @Override
   public @NonNull Iterator<Object> iterator() {
     return new EntityDependentNearbyIterator();
   }
@@ -63,7 +88,7 @@ public final class NearValueNearbyValueSelector<Solution_>
     if (randomSelection) {
       return new RandomNearbyValueIterator(workingRandom, replayingOriginValueIterator, childSize);
     } else {
-      return new OriginalNearbyValueIterator(replayingOriginValueIterator, childSize);
+      return new OriginalNearbyValueIterator(replayingOriginValueIterator);
     }
   }
 
@@ -110,6 +135,8 @@ public final class NearValueNearbyValueSelector<Solution_>
 
     // Origin caching - origin is selected once and reused
     private Object origin = null;
+    private Object cachedOrigin = null;
+    private int cachedNearbySize = -1;
 
     public RandomNearbyValueIterator(
         RandomGenerator workingRandom, Iterator<Object> replayingOriginIterator, long childSize) {
@@ -147,12 +174,22 @@ public final class NearValueNearbyValueSelector<Solution_>
       if (replayingOriginIterator.hasNext()) {
         origin = replayingOriginIterator.next();
       }
+      if (origin == null) {
+        throw new java.util.NoSuchElementException();
+      }
 
       // Select nearby index using probability distribution
-      int nearbyIndex = nearbyRandom.nextInt(workingRandom, nearbySize);
+      if (origin != cachedOrigin) {
+        cachedOrigin = origin;
+        cachedNearbySize = getNearbySize(origin);
+      }
+      if (cachedNearbySize <= 0) {
+        throw new java.util.NoSuchElementException();
+      }
+      int nearbyIndex = nearbyRandom.nextInt(workingRandom, cachedNearbySize);
 
       // Use standard distance matrix for sorted destinations
-      return distanceMatrix.getDestination(origin, nearbyIndex);
+      return getDistanceMatrix().getDestination(origin, nearbyIndex);
     }
   }
 
@@ -163,7 +200,7 @@ public final class NearValueNearbyValueSelector<Solution_>
   private class OriginalNearbyValueIterator implements Iterator<Object> {
 
     private final Iterator<Object> replayingOriginIterator;
-    private final long childSize;
+    private int nearbySize = -1;
     private int nextNearbyIndex = 0;
 
     // Origin caching state
@@ -171,9 +208,8 @@ public final class NearValueNearbyValueSelector<Solution_>
     private boolean originIsNotEmpty;
     private Object origin = null;
 
-    public OriginalNearbyValueIterator(Iterator<Object> replayingOriginIterator, long childSize) {
+    public OriginalNearbyValueIterator(Iterator<Object> replayingOriginIterator) {
       this.replayingOriginIterator = replayingOriginIterator;
-      this.childSize = childSize;
     }
 
     /**
@@ -194,6 +230,7 @@ public final class NearValueNearbyValueSelector<Solution_>
       originIsNotEmpty = replayingOriginIterator.hasNext();
       if (originIsNotEmpty) {
         origin = replayingOriginIterator.next();
+        nearbySize = getNearbySize(origin);
       }
       originSelected = true;
     }
@@ -201,13 +238,13 @@ public final class NearValueNearbyValueSelector<Solution_>
     @Override
     public boolean hasNext() {
       selectOrigin();
-      return originIsNotEmpty && nextNearbyIndex < childSize;
+      return originIsNotEmpty && nextNearbyIndex < nearbySize;
     }
 
     @Override
     public Object next() {
       selectOrigin(); // Ensure origin is selected and cached
-      Object result = distanceMatrix.getDestination(origin, nextNearbyIndex);
+      Object result = getDistanceMatrix().getDestination(origin, nextNearbyIndex);
       nextNearbyIndex++;
       return result;
     }

@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.entity.nearby;
 
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
@@ -8,6 +9,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Nearby entity selector using an entity as origin. Filters and reorders destination entities by
@@ -17,21 +19,59 @@ public final class NearEntityNearbyEntitySelector<Solution_>
     extends AbstractNearbyEntitySelector<Solution_> {
 
   private final @NonNull EntitySelector<Solution_> originEntitySelector;
+  private final boolean discardNearbyIndexZero = true;
 
   public NearEntityNearbyEntitySelector(
       @NonNull EntitySelector<Solution_> childEntitySelector,
       @NonNull EntitySelector<Solution_> originEntitySelector,
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
-      @NonNull NearbyRandom nearbyRandom,
+      @Nullable NearbyRandom nearbyRandom,
       boolean randomSelection) {
-    super(childEntitySelector, nearbyDistanceMeter, nearbyRandom, randomSelection);
+    this(
+        childEntitySelector,
+        originEntitySelector,
+        nearbyDistanceMeter,
+        nearbyRandom,
+        randomSelection,
+        Integer.MAX_VALUE,
+        false);
+  }
+
+  public NearEntityNearbyEntitySelector(
+      @NonNull EntitySelector<Solution_> childEntitySelector,
+      @NonNull EntitySelector<Solution_> originEntitySelector,
+      @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
+      @Nullable NearbyRandom nearbyRandom,
+      boolean randomSelection,
+      int maxNearbySortSize,
+      boolean eagerInitialization) {
+    super(
+        childEntitySelector,
+        originEntitySelector,
+        "entity-nearby-entity",
+        nearbyDistanceMeter,
+        nearbyRandom,
+        randomSelection,
+        maxNearbySortSize,
+        eagerInitialization);
     this.originEntitySelector = originEntitySelector;
     phaseLifecycleSupport.addEventListener(originEntitySelector);
   }
 
   @Override
+  protected @NonNull Iterator<?> endingOriginIterator() {
+    return originEntitySelector.endingIterator();
+  }
+
+  @Override
   public boolean isNeverEnding() {
     return randomSelection || childEntitySelector.isNeverEnding();
+  }
+
+  @Override
+  public long getSize() {
+    long size = childEntitySelector.getSize() - (discardNearbyIndexZero ? 1 : 0);
+    return Math.max(size, 0L);
   }
 
   @Override
@@ -68,6 +108,11 @@ public final class NearEntityNearbyEntitySelector<Solution_>
         + ")";
   }
 
+  @Override
+  protected int getDestinationSizeMaximumAdjustment() {
+    return discardNearbyIndexZero ? 1 : 0;
+  }
+
   // ************************************************************************
   // Inner classes
   // ************************************************************************
@@ -75,58 +120,70 @@ public final class NearEntityNearbyEntitySelector<Solution_>
   private class RandomNearbyEntityIterator implements Iterator<Object> {
 
     private final RandomGenerator random;
-    private final int nearbySize;
-    private int count = 0;
+    private final Iterator<Object> replayingOriginIterator;
+    private Object origin = null;
+    private Object cachedOrigin = null;
+    private int cachedNearbySize = -1;
 
     public RandomNearbyEntityIterator(RandomGenerator random) {
       this.random = random != null ? random : NearEntityNearbyEntitySelector.this.workingRandom;
-      this.nearbySize = (int) childEntitySelector.getSize();
+      this.replayingOriginIterator = originEntitySelector.iterator();
     }
 
     @Override
     public boolean hasNext() {
-      return count < nearbySize;
+      return origin != null || replayingOriginIterator.hasNext();
     }
 
     @Override
     public Object next() {
-      int nearbyIndex = nearbyRandom.nextInt(random, nearbySize);
-      count++;
-
-      // Get nearbyIndex-th entity from child selector
-      Iterator<Object> childIterator = childEntitySelector.iterator();
-      Object result = null;
-      for (int i = 0; i <= nearbyIndex && childIterator.hasNext(); i++) {
-        result = childIterator.next();
+      if (replayingOriginIterator.hasNext()) {
+        origin = replayingOriginIterator.next();
       }
-      return result;
+      if (origin == null || nearbyRandom == null) {
+        throw new NoSuchElementException();
+      }
+      if (origin != cachedOrigin) {
+        cachedOrigin = origin;
+        cachedNearbySize = getNearbySize(origin) - (discardNearbyIndexZero ? 1 : 0);
+      }
+      if (cachedNearbySize <= 0) {
+        throw new NoSuchElementException();
+      }
+      int nearbyIndex = nearbyRandom.nextInt(random, cachedNearbySize);
+      if (discardNearbyIndexZero) {
+        nearbyIndex++;
+      }
+      return getNearbyDestination(origin, nearbyIndex);
     }
   }
 
   private class OriginalNearbyEntityIterator implements Iterator<Object> {
 
-    private final int nearbySize;
-    private int index = 0;
+    private final Iterator<Object> replayingOriginIterator;
+    private final long childSize;
+    private int nextNearbyIndex;
 
     public OriginalNearbyEntityIterator() {
-      this.nearbySize = (int) childEntitySelector.getSize();
+      this.replayingOriginIterator = originEntitySelector.iterator();
+      this.childSize = childEntitySelector.getSize();
+      this.nextNearbyIndex = discardNearbyIndexZero ? 1 : 0;
     }
 
     @Override
     public boolean hasNext() {
-      return index < nearbySize;
+      return replayingOriginIterator.hasNext() && nextNearbyIndex < childSize;
     }
 
     @Override
     public Object next() {
-      // For original order, just iterate through entities in order
-      Iterator<Object> childIterator = childEntitySelector.iterator();
-      Object result = null;
-      for (int i = 0; i <= index && childIterator.hasNext(); i++) {
-        result = childIterator.next();
+      if (!hasNext()) {
+        throw new NoSuchElementException();
       }
-      index++;
-      return result;
+      Object origin = replayingOriginIterator.next();
+      Object destination = getNearbyDestination(origin, nextNearbyIndex);
+      nextNearbyIndex++;
+      return destination;
     }
   }
 }

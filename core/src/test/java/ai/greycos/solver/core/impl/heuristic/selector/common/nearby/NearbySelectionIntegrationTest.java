@@ -16,7 +16,12 @@ import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.nearby.NearEntityNearbyEntitySelector;
+import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
+import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.Test;
 
@@ -179,13 +184,8 @@ class NearbySelectionIntegrationTest {
             entityDescriptor, new TestEntity("A"), new TestEntity("B"), new TestEntity("C"));
 
     var childEntitySelector =
-        mock(ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector.class);
-    when(childEntitySelector.getEntityDescriptor()).thenReturn(entityDescriptor);
-    when(childEntitySelector.iterator())
-        .thenReturn(
-            java.util.List.of(new TestEntity("1"), new TestEntity("2"), new TestEntity("3"))
-                .iterator());
-    when(childEntitySelector.getSize()).thenReturn(3L);
+        SelectorTestUtils.mockEntitySelector(
+            entityDescriptor, new TestEntity("1"), new TestEntity("2"), new TestEntity("3"));
 
     var nearbyEntitySelectorRandom =
         new NearEntityNearbyEntitySelector<>(
@@ -214,10 +214,23 @@ class NearbySelectionIntegrationTest {
             NearbyRandomFactory.create(nearbyConfigOriginal).buildNearbyRandom(false),
             false);
 
+    InnerScoreDirector<TestEntity, ?> scoreDirector = mock(InnerScoreDirector.class);
+    SolverScope<TestEntity> solverScope =
+        SelectorTestUtils.solvingStarted(
+            nearbyEntitySelectorOriginal, scoreDirector, workingRandom);
+    AbstractPhaseScope<TestEntity> phaseScope = PlannerTestUtils.delegatingPhaseScope(solverScope);
+    nearbyEntitySelectorOriginal.phaseStarted(phaseScope);
+    AbstractStepScope<TestEntity> stepScope = PlannerTestUtils.delegatingStepScope(phaseScope);
+    nearbyEntitySelectorOriginal.stepStarted(stepScope);
+
     var originalIterator = nearbyEntitySelectorOriginal.iterator();
     assertTrue(originalIterator.hasNext());
     var entity = originalIterator.next();
     assertNotNull(entity);
+
+    nearbyEntitySelectorOriginal.stepEnded(stepScope);
+    nearbyEntitySelectorOriginal.phaseEnded(phaseScope);
+    nearbyEntitySelectorOriginal.solvingEnded(solverScope);
   }
 
   @Test

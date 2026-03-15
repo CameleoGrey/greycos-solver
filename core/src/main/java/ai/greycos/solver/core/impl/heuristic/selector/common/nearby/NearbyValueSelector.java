@@ -59,11 +59,12 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
     this.nearbyRandom =
         NearbyRandomFactory.create(nearbySelectionConfig).buildNearbyRandom(randomSelection);
 
-    // Calculate maxNearbySortSize with auto-configuration
-    this.maxNearbySortSize = calculateMaxNearbySortSize(nearbySelectionConfig);
+    this.maxNearbySortSize =
+        randomSelection
+            ? NearbySelectionTuning.calculateMaxNearbySortSize(nearbySelectionConfig)
+            : Integer.MAX_VALUE;
 
-    // Eager initialization flag
-    this.eagerInitialization = Boolean.TRUE.equals(nearbySelectionConfig.getEagerInitialization());
+    this.eagerInitialization = NearbySelectionTuning.isEagerInitialization(nearbySelectionConfig);
 
     // Build origin value selector from config
     this.originValueSelector =
@@ -182,66 +183,14 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
   }
 
   /**
-   * Calculates maxNearbySortSize with auto-configuration. If user specified a value, use it.
-   * Otherwise, auto-calculate based on distribution size.
-   *
-   * @param config nearby selection config
-   * @return max nearby sort size to use
-   */
-  private int calculateMaxNearbySortSize(@NonNull NearbySelectionConfig config) {
-    Integer userSpecified = config.getMaxNearbySortSize();
-    if (userSpecified != null && userSpecified > 0) {
-      return userSpecified;
-    }
-
-    // Auto-calculate: 10x distribution size (heuristic)
-    int distributionSize = getDistributionSize(config);
-    return Math.max(1000, distributionSize * 10);
-  }
-
-  /**
-   * Gets the distribution size from config based on distribution type.
-   *
-   * @param config nearby selection config
-   * @return distribution size
-   */
-  private int getDistributionSize(@NonNull NearbySelectionConfig config) {
-    var distributionType = config.getNearbySelectionDistributionType();
-    if (distributionType == null) {
-      return 40; // Default for PARABOLIC
-    }
-
-    return switch (distributionType) {
-      case PARABOLIC_DISTRIBUTION -> {
-        Integer size = config.getParabolicDistributionSizeMaximum();
-        yield size != null ? size : 40;
-      }
-      case LINEAR_DISTRIBUTION -> {
-        Integer size = config.getLinearDistributionSizeMaximum();
-        yield size != null ? size : 40;
-      }
-      case BLOCK_DISTRIBUTION -> {
-        Integer size = config.getBlockDistributionSizeMaximum();
-        yield size != null ? size : 40;
-      }
-      case BETA_DISTRIBUTION -> 40; // Beta distribution doesn't have a size parameter
-    };
-  }
-
-  /**
    * Eagerly initializes all origins by pre-computing their distance matrices. This eliminates
    * latency spikes during solving.
    */
   private void initializeAllOrigins(SolverScope<Solution_> solverScope) {
-    // Get all entities from the child value selector
-    var entityDescriptor = getVariableDescriptor().getEntityDescriptor();
-
-    // Iterate through all entities and pre-compute their distance matrices
-    entityDescriptor.visitAllEntities(
-        solverScope.getWorkingSolution(),
-        entity -> {
-          distanceMatrix.addAllDestinations(entity);
-        });
+    var originIterator = originValueSelector.endingIterator(null);
+    while (originIterator.hasNext()) {
+      distanceMatrix.addAllDestinations(originIterator.next());
+    }
   }
 
   // ************************************************************************
@@ -257,7 +206,6 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
     private final RandomGenerator random;
     private final @NonNull Object entity;
     private final Iterator<Object> replayingOriginIterator;
-    private final int nearbySize;
 
     // Origin caching - origin is selected once from replaying iterator
     private Object origin = null;
@@ -266,13 +214,12 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
       this.random = random;
       this.entity = entity;
       this.replayingOriginIterator = originValueSelector.iterator(entity);
-      this.nearbySize = (int) childValueSelector.getSize(entity);
     }
 
     @Override
     public boolean hasNext() {
       // The replaying iterator provides a constant origin until recording iterator advances
-      return (origin != null || replayingOriginIterator.hasNext()) && nearbySize > 0;
+      return origin != null || replayingOriginIterator.hasNext();
     }
 
     @Override
@@ -285,9 +232,17 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
       if (replayingOriginIterator.hasNext()) {
         origin = replayingOriginIterator.next();
       }
+      if (origin == null) {
+        throw new java.util.NoSuchElementException();
+      }
+
+      int nearbySizeForOrigin = distanceMatrix.getDestinationSize(origin);
+      if (nearbySizeForOrigin <= 0) {
+        throw new java.util.NoSuchElementException();
+      }
 
       // Select nearby index using probability distribution
-      int nearbyIndex = nearbyRandom.nextInt(random, nearbySize);
+      int nearbyIndex = nearbyRandom.nextInt(random, nearbySizeForOrigin);
 
       // Get the nearbyIndex-th closest value from the distance matrix
       return distanceMatrix.getDestination(origin, nearbyIndex);
@@ -302,7 +257,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
 
     private final @NonNull Object entity;
     private final Iterator<Object> replayingOriginIterator;
-    private final int nearbySize;
+    private int nearbySize = -1;
     private int nextNearbyIndex = 0;
 
     // Origin caching state
@@ -313,7 +268,6 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
     public OriginalNearbyValueIterator(@NonNull Object entity) {
       this.entity = entity;
       this.replayingOriginIterator = originValueSelector.iterator(entity);
-      this.nearbySize = (int) childValueSelector.getSize(entity);
     }
 
     /**
@@ -334,6 +288,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
       originIsNotEmpty = replayingOriginIterator.hasNext();
       if (originIsNotEmpty) {
         origin = replayingOriginIterator.next();
+        nearbySize = distanceMatrix.getDestinationSize(origin);
       }
       originSelected = true;
     }

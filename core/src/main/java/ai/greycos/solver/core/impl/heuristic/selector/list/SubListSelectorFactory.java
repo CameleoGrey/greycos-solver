@@ -9,6 +9,8 @@ import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfi
 import ai.greycos.solver.core.impl.AbstractFromConfigFactory;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandomFactory;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySelectionTuning;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.mimic.MimicRecordingSubListSelector;
@@ -64,7 +66,11 @@ public final class SubListSelectorFactory<Solution_>
 
     var subListSelector =
         applyNearbySelection(
-            configPolicy, minimumCacheType, inheritedSelectionOrder, baseSubListSelector);
+            configPolicy,
+            entitySelector,
+            minimumCacheType,
+            inheritedSelectionOrder,
+            baseSubListSelector);
 
     subListSelector = applyMimicRecording(configPolicy, subListSelector);
 
@@ -108,6 +114,7 @@ public final class SubListSelectorFactory<Solution_>
 
   private SubListSelector<Solution_> applyNearbySelection(
       HeuristicConfigPolicy<Solution_> configPolicy,
+      EntitySelector<Solution_> entitySelector,
       SelectionCacheType minimumCacheType,
       SelectionOrder resolvedSelectionOrder,
       RandomSubListSelector<Solution_> subListSelector) {
@@ -115,14 +122,52 @@ public final class SubListSelectorFactory<Solution_>
     if (nearbySelectionConfig == null) {
       return subListSelector;
     }
+    if (NearbySelectionTuning.hasRandomDistributionLimit(nearbySelectionConfig)
+        && config.getMinimumSubListSize() != null
+        && config.getMinimumSubListSize() > 1) {
+      throw new IllegalArgumentException(
+          "Using minimumSubListSize (%s) is not allowed together with a nearby distribution limit."
+              .formatted(config.getMinimumSubListSize()));
+    }
+
+    nearbySelectionConfig.validateNearby(minimumCacheType, resolvedSelectionOrder);
+
+    var randomSelection = resolvedSelectionOrder.toRandomSelectionBoolean();
+    var nearbyDistanceMeter =
+        configPolicy
+            .getClassInstanceCache()
+            .newInstance(
+                nearbySelectionConfig,
+                "nearbyDistanceMeterClass",
+                nearbySelectionConfig.getNearbyDistanceMeterClass());
+    var nearbyRandom =
+        NearbyRandomFactory.create(nearbySelectionConfig).buildNearbyRandom(randomSelection);
+    int maxNearbySortSize =
+        randomSelection
+            ? NearbySelectionTuning.calculateMaxNearbySortSize(nearbySelectionConfig)
+            : Integer.MAX_VALUE;
+    boolean eagerInitialization =
+        NearbySelectionTuning.isEagerInitialization(nearbySelectionConfig);
+
+    if (nearbySelectionConfig.getOriginSubListSelectorConfig() == null) {
+      throw new IllegalArgumentException(
+          "The subListSelector (%s)'s nearbySelectionConfig (%s) requires an originSubListSelector."
+              .formatted(config, nearbySelectionConfig));
+    }
+    var originSubListSelector =
+        SubListSelectorFactory.<Solution_>create(
+                nearbySelectionConfig.getOriginSubListSelectorConfig())
+            .buildSubListSelector(
+                configPolicy, entitySelector, minimumCacheType, resolvedSelectionOrder);
+
     return new NearbySubListSelector<>(
-        config,
-        configPolicy,
-        nearbySelectionConfig,
-        minimumCacheType,
-        resolvedSelectionOrder,
-        subListSelector.getVariableDescriptor(),
-        subListSelector);
+        subListSelector,
+        originSubListSelector,
+        nearbyDistanceMeter,
+        nearbyRandom,
+        randomSelection,
+        maxNearbySortSize,
+        eagerInitialization);
   }
 
   private IterableValueSelector<Solution_> buildIterableValueSelector(

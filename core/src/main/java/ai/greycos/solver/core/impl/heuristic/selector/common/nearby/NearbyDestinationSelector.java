@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import java.util.Iterator;
+import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
@@ -10,6 +11,7 @@ import ai.greycos.solver.core.config.heuristic.selector.list.DestinationSelector
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.Demand;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
@@ -17,6 +19,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.ElementDestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
+import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 
@@ -33,6 +36,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
 
   private final @NonNull EntitySelector<Solution_> entitySelector;
   private final @NonNull IterableValueSelector<Solution_> valueSelector;
+  private final @NonNull ElementDestinationSelector<Solution_> destinationSelector;
   private final EntitySelector<Solution_> originEntitySelector;
   private final SubListSelector<Solution_> originSubListSelector;
   private final IterableValueSelector<Solution_> originValueSelector;
@@ -46,6 +50,8 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
   // Distance matrix for caching sorted destinations by distance from origin
   // Initialized lazily in solvingStarted()
   private @Nullable NearbyDistanceMatrix<Object, Object> distanceMatrix;
+  private @Nullable Demand<NearbyDistanceMatrix<Object, Object>> distanceMatrixDemand;
+  private boolean eagerInitialized = false;
 
   private @Nullable ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
 
@@ -63,6 +69,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
       IterableValueSelector<Solution_> originValueSelector) {
     this.entitySelector = entitySelector;
     this.valueSelector = valueSelector;
+    this.destinationSelector = destinationSelector;
     this.originEntitySelector = originEntitySelector;
     this.originSubListSelector = originSubListSelector;
     this.originValueSelector = originValueSelector;
@@ -99,19 +106,18 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
     this.nearbyRandom =
         NearbyRandomFactory.create(nearbySelectionConfig).buildNearbyRandom(randomSelection);
 
-    // Calculate maxNearbySortSize with auto-configuration
-    this.maxNearbySortSize = calculateMaxNearbySortSize(nearbySelectionConfig);
+    this.maxNearbySortSize =
+        randomSelection
+            ? NearbySelectionTuning.calculateMaxNearbySortSize(nearbySelectionConfig)
+            : Integer.MAX_VALUE;
 
-    // Eager initialization flag
-    this.eagerInitialization = Boolean.TRUE.equals(nearbySelectionConfig.getEagerInitialization());
+    this.eagerInitialization = NearbySelectionTuning.isEagerInitialization(nearbySelectionConfig);
 
     // Distance matrix will be initialized lazily in solvingStarted()
     // when selectors are fully initialized (their cachedEntityList won't be null)
     this.distanceMatrix = null;
 
     phaseLifecycleSupport.addEventListener(destinationSelector);
-    phaseLifecycleSupport.addEventListener(entitySelector);
-    phaseLifecycleSupport.addEventListener(valueSelector);
     if (originEntitySelector != null) {
       phaseLifecycleSupport.addEventListener(originEntitySelector);
     }
@@ -133,25 +139,59 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
     @SuppressWarnings("unchecked")
     var castedDistanceMeter = (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
 
-    this.distanceMatrix =
-        new NearbyDistanceMatrix<>(
+    var matrixDemand =
+        new NearbyDistanceMatrixDemand<>(
             castedDistanceMeter,
-            100, // Initial capacity estimate
+            nearbyRandom,
+            calculateEffectiveMaxNearbySortSize(),
+            true,
+            destinationSelector,
+            getOriginSelectorKey(),
+            getClass().getSimpleName(),
+            this::calculateOriginSizeEstimate,
             origin -> new CombinedDestinationIterator(),
-            origin -> (int) (entitySelector.getSize() + valueSelector.getSize()),
-            maxNearbySortSize);
+            origin -> calculateDestinationSize());
+    if (supplyManager == null) {
+      this.distanceMatrix = matrixDemand.createExternalizedSupply(null);
+      this.distanceMatrixDemand = null;
+    } else {
+      @SuppressWarnings({"rawtypes", "unchecked"})
+      Object supplied =
+          ((ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager) supplyManager)
+              .demand((Demand) matrixDemand);
+      if (supplied instanceof NearbyDistanceMatrix<?, ?> suppliedMatrix) {
+        @SuppressWarnings("unchecked")
+        var castedMatrix = (NearbyDistanceMatrix<Object, Object>) suppliedMatrix;
+        this.distanceMatrix = castedMatrix;
+        this.distanceMatrixDemand = matrixDemand;
+      } else {
+        this.distanceMatrix = matrixDemand.createExternalizedSupply(supplyManager);
+        this.distanceMatrixDemand = null;
+      }
+    }
+    eagerInitialized = false;
+  }
 
-    // Eager initialization: pre-compute all distance matrices
-    if (eagerInitialization) {
+  @Override
+  public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
+    super.phaseStarted(phaseScope);
+    if (eagerInitialization && !eagerInitialized) {
       initializeAllOrigins();
+      eagerInitialized = true;
     }
   }
 
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
     super.solvingEnded(solverScope);
+    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
+    if (distanceMatrixDemand != null && supplyManager != null) {
+      supplyManager.cancel(distanceMatrixDemand);
+      distanceMatrixDemand = null;
+    }
     listVariableStateSupply = null;
     distanceMatrix = null; // Allow GC to free memory
+    eagerInitialized = false;
   }
 
   @Override
@@ -233,53 +273,6 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
   }
 
   /**
-   * Calculates the maxNearbySortSize with auto-configuration. If user specified a value, use it.
-   * Otherwise, auto-calculate based on distribution size.
-   *
-   * @param config the nearby selection config
-   * @return the max nearby sort size to use
-   */
-  private int calculateMaxNearbySortSize(@NonNull NearbySelectionConfig config) {
-    Integer userSpecified = config.getMaxNearbySortSize();
-    if (userSpecified != null && userSpecified > 0) {
-      return userSpecified;
-    }
-
-    // Auto-calculate: 10x the distribution size (heuristic)
-    int distributionSize = getDistributionSize(config);
-    return Math.max(1000, distributionSize * 10);
-  }
-
-  /**
-   * Gets the distribution size from the config based on the distribution type.
-   *
-   * @param config the nearby selection config
-   * @return the distribution size
-   */
-  private int getDistributionSize(@NonNull NearbySelectionConfig config) {
-    var distributionType = config.getNearbySelectionDistributionType();
-    if (distributionType == null) {
-      return 40; // Default for PARABOLIC
-    }
-
-    return switch (distributionType) {
-      case PARABOLIC_DISTRIBUTION -> {
-        Integer size = config.getParabolicDistributionSizeMaximum();
-        yield size != null ? size : 40;
-      }
-      case LINEAR_DISTRIBUTION -> {
-        Integer size = config.getLinearDistributionSizeMaximum();
-        yield size != null ? size : 40;
-      }
-      case BLOCK_DISTRIBUTION -> {
-        Integer size = config.getBlockDistributionSizeMaximum();
-        yield size != null ? size : 40;
-      }
-      case BETA_DISTRIBUTION -> 40; // Beta distribution doesn't have a size parameter
-    };
-  }
-
-  /**
    * Eagerly initializes all origins by pre-computing their distance matrices. This eliminates
    * latency spikes during solving.
    */
@@ -292,8 +285,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
       // SubListSelector doesn't have endingIterator(), use iterator() instead
       originIterator = originSubListSelector.iterator();
     } else if (originValueSelector != null) {
-      // IterableValueSelector doesn't have endingIterator(), use iterator() instead
-      originIterator = originValueSelector.iterator(null);
+      originIterator = originValueSelector.endingIterator(null);
     } else {
       return;
     }
@@ -364,10 +356,11 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
 
     private final RandomGenerator random;
     private final Iterator<?> replayingOriginIterator;
-    private final int nearbySize;
 
     // Origin caching - origin is selected once from replaying iterator
     private Object origin = null;
+    private Object cachedOrigin = null;
+    private int cachedNearbySize = -1;
 
     public RandomNearbyDestinationIterator(RandomGenerator random) {
       this.random = random;
@@ -380,13 +373,12 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
       } else {
         throw new IllegalStateException("No origin selector is configured");
       }
-      this.nearbySize = (int) (entitySelector.getSize() + valueSelector.getSize());
     }
 
     @Override
     public boolean hasNext() {
       // The replaying iterator provides a constant origin until the recording iterator advances
-      return (origin != null || replayingOriginIterator.hasNext()) && nearbySize > 0;
+      return origin != null || replayingOriginIterator.hasNext();
     }
 
     @Override
@@ -394,21 +386,28 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
       if (nearbyRandom == null) {
         throw new IllegalStateException("nearbyRandom is null but randomSelection is true");
       }
-      if (distanceMatrix == null) {
-        throw new IllegalStateException(
-            "distanceMatrix is null. Make sure solvingStarted() was called.");
-      }
 
       // Get origin from replaying iterator (will be constant until recording iterator advances)
       if (replayingOriginIterator.hasNext()) {
         origin = replayingOriginIterator.next();
       }
+      if (origin == null) {
+        throw new java.util.NoSuchElementException();
+      }
+
+      if (origin != cachedOrigin) {
+        cachedOrigin = origin;
+        cachedNearbySize = getDistanceMatrix().getDestinationSize(origin);
+      }
+      if (cachedNearbySize <= 0) {
+        throw new java.util.NoSuchElementException();
+      }
 
       // Select nearby index using probability distribution
-      int nearbyIndex = nearbyRandom.nextInt(random, nearbySize);
+      int nearbyIndex = nearbyRandom.nextInt(random, cachedNearbySize);
 
       // Get the nearbyIndex-th closest destination from the distance matrix
-      Object destination = distanceMatrix.getDestination(origin, nearbyIndex);
+      Object destination = getDistanceMatrix().getDestination(origin, nearbyIndex);
 
       // Convert destination (entity or value) to ElementPosition
       return convertToElementPosition(destination);
@@ -422,7 +421,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
   private class OriginalNearbyDestinationIterator implements Iterator<ElementPosition> {
 
     private final Iterator<?> replayingOriginIterator;
-    private final long nearbySize;
+    private int nearbySize = -1;
     private int nextNearbyIndex = 0;
 
     // Origin caching state
@@ -440,7 +439,6 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
       } else {
         throw new IllegalStateException("No origin selector is configured");
       }
-      this.nearbySize = entitySelector.getSize() + valueSelector.getSize();
     }
 
     /**
@@ -461,6 +459,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
       originIsNotEmpty = replayingOriginIterator.hasNext();
       if (originIsNotEmpty) {
         origin = replayingOriginIterator.next();
+        nearbySize = getDistanceMatrix().getDestinationSize(origin);
       }
       originSelected = true;
     }
@@ -473,15 +472,10 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
 
     @Override
     public ElementPosition next() {
-      if (distanceMatrix == null) {
-        throw new IllegalStateException(
-            "distanceMatrix is null. Make sure solvingStarted() was called.");
-      }
-
       selectOrigin(); // Ensure origin is selected and cached
 
       // Get the nextNearbyIndex-th closest destination from the distance matrix
-      Object destination = distanceMatrix.getDestination(origin, nextNearbyIndex);
+      Object destination = getDistanceMatrix().getDestination(origin, nextNearbyIndex);
       nextNearbyIndex++;
 
       // Convert destination (entity or value) to ElementPosition
@@ -509,6 +503,70 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
       }
       var positionInList = listVariableStateSupply.getElementPosition(destination).ensureAssigned();
       return ElementPosition.of(positionInList.entity(), positionInList.index() + 1);
+    }
+  }
+
+  private @NonNull NearbyDistanceMatrix<Object, Object> getDistanceMatrix() {
+    if (distanceMatrix == null) {
+      throw new IllegalStateException(
+          "distanceMatrix is null. Make sure solvingStarted() was called.");
+    }
+    return distanceMatrix;
+  }
+
+  private @NonNull Object getOriginSelectorKey() {
+    if (originEntitySelector != null) {
+      return originEntitySelector;
+    }
+    if (originSubListSelector != null) {
+      return originSubListSelector;
+    }
+    if (originValueSelector != null) {
+      return originValueSelector;
+    }
+    throw new IllegalStateException("No origin selector is configured");
+  }
+
+  private int calculateOriginSizeEstimate() {
+    if (originEntitySelector != null) {
+      return safeToIntSize(originEntitySelector::getSize, "originEntitySelector");
+    }
+    if (originSubListSelector != null) {
+      return safeToIntSize(originSubListSelector::getValueCount, "originSubListSelector");
+    }
+    return safeToIntSize(originValueSelector::getSize, "originValueSelector");
+  }
+
+  private int calculateDestinationSize() {
+    return toIntSize(getSize(), "destinationSelector");
+  }
+
+  private int calculateEffectiveMaxNearbySortSize() {
+    if (!randomSelection || nearbyRandom == null) {
+      return maxNearbySortSize;
+    }
+    return Math.min(maxNearbySortSize, nearbyRandom.getOverallSizeMaximum());
+  }
+
+  private static int toIntSize(long size, String selectorLabel) {
+    if (size > Integer.MAX_VALUE) {
+      throw new IllegalStateException(
+          "The "
+              + selectorLabel
+              + " has a size ("
+              + size
+              + ") which is higher than Integer.MAX_VALUE.");
+    }
+    return (int) size;
+  }
+
+  private static int safeToIntSize(LongSupplier sizeSupplier, String selectorLabel) {
+    try {
+      return toIntSize(sizeSupplier.getAsLong(), selectorLabel);
+    } catch (NullPointerException ignored) {
+      // Some selectors initialize their size caches in phaseStarted().
+      // During solvingStarted() this estimate is best-effort only.
+      return 100;
     }
   }
 }

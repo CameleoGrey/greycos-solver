@@ -28,12 +28,32 @@ public final class NearEntityNearbyValueSelector<Solution_>
       @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
       @Nullable NearbyRandom nearbyRandom,
       boolean randomSelection) {
+    this(
+        childValueSelector,
+        originEntitySelector,
+        nearbyDistanceMeter,
+        nearbyRandom,
+        randomSelection,
+        Integer.MAX_VALUE,
+        false);
+  }
+
+  public NearEntityNearbyValueSelector(
+      @NonNull IterableValueSelector<Solution_> childValueSelector,
+      @NonNull EntitySelector<Solution_> originEntitySelector,
+      @NonNull NearbyDistanceMeter<?, ?> nearbyDistanceMeter,
+      @Nullable NearbyRandom nearbyRandom,
+      boolean randomSelection,
+      int maxNearbySortSize,
+      boolean eagerInitialization) {
     super(
         childValueSelector,
         castToMimicReplayingEntitySelector(originEntitySelector),
         nearbyDistanceMeter,
         nearbyRandom,
-        randomSelection);
+        randomSelection,
+        maxNearbySortSize,
+        eagerInitialization);
     // Compute discardNearbyIndexZero: if value type is assignable from entity type,
     // the origin entity may appear in the value list, so we should discard it
     this.discardNearbyIndexZero =
@@ -61,6 +81,11 @@ public final class NearEntityNearbyValueSelector<Solution_>
   }
 
   @Override
+  protected @NonNull Iterator<Object> endingOriginIteratorForInitialization() {
+    return replayingSelector.endingIterator();
+  }
+
+  @Override
   public long getSize(Object entity) {
     long size = childValueSelector.getSize(entity);
     if (discardNearbyIndexZero) {
@@ -83,7 +108,7 @@ public final class NearEntityNearbyValueSelector<Solution_>
     if (randomSelection) {
       return new RandomNearbyValueIterator(workingRandom, replayingOriginEntityIterator, childSize);
     } else {
-      return new OriginalNearbyValueIterator(replayingOriginEntityIterator, childSize);
+      return new OriginalNearbyValueIterator(replayingOriginEntityIterator);
     }
   }
 
@@ -115,6 +140,11 @@ public final class NearEntityNearbyValueSelector<Solution_>
     return "NearEntityNearbyValueSelector(" + getVariableDescriptor().getVariableName() + ")";
   }
 
+  @Override
+  protected int getDestinationSizeMaximumAdjustment() {
+    return discardNearbyIndexZero ? 1 : 0;
+  }
+
   // ************************************************************************
   // Inner classes
   // ************************************************************************
@@ -131,12 +161,14 @@ public final class NearEntityNearbyValueSelector<Solution_>
 
     // Origin caching - origin is selected once and reused
     private Object origin = null;
+    private Object cachedOrigin = null;
+    private int cachedNearbySize = -1;
 
     public RandomNearbyValueIterator(
         RandomGenerator random, Iterator<Object> replayingOriginIterator, long childSize) {
       this.random = random;
       this.replayingOriginIterator = replayingOriginIterator;
-      if (childSize > Integer.MAX_VALUE) {
+      if (childSize > Integer.MAX_VALUE || childSize < 0) {
         throw new IllegalStateException(
             "The childValueSelector ("
                 + childValueSelector
@@ -144,8 +176,7 @@ public final class NearEntityNearbyValueSelector<Solution_>
                 + childSize
                 + ") which is higher than Integer.MAX_VALUE.");
       }
-      // Adjust size for discardNearbyIndexZero
-      this.nearbySize = (int) childSize - (discardNearbyIndexZero ? 1 : 0);
+      this.nearbySize = (int) childSize;
     }
 
     @Override
@@ -169,9 +200,20 @@ public final class NearEntityNearbyValueSelector<Solution_>
       if (replayingOriginIterator.hasNext()) {
         origin = replayingOriginIterator.next();
       }
+      if (origin == null) {
+        throw new java.util.NoSuchElementException();
+      }
+
+      if (origin != cachedOrigin) {
+        cachedOrigin = origin;
+        cachedNearbySize = getNearbySize(origin) - (discardNearbyIndexZero ? 1 : 0);
+      }
+      if (cachedNearbySize <= 0) {
+        throw new java.util.NoSuchElementException();
+      }
 
       // Select nearby index using probability distribution
-      int nearbyIndex = nearbyRandom.nextInt(random, nearbySize);
+      int nearbyIndex = nearbyRandom.nextInt(random, cachedNearbySize);
 
       // If discarding index 0 (origin itself), shift to start at index 1
       if (discardNearbyIndexZero) {
@@ -179,7 +221,7 @@ public final class NearEntityNearbyValueSelector<Solution_>
       }
 
       // Use distance matrix for sorted destinations
-      return distanceMatrix.getDestination(origin, nearbyIndex);
+      return getDistanceMatrix().getDestination(origin, nearbyIndex);
     }
   }
 
@@ -191,7 +233,6 @@ public final class NearEntityNearbyValueSelector<Solution_>
   private class OriginalNearbyValueIterator implements Iterator<Object> {
 
     private final Iterator<Object> replayingOriginIterator;
-    private final long childSize;
     private int nextNearbyIndex;
 
     // Origin caching state
@@ -204,9 +245,8 @@ public final class NearEntityNearbyValueSelector<Solution_>
     private int nextAnchorIndex = 0;
     private int nonAnchorCount = 0;
 
-    public OriginalNearbyValueIterator(Iterator<Object> replayingOriginIterator, long childSize) {
+    public OriginalNearbyValueIterator(Iterator<Object> replayingOriginIterator) {
       this.replayingOriginIterator = replayingOriginIterator;
-      this.childSize = childSize;
       // Start at index 1 if discarding index 0 (the origin itself)
       this.nextNearbyIndex = discardNearbyIndexZero ? 1 : 0;
     }
@@ -232,16 +272,13 @@ public final class NearEntityNearbyValueSelector<Solution_>
         // Collect anchors to append after sorted non-anchors
         anchors = new java.util.ArrayList<>();
         Iterator<Object> valueIterator = childValueSelector.iterator(origin);
-        int count = 0;
         while (valueIterator.hasNext()) {
           Object value = valueIterator.next();
           if (getVariableDescriptor().isValuePotentialAnchor(value)) {
             anchors.add(value);
-          } else {
-            count++;
           }
         }
-        nonAnchorCount = count;
+        nonAnchorCount = getNearbySize(origin);
         // Note: Don't decrement count here when discardNearbyIndexZero is true
         // because nextNearbyIndex already starts at 1 to skip index 0
       }
@@ -263,7 +300,7 @@ public final class NearEntityNearbyValueSelector<Solution_>
       selectOrigin(); // Ensure origin is selected and cached
       // Return non-anchors from distance matrix first
       if (nextNearbyIndex < nonAnchorCount) {
-        Object result = distanceMatrix.getDestination(origin, nextNearbyIndex);
+        Object result = getDistanceMatrix().getDestination(origin, nextNearbyIndex);
         nextNearbyIndex++;
         return result;
       }

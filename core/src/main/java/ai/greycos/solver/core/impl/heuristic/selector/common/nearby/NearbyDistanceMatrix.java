@@ -26,6 +26,7 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
   private final @NonNull Function<Origin, Iterator<Destination>> destinationIteratorProvider;
   private final @NonNull ToIntFunction<Origin> destinationSizeFunction;
   private final int maxNearbySortSize;
+  private final boolean strictDestinationSize;
 
   public NearbyDistanceMatrix(
       @NonNull NearbyDistanceMeter<Origin, Destination> nearbyDistanceMeter,
@@ -58,12 +59,29 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
       @NonNull Function<Origin, Iterator<Destination>> destinationIteratorProvider,
       @NonNull ToIntFunction<Origin> destinationSizeFunction,
       int maxNearbySortSize) {
+    this(
+        nearbyDistanceMeter,
+        originSize,
+        destinationIteratorProvider,
+        destinationSizeFunction,
+        maxNearbySortSize,
+        true);
+  }
+
+  public NearbyDistanceMatrix(
+      @NonNull NearbyDistanceMeter<Origin, Destination> nearbyDistanceMeter,
+      int originSize,
+      @NonNull Function<Origin, Iterator<Destination>> destinationIteratorProvider,
+      @NonNull ToIntFunction<Origin> destinationSizeFunction,
+      int maxNearbySortSize,
+      boolean strictDestinationSize) {
     this.nearbyDistanceMeter = nearbyDistanceMeter;
     this.originToDestinationsMap =
         new ConcurrentHashMap<>(originSize, 0.75f, Runtime.getRuntime().availableProcessors());
     this.destinationIteratorProvider = destinationIteratorProvider;
     this.destinationSizeFunction = destinationSizeFunction;
     this.maxNearbySortSize = maxNearbySortSize > 0 ? maxNearbySortSize : Integer.MAX_VALUE;
+    this.strictDestinationSize = strictDestinationSize;
   }
 
   public void addAllDestinations(@NonNull Origin origin) {
@@ -78,11 +96,16 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
   }
 
   public @NonNull Object getDestination(@NonNull Origin origin, int nearbyIndex) {
-    Destination[] destinations = originToDestinationsMap.get(origin);
-    if (destinations == null) {
-      destinations = originToDestinationsMap.computeIfAbsent(origin, this::computeDestinations);
-    }
+    Destination[] destinations = getOrComputeDestinations(origin);
     return destinations[nearbyIndex];
+  }
+
+  public int getDestinationSize(@NonNull Origin origin) {
+    return getOrComputeDestinations(origin).length;
+  }
+
+  private Destination[] getOrComputeDestinations(@NonNull Origin origin) {
+    return originToDestinationsMap.computeIfAbsent(origin, this::computeDestinations);
   }
 
   private Destination[] computeDestinations(@NonNull Origin origin) {
@@ -107,7 +130,7 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
       pairs.add(new DestinationDistance(destination, distance));
     }
 
-    if (pairs.size() != destinationSize) {
+    if (strictDestinationSize && pairs.size() != destinationSize) {
       throw new IllegalStateException(
           "The destinationIterator's size ("
               + pairs.size()
@@ -148,7 +171,7 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
       }
     }
 
-    if (actualSize != expectedSize) {
+    if (strictDestinationSize && actualSize != expectedSize) {
       throw new IllegalStateException(
           "The destinationIterator's size ("
               + actualSize

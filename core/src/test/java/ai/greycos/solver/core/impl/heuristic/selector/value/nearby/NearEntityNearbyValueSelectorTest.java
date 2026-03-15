@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.value.nearby;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfValueSelectorForEntity;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertCodesOfNeverEndingValueSelectorForEntity;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -200,6 +201,64 @@ class NearEntityNearbyValueSelectorTest {
     valueSelector.stepEnded(stepScopeB3);
 
     valueSelector.phaseEnded(phaseScopeB);
+    valueSelector.solvingEnded(solverScope);
+  }
+
+  @Test
+  void originalSelectionRespectsMaxNearbySortSize() {
+    final TestdataEntity europe = new TestdataEntity("Europe");
+    final TestdataValue morocco = new TestdataValue("Morocco");
+    final TestdataValue spain = new TestdataValue("Spain");
+    final TestdataValue australia = new TestdataValue("Australia");
+    final TestdataValue brazil = new TestdataValue("Brazil");
+
+    EntityDescriptor<TestdataSolution> entityDescriptor =
+        SelectorTestUtils.mockEntityDescriptor(TestdataEntity.class);
+    GenuineVariableDescriptor<TestdataSolution> variableDescriptor =
+        SelectorTestUtils.mockVariableDescriptor(entityDescriptor, "location");
+    when(variableDescriptor.getVariablePropertyType()).thenReturn((Class) TestdataValue.class);
+
+    NearbyDistanceMeter<TestdataEntity, TestdataValue> meter =
+        (origin, destination) -> {
+          if (origin == europe) {
+            if (destination.getCode().equals("Morocco")) return 1.0;
+            else if (destination.getCode().equals("Spain")) return 0.0;
+            else if (destination.getCode().equals("Australia")) return 101.0;
+            else if (destination.getCode().equals("Brazil")) return 51.0;
+          }
+          return Double.MAX_VALUE;
+        };
+
+    var childValueSelector =
+        SelectorTestUtils.mockIterableValueSelector(
+            variableDescriptor, morocco, spain, australia, brazil);
+
+    var mimicReplayingEntitySelector =
+        SelectorTestUtils.mockReplayingEntitySelector(entityDescriptor, europe, europe);
+
+    NearEntityNearbyValueSelector<TestdataSolution> valueSelector =
+        new NearEntityNearbyValueSelector<>(
+            childValueSelector, mimicReplayingEntitySelector, meter, null, false, 2, false);
+
+    TestRandom workingRandom = new TestRandom(0);
+
+    InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    SolverScope<TestdataSolution> solverScope =
+        SelectorTestUtils.solvingStarted(valueSelector, scoreDirector, workingRandom);
+    AbstractPhaseScope<TestdataSolution> phaseScopeA =
+        PlannerTestUtils.delegatingPhaseScope(solverScope);
+    valueSelector.phaseStarted(phaseScopeA);
+    AbstractStepScope<TestdataSolution> stepScopeA1 =
+        PlannerTestUtils.delegatingStepScope(phaseScopeA);
+    valueSelector.stepStarted(stepScopeA1);
+
+    var iterator = valueSelector.iterator(europe);
+    assertThat(((TestdataValue) iterator.next()).getCode()).isEqualTo("Spain");
+    assertThat(((TestdataValue) iterator.next()).getCode()).isEqualTo("Morocco");
+    assertThat(iterator.hasNext()).isFalse();
+
+    valueSelector.stepEnded(stepScopeA1);
+    valueSelector.phaseEnded(phaseScopeA);
     valueSelector.solvingEnded(solverScope);
   }
 }
