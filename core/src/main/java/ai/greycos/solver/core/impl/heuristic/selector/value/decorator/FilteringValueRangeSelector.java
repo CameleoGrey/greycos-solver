@@ -163,11 +163,6 @@ public final class FilteringValueRangeSelector<Solution_>
   }
 
   @Override
-  public boolean isCountable() {
-    return nonReplayingValueSelector.isCountable();
-  }
-
-  @Override
   public boolean isNeverEnding() {
     return nonReplayingValueSelector.isNeverEnding();
   }

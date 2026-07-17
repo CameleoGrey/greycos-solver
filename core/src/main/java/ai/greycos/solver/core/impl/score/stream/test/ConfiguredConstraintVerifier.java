@@ -6,10 +6,10 @@ import java.util.UUID;
 import java.util.function.BiFunction;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
@@ -31,7 +31,7 @@ final class ConfiguredConstraintVerifier<
   // Exists so that people can not, even by accident, pick the same constraint ID as the default
   // cache key.
   private final ConstraintRef defaultScoreDirectorFactoryMapKey =
-      ConstraintRef.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+      ConstraintRef.of(UUID.randomUUID().toString());
 
   private final ConstraintProvider_ constraintProvider;
 

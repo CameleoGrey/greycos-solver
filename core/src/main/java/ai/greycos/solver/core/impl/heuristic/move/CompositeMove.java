@@ -1,14 +1,13 @@
 package ai.greycos.solver.core.impl.heuristic.move;
 
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.SequencedCollection;
 import java.util.stream.Collectors;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
-import ai.greycos.solver.core.impl.util.CollectionUtils;
 
 /**
  * A CompositeMove is composed out of multiple other moves.
@@ -110,8 +109,8 @@ public class CompositeMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<?> getPlanningEntities() {
-    Set<Object> entities = CollectionUtils.newLinkedHashSet(moves.length * 2);
+  public SequencedCollection<Object> getPlanningEntities() {
+    var entities = LinkedHashSet.<Object>newLinkedHashSet(moves.length * 2);
     for (Move<Solution_> move : moves) {
       entities.addAll(move.getPlanningEntities());
     }
@@ -119,8 +118,8 @@ public class CompositeMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<?> getPlanningValues() {
-    Set<Object> values = CollectionUtils.newLinkedHashSet(moves.length * 2);
+  public SequencedCollection<Object> getPlanningValues() {
+    var values = LinkedHashSet.<Object>newLinkedHashSet(moves.length * 2);
     for (Move<Solution_> move : moves) {
       values.addAll(move.getPlanningValues());
     }

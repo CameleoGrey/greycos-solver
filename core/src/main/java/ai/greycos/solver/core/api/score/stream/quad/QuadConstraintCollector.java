@@ -3,12 +3,12 @@ package ai.greycos.solver.core.api.score.stream.quad;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import ai.greycos.solver.core.api.function.PentaFunction;
 import ai.greycos.solver.core.api.score.stream.ConstraintCollectors;
 import ai.greycos.solver.core.api.score.stream.ConstraintStream;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * As described by {@link UniConstraintCollector}, only for {@link QuadConstraintStream}.
@@ -25,19 +25,24 @@ import org.jspecify.annotations.NonNull;
  *     group key.
  * @see ConstraintCollectors
  */
+@NullMarked
 public interface QuadConstraintCollector<A, B, C, D, ResultContainer_, Result_> {
 
-  /** A lambda that creates the result container, one for each group key combination. */
-  @NonNull Supplier<ResultContainer_> supplier();
+  /**
+   * As defined by {@link UniConstraintCollector#supplier()}, but for {@link QuadConstraintStream}.
+   */
+  Supplier<ResultContainer_> supplier();
 
   /**
-   * A lambda that extracts data from the matched facts, accumulates it in the result container and
-   * returns an undo operation for that accumulation.
+   * As defined by {@link UniConstraintCollector#accumulator()}, but for {@link
+   * QuadConstraintStream}.
    *
-   * @return the undo operation. This lambda is called when the facts no longer matches.
+   * @see QuadConstraintCollectorAccumulator The incremental accumulator API.
    */
-  @NonNull PentaFunction<ResultContainer_, A, B, C, D, Runnable> accumulator();
+  QuadConstraintCollectorAccumulator<ResultContainer_, A, B, C, D> accumulator();
 
-  /** A lambda that converts the result container into the result. */
-  @NonNull Function<ResultContainer_, Result_> finisher();
+  /**
+   * As defined by {@link UniConstraintCollector#finisher()}, but for {@link QuadConstraintStream}.
+   */
+  Function<ResultContainer_, @Nullable Result_> finisher();
 }

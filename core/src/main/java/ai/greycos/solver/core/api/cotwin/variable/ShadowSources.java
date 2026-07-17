@@ -19,7 +19,8 @@ public @interface ShadowSources {
    * <p>Each path is a {@link String} that is one of the following three forms:
    *
    * <ul>
-   *   <li>"variableName", for referring any variable on the same planning entity.
+   *   <li>"variableName", for referring any variable on the same planning entity, except a {@link
+   *       PlanningListVariable}, which cannot be used as a source.
    *   <li>A list of names seperated by ".", such as "variableOrFact.fact.entity.variable", for
    *       referencing a variable accessible from the planning entity. The first property may be a
    *       fact or any non-declarative variable; the remaining properties before the end must be

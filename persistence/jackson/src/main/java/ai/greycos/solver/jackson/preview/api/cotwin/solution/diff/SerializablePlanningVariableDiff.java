@@ -1,6 +1,6 @@
 package ai.greycos.solver.jackson.preview.api.cotwin.solution.diff;
 
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningVariableDiff;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningVariableDiff;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

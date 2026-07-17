@@ -3,12 +3,11 @@ package ai.greycos.solver.core.impl.neighborhood;
 import java.util.Iterator;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
-import ai.greycos.solver.core.impl.heuristic.move.MoveAdapters;
 import ai.greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public final class NeighborhoodsMoveSelector<Solution_> extends AbstractMoveSelector<Solution_> {
 
@@ -22,11 +21,6 @@ public final class NeighborhoodsMoveSelector<Solution_> extends AbstractMoveSele
   public long getSize() {
     throw new UnsupportedOperationException(
         "Neighborhood size is not supported by the Neighborhoods API.");
-  }
-
-  @Override
-  public boolean isCountable() {
-    return true;
   }
 
   @Override
@@ -77,6 +71,6 @@ public final class NeighborhoodsMoveSelector<Solution_> extends AbstractMoveSele
 
   @Override
   public Iterator<Move<Solution_>> iterator() {
-    return MoveAdapters.toLegacyMoveIterator(moveRepository.iterator());
+    return moveRepository.iterator();
   }
 }

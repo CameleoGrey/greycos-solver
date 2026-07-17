@@ -1,7 +1,6 @@
 package ai.greycos.solver.core.impl.score.director.stream;
 
 import java.util.Arrays;
-import java.util.function.Consumer;
 
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.stream.ConstraintMetaModel;
@@ -103,22 +102,8 @@ public final class BavetConstraintStreamScoreDirectorFactory<
       ConsistencyTracker<Solution_> consistencyTracker,
       ConstraintMatchPolicy constraintMatchPolicy,
       boolean scoreDirectorDerived) {
-    return newSession(
-        workingSolution, consistencyTracker, constraintMatchPolicy, scoreDirectorDerived, null);
-  }
-
-  public BavetConstraintSession<Score_> newSession(
-      Solution_ workingSolution,
-      ConsistencyTracker<Solution_> consistencyTracker,
-      ConstraintMatchPolicy constraintMatchPolicy,
-      boolean scoreDirectorDerived,
-      Consumer<String> nodeNetworkVisualizationConsumer) {
     return constraintSessionFactory.buildSession(
-        workingSolution,
-        consistencyTracker,
-        constraintMatchPolicy,
-        scoreDirectorDerived,
-        nodeNetworkVisualizationConsumer);
+        workingSolution, consistencyTracker, constraintMatchPolicy, scoreDirectorDerived);
   }
 
   @Override

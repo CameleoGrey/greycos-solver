@@ -2,9 +2,12 @@ package ai.greycos.solver.core.impl.neighborhood.stream.sampling;
 
 import java.util.Objects;
 
+import ai.greycos.solver.core.impl.neighborhood.stream.UniMoveStream;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni.AbstractUniEnumeratingStream;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniLeftDataset;
 import ai.greycos.solver.core.impl.neighborhood.stream.joiner.BiNeighborhoodsJoinerComber;
+import ai.greycos.solver.core.preview.api.neighborhood.UniMoveConstructor;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.MoveStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.joiner.BiNeighborhoodsJoiner;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.sampling.BiSamplingStream;
@@ -35,5 +38,10 @@ public final class DefaultUniSamplingStream<Solution_, A>
         dataset,
         ((AbstractUniEnumeratingStream<Solution_, B>) uniEnumeratingStream)
             .createRightDataset(comber));
+  }
+
+  @Override
+  public MoveStream<Solution_> asMove(UniMoveConstructor<Solution_, A> moveConstructor) {
+    return new UniMoveStream<>(dataset, Objects.requireNonNull(moveConstructor));
   }
 }

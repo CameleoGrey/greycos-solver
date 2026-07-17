@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.cotwin.valuerange;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -9,7 +10,6 @@ import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.cotwin.valuerange.sort.ValueRangeSorter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.CachedListRandomIterator;
-import ai.greycos.solver.core.impl.util.CollectionUtils;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -43,11 +43,11 @@ public final class ValueRangeCache<Value_> implements Iterable<Value_> {
   }
 
   public static <Value_> ValueRangeCache<Value_> of(int size) {
-    return new ValueRangeCache<>(size, CollectionUtils.newHashSet(size));
+    return new ValueRangeCache<>(size, HashSet.newHashSet(size));
   }
 
   public static <Value_> ValueRangeCache<Value_> of(Collection<Value_> collection) {
-    return new ValueRangeCache<>(collection, CollectionUtils.newHashSet(collection.size()));
+    return new ValueRangeCache<>(collection, HashSet.newHashSet(collection.size()));
   }
 
   public void add(@Nullable Value_ value) {
@@ -94,7 +94,7 @@ public final class ValueRangeCache<Value_> implements Iterable<Value_> {
     // We need to copy the list to ensure it won't affect other cache instances
     var newValuesWithFastRandomAccess = new ArrayList<>(valuesWithFastRandomAccess);
     sorter.sort(newValuesWithFastRandomAccess);
-    var newValuesWithFastLookup = CollectionUtils.<Value_>newHashSet(valuesWithFastLookup.size());
+    var newValuesWithFastLookup = HashSet.<Value_>newHashSet(valuesWithFastLookup.size());
     newValuesWithFastLookup.addAll(valuesWithFastLookup);
     return new ValueRangeCache<>(newValuesWithFastRandomAccess, newValuesWithFastLookup);
   }
@@ -119,8 +119,7 @@ public final class ValueRangeCache<Value_> implements Iterable<Value_> {
       @Override
       public <Value_> ValueRangeCache<Value_> buildCache(
           List<Value_> valuesWithFastRandomAccess, Set<Value_> valuesWithFastLookup) {
-        var newValuesWithFastLookup =
-            CollectionUtils.<Value_>newHashSet(valuesWithFastLookup.size());
+        var newValuesWithFastLookup = HashSet.<Value_>newHashSet(valuesWithFastLookup.size());
         newValuesWithFastLookup.addAll(valuesWithFastLookup);
         return new ValueRangeCache<>(valuesWithFastRandomAccess, newValuesWithFastLookup);
       }
@@ -143,8 +142,7 @@ public final class ValueRangeCache<Value_> implements Iterable<Value_> {
       @Override
       public <Value_> ValueRangeCache<Value_> buildCache(
           List<Value_> valuesWithFastRandomAccess, Set<Value_> valuesWithFastLookup) {
-        var newValuesWithFastLookup =
-            CollectionUtils.<Value_>newHashSet(valuesWithFastLookup.size());
+        var newValuesWithFastLookup = HashSet.<Value_>newHashSet(valuesWithFastLookup.size());
         newValuesWithFastLookup.addAll(valuesWithFastLookup);
         return new ValueRangeCache<>(valuesWithFastRandomAccess, newValuesWithFastLookup);
       }

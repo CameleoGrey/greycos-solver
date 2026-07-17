@@ -14,6 +14,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory;
+import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 
 import org.jspecify.annotations.NonNull;
@@ -36,7 +37,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
   private final boolean eagerInitialization;
 
   // Distance matrix for caching sorted values by distance from origin
-  private final @NonNull NearbyDistanceMatrix<Object, Object> distanceMatrix;
+  private @Nullable NearbyDistanceMatrix<Object, Object> distanceMatrix;
 
   public NearbyValueSelector(
       @NonNull ValueSelectorConfig config,
@@ -67,33 +68,21 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
     this.eagerInitialization = NearbySelectionTuning.isEagerInitialization(nearbySelectionConfig);
 
     // Build origin value selector from config
-    this.originValueSelector =
-        (IterableValueSelector<Solution_>)
-            ValueSelectorFactory.<Solution_>create(
-                    nearbySelectionConfig.getOriginValueSelectorConfig())
-                .buildValueSelector(
-                    configPolicy, entityDescriptor, minimumCacheType, resolvedSelectionOrder);
-
-    if (!(originValueSelector instanceof IterableValueSelector)) {
+    var builtOriginValueSelector =
+        ValueSelectorFactory.<Solution_>create(nearbySelectionConfig.getOriginValueSelectorConfig())
+            .buildValueSelector(
+                configPolicy, entityDescriptor, minimumCacheType, resolvedSelectionOrder);
+    if (!(builtOriginValueSelector instanceof IterableValueSelector<?> iterableSelector)) {
       throw new IllegalArgumentException(
           "The originValueSelectorConfig ("
               + nearbySelectionConfig.getOriginValueSelectorConfig()
               + ") needs to be based on an IterableValueSelector ("
-              + originValueSelector
+              + builtOriginValueSelector
               + "). Check your @ValueRangeProvider annotations.");
     }
-
-    // Create distance matrix for caching sorted values
     @SuppressWarnings("unchecked")
-    var castedDistanceMeter = (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
-
-    this.distanceMatrix =
-        new NearbyDistanceMatrix<>(
-            castedDistanceMeter,
-            100, // Initial capacity estimate
-            origin -> childValueSelector.iterator(origin),
-            origin -> (int) childValueSelector.getSize(origin),
-            maxNearbySortSize);
+    var castedOriginValueSelector = (IterableValueSelector<Solution_>) iterableSelector;
+    this.originValueSelector = castedOriginValueSelector;
 
     phaseLifecycleSupport.addEventListener(childValueSelector);
     phaseLifecycleSupport.addEventListener(originValueSelector);
@@ -101,17 +90,34 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
+    if (distanceMatrix != null) {
+      throw new IllegalStateException("The nearby value selector is already solving.");
+    }
     super.solvingStarted(solverScope);
+    distanceMatrix = null;
+  }
 
-    // Eager initialization: pre-compute all distance matrices
+  @Override
+  public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
+    super.phaseStarted(phaseScope);
+    @SuppressWarnings("unchecked")
+    var castedDistanceMeter = (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
+    distanceMatrix =
+        new NearbyDistanceMatrix<>(
+            castedDistanceMeter,
+            toIntSize(originValueSelector.getSize(), "originValueSelector"),
+            origin -> childValueSelector.iterator(origin),
+            origin -> toIntSize(childValueSelector.getSize(origin), "childValueSelector"),
+            maxNearbySortSize);
     if (eagerInitialization) {
-      initializeAllOrigins(solverScope);
+      initializeAllOrigins();
     }
   }
 
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
     super.solvingEnded(solverScope);
+    distanceMatrix = null;
   }
 
   @Override
@@ -138,11 +144,6 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
     // For nearby selection, ending iterator is same as regular iterator
     // because we only iterate through nearby values
     return iterator(entity);
-  }
-
-  @Override
-  public boolean isCountable() {
-    return childValueSelector.isCountable();
   }
 
   @Override
@@ -186,11 +187,28 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
    * Eagerly initializes all origins by pre-computing their distance matrices. This eliminates
    * latency spikes during solving.
    */
-  private void initializeAllOrigins(SolverScope<Solution_> solverScope) {
+  private void initializeAllOrigins() {
     var originIterator = originValueSelector.endingIterator(null);
     while (originIterator.hasNext()) {
-      distanceMatrix.addAllDestinations(originIterator.next());
+      getDistanceMatrix().addAllDestinations(originIterator.next());
     }
+  }
+
+  private @NonNull NearbyDistanceMatrix<Object, Object> getDistanceMatrix() {
+    if (distanceMatrix == null) {
+      throw new IllegalStateException(
+          "The nearby distance matrix is not initialized. Make sure phaseStarted() was called.");
+    }
+    return distanceMatrix;
+  }
+
+  private static int toIntSize(long size, String selectorLabel) {
+    if (size < 0 || size > Integer.MAX_VALUE) {
+      throw new IllegalStateException(
+          "The %s has a size (%d) outside the supported range [0, Integer.MAX_VALUE]."
+              .formatted(selectorLabel, size));
+    }
+    return (int) size;
   }
 
   // ************************************************************************
@@ -236,7 +254,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
         throw new java.util.NoSuchElementException();
       }
 
-      int nearbySizeForOrigin = distanceMatrix.getDestinationSize(origin);
+      int nearbySizeForOrigin = getDistanceMatrix().getDestinationSize(origin);
       if (nearbySizeForOrigin <= 0) {
         throw new java.util.NoSuchElementException();
       }
@@ -245,7 +263,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
       int nearbyIndex = nearbyRandom.nextInt(random, nearbySizeForOrigin);
 
       // Get the nearbyIndex-th closest value from the distance matrix
-      return distanceMatrix.getDestination(origin, nearbyIndex);
+      return getDistanceMatrix().getDestination(origin, nearbyIndex);
     }
   }
 
@@ -288,7 +306,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
       originIsNotEmpty = replayingOriginIterator.hasNext();
       if (originIsNotEmpty) {
         origin = replayingOriginIterator.next();
-        nearbySize = distanceMatrix.getDestinationSize(origin);
+        nearbySize = getDistanceMatrix().getDestinationSize(origin);
       }
       originSelected = true;
     }
@@ -304,7 +322,7 @@ public class NearbyValueSelector<Solution_> extends AbstractSelector<Solution_>
       selectOrigin(); // Ensure origin is selected and cached
 
       // Get the nextNearbyIndex-th closest value from the distance matrix
-      Object result = distanceMatrix.getDestination(origin, nextNearbyIndex);
+      Object result = getDistanceMatrix().getDestination(origin, nextNearbyIndex);
       nextNearbyIndex++;
       return result;
     }

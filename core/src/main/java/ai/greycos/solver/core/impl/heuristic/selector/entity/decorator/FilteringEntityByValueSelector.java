@@ -148,11 +148,6 @@ public final class FilteringEntityByValueSelector<Solution_>
   }
 
   @Override
-  public boolean isCountable() {
-    return childEntitySelector.isCountable();
-  }
-
-  @Override
   public boolean isNeverEnding() {
     return childEntitySelector.isNeverEnding();
   }

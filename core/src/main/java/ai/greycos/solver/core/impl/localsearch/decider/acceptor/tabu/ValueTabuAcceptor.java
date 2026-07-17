@@ -1,11 +1,15 @@
 package ai.greycos.solver.core.impl.localsearch.decider.acceptor.tabu;
 
-import java.util.Collection;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 
-public class ValueTabuAcceptor<Solution_> extends AbstractTabuAcceptor<Solution_> {
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
+public final class ValueTabuAcceptor<Solution_> extends AbstractTabuAcceptor<Solution_> {
 
   public ValueTabuAcceptor(String logIndentation) {
     super(logIndentation);
@@ -16,12 +20,14 @@ public class ValueTabuAcceptor<Solution_> extends AbstractTabuAcceptor<Solution_
   // ************************************************************************
 
   @Override
-  protected Collection<? extends Object> findTabu(LocalSearchMoveScope<Solution_> moveScope) {
+  protected SequencedCollection<@Nullable Object> findTabu(
+      LocalSearchMoveScope<Solution_> moveScope) {
     return moveScope.getMove().getPlanningValues();
   }
 
   @Override
-  protected Collection<? extends Object> findNewTabu(LocalSearchStepScope<Solution_> stepScope) {
+  protected SequencedCollection<@Nullable Object> findNewTabu(
+      LocalSearchStepScope<Solution_> stepScope) {
     return stepScope.getStep().getPlanningValues();
   }
 }

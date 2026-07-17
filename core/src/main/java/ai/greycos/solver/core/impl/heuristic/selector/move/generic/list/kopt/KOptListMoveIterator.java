@@ -6,10 +6,10 @@ import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

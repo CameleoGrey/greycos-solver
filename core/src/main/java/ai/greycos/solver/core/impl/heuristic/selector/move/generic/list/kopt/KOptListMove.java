@@ -1,9 +1,9 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
@@ -184,13 +184,13 @@ public class KOptListMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<?> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     return List.of(originalEntities);
   }
 
   @Override
-  public Collection<?> getPlanningValues() {
-    var out = new ArrayList<>();
+  public SequencedCollection<Object> getPlanningValues() {
+    var out = new ArrayList<Object>();
 
     var combinedList = computeCombinedList(listVariableDescriptor, originalEntities);
     if (affectedElementsInfo.wrappedStartIndex() != -1) {

@@ -12,15 +12,15 @@ import java.util.stream.Collectors;
 
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.SimpleScore;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatch;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.testcotwin.score.lavish.TestdataLavishSolution;
 
@@ -33,7 +33,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 @Execution(ExecutionMode.CONCURRENT)
 public abstract class AbstractConstraintStreamTest {
 
-  protected static final String TEST_CONSTRAINT_NAME = "testConstraintName";
+  protected static final String TEST_CONSTRAINT_ID = "testConstraintId";
+  protected static final ConstraintRef TEST_CONSTRAINT_REF = new ConstraintRef(TEST_CONSTRAINT_ID);
 
   protected final ConstraintStreamImplSupport implSupport;
 
@@ -72,13 +73,8 @@ public abstract class AbstractConstraintStreamTest {
         Arrays.stream(assertableMatches).mapToInt(assertableMatch -> assertableMatch.score).sum();
     if (implSupport.constraintMatchPolicy().isJustificationEnabled()) {
       for (var assertableMatch : assertableMatches) {
-        var constraintPackage =
-            assertableMatch.constraintPackage == null
-                ? scoreDirector.getSolutionDescriptor().getSolutionClass().getPackage().getName()
-                : assertableMatch.constraintPackage;
         var constraintMatchTotals = scoreDirector.getConstraintMatchTotalMap();
-        var constraintId =
-            ConstraintRef.composeConstraintId(constraintPackage, assertableMatch.constraintName);
+        var constraintId = assertableMatch.constraintRef;
         var constraintMatchTotal = constraintMatchTotals.get(constraintId);
         if (constraintMatchTotal == null) {
           throw new IllegalStateException(
@@ -101,8 +97,7 @@ public abstract class AbstractConstraintStreamTest {
           if (Arrays.stream(assertableMatches)
               .filter(
                   assertableMatch ->
-                      assertableMatch.constraintName.equals(
-                          constraintMatch.getConstraintRef().constraintName()))
+                      assertableMatch.constraintRef.equals(constraintMatch.getConstraintRef()))
               .noneMatch(assertableMatch -> assertableMatch.isEqualTo(constraintMatch))) {
             fail(
                 "The constraintMatch ("
@@ -130,45 +125,28 @@ public abstract class AbstractConstraintStreamTest {
     return assertMatchWithScore(-1, justifications);
   }
 
-  protected static AssertableMatch assertMatch(
-      String constraintPackage, String constraintName, Object... justifications) {
-    return assertMatchWithScore(-1, constraintPackage, constraintName, justifications);
-  }
-
-  protected static AssertableMatch assertMatch(String constraintName, Object... justifications) {
-    return assertMatchWithScore(-1, constraintName, justifications);
+  protected static AssertableMatch assertMatch(String constraintId, Object... justifications) {
+    return assertMatchWithScore(-1, ConstraintRef.of(constraintId), justifications);
   }
 
   protected static AssertableMatch assertMatchWithScore(int score, Object... justifications) {
-    return assertMatchWithScore(score, TEST_CONSTRAINT_NAME, justifications);
+    return assertMatchWithScore(score, TEST_CONSTRAINT_REF, justifications);
   }
 
   protected static AssertableMatch assertMatchWithScore(
-      int score, String constraintName, Object... justifications) {
-    return new AssertableMatch(score, constraintName, justifications);
-  }
-
-  protected static AssertableMatch assertMatchWithScore(
-      int score, String constraintPackage, String constraintName, Object... justifications) {
-    return new AssertableMatch(score, constraintPackage, constraintName, justifications);
+      int score, ConstraintRef constraintRef, Object... justifications) {
+    return new AssertableMatch(score, constraintRef, justifications);
   }
 
   protected static class AssertableMatch {
 
     private final int score;
-    private final String constraintPackage;
-    private final String constraintName;
+    private final ConstraintRef constraintRef;
     private final List<Object> justificationList;
 
-    public AssertableMatch(int score, String constraintName, Object... justifications) {
-      this(score, null, constraintName, justifications);
-    }
-
-    public AssertableMatch(
-        int score, String constraintPackage, String constraintName, Object... justifications) {
+    public AssertableMatch(int score, ConstraintRef constraintRef, Object... justifications) {
       this.justificationList = Arrays.asList(justifications);
-      this.constraintPackage = constraintPackage;
-      this.constraintName = constraintName;
+      this.constraintRef = constraintRef;
       this.score = score;
     }
 
@@ -176,11 +154,7 @@ public abstract class AbstractConstraintStreamTest {
       if (score != ((SimpleScore) constraintMatch.getScore()).score()) {
         return false;
       }
-      if (constraintPackage != null
-          && !constraintPackage.equals(constraintMatch.getConstraintRef().packageName())) {
-        return false;
-      }
-      if (!constraintName.equals(constraintMatch.getConstraintRef().constraintName())) {
+      if (!constraintRef.equals(constraintMatch.getConstraintRef())) {
         return false;
       }
       var justification = constraintMatch.getJustification();
@@ -201,17 +175,13 @@ public abstract class AbstractConstraintStreamTest {
                   + justification
                   + ").");
         }
-        return justification == justificationList.get(0);
+        return justification == justificationList.getFirst();
       }
     }
 
     @Override
     public String toString() {
-      if (constraintPackage == null) {
-        return constraintName + " " + justificationList + "=" + score;
-      } else {
-        return constraintPackage + "/" + constraintName + " " + justificationList + "=" + score;
-      }
+      return constraintRef + " " + justificationList + "=" + score;
     }
   }
 

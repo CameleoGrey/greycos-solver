@@ -35,7 +35,7 @@ public sealed interface Indexer<T>
         ContainingIndexer,
         ContainedInIndexer,
         ContainingAnyOfIndexer,
-        IndexerBackend {
+        LeafIndexer {
 
   /**
    * Modify operation.
@@ -93,7 +93,8 @@ public sealed interface Indexer<T>
   boolean isRemovable();
 
   /**
-   * Iterator which picks elements randomly. Selection probability is uniform over all elements for
+   * Iterator which picks elements randomly. If the iterator has elements, it is endless and may
+   * return the same value multiple times. Selection probability is uniform over all elements for
    * the given composite key. By calling {@link Iterator#remove()}, the element is removed never to
    * be returned again by this iterator. However, it is not removed from the index itself; the only
    * way to remove from the index is to call {@link #remove(Object, ListEntry)}, which will make any

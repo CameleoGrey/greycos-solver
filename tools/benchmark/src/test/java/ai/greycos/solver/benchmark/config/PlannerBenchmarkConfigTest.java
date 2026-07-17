@@ -2,6 +2,7 @@ package ai.greycos.solver.benchmark.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -100,7 +101,54 @@ class PlannerBenchmarkConfigTest {
     assertThatExceptionOfType(GreyCOSXmlSerializationException.class)
         .isThrownBy(() -> xmlIO.read(stringReader))
         .withRootCauseExactlyInstanceOf(SAXParseException.class)
-        .withMessageContaining("solutionKlazz");
+        .satisfies(
+            exception -> assertThat(exception.getCause()).hasMessageContaining("solutionKlazz"));
+  }
+
+  @Test
+  void nonExistentConfiguredClassesFailFastWhenResolved() {
+    var benchmarkConfig =
+        PlannerBenchmarkConfig.createFromXmlReader(
+            new StringReader(
+                """
+                <plannerBenchmark>
+                  <threadFactoryClass>missing.ThreadFactory</threadFactoryClass>
+                  <benchmarkReport>
+                    <solverRankingComparatorClass>missing.Comparator</solverRankingComparatorClass>
+                    <solverRankingWeightFactoryClass>missing.WeightFactory</solverRankingWeightFactoryClass>
+                  </benchmarkReport>
+                  <solverBenchmark>
+                    <problemBenchmarks>
+                      <solutionFileIOClass>missing.SolutionFileIO</solutionFileIOClass>
+                    </problemBenchmarks>
+                  </solverBenchmark>
+                </plannerBenchmark>
+                """));
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(benchmarkConfig::getThreadFactoryClass)
+        .withMessageContaining("threadFactoryClass")
+        .withMessageContaining("missing.ThreadFactory");
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () -> benchmarkConfig.getBenchmarkReportConfig().getSolverRankingComparatorClass())
+        .withMessageContaining("solverRankingComparatorClass")
+        .withMessageContaining("missing.Comparator");
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () -> benchmarkConfig.getBenchmarkReportConfig().getSolverRankingWeightFactoryClass())
+        .withMessageContaining("solverRankingWeightFactoryClass")
+        .withMessageContaining("missing.WeightFactory");
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                benchmarkConfig
+                    .getSolverBenchmarkConfigList()
+                    .getFirst()
+                    .getProblemBenchmarksConfig()
+                    .getSolutionFileIOClass())
+        .withMessageContaining("solutionFileIOClass")
+        .withMessageContaining("missing.SolutionFileIO");
   }
 
   @Test

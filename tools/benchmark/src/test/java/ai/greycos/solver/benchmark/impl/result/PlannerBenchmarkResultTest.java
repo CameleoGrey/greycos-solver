@@ -13,9 +13,9 @@ import java.util.Collections;
 
 import ai.greycos.solver.benchmark.impl.loader.FileProblemProvider;
 import ai.greycos.solver.core.api.score.SimpleScore;
-import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
+import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
+import ai.greycos.solver.core.api.solver.ProblemSizeStatistics;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.core.config.solver.random.RandomType;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
@@ -37,19 +37,19 @@ class PlannerBenchmarkResultTest {
     var p1SolverX = new SolverBenchmarkResult(p1);
     p1SolverX.setName("Solver X");
     var p1SolverConfigX = new SolverConfig();
-    p1SolverConfigX.setRandomType(RandomType.JDK);
+    p1SolverConfigX.setRandomSeed(0L);
     p1SolverX.setSolverConfig(p1SolverConfigX);
     p1SolverX.setSingleBenchmarkResultList(new ArrayList<>());
     var p1SolverY = new SolverBenchmarkResult(p1);
     p1SolverY.setName("Solver Y");
     var p1SolverConfigY = new SolverConfig();
-    p1SolverConfigY.setRandomType(RandomType.MERSENNE_TWISTER);
+    p1SolverConfigY.setRandomSeed(1L);
     p1SolverY.setSolverConfig(p1SolverConfigY);
     p1SolverY.setSingleBenchmarkResultList(new ArrayList<>());
     var p2SolverZ = new SolverBenchmarkResult(p2);
     p2SolverZ.setName("Solver Z");
     var p2SolverConfigZ = new SolverConfig();
-    p2SolverConfigZ.setRandomType(RandomType.WELL1024A);
+    p2SolverConfigZ.setRandomSeed(2L);
     p2SolverZ.setSolverConfig(p2SolverConfigZ);
     p2SolverZ.setSingleBenchmarkResultList(new ArrayList<>());
 
@@ -99,6 +99,24 @@ class PlannerBenchmarkResultTest {
         .isEqualTo("problemB");
   }
 
+  @Test
+  void problemScaleIsReportedApproximatelyAndComparedExactly() {
+    var problemBenchmarkResult = new ProblemBenchmarkResult<>(new PlannerBenchmarkResult());
+    var problemSizeStatistics = new ProblemSizeStatistics(10, 20, 30, 6.25);
+
+    problemBenchmarkResult.registerProblemSizeStatistics(problemSizeStatistics);
+
+    assertThat(problemBenchmarkResult.getFormattedProblemScale())
+        .isEqualTo(problemSizeStatistics.approximateProblemScaleAsFormattedString());
+    assertThat(problemBenchmarkResult.getProblemScale())
+        .isEqualTo(problemSizeStatistics.approximateProblemScaleLogAsFixedPointLong());
+
+    problemBenchmarkResult.registerProblemSizeStatistics(
+        new ProblemSizeStatistics(10, 20, 30, 6.5));
+    assertThat(problemBenchmarkResult.getFormattedProblemScale()).isEqualTo("-1");
+    assertThat(problemBenchmarkResult.getProblemScale()).isEqualTo(-1L);
+  }
+
   protected SingleBenchmarkResult createSingleBenchmarkResult(
       SolverBenchmarkResult solverBenchmarkResult,
       ProblemBenchmarkResult problemBenchmarkResult,
@@ -142,10 +160,10 @@ class PlannerBenchmarkResultTest {
     assertThat(jaxbString.trim()).isEqualToIgnoringWhitespace(originalXml.trim());
   }
 
-  // nested class below are used in the testPlannerBenchmarkResult.xml
+  // nested classes below are used in the testPlannerBenchmarkResult.xml
 
-  private abstract static class DummyIncrementalScoreCalculator
-      implements IncrementalScoreCalculator<TestdataSolution, SimpleScore> {}
+  private abstract static class DummyEasyScoreCalculator
+      implements EasyScoreCalculator<TestdataSolution, SimpleScore> {}
 
   private abstract static class DummyDistanceNearbyMeter
       implements NearbyDistanceMeter<TestdataSolution, TestdataEntity> {}

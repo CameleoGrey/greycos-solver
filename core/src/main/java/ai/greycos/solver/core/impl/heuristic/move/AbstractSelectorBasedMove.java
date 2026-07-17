@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.move;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.SequencedSet;
 import java.util.Set;
 
 import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
@@ -36,18 +37,18 @@ public abstract class AbstractSelectorBasedMove<Solution_>
   public final void execute(MutableSolutionView<Solution_> solutionView) {
     var moveDirector = (MoveDirector<Solution_, ?>) solutionView;
     var scoreDirector = moveDirector.getScoreDirector();
-    execute((VariableDescriptorAwareScoreDirector<Solution_>) scoreDirector);
+    execute(solutionView, (VariableDescriptorAwareScoreDirector<Solution_>) scoreDirector);
     scoreDirector.triggerVariableListeners();
   }
 
-  protected abstract void execute(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector);
+  protected abstract void execute(
+      MutableSolutionView<Solution_> solutionView,
+      VariableDescriptorAwareScoreDirector<Solution_> scoreDirector);
 
   @Override
   public String describe() {
-    var description = ((Move<Solution_>) this).getSimpleMoveTypeDescription();
-    return description.startsWith("SelectorBased")
-        ? description.substring("SelectorBased".length())
-        : description;
+    var name = getClass().getSimpleName();
+    return name.startsWith("SelectorBased") ? name.substring("SelectorBased".length()) : name;
   }
 
   protected <Value_> ValueRange<Value_> extractValueRangeFromEntity(
@@ -66,8 +67,8 @@ public abstract class AbstractSelectorBasedMove<Solution_>
     return rebasedObjectList;
   }
 
-  public static <E> Set<E> rebaseSet(Set<E> externalObjectSet, Lookup lookup) {
-    var rebasedObjectSet = new LinkedHashSet<E>(externalObjectSet.size());
+  public static <E> SequencedSet<E> rebaseSet(Set<E> externalObjectSet, Lookup lookup) {
+    var rebasedObjectSet = LinkedHashSet.<E>newLinkedHashSet(externalObjectSet.size());
     for (var object : externalObjectSet) {
       rebasedObjectSet.add(lookup.lookUpWorkingObject(object));
     }

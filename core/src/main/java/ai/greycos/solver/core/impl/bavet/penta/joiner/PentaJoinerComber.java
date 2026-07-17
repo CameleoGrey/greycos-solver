@@ -40,7 +40,8 @@ public final class PentaJoinerComber<A, B, C, D, E> {
                   + "a filtering joiner ("
                   + joiners[indexOfFirstFilter]
                   + ").\n"
-                  + "Maybe reorder the joiners such that filtering() joiners are later in the parameter list.");
+                  + "Maybe reorder the joiners such that filtering() joiners are later in the"
+                  + " parameter list.");
         }
         defaultJoinerList.add((DefaultPentaJoiner<A, B, C, D, E>) joiner);
       } else {
@@ -88,10 +89,13 @@ public final class PentaJoinerComber<A, B, C, D, E> {
   }
 
   /**
+   * Returns the merged indexing joiner, reordered equal-first so the indexer chain always has its
+   * (merged) equal level at the top.
+   *
    * @return never null
    */
   public DefaultPentaJoiner<A, B, C, D, E> getMergedJoiner() {
-    return mergedJoiner;
+    return mergedJoiner.reorderedEqualsFirst();
   }
 
   /**

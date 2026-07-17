@@ -28,7 +28,6 @@ class SubListSwapMoveSelectorFactoryTest {
             factory.buildBaseMoveSelector(
                 heuristicConfigPolicy, SelectionCacheType.JUST_IN_TIME, true);
 
-    assertThat(selector.isCountable()).isTrue();
     assertThat(selector.isNeverEnding()).isTrue();
     assertThat(selector.isSelectReversingMoveToo()).isTrue();
   }
@@ -46,7 +45,6 @@ class SubListSwapMoveSelectorFactoryTest {
             factory.buildBaseMoveSelector(
                 heuristicConfigPolicy, SelectionCacheType.JUST_IN_TIME, true);
 
-    assertThat(selector.isCountable()).isTrue();
     assertThat(selector.isNeverEnding()).isTrue();
     assertThat(selector.isSelectReversingMoveToo()).isTrue();
   }

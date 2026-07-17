@@ -1,5 +1,5 @@
 [#understandingTheScore]
-= Understanding the score
+= Understanding the score (Score Analysis)
 :doctype: book
 :sectnums:
 :icons: font
@@ -16,8 +16,8 @@ Java::
 +
 [source,java,options="nowrap"]
 ----
-SolutionManager<VehicleRoutePlan, HardSoftLongScore> solutionManager = SolutionManager.create(solverFactory);
-ScoreAnalysis<HardSoftLongScore> scoreAnalysis = solutionManager.analyze(vehicleRoutePlan);
+SolutionManager<VehicleRoutePlan, HardSoftScore> solutionManager = SolutionManager.create(solverFactory);
+ScoreAnalysis<HardSoftScore> scoreAnalysis = solutionManager.analyze(vehicleRoutePlan);
 System.out.println(scoreAnalysis.summarize());
 ----
 ====
@@ -49,15 +49,11 @@ In the string above, there are some previously unexplained concepts.
 * A _Constraint match_ is created every time a constraint causes a change to the score.
 * _Justifications_ are user-defined objects that implement the `ai.greycos.solver.core.api.score.stream.ConstraintJustification` interface, which carry meaningful information about a constraint match, such as its name and any metadata that the user chooses to expose.
 Justifications are most easily available via <<scoreAnalysis,score analysis>>.
-* _Indicted objects_ are objects which were directly involved in causing a constraint to match.
-For example, if your constraints penalize each vehicle, then there will be one `ai.greycos.solver.core.api.score.constraint.Indictment` instance per vehicle, carrying the vehicle as an indicted object.
-Indictments are typically used for xref:indictmentHeatMap[heat map visualization].
-
 [NOTE]
 ====
 xref:constraints-and-score/score-calculation.adoc[Constraint Streams API] can analyze the score natively.
 xref:constraints-and-score/score-calculation.adoc#incrementalScoreCalculation[Incremental Java score calculation] requires
-xref:constraints-and-score/score-calculation.adoc#constraintMatchAwareIncrementalScoreCalculator[implementing an extra interface].
+xref:constraints-and-score/score-calculation.adoc#analyzableIncrementalScoreCalculator[implementing the analyzable interface].
 xref:constraints-and-score/score-calculation.adoc#easyScoreCalculation[Easy Java score calculation] does not support score explanation.
 ====
 
@@ -72,8 +68,8 @@ Java::
 +
 [source,java,options="nowrap"]
 ----
-SolutionManager<VehicleRoutePlan, HardSoftLongScore> solutionManager = SolutionManager.create(solverFactory);
-ScoreAnalysis<HardSoftLongScore> scoreAnalysis = solutionManager.analyze(vehicleRoutePlan);
+SolutionManager<VehicleRoutePlan, HardSoftScore> solutionManager = SolutionManager.create(solverFactory);
+ScoreAnalysis<HardSoftScore> scoreAnalysis = solutionManager.analyze(vehicleRoutePlan);
 ----
 ====
 
@@ -82,7 +78,7 @@ Using score analysis, you can find out:
 
 * What's the total score.
 * Which constraints are broken, and how many times.
-* Which planning entities and problem facts are responsible for breaking which constraints.
+* Which domain objects are recorded by the constraint justifications.
 
 [NOTE]
 ====
@@ -98,8 +94,8 @@ Java::
 +
 [source,java,options="nowrap"]
 ----
-SolutionManager<VehicleRoutePlan, HardSoftLongScore> solutionManager = SolutionManager.create(solverFactory);
-ScoreAnalysis<HardSoftLongScore> scoreAnalysis = solutionManager.analyze(vehicleRoutePlan);
+SolutionManager<VehicleRoutePlan, HardSoftScore> solutionManager = SolutionManager.create(solverFactory);
+ScoreAnalysis<HardSoftScore> scoreAnalysis = solutionManager.analyze(vehicleRoutePlan);
 System.out.println(scoreAnalysis.summarize());
 ----
 ====
@@ -133,7 +129,7 @@ Java::
 [source,java,options="nowrap"]
 ----
 scoreAnalysis.constraintMap().forEach((constraintRef, constraintAnalysis) -> {
-   String constraintId = constraintRef.constraintId();
+   String constraintId = constraintRef.id();
    HardSoftScore scorePerConstraint = constraintAnalysis.score();
    ...
 });
@@ -158,7 +154,9 @@ constraintAnalysis.matches().forEach(matchAnalysis -> {
 ====
 
 Each match is accompanied by the score difference it caused, and a justification object (see above).
-Typically, the scoring engine creates justification objects automatically by using the results of xref:constraints-and-score/score-calculation.adoc#constraintStreamsCustomizingJustificationsAndIndictments[Constraint Streams' `justifyWith(...)` call].
+Typically, the scoring engine creates justification objects automatically.
+Use xref:constraints-and-score/score-calculation.adoc#constraintStreamsCustomizingJustifications[Constraint Streams' `justifyWith(...)` call]
+when the analysis must carry domain-specific information.
 
 [#scoreAnalysisDiff]
 === Identifying changes between two solutions
@@ -176,12 +174,12 @@ ScoreAnalysis<HardSoftScore>  firstAnalysis = solutionManager.analyze(firstSolut
 ScoreAnalysis<HardSoftScore> secondAnalysis = solutionManager.analyze(secondSolution);
 ScoreAnalysis<HardSoftScore>           diff = firstAnalysis.diff(secondAnalysis);
 
-// Score difference only carries the constraints whose matches changed from first to second solution.
+// The difference is firstAnalysis minus secondAnalysis.
 diff.constraintMap().forEach((constraintRef, constraintAnalysis) -> {
-   String constraintId = constraintRef.constraintId();
+   String constraintId = constraintRef.id();
    HardSoftScore scoreDiff = constraintAnalysis.score();
    // Matches only include constraint matches that:
-   //   - the second solution either added to or removed from the first solution.
+   //   - one solution added or removed relative to the other.
    //   - had their score changed.
    // Two matches are considered equal if their justification objects are equal.
    constraintAnalysis.matches().forEach(matchAnalysis -> {
@@ -193,7 +191,7 @@ diff.constraintMap().forEach((constraintRef, constraintAnalysis) -> {
 
 Think of `diff(...)` as a subtraction operation, where the second solution is subtracted from the first solution.
 For example, if the first solution has score of `2hard/3soft`
-and the second solution has score of `1hard/2soft`, then the score difference will be `1hard/1soft`, indicating that the second solution is better than the first solution.
+and the second solution has score of `1hard/2soft`, then the score difference is `1hard/1soft`, indicating that the first solution is better.
 
 The same applies to constraints and constraint matches.
 If a constraint did not match in the first solution but did match in the second, then the constraint match will be included in the diff as negative.
@@ -211,7 +209,7 @@ To succeed at this, `ScoreAnalysis` is JSON-friendly and can be easily sent over
 * or if you use GreyCOS Solver's xref:integration/integration.adoc#integrationWithSpringBoot[Spring Boot integration],
 * or if you directly included the `greycos-solver-jackson` module in your project.
 
-If you implemented `ConstraintJustication` to provide custom justification objects, you are responsible for making them JSON-friendly yourself.
+If you implemented `ConstraintJustification` to provide custom justification objects, you are responsible for making them JSON-friendly yourself.
 
 [NOTE]
 ====
@@ -242,7 +240,7 @@ Java::
 +
 [source,java,options="nowrap"]
 ----
-SolutionManager<VehicleRoutePlan, HardSoftLongScore> solutionManager = SolutionManager.create(solverFactory);
+SolutionManager<VehicleRoutePlan, HardSoftScore> solutionManager = SolutionManager.create(solverFactory);
 ...
 PlanningSolutionDiff<VehicleRoutePlan> solutionDiff = solutionManager.diff(oldSolution, newSolution);
 ----
@@ -262,44 +260,12 @@ It also has a useful `toString()` for a quick overview of the changes.
 Do not attempt to parse this string or expose it in services, its format is not stable and is subject to change.
 
 
-[#indictmentHeatMap]
+[#scoreHeatMap]
 == Heat map: Visualize the hot planning entities
 
-To show a heat map in the UI that highlights the planning entities and problem facts have an impact on the ``Score``, get the `Indictment` map from the ``ScoreExplanation``:
-
-[tabs]
-====
-Java::
-+
-[source,java,options="nowrap"]
-----
-SolutionManager<VehicleRoutePlan, HardSoftLongScore> solutionManager = SolutionManager.create(solverFactory);
-ScoreExplanation<VehicleRoutePlan, HardSoftLongScore> scoreExplanation = solutionManager.explain(vehicleRoutePlan);
-Map<Object, Indictment<HardSoftLongScore>> indictmentMap = scoreExplanation.getIndictmentMap();
-for (Visit visit : vehicleRoutePlan.getVisits()) {
-    Indictment<HardSoftLongScore> indictment = indictmentMap.get(visit);
-    if (indictment == null) {
-        continue;
-    }
-    // The score impact of that planning entity
-    HardSoftLongScore totalScore = indictment.getScore();
-
-    for (ConstraintMatch<HardSoftLongScore> constraintMatch : indictment.getConstraintMatchSet()) {
-        String constraintName = constraintMatch.getConstraintName();
-        HardSoftLongScore score = constraintMatch.getScore();
-        ...
-    }
-}
-----
-====
-
-[NOTE]
-====
-`ScoreExplanation` should only be used for processing indictments.
-For analyzing the score and processing constraint matches, use <<scoreAnalysis,score analysis>> instead, which is faster and JSON-friendly.
-====
-
-Each `Indictment` is the sum of all constraints where that justification object is involved with.
-The sum of all the `Indictment.getScoreTotal()` differs from the overall score, because multiple ``Indictment``s can share the same `ConstraintMatch`.
+Build heat maps from domain-specific `ConstraintJustification` implementations.
+Include the relevant planning entity or its stable ID in each justification,
+iterate over `ScoreAnalysis.constraintAnalyses()`, and aggregate each match's `score()` by that key.
+This keeps presentation concerns explicit and avoids exposing solver-internal match objects.
 
 image::constraints-and-score/understanding-the-score/scoreVisualization.png[align="center"]

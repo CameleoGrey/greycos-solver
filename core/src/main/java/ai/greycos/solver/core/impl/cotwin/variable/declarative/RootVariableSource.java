@@ -11,6 +11,7 @@ import java.util.function.Consumer;
 
 import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowSources;
@@ -141,6 +142,21 @@ public record RootVariableSource<Entity_, Value_>(
 
         var isVariable =
             isVariable(solutionMetaModel, memberAccessor.getDeclaringClass(), pathPart.name());
+        if (isVariable
+            && getAnnotation(
+                    memberAccessor.getDeclaringClass(), pathPart.name(), PlanningListVariable.class)
+                != null) {
+          throw new IllegalArgumentException(
+              """
+              The source path (%s) starting from root class (%s) accesses a planning list variable (%s), which is not allowed.
+              Maybe remove the source path (%s) from the @%s?"""
+                  .formatted(
+                      variablePath,
+                      rootEntityClass.getSimpleName(),
+                      pathPart.name(),
+                      variablePath,
+                      ShadowSources.class.getSimpleName()));
+        }
         chainToVariable.add(memberAccessor);
         for (var chain : chainStartingFromSourceVariableList) {
           chain.add(memberAccessor);

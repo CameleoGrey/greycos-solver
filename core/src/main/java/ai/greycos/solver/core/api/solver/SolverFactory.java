@@ -112,7 +112,7 @@ public interface SolverFactory<Solution_> {
 
   /** Creates a new {@link Solver} instance. */
   default Solver<Solution_> buildSolver() {
-    return this.buildSolver(new SolverConfigOverride<>());
+    return this.buildSolver(new SolverConfigOverride());
   }
 
   /**
@@ -120,5 +120,5 @@ public interface SolverFactory<Solution_> {
    *
    * @param configOverride includes settings that override the default configuration
    */
-  Solver<Solution_> buildSolver(SolverConfigOverride<Solution_> configOverride);
+  Solver<Solution_> buildSolver(SolverConfigOverride configOverride);
 }

@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.solver.SolverConfig;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.equals.TestdataEqualsByCodeEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.equals.TestdataEqualsByCodeEntity;

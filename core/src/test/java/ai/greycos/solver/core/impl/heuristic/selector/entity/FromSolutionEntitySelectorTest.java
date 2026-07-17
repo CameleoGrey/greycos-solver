@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.entity;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfEntitySelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertCodesOfNeverEndingOfEntitySelector;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -10,14 +11,12 @@ import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
-import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
@@ -55,7 +54,7 @@ class FromSolutionEntitySelectorTest {
     FromSolutionEntitySelector entitySelector =
         new FromSolutionEntitySelector(entityDescriptor, cacheType, false);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    var solverScope = mockSolverScope();
     entitySelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
@@ -127,7 +126,7 @@ class FromSolutionEntitySelectorTest {
     FromSolutionEntitySelector entitySelector =
         new FromSolutionEntitySelector(entityDescriptor, SelectionCacheType.JUST_IN_TIME, false);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    var solverScope = mockSolverScope();
     entitySelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
@@ -228,9 +227,9 @@ class FromSolutionEntitySelectorTest {
     FromSolutionEntitySelector entitySelector =
         new FromSolutionEntitySelector(entityDescriptor, cacheType, true);
 
-    Random workingRandom = new TestRandom(1, 0, 0, 2, 1, 2, 2, 1, 0);
+    var workingRandom = new TestRandom(1, 0, 0, 2, 1, 2, 2, 1, 0);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    var solverScope = mockSolverScope();
     when(solverScope.getWorkingRandom()).thenReturn(workingRandom);
     when(solverScope.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.solvingStarted(solverScope);
@@ -290,9 +289,9 @@ class FromSolutionEntitySelectorTest {
     FromSolutionEntitySelector entitySelector =
         new FromSolutionEntitySelector(entityDescriptor, SelectionCacheType.JUST_IN_TIME, true);
 
-    Random workingRandom = new TestRandom(1, 0, 0, 2, 1, 2, 2, 1, 0);
+    var workingRandom = new TestRandom(1, 0, 0, 2, 1, 2, 2, 1, 0);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    var solverScope = mockSolverScope();
     when(solverScope.getWorkingRandom()).thenReturn(workingRandom);
     when(solverScope.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.solvingStarted(solverScope);

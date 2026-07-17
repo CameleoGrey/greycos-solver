@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.constructionheuristic.placer.entity;
 
 import static ai.greycos.solver.core.impl.constructionheuristic.placer.entity.PlacementAssertions.assertValuePlacement;
 import static ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicyTestUtils.buildHeuristicConfigPolicy;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -18,6 +19,7 @@ import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
@@ -36,7 +38,8 @@ class QueuedValuePlacerFactoryTest {
         new QueuedValuePlacerFactory<TestdataSolution>(config)
             .buildEntityPlacer(buildHeuristicConfigPolicy());
 
-    SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
+    SolverScope<TestdataSolution> solverScope = mockSolverScope();
+    when(solverScope.getWorkingRandom()).thenReturn(mock(RandomSource.class));
     placer.solvingStarted(solverScope);
     AbstractPhaseScope<TestdataSolution> phaseScope = mock(AbstractPhaseScope.class);
     when(phaseScope.getSolverScope()).thenReturn(solverScope);

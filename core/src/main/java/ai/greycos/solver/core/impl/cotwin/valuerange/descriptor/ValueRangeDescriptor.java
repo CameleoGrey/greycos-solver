@@ -42,22 +42,6 @@ public sealed interface ValueRangeDescriptor<Solution_> permits AbstractValueRan
   }
 
   /**
-   * @return always true; retained as a compatibility hook while the value range cleanup settles.
-   */
-  @Deprecated(forRemoval = true, since = "1.1.0")
-  default boolean isGenericTypeImmutable() {
-    return true;
-  }
-
-  /**
-   * @return always true; all value ranges are countable now.
-   */
-  @Deprecated(forRemoval = true, since = "1.1.0")
-  default boolean isCountable() {
-    return true;
-  }
-
-  /**
    * Returns true if the value range is defined at the solution level and can be directly extracted
    * from the solution; otherwise, it returns false, as the value range can only be extracted or
    * computed from the entities.

@@ -15,22 +15,24 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @XmlType(propOrder = {"moveIteratorFactoryClass", "moveIteratorFactoryCustomProperties"})
-public class MoveIteratorFactoryConfig extends MoveSelectorConfig<MoveIteratorFactoryConfig> {
+public final class MoveIteratorFactoryConfig extends MoveSelectorConfig<MoveIteratorFactoryConfig> {
 
   public static final String XML_ELEMENT_NAME = "moveIteratorFactory";
 
-  protected Class<? extends MoveIteratorFactory> moveIteratorFactoryClass = null;
+  private String moveIteratorFactoryClass = null;
 
   @XmlJavaTypeAdapter(JaxbCustomPropertiesAdapter.class)
-  protected Map<String, String> moveIteratorFactoryCustomProperties = null;
+  @Nullable
+  private Map<String, String> moveIteratorFactoryCustomProperties = null;
 
   public @Nullable Class<? extends MoveIteratorFactory> getMoveIteratorFactoryClass() {
-    return moveIteratorFactoryClass;
+    return ConfigUtils.resolveClass(moveIteratorFactoryClass, "moveIteratorFactoryClass", this);
   }
 
   public void setMoveIteratorFactoryClass(
       @Nullable Class<? extends MoveIteratorFactory> moveIteratorFactoryClass) {
-    this.moveIteratorFactoryClass = moveIteratorFactoryClass;
+    this.moveIteratorFactoryClass =
+        moveIteratorFactoryClass == null ? null : moveIteratorFactoryClass.getName();
   }
 
   public @Nullable Map<String, String> getMoveIteratorFactoryCustomProperties() {
@@ -48,7 +50,7 @@ public class MoveIteratorFactoryConfig extends MoveSelectorConfig<MoveIteratorFa
 
   public @NonNull MoveIteratorFactoryConfig withMoveIteratorFactoryClass(
       @NonNull Class<? extends MoveIteratorFactory> moveIteratorFactoryClass) {
-    this.setMoveIteratorFactoryClass(moveIteratorFactoryClass);
+    this.moveIteratorFactoryClass = moveIteratorFactoryClass.getName();
     return this;
   }
 
@@ -64,7 +66,7 @@ public class MoveIteratorFactoryConfig extends MoveSelectorConfig<MoveIteratorFa
     super.inherit(inheritedConfig);
     moveIteratorFactoryClass =
         ConfigUtils.inheritOverwritableProperty(
-            moveIteratorFactoryClass, inheritedConfig.getMoveIteratorFactoryClass());
+            moveIteratorFactoryClass, inheritedConfig.moveIteratorFactoryClass);
     moveIteratorFactoryCustomProperties =
         ConfigUtils.inheritMergeableMapProperty(
             moveIteratorFactoryCustomProperties,
@@ -80,7 +82,7 @@ public class MoveIteratorFactoryConfig extends MoveSelectorConfig<MoveIteratorFa
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
     visitCommonReferencedClasses(classVisitor);
-    classVisitor.accept(moveIteratorFactoryClass);
+    classVisitor.accept(getMoveIteratorFactoryClass());
   }
 
   @Override

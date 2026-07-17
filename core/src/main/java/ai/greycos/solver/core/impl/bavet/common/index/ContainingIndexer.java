@@ -1,19 +1,19 @@
 package ai.greycos.solver.core.impl.bavet.common.index;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.SequencedCollection;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 
-import ai.greycos.solver.core.impl.score.stream.UnfinishedJoiners;
+import ai.greycos.solver.core.api.score.stream.Joiners;
 import ai.greycos.solver.core.impl.util.CompositeListEntry;
 import ai.greycos.solver.core.impl.util.ListEntry;
 import ai.greycos.solver.core.impl.util.Pair;
@@ -21,9 +21,9 @@ import ai.greycos.solver.core.impl.util.Pair;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
-/** As defined by {@link UnfinishedJoiners#containing(Function, Function)} */
+/** As defined by {@link Joiners#containing(Function, Function)} */
 @NullMarked
-final class ContainingIndexer<T, Key_, KeyCollection_ extends Collection<Key_>>
+final class ContainingIndexer<T, Key_, KeyCollection_ extends SequencedCollection<Key_>>
     implements Indexer<T> {
 
   private final KeyUnpacker<KeyCollection_> modifyKeyUnpacker;
@@ -36,8 +36,8 @@ final class ContainingIndexer<T, Key_, KeyCollection_ extends Collection<Key_>>
   private long unremovedSize = 0;
 
   /**
-   * @param keyUnpacker determines if it immediately goes to a {@link IndexerBackend} or if it uses
-   *     a {@link CompositeKey}.
+   * @param keyUnpacker determines if it immediately goes to a {@link LeafIndexer} or if it uses a
+   *     {@link CompositeKey}.
    * @param downstreamIndexerSupplier the supplier of the downstream indexer
    */
   @SuppressWarnings("unchecked")
@@ -77,8 +77,9 @@ final class ContainingIndexer<T, Key_, KeyCollection_ extends Collection<Key_>>
     if (indexKeyCollection.size() != children.size()) {
       throw new IllegalStateException(
           """
-                    Impossible state: the tuple (%s) with composite key (%s) has a different number of children (%d) \
-                    than the index key collection size (%d)."""
+          Impossible state: the tuple (%s) with composite key (%s) has a different number of children (%d) \
+          than the index key collection size (%d).\
+          """
               .formatted(entry, modifyCompositeKey, children.size(), indexKeyCollection.size()));
     }
     for (var i = 0;

@@ -93,11 +93,6 @@ public final class FromSolutionEntitySelector<Solution_>
   // ************************************************************************
 
   @Override
-  public boolean isCountable() {
-    return true;
-  }
-
-  @Override
   public boolean isNeverEnding() {
     // CachedListRandomIterator is neverEnding
     return randomSelection;

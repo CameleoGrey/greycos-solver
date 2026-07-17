@@ -25,6 +25,7 @@ import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.config.score.trend.InitializingScoreTrendLevel;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
@@ -36,6 +37,7 @@ import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.easy.EasyScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.trend.InitializingScoreTrend;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
@@ -146,7 +148,8 @@ public final class PlannerTestUtils {
   public static <Solution_> InnerScoreDirector<Solution_, SimpleScore> mockScoreDirector(
       SolutionDescriptor<Solution_> solutionDescriptor, boolean useSolution) {
     var scoreDirectorFactory =
-        new EasyScoreDirectorFactory<>(solutionDescriptor, solution_ -> SimpleScore.of(0));
+        new EasyScoreDirectorFactory<>(
+            solutionDescriptor, solution_ -> SimpleScore.of(0), EnvironmentMode.PHASE_ASSERT);
     scoreDirectorFactory.setInitializingScoreTrend(
         InitializingScoreTrend.buildUniformTrend(InitializingScoreTrendLevel.ONLY_DOWN, 1));
     if (useSolution) {
@@ -170,7 +173,6 @@ public final class PlannerTestUtils {
           SolutionDescriptor<Solution_> solutionDescriptor, Object[][] lookUpMappings) {
     InnerScoreDirector<Solution_, Score_> scoreDirector = mock(InnerScoreDirector.class);
     MoveDirector<Solution_, Score_> moveDirector = new MoveDirector<>(scoreDirector);
-    when(scoreDirector.getSolutionDescriptor()).thenReturn(solutionDescriptor);
     when(scoreDirector.lookUpWorkingObject(any()))
         .thenAnswer(
             invocation -> {
@@ -186,6 +188,7 @@ public final class PlannerTestUtils {
               throw new IllegalStateException(
                   "No method mocked for parameter (" + externalObject + ").");
             });
+    when(scoreDirector.getSolutionDescriptor()).thenReturn(solutionDescriptor);
     when(scoreDirector.getMoveDirector()).thenReturn(moveDirector);
     return scoreDirector;
   }
@@ -233,6 +236,17 @@ public final class PlannerTestUtils {
   // ************************************************************************
 
   /**
+   * Returns a mock {@link SolverScope} with {@link SolverScope#getWorkingRandom()} returning a mock
+   * random.
+   */
+  @SuppressWarnings("unchecked")
+  public static <Solution_> SolverScope<Solution_> mockSolverScope() {
+    var out = mock(SolverScope.class);
+    when(out.getWorkingRandom()).thenReturn(mock(RandomSource.class));
+    return (SolverScope<Solution_>) out;
+  }
+
+  /**
    * Returns {@link AbstractPhaseScope} instance that will delegate to {@link
    * SolverScope#getWorkingRandom()}.
    *
@@ -246,13 +260,6 @@ public final class PlannerTestUtils {
       @Override
       public AbstractStepScope<Solution_> getLastCompletedStepScope() {
         return null;
-      }
-
-      @Override
-      public <Score_ extends ai.greycos.solver.core.api.score.Score<Score_>>
-          ai.greycos.solver.core.impl.score.director.InnerScoreDirector<Solution_, Score_>
-              getScoreDirector() {
-        return getSolverScope().getScoreDirector();
       }
     };
   }

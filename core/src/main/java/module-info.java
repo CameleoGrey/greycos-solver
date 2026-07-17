@@ -6,14 +6,12 @@ module ai.greycos.solver.core {
   exports ai.greycos.solver.core.api.cotwin.lookup;
   exports ai.greycos.solver.core.api.cotwin.solution;
   exports ai.greycos.solver.core.api.cotwin.solution.cloner;
-  exports ai.greycos.solver.core.api.cotwin.solution.diff;
   exports ai.greycos.solver.core.api.cotwin.valuerange;
   exports ai.greycos.solver.core.api.cotwin.variable;
   exports ai.greycos.solver.core.api.function;
   exports ai.greycos.solver.core.api.score;
   exports ai.greycos.solver.core.api.score.analysis;
   exports ai.greycos.solver.core.api.score.calculator;
-  exports ai.greycos.solver.core.api.score.constraint;
   exports ai.greycos.solver.core.api.score.stream;
   exports ai.greycos.solver.core.api.score.stream.bi;
   exports ai.greycos.solver.core.api.score.stream.common;
@@ -59,7 +57,6 @@ module ai.greycos.solver.core {
   exports ai.greycos.solver.core.config.score.trend;
   exports ai.greycos.solver.core.config.solver;
   exports ai.greycos.solver.core.config.solver.monitoring;
-  exports ai.greycos.solver.core.config.solver.random;
   exports ai.greycos.solver.core.config.solver.termination;
   exports ai.greycos.solver.core.config.util;
 
@@ -72,6 +69,7 @@ module ai.greycos.solver.core {
   exports ai.greycos.solver.core.preview.api.neighborhood;
   exports ai.greycos.solver.core.preview.api.neighborhood.stream;
   exports ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating;
+  exports ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.collector;
   exports ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.function;
   exports ai.greycos.solver.core.preview.api.neighborhood.stream.function;
   exports ai.greycos.solver.core.preview.api.neighborhood.stream.joiner;
@@ -95,6 +93,9 @@ module ai.greycos.solver.core {
   exports ai.greycos.solver.core.impl.phase.event;
   exports ai.greycos.solver.core.impl.phase.scope;
   exports ai.greycos.solver.core.impl.score.constraint;
+  exports ai.greycos.solver.core.impl.score.analysis to
+      ai.greycos.solver.jackson,
+      ai.greycos.solver.quarkus.jackson;
   exports ai.greycos.solver.core.impl.score.definition;
   exports ai.greycos.solver.core.impl.score.director;
   exports ai.greycos.solver.core.impl.score.stream.common;
@@ -199,9 +200,6 @@ module ai.greycos.solver.core {
       jakarta.xml.bind,
       org.glassfish.jaxb.runtime;
   opens ai.greycos.solver.core.config.solver.monitoring to
-      jakarta.xml.bind,
-      org.glassfish.jaxb.runtime;
-  opens ai.greycos.solver.core.config.solver.random to
       jakarta.xml.bind,
       org.glassfish.jaxb.runtime;
   opens ai.greycos.solver.core.config.solver.termination to

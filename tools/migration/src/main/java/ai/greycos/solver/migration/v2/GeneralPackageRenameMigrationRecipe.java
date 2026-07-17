@@ -24,7 +24,7 @@ public class GeneralPackageRenameMigrationRecipe extends AbstractRecipe {
         // Persistence API
         new ChangePackage(
             "ai.greycos.solver.persistence.common.api.domain.solution",
-            "ai.greycos.solver.core.api.domain.solution",
+            "ai.greycos.solver.core.api.cotwin.solution",
             true),
         new ChangePackage(
             "ai.greycos.solver.jpa.api.score.buildin.bendablebigdecimal",
@@ -61,35 +61,39 @@ public class GeneralPackageRenameMigrationRecipe extends AbstractRecipe {
         // Jackson API
         new ChangePackage(
             "ai.greycos.solver.jackson.api.score.buildin.bendablebigdecimal",
-            "ai.greycos.solver.jackson.api.score.buildin",
+            "ai.greycos.solver.jackson.api.score",
             true),
         new ChangePackage(
             "ai.greycos.solver.jackson.api.score.buildin.bendable",
-            "ai.greycos.solver.jackson.api.score.buildin",
+            "ai.greycos.solver.jackson.api.score",
             true),
         new ChangePackage(
             "ai.greycos.solver.jackson.api.score.buildin.hardmediumsoftbigdecimal",
-            "ai.greycos.solver.jackson.api.score.buildin",
+            "ai.greycos.solver.jackson.api.score",
             true),
         new ChangePackage(
             "ai.greycos.solver.jackson.api.score.buildin.hardmediumsoft",
-            "ai.greycos.solver.jackson.api.score.buildin",
+            "ai.greycos.solver.jackson.api.score",
             true),
         new ChangePackage(
             "ai.greycos.solver.jackson.api.score.buildin.hardsoftbigdecimal",
-            "ai.greycos.solver.jackson.api.score.buildin",
+            "ai.greycos.solver.jackson.api.score",
             true),
         new ChangePackage(
             "ai.greycos.solver.jackson.api.score.buildin.hardsoft",
-            "ai.greycos.solver.jackson.api.score.buildin",
+            "ai.greycos.solver.jackson.api.score",
             true),
         new ChangePackage(
             "ai.greycos.solver.jackson.api.score.buildin.simplebigdecimal",
-            "ai.greycos.solver.jackson.api.score.buildin",
+            "ai.greycos.solver.jackson.api.score",
             true),
         new ChangePackage(
             "ai.greycos.solver.jackson.api.score.buildin.simple",
+            "ai.greycos.solver.jackson.api.score",
+            true),
+        new ChangePackage(
             "ai.greycos.solver.jackson.api.score.buildin",
+            "ai.greycos.solver.jackson.api.score",
             true),
         // JAXB API
         new ChangePackage(
@@ -157,38 +161,42 @@ public class GeneralPackageRenameMigrationRecipe extends AbstractRecipe {
             "ai.greycos.solver.quarkus.jackson.score.buildin.simple",
             "ai.greycos.solver.quarkus.jackson.score",
             true),
+        new ChangePackage(
+            "ai.greycos.solver.quarkus.jackson.score.buildin",
+            "ai.greycos.solver.quarkus.jackson.score",
+            true),
         // Value Range API
         new ChangePackage(
             "ai.greycos.solver.core.impl.domain.valuerange.buildin.bigdecimal",
-            "ai.greycos.solver.core.impl.domain.valuerange",
+            "ai.greycos.solver.core.impl.cotwin.valuerange",
             true),
         new ChangePackage(
             "ai.greycos.solver.core.impl.domain.valuerange.buildin.biginteger",
-            "ai.greycos.solver.core.impl.domain.valuerange",
+            "ai.greycos.solver.core.impl.cotwin.valuerange",
             true),
         new ChangePackage(
             "ai.greycos.solver.core.impl.domain.valuerange.buildin.primboolean",
-            "ai.greycos.solver.core.impl.domain.valuerange",
+            "ai.greycos.solver.core.impl.cotwin.valuerange",
             true),
         new ChangePackage(
             "ai.greycos.solver.core.impl.domain.valuerange.buildin.primint",
-            "ai.greycos.solver.core.impl.domain.valuerange",
+            "ai.greycos.solver.core.impl.cotwin.valuerange",
             true),
         new ChangePackage(
             "ai.greycos.solver.core.impl.domain.valuerange.buildin.collection",
-            "ai.greycos.solver.core.impl.domain.valuerange",
+            "ai.greycos.solver.core.impl.cotwin.valuerange",
             true),
         new ChangePackage(
             "ai.greycos.solver.core.impl.domain.valuerange.buildin.primlong",
-            "ai.greycos.solver.core.impl.domain.valuerange",
+            "ai.greycos.solver.core.impl.cotwin.valuerange",
             true),
         new ChangePackage(
             "ai.greycos.solver.core.impl.domain.valuerange.buildin.temporal",
-            "ai.greycos.solver.core.impl.domain.valuerange",
+            "ai.greycos.solver.core.impl.cotwin.valuerange",
             true),
         new ChangePackage(
             "ai.greycos.solver.core.impl.domain.valuerange.buildin",
-            "ai.greycos.solver.core.impl.domain.valuerange",
+            "ai.greycos.solver.core.impl.cotwin.valuerange",
             true));
   }
 }

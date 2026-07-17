@@ -1,5 +1,4 @@
 * xref:introduction.adoc[leveloffset=+1]
-* xref:planning-ai-concepts.adoc[leveloffset=+1]
 * Getting Started
 ** xref:quickstart/overview.adoc[leveloffset=+1]
 ** xref:quickstart/hello-world/hello-world-quickstart.adoc[leveloffset=+1]
@@ -29,9 +28,6 @@
 * xref:integration/integration.adoc[leveloffset=+1]
 * xref:design-patterns/design-patterns.adoc[leveloffset=+1]
 * xref:frequently-asked-questions.adoc[leveloffset=+1]
-* https://github.com/GreyCOSAI/greycos-solver/releases[New and noteworthy][leveloffset=+1]
+* https://github.com/CameleoGrey/greycos-solver/releases[New and noteworthy][leveloffset=+1]
 * Upgrading GreyCOS Solver
-** xref:upgrading-greycos-solver/overview.adoc[leveloffset=+1]
-** xref:upgrading-greycos-solver/upgrade-to-latest-version.adoc[leveloffset=+1]
-** xref:upgrading-greycos-solver/upgrade-from-optaplanner.adoc[leveloffset=+1]
 ** xref:upgrading-greycos-solver/backwards-compatibility.adoc[leveloffset=+1]

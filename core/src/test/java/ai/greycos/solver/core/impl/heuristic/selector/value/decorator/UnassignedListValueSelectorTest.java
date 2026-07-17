@@ -6,6 +6,7 @@ import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfIter
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfValueSelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfValueSelectorForEntity;
 import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockScoreDirector;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -34,7 +35,7 @@ class UnassignedListValueSelectorTest {
     var v4 = new TestdataListValue("4");
     var v5 = new TestdataListValue("5");
     // 1 and 3 are assigned, the rest (2, 4, 5) are unassigned.
-    var entity = TestdataListEntity.createWithValues("A", v1, v3);
+    var entity = new TestdataListEntity("A", v1, v3);
     var solution = new TestdataListSolution();
     solution.setEntityList(List.of(entity));
     solution.setValueList(List.of(v1, v2, v3, v4, v5));
@@ -47,7 +48,7 @@ class UnassignedListValueSelectorTest {
         mockIterableValueSelector(getListVariableDescriptor(scoreDirector), v1, v2, v3, v4, v5);
     var valueSelector = new UnassignedListValueSelector<>(childValueSelector);
 
-    SolverScope<TestdataListSolution> solverScope = mock(SolverScope.class);
+    SolverScope<TestdataListSolution> solverScope = mockSolverScope();
     valueSelector.solvingStarted(solverScope);
 
     AbstractPhaseScope<TestdataListSolution> phaseScope = mock(AbstractPhaseScope.class);

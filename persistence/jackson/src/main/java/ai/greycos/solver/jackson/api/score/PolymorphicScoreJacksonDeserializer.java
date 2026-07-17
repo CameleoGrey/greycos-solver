@@ -1,7 +1,5 @@
 package ai.greycos.solver.jackson.api.score;
 
-import java.io.IOException;
-
 import ai.greycos.solver.core.api.score.BendableBigDecimalScore;
 import ai.greycos.solver.core.api.score.BendableScore;
 import ai.greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
@@ -11,11 +9,11 @@ import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.SimpleBigDecimalScore;
 import ai.greycos.solver.core.api.score.SimpleScore;
-import ai.greycos.solver.jackson.api.score.buildin.HardSoftScoreJacksonDeserializer;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
 
 /**
  * Jackson binding support for a {@link Score} type (but not a subtype). For a {@link Score} subtype
@@ -30,10 +28,11 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
  * @see Score
  * @see PolymorphicScoreJacksonDeserializer
  */
-public class PolymorphicScoreJacksonDeserializer extends JsonDeserializer<Score> {
+public class PolymorphicScoreJacksonDeserializer extends ValueDeserializer<Score> {
 
   @Override
-  public Score deserialize(JsonParser parser, DeserializationContext context) throws IOException {
+  public Score deserialize(JsonParser parser, DeserializationContext context)
+      throws JacksonException {
     parser.nextToken();
     String scoreClassSimpleName = parser.currentName();
     parser.nextToken();
@@ -56,11 +55,8 @@ public class PolymorphicScoreJacksonDeserializer extends JsonDeserializer<Score>
       return BendableBigDecimalScore.parseScore(scoreString);
     } else {
       throw new IllegalArgumentException(
-          "Unrecognized scoreClassSimpleName ("
-              + scoreClassSimpleName
-              + ") for scoreString ("
-              + scoreString
-              + ").");
+          "Unrecognized scoreClassSimpleName (%s) for scoreString (%s)."
+              .formatted(scoreClassSimpleName, scoreString));
     }
   }
 }

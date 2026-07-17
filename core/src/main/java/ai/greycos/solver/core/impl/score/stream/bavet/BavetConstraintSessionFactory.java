@@ -1,31 +1,29 @@
 package ai.greycos.solver.core.impl.score.stream.bavet;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintMetaModel;
-import ai.greycos.solver.core.impl.bavet.NodeNetwork;
-import ai.greycos.solver.core.impl.bavet.common.AbstractNodeBuildHelper;
+import ai.greycos.solver.core.impl.bavet.common.AbstractRootNode;
 import ai.greycos.solver.core.impl.bavet.common.BavetAbstractConstraintStream;
-import ai.greycos.solver.core.impl.bavet.common.BavetRootNode;
 import ai.greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler;
 import ai.greycos.solver.core.impl.bavet.common.InnerConstraintProfiler;
 import ai.greycos.solver.core.impl.bavet.uni.AbstractForEachUniNode;
-import ai.greycos.solver.core.impl.bavet.visual.NodeGraph;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.stream.bavet.common.ConstraintNodeBuildHelper;
 import ai.greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;
-import ai.greycos.solver.core.impl.util.CollectionUtils;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -35,7 +33,7 @@ import org.slf4j.event.Level;
 public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score<Score_>> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BavetConstraintSessionFactory.class);
-  private static final Level CONSTRAINT_WEIGHT_LOGGING_LEVEL = Level.DEBUG;
+  public static final Level CONSTRAINT_WEIGHT_LOGGING_LEVEL = Level.DEBUG;
 
   private final SolutionDescriptor<Solution_> solutionDescriptor;
   private final ConstraintMetaModel constraintMetaModel;
@@ -59,8 +57,7 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
       Solution_ workingSolution,
       ConsistencyTracker<Solution_> consistencyTracker,
       ConstraintMatchPolicy constraintMatchPolicy,
-      boolean scoreDirectorDerived,
-      Consumer<String> nodeNetworkVisualizationConsumer) {
+      boolean scoreDirectorDerived) {
     var constraintWeightSupplier = solutionDescriptor.getConstraintWeightSupplier();
     var constraints = constraintMetaModel.getConstraints();
     if (constraintWeightSupplier != null) { // Fail fast on unknown constraints.
@@ -71,7 +68,7 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
     var scoreDefinition = solutionDescriptor.<Score_>getScoreDefinition();
     var zeroScore = scoreDefinition.getZeroScore();
     var constraintStreamSet = new LinkedHashSet<BavetAbstractConstraintStream<Solution_>>();
-    var constraintWeightMap = CollectionUtils.<Constraint, Score_>newHashMap(constraints.size());
+    var constraintWeightMap = HashMap.<Constraint, Score_>newHashMap(constraints.size());
 
     // Only log constraint weights if logging is enabled; otherwise we don't need to build the
     // string.
@@ -137,27 +134,27 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
             constraintStreamSet,
             scoreInliner,
             constraintProfiler,
-            nodeNetworkVisualizationConsumer));
+            scoreDirectorDerived));
   }
 
-  private static <Solution_, Score_ extends Score<Score_>> NodeNetwork buildNodeNetwork(
+  private ConstraintStreamsBavetNodeNetwork buildNodeNetwork(
       Solution_ workingSolution,
       ConsistencyTracker<Solution_> consistencyTracker,
       Set<BavetAbstractConstraintStream<Solution_>> constraintStreamSet,
       AbstractScoreInliner<Score_> scoreInliner,
-      @Nullable InnerConstraintProfiler profiler,
-      Consumer<String> nodeNetworkVisualizationConsumer) {
+      InnerConstraintProfiler profiler,
+      boolean scoreDirectorDerived) {
     var buildHelper =
         new ConstraintNodeBuildHelper<>(
             consistencyTracker, constraintStreamSet, scoreInliner, profiler);
-    var declaredClassToNodeMap = new LinkedHashMap<Class<?>, List<BavetRootNode<?>>>();
+    var declaredClassToNodeMap = new LinkedHashMap<Class<?>, List<AbstractRootNode<?>>>();
     var nodeList =
         buildHelper.buildNodeList(
             constraintStreamSet,
             buildHelper,
             BavetAbstractConstraintStream::buildNode,
             node -> {
-              if (!(node instanceof BavetRootNode<?> tupleSourceRoot)) {
+              if (!(node instanceof AbstractRootNode<?> tupleSourceRoot)) {
                 return;
               }
 
@@ -184,18 +181,26 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
                 }
               }
             });
-    if (nodeNetworkVisualizationConsumer != null) {
-      var constraintSet = scoreInliner.getConstraints();
-      var visualisation =
-          NodeGraph.of(
-                  workingSolution,
-                  nodeList,
-                  constraintSet,
-                  buildHelper::getNodeCreatingStream,
-                  buildHelper::findParentNode)
-              .buildGraphvizDOT();
-      nodeNetworkVisualizationConsumer.accept(visualisation);
+    var constraintToScorerMap =
+        scoreInliner.getConstraints().stream()
+            .map(constraint -> (BavetConstraint<Solution_>) constraint)
+            .collect(
+                Collectors.toMap(
+                    Function.identity(),
+                    constraint -> buildHelper.getScorer(constraint.getScoringConstraintStream()),
+                    (a, b) -> a,
+                    LinkedHashMap::new));
+
+    if (constraintProfiler != null) {
+      constraintProfiler.registerNodeGraph(
+          workingSolution,
+          nodeList,
+          scoreInliner.getConstraints(),
+          buildHelper::getNodeCreatingStream,
+          buildHelper::findParentNode);
     }
-    return AbstractNodeBuildHelper.buildNodeNetwork(nodeList, declaredClassToNodeMap, buildHelper);
+
+    return buildHelper.buildNodeNetwork(
+        nodeList, declaredClassToNodeMap, (Map) constraintToScorerMap, scoreDirectorDerived);
   }
 }

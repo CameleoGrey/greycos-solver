@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.entity.decorator;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertCode;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -12,7 +13,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Iterator;
-import java.util.Random;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
@@ -21,7 +21,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
-import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
@@ -60,20 +59,21 @@ class ProbabilityEntitySelectorTest {
         new ProbabilityEntitySelector(
             childEntitySelector, SelectionCacheType.STEP, probabilityWeightFactory);
 
-    Random workingRandom =
+    var workingRandom =
         new TestRandom(1222.0 / 1234.0, 111.0 / 1234.0, 0.0, 1230.0 / 1234.0, 1199.0 / 1234.0);
 
-    InnerScoreDirector scoreDirector = mock(InnerScoreDirector.class);
+    var solverScope = mockSolverScope();
+    var scoreDirector = mock(InnerScoreDirector.class);
     when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
     when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
-    SolverScope solverScope =
-        SelectorTestUtils.solvingStarted(entitySelector, scoreDirector, workingRandom);
+    when(solverScope.getScoreDirector()).thenReturn(scoreDirector);
+    when(solverScope.getWorkingRandom()).thenReturn(workingRandom);
+    entitySelector.solvingStarted(solverScope);
     AbstractPhaseScope phaseScopeA = PlannerTestUtils.delegatingPhaseScope(solverScope);
     entitySelector.phaseStarted(phaseScopeA);
     AbstractStepScope stepScopeA1 = PlannerTestUtils.delegatingStepScope(phaseScopeA);
     entitySelector.stepStarted(stepScopeA1);
 
-    assertThat(entitySelector.isCountable()).isTrue();
     assertThat(entitySelector.isNeverEnding()).isTrue();
     assertThat(entitySelector.getSize()).isEqualTo(4L);
     Iterator<Object> iterator = entitySelector.iterator();
@@ -95,14 +95,6 @@ class ProbabilityEntitySelectorTest {
 
     verifyPhaseLifecycle(childEntitySelector, 1, 1, 1);
     verify(childEntitySelector, times(1)).iterator();
-  }
-
-  @Test
-  void isCountable() {
-    EntitySelector childEntitySelector = SelectorTestUtils.mockEntitySelector(TestdataEntity.class);
-    EntitySelector entitySelector =
-        new ProbabilityEntitySelector(childEntitySelector, SelectionCacheType.STEP, null);
-    assertThat(entitySelector.isCountable()).isTrue();
   }
 
   @Test
@@ -140,11 +132,7 @@ class ProbabilityEntitySelectorTest {
     ProbabilityEntitySelector entitySelector =
         new ProbabilityEntitySelector(
             childEntitySelector, SelectionCacheType.STEP, probabilityWeightFactory);
-    InnerScoreDirector scoreDirector = mock(InnerScoreDirector.class);
-    when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
-    SolverScope solverScope = new SolverScope();
-    solverScope.setScoreDirector(scoreDirector);
-    entitySelector.constructCache(solverScope);
+    entitySelector.constructCache(mockSolverScope());
     assertThat(entitySelector.getSize()).isEqualTo(4);
   }
 

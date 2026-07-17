@@ -29,6 +29,7 @@ import ai.greycos.solver.core.impl.score.director.easy.EasyScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
 import ai.greycos.solver.core.impl.solver.AbstractSolver;
 import ai.greycos.solver.core.impl.solver.event.SolverEventSupport;
+import ai.greycos.solver.core.impl.solver.random.MockRandomSource;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
@@ -101,7 +102,8 @@ class NeighborhoodsTest {
     solution.getEntityList().forEach(e -> e.setValue(secondValue));
 
     var scoreDirector =
-        new EasyScoreDirectorFactory<>(solutionDescriptor, new TestingEasyScoreCalculator())
+        new EasyScoreDirectorFactory<>(
+                solutionDescriptor, new TestingEasyScoreCalculator(), EnvironmentMode.PHASE_ASSERT)
             .buildScoreDirector();
     scoreDirector.setWorkingSolution(solution);
     var score = scoreDirector.calculateScore();
@@ -114,7 +116,7 @@ class NeighborhoodsTest {
     bestSolutionRecaller.setSolverEventSupport(solverEventSupport);
     var solverScope = new SolverScope<TestdataSolution>();
     solverScope.setSolver(solver);
-    solverScope.setWorkingRandom(new Random());
+    solverScope.setWorkingRandom(new MockRandomSource(new Random(0)));
     solverScope.setScoreDirector(scoreDirector);
     solverScope.setBestScore(score);
     solverScope.setBestSolution(scoreDirector.cloneSolution(solution));
@@ -149,8 +151,7 @@ class NeighborhoodsTest {
 
   @Test
   void allowsNullValues() {
-    var solutionMetaModel =
-        TestdataAllowsUnassignedSolution.buildSolutionDescriptor().getMetaModel();
+    var solutionMetaModel = TestdataAllowsUnassignedSolution.buildMetaModel();
     var variableMetaModel =
         solutionMetaModel
             .genuineEntity(TestdataAllowsUnassignedEntity.class)

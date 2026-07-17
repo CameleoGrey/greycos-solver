@@ -6,12 +6,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedCompositeMove;
 import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 /**
  * A {@link CompositeMoveSelector} that Cartesian products 2 or more {@link MoveSelector}s.

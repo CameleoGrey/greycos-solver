@@ -1,7 +1,5 @@
 package ai.greycos.solver.core.impl.phase.scope;
 
-import java.util.random.RandomGenerator;
-
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
@@ -9,6 +7,7 @@ import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.preview.api.move.Move;
@@ -241,7 +240,7 @@ public abstract class AbstractPhaseScope<Solution_> {
     innerScoreDirector.assertShadowVariablesAreNotStale(workingScore, completedAction);
   }
 
-  public RandomGenerator getWorkingRandom() {
+  public RandomSource getWorkingRandom() {
     return getSolverScope().getWorkingRandom();
   }
 
@@ -267,16 +266,12 @@ public abstract class AbstractPhaseScope<Solution_> {
   }
 
   public EventProducerId getPhaseId() {
-    var phaseList = solverScope.getSolver().getPhaseList();
-    // Handle case where phaseIndex is out of bounds (e.g., in Island Model agents
-    // or other child thread scenarios where the solver's phase list doesn't contain
-    // all the phases being run)
-    if (phaseIndex >= phaseList.size()) {
-      // Fall back to a generic phase ID for phases not in the solver's phase list
-      return new ai.greycos.solver.core.impl.phase.event.PhaseEventProducerId(
-          ai.greycos.solver.core.impl.phase.PhaseType.LOCAL_SEARCH, phaseIndex);
-    }
-    return phaseList.get(phaseIndex).getEventProducerIdSupplier().apply(phaseIndex);
+    return solverScope
+        .getSolver()
+        .getPhaseList()
+        .get(phaseIndex)
+        .getEventProducerIdSupplier()
+        .apply(phaseIndex);
   }
 
   @Override

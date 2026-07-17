@@ -7,6 +7,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.OptionalInt;
+import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
@@ -21,7 +23,6 @@ import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
-import ai.greycos.solver.core.config.solver.random.RandomType;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.AbstractFromConfigFactory;
@@ -36,8 +37,8 @@ import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactoryFactory;
 import ai.greycos.solver.core.impl.solver.change.DefaultProblemChangeDirector;
-import ai.greycos.solver.core.impl.solver.random.DefaultRandomFactory;
-import ai.greycos.solver.core.impl.solver.random.RandomFactory;
+import ai.greycos.solver.core.impl.solver.random.DefaultRandomSource;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecallerFactory;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
@@ -99,7 +100,7 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
   }
 
   @Override
-  public Solver<Solution_> buildSolver(SolverConfigOverride<Solution_> configOverride) {
+  public Solver<Solution_> buildSolver(SolverConfigOverride configOverride) {
     Objects.requireNonNull(configOverride, "Invalid configOverride (null) given to SolverFactory.");
     var isDaemon = Objects.requireNonNullElse(solverConfig.getDaemon(), false);
 
@@ -145,7 +146,7 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
     var moveThreadCount = resolveMoveThreadCount(true);
     var bestSolutionRecaller =
         BestSolutionRecallerFactory.create().<Solution_>buildBestSolutionRecaller(environmentMode);
-    var randomFactory = buildRandomFactory(environmentMode);
+    var randomFactory = buildRandomSupplier(environmentMode);
     var previewFeaturesEnabled = solverConfig.getEnablePreviewFeatureSet();
     var scoreDirectorFactoryConfig = solverConfig.getScoreDirectorFactoryConfig();
     if (scoreDirectorFactoryConfig != null) {
@@ -165,7 +166,7 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
             .withMoveThreadBufferSize(solverConfig.getMoveThreadBufferSize())
             .withThreadFactoryClass(solverConfig.getThreadFactoryClass())
             .withNearbyDistanceMeterClass(solverConfig.getNearbyDistanceMeterClass())
-            .withRandom(randomFactory.createRandom())
+            .withRandom(randomFactory.get())
             .withInitializingScoreTrend(scoreDirectorFactory.getInitializingScoreTrend())
             .withSolutionDescriptor(solutionDescriptor)
             .withClassInstanceCache(ClassInstanceCache.create())
@@ -201,7 +202,7 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
   private SolverTermination<Solution_> buildTermination(
       BasicPlumbingTermination<Solution_> basicPlumbingTermination,
       HeuristicConfigPolicy<Solution_> configPolicy,
-      SolverConfigOverride<Solution_> solverConfigOverride) {
+      SolverConfigOverride solverConfigOverride) {
     var terminationConfig =
         Objects.requireNonNullElseGet(
             solverConfigOverride.getTerminationConfig(),
@@ -244,26 +245,14 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
         environmentMode, solutionDescriptor);
   }
 
-  public RandomFactory buildRandomFactory(EnvironmentMode environmentMode_) {
-    var randomFactoryClass = solverConfig.getRandomFactoryClass();
-    if (randomFactoryClass != null) {
-      var randomType = solverConfig.getRandomType();
-      var randomSeed = solverConfig.getRandomSeed();
-      if (randomType != null || randomSeed != null) {
-        throw new IllegalArgumentException(
-            "The solverConfig with randomFactoryClass (%s) has a non-null randomType (%s) or a non-null randomSeed (%s)."
-                .formatted(randomFactoryClass, randomType, randomSeed));
-      }
-      return ConfigUtils.newInstance(solverConfig, "randomFactoryClass", randomFactoryClass);
-    } else {
-      var randomType_ = Objects.requireNonNullElse(solverConfig.getRandomType(), RandomType.JDK);
-      var randomSeed_ = solverConfig.getRandomSeed();
-      if (solverConfig.getRandomSeed() == null
-          && environmentMode_ != EnvironmentMode.NON_REPRODUCIBLE) {
-        randomSeed_ = DEFAULT_RANDOM_SEED;
-      }
-      return new DefaultRandomFactory(randomType_, randomSeed_);
+  public Supplier<RandomSource> buildRandomSupplier(EnvironmentMode environmentMode) {
+    var randomSeed = solverConfig.getRandomSeed();
+    if (randomSeed == null && environmentMode != EnvironmentMode.NON_REPRODUCIBLE) {
+      randomSeed = DEFAULT_RANDOM_SEED;
+    } else if (randomSeed == null) {
+      randomSeed = RandomGenerator.getDefault().nextLong();
     }
+    return DefaultRandomSource.seededSupplier(randomSeed);
   }
 
   public List<Phase<Solution_>> buildPhaseList(
@@ -344,7 +333,6 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
         resolvedMoveThreadCount = (availableProcessorCount - 2);
         if (enforceMaximum && resolvedMoveThreadCount > 4) {
           // A moveThreadCount beyond 4 is currently typically slower
-          // TODO remove limitation after fixing https://issues.redhat.com/browse/PLANNER-2449
           resolvedMoveThreadCount = 4;
         }
         if (resolvedMoveThreadCount <= 1) {

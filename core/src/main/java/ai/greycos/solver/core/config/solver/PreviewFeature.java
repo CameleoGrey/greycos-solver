@@ -6,16 +6,16 @@ package ai.greycos.solver.core.config.solver;
  * considered stable, pending user feedback. Any class, method, or field related to these features
  * may change or be removed without prior notice, although we will strive to avoid this as much as
  * possible. We encourage you to try these preview features and give us feedback on your experience
- * with them. Please direct your feedback to <a
- * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver Github</a> or to
- * <a href="https://discord.com/channels/1413420192213631086/1414521616955605003">GreyCOS
- * Discord</a>.
+ * with them. Please direct your feedback to the <a
+ * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver GitHub
+ * discussions</a>.
  *
  * <p>This list is not constant and is evolving over time, with items being added and removed
  * without warning. It should not be treated as part of our public API, just like the preview
  * features themselves.
  */
 public enum PreviewFeature {
+  DIVERSIFIED_LATE_ACCEPTANCE,
   PLANNING_SOLUTION_DIFF,
   /**
    * Unlike other preview features, Neighborhoods are an active research project. It is intended to

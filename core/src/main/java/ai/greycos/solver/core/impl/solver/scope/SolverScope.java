@@ -7,13 +7,11 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
@@ -28,6 +26,8 @@ import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.AbstractSolver;
 import ai.greycos.solver.core.impl.solver.change.DefaultProblemChangeDirector;
 import ai.greycos.solver.core.impl.solver.monitoring.ScoreLevels;
+import ai.greycos.solver.core.impl.solver.random.DefaultRandomSource;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 import ai.greycos.solver.core.preview.api.move.Move;
@@ -53,7 +53,7 @@ public class SolverScope<Solution_> {
   private int constraintMatchMetricSampleInterval = 1;
   private Tags monitoringTags;
   private int startingSolverCount;
-  private RandomGenerator workingRandom;
+  private RandomSource workingRandom;
   private InnerScoreDirector<Solution_, ?> scoreDirector;
   private AbstractSolver<Solution_> solver;
   private DefaultProblemChangeDirector<Solution_> problemChangeDirector;
@@ -188,11 +188,11 @@ public class SolverScope<Solution_> {
     this.startingSolverCount = startingSolverCount;
   }
 
-  public RandomGenerator getWorkingRandom() {
+  public RandomSource getWorkingRandom() {
     return workingRandom;
   }
 
-  public void setWorkingRandom(RandomGenerator workingRandom) {
+  public void setWorkingRandom(RandomSource workingRandom) {
     this.workingRandom = workingRandom;
   }
 
@@ -402,9 +402,12 @@ public class SolverScope<Solution_> {
         constraintMatchMetricSampleInterval;
     childThreadSolverScope.startingSolverCount = startingSolverCount;
     childThreadSolverScope.solver = solver; // Inherit solver reference
-    // TODO FIXME use RandomFactory
-    // Experiments show that this trick to attain reproducibility doesn't break uniform distribution
-    childThreadSolverScope.workingRandom = new Random(workingRandom.nextLong());
+    if (!(workingRandom instanceof DefaultRandomSource delegatingRandom)) {
+      throw new IllegalStateException(
+          "A child solver scope requires a DefaultRandomSource, but got (%s)."
+              .formatted(workingRandom));
+    }
+    childThreadSolverScope.workingRandom = delegatingRandom.splitForChildThread();
     childThreadSolverScope.scoreDirector =
         scoreDirector.createChildThreadScoreDirector(childThreadType);
     childThreadSolverScope.startingSystemTimeMillis.set(startingSystemTimeMillis.get());
@@ -413,6 +416,16 @@ public class SolverScope<Solution_> {
     childThreadSolverScope.bestSolutionTimeMillis = null;
     childThreadSolverScope.problemSizeStatistics.set(problemSizeStatistics.get());
     return childThreadSolverScope;
+  }
+
+  /** Claims this child scope's random source for the solver thread that will use it. */
+  public void transferWorkingRandomOwnershipToCurrentThread() {
+    if (!(workingRandom instanceof DefaultRandomSource defaultRandomSource)) {
+      throw new IllegalStateException(
+          "A child solver scope requires a DefaultRandomSource, but got (%s)."
+              .formatted(workingRandom));
+    }
+    defaultRandomSource.transferOwnershipToCurrentThread();
   }
 
   public void initializeYielding() {

@@ -3,11 +3,11 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list;
 import java.util.Iterator;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractRandomSwapIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.list.SubList;
 import ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public class RandomSubListSwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
 
@@ -47,15 +47,10 @@ public class RandomSubListSwapMoveSelector<Solution_> extends GenericMoveSelecto
       protected Move<Solution_> newSwapSelection(
           SubList leftSubSelection, SubList rightSubSelection) {
         boolean reversing = selectReversingMoveToo && workingRandom.nextBoolean();
-        return new SubListSwapMove<>(
+        return new SelectorBasedSubListSwapMove<>(
             listVariableDescriptor, leftSubSelection, rightSubSelection, reversing);
       }
     };
-  }
-
-  @Override
-  public boolean isCountable() {
-    return true;
   }
 
   @Override

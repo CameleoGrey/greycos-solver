@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.thread;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 /**
  * Operation to apply a step change across all move threads. This operation contains the step move

@@ -3,7 +3,6 @@ package ai.greycos.solver.core.impl.solver;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
 import java.util.function.Function;
 
 import ai.greycos.solver.core.api.score.Score;
@@ -17,6 +16,7 @@ import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescr
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ListUnassignMove;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 import ai.greycos.solver.core.preview.api.move.Move;
@@ -91,8 +91,8 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
         buildEntityPlacer().rebuildWithFilter((solution, selection) -> selection == clonedElement);
 
     var solverScope = new SolverScope<Solution_>(solverFactory.getClock());
-    solverScope.setWorkingRandom(
-        new Random(0)); // We will evaluate every option; random does not matter.
+    // We evaluate every option, so the random sequence does not affect the recommendation.
+    solverScope.setWorkingRandom(RandomSource.seeded(0));
     solverScope.setScoreDirector(scoreDirector);
     var phaseScope = new ConstructionHeuristicPhaseScope<>(solverScope, -1);
     var stepScope = new ConstructionHeuristicStepScope<>(phaseScope);

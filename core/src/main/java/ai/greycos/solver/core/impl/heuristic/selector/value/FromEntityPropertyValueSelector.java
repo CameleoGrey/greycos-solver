@@ -70,11 +70,6 @@ public final class FromEntityPropertyValueSelector<Solution_>
   }
 
   @Override
-  public boolean isCountable() {
-    return true;
-  }
-
-  @Override
   public boolean isNeverEnding() {
     return randomSelection;
   }

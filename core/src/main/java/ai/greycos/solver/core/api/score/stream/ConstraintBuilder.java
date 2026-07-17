@@ -1,8 +1,7 @@
 package ai.greycos.solver.core.api.score.stream;
 
-import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
+import ai.greycos.solver.core.impl.score.stream.common.DefaultConstraintMetadata;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -10,62 +9,23 @@ import org.jspecify.annotations.NullMarked;
 public interface ConstraintBuilder {
 
   /**
-   * Builds a {@link Constraint} from the constraint stream. The {@link ConstraintRef#packageName()
-   * constraint package} defaults to the package of the {@link PlanningSolution} class. The
-   * constraint will be placed in the {@link Constraint#DEFAULT_CONSTRAINT_GROUP default constraint
-   * group}.
+   * Builds a {@link Constraint} from the constraint stream. Shorthand for {@link
+   * #asConstraint(ConstraintMetadata)}.
    *
-   * @param constraintName shows up in {@link ConstraintMatchTotal} during score justification
+   * @param id shows up in {@link ScoreAnalysis}
    */
-  default Constraint asConstraint(String constraintName) {
-    return asConstraintDescribed(constraintName, "");
+  default Constraint asConstraint(String id) {
+    return asConstraint(new DefaultConstraintMetadata(id));
   }
 
   /**
-   * Builds a {@link Constraint} from the constraint stream. The {@link ConstraintRef#packageName()
-   * constraint package} defaults to the package of the {@link PlanningSolution} class. The
-   * constraint will be placed in the {@link Constraint#DEFAULT_CONSTRAINT_GROUP default constraint
-   * group}.
+   * Builds a {@link Constraint} from the constraint stream. {@link ConstraintMetadata#id()} is
+   * called exactly once at this point; the returned value is validated and snapshotted as the
+   * constraint's permanent identity. Subsequent changes to the description's {@link
+   * ConstraintMetadata#id()} return value are ignored.
    *
-   * @param constraintName shows up in {@link ConstraintMatchTotal} during score justification
-   * @param constraintDescription can contain any character, but it is recommended to keep it short
-   *     and concise
+   * @param metadata identifies and describes the constraint; {@link ConstraintMetadata#id()} shows
+   *     up in {@link ScoreAnalysis}
    */
-  default Constraint asConstraintDescribed(String constraintName, String constraintDescription) {
-    return asConstraintDescribed(
-        constraintName, constraintDescription, Constraint.DEFAULT_CONSTRAINT_GROUP);
-  }
-
-  /**
-   * Builds a {@link Constraint} from the constraint stream. The {@link ConstraintRef#packageName()
-   * constraint package} defaults to the package of the {@link PlanningSolution} class. Both the
-   * constraint name and the constraint group are only allowed to contain alphanumeric characters,
-   * spaces, "-", "_", "'" or ".". The constraint description can contain any character, but it is
-   * recommended to keep it short and concise.
-   *
-   * <p>Unlike the constraint name and group, the constraint description is unlikely to be used
-   * externally as an identifier, and therefore doesn't need to be URL-friendly, or protected
-   * against injection attacks.
-   *
-   * @param constraintName shows up in {@link ConstraintMatchTotal} during score justification
-   * @param constraintDescription can contain any character, but it is recommended to keep it short
-   *     and concise
-   * @param constraintGroup not used by the solver directly, but may be used by external tools to
-   *     group constraints together, such as by their source or by their purpose
-   */
-  Constraint asConstraintDescribed(
-      String constraintName, String constraintDescription, String constraintGroup);
-
-  /**
-   * Builds a {@link Constraint} from the constraint stream.
-   *
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param constraintPackage never null
-   * @return never null
-   * @deprecated Constraint package should no longer be used, use {@link #asConstraint(String)}
-   *     instead.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  Constraint asConstraint(String constraintPackage, String constraintName);
+  Constraint asConstraint(ConstraintMetadata metadata);
 }

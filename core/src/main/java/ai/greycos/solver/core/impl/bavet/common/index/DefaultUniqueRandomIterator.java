@@ -58,7 +58,7 @@ final class DefaultUniqueRandomIterator<T> implements UniqueRandomIterator<T> {
     if (nextIndex == -1) {
       return false;
     }
-    next = source.get(nextIndex).element();
+    next = source.get(nextIndex);
     indexToOptionallyRemove = -1;
     return true;
   }
@@ -107,7 +107,8 @@ final class DefaultUniqueRandomIterator<T> implements UniqueRandomIterator<T> {
   public void remove() {
     if (indexToOptionallyRemove == -1) {
       throw new IllegalStateException(
-          "The next() method has not been called yet, or the remove() method was already called after the last next() call.");
+          "The next() method has not been called yet, or the remove() method was already called"
+              + " after the last next() call.");
     }
     removedCount++;
     removed.set(indexToOptionallyRemove);

@@ -24,7 +24,7 @@ public class GeneralTypeChangeMigrationRecipe extends AbstractRecipe {
         // Planning Id
         new ChangeType(
             "ai.greycos.solver.core.api.domain.lookup.PlanningId",
-            "ai.greycos.solver.core.api.domain.common.PlanningId",
+            "ai.greycos.solver.core.api.cotwin.common.PlanningId",
             true),
         // Score API
         new ChangeType(
@@ -79,6 +79,11 @@ public class GeneralTypeChangeMigrationRecipe extends AbstractRecipe {
             "ai.greycos.solver.core.api.score.buildin.bendablebigdecimal.BendableBigDecimalScore",
             "ai.greycos.solver.core.api.score.BendableBigDecimalScore",
             true),
+        // Constraint identity
+        new ChangeType(
+            "ai.greycos.solver.core.api.score.constraint.ConstraintRef",
+            "ai.greycos.solver.core.api.score.stream.ConstraintRef",
+            true),
         // Problem fact
         new ChangeType(
             "ai.greycos.solver.core.api.solver.ProblemFactChange",
@@ -87,15 +92,15 @@ public class GeneralTypeChangeMigrationRecipe extends AbstractRecipe {
         // Value Range
         new ChangeType(
             "ai.greycos.solver.core.api.domain.valuerange.CountableValueRange",
-            "ai.greycos.solver.core.api.domain.valuerange.ValueRange",
+            "ai.greycos.solver.core.api.cotwin.valuerange.ValueRange",
             true),
         new ChangeType(
             "ai.greycos.solver.core.impl.domain.valuerange.buildin.composite.CompositeCountableValueRange",
-            "ai.greycos.solver.core.impl.domain.valuerange.CompositeValueRange",
+            "ai.greycos.solver.core.impl.cotwin.valuerange.CompositeValueRange",
             true),
         new ChangeType(
             "ai.greycos.solver.core.impl.domain.valuerange.buildin.composite.NullAllowingCountableValueRange",
-            "ai.greycos.solver.core.impl.domain.valuerange.NullAllowingValueRange",
+            "ai.greycos.solver.core.impl.cotwin.valuerange.NullAllowingValueRange",
             true));
   }
 }

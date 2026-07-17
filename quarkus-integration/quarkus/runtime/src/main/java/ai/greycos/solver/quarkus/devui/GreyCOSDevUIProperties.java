@@ -2,7 +2,7 @@ package ai.greycos.solver.quarkus.devui;
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 
 public class GreyCOSDevUIProperties { // TODO make record?
 

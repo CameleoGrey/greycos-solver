@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.heuristic.thread;
 
-import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 /**
  * Operation to evaluate a move in a move thread. This operation contains the move to be evaluated

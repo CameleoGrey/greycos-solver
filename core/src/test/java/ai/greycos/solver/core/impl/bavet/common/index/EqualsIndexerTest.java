@@ -12,14 +12,14 @@ import org.junit.jupiter.api.Test;
 
 class EqualsIndexerTest extends AbstractIndexerTest {
 
-  private final DefaultBiJoiner<Person, Person> joiner =
-      (DefaultBiJoiner<Person, Person>)
-          Joiners.equal(Person::gender).and(Joiners.equal(Person::age));
+  private final DefaultBiJoiner<TestPerson, TestPerson> joiner =
+      (DefaultBiJoiner<TestPerson, TestPerson>)
+          Joiners.equal(TestPerson::gender).and(Joiners.equal(TestPerson::age));
 
   @Test
   void isEmpty() {
     var indexer = new IndexerFactory<>(joiner).buildIndexer(true);
-    assertThat(getTuples(indexer, "F", 40)).isEmpty();
+    assertThat(forEachToTuples(indexer, "F", 40)).isEmpty();
   }
 
   @Test
@@ -55,9 +55,9 @@ class EqualsIndexerTest extends AbstractIndexerTest {
     var ednaTuple = newTuple("Edna-F-40");
     indexer.put(CompositeKey.of(new Pair<>("F", 40)), ednaTuple);
 
-    assertThat(getTuples(indexer, new Pair<>("F", 40))).containsOnly(annTuple, ednaTuple);
-    assertThat(getTuples(indexer, new Pair<>("F", 30))).containsOnly(bethTuple);
-    assertThat(getTuples(indexer, new Pair<>("F", 20))).isEmpty();
+    assertThat(forEachToTuples(indexer, new Pair<>("F", 40))).containsOnly(annTuple, ednaTuple);
+    assertThat(forEachToTuples(indexer, new Pair<>("F", 30))).containsOnly(bethTuple);
+    assertThat(forEachToTuples(indexer, new Pair<>("F", 20))).isEmpty();
   }
 
   private static UniTuple<String> newTuple(String factA) {

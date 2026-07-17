@@ -16,7 +16,6 @@ import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.impl.constructionheuristic.decider.MultiThreadedConstructionHeuristicDecider;
 import ai.greycos.solver.core.impl.constructionheuristic.decider.forager.ConstructionHeuristicForager;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.localsearch.decider.MultiThreadedLocalSearchDecider;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.Acceptor;
@@ -29,13 +28,14 @@ import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.BasicPlumbingTermination;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.junit.jupiter.api.Test;
 
 class MoveThreadRunnerConfigurationTest {
 
   @Test
-  void constructionHeuristicMoveThreadsDoNotPreFilterMoveDoability() throws Exception {
+  void constructionHeuristicMoveThreadsRelyOnOriginSideDoabilityFiltering() throws Exception {
     var solverScope = new SolverScope<Object>();
     solverScope.setScoreDirector(mock(InnerScoreDirector.class));
     var phaseScope = new ConstructionHeuristicPhaseScope<>(solverScope, 0);
@@ -126,9 +126,9 @@ class MoveThreadRunnerConfigurationTest {
         };
 
     BlockingQueue<MoveThreadOperation<Object>> operationQueue = new ArrayBlockingQueue<>(10);
-    Move<Object> legacyMove = mock(Move.class);
-    operationQueue.add(new ApplyStepOperation<>(7, legacyMove, HardSoftScore.ZERO));
-    operationQueue.add(new MoveEvaluationOperation<>(0, 0, legacyMove));
+    Move<Object> move = mock(Move.class);
+    operationQueue.add(new ApplyStepOperation<>(7, move, HardSoftScore.ZERO));
+    operationQueue.add(new MoveEvaluationOperation<>(0, 0, move));
     operationQueue.add(new DestroyOperation<>());
 
     var operationQueueField =

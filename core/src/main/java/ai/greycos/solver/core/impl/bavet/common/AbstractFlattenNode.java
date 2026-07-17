@@ -5,23 +5,29 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.util.function.Predicate;
 
 import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
-import ai.greycos.solver.core.impl.util.CollectionUtils;
+
+import org.jspecify.annotations.Nullable;
 
 public abstract class AbstractFlattenNode<
         InTuple_ extends Tuple, OutTuple_ extends Tuple, FlattenedItem_>
-    extends AbstractNode implements TupleLifecycle<InTuple_> {
+    extends AbstractSingleInputNode<InTuple_> {
 
   private final int flattenStoreIndex;
   private final StaticPropagationQueue<OutTuple_> propagationQueue;
+  private final Consumer<OutTuple_> removeTupleConsumer = this::removeTuple;
+  private final Predicate<FlattenItemBag<FlattenedItem_, OutTuple_>> removeExtrasPredicate =
+      bag -> bag.removeExtras(removeTupleConsumer);
 
   protected AbstractFlattenNode(
       int flattenStoreIndex, TupleLifecycle<OutTuple_> nextNodesTupleLifecycle) {
+    super(nextNodesTupleLifecycle);
     this.flattenStoreIndex = flattenStoreIndex;
     this.propagationQueue = new StaticPropagationQueue<>(nextNodesTupleLifecycle);
   }
@@ -40,6 +46,7 @@ public abstract class AbstractFlattenNode<
     }
     var iterable = extractIterable(tuple);
     if (iterable instanceof Collection<FlattenedItem_> collection) {
+      // Optimization for Collection, where we know the size.
       var size = collection.size();
       if (size == 0) {
         return;
@@ -66,21 +73,25 @@ public abstract class AbstractFlattenNode<
       InTuple_ originalTuple,
       FlattenedItem_ item,
       FlattenBagByItem<FlattenedItem_, OutTuple_> bagByItem) {
-    var outTupleBag = bagByItem.getBag(item);
-    outTupleBag.add(
-        () -> createTuple(originalTuple, outTupleBag.value),
-        propagationQueue::insert,
-        propagationQueue::update);
+    var bag = bagByItem.getBag(item);
+    var reuse = bag.reuseOrAdvance();
+    if (reuse == null) {
+      var created = createTuple(originalTuple, bag.value);
+      bag.append(created);
+      propagationQueue.insert(created);
+    } else {
+      propagationQueue.update(reuse);
+    }
   }
 
   protected abstract OutTuple_ createTuple(InTuple_ originalTuple, FlattenedItem_ item);
-
-  protected abstract Iterable<FlattenedItem_> extractIterable(InTuple_ tuple);
 
   @Override
   public final void update(InTuple_ tuple) {
     FlattenBagByItem<FlattenedItem_, OutTuple_> bagByItem = tuple.getStore(flattenStoreIndex);
     if (bagByItem == null) {
+      // No fail fast if null because we don't track which tuples made it through the filter
+      // predicate(s).
       insert(tuple);
       return;
     }
@@ -89,16 +100,20 @@ public abstract class AbstractFlattenNode<
     for (var item : extractIterable(tuple)) {
       addTuple(tuple, item, bagByItem);
     }
-    bagByItem.getAllBags().removeIf(bag -> bag.removeExtras(this::removeTuple));
+    bagByItem.getAllBags().removeIf(removeExtrasPredicate);
   }
+
+  protected abstract Iterable<FlattenedItem_> extractIterable(InTuple_ tuple);
 
   @Override
   public final void retract(InTuple_ tuple) {
     FlattenBagByItem<FlattenedItem_, OutTuple_> bagByItem = tuple.removeStore(flattenStoreIndex);
     if (bagByItem == null) {
+      // No fail fast if null because we don't track which tuples made it through the filter
+      // predicate(s)
       return;
     }
-    bagByItem.applyToAll(this::removeTuple);
+    bagByItem.applyToAll(removeTupleConsumer);
   }
 
   private void removeTuple(OutTuple_ outTuple) {
@@ -125,9 +140,14 @@ public abstract class AbstractFlattenNode<
     }
 
     FlattenBagByItem(int size) {
-      this(CollectionUtils.newLinkedHashMap(size));
+
+      this(LinkedHashMap.newLinkedHashMap(size));
     }
 
+    /**
+     * @return a {@link Collection} backed by {@link FlattenBagByItem}, so modifications to it are
+     *     reflected in {@link FlattenBagByItem}.
+     */
     Collection<FlattenItemBag<FlattenedItem_, OutTuple_>> getAllBags() {
       return delegate.values();
     }
@@ -140,6 +160,11 @@ public abstract class AbstractFlattenNode<
       delegate.forEach((key, value) -> value.reset());
     }
 
+    /**
+     * @param key the item to get the bag of
+     * @return the {@link FlattenItemBag} containing {@code key}, creating a new {@link
+     *     FlattenItemBag} if it does not exist.
+     */
     FlattenItemBag<FlattenedItem_, OutTuple_> getBag(FlattenedItem_ key) {
       return delegate.computeIfAbsent(key, FlattenItemBag::new);
     }
@@ -155,28 +180,41 @@ public abstract class AbstractFlattenNode<
       this.value = value;
     }
 
-    void add(
-        Supplier<OutTuple_> outTupleSupplier,
-        Consumer<OutTuple_> insertConsumer,
-        Consumer<OutTuple_> updateConsumer) {
+    /**
+     * Increments {@link #newCount}.
+     *
+     * @return the existing tuple to reuse if {@link #newCount} is within the current size of {@link
+     *     #outTupleList}, or {@code null} if a new tuple must be created and passed to {@link
+     *     #append}.
+     */
+    @Nullable OutTuple_ reuseOrAdvance() {
       var listIndex = newCount++;
-      if (newCount > outTupleList.size()) {
-        var inserted = outTupleSupplier.get();
-        outTupleList.add(inserted);
-        insertConsumer.accept(inserted);
-      } else {
-        updateConsumer.accept(outTupleList.get(listIndex));
-      }
+      return newCount > outTupleList.size() ? null : outTupleList.get(listIndex);
     }
 
+    void append(OutTuple_ created) {
+      outTupleList.add(created);
+    }
+
+    /**
+     * Calls {@code retractConsumer} on the tuples in {@link #outTupleList} that are position at or
+     * after {@link #newCount}, and remove them from the list (causing the size of the list to be
+     * {@link #newCount}).
+     *
+     * @return true if after removal, {@link #newCount} is 0
+     */
     boolean removeExtras(Consumer<OutTuple_> retractConsumer) {
       var size = outTupleList.size();
       for (var i = size - 1; i >= newCount; i--) {
+        // We go backwards to only shift the minimal amount of elements.
+        // Also, it makes the loop simpler, because elements that need to be removed do not change
+        // position.
         retractConsumer.accept(outTupleList.remove(i));
       }
       return newCount == 0;
     }
 
+    /** Sets {@link #newCount} to 0, while retaining the created tuples in {@link #outTupleList}. */
     void reset() {
       newCount = 0;
     }
@@ -185,6 +223,33 @@ public abstract class AbstractFlattenNode<
       outTupleList.forEach(retractConsumer);
       outTupleList.clear();
       newCount = 0;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof FlattenItemBag<?, ?> other
+          && this.newCount == other.newCount
+          && Objects.equals(this.value, other.value)
+          && Objects.equals(this.outTupleList, other.outTupleList);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(newCount, value, outTupleList);
+    }
+
+    @Override
+    public String toString() {
+      return "FlattenItemBag["
+          + "value="
+          + value
+          + ", "
+          + "newCount="
+          + newCount
+          + ", "
+          + "outTupleList="
+          + outTupleList
+          + ']';
     }
   }
 }

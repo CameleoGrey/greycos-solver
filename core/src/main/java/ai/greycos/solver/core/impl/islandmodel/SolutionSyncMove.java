@@ -1,14 +1,13 @@
 package ai.greycos.solver.core.impl.islandmodel;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
@@ -195,11 +194,11 @@ final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<Object> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     if (basicChangeMap.isEmpty() && listChangeMap.isEmpty()) {
       return Collections.emptyList();
     }
-    Set<Object> entities = new LinkedHashSet<>();
+    var entities = new LinkedHashSet<Object>();
     for (List<BasicChangeRecord<?>> changeRecords : basicChangeMap.values()) {
       for (BasicChangeRecord<?> record : changeRecords) {
         entities.add(record.entity());
@@ -214,7 +213,7 @@ final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<Object> getPlanningValues() {
+  public SequencedCollection<Object> getPlanningValues() {
     return Collections.emptyList();
   }
 

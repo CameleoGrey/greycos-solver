@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.islandmodel;
 import java.util.List;
 
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
+import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.solver.AbstractSolver;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
@@ -17,8 +18,9 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_> {
 
   IslandSolver(
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
-      UniversalTermination<Solution_> globalTermination) {
-    super(bestSolutionRecaller, globalTermination, List.of());
+      UniversalTermination<Solution_> globalTermination,
+      List<Phase<Solution_>> phaseList) {
+    super(bestSolutionRecaller, globalTermination, phaseList);
   }
 
   @Override
@@ -33,6 +35,15 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_> {
     try {
       bestSolutionRecaller.solvingEnded(solverScope);
       globalTermination.solvingEnded(solverScope);
+    } finally {
+      solverScope.getScoreDirector().close();
+    }
+  }
+
+  @Override
+  public void solvingError(SolverScope<Solution_> solverScope, Exception exception) {
+    try {
+      super.solvingError(solverScope, exception);
     } finally {
       solverScope.getScoreDirector().close();
     }

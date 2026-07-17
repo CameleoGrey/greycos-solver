@@ -55,11 +55,6 @@ public class MimicReplayingValueSelector<Solution_> extends AbstractDemandEnable
   }
 
   @Override
-  public boolean isCountable() {
-    return valueMimicRecorder.isCountable();
-  }
-
-  @Override
   public boolean isNeverEnding() {
     return valueMimicRecorder.isNeverEnding();
   }

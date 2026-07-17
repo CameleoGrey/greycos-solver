@@ -2,6 +2,8 @@ package ai.greycos.solver.core.impl.solver;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
+import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.solver.Solver;
@@ -12,10 +14,13 @@ import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleSupport;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.solver.event.SolverEventSupport;
+import ai.greycos.solver.core.impl.solver.random.DefaultRandomSource;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.UniversalTermination;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +34,7 @@ import org.slf4j.LoggerFactory;
  * @see Solver
  * @see DefaultSolver
  */
+@NullMarked
 public abstract class AbstractSolver<Solution_> implements Solver<Solution_> {
 
   protected final transient Logger logger = LoggerFactory.getLogger(getClass());
@@ -42,6 +48,8 @@ public abstract class AbstractSolver<Solution_> implements Solver<Solution_> {
   // Called "globalTermination" to clearly distinguish from "phaseTermination" inside AbstractPhase.
   protected final UniversalTermination<Solution_> globalTermination;
   protected final List<Phase<Solution_>> phaseList;
+
+  private RandomGenerator.@Nullable SplittableGenerator savedRandom;
 
   // ************************************************************************
   // Constructors and simple getters/setters
@@ -129,11 +137,19 @@ public abstract class AbstractSolver<Solution_> implements Solver<Solution_> {
     bestSolutionRecaller.stepStarted(stepScope);
     phaseLifecycleSupport.fireStepStarted(stepScope);
     globalTermination.stepStarted(stepScope);
+    // To ensure reproducibility even when the number of random calls is not deterministic,
+    // split the random at step start.
+    var delegatingRandom = ((DefaultRandomSource) stepScope.getWorkingRandom());
+    savedRandom = delegatingRandom.moveRandom().getDelegate();
+    delegatingRandom.restoreState(delegatingRandom.saveState());
     // Do not propagate to phases; the active phase does that for itself and they should not
     // propagate further.
   }
 
   public void stepEnded(AbstractStepScope<Solution_> stepScope) {
+    // Restore from the split random
+    var delegatingRandom = ((DefaultRandomSource) stepScope.getWorkingRandom());
+    delegatingRandom.restoreState(Objects.requireNonNull(savedRandom));
     bestSolutionRecaller.stepEnded(stepScope);
     phaseLifecycleSupport.fireStepEnded(stepScope);
     globalTermination.stepEnded(stepScope);

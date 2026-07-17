@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.value.mimic;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertCode;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -14,7 +15,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
-import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 
@@ -37,7 +37,7 @@ class MimicReplayingValueSelectorTest {
     MimicReplayingValueSelector replayingValueSelector =
         new MimicReplayingValueSelector(recordingValueSelector);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    var solverScope = mockSolverScope();
     recordingValueSelector.solvingStarted(solverScope);
     replayingValueSelector.solvingStarted(solverScope);
 
@@ -117,8 +117,6 @@ class MimicReplayingValueSelectorTest {
     // Duplicated call
     assertThat(replayingIterator).isExhausted();
 
-    assertThat(recordingValueSelector.isCountable()).isTrue();
-    assertThat(replayingValueSelector.isCountable()).isTrue();
     assertThat(recordingValueSelector.isNeverEnding()).isFalse();
     assertThat(replayingValueSelector.isNeverEnding()).isFalse();
     assertThat(recordingValueSelector.getSize()).isEqualTo(3L);

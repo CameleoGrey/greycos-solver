@@ -302,4 +302,39 @@ class NearbyDistanceMatrixTest {
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("destinationIterator's size");
   }
+
+  @Test
+  void rejectsNegativeOriginSize() {
+    assertThatThrownBy(
+            () ->
+                new NearbyDistanceMatrix<Point, Point>(
+                    new EuclideanDistanceMeter(), -1, List.of(), origin -> 0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("originSize", "non-negative");
+  }
+
+  @Test
+  void rejectsNonPositiveMaxNearbySortSize() {
+    assertThatThrownBy(
+            () ->
+                new NearbyDistanceMatrix<Point, Point>(
+                    new EuclideanDistanceMeter(),
+                    1,
+                    origin -> List.<Point>of().iterator(),
+                    origin -> 0,
+                    0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("maxNearbySortSize", "at least 1");
+  }
+
+  @Test
+  void rejectsNegativeDestinationSize() {
+    NearbyDistanceMatrix<Point, Point> matrix =
+        new NearbyDistanceMatrix<>(
+            new EuclideanDistanceMeter(), 1, origin -> List.<Point>of().iterator(), origin -> -1);
+
+    assertThatThrownBy(() -> matrix.addAllDestinations(new Point(0, 0)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("destination size", "non-negative");
+  }
 }

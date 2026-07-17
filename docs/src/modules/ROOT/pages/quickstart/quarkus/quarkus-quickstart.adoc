@@ -19,15 +19,15 @@ include::../../_attributes.adoc[]
 This guide walks you through the process of creating a https://quarkus.io/[Quarkus] application
 with https://github.com/CameleoGrey/greycos-solver[GreyCOS]'s constraint solving Artificial Intelligence (AI).
 
-include::../shared/whatyoubuild.adoc[]
+include::../shared/_whatyoubuild.adoc[]
 
-include::../shared/solutionsourcecode.adoc[]
+include::../shared/_solutionsourcecode.adoc[]
 
 == Prerequisites
 
 To complete this guide, you need:
 
-include::../shared/java-prerequisites.adoc[]
+include::../shared/_java-prerequisites.adoc[]
 
 == The build file and the dependencies
 
@@ -44,9 +44,9 @@ Clicking the link above will automatically select the dependencies for you on *c
 * GreyCOS Solver (`greycos-solver-quarkus`)
 * GreyCOS Solver Jackson (`greycos-solver-quarkus-jackson`)
 
-include::../shared/school-timetabling/school-timetabling-model.adoc[leveloffset=+1]
-include::../shared/school-timetabling/school-timetabling-constraints.adoc[leveloffset=+1]
-include::../shared/school-timetabling/school-timetabling-solution.adoc[leveloffset=+1]
+include::../shared/school-timetabling/_school-timetabling-model.adoc[leveloffset=+1]
+include::../shared/school-timetabling/_school-timetabling-constraints.adoc[leveloffset=+1]
+include::../shared/school-timetabling/_school-timetabling-solution.adoc[leveloffset=+1]
 
 == Create the solver service
 
@@ -111,7 +111,7 @@ Create the `src/main/kotlin/org/acme/schooltimetabling/rest/TimetableResource.kt
 package org.acme.schooltimetabling.rest
 
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore
+import ai.greycos.solver.core.api.score.HardSoftScore
 import ai.greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy
 import ai.greycos.solver.core.api.solver.SolutionManager
 import ai.greycos.solver.core.api.solver.SolverManager
@@ -207,12 +207,9 @@ $ gradle --console=plain quarkusDev
 
 ====
 
-include::../shared/try-the-application.adoc[]
+include::../shared/_try-the-application.adoc[]
 
-[NOTE]
-====
-The solver runs considerably slower in dev mode since the https://www.baeldung.com/jvm-tiered-compilation#2c2---server-complier[JVM C2 compiler] is disabled to decrease live reload times.
-====
+include::../shared/_quarkus-dev-mode-note.adoc[]
 
 === Test the application
 
@@ -252,7 +249,7 @@ Add the subsequent dependency to your `build.gradle`:
 --
 ====
 
-include::../shared/constrainttests.adoc[]
+include::../shared/_constrainttests.adoc[]
 
 ==== Test the solver
 
@@ -278,8 +275,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import jakarta.inject.Singleton;
 
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
-import ai.greycos.solver.core.api.score.buildin.hardsoft.HardSoftScore;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.HardSoftScore;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
 import ai.greycos.solver.core.api.solver.SolverStatus;
 import ai.greycos.solver.jackson.api.score.analysis.AbstractScoreAnalysisJacksonDeserializer;

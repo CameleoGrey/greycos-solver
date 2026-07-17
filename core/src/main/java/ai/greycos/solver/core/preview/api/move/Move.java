@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
@@ -13,6 +14,7 @@ import ai.greycos.solver.core.api.cotwin.solution.ProblemFactProperty;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A Move represents a change of 1 or more {@link PlanningVariable}s of 1 or more {@link
@@ -103,7 +105,7 @@ public interface Move<Solution_> {
    *
    * @return Each entity only once.
    */
-  default Collection<?> getPlanningEntities() {
+  default SequencedCollection<Object> getPlanningEntities() {
     throw new UnsupportedOperationException(
         "Move class (%s) doesn't implement the getPlanningEntities() method, so Entity Tabu Search is impossible."
             .formatted(getClass()));
@@ -125,7 +127,7 @@ public interface Move<Solution_> {
    *
    * @return Each value only once. May contain null.
    */
-  default Collection<?> getPlanningValues() {
+  default SequencedCollection<@Nullable Object> getPlanningValues() {
     throw new UnsupportedOperationException(
         "Move class (%s) doesn't implement the getPlanningValues() method, so Value Tabu Search is impossible."
             .formatted(getClass()));

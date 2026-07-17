@@ -32,7 +32,7 @@ public class GeneralMethodChangeNameMigrationRecipe extends AbstractRecipe {
         new CustomChangeMethodRecipe(
             "ai.greycos.solver.core.api.score.stream.Constraint",
             "getConstraintName()",
-            ".getConstraintRef().constraintName()"),
+            ".getConstraintRef().id()"),
         // Constraint
         new ChangeMethodName(
             "ai.greycos.solver.core.api.solver.Solver isEveryProblemFactChangeProcessed()",
@@ -125,6 +125,42 @@ public class GeneralMethodChangeNameMigrationRecipe extends AbstractRecipe {
         new ChangeMethodName(
             "ai.greycos.solver.core.api.score.stream.quad.QuadConstraintStream impactLong(..)",
             "impact",
+            true,
+            false),
+        // ConstraintCollectors: long is now the default numeric representation.
+        new ChangeMethodName(
+            "ai.greycos.solver.core.api.score.stream.ConstraintCollectors countLong()",
+            "count",
+            true,
+            false),
+        new ChangeMethodName(
+            "ai.greycos.solver.core.api.score.stream.ConstraintCollectors countLongBi()",
+            "countBi",
+            true,
+            false),
+        new ChangeMethodName(
+            "ai.greycos.solver.core.api.score.stream.ConstraintCollectors countLongTri()",
+            "countTri",
+            true,
+            false),
+        new ChangeMethodName(
+            "ai.greycos.solver.core.api.score.stream.ConstraintCollectors countLongQuad()",
+            "countQuad",
+            true,
+            false),
+        new ChangeMethodName(
+            "ai.greycos.solver.core.api.score.stream.ConstraintCollectors countDistinctLong(..)",
+            "countDistinct",
+            true,
+            false),
+        new ChangeMethodName(
+            "ai.greycos.solver.core.api.score.stream.ConstraintCollectors sumLong(..)",
+            "sum",
+            true,
+            false),
+        new ChangeMethodName(
+            "ai.greycos.solver.core.api.score.stream.ConstraintCollectors averageLong(..)",
+            "average",
             true,
             false));
   }

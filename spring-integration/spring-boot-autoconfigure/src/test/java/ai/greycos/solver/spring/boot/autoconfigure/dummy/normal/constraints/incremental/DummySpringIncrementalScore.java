@@ -1,19 +1,14 @@
 package ai.greycos.solver.spring.boot.autoconfigure.dummy.normal.constraints.incremental;
 
-import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 
 import org.jspecify.annotations.NonNull;
 
-public class DummySpringIncrementalScore implements IncrementalScoreCalculator {
+public class DummySpringIncrementalScore
+    implements IncrementalScoreCalculator<Object, SimpleScore> {
   @Override
   public void resetWorkingSolution(@NonNull Object workingSolution) {}
-
-  @Override
-  public void beforeEntityAdded(@NonNull Object entity) {}
-
-  @Override
-  public void afterEntityAdded(@NonNull Object entity) {}
 
   @Override
   public void beforeVariableChanged(@NonNull Object entity, @NonNull String variableName) {}
@@ -22,13 +17,7 @@ public class DummySpringIncrementalScore implements IncrementalScoreCalculator {
   public void afterVariableChanged(@NonNull Object entity, @NonNull String variableName) {}
 
   @Override
-  public void beforeEntityRemoved(@NonNull Object entity) {}
-
-  @Override
-  public void afterEntityRemoved(@NonNull Object entity) {}
-
-  @Override
-  public @NonNull Score calculateScore() {
+  public @NonNull SimpleScore calculateScore() {
     return null;
   }
 }

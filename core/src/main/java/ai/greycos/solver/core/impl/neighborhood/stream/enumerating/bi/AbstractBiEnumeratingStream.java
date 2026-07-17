@@ -1,17 +1,17 @@
 package ai.greycos.solver.core.impl.neighborhood.stream.enumerating.bi;
 
-import java.util.function.BiFunction;
-
-import ai.greycos.solver.core.impl.bavet.bi.Group2Mapping0CollectorBiNode;
-import ai.greycos.solver.core.impl.bavet.common.GroupNodeConstructor;
 import ai.greycos.solver.core.impl.bavet.common.tuple.BiTuple;
+import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractEnumeratingStream;
+import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.NeighborhoodsGroupNodeConstructor;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.bridge.AftBridgeBiEnumeratingStream;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.bridge.AftBridgeUniEnumeratingStream;
+import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni.AbstractUniEnumeratingStream;
 import ai.greycos.solver.core.impl.util.ConstantLambdaUtils;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.BiEnumeratingStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.collector.BiNeighborhoodsCollector;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsMapper;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsPredicate;
 
@@ -40,18 +40,45 @@ public abstract class AbstractBiEnumeratingStream<Solution_, A, B>
         new FilterBiEnumeratingStream<>(enumeratingStreamFactory, this, filter));
   }
 
-  protected <GroupKeyA_, GroupKeyB_>
+  @Override
+  public <GroupKey_> AbstractUniEnumeratingStream<Solution_, GroupKey_> groupBy(
+      BiNeighborhoodsMapper<Solution_, A, B, GroupKey_> key) {
+    return buildUniGroupBy(NeighborhoodsGroupNodeConstructor.biOneKeyGroupBy(key));
+  }
+
+  @Override
+  public <Result_> AbstractUniEnumeratingStream<Solution_, Result_> groupBy(
+      BiNeighborhoodsCollector<Solution_, A, B, ?, Result_> collector) {
+    return buildUniGroupBy(NeighborhoodsGroupNodeConstructor.biZeroKeysGroupBy(collector));
+  }
+
+  private <GroupKeyA_, GroupKeyB_>
       AbstractBiEnumeratingStream<Solution_, GroupKeyA_, GroupKeyB_> groupBy(
-          BiFunction<A, B, GroupKeyA_> groupKeyAMapping,
-          BiFunction<A, B, GroupKeyB_> groupKeyBMapping) {
-    GroupNodeConstructor<BiTuple<GroupKeyA_, GroupKeyB_>> nodeConstructor =
-        GroupNodeConstructor.twoKeysGroupBy(
-            groupKeyAMapping, groupKeyBMapping, Group2Mapping0CollectorBiNode::new);
-    return buildBiGroupBy(nodeConstructor);
+          BiNeighborhoodsMapper<Solution_, A, B, GroupKeyA_> keyA,
+          BiNeighborhoodsMapper<Solution_, A, B, GroupKeyB_> keyB) {
+    return buildBiGroupBy(NeighborhoodsGroupNodeConstructor.biTwoKeysGroupBy(keyA, keyB));
+  }
+
+  @Override
+  public <GroupKey_, Result_> AbstractBiEnumeratingStream<Solution_, GroupKey_, Result_> groupBy(
+      BiNeighborhoodsMapper<Solution_, A, B, GroupKey_> key,
+      BiNeighborhoodsCollector<Solution_, A, B, ?, Result_> collector) {
+    return buildBiGroupBy(
+        NeighborhoodsGroupNodeConstructor.biOneKeyAndCollectorGroupBy(key, collector));
+  }
+
+  private <NewA> AbstractUniEnumeratingStream<Solution_, NewA> buildUniGroupBy(
+      NeighborhoodsGroupNodeConstructor<Solution_, UniTuple<NewA>> nodeConstructor) {
+    var stream =
+        shareAndAddChild(
+            new BiGroupUniEnumeratingStream<>(enumeratingStreamFactory, this, nodeConstructor));
+    return enumeratingStreamFactory.share(
+        new AftBridgeUniEnumeratingStream<>(enumeratingStreamFactory, stream),
+        stream::setAftBridge);
   }
 
   private <NewA, NewB> AbstractBiEnumeratingStream<Solution_, NewA, NewB> buildBiGroupBy(
-      GroupNodeConstructor<BiTuple<NewA, NewB>> nodeConstructor) {
+      NeighborhoodsGroupNodeConstructor<Solution_, BiTuple<NewA, NewB>> nodeConstructor) {
     var stream =
         shareAndAddChild(
             new BiGroupBiEnumeratingStream<>(enumeratingStreamFactory, this, nodeConstructor));
@@ -85,6 +112,8 @@ public abstract class AbstractBiEnumeratingStream<Solution_, A, B>
     if (guaranteesDistinct()) {
       return this; // Already distinct, no need to create a new stream.
     }
-    return groupBy(ConstantLambdaUtils.biPickFirst(), ConstantLambdaUtils.biPickSecond());
+    return groupBy(
+        ConstantLambdaUtils.neighborhoodsBiPickFirst(),
+        ConstantLambdaUtils.neighborhoodsBiPickSecond());
   }
 }

@@ -22,7 +22,7 @@ public final class DefaultMoveTester<Solution_> implements MoveTester<Solution_>
             ((DefaultPlanningSolutionMetaModel<Solution_>)
                     Objects.requireNonNull(solutionMetaModel))
                 .solutionDescriptor(),
-            EnvironmentMode.PHASE_ASSERT));
+            EnvironmentMode.FULL_ASSERT));
   }
 
   private DefaultMoveTester(AbstractScoreDirectorFactory<Solution_, ?, ?> scoreDirectorFactory) {

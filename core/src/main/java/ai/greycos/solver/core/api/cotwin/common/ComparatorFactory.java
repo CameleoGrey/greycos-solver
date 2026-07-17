@@ -7,8 +7,8 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.Selector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.NullMarked;
 

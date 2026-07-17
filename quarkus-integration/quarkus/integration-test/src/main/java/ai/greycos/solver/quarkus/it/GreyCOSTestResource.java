@@ -71,7 +71,7 @@ public class GreyCOSTestResource {
             .withProblemId(1L)
             .withProblem(generateProblem())
             .withConfigOverride(
-                new SolverConfigOverride<TestdataStringLengthShadowSolution>()
+                new SolverConfigOverride()
                     .withTerminationConfig(
                         new TerminationConfig().withSpentLimit(Duration.ofSeconds(seconds))));
     var solverJob = (DefaultSolverJob<TestdataStringLengthShadowSolution>) solverJobBuilder.run();

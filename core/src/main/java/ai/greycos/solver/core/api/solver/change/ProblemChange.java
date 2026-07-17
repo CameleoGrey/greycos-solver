@@ -6,7 +6,7 @@ import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.api.solver.event.BestSolutionChangedEvent;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.NullMarked;
 

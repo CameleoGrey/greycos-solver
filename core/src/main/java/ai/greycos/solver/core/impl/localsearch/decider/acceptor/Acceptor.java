@@ -1,9 +1,9 @@
 package ai.greycos.solver.core.impl.localsearch.decider.acceptor;
 
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 import ai.greycos.solver.core.impl.localsearch.event.LocalSearchPhaseLifecycleListener;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 /**
  * An Acceptor accepts or rejects a selected {@link Move}. Note that the {@link LocalSearchForager}

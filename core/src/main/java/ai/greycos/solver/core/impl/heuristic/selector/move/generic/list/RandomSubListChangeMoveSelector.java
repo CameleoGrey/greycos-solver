@@ -2,10 +2,10 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public class RandomSubListChangeMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
 
@@ -29,11 +29,6 @@ public class RandomSubListChangeMoveSelector<Solution_> extends GenericMoveSelec
   public Iterator<Move<Solution_>> iterator() {
     return new RandomSubListChangeMoveIterator<>(
         subListSelector, destinationSelector, workingRandom, selectReversingMoveToo);
-  }
-
-  @Override
-  public boolean isCountable() {
-    return true;
   }
 
   @Override

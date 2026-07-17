@@ -1,8 +1,10 @@
 package ai.greycos.solver.core.impl.cotwin.variable;
 
-import java.util.Objects;
-
+import ai.greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
+import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.listener.SourcedListVariableListener;
@@ -23,10 +25,8 @@ import org.jspecify.annotations.Nullable;
  * <p>If a particular shadow variable is externalized, it means that there is a field on an entity
  * holding the value of the shadow variable. In this case, we will attempt to use that value.
  * Otherwise, we will keep an internal track of all the possible shadow variables ({@link
- * ai.greycos.solver.core.api.cotwin.variable.IndexShadowVariable}, {@link
- * ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable}, {@link
- * ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable}, {@link
- * ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable}), and use values from this
+ * IndexShadowVariable}, {@link InverseRelationShadowVariable}, {@link
+ * PreviousElementShadowVariable}, {@link NextElementShadowVariable}), and use values from this
  * internal representation.
  *
  * @param <Solution_>
@@ -45,6 +45,35 @@ public interface ListVariableStateSupply<Solution_, Entity_, Element_>
   void externalize(PreviousElementShadowVariableDescriptor<Solution_> shadowVariableDescriptor);
 
   void externalize(NextElementShadowVariableDescriptor<Solution_> shadowVariableDescriptor);
+
+  /**
+   * Get {@code planningValue}'s index in the {@link PlanningListVariable list variable} it is an
+   * element of.
+   *
+   * @param planningValue never null
+   * @return {@code planningValue}'s index in the list variable it is an element of
+   * @throws IllegalStateException if the value is unassigned
+   */
+  int getIndexOrFail(Object planningValue);
+
+  /**
+   * Get {@code planningValue}'s index in the {@link PlanningListVariable list variable} it is an
+   * element of.
+   *
+   * @param planningValue never null
+   * @param defaultValue the value to return if {@code planningValue} is unassigned
+   * @return {@code planningValue}'s index in the list variable it is an element of or {@code
+   *     defaultValue} if the value is unassigned
+   */
+  int getIndexOrElse(Object planningValue, int defaultValue);
+
+  /**
+   * If entity1.varA = x then the inverse of x is entity1.
+   *
+   * @param planningValue never null
+   * @return sometimes null, an entity for which the planning variable is the planningValue.
+   */
+  @Nullable Object getInverseSingleton(Object planningValue);
 
   @Override
   ListVariableDescriptor<Solution_> getSourceVariableDescriptor();
@@ -66,14 +95,6 @@ public interface ListVariableStateSupply<Solution_, Entity_, Element_>
    * @return never null
    */
   ElementPosition getElementPosition(Element_ value);
-
-  @Nullable Integer getIndex(Element_ planningValue);
-
-  default int getIndexOrElse(Element_ planningValue, int orElse) {
-    return Objects.requireNonNullElse(getIndex(planningValue), orElse);
-  }
-
-  @Nullable Object getInverseSingleton(Element_ planningValue);
 
   /**
    * Consider calling this before {@link #isAssigned(Object)} to eliminate some map accesses. If

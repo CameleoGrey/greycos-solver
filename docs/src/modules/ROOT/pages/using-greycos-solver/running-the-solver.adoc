@@ -70,7 +70,7 @@ The solution instance given to the method `solve(solution)` is changed by the ``
 but do not mistake it for the best solution.
 
 The solution instance returned by the methods `solve(solution)` or `getBestSolution()`
-is most likely xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#cloningASolution[a planning clone] of the instance
+is most likely xref:using-greycos-solver/modeling-planning-problems.adoc#cloningASolution[a planning clone] of the instance
 given to the method ``solve(solution)``, which implies it is a different instance.
 ====
 
@@ -89,9 +89,9 @@ Solve 1 dataset with multiple threads without sacrificing xref:constraints-and-s
 Split 1 dataset in multiple parts and solve them independently.
 * *Multi bet solving*: solve 1 dataset with multiple, isolated solvers and take the best result.
 ** Not recommended: This is a marginal gain for a high cost of hardware resources.
-** Use the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker] during development to determine the algorithm that is the most appropriate on average.
+** Use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] during development to determine the algorithm that is the most appropriate on average.
 * *Multitenancy*: solve different datasets in parallel.
-** The xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#solverManager[`SolverManager`] can help with this.
+** The xref:using-greycos-solver/running-the-solver.adoc#solverManager[`SolverManager`] can help with this.
 
 image::using-greycos-solver/running-the-solver/multiThreadingStrategies.png[align="center"]
 
@@ -308,7 +308,7 @@ Even `debug` logging can slow down performance considerably for fast stepping al
 (such as Late Acceptance and Simulated Annealing),
 but not for slow stepping algorithms (such as Tabu Search).
 
-Both trace logging and debug logging cause congestion in xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#multithreadedSolving[multi-threaded solving] with most appenders,
+Both trace logging and debug logging cause congestion in xref:using-greycos-solver/running-the-solver.adoc#multithreadedSolving[multi-threaded solving] with most appenders,
 see below.
 
 In Eclipse, `debug` logging to the console tends to cause congestion with move evaluation speeds above 10 000 per second.
@@ -372,7 +372,7 @@ If it isn't picked up, temporarily add the system property `-Dlogback.debug=true
 
 [NOTE]
 ====
-When running multiple solvers or a xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#multithreadedSolving[multi-threaded solver],
+When running multiple solvers or a xref:using-greycos-solver/running-the-solver.adoc#multithreadedSolving[multi-threaded solver],
 most appenders (including the console) cause congestion with `debug` and `trace` logging.
 Switch to an async appender to avoid this problem or turn off `debug` logging.
 ====
@@ -564,9 +564,12 @@ there are `greycos.solver.move.type.step.score.diff.hard.score` and `greycos.sol
 [#randomNumberGenerator]
 == Random number generator
 
-Many heuristics and metaheuristics depend on a pseudorandom number generator for move selection, to resolve score ties, probability based move acceptance, ... During solving, the same `Random` instance is reused to improve reproducibility, performance and uniform distribution of random values.
+Many heuristics and metaheuristics depend on pseudorandom values for move selection,
+score-tie resolution and probability-based acceptance.
+The solver derives independent streams for move generation, move selection and acceptance from one root seed.
+This prevents one component's random consumption from changing another component's sequence.
 
-To change the random seed of that `Random` instance, specify a ``randomSeed``:
+To change the root seed, specify `randomSeed`:
 
 [source,xml,options="nowrap"]
 ----
@@ -577,32 +580,16 @@ To change the random seed of that `Random` instance, specify a ``randomSeed``:
 </solver>
 ----
 
-To change the pseudorandom number generator implementation, specify a ``randomType``:
-
-[source,xml,options="nowrap"]
-----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
-  <randomType>MERSENNE_TWISTER</randomType>
-  ...
-</solver>
-----
-
-The following types are supported:
-
-* `JDK` (default): Standard implementation (``java.util.Random``).
-* ``MERSENNE_TWISTER``: Implementation by http://commons.apache.org/proper/commons-math/userguide/random.html[Commons Math].
-* ``WELL512A``, ``WELL1024A``, ``WELL19937A``, ``WELL19937C``, `WELL44497A` and ``WELL44497B``: Implementation by http://commons.apache.org/proper/commons-math/userguide/random.html[Commons Math].
-
-For most use cases, the randomType has no significant impact on the average quality of the best solution on multiple datasets.
-If you want to confirm this on your use case, use the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[benchmarker].
+With a reproducible environment mode, the same seed and solver configuration produce the same stream assignment.
+Child solvers and worker threads receive streams by stable index before they start,
+so their random sequences do not depend on thread scheduling.
 
 
 [#solverManager]
 == `SolverManager`
 
 A `SolverManager` is a facade for one or more `Solver` instances
-to simplify solving planning problems in REST and other enterprise services.
+to simplify solving planning problems in REST and other server applications.
 Unlike the `Solver.solve(...)` method:
 
 * *`SolverManager.solve(...)` returns immediately*: it schedules a problem for asynchronous solving without blocking the calling thread.
@@ -638,7 +625,7 @@ For example, if set to `4`, submitting five problems
 has four problems solving immediately, and the fifth one starts when another one ends.
 If those problems solve for 5 minutes each, the fifth problem takes 10 minutes to finish.
 By default, `parallelSolverCount` is set to `AUTO`, which resolves to half the CPU cores,
-regardless of the xref:advanced-features/advanced-features.adoc#enterpriseMultithreadedSolving[`moveThreadCount`] of the solvers.
+regardless of the xref:advanced-features/advanced-features.adoc#multithreadedSolving[`moveThreadCount`] of the solvers.
 
 To retrieve the best solution, after solving terminates normally, use `SolverJob.getFinalBestSolution()`:
 

@@ -1,10 +1,10 @@
 package ai.greycos.solver.core.impl.partitionedsearch.scope;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
@@ -165,7 +165,7 @@ public final class PartitionChangeMove<Solution_> extends AbstractMove<Solution_
   }
 
   @Override
-  public Collection<? extends Object> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     throw new UnsupportedOperationException(
         "Impossible situation: "
             + PartitionChangeMove.class.getSimpleName()
@@ -173,7 +173,7 @@ public final class PartitionChangeMove<Solution_> extends AbstractMove<Solution_
   }
 
   @Override
-  public Collection<? extends Object> getPlanningValues() {
+  public SequencedCollection<Object> getPlanningValues() {
     throw new UnsupportedOperationException(
         "Impossible situation: "
             + PartitionChangeMove.class.getSimpleName()

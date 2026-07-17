@@ -6,13 +6,13 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicLong;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
-import ai.greycos.solver.core.impl.heuristic.move.MoveAdapters;
+import ai.greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 import ai.greycos.solver.core.impl.solver.thread.MemoryMonitor;
 import ai.greycos.solver.core.impl.solver.thread.PerformanceMetrics;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -183,9 +183,9 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           }
           stepIndex = applyStepOperation.getStepIndex();
           Move<Solution_> step =
-              MoveAdapters.toLegacyMove(applyStepOperation.getStep()).rebase(scoreDirector);
+              applyStepOperation.getStep().rebase(scoreDirector.getMoveDirector());
           Score_ score = applyStepOperation.getScore();
-          step.doMoveOnly(scoreDirector);
+          scoreDirector.getMoveDirector().execute(step);
           predictWorkingStepScore(step, InnerScore.fullyAssigned(score));
           try {
             moveThreadBarrier.await();
@@ -211,13 +211,15 @@ public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implement
           if (originalMove == null) {
             throw new NullPointerException("Move cannot be null in MoveEvaluationOperation");
           }
-          Move<Solution_> move = MoveAdapters.toLegacyMove(originalMove).rebase(scoreDirector);
+          Move<Solution_> move = originalMove.rebase(scoreDirector.getMoveDirector());
 
           long evaluationStartTime = System.nanoTime();
           boolean accepted = false;
 
           try {
-            if (evaluateDoable && !move.isMoveDoable(scoreDirector)) {
+            if (evaluateDoable
+                && move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove
+                && !selectorBasedMove.isMoveDoable(scoreDirector)) {
               resultQueue.addUndoableMove(moveThreadIndex, stepIndex, moveIndex, move);
             } else {
               var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);

@@ -13,7 +13,12 @@
   <name>GreyCOS Solver Quarkus Jackson - Deployment</name>
   <description>Quarkus deployment module for greycos-solver-quarkus-jackson.</description>
   <url>https://github.com/CameleoGrey/greycos-solver</url>
+
   <dependencies>
+    <dependency>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-quarkus-jackson</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-core-deployment</artifactId>
@@ -26,14 +31,6 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-jackson-spi</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>ai.greycos.solver</groupId>
-      <artifactId>greycos-solver-jackson</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>ai.greycos.solver</groupId>
-      <artifactId>greycos-solver-quarkus-jackson</artifactId>
     </dependency>
   </dependencies>
 

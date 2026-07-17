@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.entity.mimic;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertCode;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -11,10 +12,8 @@ import static org.mockito.Mockito.when;
 import java.util.Iterator;
 
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
-import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
-import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 
 import org.junit.jupiter.api.Test;
@@ -23,28 +22,26 @@ class MimicReplayingEntitySelectorTest {
 
   @Test
   void originalSelection() {
-    EntitySelector childEntitySelector =
+    var childEntitySelector =
         SelectorTestUtils.mockEntitySelector(
             TestdataEntity.class,
             new TestdataEntity("e1"),
             new TestdataEntity("e2"),
             new TestdataEntity("e3"));
 
-    MimicRecordingEntitySelector recordingEntitySelector =
-        new MimicRecordingEntitySelector(childEntitySelector);
-    MimicReplayingEntitySelector replayingEntitySelector =
-        new MimicReplayingEntitySelector(recordingEntitySelector);
+    var recordingEntitySelector = new MimicRecordingEntitySelector(childEntitySelector);
+    var replayingEntitySelector = new MimicReplayingEntitySelector(recordingEntitySelector);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    var solverScope = mockSolverScope();
     recordingEntitySelector.solvingStarted(solverScope);
     replayingEntitySelector.solvingStarted(solverScope);
 
-    AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
+    var phaseScopeA = mock(AbstractPhaseScope.class);
     when(phaseScopeA.getSolverScope()).thenReturn(solverScope);
     recordingEntitySelector.phaseStarted(phaseScopeA);
     replayingEntitySelector.phaseStarted(phaseScopeA);
 
-    AbstractStepScope stepScopeA1 = mock(AbstractStepScope.class);
+    var stepScopeA1 = mock(AbstractStepScope.class);
     when(stepScopeA1.getPhaseScope()).thenReturn(phaseScopeA);
     recordingEntitySelector.stepStarted(stepScopeA1);
     replayingEntitySelector.stepStarted(stepScopeA1);
@@ -52,7 +49,7 @@ class MimicReplayingEntitySelectorTest {
     recordingEntitySelector.stepEnded(stepScopeA1);
     replayingEntitySelector.stepEnded(stepScopeA1);
 
-    AbstractStepScope stepScopeA2 = mock(AbstractStepScope.class);
+    var stepScopeA2 = mock(AbstractStepScope.class);
     when(stepScopeA2.getPhaseScope()).thenReturn(phaseScopeA);
     recordingEntitySelector.stepStarted(stepScopeA2);
     replayingEntitySelector.stepStarted(stepScopeA2);
@@ -63,12 +60,12 @@ class MimicReplayingEntitySelectorTest {
     recordingEntitySelector.phaseEnded(phaseScopeA);
     replayingEntitySelector.phaseEnded(phaseScopeA);
 
-    AbstractPhaseScope phaseScopeB = mock(AbstractPhaseScope.class);
+    var phaseScopeB = mock(AbstractPhaseScope.class);
     when(phaseScopeB.getSolverScope()).thenReturn(solverScope);
     recordingEntitySelector.phaseStarted(phaseScopeB);
     replayingEntitySelector.phaseStarted(phaseScopeB);
 
-    AbstractStepScope stepScopeB1 = mock(AbstractStepScope.class);
+    var stepScopeB1 = mock(AbstractStepScope.class);
     when(stepScopeB1.getPhaseScope()).thenReturn(phaseScopeB);
     recordingEntitySelector.stepStarted(stepScopeB1);
     replayingEntitySelector.stepStarted(stepScopeB1);
@@ -115,8 +112,6 @@ class MimicReplayingEntitySelectorTest {
     // Duplicated call
     assertThat(replayingIterator).isExhausted();
 
-    assertThat(recordingEntitySelector.isCountable()).isTrue();
-    assertThat(replayingEntitySelector.isCountable()).isTrue();
     assertThat(recordingEntitySelector.isNeverEnding()).isFalse();
     assertThat(replayingEntitySelector.isNeverEnding()).isFalse();
     assertThat(recordingEntitySelector.getSize()).isEqualTo(3L);

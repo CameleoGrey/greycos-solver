@@ -18,4 +18,21 @@ Yes. GreyCOS Solver has been tested with Quarkus and Spring Boot plugins to crea
 Native executables typically have a fast startup time and reduced memory consumption.
 However, given the nature of the workloads running with the solver, these benefits are often overshadowed by slower solving speeds due to lack of JIT optimizations.
 
-Read more about this in https://github.com/CameleoGrey/greycos-solver[our blog post].
+[#quarkus-dev-mode-performance]
+== Why is GreyCOS Solver so much slower in Quarkus dev mode?
+
+Quarkus dev mode disables the
+https://www.baeldung.com/jvm-tiered-compilation#2c2---server-complier[JVM C2 (server) compiler]
+to enable fast live reload of code changes.
+The C2 compiler is responsible for just-in-time compilation of hot code paths into highly optimized native machine code.
+
+GreyCOS Solver evaluates thousands of moves per second during solving,
+making each move evaluation a hot code path.
+Without C2, these paths run in the interpreter or with only basic JIT optimizations,
+which can be considerably slower than fully JIT-compiled code.
+This also affects solution quality: within the same time limit, the solver evaluates fewer moves and explores less of the search space.
+
+Use production mode, for example `mvn package` followed by `java -jar`,
+when you need representative performance or solution quality.
+Dev mode remains useful for checking constraints and application wiring,
+but its results must not be used to benchmark or tune the solver.

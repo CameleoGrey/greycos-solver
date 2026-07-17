@@ -1,7 +1,5 @@
 package ai.greycos.solver.core.impl.solver;
 
-import static ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner.DESCENDING;
-import static ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner.DESCENDING_IF_AVAILABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -10,12 +8,11 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -26,11 +23,11 @@ import java.util.stream.IntStream;
 
 import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.SimpleScore;
-import ai.greycos.solver.core.api.score.calculator.ConstraintMatchAwareIncrementalScoreCalculator;
+import ai.greycos.solver.core.api.score.calculator.AnalyzableIncrementalScoreCalculator;
+import ai.greycos.solver.core.api.score.calculator.ConstraintMatchRegistry;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
-import ai.greycos.solver.core.api.score.constraint.Indictment;
+import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.phase.PhaseCommand;
@@ -68,14 +65,14 @@ import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
-import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
+import ai.greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
 import ai.greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorFactory;
 import ai.greycos.solver.core.impl.neighborhood.DefaultNeighborhoodProvider;
 import ai.greycos.solver.core.impl.score.DummySimpleScoreEasyScoreCalculator;
-import ai.greycos.solver.core.impl.score.constraint.DefaultConstraintMatchTotal;
-import ai.greycos.solver.core.impl.score.constraint.DefaultIndictment;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 import ai.greycos.solver.core.impl.util.Pair;
+import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
 import ai.greycos.solver.core.preview.api.move.builtin.Moves;
 import ai.greycos.solver.core.preview.api.neighborhood.Neighborhood;
 import ai.greycos.solver.core.preview.api.neighborhood.NeighborhoodBuilder;
@@ -83,6 +80,7 @@ import ai.greycos.solver.core.preview.api.neighborhood.NeighborhoodProvider;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.classloader.TestdataSeparateClassLoaderDomain;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
 import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
 import ai.greycos.solver.core.testcotwin.list.TestdataListValue;
@@ -103,6 +101,8 @@ import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvi
 import ai.greycos.solver.core.testcotwin.list.valuerange.unassignedvar.TestdataListUnassignedEntityProvidingEntity;
 import ai.greycos.solver.core.testcotwin.list.valuerange.unassignedvar.TestdataListUnassignedEntityProvidingScoreCalculator;
 import ai.greycos.solver.core.testcotwin.list.valuerange.unassignedvar.TestdataListUnassignedEntityProvidingSolution;
+import ai.greycos.solver.core.testcotwin.list.valuerange.unassignedvar.sortedset.TestdataListUnassignedEntityProvidingSortedSetEntity;
+import ai.greycos.solver.core.testcotwin.list.valuerange.unassignedvar.sortedset.TestdataListUnassignedEntityProvidingSortedSetSolution;
 import ai.greycos.solver.core.testcotwin.mixed.multientity.TestdataMixedEntityEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.mixed.multientity.TestdataMixedMultiEntityFirstEntity;
 import ai.greycos.solver.core.testcotwin.mixed.multientity.TestdataMixedMultiEntityFirstValue;
@@ -218,9 +218,9 @@ class DefaultSolverTest {
     // Both values are on the same entity; the goal of the solver is to move one of them to the
     // other entity.
     var solution = TestdataListSolution.generateUninitializedSolution(2, 2);
-    var v1 = solution.getValueList().get(0);
+    var v1 = solution.getValueList().getFirst();
     var v2 = solution.getValueList().get(1);
-    var e1 = solution.getEntityList().get(0);
+    var e1 = solution.getEntityList().getFirst();
     e1.addValue(v1);
     e1.addValue(v2);
     SolutionManager.updateShadowVariables(solution);
@@ -243,13 +243,13 @@ class DefaultSolverTest {
 
     var solution = TestdataMixedSolution.generateUninitializedSolution(2, 2, 2);
     // Values are assigned in reverse; the solver needs to swap them.
-    var e1 = solution.getEntityList().get(0);
+    var e1 = solution.getEntityList().getFirst();
     var e2 = solution.getEntityList().get(1);
     e1.setBasicValue(solution.getOtherValueList().get(1));
-    e2.setBasicValue(solution.getOtherValueList().get(0));
+    e2.setBasicValue(solution.getOtherValueList().getFirst());
     // Both values are on the same entity; the goal of the solver is to move one of them to the
     // other entity.
-    var v1 = solution.getValueList().get(0);
+    var v1 = solution.getValueList().getFirst();
     var v2 = solution.getValueList().get(1);
     e1.setValueList(new ArrayList<>(List.of(v1, v2)));
     SolutionManager.updateShadowVariables(solution);
@@ -272,7 +272,7 @@ class DefaultSolverTest {
                     .withMoveProviderClass((Class) TestingNeighborhoodProvider.class));
 
     var solution = TestdataSolution.generateSolution(3, 2);
-    assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution))
+    Assertions.assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("NEIGHBORHOODS");
   }
@@ -345,8 +345,10 @@ class DefaultSolverTest {
 
     // Set each value to be the same, so that the solver has to split them.
     var solution = TestdataMultiEntitySolution.generateUninitializedSolution(2, 2);
-    solution.getLeadEntityList().forEach(e -> e.setValue(solution.getValueList().get(0)));
-    solution.getHerdEntityList().forEach(e -> e.setLeadEntity(solution.getLeadEntityList().get(0)));
+    solution.getLeadEntityList().forEach(e -> e.setValue(solution.getValueList().getFirst()));
+    solution
+        .getHerdEntityList()
+        .forEach(e -> e.setLeadEntity(solution.getLeadEntityList().getFirst()));
 
     // Zero result means each value has different value.
     var result = PlannerTestUtils.solve(solverConfig, solution);
@@ -364,7 +366,7 @@ class DefaultSolverTest {
     solution.setValueList(Arrays.asList(new TestdataValue("v1"), new TestdataValue("v2")));
     solution.setEntityList(Arrays.asList(new TestdataEntity("e1"), new TestdataEntity("e2")));
 
-    assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
+    Assertions.assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
         .hasMessageContaining("corruption")
         .hasMessageContaining(EnvironmentMode.FULL_ASSERT.name())
         .hasMessageContaining(EnvironmentMode.NO_ASSERT.name());
@@ -396,7 +398,7 @@ class DefaultSolverTest {
     solution.setValueList(Arrays.asList(new TestdataValue("v1"), new TestdataValue("v2")));
     solution.setEntityList(Arrays.asList(new TestdataEntity("e1"), new TestdataEntity("e2")));
 
-    assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
+    Assertions.assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
         .hasMessageContaining("Score corruption")
         .hasMessageContaining("workingScore")
         .hasMessageContaining("uncorruptedScore")
@@ -420,61 +422,11 @@ class DefaultSolverTest {
     entity2.setValue(value2);
     solution.setEntityList(List.of(entity1, entity2));
 
-    assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
+    Assertions.assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
         .hasMessageContaining("Score corruption")
         .hasMessageContaining("workingScore")
         .hasMessageContaining("uncorruptedScore")
         .hasMessageContaining("Score corruption analysis could not be generated");
-  }
-
-  @Test
-  void solveCorruptedIncrementalUninitialized() {
-    var solverConfig =
-        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class)
-            .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
-            .withScoreDirectorFactory(
-                new ScoreDirectorFactoryConfig()
-                    .withIncrementalScoreCalculatorClass(
-                        CorruptedIncrementalScoreCalculator.class));
-
-    var solution = new TestdataSolution("s1");
-    solution.setValueList(Arrays.asList(new TestdataValue("v1"), new TestdataValue("v2")));
-    solution.setEntityList(Arrays.asList(new TestdataEntity("e1"), new TestdataEntity("e2")));
-
-    assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
-        .hasMessageContaining("Score corruption")
-        .hasMessageContaining("workingScore")
-        .hasMessageContaining("uncorruptedScore")
-        .hasMessageContaining("Score corruption analysis:");
-  }
-
-  @Test
-  void solveCorruptedIncrementalInitialized() {
-    var solverConfig =
-        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class)
-            .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
-            .withScoreDirectorFactory(
-                new ScoreDirectorFactoryConfig()
-                    .withIncrementalScoreCalculatorClass(
-                        CorruptedIncrementalScoreCalculator.class));
-    var solverFactory = SolverFactory.<TestdataSolution>create(solverConfig);
-    var solver = solverFactory.buildSolver();
-
-    var solution = new TestdataSolution("s1");
-    var value1 = new TestdataValue("v1");
-    var value2 = new TestdataValue("v2");
-    solution.setValueList(List.of(value1, value2));
-    var entity1 = new TestdataEntity("e1");
-    entity1.setValue(value1);
-    var entity2 = new TestdataEntity("e2");
-    entity2.setValue(value2);
-    solution.setEntityList(List.of(entity1, entity2));
-
-    assertThatThrownBy(() -> solver.solve(solution))
-        .hasMessageContaining("Score corruption")
-        .hasMessageContaining("workingScore")
-        .hasMessageContaining("uncorruptedScore")
-        .hasMessageContaining("Score corruption analysis:");
   }
 
   @Test
@@ -494,6 +446,7 @@ class DefaultSolverTest {
     assertThat(solution.getEntityList().stream().filter(e -> e.getValue() == null)).isEmpty();
   }
 
+  @NullMarked
   private static final class FailCommand implements PhaseCommand<Object> {
 
     @Override
@@ -608,8 +561,7 @@ class DefaultSolverTest {
           }
         });
 
-    var executorService = Executors.newSingleThreadExecutor();
-    try {
+    try (var executorService = Executors.newSingleThreadExecutor()) {
       executorService.submit(
           () -> {
             solver.solve(solution);
@@ -623,8 +575,6 @@ class DefaultSolverTest {
       solutionWithProblemChangeReceived.await();
       assertThat(bestSolution.get().getValueList()).hasSize(valueCount + 1);
       solver.terminateEarly();
-    } finally {
-      executorService.shutdownNow();
     }
   }
 
@@ -735,7 +685,7 @@ class DefaultSolverTest {
           softly
               .assertThat(bestSolution.getScore())
               .isEqualTo(SimpleScore.of(0)); // Nothing is assigned.
-          var firstEntity = bestSolution.getEntityList().get(0);
+          var firstEntity = bestSolution.getEntityList().getFirst();
           softly.assertThat(firstEntity.getValueList()).isEmpty();
         });
   }
@@ -773,7 +723,7 @@ class DefaultSolverTest {
           // Checks for a bug where NoChangeMove would be generated first, meaning nothing would get
           // assigned.
           softly.assertThat(bestSolution.getScore()).isEqualTo(SimpleScore.of(4));
-          var firstEntity = bestSolution.getEntityList().get(0);
+          var firstEntity = bestSolution.getEntityList().getFirst();
           softly.assertThat(firstEntity.getValueList()).hasSize(4);
         });
   }
@@ -782,8 +732,6 @@ class DefaultSolverTest {
    * This test is to verify that the CH step is only picked if all moves of the step have been
    * processed. If the CH is terminated before all moves have been processed, the solution should
    * use the result of the previous fully completed step.
-   *
-   * @see GitHub issue 1130.
    */
   @Test
   void solveWithCHAllowsUnassignedValuesListVariableAndTerminateInStep() {
@@ -822,9 +770,9 @@ class DefaultSolverTest {
   void solveWithPlanningListVariableEntityPinFair() {
     var expectedValueCount = 4;
     var solution = TestdataPinnedListSolution.generateUninitializedSolution(expectedValueCount, 3);
-    var pinnedEntity = solution.getEntityList().get(0);
+    var pinnedEntity = solution.getEntityList().getFirst();
     var pinnedList = pinnedEntity.getValueList();
-    var pinnedValue = solution.getValueList().get(0);
+    var pinnedValue = solution.getValueList().getFirst();
     pinnedList.add(pinnedValue);
     pinnedEntity.setPinned(true);
 
@@ -841,8 +789,8 @@ class DefaultSolverTest {
 
     assertThat(solution).isNotNull();
     assertThat(solution.getScore()).isEqualTo(SimpleScore.ZERO); // No unused entities.
-    assertThat(solution.getEntityList().get(0).getValueList())
-        .containsExactly(solution.getValueList().get(0));
+    assertThat(solution.getEntityList().getFirst().getValueList())
+        .containsExactly(solution.getValueList().getFirst());
     var actualValueCount =
         solution.getEntityList().stream().mapToInt(e -> e.getValueList().size()).sum();
     assertThat(actualValueCount).isEqualTo(expectedValueCount);
@@ -859,9 +807,9 @@ class DefaultSolverTest {
   void solveWithPlanningListVariableEntityPinUnfair() {
     var expectedValueCount = 4;
     var solution = TestdataPinnedListSolution.generateUninitializedSolution(expectedValueCount, 3);
-    var pinnedEntity = solution.getEntityList().get(0);
+    var pinnedEntity = solution.getEntityList().getFirst();
     var pinnedList = pinnedEntity.getValueList();
-    var pinnedValue = solution.getValueList().get(0);
+    var pinnedValue = solution.getValueList().getFirst();
     pinnedList.add(pinnedValue);
     pinnedEntity.setPinned(true);
 
@@ -879,8 +827,8 @@ class DefaultSolverTest {
     assertThat(solution).isNotNull();
     // 1 unused entity; out of 3 total, one is pinned and the other gets all the values.
     assertThat(solution.getScore()).isEqualTo(SimpleScore.of(1));
-    assertThat(solution.getEntityList().get(0).getValueList())
-        .containsExactly(solution.getValueList().get(0));
+    assertThat(solution.getEntityList().getFirst().getValueList())
+        .containsExactly(solution.getValueList().getFirst());
     var actualValueCount =
         solution.getEntityList().stream().mapToInt(e -> e.getValueList().size()).sum();
     assertThat(actualValueCount).isEqualTo(expectedValueCount);
@@ -892,9 +840,9 @@ class DefaultSolverTest {
     var solution =
         TestdataPinnedWithIndexListSolution.generateUninitializedSolution(expectedValueCount, 3);
     // Pin the first list entirely.
-    var pinnedEntity = solution.getEntityList().get(0);
+    var pinnedEntity = solution.getEntityList().getFirst();
     var pinnedList = pinnedEntity.getValueList();
-    var pinnedValue = solution.getValueList().get(0);
+    var pinnedValue = solution.getValueList().getFirst();
     pinnedList.add(pinnedValue);
     pinnedEntity.setPinned(true);
     // In the second list, pin only the first value.
@@ -904,7 +852,7 @@ class DefaultSolverTest {
     var partiallyPinnedValue2 = solution.getValueList().get(2);
     partiallyPinnedList.add(partiallyPinnedValue1);
     partiallyPinnedList.add(partiallyPinnedValue2);
-    partiallyPinnedEntity.setPlanningPinToIndex(1); // The first value is pinned.
+    partiallyPinnedEntity.setPinIndex(1); // The first value is pinned.
     partiallyPinnedEntity.setPinned(false); // The list isn't pinned overall.
 
     var solverConfig =
@@ -920,8 +868,8 @@ class DefaultSolverTest {
 
     assertThat(solution).isNotNull();
     assertThat(solution.getScore()).isEqualTo(SimpleScore.ZERO); // No unused entities.
-    assertThat(solution.getEntityList().get(0).getValueList())
-        .containsExactly(solution.getValueList().get(0));
+    assertThat(solution.getEntityList().getFirst().getValueList())
+        .containsExactly(solution.getValueList().getFirst());
     assertThat(solution.getEntityList().get(1).getValueList())
         .first()
         .isEqualTo(solution.getValueList().get(1));
@@ -936,9 +884,9 @@ class DefaultSolverTest {
     var solution =
         TestdataPinnedWithIndexListSolution.generateUninitializedSolution(expectedValueCount, 3);
     // Pin the first list entirely.
-    var pinnedEntity = solution.getEntityList().get(0);
+    var pinnedEntity = solution.getEntityList().getFirst();
     var pinnedList = pinnedEntity.getValueList();
-    var pinnedValue = solution.getValueList().get(0);
+    var pinnedValue = solution.getValueList().getFirst();
     pinnedList.add(pinnedValue);
     pinnedEntity.setPinned(true);
     // In the second list, pin only the first value.
@@ -948,7 +896,7 @@ class DefaultSolverTest {
     var partiallyPinnedValue2 = solution.getValueList().get(2);
     partiallyPinnedList.add(partiallyPinnedValue1);
     partiallyPinnedList.add(partiallyPinnedValue2);
-    partiallyPinnedEntity.setPlanningPinToIndex(1); // The first value is pinned.
+    partiallyPinnedEntity.setPinIndex(1); // The first value is pinned.
     partiallyPinnedEntity.setPinned(false); // The list isn't pinned overall.
 
     var solverConfig =
@@ -965,8 +913,8 @@ class DefaultSolverTest {
     assertThat(solution).isNotNull();
     // 1 unused entity; out of 3 total, one is pinned and the other gets all the values.
     assertThat(solution.getScore()).isEqualTo(SimpleScore.of(1));
-    assertThat(solution.getEntityList().get(0).getValueList())
-        .containsExactly(solution.getValueList().get(0));
+    assertThat(solution.getEntityList().getFirst().getValueList())
+        .containsExactly(solution.getValueList().getFirst());
     assertThat(solution.getEntityList().get(1).getValueList())
         .containsExactlyInAnyOrder(
             solution.getValueList().get(1),
@@ -1003,7 +951,7 @@ class DefaultSolverTest {
 
   @ParameterizedTest
   @MethodSource("generateMovesForSingleVar")
-  void solveSingleVarMoveConfig(MoveSelectorConfig moveSelectionConfig) {
+  void solveSingleVarMoveConfig(MoveSelectorConfig<?> moveSelectionConfig) {
     // Local search
     var localSearchConfig =
         new LocalSearchPhaseConfig()
@@ -1019,8 +967,8 @@ class DefaultSolverTest {
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem)).doesNotThrowAnyException();
   }
 
-  private static List<MoveSelectorConfig> generateMovesForSingleVar() {
-    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig>();
+  private static List<MoveSelectorConfig<?>> generateMovesForSingleVar() {
+    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig<?>>();
     // Change - basic
     allMoveSelectionConfigList.add(new ChangeMoveSelectorConfig());
     // Swap - basic
@@ -1039,7 +987,7 @@ class DefaultSolverTest {
 
   @ParameterizedTest
   @MethodSource("generateMovesForListVar")
-  void solveListVarMoveConfig(MoveSelectorConfig moveSelectionConfig) {
+  void solveListVarMoveConfig(MoveSelectorConfig<?> moveSelectionConfig) {
     // Local search
     var localSearchConfig =
         new LocalSearchPhaseConfig()
@@ -1056,8 +1004,8 @@ class DefaultSolverTest {
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem)).doesNotThrowAnyException();
   }
 
-  private static List<MoveSelectorConfig> generateMovesForListVar() {
-    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig>();
+  private static List<MoveSelectorConfig<?>> generateMovesForListVar() {
+    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig<?>>();
     // Change - basic
     allMoveSelectionConfigList.add(new ListChangeMoveSelectorConfig());
     // Swap - basic
@@ -1076,7 +1024,7 @@ class DefaultSolverTest {
 
   @ParameterizedTest
   @MethodSource("generateMovesForMultiVar")
-  void solveMultiVarMoveConfig(MoveSelectorConfig moveSelectionConfig) {
+  void solveMultiVarMoveConfig(MoveSelectorConfig<?> moveSelectionConfig) {
     // Local search
     var localSearchConfig =
         new LocalSearchPhaseConfig()
@@ -1093,8 +1041,8 @@ class DefaultSolverTest {
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem)).doesNotThrowAnyException();
   }
 
-  private static List<MoveSelectorConfig> generateMovesForMultiVar() {
-    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig>();
+  private static List<MoveSelectorConfig<?>> generateMovesForMultiVar() {
+    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig<?>>();
     // Change - basic
     allMoveSelectionConfigList.add(new ChangeMoveSelectorConfig());
     // Swap - basic
@@ -1140,7 +1088,7 @@ class DefaultSolverTest {
 
   @ParameterizedTest
   @MethodSource("generateMovesForMultiEntity")
-  void solveMultiEntityMoveConfig(MoveSelectorConfig moveSelectionConfig) {
+  void solveMultiEntityMoveConfig(MoveSelectorConfig<?> moveSelectionConfig) {
     // Construction Heuristic
     var leadConstructionHeuristicConfig =
         new ConstructionHeuristicPhaseConfig()
@@ -1178,8 +1126,8 @@ class DefaultSolverTest {
     assertThat(solution).isNotNull();
   }
 
-  private static List<MoveSelectorConfig> generateMovesForMultiEntity() {
-    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig>();
+  private static List<MoveSelectorConfig<?>> generateMovesForMultiEntity() {
+    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig<?>>();
     // Change - basic
     allMoveSelectionConfigList.add(new ChangeMoveSelectorConfig());
     // Swap - basic
@@ -1387,8 +1335,8 @@ class DefaultSolverTest {
   private static List<Pair<EntitySorterManner, ValueSorterManner>> getSortMannerList() {
     var sortMannerList = new ArrayList<Pair<EntitySorterManner, ValueSorterManner>>();
     for (var valueSortManner : ValueSorterManner.values()) {
-      sortMannerList.add(new Pair<>(DESCENDING, valueSortManner));
-      sortMannerList.add(new Pair<>(DESCENDING_IF_AVAILABLE, valueSortManner));
+      sortMannerList.add(new Pair<>(EntitySorterManner.DESCENDING, valueSortManner));
+      sortMannerList.add(new Pair<>(EntitySorterManner.DESCENDING_IF_AVAILABLE, valueSortManner));
     }
     return sortMannerList;
   }
@@ -1517,13 +1465,13 @@ class DefaultSolverTest {
 
     var problem = TestdataMixedSolution.generateUninitializedSolution(3, 2, 2);
     // Pin the first entity
-    problem.getEntityList().get(0).setPinned(true);
-    problem.getEntityList().get(0).setPinnedIndex(0);
+    problem.getEntityList().getFirst().setPinned(true);
+    problem.getEntityList().getFirst().setPinnedIndex(0);
     var solution = PlannerTestUtils.solve(solverConfig, problem);
     // The first entity should remain unchanged
-    assertThat(solution.getEntityList().get(0).getBasicValue()).isNull();
-    assertThat(solution.getEntityList().get(0).getSecondBasicValue()).isNull();
-    assertThat(solution.getEntityList().get(0).getValueList()).isEmpty();
+    assertThat(solution.getEntityList().getFirst().getBasicValue()).isNull();
+    assertThat(solution.getEntityList().getFirst().getSecondBasicValue()).isNull();
+    assertThat(solution.getEntityList().getFirst().getValueList()).isEmpty();
   }
 
   @Test
@@ -1537,9 +1485,9 @@ class DefaultSolverTest {
 
     var problem = TestdataUnassignedMixedSolution.generateUninitializedSolution(2, 2, 2);
     // Block values and make the basic and list variables unassigned
-    problem.getValueList().get(0).setBlocked(true);
+    problem.getValueList().getFirst().setBlocked(true);
     problem.getValueList().get(1).setBlocked(true);
-    problem.getOtherValueList().get(0).setBlocked(true);
+    problem.getOtherValueList().getFirst().setBlocked(true);
     problem.getOtherValueList().get(1).setBlocked(true);
     var solution = PlannerTestUtils.solve(solverConfig, problem);
     assertThat(solution.getEntityList().stream().filter(e -> e.getBasicValue() == null)).hasSize(2);
@@ -1560,43 +1508,43 @@ class DefaultSolverTest {
 
     // Pin the entire first entity
     var problem = TestdataUnassignedMixedSolution.generateUninitializedSolution(2, 2, 2);
-    problem.getEntityList().get(0).setPinned(true);
-    problem.getEntityList().get(0).setBasicValue(problem.getOtherValueList().get(0));
-    problem.getEntityList().get(0).setSecondBasicValue(problem.getOtherValueList().get(0));
-    problem.getEntityList().get(0).setValueList(List.of(problem.getValueList().get(0)));
+    problem.getEntityList().getFirst().setPinned(true);
+    problem.getEntityList().getFirst().setBasicValue(problem.getOtherValueList().getFirst());
+    problem.getEntityList().getFirst().setSecondBasicValue(problem.getOtherValueList().getFirst());
+    problem.getEntityList().getFirst().setValueList(List.of(problem.getValueList().getFirst()));
     // Block values and make the basic and list variables unassigned
-    problem.getValueList().get(0).setBlocked(true);
+    problem.getValueList().getFirst().setBlocked(true);
     problem.getValueList().get(1).setBlocked(true);
-    problem.getOtherValueList().get(0).setBlocked(true);
+    problem.getOtherValueList().getFirst().setBlocked(true);
     problem.getOtherValueList().get(1).setBlocked(true);
     var solution = PlannerTestUtils.solve(solverConfig, problem);
     // The first entity should remain unchanged
-    assertThat(solution.getEntityList().get(0).getBasicValue()).isNotNull();
-    assertThat(solution.getEntityList().get(0).getSecondBasicValue()).isNotNull();
-    assertThat(solution.getEntityList().get(0).getValueList()).hasSize(1);
+    assertThat(solution.getEntityList().getFirst().getBasicValue()).isNotNull();
+    assertThat(solution.getEntityList().getFirst().getSecondBasicValue()).isNotNull();
+    assertThat(solution.getEntityList().getFirst().getValueList()).hasSize(1);
     assertThat(solution.getEntityList().get(1).getBasicValue()).isNull();
     assertThat(solution.getEntityList().get(1).getSecondBasicValue()).isNotNull();
     assertThat(solution.getEntityList().get(1).getValueList()).isEmpty();
 
     // Pin partially the first entity list
     problem = TestdataUnassignedMixedSolution.generateUninitializedSolution(2, 4, 2);
-    problem.getEntityList().get(0).setPinnedIndex(2);
-    problem.getEntityList().get(0).setValueList(problem.getValueList().subList(1, 3));
+    problem.getEntityList().getFirst().setPinnedIndex(2);
+    problem.getEntityList().getFirst().setValueList(problem.getValueList().subList(1, 3));
     // Block values and make the basic variable unassigned
-    problem.getOtherValueList().get(0).setBlocked(true);
+    problem.getOtherValueList().getFirst().setBlocked(true);
     problem.getOtherValueList().get(1).setBlocked(true);
     solution = PlannerTestUtils.solve(solverConfig, problem);
-    assertThat(solution.getEntityList().get(0).getBasicValue()).isNull();
-    assertThat(solution.getEntityList().get(0).getSecondBasicValue()).isNotNull();
+    assertThat(solution.getEntityList().getFirst().getBasicValue()).isNull();
+    assertThat(solution.getEntityList().getFirst().getSecondBasicValue()).isNotNull();
     // The pinning index fixed the values 1 and 2. The only remaining option is values are 0 and 3.
     // The score is bigger when the list size is 3
-    assertThat(solution.getEntityList().get(0).getValueList()).hasSize(3);
-    assertThat(solution.getEntityList().get(0).getValueList())
+    assertThat(solution.getEntityList().getFirst().getValueList()).hasSize(3);
+    assertThat(solution.getEntityList().getFirst().getValueList())
         .hasSameElementsAs(
             List.of(
                 problem.getValueList().get(1),
                 problem.getValueList().get(2),
-                problem.getValueList().get(0)));
+                problem.getValueList().getFirst()));
     assertThat(solution.getEntityList().get(1).getBasicValue()).isNull();
     assertThat(solution.getEntityList().get(1).getSecondBasicValue()).isNotNull();
     assertThat(solution.getEntityList().get(1).getValueList()).hasSize(1);
@@ -1630,14 +1578,19 @@ class DefaultSolverTest {
 
     var solution = PlannerTestUtils.solve(solverConfig, problem);
 
-    assertThat(solution.getEntityList().get(0).getValue().getCode()).isEqualTo("v1");
-    assertThat(solution.getEntityList().get(1).getValue().getCode()).isEqualTo("v2");
+    assertThat(solution.getEntityList())
+        .map(entity -> entity.getValue().getCode())
+        .containsExactlyInAnyOrder("v1", "v2");
 
     assertThat(solution.getScore()).isEqualTo(SimpleScore.of(-2));
   }
 
   @Test
+  @Timeout(60)
   void solveStaleDeclarativeShadows() {
+    // Timeout is necessary since we use best score feasible as changes to random affect
+    // the step count to get to a feasible solution, and if we somehow broke LS so it never
+    // find a feasible solution, it would run forever otherwise.
     // Solver config
     var solverConfig =
         PlannerTestUtils.buildSolverConfig(
@@ -1645,7 +1598,10 @@ class DefaultSolverTest {
                 TestdataConcurrentEntity.class,
                 TestdataConcurrentValue.class)
             .withEasyScoreCalculatorClass(null)
-            .withConstraintProviderClass(TestdataConcurrentConstraintProvider.class);
+            .withConstraintProviderClass(TestdataConcurrentConstraintProvider.class)
+            .withPhases(
+                new LocalSearchPhaseConfig()
+                    .withTerminationConfig(new TerminationConfig().withBestScoreFeasible(true)));
 
     var e1 = new TestdataConcurrentEntity("e1");
     var e2 = new TestdataConcurrentEntity("e2");
@@ -1674,19 +1630,19 @@ class DefaultSolverTest {
 
     var solution = PlannerTestUtils.solve(solverConfig, problem);
 
-    assertThat(solution.getEntities().get(0).getValues())
+    assertThat(solution.getEntities().getFirst().getValues())
         .map(TestdataConcurrentValue::getId)
-        .containsExactly("a1", "b1");
+        .containsExactly("b1", "a1");
     assertThat(solution.getEntities().get(1).getValues())
         .map(TestdataConcurrentValue::getId)
-        .containsExactly("a2", "b2");
+        .containsExactly("b2", "a2");
 
     assertThat(solution.getScore()).isEqualTo(HardSoftScore.of(0, -240));
   }
 
-  private static List<MoveSelectorConfig> generateMovesForMixedModel() {
+  private static List<MoveSelectorConfig<?>> generateMovesForMixedModel() {
     // Local Search
-    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig>();
+    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig<?>>();
     // Change - basic
     allMoveSelectionConfigList.add(new ChangeMoveSelectorConfig());
     // Swap - basic
@@ -1735,7 +1691,7 @@ class DefaultSolverTest {
 
   @ParameterizedTest
   @MethodSource("generateMovesForMixedModel")
-  void solveMoveConfigMixedModel(MoveSelectorConfig moveSelectionConfig) {
+  void solveMoveConfigMixedModel(MoveSelectorConfig<?> moveSelectionConfig) {
     // Local search
     var localSearchConfig =
         new LocalSearchPhaseConfig()
@@ -1771,9 +1727,9 @@ class DefaultSolverTest {
         .isEmpty();
   }
 
-  private static List<MoveSelectorConfig> generateMovesForMultiEntityMixedModel() {
+  private static List<MoveSelectorConfig<?>> generateMovesForMultiEntityMixedModel() {
     // Local Search
-    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig>();
+    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig<?>>();
     // Change - basic
     allMoveSelectionConfigList.add(new ChangeMoveSelectorConfig());
     // Swap - basic
@@ -1821,7 +1777,7 @@ class DefaultSolverTest {
 
   @ParameterizedTest
   @MethodSource("generateMovesForMultiEntityMixedModel")
-  void solveMultiEntityMoveConfigMixedModel(MoveSelectorConfig moveSelectionConfig) {
+  void solveMultiEntityMoveConfigMixedModel(MoveSelectorConfig<?> moveSelectionConfig) {
     // Construction Heuristic
     var constructionHeuristicValuePlacer =
         new ConstructionHeuristicPhaseConfig()
@@ -1866,8 +1822,8 @@ class DefaultSolverTest {
     }
   }
 
-  private static List<MoveSelectorConfig> generateMovesForBasicVar() {
-    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig>();
+  private static List<MoveSelectorConfig<?>> generateMovesForBasicVar() {
+    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig<?>>();
     // Shared entity selector config
     var entitySelectorConfig =
         new EntitySelectorConfig()
@@ -1907,18 +1863,18 @@ class DefaultSolverTest {
 
   @ParameterizedTest
   @MethodSource("generateMovesForBasicVar")
-  void solveBasicVarEntityRangeModelSingleLocalSearch(MoveSelectorConfig moveSelectionConfig) {
+  void solveBasicVarEntityRangeModelSingleLocalSearch(MoveSelectorConfig<?> moveSelectionConfig) {
     solveBasicVarEntityRangeModel(moveSelectionConfig, false);
   }
 
   @ParameterizedTest
   @MethodSource("generateMovesForBasicVar")
-  void solveBasicVarEntityRangeModelMultipleLocalSearch(MoveSelectorConfig moveSelectionConfig) {
+  void solveBasicVarEntityRangeModelMultipleLocalSearch(MoveSelectorConfig<?> moveSelectionConfig) {
     solveBasicVarEntityRangeModel(moveSelectionConfig, true);
   }
 
   private void solveBasicVarEntityRangeModel(
-      MoveSelectorConfig moveSelectionConfig, boolean multipleLocalSearch) {
+      MoveSelectorConfig<?> moveSelectionConfig, boolean multipleLocalSearch) {
     // Local search
     var localSearchConfig =
         new LocalSearchPhaseConfig()
@@ -1962,7 +1918,7 @@ class DefaultSolverTest {
     var bestSolution = PlannerTestUtils.solve(solverConfig, solution, true);
     assertThat(bestSolution).isNotNull();
 
-    var bestEntity1 = bestSolution.getEntityList().get(0);
+    var bestEntity1 = bestSolution.getEntityList().getFirst();
     assertThat(bestEntity1.getValue()).isNotIn(value4, value5);
     var bestEntity2 = bestSolution.getEntityList().get(1);
     assertThat(bestEntity2.getValue()).isNotIn(value3, value4);
@@ -1970,9 +1926,9 @@ class DefaultSolverTest {
     assertThat(bestEntity3.getValue()).isNotIn(value1, value2, value3);
   }
 
-  private static List<MoveSelectorConfig> generateMovesForListVarEntityRangeModel() {
+  private static List<MoveSelectorConfig<?>> generateMovesForListVarEntityRangeModel() {
     // Local Search
-    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig>();
+    var allMoveSelectionConfigList = new ArrayList<MoveSelectorConfig<?>>();
     // Shared value selector config
     var valueSelectorConfig = new ValueSelectorConfig().withVariableName("valueList");
     // Change - list
@@ -2021,18 +1977,18 @@ class DefaultSolverTest {
 
   @ParameterizedTest
   @MethodSource("generateMovesForListVarEntityRangeModel")
-  void solveListVarEntityRangeModelSingleLocalSearch(MoveSelectorConfig moveSelectionConfig) {
+  void solveListVarEntityRangeModelSingleLocalSearch(MoveSelectorConfig<?> moveSelectionConfig) {
     solveListVarEntityRangeModel(moveSelectionConfig, false);
   }
 
   @ParameterizedTest
   @MethodSource("generateMovesForListVarEntityRangeModel")
-  void solveListVarEntityRangeModelMultipleLocalSearch(MoveSelectorConfig moveSelectionConfig) {
+  void solveListVarEntityRangeModelMultipleLocalSearch(MoveSelectorConfig<?> moveSelectionConfig) {
     solveListVarEntityRangeModel(moveSelectionConfig, true);
   }
 
   private void solveListVarEntityRangeModel(
-      MoveSelectorConfig moveSelectionConfig, boolean multipleLocalSearch) {
+      MoveSelectorConfig<?> moveSelectionConfig, boolean multipleLocalSearch) {
     // Local search
     var localSearchConfig =
         new LocalSearchPhaseConfig()
@@ -2074,7 +2030,7 @@ class DefaultSolverTest {
     var bestSolution = PlannerTestUtils.solve(solverConfig, solution, true);
     assertThat(bestSolution).isNotNull();
 
-    var bestEntity1 = bestSolution.getEntityList().get(0);
+    var bestEntity1 = bestSolution.getEntityList().getFirst();
     assertThat(bestEntity1.getValueList()).hasSizeGreaterThan(0);
     assertThat(bestEntity1.getValueList()).doesNotContain(value3, value4, value5);
     var bestEntity2 = bestSolution.getEntityList().get(1);
@@ -2083,6 +2039,49 @@ class DefaultSolverTest {
     var bestEntity3 = bestSolution.getEntityList().get(2);
     assertThat(bestEntity3.getValueList()).hasSizeGreaterThan(0);
     assertThat(bestEntity3.getValueList()).doesNotContain(value1, value2, value3);
+  }
+
+  @Test
+  void solveCustomClassLoader() {
+    // Spring DevTools redefine existing classes, with their updated definitions replacing
+    // existing instances, and their updated definition are only available from the Thread's Context
+    // ClassLoader.
+    // This test verify the Context ClassLoader definition is used instead of the one from the
+    // parent ClassLoader.
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(
+            TestdataSeparateClassLoaderDomain.getTestdataSolutionClass(),
+            TestdataSeparateClassLoaderDomain.getTestdataEntityClass());
+    var originalClassLoader = Thread.currentThread().getContextClassLoader();
+    try {
+      Thread.currentThread()
+          .setContextClassLoader(TestdataSeparateClassLoaderDomain.getClassLoader());
+      var solution = TestdataSeparateClassLoaderDomain.generateSolution();
+
+      solution =
+          PlannerTestUtils.solveAssertingEvents(
+              solverConfig,
+              solution,
+              BestScoreChangedEvent.constructionHeuristic(SimpleScore.ZERO, 0));
+      assertThat(solution).isNotNull();
+    } finally {
+      Thread.currentThread().setContextClassLoader(originalClassLoader);
+    }
+  }
+
+  @Test
+  void solveListVarEntityRangeModelWithTreeSet() {
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataListUnassignedEntityProvidingSortedSetSolution.class)
+            .withEntityClasses(TestdataListUnassignedEntityProvidingSortedSetEntity.class)
+            .withEasyScoreCalculatorClass(DummySimpleScoreEasyScoreCalculator.class)
+            .withTerminationConfig(new TerminationConfig().withMoveCountLimit(10L));
+
+    var problem = TestdataListUnassignedEntityProvidingSortedSetSolution.generateSolution();
+
+    problem = PlannerTestUtils.solve(solverConfig, problem, true);
+    assertThat(problem).isNotNull();
   }
 
   @Test
@@ -2182,6 +2181,8 @@ class DefaultSolverTest {
     var v1 = new TestdataValue("1");
     var v2 = new TestdataValue("2");
     var v3 = new TestdataValue("3");
+
+    problem.setSolutionValueRange(List.of(v1));
     // The entity has been assigned a value v3 for the second value range,
     // which is not included in the entity's value ranges
     var e1 =
@@ -2331,35 +2332,36 @@ class DefaultSolverTest {
 
     @Override
     public @NonNull SimpleScore calculateScore(@NonNull Object solution) {
-      if (solution instanceof TestdataPinnedListSolution testdataPinnedListSolution) {
-        var unusedEntities = 0;
-        for (var entity : testdataPinnedListSolution.getEntityList()) {
-          if (entity.getValueList().isEmpty()) {
-            unusedEntities++;
+      switch (solution) {
+        case TestdataPinnedListSolution testdataPinnedListSolution -> {
+          var unusedEntities = 0;
+          for (var entity : testdataPinnedListSolution.getEntityList()) {
+            if (entity.getValueList().isEmpty()) {
+              unusedEntities++;
+            }
           }
+          return SimpleScore.of(unusedEntities);
         }
-        return SimpleScore.of(unusedEntities);
-      } else if (solution
-          instanceof TestdataPinnedWithIndexListSolution testdataPinnedWithIndexListSolution) {
-        var unusedEntities = 0;
-        for (var entity : testdataPinnedWithIndexListSolution.getEntityList()) {
-          if (entity.getValueList().isEmpty()) {
-            unusedEntities++;
+        case TestdataPinnedWithIndexListSolution testdataPinnedWithIndexListSolution -> {
+          var unusedEntities = 0;
+          for (var entity : testdataPinnedWithIndexListSolution.getEntityList()) {
+            if (entity.getValueList().isEmpty()) {
+              unusedEntities++;
+            }
           }
+          return SimpleScore.of(unusedEntities);
         }
-        return SimpleScore.of(unusedEntities);
-      } else if (solution
-          instanceof
-          TestdataAllowsUnassignedValuesListSolution testdataAllowsUnassignedValuesListSolution) {
-        var unusedEntities = 0;
-        for (var entity : testdataAllowsUnassignedValuesListSolution.getEntityList()) {
-          if (entity.getValueList().isEmpty()) {
-            unusedEntities++;
+        case TestdataAllowsUnassignedValuesListSolution
+                testdataAllowsUnassignedValuesListSolution -> {
+          var unusedEntities = 0;
+          for (var entity : testdataAllowsUnassignedValuesListSolution.getEntityList()) {
+            if (entity.getValueList().isEmpty()) {
+              unusedEntities++;
+            }
           }
+          return SimpleScore.of(unusedEntities);
         }
-        return SimpleScore.of(unusedEntities);
-      } else {
-        throw new UnsupportedOperationException();
+        default -> throw new UnsupportedOperationException();
       }
     }
   }
@@ -2369,70 +2371,6 @@ class DefaultSolverTest {
 
     @Override
     public @NonNull SimpleScore calculateScore(@NonNull TestdataSolution testdataSolution) {
-      var random = new Random();
-      return SimpleScore.of(random.nextInt(1000));
-    }
-  }
-
-  public static class CorruptedIncrementalScoreCalculator
-      implements ConstraintMatchAwareIncrementalScoreCalculator<TestdataSolution, SimpleScore> {
-
-    @Override
-    public void resetWorkingSolution(
-        @NonNull TestdataSolution workingSolution, boolean constraintMatchEnabled) {
-      // Ignore
-    }
-
-    @Override
-    public @NonNull Collection<ConstraintMatchTotal<SimpleScore>> getConstraintMatchTotals() {
-      return Collections.singletonList(
-          new DefaultConstraintMatchTotal<>(ConstraintRef.of("a", "b"), SimpleScore.of(1)));
-    }
-
-    @Override
-    public @Nullable Map<Object, Indictment<SimpleScore>> getIndictmentMap() {
-      return Collections.singletonMap(
-          new TestdataEntity("e1"),
-          new DefaultIndictment<>(new TestdataEntity("e1"), SimpleScore.ONE));
-    }
-
-    @Override
-    public void resetWorkingSolution(@NonNull TestdataSolution workingSolution) {
-      // Ignore
-    }
-
-    @Override
-    public void beforeEntityAdded(@NonNull Object entity) {
-      // Ignore
-    }
-
-    @Override
-    public void afterEntityAdded(@NonNull Object entity) {
-      // Ignore
-    }
-
-    @Override
-    public void beforeVariableChanged(@NonNull Object entity, @NonNull String variableName) {
-      // Ignore
-    }
-
-    @Override
-    public void afterVariableChanged(@NonNull Object entity, @NonNull String variableName) {
-      // Ignore
-    }
-
-    @Override
-    public void beforeEntityRemoved(@NonNull Object entity) {
-      // Ignore
-    }
-
-    @Override
-    public void afterEntityRemoved(@NonNull Object entity) {
-      // Ignore
-    }
-
-    @Override
-    public @NonNull SimpleScore calculateScore() {
       var random = new Random();
       return SimpleScore.of(random.nextInt(1000));
     }
@@ -2454,7 +2392,7 @@ class DefaultSolverTest {
     @Override
     public @NonNull SimpleScore calculateScore(@NonNull TestdataSolution solution) {
       var valueList = solution.getValueList();
-      var firstValue = valueList.get(0);
+      var firstValue = valueList.getFirst();
       var valueSet = new HashSet<TestdataValue>(valueList.size());
       solution
           .getEntityList()
@@ -2473,9 +2411,9 @@ class DefaultSolverTest {
 
     @Override
     public @NonNull SimpleScore calculateScore(@NonNull TestdataMultiVarSolution solution) {
-      var primaryValue = solution.getValueList().get(0);
+      var primaryValue = solution.getValueList().getFirst();
       var secondaryValue = solution.getValueList().get(1);
-      var otherValue = solution.getOtherValueList().get(0);
+      var otherValue = solution.getOtherValueList().getFirst();
       var valueSet = new HashSet<Pair<Object, Integer>>();
       solution
           .getMultiVarEntityList()
@@ -2500,8 +2438,8 @@ class DefaultSolverTest {
 
     @Override
     public @NonNull SimpleScore calculateScore(@NonNull TestdataMultiEntitySolution solution) {
-      var primaryValue = solution.getValueList().get(0);
-      var secondaryValue = solution.getLeadEntityList().get(0);
+      var primaryValue = solution.getValueList().getFirst();
+      var secondaryValue = solution.getLeadEntityList().getFirst();
       var valueSet = new HashSet<>();
       solution
           .getLeadEntityList()
@@ -2552,7 +2490,7 @@ class DefaultSolverTest {
 
     @Override
     public @NonNull SimpleScore calculateScore(@NonNull TestdataMixedSolution testdataSolution) {
-      var firstValue = testdataSolution.getOtherValueList().get(0);
+      var firstValue = testdataSolution.getOtherValueList().getFirst();
       var secondValue = testdataSolution.getOtherValueList().get(1);
       var sum = new LongAdder();
       testdataSolution
@@ -2585,45 +2523,190 @@ class DefaultSolverTest {
               .getSolutionMetaModel()
               .genuineEntity(TestdataListEntity.class)
               .listVariable("valueList", TestdataListValue.class);
-      var entity = context.getWorkingSolution().getEntityList().get(0);
-      context.executeAndCalculateScore(
-          Moves.assign(variableMetaModel, new TestdataListValue("bad value"), entity, 0));
+      var entity = context.getWorkingSolution().getEntityList().getFirst();
+      var move = Moves.assign(variableMetaModel, new TestdataListValue("bad value"), entity, 0);
+      context.executeAndCalculateScore(move);
     }
   }
 
   public static final class InvalidMoveListFactory
-      implements MoveIteratorFactory<TestdataListSolution, InvalidMove> {
+      implements MoveIteratorFactory<TestdataListSolution, InvalidSelectorBasedMove> {
     @Override
     public long getSize(ScoreDirector<TestdataListSolution> scoreDirector) {
       return 1;
     }
 
     @Override
-    public Iterator<InvalidMove> createOriginalMoveIterator(
+    public Iterator<InvalidSelectorBasedMove> createOriginalMoveIterator(
         ScoreDirector<TestdataListSolution> scoreDirector) {
-      return List.of(new InvalidMove()).iterator();
+      return List.of(new InvalidSelectorBasedMove()).iterator();
     }
 
     @Override
-    public Iterator<InvalidMove> createRandomMoveIterator(
+    public Iterator<InvalidSelectorBasedMove> createRandomMoveIterator(
         ScoreDirector<TestdataListSolution> scoreDirector, RandomGenerator workingRandom) {
       return createOriginalMoveIterator(scoreDirector);
     }
   }
 
-  public static final class InvalidMove extends AbstractMove<TestdataListSolution> {
+  public static final class InvalidSelectorBasedMove
+      extends AbstractSelectorBasedMove<TestdataListSolution> {
 
     @Override
-    protected void doMoveOnGenuineVariables(ScoreDirector<TestdataListSolution> scoreDirector) {
-      var entity = scoreDirector.getWorkingSolution().getEntityList().get(0);
+    protected void execute(
+        MutableSolutionView<TestdataListSolution> solutionView,
+        VariableDescriptorAwareScoreDirector<TestdataListSolution> scoreDirector) {
+      var entity = scoreDirector.getWorkingSolution().getEntityList().getFirst();
       scoreDirector.beforeListVariableChanged(entity, "valueList", 0, 0);
       entity.getValueList().add(new TestdataListValue("bad value"));
       scoreDirector.afterListVariableChanged(entity, "valueList", 0, entity.getValueList().size());
     }
+  }
+
+  @Test
+  void solveIncrementalInitialized() {
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class)
+            .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
+            .withScoreDirectorFactory(
+                new ScoreDirectorFactoryConfig()
+                    .withIncrementalScoreCalculatorClass(TestdataIncrementalScoreCalculator.class));
+    var solverFactory = SolverFactory.<TestdataSolution>create(solverConfig);
+    var solver = solverFactory.buildSolver();
+
+    var solution = new TestdataSolution("s1");
+    var value1 = new TestdataValue("v1");
+    var value2 = new TestdataValue("v2");
+    solution.setValueList(List.of(value1, value2));
+    var entity1 = new TestdataEntity("e1");
+    entity1.setValue(value1);
+    var entity2 = new TestdataEntity("e2");
+    entity2.setValue(value2);
+    solution.setEntityList(List.of(entity1, entity2));
+
+    var bestSolution = solver.solve(solution);
+    assertThat(bestSolution).isNotNull();
+    assertThat(bestSolution.getScore()).isEqualTo(SimpleScore.of(2));
+  }
+
+  @Test
+  void solveCorruptedIncrementalUninitialized() {
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class)
+            .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
+            .withScoreDirectorFactory(
+                new ScoreDirectorFactoryConfig()
+                    .withIncrementalScoreCalculatorClass(
+                        CorruptedIncrementalScoreCalculator.class));
+
+    var solution = new TestdataSolution("s1");
+    solution.setValueList(Arrays.asList(new TestdataValue("v1"), new TestdataValue("v2")));
+    solution.setEntityList(Arrays.asList(new TestdataEntity("e1"), new TestdataEntity("e2")));
+
+    assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution, false))
+        .hasMessageContaining("Score corruption")
+        .hasMessageContaining("workingScore")
+        .hasMessageContaining("uncorruptedScore")
+        .hasMessageContaining("Score corruption analysis:");
+  }
+
+  @Test
+  void solveCorruptedIncrementalInitialized() {
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class)
+            .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
+            .withScoreDirectorFactory(
+                new ScoreDirectorFactoryConfig()
+                    .withIncrementalScoreCalculatorClass(
+                        CorruptedIncrementalScoreCalculator.class));
+    var solverFactory = SolverFactory.<TestdataSolution>create(solverConfig);
+    var solver = solverFactory.buildSolver();
+
+    var solution = new TestdataSolution("s1");
+    var value1 = new TestdataValue("v1");
+    var value2 = new TestdataValue("v2");
+    solution.setValueList(List.of(value1, value2));
+    var entity1 = new TestdataEntity("e1");
+    entity1.setValue(value1);
+    var entity2 = new TestdataEntity("e2");
+    entity2.setValue(value2);
+    solution.setEntityList(List.of(entity1, entity2));
+
+    assertThatThrownBy(() -> solver.solve(solution))
+        .hasMessageContaining("Score corruption")
+        .hasMessageContaining("workingScore")
+        .hasMessageContaining("uncorruptedScore")
+        .hasMessageContaining("Score corruption analysis:");
+  }
+
+  @NullMarked
+  public static class CorruptedIncrementalScoreCalculator
+      implements AnalyzableIncrementalScoreCalculator<TestdataSolution, SimpleScore> {
+
+    private @Nullable ConstraintMatchRegistry<SimpleScore> constraintMatchRegistry;
 
     @Override
-    public boolean isMoveDoable(ScoreDirector<TestdataListSolution> scoreDirector) {
-      return true;
+    public void resetWorkingSolution(TestdataSolution workingSolution) {
+      Objects.requireNonNull(constraintMatchRegistry)
+          .registerConstraintMatch(ConstraintRef.of("b"), SimpleScore.of(1));
+    }
+
+    @Override
+    public void beforeVariableChanged(Object entity, String variableName) {
+      // Ignore
+    }
+
+    @Override
+    public void afterVariableChanged(Object entity, String variableName) {
+      // Ignore
+    }
+
+    @Override
+    public SimpleScore calculateScore() {
+      var random = new Random();
+      return SimpleScore.of(random.nextInt(1000));
+    }
+
+    @Override
+    public void enableConstraintMatch(
+        ConstraintMatchRegistry<SimpleScore> constraintMatchRegistry) {
+      this.constraintMatchRegistry = constraintMatchRegistry;
+    }
+  }
+
+  @NullMarked
+  public static class TestdataIncrementalScoreCalculator
+      implements IncrementalScoreCalculator<TestdataSolution, SimpleScore> {
+
+    private int initializedEntityCount;
+
+    @Override
+    public void resetWorkingSolution(TestdataSolution workingSolution) {
+      initializedEntityCount = 0;
+      for (var entity : workingSolution.getEntityList()) {
+        if (entity.getValue() != null) {
+          initializedEntityCount++;
+        }
+      }
+    }
+
+    @Override
+    public void beforeVariableChanged(Object entity, String variableName) {
+      if (((TestdataEntity) entity).getValue() != null) {
+        initializedEntityCount--;
+      }
+    }
+
+    @Override
+    public void afterVariableChanged(Object entity, String variableName) {
+      if (((TestdataEntity) entity).getValue() != null) {
+        initializedEntityCount++;
+      }
+    }
+
+    @Override
+    public SimpleScore calculateScore() {
+      return SimpleScore.of(initializedEntityCount);
     }
   }
 }

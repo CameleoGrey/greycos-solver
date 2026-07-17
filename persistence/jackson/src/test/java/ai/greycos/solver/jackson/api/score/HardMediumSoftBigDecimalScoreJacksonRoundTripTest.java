@@ -3,13 +3,11 @@ package ai.greycos.solver.jackson.api.score;
 import java.math.BigDecimal;
 
 import ai.greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
-import ai.greycos.solver.jackson.api.score.buildin.HardMediumSoftBigDecimalScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.HardMediumSoftBigDecimalScoreJacksonSerializer;
 
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 class HardMediumSoftBigDecimalScoreJacksonRoundTripTest extends AbstractScoreJacksonRoundTripTest {
 

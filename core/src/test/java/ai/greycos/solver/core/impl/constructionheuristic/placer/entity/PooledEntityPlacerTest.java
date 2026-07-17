@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.constructionheuristic.placer.entity;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfIterator;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -16,7 +17,7 @@ import ai.greycos.solver.core.impl.constructionheuristic.placer.EntityPlacerFact
 import ai.greycos.solver.core.impl.constructionheuristic.placer.Placement;
 import ai.greycos.solver.core.impl.constructionheuristic.placer.PooledEntityPlacer;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
-import ai.greycos.solver.core.impl.heuristic.move.DummyMove;
+import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedDummyMove;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
@@ -31,11 +32,13 @@ class PooledEntityPlacerTest {
   void oneMoveSelector() {
     var moveSelector =
         SelectorTestUtils.mockMoveSelector(
-            new DummyMove("a1"), new DummyMove("a2"), new DummyMove("b1"));
+            new SelectorBasedDummyMove("a1"),
+            new SelectorBasedDummyMove("a2"),
+            new SelectorBasedDummyMove("b1"));
 
     var placer = new PooledEntityPlacer<>(null, null, moveSelector);
 
-    var solverScope = mock(SolverScope.class);
+    SolverScope<TestdataSolution> solverScope = mockSolverScope();
     placer.solvingStarted(solverScope);
 
     var phaseScopeA = mock(AbstractPhaseScope.class);
@@ -89,7 +92,9 @@ class PooledEntityPlacerTest {
   void copy() {
     var moveSelector =
         SelectorTestUtils.mockMoveSelector(
-            new DummyMove("a1"), new DummyMove("a2"), new DummyMove("b1"));
+            new SelectorBasedDummyMove("a1"),
+            new SelectorBasedDummyMove("a2"),
+            new SelectorBasedDummyMove("b1"));
     var factory = mock(EntityPlacerFactory.class);
     var configPolicy = mock(HeuristicConfigPolicy.class);
     assertThatThrownBy(() -> new PooledEntityPlacer<>(null, null, moveSelector).copy())

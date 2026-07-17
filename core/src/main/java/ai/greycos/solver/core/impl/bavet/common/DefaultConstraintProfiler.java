@@ -3,11 +3,15 @@ package ai.greycos.solver.core.impl.bavet.common;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Function;
 
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.stream.Constraint;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
@@ -21,10 +25,59 @@ public final class DefaultConstraintProfiler implements InnerConstraintProfiler 
   private final Map<ConstraintNodeProfileId, Stats> statsByProfileId = new LinkedHashMap<>();
   private final Map<ConstraintRef, Set<ConstraintNodeProfileId>> profilesByConstraintRef =
       new LinkedHashMap<>();
+  private int registeredNodeCount;
+  private int registeredConstraintCount;
 
   @Override
   public void register(ConstraintNodeProfileId profileId) {
     statsByProfileId.computeIfAbsent(profileId, ignored -> new Stats());
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public <Solution_, Stream_ extends BavetStream> void registerNodeGraph(
+      Solution_ solution,
+      List<AbstractNode> nodeList,
+      Set<Constraint> constraintSet,
+      Function<AbstractNode, Stream_> nodeToStreamFunction,
+      Function<Stream_, AbstractNode> streamToParentNodeFunction) {
+    Objects.requireNonNull(nodeList);
+    Objects.requireNonNull(constraintSet);
+    Objects.requireNonNull(nodeToStreamFunction);
+    Objects.requireNonNull(streamToParentNodeFunction);
+    for (var node : nodeList) {
+      var creatingStream =
+          Objects.requireNonNull(
+              nodeToStreamFunction.apply(node),
+              () -> "Impossible state: no stream creates profiling node (%s).".formatted(node));
+      if (node instanceof AbstractRootNode<?>) {
+        continue;
+      }
+      if (creatingStream instanceof BavetStreamBinaryOperation<?> binaryOperation) {
+        validateParentLayer(
+            node, streamToParentNodeFunction.apply((Stream_) binaryOperation.getLeftParent()));
+        validateParentLayer(
+            node, streamToParentNodeFunction.apply((Stream_) binaryOperation.getRightParent()));
+      } else {
+        var parentStream =
+            Objects.requireNonNull(
+                creatingStream.getParent(),
+                () ->
+                    "Impossible state: profiling node (%s) has no parent stream.".formatted(node));
+        validateParentLayer(node, streamToParentNodeFunction.apply((Stream_) parentStream));
+      }
+    }
+    constraintSet.forEach(Objects::requireNonNull);
+    registeredNodeCount = Math.max(registeredNodeCount, nodeList.size());
+    registeredConstraintCount = Math.max(registeredConstraintCount, constraintSet.size());
+  }
+
+  private static void validateParentLayer(AbstractNode node, AbstractNode parentNode) {
+    if (parentNode.getLayerIndex() >= node.getLayerIndex()) {
+      throw new IllegalStateException(
+          "Impossible state: profiling node (%s) in layer (%d) must follow parent node (%s) in layer (%d)."
+              .formatted(node, node.getLayerIndex(), parentNode, parentNode.getLayerIndex()));
+    }
   }
 
   @Override
@@ -50,7 +103,10 @@ public final class DefaultConstraintProfiler implements InnerConstraintProfiler 
     if (profilesByConstraintRef.isEmpty()) {
       return;
     }
-    var summary = new StringBuilder("Constraint stream profiling summary:");
+    var summary =
+        new StringBuilder(
+            "Constraint stream profiling summary (%d constraints, %d nodes):"
+                .formatted(registeredConstraintCount, registeredNodeCount));
     profilesByConstraintRef.entrySet().stream()
         .sorted(
             Comparator.comparingLong(

@@ -2,13 +2,13 @@ package ai.greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import static ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicyTestUtils.buildHeuristicConfigPolicy;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Iterator;
 import java.util.stream.IntStream;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
@@ -19,11 +19,9 @@ import ai.greycos.solver.core.config.heuristic.selector.list.DestinationSelector
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.ElementDestinationSelector;
-import ai.greycos.solver.core.impl.heuristic.selector.list.SubList;
 import ai.greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
@@ -79,17 +77,15 @@ class NearbyDestinationSelectorTest {
             originValueSelector);
 
     InnerScoreDirector<TestdataListSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    SupplyManager supplyManager = mock(SupplyManager.class);
     ListVariableStateSupply<TestdataListSolution, Object, Object> listVariableStateSupply =
         mock(ListVariableStateSupply.class);
-    when(scoreDirector.getSupplyManager()).thenReturn(supplyManager);
-    when(supplyManager.demand(any())).thenAnswer(invocation -> listVariableStateSupply);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableStateSupply);
 
-    assertThatCode(
-            () ->
-                SelectorTestUtils.solvingStarted(
-                    nearbyDestinationSelector, scoreDirector, new TestRandom(0)))
-        .doesNotThrowAnyException();
+    SolverScope<TestdataListSolution> solverScope =
+        SelectorTestUtils.solvingStarted(
+            nearbyDestinationSelector, scoreDirector, new TestRandom(0));
+    verify(originValueSelector, never()).getSize();
+    nearbyDestinationSelector.solvingEnded(solverScope);
   }
 
   @Test
@@ -133,19 +129,24 @@ class NearbyDestinationSelectorTest {
             null);
 
     InnerScoreDirector<TestdataListSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    SupplyManager supplyManager = mock(SupplyManager.class);
     ListVariableStateSupply<TestdataListSolution, Object, Object> listVariableStateSupply =
         mock(ListVariableStateSupply.class);
-    when(scoreDirector.getSupplyManager()).thenReturn(supplyManager);
-    when(supplyManager.demand(any())).thenAnswer(invocation -> listVariableStateSupply);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableStateSupply);
 
-    SelectorTestUtils.solvingStarted(nearbyDestinationSelector, scoreDirector, new TestRandom(0));
+    SolverScope<TestdataListSolution> solverScope =
+        SelectorTestUtils.solvingStarted(
+            nearbyDestinationSelector, scoreDirector, new TestRandom(0));
+    AbstractPhaseScope<TestdataListSolution> phaseScope =
+        PlannerTestUtils.delegatingPhaseScope(solverScope);
+    nearbyDestinationSelector.phaseStarted(phaseScope);
 
     assertThatCode(() -> nearbyDestinationSelector.iterator().next()).doesNotThrowAnyException();
+    nearbyDestinationSelector.phaseEnded(phaseScope);
+    nearbyDestinationSelector.solvingEnded(solverScope);
   }
 
   @Test
-  void eagerInitializationSkipsSubListOriginEnumeration() {
+  void eagerInitializationRejectsNonEnumerableSubListOrigin() {
     ListVariableDescriptor<TestdataListSolution> listVariableDescriptor =
         TestdataListEntity.buildVariableDescriptorForValueList();
     EntityDescriptor<TestdataListSolution> entityDescriptor =
@@ -161,11 +162,6 @@ class NearbyDestinationSelectorTest {
 
     @SuppressWarnings("unchecked")
     SubListSelector<TestdataListSolution> originSubListSelector = mock(SubListSelector.class);
-    @SuppressWarnings("unchecked")
-    Iterator<SubList> throwingIterator = mock(Iterator.class);
-    when(throwingIterator.hasNext())
-        .thenThrow(new IllegalStateException("Replay must occur after record."));
-    when(originSubListSelector.iterator()).thenReturn(throwingIterator);
     when(originSubListSelector.getValueCount()).thenReturn(1L);
     when(originSubListSelector.getVariableDescriptor()).thenReturn(listVariableDescriptor);
 
@@ -176,36 +172,22 @@ class NearbyDestinationSelectorTest {
     nearbySelectionConfig.setNearbyDistanceMeterClass(TestNearbyDistanceMeter.class);
     nearbySelectionConfig.setEagerInitialization(true);
 
-    NearbyDestinationSelector<TestdataListSolution> nearbyDestinationSelector =
-        new NearbyDestinationSelector<>(
-            new DestinationSelectorConfig(),
-            buildHeuristicConfigPolicy(TestdataListSolution.buildSolutionDescriptor()),
-            nearbySelectionConfig,
-            SelectionCacheType.JUST_IN_TIME,
-            SelectionOrder.ORIGINAL,
-            destinationSelector,
-            childEntitySelector,
-            childValueSelector,
-            null,
-            originSubListSelector,
-            null);
-
-    InnerScoreDirector<TestdataListSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    SupplyManager supplyManager = mock(SupplyManager.class);
-    ListVariableStateSupply<TestdataListSolution, Object, Object> listVariableStateSupply =
-        mock(ListVariableStateSupply.class);
-    when(scoreDirector.getSupplyManager()).thenReturn(supplyManager);
-    when(supplyManager.demand(any())).thenAnswer(invocation -> listVariableStateSupply);
-
-    SolverScope<TestdataListSolution> solverScope =
-        SelectorTestUtils.solvingStarted(
-            nearbyDestinationSelector, scoreDirector, new TestRandom(0));
-    AbstractPhaseScope<TestdataListSolution> phaseScope =
-        PlannerTestUtils.delegatingPhaseScope(solverScope);
-
-    assertThatCode(() -> nearbyDestinationSelector.phaseStarted(phaseScope))
-        .doesNotThrowAnyException();
-    verify(originSubListSelector, never()).iterator();
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                new NearbyDestinationSelector<>(
+                    new DestinationSelectorConfig(),
+                    buildHeuristicConfigPolicy(TestdataListSolution.buildSolutionDescriptor()),
+                    nearbySelectionConfig,
+                    SelectionCacheType.JUST_IN_TIME,
+                    SelectionOrder.ORIGINAL,
+                    destinationSelector,
+                    childEntitySelector,
+                    childValueSelector,
+                    null,
+                    originSubListSelector,
+                    null))
+        .withMessageContainingAll("Eager nearby initialization", "subList", "lazily");
   }
 
   public static final class TestNearbyDistanceMeter implements NearbyDistanceMeter<Object, Object> {

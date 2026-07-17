@@ -36,7 +36,6 @@ class SubListChangeMoveSelectorFactoryTest {
                 SelectionOrder.RANDOM,
                 false);
 
-    assertThat(selector.isCountable()).isTrue();
     assertThat(selector.isNeverEnding()).isTrue();
     assertThat(selector.isSelectReversingMoveToo()).isTrue();
   }
@@ -58,7 +57,6 @@ class SubListChangeMoveSelectorFactoryTest {
                 SelectionOrder.RANDOM,
                 false);
 
-    assertThat(selector.isCountable()).isTrue();
     assertThat(selector.isNeverEnding()).isTrue();
     assertThat(selector.isSelectReversingMoveToo()).isTrue();
   }

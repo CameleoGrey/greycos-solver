@@ -38,13 +38,13 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
                           factory.forEachIncludingUnassigned(TestdataEntity.class),
                           Joiners.equal(TestdataEntity::getValue))
                       .penalize(SimpleScore.ONE)
-                      .asConstraint(TEST_CONSTRAINT_NAME)
+                      .asConstraint(TEST_CONSTRAINT_ID)
                 });
 
     var solution = TestdataSolution.generateSolution(1, 2);
     var entity1 = solution.getEntityList().get(0);
     var entity2 = solution.getEntityList().get(1);
-    var value = solution.getValueList().get(0);
+    var value = solution.getValueList().getFirst();
     entity1.setValue(null);
     entity2.setValue(value);
 
@@ -75,10 +75,6 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
         assertMatch(entity2, entity2));
   }
 
-  /**
-   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/186">GreyCOS Solver Github
-   *     Issue 186</a>
-   */
   @TestTemplate
   void filteringJoinNullConflict() {
     InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector =
@@ -102,13 +98,13 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
                                 return true;
                               }))
                       .penalize(SimpleScore.ONE)
-                      .asConstraint(TEST_CONSTRAINT_NAME)
+                      .asConstraint(TEST_CONSTRAINT_ID)
                 });
 
     var solution = TestdataSolution.generateSolution(1, 2);
     var entity1 = solution.getEntityList().get(0);
     var entity2 = solution.getEntityList().get(1);
-    var value = solution.getValueList().get(0);
+    var value = solution.getValueList().getFirst();
     entity1.setValue(null);
     entity2.setValue(value);
 
@@ -136,10 +132,6 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
     assertScore(scoreDirector, assertMatch(entity2, entity2));
   }
 
-  /**
-   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/186">GreyCOS Solver Github
-   *     Issue 186</a>
-   */
   @TestTemplate
   void filteringIfExistsNullConflict() {
     InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector =
@@ -160,13 +152,13 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
                                 return true;
                               }))
                       .penalize(SimpleScore.ONE)
-                      .asConstraint(TEST_CONSTRAINT_NAME)
+                      .asConstraint(TEST_CONSTRAINT_ID)
                 });
 
     var solution = TestdataSolution.generateSolution(1, 2);
     var entity1 = solution.getEntityList().get(0);
     var entity2 = solution.getEntityList().get(1);
-    var value = solution.getValueList().get(0);
+    var value = solution.getValueList().getFirst();
     entity1.setValue(null);
     entity2.setValue(value);
 
@@ -194,10 +186,6 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
     assertScore(scoreDirector, assertMatch(entity2));
   }
 
-  /**
-   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/186">GreyCOS Solver Github
-   *     Issue 186</a>
-   */
   @TestTemplate
   void filteringIfNotExistsNullConflict() {
     InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector =
@@ -210,13 +198,13 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
                       .ifNotExists(
                           TestdataEntity.class, filtering((a, b) -> (a.getValue() != b.getValue())))
                       .penalize(SimpleScore.ONE)
-                      .asConstraint(TEST_CONSTRAINT_NAME)
+                      .asConstraint(TEST_CONSTRAINT_ID)
                 });
 
     var solution = TestdataSolution.generateSolution(1, 2);
     var entity1 = solution.getEntityList().get(0);
     var entity2 = solution.getEntityList().get(1);
-    var value = solution.getValueList().get(0);
+    var value = solution.getValueList().getFirst();
     entity1.setValue(null);
     entity2.setValue(value);
 
@@ -272,13 +260,13 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
                                 return true;
                               }))
                       .penalize(SimpleScore.ONE)
-                      .asConstraint(TEST_CONSTRAINT_NAME)
+                      .asConstraint(TEST_CONSTRAINT_ID)
                 });
 
     var solution = TestdataSolution.generateSolution(1, 2);
     var entity1 = solution.getEntityList().get(0);
     var entity2 = solution.getEntityList().get(1);
-    var value = solution.getValueList().get(0);
+    var value = solution.getValueList().getFirst();
     entity1.setValue(null);
     entity2.setValue(value);
 
@@ -329,13 +317,13 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
                                 return a.getValue() != b.getValue();
                               }))
                       .penalize(SimpleScore.ONE)
-                      .asConstraint(TEST_CONSTRAINT_NAME)
+                      .asConstraint(TEST_CONSTRAINT_ID)
                 });
 
     var solution = TestdataSolution.generateSolution(1, 2);
     var entity1 = solution.getEntityList().get(0);
     var entity2 = solution.getEntityList().get(1);
-    var value = solution.getValueList().get(0);
+    var value = solution.getValueList().getFirst();
     entity1.setValue(null);
     entity2.setValue(value);
 
@@ -386,13 +374,13 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
                                 return a.getValue() != b.getValue();
                               }))
                       .penalize(SimpleScore.ONE)
-                      .asConstraint(TEST_CONSTRAINT_NAME)
+                      .asConstraint(TEST_CONSTRAINT_ID)
                 });
 
     var solution = TestdataSolution.generateSolution(1, 2);
     var entity1 = solution.getEntityList().get(0);
     var entity2 = solution.getEntityList().get(1);
-    var value = solution.getValueList().get(0);
+    var value = solution.getValueList().getFirst();
     entity1.setValue(null);
     entity2.setValue(value);
 
@@ -435,13 +423,13 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
                       .map(Function.identity())
                       .filter(e -> e.getValue() != null)
                       .penalize(SimpleScore.ONE)
-                      .asConstraint(TEST_CONSTRAINT_NAME)
+                      .asConstraint(TEST_CONSTRAINT_ID)
                 });
 
     var solution = TestdataSolution.generateSolution(1, 2);
     var entity1 = solution.getEntityList().get(0);
     var entity2 = solution.getEntityList().get(1);
-    var value = solution.getValueList().get(0);
+    var value = solution.getValueList().getFirst();
     entity1.setValue(null);
     entity2.setValue(value);
 
@@ -464,10 +452,6 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
     assertScore(scoreDirector, assertMatch(entity1), assertMatch(entity2));
   }
 
-  /**
-   * @see <a href="https://github.com/CameleoGrey/greycos-solver/issues/828">GreyCOS Solver Github
-   *     Issue 828</a>
-   */
   @TestTemplate
   void concatSameTupleDeadAndAlive() {
     InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector =
@@ -480,7 +464,7 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
                       .filter(e -> e.getValue().getCode().equals("A"))
                       .concat(factory.forEach(TestdataEntity.class))
                       .penalize(SimpleScore.ONE)
-                      .asConstraint(TEST_CONSTRAINT_NAME)
+                      .asConstraint(TEST_CONSTRAINT_ID)
                 });
 
     var solution = TestdataSolution.generateSolution(2, 2);
@@ -543,7 +527,7 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
                           .penalize(
                               SimpleScore.ONE,
                               TestdataListMultipleShadowVariableValue::getCascadeValue)
-                          .asConstraint(TEST_CONSTRAINT_NAME)
+                          .asConstraint(TEST_CONSTRAINT_ID)
                     });
     var solution = TestdataListMultipleShadowVariableSolution.generateSolution(2, 1);
     // We don't want to update shadows for this test!

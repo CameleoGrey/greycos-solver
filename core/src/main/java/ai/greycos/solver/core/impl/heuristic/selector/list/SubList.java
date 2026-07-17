@@ -1,19 +1,23 @@
 package ai.greycos.solver.core.impl.heuristic.selector.list;
 
-import ai.greycos.solver.core.impl.score.director.ScoreDirector;
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 
-public record SubList(Object entity, int fromIndex, int length) {
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
+public record SubList(@Nullable Object entity, int fromIndex, int length) {
 
   public int getToIndex() {
     return fromIndex + length;
   }
 
-  public SubList rebase(ScoreDirector<?> destinationScoreDirector) {
-    return new SubList(destinationScoreDirector.lookUpWorkingObject(entity), fromIndex, length);
+  public SubList rebase(Lookup lookup) {
+    return new SubList(lookup.lookUpWorkingObject(entity), fromIndex, length);
   }
 
   @Override
   public String toString() {
-    return entity + "[" + fromIndex + ".." + getToIndex() + "]";
+    return "%s[%d..%d]".formatted(entity, fromIndex, getToIndex());
   }
 }

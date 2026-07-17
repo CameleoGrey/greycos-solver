@@ -19,7 +19,14 @@ public final class DefaultConstraintVerifier<
   private final ConstraintProvider_ constraintProvider;
   private final SolutionDescriptor<Solution_> solutionDescriptor;
 
-  /** The configured verifier is created lazily and reused between verification calls. */
+  /**
+   * Since this method can be run at any time, possibly invalidating the pre-built score director
+   * factories, the easiest way of dealing with the issue is to keep an internal immutable
+   * constraint verifier instance and clearing it every time the configuration changes. The code
+   * that was using the old configuration will continue running on the old instance, which will
+   * eventually be garbage-collected. Any new code will get a new instance with the new
+   * configuration applied.
+   */
   private final AtomicReference<
           ConfiguredConstraintVerifier<ConstraintProvider_, Solution_, Score_>>
       configuredConstraintVerifierRef = new AtomicReference<>();

@@ -1,14 +1,18 @@
 package ai.greycos.solver.core.impl.score.stream.bavet;
 
+import java.util.Objects;
 import java.util.Set;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.stream.ConstraintMetadata;
 import ai.greycos.solver.core.impl.bavet.common.BavetAbstractConstraintStream;
 import ai.greycos.solver.core.impl.score.stream.bavet.common.BavetScoringConstraintStream;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 import ai.greycos.solver.core.impl.score.stream.common.ScoreImpactType;
 
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 public final class BavetConstraint<Solution_>
     extends AbstractConstraint<
         Solution_, BavetConstraint<Solution_>, BavetConstraintFactory<Solution_>> {
@@ -17,28 +21,27 @@ public final class BavetConstraint<Solution_>
 
   public BavetConstraint(
       BavetConstraintFactory<Solution_> constraintFactory,
-      ConstraintRef constraintRef,
-      String description,
-      String constraintGroup,
+      ConstraintMetadata constraintMetadata,
       Score<?> constraintWeight,
       ScoreImpactType scoreImpactType,
       Object justificationMapping,
-      Object indictedObjectsMapping,
       BavetScoringConstraintStream<Solution_> scoringConstraintStream) {
     super(
         constraintFactory,
-        constraintRef,
-        description,
-        constraintGroup,
+        constraintMetadata,
         constraintWeight,
         scoreImpactType,
-        justificationMapping,
-        indictedObjectsMapping);
+        justificationMapping);
     this.scoringConstraintStream = scoringConstraintStream;
   }
 
   public BavetScoringConstraintStream<Solution_> getScoringConstraintStream() {
     return scoringConstraintStream;
+  }
+
+  @Override
+  public <JustificationMapping_> JustificationMapping_ getJustificationMapping() {
+    return Objects.requireNonNull(super.getJustificationMapping());
   }
 
   @Override

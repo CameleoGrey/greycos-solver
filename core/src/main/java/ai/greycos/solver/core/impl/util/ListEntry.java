@@ -1,16 +1,11 @@
 package ai.greycos.solver.core.impl.util;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
-public sealed interface ListEntry<T>
+public sealed interface ListEntry<T extends @Nullable Object>
     permits ElementAwareLinkedList.Entry, ElementAwareArrayList.Entry, CompositeListEntry {
 
-  boolean isRemoved();
-
-  T getElement();
-
-  default T element() {
-    return getElement();
-  }
+  T element();
 }

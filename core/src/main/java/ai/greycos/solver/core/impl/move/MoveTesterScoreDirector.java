@@ -4,8 +4,8 @@ import java.util.Collections;
 import java.util.Map;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.Indictment;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirector;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 
@@ -31,12 +31,7 @@ final class MoveTesterScoreDirector<Solution_, Score_ extends Score<Score_>>
   }
 
   @Override
-  public Map<String, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap() {
-    return Collections.emptyMap();
-  }
-
-  @Override
-  public Map<Object, Indictment<Score_>> getIndictmentMap() {
+  public Map<ConstraintRef, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap() {
     return Collections.emptyMap();
   }
 

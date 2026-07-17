@@ -2,6 +2,9 @@ package ai.greycos.solver.core.impl.localsearch.decider.acceptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -111,5 +114,33 @@ class AcceptorFactoryTest {
     acceptorFactory = AcceptorFactory.create(localSearchAcceptorConfig);
     acceptor = acceptorFactory.buildAcceptor(heuristicConfigPolicy);
     assertThat(acceptor).isExactlyInstanceOf(DiversifiedLateAcceptanceAcceptor.class);
+
+    doThrow(new IllegalStateException()).when(heuristicConfigPolicy).ensurePreviewFeature(any());
+    localSearchAcceptorConfig =
+        new LocalSearchAcceptorConfig()
+            .withAcceptorTypeList(List.of(AcceptorType.DIVERSIFIED_LATE_ACCEPTANCE))
+            .withLateAcceptanceSize(10);
+    AcceptorFactory<Solution_> badAcceptorFactory =
+        AcceptorFactory.create(localSearchAcceptorConfig);
+    assertThatIllegalStateException()
+        .isThrownBy(() -> badAcceptorFactory.buildAcceptor(heuristicConfigPolicy));
+  }
+
+  @Test
+  <Solution_> void valueTabuWithoutSizes_throwsException() {
+    var config =
+        new LocalSearchAcceptorConfig().withAcceptorTypeList(List.of(AcceptorType.VALUE_TABU));
+    var factory = AcceptorFactory.create(config);
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> factory.buildAcceptor(mock(HeuristicConfigPolicy.class)));
+  }
+
+  @Test
+  <Solution_> void moveTabuWithoutSizes_throwsException() {
+    var config =
+        new LocalSearchAcceptorConfig().withAcceptorTypeList(List.of(AcceptorType.MOVE_TABU));
+    var factory = AcceptorFactory.create(config);
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> factory.buildAcceptor(mock(HeuristicConfigPolicy.class)));
   }
 }

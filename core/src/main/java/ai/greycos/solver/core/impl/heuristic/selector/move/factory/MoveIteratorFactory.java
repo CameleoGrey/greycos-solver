@@ -6,8 +6,8 @@ import java.util.random.RandomGenerator;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 /**
  * An interface to generate an {@link Iterator} of custom {@link Move}s.

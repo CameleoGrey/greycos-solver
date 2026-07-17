@@ -13,15 +13,9 @@ public abstract class AbstractConstraintCollectorsTest {
 
   public abstract void count();
 
-  public abstract void countLong();
-
   public abstract void countDistinct();
 
-  public abstract void countDistinctLong();
-
   public abstract void sum();
-
-  public abstract void sumLong();
 
   public abstract void sumBigDecimal();
 
@@ -40,8 +34,6 @@ public abstract class AbstractConstraintCollectorsTest {
   public abstract void maxNotComparable();
 
   public abstract void average();
-
-  public abstract void averageLong();
 
   public abstract void averageBigDecimal();
 

@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.list;
 
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
@@ -23,6 +24,7 @@ final class ElementPositionRandomIterator<Solution_> implements Iterator<Element
   private final RandomGenerator workingRandom;
   private final long totalSize;
   private final boolean allowsUnassignedValues;
+  private final boolean maybeMovableValues;
   private Iterator<Object> valueIterator;
   private Object selectedValue;
   private boolean hasNextValue = false;
@@ -34,7 +36,8 @@ final class ElementPositionRandomIterator<Solution_> implements Iterator<Element
       IterableValueSelector<Solution_> valueSelector,
       RandomGenerator workingRandom,
       long totalSize,
-      boolean allowsUnassignedValues) {
+      boolean allowsUnassignedValues,
+      boolean maybeMovableValues) {
     this.listVariableStateSupply = listVariableStateSupply;
     this.listVariableDescriptor = listVariableStateSupply.getSourceVariableDescriptor();
     this.entitySelector = entitySelector;
@@ -47,11 +50,18 @@ final class ElementPositionRandomIterator<Solution_> implements Iterator<Element
       throw new IllegalStateException("Impossible state: totalSize (%d) < 1".formatted(totalSize));
     }
     this.allowsUnassignedValues = allowsUnassignedValues;
+    this.maybeMovableValues = maybeMovableValues;
     this.valueIterator = null;
   }
 
   private void tryUpdateEntityIterator() {
-    if (entityIterator instanceof UpcomingSelectionIterator<?> upcomingSelectionIterator) {
+    // We only update the entity iterator if the iterator is an instance of
+    // UpcomingSelectionIterator,
+    // indicating that the entity from the previous move has already been recorded
+    // and needs to be discarded.
+    if (entityIterator instanceof UpcomingSelectionIterator upcomingSelectionIterator) {
+      // We discard the selection without invoking the next() operation in order to avoid skipping
+      // valid moves
       upcomingSelectionIterator.discardUpcomingSelection();
     }
   }
@@ -67,21 +77,35 @@ final class ElementPositionRandomIterator<Solution_> implements Iterator<Element
       var oldValue = selectedValue;
       selectedValue = replayingValueIterator.next();
       if (oldValue != null && oldValue != selectedValue) {
+        // It means the outer selector picked a new value
+        // and the entity iterator must discard the previous entity
         tryUpdateEntityIterator();
       }
-      return entityIterator.hasNext();
+      // There will be a valid destination if the entity iterator has a next element
+      // or if there is at least one non-pinned assigned value,
+      // which would result in an unassigning move.
+      return entityIterator.hasNext() || maybeMovableValues;
     }
-    return selectedValue != null && entityIterator.hasNext();
+    // There will be a valid destination if the entity iterator has a next element
+    // or if there is at least one non-pinned assigned value,
+    // which would result in an unassigning move.
+    return selectedValue != null && (entityIterator.hasNext() || maybeMovableValues);
   }
 
   @Override
   public boolean hasNext() {
+    // The valueSelector's hasNext() is insignificant.
+    // The next random destination exists if and only if there is a next entity
+    // and the replayed value is selected
     this.hasNextValue = hasNextValue();
     return hasNextValue;
   }
 
   @Override
   public ElementPosition next() {
+    if (!hasNextValue) {
+      throw new NoSuchElementException();
+    }
     this.hasNextValue = false;
     // This code operates under the assumption that the entity selector already filtered out all
     // immovable entities.
@@ -92,7 +116,7 @@ final class ElementPositionRandomIterator<Solution_> implements Iterator<Element
     var entityBoundary = allowsUnassignedValues ? entitySize + 1 : entitySize;
     var random =
         RandomUtils.nextLong(workingRandom, allowsUnassignedValues ? totalSize + 1 : totalSize);
-    if (allowsUnassignedValues && random == 0) {
+    if (allowsUnassignedValues && (random == 0 || !entityIterator.hasNext())) {
       // We have already excluded all unassigned elements,
       // the only way to get an unassigned destination is to explicitly add it.
       return ElementPosition.unassigned();

@@ -5,11 +5,13 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import ai.greycos.solver.core.api.function.PentaFunction;
 import ai.greycos.solver.core.api.score.stream.quad.QuadConstraintCollector;
+import ai.greycos.solver.core.api.score.stream.quad.QuadConstraintCollectorAccumulator;
+import ai.greycos.solver.core.api.score.stream.quad.QuadConstraintCollectorValueHandle;
 import ai.greycos.solver.core.impl.util.Pair;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class ComposeTwoQuadCollector<
         A, B, C, D, ResultHolder1_, ResultHolder2_, Result1_, Result2_, Result_>
@@ -21,8 +23,8 @@ final class ComposeTwoQuadCollector<
   private final Supplier<ResultHolder1_> firstSupplier;
   private final Supplier<ResultHolder2_> secondSupplier;
 
-  private final PentaFunction<ResultHolder1_, A, B, C, D, Runnable> firstAccumulator;
-  private final PentaFunction<ResultHolder2_, A, B, C, D, Runnable> secondAccumulator;
+  private final QuadConstraintCollectorAccumulator<ResultHolder1_, A, B, C, D> firstIncremental;
+  private final QuadConstraintCollectorAccumulator<ResultHolder2_, A, B, C, D> secondIncremental;
 
   private final Function<ResultHolder1_, Result1_> firstFinisher;
   private final Function<ResultHolder2_, Result2_> secondFinisher;
@@ -38,8 +40,8 @@ final class ComposeTwoQuadCollector<
     this.firstSupplier = first.supplier();
     this.secondSupplier = second.supplier();
 
-    this.firstAccumulator = first.accumulator();
-    this.secondAccumulator = second.accumulator();
+    this.firstIncremental = first.accumulator();
+    this.secondIncremental = second.accumulator();
 
     this.firstFinisher = first.finisher();
     this.secondFinisher = second.finisher();
@@ -51,23 +53,14 @@ final class ComposeTwoQuadCollector<
   }
 
   @Override
-  public @NonNull PentaFunction<Pair<ResultHolder1_, ResultHolder2_>, A, B, C, D, Runnable>
+  public @NonNull
+      QuadConstraintCollectorAccumulator<Pair<ResultHolder1_, ResultHolder2_>, A, B, C, D>
       accumulator() {
-    return (resultHolder, a, b, c, d) ->
-        composeUndo(
-            firstAccumulator.apply(resultHolder.key(), a, b, c, d),
-            secondAccumulator.apply(resultHolder.value(), a, b, c, d));
-  }
-
-  private static Runnable composeUndo(Runnable first, Runnable second) {
-    return () -> {
-      first.run();
-      second.run();
-    };
+    return ValueHandle::new;
   }
 
   @Override
-  public @NonNull Function<Pair<ResultHolder1_, ResultHolder2_>, Result_> finisher() {
+  public @NonNull Function<Pair<ResultHolder1_, ResultHolder2_>, @Nullable Result_> finisher() {
     return resultHolder ->
         composeFunction.apply(
             firstFinisher.apply(resultHolder.key()), secondFinisher.apply(resultHolder.value()));
@@ -86,5 +79,33 @@ final class ComposeTwoQuadCollector<
   @Override
   public int hashCode() {
     return Objects.hash(first, second, composeFunction);
+  }
+
+  private final class ValueHandle implements QuadConstraintCollectorValueHandle<A, B, C, D> {
+    private final QuadConstraintCollectorValueHandle<A, B, C, D> v1;
+    private final QuadConstraintCollectorValueHandle<A, B, C, D> v2;
+
+    ValueHandle(Pair<ResultHolder1_, ResultHolder2_> container) {
+      this.v1 = firstIncremental.intoGroup(container.key());
+      this.v2 = secondIncremental.intoGroup(container.value());
+    }
+
+    @Override
+    public void add(A a, B b, C c, D d) {
+      v1.add(a, b, c, d);
+      v2.add(a, b, c, d);
+    }
+
+    @Override
+    public void replaceWith(A a, B b, C c, D d) {
+      v1.replaceWith(a, b, c, d);
+      v2.replaceWith(a, b, c, d);
+    }
+
+    @Override
+    public void remove() {
+      v1.remove();
+      v2.remove();
+    }
   }
 }

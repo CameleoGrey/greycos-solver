@@ -1,13 +1,10 @@
 package ai.greycos.solver.core.api.score.stream.tri;
 
 import java.util.Collection;
+import java.util.List;
 
 import ai.greycos.solver.core.api.function.QuadFunction;
-import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.ScoreExplanation;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
-import ai.greycos.solver.core.api.score.constraint.Indictment;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintBuilder;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
@@ -20,32 +17,20 @@ import org.jspecify.annotations.NullMarked;
  * #asConstraint(String)}.
  *
  * <p>Unless {@link #justifyWith(QuadFunction)} is called, the default justification mapping will be
- * used. The function takes the input arguments and converts them into a {@link java.util.List}.
- *
- * <p>Unless {@link #indictWith(TriFunction)} is called, the default indicted objects' mapping will
- * be used. The function takes the input arguments and converts them into a {@link java.util.List}.
+ * used. The function takes the input arguments and converts them into a {@link List}.
  */
 @NullMarked
 public interface TriConstraintBuilder<A, B, C, Score_ extends Score<Score_>>
     extends ConstraintBuilder {
 
   /**
-   * Sets a custom function to apply on a constraint match to justify it.
+   * Sets a custom function to apply on a constraint match to justify it. That function must not
+   * return a {@link Collection}, else {@link IllegalStateException} will be thrown during score
+   * calculation.
    *
-   * @see ConstraintMatch
    * @return this
    */
   <ConstraintJustification_ extends ConstraintJustification>
       TriConstraintBuilder<A, B, C, Score_> justifyWith(
           QuadFunction<A, B, C, Score_, ConstraintJustification_> justificationMapping);
-
-  /**
-   * Sets a custom function to mark any object returned by it as responsible for causing the
-   * constraint to match. Each object in the collection returned by this function will become an
-   * {@link Indictment} and be available as a key in {@link ScoreExplanation#getIndictmentMap()}.
-   *
-   * @return this
-   */
-  TriConstraintBuilder<A, B, C, Score_> indictWith(
-      TriFunction<A, B, C, Collection<Object>> indictedObjectsMapping);
 }

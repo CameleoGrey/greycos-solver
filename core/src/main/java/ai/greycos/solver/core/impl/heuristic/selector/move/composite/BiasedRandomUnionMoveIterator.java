@@ -9,10 +9,10 @@ import java.util.TreeMap;
 import java.util.function.ToDoubleFunction;
 import java.util.random.RandomGenerator;
 
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.solver.random.RandomUtils;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 final class BiasedRandomUnionMoveIterator<Solution_> extends SelectionIterator<Move<Solution_>> {
 
@@ -42,17 +42,13 @@ final class BiasedRandomUnionMoveIterator<Solution_> extends SelectionIterator<M
 
   @Override
   public boolean hasNext() {
-    if (stale) {
-      refreshMoveIteratorMap();
-    }
+    refreshMoveIteratorMap();
     return !moveIteratorMap.isEmpty();
   }
 
   @Override
   public Move<Solution_> next() {
-    if (stale) {
-      refreshMoveIteratorMap();
-    }
+    refreshMoveIteratorMap();
     double randomOffset = RandomUtils.nextDouble(workingRandom, probabilityWeightTotal);
     Map.Entry<Double, Iterator<Move<Solution_>>> entry = moveIteratorMap.floorEntry(randomOffset);
     // The entry is never null because randomOffset < probabilityWeightTotal
@@ -65,6 +61,9 @@ final class BiasedRandomUnionMoveIterator<Solution_> extends SelectionIterator<M
   }
 
   private void refreshMoveIteratorMap() {
+    if (!stale) {
+      return;
+    }
     moveIteratorMap.clear();
     double probabilityWeightOffset = 0.0;
     for (ProbabilityItem<Solution_> probabilityItem : probabilityItemMap.values()) {
@@ -74,6 +73,7 @@ final class BiasedRandomUnionMoveIterator<Solution_> extends SelectionIterator<M
       }
     }
     probabilityWeightTotal = probabilityWeightOffset;
+    stale = false;
   }
 
   private static final class ProbabilityItem<Solution_> {

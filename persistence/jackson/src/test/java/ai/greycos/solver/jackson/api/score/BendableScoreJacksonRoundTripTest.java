@@ -1,33 +1,31 @@
 package ai.greycos.solver.jackson.api.score;
 
 import ai.greycos.solver.core.api.score.BendableScore;
-import ai.greycos.solver.jackson.api.score.buildin.BendableScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.BendableScoreJacksonSerializer;
 
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 class BendableScoreJacksonRoundTripTest extends AbstractScoreJacksonRoundTripTest {
 
   @Test
   void serializeAndDeserialize() {
-    assertSerializeAndDeserialize(null, new TestBendableScoreWrapper(null));
-    var score = BendableScore.of(new long[] {1000, 200}, new long[] {34});
-    assertSerializeAndDeserialize(score, new TestBendableScoreWrapper(score));
+    assertSerializeAndDeserialize(null, new TestBendableLongScoreWrapper(null));
+    var score = BendableScore.of(new long[] {1000L, 200L}, new long[] {34L});
+    assertSerializeAndDeserialize(score, new TestBendableLongScoreWrapper(score));
   }
 
-  public static class TestBendableScoreWrapper extends TestScoreWrapper<BendableScore> {
+  public static class TestBendableLongScoreWrapper extends TestScoreWrapper<BendableScore> {
 
     @JsonSerialize(using = BendableScoreJacksonSerializer.class)
     @JsonDeserialize(using = BendableScoreJacksonDeserializer.class)
     private BendableScore score;
 
     @SuppressWarnings("unused")
-    private TestBendableScoreWrapper() {}
+    private TestBendableLongScoreWrapper() {}
 
-    public TestBendableScoreWrapper(BendableScore score) {
+    public TestBendableLongScoreWrapper(BendableScore score) {
       this.score = score;
     }
 

@@ -72,7 +72,7 @@ public abstract class AbstractTriConstraintStreamPrecomputeTest extends Abstract
                     .precompute(pf -> precomputeStream.apply(pf, entityGroup, valueGroup))
                     .filter((a, b, c) -> entityPicker.apply(a, b, c).getValue() == value1)
                     .penalize(SimpleScore.ONE)
-                    .asConstraint(TEST_CONSTRAINT_NAME));
+                    .asConstraint(TEST_CONSTRAINT_ID));
 
     // From scratch
     var createMatch =
@@ -203,7 +203,7 @@ public abstract class AbstractTriConstraintStreamPrecomputeTest extends Abstract
                     .precompute(entityStreamSupplier)
                     .ifExists(TestdataLavishEntity.class)
                     .penalize(SimpleScore.ONE)
-                    .asConstraint(TEST_CONSTRAINT_NAME));
+                    .asConstraint(TEST_CONSTRAINT_ID));
 
     // From scratch
     scoreDirector.setWorkingSolution(solution);
@@ -290,7 +290,7 @@ public abstract class AbstractTriConstraintStreamPrecomputeTest extends Abstract
 
     assertPrecompute(
         solution,
-        List.of(new Triple<>(entityGroup, 1, 1)),
+        List.of(new Triple<>(entityGroup, 1L, 1L)),
         pf ->
             pf.forEachUnfiltered(TestdataLavishEntity.class)
                 .filter(entity -> entity.getEntityGroup() != null)

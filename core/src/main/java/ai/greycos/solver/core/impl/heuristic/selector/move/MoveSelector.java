@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move;
 
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.IterableSelector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 /**
  * Generates {@link Move}s.

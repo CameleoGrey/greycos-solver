@@ -12,10 +12,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.bi.BiConstraintStream;
 import ai.greycos.solver.core.api.score.stream.bi.BiJoiner;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintStream;
@@ -58,14 +58,6 @@ public abstract class InnerConstraintFactory<Solution_, Constraint_ extends Cons
     return (DefaultBiJoiner<A, A>) lessThan(planningIdGetter);
   }
 
-  @Override
-  public @NonNull <A> BiConstraintStream<A, A> fromUniquePair(
-      @NonNull Class<A> fromClass, @NonNull BiJoiner<A, A>... joiners) {
-    BiJoinerComber<A, A> joinerComber = BiJoinerComber.comb(joiners);
-    joinerComber.addJoiner(buildLessThanId(fromClass));
-    return ((InnerUniConstraintStream<A>) from(fromClass)).join(from(fromClass), joinerComber);
-  }
-
   public <A> void assertValidFromType(Class<A> fromType) {
     SolutionDescriptor<Solution_> solutionDescriptor = getSolutionDescriptor();
     Set<Class<?>> problemFactOrEntityClassSet = solutionDescriptor.getProblemFactOrEntityClassSet();
@@ -85,11 +77,12 @@ public abstract class InnerConstraintFactory<Solution_, Constraint_ extends Cons
           problemFactOrEntityClassSet.stream().map(Class::getCanonicalName).sorted().toList();
       throw new IllegalArgumentException(
           """
-                    Cannot use class (%s) in a constraint stream as it is neither the same as, \
-                    nor a superclass or superinterface of one of planning entities or problem facts.
-                    Ensure that all from(), join(), ifExists() and ifNotExists() building blocks \
-                    only reference classes assignable from planning entities \
-                    or problem facts (%s) annotated on the planning solution (%s)."""
+          Cannot use class (%s) in a constraint stream as it is neither the same as, \
+          nor a superclass or superinterface of one of planning entities or problem facts.
+          Ensure that all from(), join(), ifExists() and ifNotExists() building blocks \
+          only reference classes assignable from planning entities \
+          or problem facts (%s) annotated on the planning solution (%s).\
+          """
               .formatted(
                   fromType.getCanonicalName(),
                   canonicalClassNameList,
@@ -104,14 +97,16 @@ public abstract class InnerConstraintFactory<Solution_, Constraint_ extends Cons
             constraintProvider.defineConstraints(this),
             () ->
                 """
-                        The constraintProvider class (%s)'s defineConstraints() must not return null."
-                        Maybe return an empty array instead if there are no constraints."""
+                The constraintProvider class (%s)'s defineConstraints() must not return null."
+                Maybe return an empty array instead if there are no constraints.\
+                """
                     .formatted(constraintProvider.getClass()));
     if (Arrays.stream(constraints).anyMatch(Objects::isNull)) {
       throw new IllegalStateException(
           """
-                    The constraintProvider class (%s)'s defineConstraints() must not contain an element that is null.
-                    Maybe don't include any null elements in the %s array."""
+          The constraintProvider class (%s)'s defineConstraints() must not contain an element that is null.
+          Maybe don't include any null elements in the %s array.\
+          """
               .formatted(constraintProvider.getClass(), Constraint.class.getSimpleName()));
     }
     // Fail fast on duplicate constraint IDs.

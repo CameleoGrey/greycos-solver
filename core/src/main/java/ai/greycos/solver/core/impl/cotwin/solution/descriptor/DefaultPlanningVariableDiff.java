@@ -2,10 +2,10 @@ package ai.greycos.solver.core.impl.cotwin.solution.descriptor;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningEntityDiff;
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningVariableDiff;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.GenuineVariableMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningEntityDiff;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningVariableDiff;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

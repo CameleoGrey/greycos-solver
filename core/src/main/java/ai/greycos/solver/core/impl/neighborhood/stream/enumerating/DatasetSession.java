@@ -5,8 +5,8 @@ import java.util.Map;
 import java.util.Objects;
 
 import ai.greycos.solver.core.impl.bavet.AbstractSession;
-import ai.greycos.solver.core.impl.bavet.NodeNetwork;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+import ai.greycos.solver.core.impl.neighborhood.NeighborhoodsBavetNodeNetwork;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractDataset;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractDatasetInstance;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractLeftDataset;
@@ -17,14 +17,15 @@ import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.Abstra
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-public final class DatasetSession<Solution_> extends AbstractSession {
+public final class DatasetSession<Solution_>
+    extends AbstractSession<NeighborhoodsBavetNodeNetwork> {
 
   private final Map<AbstractDataset<Solution_>, AbstractDatasetInstance<Solution_, ?>>
       leftDatasetInstanceMap = new IdentityHashMap<>();
   private final Map<AbstractDataset<Solution_>, AbstractDatasetInstance<Solution_, ?>>
       rightDatasetInstanceMap = new IdentityHashMap<>();
 
-  DatasetSession(NodeNetwork nodeNetwork) {
+  DatasetSession(NeighborhoodsBavetNodeNetwork nodeNetwork) {
     super(nodeNetwork);
   }
 

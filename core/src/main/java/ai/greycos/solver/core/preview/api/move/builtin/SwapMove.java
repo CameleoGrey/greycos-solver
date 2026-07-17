@@ -1,10 +1,10 @@
 package ai.greycos.solver.core.preview.api.move.builtin;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
@@ -119,12 +119,12 @@ public class SwapMove<Solution_, Entity_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<Entity_> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     return List.of(leftEntity, rightEntity);
   }
 
   @Override
-  public Collection<Object> getPlanningValues() {
+  public SequencedCollection<@Nullable Object> getPlanningValues() {
     return new LinkedHashSet<>(getCachedValues()); // Not using Set.of(), as values may be null.
   }
 

@@ -5,7 +5,6 @@ import java.util.Objects;
 
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.CountSupplier;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateConstructionHeuristicPhaseBuilder;
@@ -13,8 +12,8 @@ import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelecto
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-
-import org.apache.commons.math3.util.CombinatoricsUtils;
+import ai.greycos.solver.core.impl.util.MathUtils;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
 
@@ -61,16 +60,9 @@ final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<
         selectedCount <= maximumSelectedCount;
         selectedCount++) {
       // Order is significant, and each entity can only be picked once
-      totalSize +=
-          CombinatoricsUtils.factorial((int) valueCount)
-              / CombinatoricsUtils.factorial(selectedCount);
+      totalSize += MathUtils.factorial((int) valueCount) / MathUtils.factorial(selectedCount);
     }
     return totalSize;
-  }
-
-  @Override
-  public boolean isCountable() {
-    return valueSelector.isCountable();
   }
 
   @Override
@@ -87,7 +79,6 @@ final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<
             .getScoreDirector()
             .getSupplyManager()
             .demand(listVariableDescriptor.getStateDemand());
-    this.workingRandom = solverScope.getWorkingRandom();
   }
 
   @Override
@@ -100,7 +91,6 @@ final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
     super.phaseEnded(phaseScope);
     this.solverScope = null;
-    this.workingRandom = null;
   }
 
   @Override

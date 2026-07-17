@@ -5,6 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ai.greycos.solver.core.api.score.SimpleScore;
@@ -13,10 +18,13 @@ import ai.greycos.solver.core.api.solver.phase.PhaseCommand;
 import ai.greycos.solver.core.api.solver.phase.PhaseCommandContext;
 import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.phase.custom.CustomPhaseConfig;
+import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.solver.DefaultSolver;
+import ai.greycos.solver.core.preview.api.move.builtin.Moves;
+import ai.greycos.solver.core.testcotwin.TestdataEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
@@ -218,6 +226,69 @@ class DefaultIslandModelPhaseTest {
   }
 
   @Test
+  void innerBestSolutionImprovementUsesAgentPhaseId() {
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
+    solverConfig.setScoreDirectorFactoryConfig(
+        new ScoreDirectorFactoryConfig()
+            .withEasyScoreCalculatorClass(TestdataEasyScoreCalculator.class));
+    var customPhaseConfig =
+        new CustomPhaseConfig()
+            .withCustomPhaseCommandClassList(List.of(ImprovingPhaseCommand.class));
+    var phaseConfig =
+        new IslandModelPhaseConfig()
+            .withIslandCount(1)
+            .withPhaseConfigList(List.of(customPhaseConfig));
+    solverConfig.setPhaseConfigList(Collections.singletonList(phaseConfig));
+
+    var v1 = new TestdataValue("v1");
+    var v2 = new TestdataValue("v2");
+    var v3 = new TestdataValue("v3");
+    var solution = new TestdataSolution("s1");
+    solution.setValueList(List.of(v1, v2, v3));
+    solution.setEntityList(
+        List.of(
+            new TestdataEntity("e1", v1),
+            new TestdataEntity("e2", v1),
+            new TestdataEntity("e3", v2)));
+
+    var solvedSolution = PlannerTestUtils.solve(solverConfig, solution, true);
+
+    assertThat(solvedSolution.getScore()).isEqualTo(SimpleScore.ZERO);
+  }
+
+  @Test
+  void agentFailureInterruptsBlockedPeer() throws InterruptedException {
+    var solverConfig =
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
+    var customPhaseConfig =
+        new CustomPhaseConfig()
+            .withCustomPhaseCommandClassList(List.of(BlockingThenFailingPhaseCommand.class));
+    var phaseConfig =
+        new IslandModelPhaseConfig()
+            .withIslandCount(2)
+            .withPhaseConfigList(List.of(customPhaseConfig));
+    solverConfig.setPhaseConfigList(Collections.singletonList(phaseConfig));
+
+    var solverExecutor = Executors.newSingleThreadExecutor();
+    var solveFuture =
+        solverExecutor.submit(
+            () -> PlannerTestUtils.solve(solverConfig, createSolution("s1", 3), true));
+    try {
+      assertThatThrownBy(() -> solveFuture.get(10, TimeUnit.SECONDS))
+          .isInstanceOf(ExecutionException.class)
+          .hasCauseInstanceOf(IllegalStateException.class);
+      assertThat(
+              BlockingThenFailingPhaseCommand.BLOCKED_AGENT_INTERRUPTED.await(5, TimeUnit.SECONDS))
+          .isTrue();
+    } finally {
+      BlockingThenFailingPhaseCommand.RELEASE_BLOCKED_AGENT.countDown();
+      solveFuture.cancel(true);
+      solverExecutor.shutdownNow();
+    }
+  }
+
+  @Test
   void invalidReceiveGlobalUpdateFrequencyFailsFast() {
     var solverConfig =
         PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
@@ -262,6 +333,56 @@ class DefaultIslandModelPhaseTest {
     @Override
     public void changeWorkingSolution(PhaseCommandContext<TestdataSolution> context) {
       throw new IllegalStateException("Intentional test failure");
+    }
+  }
+
+  public static final class ImprovingPhaseCommand implements PhaseCommand<TestdataSolution> {
+
+    @Override
+    public void changeWorkingSolution(PhaseCommandContext<TestdataSolution> context) {
+      var solution = context.getWorkingSolution();
+      var variableMetaModel =
+          context
+              .getSolutionMetaModel()
+              .genuineEntity(TestdataEntity.class)
+              .basicVariable("value", TestdataValue.class);
+      context.executeAndCalculateScore(
+          Moves.change(
+              variableMetaModel, solution.getEntityList().get(1), solution.getValueList().get(2)));
+    }
+  }
+
+  public static final class BlockingThenFailingPhaseCommand
+      implements PhaseCommand<TestdataSolution> {
+
+    private static final AtomicBoolean BLOCK_FIRST_AGENT = new AtomicBoolean(true);
+    private static final CountDownLatch BLOCKED_AGENT_STARTED = new CountDownLatch(1);
+    private static final CountDownLatch BLOCKED_AGENT_INTERRUPTED = new CountDownLatch(1);
+    private static final CountDownLatch RELEASE_BLOCKED_AGENT = new CountDownLatch(1);
+
+    @Override
+    public void changeWorkingSolution(PhaseCommandContext<TestdataSolution> context) {
+      if (BLOCK_FIRST_AGENT.compareAndSet(true, false)) {
+        BLOCKED_AGENT_STARTED.countDown();
+        try {
+          RELEASE_BLOCKED_AGENT.await();
+        } catch (InterruptedException e) {
+          BLOCKED_AGENT_INTERRUPTED.countDown();
+          Thread.currentThread().interrupt();
+          throw new IllegalStateException("Blocked island agent was interrupted.", e);
+        }
+        return;
+      }
+
+      try {
+        if (!BLOCKED_AGENT_STARTED.await(5, TimeUnit.SECONDS)) {
+          throw new IllegalStateException("Blocked island agent did not start.");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("Failing island agent was interrupted.", e);
+      }
+      throw new IllegalStateException("Intentional island agent failure.");
     }
   }
 }

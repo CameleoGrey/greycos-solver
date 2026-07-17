@@ -52,7 +52,13 @@ public final class RuinRecreateConstructionHeuristicPhase<Solution_>
 
   @Override
   protected void doStep(ConstructionHeuristicStepScope<Solution_> stepScope) {
-    if (!elementsToRuinSet.isEmpty()) {
+    var checkMissingElements =
+        !elementsToRuinSet.isEmpty()
+            // The generated step may include a no-change move
+            // when it's better to keep a planning value unassigned
+            // or when there are no unpinned entities
+            && !stepScope.getStep().getPlanningEntities().isEmpty();
+    if (checkMissingElements) {
       var listVariableDescriptor =
           stepScope
               .getPhaseScope()

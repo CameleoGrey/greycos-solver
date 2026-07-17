@@ -42,7 +42,7 @@ import ai.greycos.solver.core.config.solver.monitoring.MonitoringConfig;
 import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.SelectorBasedChangeMove;
 import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
@@ -448,11 +448,11 @@ class SolverMetricsIT extends AbstractMeterTest {
 
   public static class NoneValueSelectionFilter
       implements SelectionFilter<
-          TestdataHardSoftScoreSolution, ChangeMove<TestdataHardSoftScoreSolution>> {
+          TestdataHardSoftScoreSolution, SelectorBasedChangeMove<TestdataHardSoftScoreSolution>> {
     @Override
     public boolean accept(
         ScoreDirector<TestdataHardSoftScoreSolution> scoreDirector,
-        ChangeMove<TestdataHardSoftScoreSolution> selection) {
+        SelectorBasedChangeMove<TestdataHardSoftScoreSolution> selection) {
       return ((TestdataValue) (selection.getToPlanningValue())).getCode().equals("none");
     }
   }
@@ -556,20 +556,15 @@ class SolverMetricsIT extends AbstractMeterTest {
         .isEqualTo(2);
   }
 
-  private static class SetTestdataEntityValueCustomPhaseCommand
+  private record SetTestdataEntityValueCustomPhaseCommand(
+      TestdataEntity entity, TestdataValue value)
       implements PhaseCommand<TestdataHardSoftScoreSolution> {
-    final TestdataEntity entity;
-    final TestdataValue value;
-
-    public SetTestdataEntityValueCustomPhaseCommand(TestdataEntity entity, TestdataValue value) {
-      this.entity = entity;
-      this.value = value;
-    }
 
     @Override
     public void changeWorkingSolution(PhaseCommandContext<TestdataHardSoftScoreSolution> context) {
       var workingEntity = context.lookUpWorkingObject(entity);
       var workingValue = context.lookUpWorkingObject(value);
+
       var move =
           Moves.change(
               context
@@ -632,7 +627,7 @@ class SolverMetricsIT extends AbstractMeterTest {
 
     ((DefaultSolver<TestdataHardSoftScoreSolution>) solver)
         .addPhaseLifecycleListener(
-            new PhaseLifecycleListenerAdapter<TestdataHardSoftScoreSolution>() {
+            new PhaseLifecycleListenerAdapter<>() {
               @Override
               public void stepEnded(AbstractStepScope<TestdataHardSoftScoreSolution> stepScope) {
                 super.stepEnded(stepScope);
@@ -714,14 +709,14 @@ class SolverMetricsIT extends AbstractMeterTest {
     Metrics.addRegistry(meterRegistry);
 
     var solverConfig =
-        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
-    solverConfig.setScoreDirectorFactoryConfig(
-        new ScoreDirectorFactoryConfig()
-            .withConstraintProviderClass(ConstraintMatchMetricTestConstraintProvider.class));
-    solverConfig.setMonitoringConfig(
-        new MonitoringConfig()
-            .withSolverMetricList(List.of(SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE))
-            .withConstraintMatchMetricSampleInterval(1));
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class)
+            .withScoreDirectorFactory(
+                new ScoreDirectorFactoryConfig()
+                    .withConstraintProviderClass(ConstraintMatchMetricTestConstraintProvider.class))
+            .withMonitoringConfig(
+                new MonitoringConfig()
+                    .withSolverMetricList(List.of(SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE))
+                    .withConstraintMatchMetricSampleInterval(1));
     ((LocalSearchPhaseConfig) solverConfig.getPhaseConfigList().get(1))
         .setTerminationConfig(new TerminationConfig().withStepCountLimit(4));
 
@@ -747,7 +742,6 @@ class SolverMetricsIT extends AbstractMeterTest {
             });
 
     solver.solve(solution);
-
     meterRegistry.publish();
     assertThat(metricSeenDuringStep).isTrue();
     assertThat(findConstraintStepScoreGauge(meterRegistry)).isNotNull();
@@ -759,14 +753,14 @@ class SolverMetricsIT extends AbstractMeterTest {
     Metrics.addRegistry(meterRegistry);
 
     var solverConfig =
-        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
-    solverConfig.setScoreDirectorFactoryConfig(
-        new ScoreDirectorFactoryConfig()
-            .withConstraintProviderClass(ConstraintMatchMetricTestConstraintProvider.class));
-    solverConfig.setMonitoringConfig(
-        new MonitoringConfig()
-            .withSolverMetricList(List.of(SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE))
-            .withConstraintMatchMetricSampleInterval(100));
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class)
+            .withScoreDirectorFactory(
+                new ScoreDirectorFactoryConfig()
+                    .withConstraintProviderClass(ConstraintMatchMetricTestConstraintProvider.class))
+            .withMonitoringConfig(
+                new MonitoringConfig()
+                    .withSolverMetricList(List.of(SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE))
+                    .withConstraintMatchMetricSampleInterval(100));
     ((LocalSearchPhaseConfig) solverConfig.getPhaseConfigList().get(1))
         .setTerminationConfig(new TerminationConfig().withStepCountLimit(4));
 
@@ -792,19 +786,9 @@ class SolverMetricsIT extends AbstractMeterTest {
             });
 
     solver.solve(solution);
-
     meterRegistry.publish();
     assertThat(metricSeenDuringStep).isFalse();
     assertThat(findConstraintStepScoreGauge(meterRegistry)).isNotNull();
-  }
-
-  public static class ErrorThrowingEasyScoreCalculator
-      implements EasyScoreCalculator<TestdataSolution, SimpleScore> {
-
-    @Override
-    public @NonNull SimpleScore calculateScore(@NonNull TestdataSolution testdataSolution) {
-      throw new IllegalStateException("Thrown exception in constraint provider");
-    }
   }
 
   public static class ConstraintMatchMetricTestConstraintProvider implements ConstraintProvider {
@@ -818,6 +802,15 @@ class SolverMetricsIT extends AbstractMeterTest {
             .penalize(SimpleScore.ONE)
             .asConstraint("Penalize V1")
       };
+    }
+  }
+
+  public static class ErrorThrowingEasyScoreCalculator
+      implements EasyScoreCalculator<TestdataSolution, SimpleScore> {
+
+    @Override
+    public @NonNull SimpleScore calculateScore(@NonNull TestdataSolution testdataSolution) {
+      throw new IllegalStateException("Thrown exception in constraint provider");
     }
   }
 
@@ -1022,20 +1015,12 @@ class SolverMetricsIT extends AbstractMeterTest {
     SolverFactory<TestdataSolution> solverFactory = SolverFactory.create(solverConfig);
     Solver<TestdataSolution> solver = solverFactory.buildSolver();
     var moveCountPerChange = new AtomicLong();
-    var debug = new AtomicReference<String>();
     ((DefaultSolver<TestdataSolution>) solver)
         .addPhaseLifecycleListener(
             new PhaseLifecycleListenerAdapter<>() {
               @Override
               public void solvingEnded(SolverScope<TestdataSolution> solverScope) {
                 meterRegistry.publish();
-                debug.set(
-                    "types="
-                        + solverScope.getMoveCountTypes()
-                        + ", counts="
-                        + solverScope.getMoveEvaluationCountPerType()
-                        + ", meters="
-                        + meterRegistry.getMeters().stream().map(Meter::getId).toList());
                 var changeMoveKey = "ChangeMove(TestdataEntity.value)";
                 if (solverScope.getMoveCountTypes().contains(changeMoveKey)) {
                   var counter =
@@ -1047,7 +1032,7 @@ class SolverMetricsIT extends AbstractMeterTest {
               }
             });
     solver.solve(problem);
-    assertThat(moveCountPerChange.get()).withFailMessage(debug.get()).isPositive();
+    assertThat(moveCountPerChange.get()).isPositive();
   }
 
   @Test
@@ -1058,7 +1043,7 @@ class SolverMetricsIT extends AbstractMeterTest {
     var solverConfig =
         PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
     var phaseConfig = new LocalSearchPhaseConfig();
-    phaseConfig.setTerminationConfig(new TerminationConfig().withScoreCalculationCountLimit(10L));
+    phaseConfig.setTerminationConfig(new TerminationConfig().withStepCountLimit(20));
     solverConfig
         .withPhases(phaseConfig)
         .withMonitoringConfig(
@@ -1117,7 +1102,7 @@ class SolverMetricsIT extends AbstractMeterTest {
         PlannerTestUtils.buildSolverConfig(
             TestdataListSolution.class, TestdataListEntity.class, TestdataListValue.class);
     var phaseConfig = new LocalSearchPhaseConfig();
-    phaseConfig.setTerminationConfig(new TerminationConfig().withScoreCalculationCountLimit(10L));
+    phaseConfig.setTerminationConfig(new TerminationConfig().withScoreCalculationCountLimit(20L));
     solverConfig
         .withPhases(phaseConfig)
         .withMonitoringConfig(
@@ -1182,7 +1167,7 @@ class SolverMetricsIT extends AbstractMeterTest {
                     .getId()
                     .getName()
                     .equals(SolverMetric.CONSTRAINT_MATCH_TOTAL_STEP_SCORE.getMeterId() + ".score"))
-        .filter(meter -> meter.getId().getTag("constraint.name") != null)
+        .filter(meter -> meter.getId().getTag("constraint.id") != null)
         .map(io.micrometer.core.instrument.Gauge.class::cast)
         .findFirst()
         .orElse(null);

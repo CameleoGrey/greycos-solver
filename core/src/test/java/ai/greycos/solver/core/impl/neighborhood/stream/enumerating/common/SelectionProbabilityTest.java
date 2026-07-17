@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.SortedMap;
@@ -74,11 +75,12 @@ final class SelectionProbabilityTest {
         .isLessThanOrEqualTo(threshold);
   }
 
-  static <T> List<ElementAwareArrayList.Entry<T>> toEntries(List<T> elements) {
+  static <T> List<ElementAwareArrayList<T>.Entry> toEntries(List<T> elements) {
     var list = new ElementAwareArrayList<T>();
+    var entryList = new ArrayList<ElementAwareArrayList<T>.Entry>(elements.size());
     for (var element : elements) {
-      list.add(element);
+      entryList.add(list.addEntry(element));
     }
-    return list.asList();
+    return entryList;
   }
 }

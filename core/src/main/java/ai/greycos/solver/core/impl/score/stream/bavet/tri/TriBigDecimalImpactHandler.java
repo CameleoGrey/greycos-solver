@@ -27,8 +27,7 @@ record TriBigDecimalImpactHandler<A, B, C>(TriFunction<A, B, C, BigDecimal> matc
     var constraint = impacter.getContext().getConstraint();
     return impacter.impactScore(
         matchWeigher.apply(a, b, c),
-        ConstraintMatchSupplier.of(
-            constraint.getJustificationMapping(), constraint.getIndictedObjectsMapping(), a, b, c));
+        ConstraintMatchSupplier.of(constraint.getJustificationMapping(), a, b, c));
   }
 
   @Override

@@ -33,7 +33,7 @@
       <optional>true</optional>
     </dependency>
     <dependency>
-      <!-- TODO Remove after gizmo is no longer needed at runtime https://github.com/CameleoGrey/greycos-solver/issues/133  -->
+      <!-- TODO Remove after gizmo is no longer needed at runtime. -->
       <groupId>io.quarkus.gizmo</groupId>
       <artifactId>gizmo2</artifactId>
     </dependency>

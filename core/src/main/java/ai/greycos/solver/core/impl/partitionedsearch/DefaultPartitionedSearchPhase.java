@@ -253,16 +253,19 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
           Arrays.asList(new ConstructionHeuristicPhaseConfig(), new LocalSearchPhaseConfig());
     }
 
-    List<Phase<Solution_>> phaseList =
-        PhaseFactory.buildPhases(
-            effectivePhaseConfigList,
-            configPolicy.createChildThreadConfigPolicy(ChildThreadType.PART_THREAD),
-            bestSolutionRecaller,
-            partTermination);
-
     SolverScope<Solution_> partSolverScope =
         solverScope.createChildThreadSolverScope(ChildThreadType.PART_THREAD);
     partSolverScope.setRunnableThreadSemaphore(runnablePartThreadSemaphore);
+
+    var partConfigPolicy =
+        configPolicy
+            .createChildThreadConfigPolicy(ChildThreadType.PART_THREAD)
+            .cloneBuilder()
+            .withRandom(partSolverScope.getWorkingRandom())
+            .build();
+    List<Phase<Solution_>> phaseList =
+        PhaseFactory.buildPhases(
+            effectivePhaseConfigList, partConfigPolicy, bestSolutionRecaller, partTermination);
 
     PartitionSolver<Solution_> partitionSolver =
         new PartitionSolver<>(

@@ -34,8 +34,9 @@ public class UnionMoveSelectorFactory<Solution_>
           if (selectorConfig.hasNearbySelectionConfig()) {
             throw new IllegalArgumentException(
                 """
-                                        The selector configuration (%s) already includes the Nearby Selection setting, making it incompatible with the top-level property nearbyDistanceMeterClass (%s).
-                                        Remove the Nearby setting from the selector configuration or remove the top-level nearbyDistanceMeterClass."""
+                The selector configuration (%s) already includes the Nearby Selection setting, making it incompatible with the top-level property nearbyDistanceMeterClass (%s).
+                Remove the Nearby setting from the selector configuration or remove the top-level nearbyDistanceMeterClass.\
+                """
                     .formatted(nearbySelectorConfig, configPolicy.getNearbyDistanceMeterClass()));
           }
           // We delay the autoconfiguration to the deepest UnionMoveSelectorConfig node in the tree
@@ -52,7 +53,8 @@ public class UnionMoveSelectorFactory<Solution_>
           // Add a new configuration with Nearby Selection enabled
           moveSelectorConfigList.add(
               nearbySelectorConfig.enableNearbySelection(
-                  configPolicy.getNearbyDistanceMeterClass(), configPolicy.getRandom()));
+                  configPolicy.getNearbyDistanceMeterClass(),
+                  configPolicy.getRandom().factoryUsage()));
         }
       }
     }

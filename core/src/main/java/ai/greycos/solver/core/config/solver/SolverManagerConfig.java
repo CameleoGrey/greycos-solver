@@ -14,14 +14,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @XmlType(propOrder = {"parallelSolverCount", "threadFactoryClass"})
-public class SolverManagerConfig extends AbstractConfig<SolverManagerConfig> {
+public final class SolverManagerConfig extends AbstractConfig<SolverManagerConfig> {
 
   public static final String PARALLEL_SOLVER_COUNT_AUTO = "AUTO";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SolverManagerConfig.class);
 
-  protected String parallelSolverCount = null;
-  protected Class<? extends ThreadFactory> threadFactoryClass = null;
+  private String parallelSolverCount = null;
+  private String threadFactoryClass = null;
 
   // Future features:
   // throttlingDelay
@@ -42,11 +42,11 @@ public class SolverManagerConfig extends AbstractConfig<SolverManagerConfig> {
   }
 
   public @Nullable Class<? extends ThreadFactory> getThreadFactoryClass() {
-    return threadFactoryClass;
+    return ConfigUtils.resolveClass(threadFactoryClass, "threadFactoryClass", this);
   }
 
   public void setThreadFactoryClass(@Nullable Class<? extends ThreadFactory> threadFactoryClass) {
-    this.threadFactoryClass = threadFactoryClass;
+    this.threadFactoryClass = threadFactoryClass == null ? null : threadFactoryClass.getName();
   }
 
   // ************************************************************************
@@ -60,7 +60,7 @@ public class SolverManagerConfig extends AbstractConfig<SolverManagerConfig> {
 
   public @NonNull SolverManagerConfig withThreadFactoryClass(
       @NonNull Class<? extends ThreadFactory> threadFactoryClass) {
-    this.threadFactoryClass = threadFactoryClass;
+    this.threadFactoryClass = threadFactoryClass.getName();
     return this;
   }
 
@@ -92,11 +92,11 @@ public class SolverManagerConfig extends AbstractConfig<SolverManagerConfig> {
     return resolvedParallelSolverCount;
   }
 
-  protected int getAvailableProcessors() {
+  private static int getAvailableProcessors() {
     return Runtime.getRuntime().availableProcessors();
   }
 
-  protected int resolveParallelSolverCountAutomatically(int availableProcessorCount) {
+  private static int resolveParallelSolverCountAutomatically(int availableProcessorCount) {
     // Tweaked based on experience
     if (availableProcessorCount < 2) {
       return 1;
@@ -112,7 +112,7 @@ public class SolverManagerConfig extends AbstractConfig<SolverManagerConfig> {
             parallelSolverCount, inheritedConfig.getParallelSolverCount());
     threadFactoryClass =
         ConfigUtils.inheritOverwritableProperty(
-            threadFactoryClass, inheritedConfig.getThreadFactoryClass());
+            threadFactoryClass, inheritedConfig.threadFactoryClass);
     return this;
   }
 
@@ -123,6 +123,6 @@ public class SolverManagerConfig extends AbstractConfig<SolverManagerConfig> {
 
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
-    classVisitor.accept(threadFactoryClass);
+    classVisitor.accept(getThreadFactoryClass());
   }
 }

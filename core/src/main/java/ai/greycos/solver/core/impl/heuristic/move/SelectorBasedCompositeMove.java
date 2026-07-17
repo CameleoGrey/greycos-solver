@@ -1,19 +1,28 @@
 package ai.greycos.solver.core.impl.heuristic.move;
 
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.SequencedCollection;
+import java.util.stream.Collectors;
 
+import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
+import ai.greycos.solver.core.preview.api.move.Move;
+import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
 
 import org.jspecify.annotations.NullMarked;
 
 /**
- * Selector-based composite move name used by the upstream refactor.
+ * A selector-generated composite move made up of one or more child moves.
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
 @NullMarked
-public final class SelectorBasedCompositeMove<Solution_> extends CompositeMove<Solution_> {
+public final class SelectorBasedCompositeMove<Solution_>
+    extends AbstractSelectorBasedMove<Solution_> {
 
   @SafeVarargs
   public static <Solution_, Move_ extends Move<Solution_>> Move<Solution_> buildMove(
@@ -25,25 +34,101 @@ public final class SelectorBasedCompositeMove<Solution_> extends CompositeMove<S
     };
   }
 
-  @SafeVarargs
-  SelectorBasedCompositeMove(Move<Solution_>... moves) {
-    super(moves);
-  }
-
   @SuppressWarnings("unchecked")
   public static <Solution_, Move_ extends Move<Solution_>> Move<Solution_> buildMove(
       List<Move_> moveList) {
     return buildMove(moveList.toArray(new Move[0]));
   }
 
+  private final Move<Solution_>[] moves;
+
+  @SafeVarargs
+  SelectorBasedCompositeMove(Move<Solution_>... moves) {
+    this.moves = moves;
+  }
+
+  public Move<Solution_>[] getMoves() {
+    return moves;
+  }
+
   @Override
-  public SelectorBasedCompositeMove<Solution_> rebase(
-      ScoreDirector<Solution_> destinationScoreDirector) {
-    var moves = getMoves();
-    Move<Solution_>[] rebasedMoves = new Move[moves.length];
-    for (int i = 0; i < moves.length; i++) {
-      rebasedMoves[i] = moves[i].rebase(destinationScoreDirector);
+  public boolean isMoveDoable(ScoreDirector<Solution_> scoreDirector) {
+    for (var move : moves) {
+      if (!(move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove)
+          || selectorBasedMove.isMoveDoable(scoreDirector)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  protected void execute(
+      MutableSolutionView<Solution_> solutionView,
+      VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
+    for (var move : moves) {
+      if (move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove) {
+        if (selectorBasedMove.isMoveDoable(scoreDirector)) {
+          selectorBasedMove.execute(solutionView, scoreDirector);
+        }
+      } else {
+        // Keep preview child mutations on the active solution view, including its undo recorder.
+        move.execute(solutionView);
+      }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  public SelectorBasedCompositeMove<Solution_> rebase(Lookup lookup) {
+    var rebasedMoves = new Move[moves.length];
+    for (var i = 0; i < moves.length; i++) {
+      rebasedMoves[i] = moves[i].rebase(lookup);
     }
     return new SelectorBasedCompositeMove<>(rebasedMoves);
+  }
+
+  @Override
+  public String describe() {
+    return "CompositeMove"
+        + Arrays.stream(moves)
+            .map(Move::describe)
+            .sorted()
+            .map(childMoveTypeDescription -> "* " + childMoveTypeDescription)
+            .collect(Collectors.joining(",", "(", ")"));
+  }
+
+  @Override
+  public SequencedCollection<Object> getPlanningEntities() {
+    var entities = LinkedHashSet.newLinkedHashSet(moves.length * 2);
+    for (var move : moves) {
+      entities.addAll(move.getPlanningEntities());
+    }
+    return entities;
+  }
+
+  @Override
+  public SequencedCollection<Object> getPlanningValues() {
+    var values = LinkedHashSet.newLinkedHashSet(moves.length * 2);
+    for (var move : moves) {
+      values.addAll(move.getPlanningValues());
+    }
+    return values;
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    return other instanceof SelectorBasedCompositeMove<?> otherCompositeMove
+        && Arrays.equals(moves, otherCompositeMove.moves);
+  }
+
+  @Override
+  public int hashCode() {
+    return Arrays.hashCode(moves);
+  }
+
+  @Override
+  public String toString() {
+    return Arrays.toString(moves);
   }
 }

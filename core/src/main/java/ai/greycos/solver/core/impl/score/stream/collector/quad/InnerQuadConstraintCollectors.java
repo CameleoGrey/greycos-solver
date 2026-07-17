@@ -18,45 +18,39 @@ import java.util.function.ToIntFunction;
 
 import ai.greycos.solver.core.api.function.QuadFunction;
 import ai.greycos.solver.core.api.function.QuadPredicate;
-import ai.greycos.solver.core.api.function.ToIntQuadFunction;
 import ai.greycos.solver.core.api.function.ToLongQuadFunction;
 import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.score.stream.common.ConnectedRangeChain;
 import ai.greycos.solver.core.api.score.stream.common.LoadBalance;
 import ai.greycos.solver.core.api.score.stream.common.SequenceChain;
 import ai.greycos.solver.core.api.score.stream.quad.QuadConstraintCollector;
-import ai.greycos.solver.core.impl.score.stream.collector.ReferenceAverageCalculator;
+import ai.greycos.solver.core.impl.score.stream.collector.AbstractReferenceAverageSlot;
 
-public class InnerQuadConstraintCollectors {
-  public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Double> average(
-      ToIntQuadFunction<? super A, ? super B, ? super C, ? super D> mapper) {
-    return new AverageIntQuadCollector<>(mapper);
-  }
-
+public final class InnerQuadConstraintCollectors {
   public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Double> average(
       ToLongQuadFunction<? super A, ? super B, ? super C, ? super D> mapper) {
-    return new AverageLongQuadCollector<>(mapper);
+    return new AverageQuadCollector<>(mapper);
   }
 
   static <A, B, C, D, Mapped_, Average_> QuadConstraintCollector<A, B, C, D, ?, Average_> average(
       QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends Mapped_> mapper,
-      Supplier<ReferenceAverageCalculator<Mapped_, Average_>> calculatorSupplier) {
-    return new AverageReferenceQuadCollector<>(mapper, calculatorSupplier);
+      Supplier<AbstractReferenceAverageSlot.State<Mapped_, Average_>> stateSupplier) {
+    return new AverageReferenceQuadCollector<>(mapper, stateSupplier);
   }
 
   public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, BigDecimal> averageBigDecimal(
       QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends BigDecimal> mapper) {
-    return average(mapper, ReferenceAverageCalculator.bigDecimal());
+    return average(mapper, AbstractReferenceAverageSlot.bigDecimalState());
   }
 
   public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, BigDecimal> averageBigInteger(
       QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends BigInteger> mapper) {
-    return average(mapper, ReferenceAverageCalculator.bigInteger());
+    return average(mapper, AbstractReferenceAverageSlot.bigIntegerState());
   }
 
   public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Duration> averageDuration(
       QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends Duration> mapper) {
-    return average(mapper, ReferenceAverageCalculator.duration());
+    return average(mapper, AbstractReferenceAverageSlot.durationState());
   }
 
   public static <
@@ -117,35 +111,19 @@ public class InnerQuadConstraintCollectors {
     return new ConditionalQuadCollector<>(predicate, delegate);
   }
 
-  public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Integer> count() {
-    return CountIntQuadCollector.getInstance();
+  public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Long> count() {
+    return CountQuadCollector.getInstance();
   }
 
-  public static <A, B, C, D, Mapped_> QuadConstraintCollector<A, B, C, D, ?, Integer> countDistinct(
+  public static <A, B, C, D, Mapped_> QuadConstraintCollector<A, B, C, D, ?, Long> countDistinct(
       QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends Mapped_> mapper) {
-    return new CountDistinctIntQuadCollector<>(mapper);
-  }
-
-  public static <A, B, C, D, Mapped_>
-      QuadConstraintCollector<A, B, C, D, ?, Long> countDistinctLong(
-          QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends Mapped_> mapper) {
-    return new CountDistinctLongQuadCollector<>(mapper);
-  }
-
-  public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Long> countLong() {
-    return CountLongQuadCollector.getInstance();
+    return new CountDistinctQuadCollector<>(mapper);
   }
 
   public static <A, B, C, D, Result_ extends Comparable<? super Result_>>
       QuadConstraintCollector<A, B, C, D, ?, Result_> max(
           QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends Result_> mapper) {
     return new MaxComparableQuadCollector<>(mapper);
-  }
-
-  public static <A, B, C, D, Result_> QuadConstraintCollector<A, B, C, D, ?, Result_> max(
-      QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends Result_> mapper,
-      Comparator<? super Result_> comparator) {
-    return new MaxComparatorQuadCollector<>(mapper, comparator);
   }
 
   public static <A, B, C, D, Result_, Property_ extends Comparable<? super Property_>>
@@ -161,12 +139,6 @@ public class InnerQuadConstraintCollectors {
     return new MinComparableQuadCollector<>(mapper);
   }
 
-  public static <A, B, C, D, Result_> QuadConstraintCollector<A, B, C, D, ?, Result_> min(
-      QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends Result_> mapper,
-      Comparator<? super Result_> comparator) {
-    return new MinComparatorQuadCollector<>(mapper, comparator);
-  }
-
   public static <A, B, C, D, Result_, Property_ extends Comparable<? super Property_>>
       QuadConstraintCollector<A, B, C, D, ?, Result_> min(
           QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends Result_> mapper,
@@ -174,14 +146,9 @@ public class InnerQuadConstraintCollectors {
     return new MinPropertyQuadCollector<>(mapper, propertyMapper);
   }
 
-  public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Integer> sum(
-      ToIntQuadFunction<? super A, ? super B, ? super C, ? super D> mapper) {
-    return new SumIntQuadCollector<>(mapper);
-  }
-
   public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Long> sum(
       ToLongQuadFunction<? super A, ? super B, ? super C, ? super D> mapper) {
-    return new SumLongQuadCollector<>(mapper);
+    return new SumQuadCollector<>(mapper);
   }
 
   public static <A, B, C, D, Result_> QuadConstraintCollector<A, B, C, D, ?, Result_> sum(

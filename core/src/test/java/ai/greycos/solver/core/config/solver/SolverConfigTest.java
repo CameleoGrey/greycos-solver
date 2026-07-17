@@ -32,6 +32,7 @@ import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.phase.PhaseCommand;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import ai.greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import ai.greycos.solver.core.impl.heuristic.move.DummyMove;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
@@ -93,6 +94,33 @@ class SolverConfigTest {
     assertThat(solverConfig.getSolutionClass()).isAssignableFrom(TestdataSolution.class);
     assertThat(solverConfig.getScoreDirectorFactoryConfig().getConstraintProviderClass())
         .isAssignableFrom(DummyConstraintProvider.class);
+  }
+
+  @Test
+  void readAndWriteIslandModelPhase() {
+    var solverConfigXml =
+        """
+                <solver xmlns="%s">
+                    <islandModel>
+                        <islandCount>2</islandCount>
+                    </islandModel>
+                </solver>"""
+            .formatted(SolverConfig.XML_NAMESPACE);
+
+    var solverConfig = solverConfigIO.read(new StringReader(solverConfigXml));
+    assertThat(solverConfig.getPhaseConfigList())
+        .singleElement()
+        .isInstanceOfSatisfying(
+            IslandModelPhaseConfig.class,
+            islandModelPhaseConfig ->
+                assertThat(islandModelPhaseConfig.getIslandCount()).isEqualTo(2));
+
+    var stringWriter = new StringWriter();
+    solverConfigIO.write(solverConfig, stringWriter);
+    var roundTrippedConfig = solverConfigIO.read(new StringReader(stringWriter.toString()));
+    assertThat(roundTrippedConfig.getPhaseConfigList())
+        .singleElement()
+        .isInstanceOf(IslandModelPhaseConfig.class);
   }
 
   private SolverConfig readSolverConfig(String solverConfigResource) {

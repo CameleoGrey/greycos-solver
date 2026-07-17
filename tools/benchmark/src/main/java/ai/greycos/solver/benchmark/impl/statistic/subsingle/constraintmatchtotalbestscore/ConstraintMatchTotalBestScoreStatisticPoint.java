@@ -2,7 +2,7 @@ package ai.greycos.solver.benchmark.impl.statistic.subsingle.constraintmatchtota
 
 import ai.greycos.solver.benchmark.impl.statistic.StatisticPoint;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 
 public class ConstraintMatchTotalBestScoreStatisticPoint extends StatisticPoint {
 
@@ -42,7 +42,7 @@ public class ConstraintMatchTotalBestScoreStatisticPoint extends StatisticPoint 
   public String toCsvLine() {
     return buildCsvLineWithStrings(
         timeMillisSpent,
-        constraintRef.constraintName(),
+        constraintRef.id(),
         Integer.toString(constraintMatchCount),
         scoreTotal.toString());
   }

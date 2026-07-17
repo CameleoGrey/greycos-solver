@@ -1,11 +1,11 @@
 package ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common;
 
 import java.util.Iterator;
+import java.util.random.RandomGenerator;
 
+import ai.greycos.solver.core.impl.bavet.common.index.UniqueRandomIterator;
 import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.util.ElementAwareArrayList;
-import ai.greycos.solver.core.impl.util.ElementAwareArrayList.Entry;
-import ai.greycos.solver.core.impl.util.ListEntry;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -14,16 +14,9 @@ public abstract class AbstractLeftDatasetInstance<Solution_, Tuple_ extends Tupl
     extends AbstractDatasetInstance<Solution_, Tuple_> implements Iterable<Tuple_> {
 
   private final ElementAwareArrayList<Tuple_> tupleList = new ElementAwareArrayList<>();
-  private final int rightSequenceStoreIndex;
 
-  protected AbstractLeftDatasetInstance(
-      AbstractDataset<Solution_> parent, int rightSequenceStoreIndex, int entryStoreIndex) {
+  protected AbstractLeftDatasetInstance(AbstractDataset<Solution_> parent, int entryStoreIndex) {
     super(parent, entryStoreIndex);
-    this.rightSequenceStoreIndex = rightSequenceStoreIndex;
-  }
-
-  public int getRightSequenceStoreIndex() {
-    return rightSequenceStoreIndex;
   }
 
   @Override
@@ -34,14 +27,14 @@ public abstract class AbstractLeftDatasetInstance<Solution_, Tuple_ extends Tupl
               .formatted(tuple));
     }
 
-    tuple.setStore(entryStoreIndex, tupleList.add(tuple));
+    tuple.setStore(entryStoreIndex, tupleList.addEntry(tuple));
   }
 
   @Override
   public void update(Tuple_ tuple) {
     if (tuple.getStore(entryStoreIndex) == null) {
       // No fail fast if null because we don't track which tuples made it through the filter
-      // predicate(s).
+      // predicate(s)
       insert(tuple);
     } else {
       // No need to do anything.
@@ -50,39 +43,25 @@ public abstract class AbstractLeftDatasetInstance<Solution_, Tuple_ extends Tupl
 
   @Override
   public void retract(Tuple_ tuple) {
-    Entry<Tuple_> entry = tuple.removeStore(entryStoreIndex);
+    ElementAwareArrayList<Tuple_>.Entry entry = tuple.removeStore(entryStoreIndex);
     if (entry == null) {
       // No fail fast if null because we don't track which tuples made it through the filter
-      // predicate(s).
+      // predicate(s)
       return;
     }
-    tupleList.remove(entry);
+    entry.remove();
   }
 
   @Override
   public Iterator<Tuple_> iterator() {
-    return new UnwrappingIterator<>(tupleList.asList().iterator());
+    return tupleList.iterator();
   }
 
-  public DefaultUniqueRandomSequence<Tuple_> buildRandomSequence() {
-    return new DefaultUniqueRandomSequence<>(tupleList.asList());
+  public Iterator<Tuple_> randomIterator(RandomGenerator workingRandom) {
+    return UniqueRandomIterator.of(tupleList, workingRandom);
   }
 
   public int size() {
     return tupleList.size();
-  }
-
-  record UnwrappingIterator<T>(Iterator<? extends ListEntry<T>> parentIterator)
-      implements Iterator<T> {
-
-    @Override
-    public boolean hasNext() {
-      return parentIterator.hasNext();
-    }
-
-    @Override
-    public T next() {
-      return parentIterator.next().getElement();
-    }
   }
 }

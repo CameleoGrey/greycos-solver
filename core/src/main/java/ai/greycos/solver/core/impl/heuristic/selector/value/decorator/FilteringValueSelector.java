@@ -98,11 +98,6 @@ public class FilteringValueSelector<Solution_> extends AbstractDemandEnabledSele
   }
 
   @Override
-  public boolean isCountable() {
-    return childValueSelector.isCountable();
-  }
-
-  @Override
   public boolean isNeverEnding() {
     return childValueSelector.isNeverEnding();
   }

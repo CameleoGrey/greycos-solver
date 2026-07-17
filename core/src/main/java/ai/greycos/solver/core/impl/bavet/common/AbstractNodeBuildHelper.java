@@ -1,29 +1,20 @@
 package ai.greycos.solver.core.impl.bavet.common;
 
-import static ai.greycos.solver.core.impl.bavet.common.ConstraintNodeProfileId.Qualifier;
-
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
-import ai.greycos.solver.core.impl.bavet.NodeNetwork;
-import ai.greycos.solver.core.impl.bavet.common.tuple.AggregatedTupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.InOutTupleStorePositionTracker;
 import ai.greycos.solver.core.impl.bavet.common.tuple.LeftTupleLifecycle;
-import ai.greycos.solver.core.impl.bavet.common.tuple.ProfilingTupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.RightTupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
-import ai.greycos.solver.core.impl.score.stream.bavet.common.Scorer;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -34,23 +25,17 @@ public abstract class AbstractNodeBuildHelper<Stream_ extends BavetStream> {
   private final Set<Stream_> activeStreamSet;
   private final Map<AbstractNode, Stream_> nodeCreatorMap;
   private final Map<Stream_, TupleLifecycle<? extends Tuple>> tupleLifecycleMap;
-  private final Map<Stream_, List<Set<ConstraintNodeProfileId>>> streamToProfileIdSets;
   private final Map<Stream_, Integer> storeIndexMap;
-  @Nullable private final InnerConstraintProfiler constraintProfiler;
 
   @Nullable private List<AbstractNode> reversedNodeList;
-  private long nextLifecycleProfilingId = 0;
 
-  protected AbstractNodeBuildHelper(
-      Set<Stream_> activeStreamSet, @Nullable InnerConstraintProfiler constraintProfiler) {
+  protected AbstractNodeBuildHelper(Set<Stream_> activeStreamSet) {
     this.activeStreamSet = activeStreamSet;
     int activeStreamSetSize = activeStreamSet.size();
-    this.nodeCreatorMap = new HashMap<>(Math.max(16, activeStreamSetSize));
-    this.tupleLifecycleMap = new HashMap<>(Math.max(16, activeStreamSetSize));
-    this.streamToProfileIdSets = new HashMap<>(Math.max(16, activeStreamSetSize / 2));
-    this.storeIndexMap = new HashMap<>(Math.max(16, activeStreamSetSize / 2));
+    this.nodeCreatorMap = HashMap.newHashMap(Math.max(16, activeStreamSetSize));
+    this.tupleLifecycleMap = HashMap.newHashMap(Math.max(16, activeStreamSetSize));
+    this.storeIndexMap = HashMap.newHashMap(Math.max(16, activeStreamSetSize / 2));
     this.reversedNodeList = new ArrayList<>(activeStreamSetSize);
-    this.constraintProfiler = constraintProfiler;
   }
 
   public boolean isStreamActive(Stream_ stream) {
@@ -61,11 +46,11 @@ public abstract class AbstractNodeBuildHelper<Stream_ extends BavetStream> {
     addNode(node, creator, creator);
   }
 
-  public void addNode(AbstractNode node, Stream_ creator, Stream_ parent) {
+  public void addNode(AbstractNode node, Stream_ creator, @Nullable Stream_ parent) {
     reversedNodeList.add(node);
     node.addLocationSet(creator.getLocationSet());
     nodeCreatorMap.put(node, creator);
-    if (!(node instanceof BavetRootNode<?>)) {
+    if (!(node instanceof AbstractRootNode<?>)) {
       if (parent == null) {
         throw new IllegalStateException(
             "Impossible state: The node (%s) has no parent (%s).".formatted(node, parent));
@@ -84,55 +69,18 @@ public abstract class AbstractNodeBuildHelper<Stream_ extends BavetStream> {
         rightParent, TupleLifecycle.ofRight((RightTupleLifecycle<? extends Tuple>) node));
   }
 
-  public <Tuple_ extends Tuple> void putInsertUpdateRetract(
-      Stream_ stream, TupleLifecycle<Tuple_> tupleLifecycle) {
-    if (constraintProfiler != null) {
-      var out =
-          TupleLifecycle.profiling(
-              constraintProfiler, nextLifecycleProfilingId, stream, tupleLifecycle);
-      tupleLifecycleMap.put(stream, out);
-      updateConstraintProfileIdSet(stream, out);
-
-      if (tupleLifecycle instanceof Scorer<Tuple_> scorer) {
-        var queue = new ArrayDeque<BavetStream>();
-        var constraintSet = new LinkedHashSet<ConstraintNodeProfileId>();
-        queue.add(stream);
-        while (!queue.isEmpty()) {
-          var currentStream = queue.poll();
-          var streamSets =
-              streamToProfileIdSets.computeIfAbsent(
-                  (Stream_) currentStream, ignored -> new ArrayList<>());
-          streamSets.add(constraintSet);
-          var lifecycle = tupleLifecycleMap.get(currentStream);
-          if (lifecycle instanceof ProfilingTupleLifecycle<?> profilingTupleLifecycle) {
-            constraintSet.add(profilingTupleLifecycle.profileId());
-          }
-          if (currentStream instanceof BavetStreamBinaryOperation<?> binaryOperation) {
-            queue.add(binaryOperation.getLeftParent());
-            queue.add(binaryOperation.getRightParent());
-          } else if (currentStream.getParent() != null) {
-            queue.add(currentStream.getParent());
-          }
-        }
-        constraintProfiler.registerConstraint(scorer.getConstraintRef(), constraintSet);
-      }
-      nextLifecycleProfilingId++;
-    } else {
-      tupleLifecycleMap.put(stream, tupleLifecycle);
-    }
+  protected Stream_ getNodeCreator(AbstractNode node) {
+    return nodeCreatorMap.get(node);
   }
 
-  private void updateConstraintProfileIdSet(Stream_ stream, TupleLifecycle<?> tupleLifecycle) {
-    if (tupleLifecycle instanceof ProfilingTupleLifecycle<?> profilingTupleLifecycle) {
-      var affectedSets = streamToProfileIdSets.getOrDefault(stream, Collections.emptyList());
-      for (var affectedSet : affectedSets) {
-        affectedSet.add(profilingTupleLifecycle.profileId());
-      }
-    } else if (tupleLifecycle instanceof AggregatedTupleLifecycle<?> aggregated) {
-      for (var innerLifecycle : aggregated.lifecycles()) {
-        updateConstraintProfileIdSet(stream, innerLifecycle);
-      }
-    }
+  @SuppressWarnings("unchecked")
+  protected <Tuple_ extends Tuple> TupleLifecycle<Tuple_> getTupleLifecycle(Stream_ stream) {
+    return (TupleLifecycle<Tuple_>) tupleLifecycleMap.get(stream);
+  }
+
+  public <Tuple_ extends Tuple> void putInsertUpdateRetract(
+      Stream_ stream, TupleLifecycle<Tuple_> tupleLifecycle) {
+    tupleLifecycleMap.put(stream, tupleLifecycle);
   }
 
   public <Tuple_ extends Tuple> void putInsertUpdateRetract(
@@ -225,41 +173,6 @@ public abstract class AbstractNodeBuildHelper<Stream_ extends BavetStream> {
     return findParentNode(childNodeCreator.getParent());
   }
 
-  public static NodeNetwork buildNodeNetwork(
-      List<AbstractNode> nodeList,
-      Map<Class<?>, List<BavetRootNode<?>>> declaredClassToNodeMap,
-      AbstractNodeBuildHelper<?> nodeBuildHelper) {
-    var layerMap = new TreeMap<Long, List<Propagator>>();
-    var profiler = nodeBuildHelper.constraintProfiler;
-    for (var node : nodeList) {
-      var layer = node.getLayerIndex();
-      var propagator = node.getPropagator();
-      if (profiler != null) {
-        var profileKey = nodeBuildHelper.nextLifecycleProfilingId;
-        nodeBuildHelper.nextLifecycleProfilingId++;
-        var profileId =
-            new ConstraintNodeProfileId(
-                profileKey, node.getStreamKind(), Qualifier.NODE, node.getLocationSet());
-        profiler.register(profileId);
-        propagator = new ProfilingPropagator(profiler, profileId, propagator);
-        var stream = nodeBuildHelper.nodeCreatorMap.get(node);
-        for (var affectedSet :
-            nodeBuildHelper.streamToProfileIdSets.getOrDefault(stream, Collections.emptyList())) {
-          affectedSet.add(profileId);
-        }
-      }
-      layerMap.computeIfAbsent(layer, k -> new ArrayList<>()).add(propagator);
-    }
-    var layerCount = layerMap.size();
-    var layeredNodes = new Propagator[layerCount][];
-    for (var i = 0; i < layerCount; i++) {
-      var layer = layerMap.get((long) i);
-      layeredNodes[i] = layer.toArray(new Propagator[0]);
-    }
-    return new NodeNetwork(
-        declaredClassToNodeMap, layeredNodes, nodeBuildHelper.constraintProfiler);
-  }
-
   public <BuildHelper_ extends AbstractNodeBuildHelper<Stream_>> List<AbstractNode> buildNodeList(
       Set<Stream_> streamSet,
       BuildHelper_ buildHelper,
@@ -304,19 +217,23 @@ public abstract class AbstractNodeBuildHelper<Stream_ extends BavetStream> {
   @SuppressWarnings("unchecked")
   private static <Stream_ extends BavetStream> long determineLayerIndex(
       AbstractNode node, AbstractNodeBuildHelper<Stream_> buildHelper) {
-    if (node instanceof BavetRootNode<?>) { // Root nodes, and only they, are in layer 0.
-      return 0;
-    } else if (node instanceof AbstractTwoInputNode<?, ?> joinNode) {
-      var nodeCreator = (BavetStreamBinaryOperation<?>) buildHelper.getNodeCreatingStream(joinNode);
-      var leftParent = (Stream_) nodeCreator.getLeftParent();
-      var rightParent = (Stream_) nodeCreator.getRightParent();
-      var leftParentNode = buildHelper.findParentNode(leftParent);
-      var rightParentNode = buildHelper.findParentNode(rightParent);
-      return Math.max(leftParentNode.getLayerIndex(), rightParentNode.getLayerIndex()) + 1;
-    } else {
-      var nodeCreator = buildHelper.getNodeCreatingStream(node);
-      var parentNode = buildHelper.findParentNode(nodeCreator.getParent());
-      return parentNode.getLayerIndex() + 1;
-    }
+    return switch (node) {
+      case AbstractRootNode<?> ignored -> 0L; // Root nodes, and only they, are in layer 0.
+      case AbstractTwoInputNode<?, ?>
+              twoInputNode -> { // Two-input nodes must sit above both inputs.
+        var nodeCreator =
+            (BavetStreamBinaryOperation<?>) buildHelper.getNodeCreatingStream(twoInputNode);
+        var leftParent = (Stream_) nodeCreator.getLeftParent();
+        var rightParent = (Stream_) nodeCreator.getRightParent();
+        var leftParentNode = buildHelper.findParentNode(leftParent);
+        var rightParentNode = buildHelper.findParentNode(rightParent);
+        yield Math.max(leftParentNode.getLayerIndex(), rightParentNode.getLayerIndex()) + 1;
+      }
+      default -> { // Every other node sits above its parent.
+        var nodeCreator = buildHelper.getNodeCreatingStream(node);
+        var parentNode = buildHelper.findParentNode(nodeCreator.getParent());
+        yield parentNode.getLayerIndex() + 1;
+      }
+    };
   }
 }

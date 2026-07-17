@@ -1,9 +1,9 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Set;
+import java.util.List;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
@@ -263,15 +263,15 @@ public class TwoOptListMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<?> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     if (firstEntity == secondEntity) {
-      return Collections.singleton(firstEntity);
+      return List.of(firstEntity);
     }
-    return Set.of(firstEntity, secondEntity);
+    return List.of(firstEntity, secondEntity);
   }
 
   @Override
-  public Collection<?> getPlanningValues() {
+  public SequencedCollection<Object> getPlanningValues() {
     if (firstEntity == secondEntity) {
       var listVariable = variableDescriptor.getValue(firstEntity);
       if (firstEdgeEndpoint < secondEdgeEndpoint) {

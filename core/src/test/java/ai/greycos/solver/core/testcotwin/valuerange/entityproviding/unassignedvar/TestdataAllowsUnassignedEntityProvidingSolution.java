@@ -2,7 +2,7 @@ package ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedv
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -12,6 +12,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 import ai.greycos.solver.core.testcotwin.TestdataObject;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 
@@ -23,6 +24,11 @@ public class TestdataAllowsUnassignedEntityProvidingSolution extends TestdataObj
     return SolutionDescriptor.buildSolutionDescriptor(
         TestdataAllowsUnassignedEntityProvidingSolution.class,
         TestdataAllowsUnassignedEntityProvidingEntity.class);
+  }
+
+  public static PlanningSolutionMetaModel<TestdataAllowsUnassignedEntityProvidingSolution>
+      buildMetaModel() {
+    return buildSolutionDescriptor().getMetaModel();
   }
 
   public static TestdataAllowsUnassignedEntityProvidingSolution generateSolution() {
@@ -118,7 +124,7 @@ public class TestdataAllowsUnassignedEntityProvidingSolution extends TestdataObj
 
   @ProblemFactCollectionProperty
   public Collection<TestdataValue> getProblemFacts() {
-    Set<TestdataValue> valueSet = new HashSet<>();
+    Set<TestdataValue> valueSet = new LinkedHashSet<>();
     for (TestdataAllowsUnassignedEntityProvidingEntity entity : entityList) {
       valueSet.addAll(entity.getValueRange());
     }

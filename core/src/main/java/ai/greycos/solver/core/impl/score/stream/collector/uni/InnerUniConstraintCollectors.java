@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
@@ -24,30 +25,28 @@ import ai.greycos.solver.core.api.score.stream.common.ConnectedRangeChain;
 import ai.greycos.solver.core.api.score.stream.common.LoadBalance;
 import ai.greycos.solver.core.api.score.stream.common.SequenceChain;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
-import ai.greycos.solver.core.impl.score.stream.collector.ReferenceAverageCalculator;
+import ai.greycos.solver.core.impl.score.stream.collector.AbstractReferenceAverageSlot;
 
 public class InnerUniConstraintCollectors {
-  public static <A> UniConstraintCollector<A, ?, Double> average(ToIntFunction<? super A> mapper) {
-    return new AverageIntUniCollector<>(mapper);
-  }
-
   public static <A> UniConstraintCollector<A, ?, Double> average(ToLongFunction<? super A> mapper) {
-    return new AverageLongUniCollector<>(mapper);
+    return new AverageUniCollector<>(mapper);
   }
 
   public static <A> UniConstraintCollector<A, ?, BigDecimal> averageBigDecimal(
       Function<? super A, ? extends BigDecimal> mapper) {
-    return new AverageReferenceUniCollector<>(mapper, ReferenceAverageCalculator.bigDecimal());
+    return new AverageReferenceUniCollector<>(
+        mapper, AbstractReferenceAverageSlot.bigDecimalState());
   }
 
   public static <A> UniConstraintCollector<A, ?, BigDecimal> averageBigInteger(
       Function<? super A, ? extends BigInteger> mapper) {
-    return new AverageReferenceUniCollector<>(mapper, ReferenceAverageCalculator.bigInteger());
+    return new AverageReferenceUniCollector<>(
+        mapper, AbstractReferenceAverageSlot.bigIntegerState());
   }
 
   public static <A> UniConstraintCollector<A, ?, Duration> averageDuration(
       Function<? super A, ? extends Duration> mapper) {
-    return new AverageReferenceUniCollector<>(mapper, ReferenceAverageCalculator.duration());
+    return new AverageReferenceUniCollector<>(mapper, AbstractReferenceAverageSlot.durationState());
   }
 
   public static <
@@ -94,32 +93,18 @@ public class InnerUniConstraintCollectors {
     return new ConditionalUniCollector<>(predicate, delegate);
   }
 
-  public static <A> UniConstraintCollector<A, ?, Integer> count() {
-    return CountIntUniCollector.getInstance();
+  public static <A> UniConstraintCollector<A, ?, Long> count() {
+    return CountUniCollector.getInstance();
   }
 
-  public static <A, Mapped_> UniConstraintCollector<A, ?, Integer> countDistinct(
+  public static <A, Mapped_> UniConstraintCollector<A, ?, Long> countDistinct(
       Function<? super A, ? extends Mapped_> mapper) {
-    return new CountDistinctIntUniCollector<>(mapper);
-  }
-
-  public static <A, Mapped_> UniConstraintCollector<A, ?, Long> countDistinctLong(
-      Function<? super A, ? extends Mapped_> mapper) {
-    return new CountDistinctLongUniCollector<>(mapper);
-  }
-
-  public static <A> UniConstraintCollector<A, ?, Long> countLong() {
-    return CountLongUniCollector.getInstance();
+    return new CountDistinctUniCollector<>(mapper);
   }
 
   public static <A, Result_ extends Comparable<? super Result_>>
       UniConstraintCollector<A, ?, Result_> max(Function<? super A, ? extends Result_> mapper) {
     return new MaxComparableUniCollector<>(mapper);
-  }
-
-  public static <A, Result_> UniConstraintCollector<A, ?, Result_> max(
-      Function<? super A, ? extends Result_> mapper, Comparator<? super Result_> comparator) {
-    return new MaxComparatorUniCollector<>(mapper, comparator);
   }
 
   public static <A, Result_, Property_ extends Comparable<? super Property_>>
@@ -134,11 +119,6 @@ public class InnerUniConstraintCollectors {
     return new MinComparableUniCollector<>(mapper);
   }
 
-  public static <A, Result_> UniConstraintCollector<A, ?, Result_> min(
-      Function<? super A, ? extends Result_> mapper, Comparator<? super Result_> comparator) {
-    return new MinComparatorUniCollector<>(mapper, comparator);
-  }
-
   public static <A, Result_, Property_ extends Comparable<? super Property_>>
       UniConstraintCollector<A, ?, Result_> min(
           Function<? super A, ? extends Result_> mapper,
@@ -146,12 +126,8 @@ public class InnerUniConstraintCollectors {
     return new MinPropertyUniCollector<>(mapper, propertyMapper);
   }
 
-  public static <A> UniConstraintCollector<A, ?, Integer> sum(ToIntFunction<? super A> mapper) {
-    return new SumIntUniCollector<>(mapper);
-  }
-
   public static <A> UniConstraintCollector<A, ?, Long> sum(ToLongFunction<? super A> mapper) {
-    return new SumLongUniCollector<>(mapper);
+    return new SumUniCollector<>(mapper);
   }
 
   public static <A, Result_> UniConstraintCollector<A, ?, Result_> sum(
@@ -189,6 +165,20 @@ public class InnerUniConstraintCollectors {
           Supplier<Result_> mapSupplier,
           BinaryOperator<Value_> mergeFunction) {
     return new ToSimpleMapUniCollector<>(keyFunction, valueFunction, mapSupplier, mergeFunction);
+  }
+
+  public static <
+          A,
+          Key_ extends Comparable<? super Key_>,
+          Value_,
+          Set_ extends Set<Value_>,
+          Result_ extends SortedMap<Key_, Set_>>
+      UniConstraintCollector<A, ?, Result_> toSortedMap(
+          Function<? super A, ? extends Key_> keyFunction,
+          Function<? super A, ? extends Value_> valueFunction,
+          Supplier<Result_> mapSupplier,
+          IntFunction<Set_> setFunction) {
+    return new ToMultiMapUniCollector<>(keyFunction, valueFunction, mapSupplier, setFunction);
   }
 
   public static <A, Mapped_> UniConstraintCollector<A, ?, Set<Mapped_>> toSet(

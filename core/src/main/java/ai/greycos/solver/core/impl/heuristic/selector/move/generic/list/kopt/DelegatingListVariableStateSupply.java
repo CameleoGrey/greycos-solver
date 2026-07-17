@@ -1,6 +1,6 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 
-import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
 import ai.greycos.solver.core.impl.cotwin.variable.IndexShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.ListElementsChangeEvent;
@@ -16,18 +16,10 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @NullMarked
-final class DelegatingListVariableStateSupply<Solution_>
+record DelegatingListVariableStateSupply<Solution_>(
+    ListVariableStateSupply<Solution_, Object, Object> delegate,
+    ToIntFunction<Object> indexFunction)
     implements ListVariableStateSupply<Solution_, Object, Object> {
-
-  private final ListVariableStateSupply<Solution_, Object, Object> delegate;
-  private final Function<Object, Integer> indexFunction;
-
-  DelegatingListVariableStateSupply(
-      ListVariableStateSupply<Solution_, Object, Object> delegate,
-      Function<Object, Integer> indexFunction) {
-    this.delegate = delegate;
-    this.indexFunction = indexFunction;
-  }
 
   @Override
   public void externalize(IndexShadowVariableDescriptor<Solution_> shadowVariableDescriptor) {
@@ -52,26 +44,26 @@ final class DelegatingListVariableStateSupply<Solution_>
   }
 
   @Override
-  public void resetWorkingSolution(InnerScoreDirector<Solution_, ?> scoreDirector) {
-    delegate.resetWorkingSolution(scoreDirector);
+  public int getIndexOrFail(Object planningValue) {
+    var index = indexFunction.applyAsInt(planningValue);
+    if (index < 0) {
+      throw new IllegalStateException("The element (%s) is not assigned to any list variable.");
+    }
+    return index;
   }
 
   @Override
-  public void beforeChange(
-      InnerScoreDirector<Solution_, ?> scoreDirector, ListElementsChangeEvent<Object> changeEvent) {
-    delegate.beforeChange(scoreDirector, changeEvent);
+  public int getIndexOrElse(Object planningValue, int defaultValue) {
+    var index = indexFunction.applyAsInt(planningValue);
+    if (index < 0) {
+      return defaultValue;
+    }
+    return index;
   }
 
   @Override
-  public void afterChange(
-      InnerScoreDirector<Solution_, ?> scoreDirector, ListElementsChangeEvent<Object> changeEvent) {
-    delegate.afterChange(scoreDirector, changeEvent);
-  }
-
-  @Override
-  public void afterListElementUnassigned(
-      InnerScoreDirector<Solution_, ?> scoreDirector, Object unassignedElement) {
-    delegate.afterListElementUnassigned(scoreDirector, unassignedElement);
+  public @Nullable Object getInverseSingleton(Object planningValue) {
+    return delegate.getInverseSingleton(planningValue);
   }
 
   @Override
@@ -80,13 +72,13 @@ final class DelegatingListVariableStateSupply<Solution_>
   }
 
   @Override
-  public boolean isAssigned(Object element) {
-    return delegate.isAssigned(element);
+  public boolean isAssigned(Object queryCompositeKey) {
+    return delegate.isAssigned(queryCompositeKey);
   }
 
   @Override
-  public boolean isPinned(Object element) {
-    return delegate.isPinned(element);
+  public boolean isPinned(Object queryCompositeKey) {
+    return delegate.isPinned(queryCompositeKey);
   }
 
   @Override
@@ -100,22 +92,30 @@ final class DelegatingListVariableStateSupply<Solution_>
   }
 
   @Override
-  public @Nullable Object getPreviousElement(Object element) {
-    return delegate.getPreviousElement(element);
+  public @Nullable Object getPreviousElement(Object queryCompositeKey) {
+    return delegate.getPreviousElement(queryCompositeKey);
   }
 
   @Override
-  public @Nullable Object getNextElement(Object element) {
-    return delegate.getNextElement(element);
+  public @Nullable Object getNextElement(Object queryCompositeKey) {
+    return delegate.getNextElement(queryCompositeKey);
   }
 
   @Override
-  public @Nullable Integer getIndex(Object planningValue) {
-    return indexFunction.apply(planningValue);
+  public void afterListElementUnassigned(
+      InnerScoreDirector<Solution_, ?> scoreDirector, Object unassignedElement) {
+    delegate.afterListElementUnassigned(scoreDirector, unassignedElement);
   }
 
   @Override
-  public @Nullable Object getInverseSingleton(Object planningValue) {
-    return delegate.getInverseSingleton(planningValue);
+  public void beforeChange(
+      InnerScoreDirector<Solution_, ?> scoreDirector, ListElementsChangeEvent<Object> event) {
+    delegate.beforeChange(scoreDirector, event);
+  }
+
+  @Override
+  public void afterChange(
+      InnerScoreDirector<Solution_, ?> scoreDirector, ListElementsChangeEvent<Object> event) {
+    delegate.afterChange(scoreDirector, event);
   }
 }

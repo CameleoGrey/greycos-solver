@@ -40,8 +40,9 @@ public record BiNeighborhoodsJoinerComber<Solution_, A, B>(
         if (indexOfFirstFilter >= 0) {
           throw new IllegalStateException(
               """
-                            Indexing joiner (%s) must not follow a filtering joiner (%s).
-                            Maybe reorder the joiners such that filtering() joiners are later in the parameter list."""
+              Indexing joiner (%s) must not follow a filtering joiner (%s).
+              Maybe reorder the joiners such that filtering() joiners are later in the parameter list.\
+              """
                   .formatted(joiner, joiners[indexOfFirstFilter]));
         }
         defaultJoinerList.add((DefaultBiNeighborhoodsJoiner<A, B>) joiner);
@@ -50,8 +51,11 @@ public record BiNeighborhoodsJoinerComber<Solution_, A, B>(
             "The joiner class (%s) is not supported.".formatted(joiner.getClass().getSimpleName()));
       }
     }
+    // Reorder equal-first eagerly (this is a record, so there is no accessor to compute it on
+    // read),
+    // so the indexer chain always has its (merged) equal level at the top.
     DefaultBiNeighborhoodsJoiner<A, B> mergedJoiner =
-        DefaultBiNeighborhoodsJoiner.merge(defaultJoinerList);
+        DefaultBiNeighborhoodsJoiner.merge(defaultJoinerList).reorderedEqualsFirst();
     BiNeighborhoodsPredicate<Solution_, A, B> mergedFiltering = mergeFiltering(filteringList);
     return new BiNeighborhoodsJoinerComber<>(mergedJoiner, mergedFiltering);
   }

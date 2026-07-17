@@ -1,8 +1,8 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
@@ -45,12 +45,12 @@ public class ListUnassignMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<?> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     return List.of(sourceEntity);
   }
 
   @Override
-  public Collection<?> getPlanningValues() {
+  public SequencedCollection<Object> getPlanningValues() {
     return List.of(getMovedValue());
   }
 

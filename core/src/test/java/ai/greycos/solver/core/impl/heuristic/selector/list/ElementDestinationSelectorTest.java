@@ -12,6 +12,7 @@ import static ai.greycos.solver.core.testcotwin.list.TestdataListUtils.getPinned
 import static ai.greycos.solver.core.testcotwin.list.TestdataListUtils.mockEntitySelector;
 import static ai.greycos.solver.core.testcotwin.list.TestdataListUtils.mockIterableFromEntityPropertyValueSelector;
 import static ai.greycos.solver.core.testcotwin.list.TestdataListUtils.mockIterableValueSelector;
+import static ai.greycos.solver.core.testcotwin.list.TestdataListUtils.mockUpcomingSelectionIterator;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfIterableSelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfIterator;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertCodesOfNeverEndingIterableSelector;
@@ -21,6 +22,7 @@ import static ai.greycos.solver.core.testutil.PlannerAssert.assertEmptyNeverEndi
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
 import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockScoreDirector;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -28,17 +30,26 @@ import static org.mockito.Mockito.verify;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Random;
 
+import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.FromSolutionEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntityByValueSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueRangeSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.value.mimic.ManualValueMimicRecorder;
+import ai.greycos.solver.core.impl.heuristic.selector.value.mimic.MimicReplayingValueSelector;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.solver.random.MockRandomSource;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
+import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testcotwin.list.TestdataListEntity;
 import ai.greycos.solver.core.testcotwin.list.TestdataListSolution;
 import ai.greycos.solver.core.testcotwin.list.TestdataListUtils;
@@ -55,6 +66,8 @@ import ai.greycos.solver.core.testcotwin.list.unassignedvar.pinned.TestdataPinne
 import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingEntity;
 import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingSolution;
 import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingValue;
+import ai.greycos.solver.core.testcotwin.list.valuerange.unassignedvar.pinned.TestdataListUnassignedPinnedEntityProvidingEntity;
+import ai.greycos.solver.core.testcotwin.list.valuerange.unassignedvar.pinned.TestdataListUnassignedPinnedEntityProvidingSolution;
 import ai.greycos.solver.core.testutil.TestRandom;
 
 import org.junit.jupiter.api.Test;
@@ -66,12 +79,13 @@ class ElementDestinationSelectorTest {
     var v1 = new TestdataListValue("1");
     var v2 = new TestdataListValue("2");
     var v3 = new TestdataListValue("3");
-    var a = TestdataListEntity.createWithValues("A", v2, v1);
-    var b = TestdataListEntity.createWithValues("B");
-    var c = TestdataListEntity.createWithValues("C", v3);
+    var a = new TestdataListEntity("A", v2, v1);
+    var b = new TestdataListEntity("B");
+    var c = new TestdataListEntity("C", v3);
     var solution = new TestdataListSolution();
     solution.setEntityList(List.of(a, b, c));
     solution.setValueList(List.of(v1, v2, v3));
+    SolutionManager.updateShadowVariables(solution);
 
     var scoreDirector = mockScoreDirector(TestdataListSolution.buildSolutionDescriptor());
     scoreDirector.setWorkingSolution(solution);
@@ -101,12 +115,13 @@ class ElementDestinationSelectorTest {
     var v1 = new TestdataListValue("1");
     var v2 = new TestdataListValue("2");
     var v3 = new TestdataListValue("3");
-    var a = TestdataListEntity.createWithValues("A", v1, v2);
-    var b = TestdataListEntity.createWithValues("B");
-    var c = TestdataListEntity.createWithValues("C", v3);
+    var a = new TestdataListEntity("A", v1, v2);
+    var b = new TestdataListEntity("B");
+    var c = new TestdataListEntity("C", v3);
     var solution = new TestdataListSolution();
     solution.setEntityList(List.of(a, b, c));
     solution.setValueList(List.of(v1, v2, v3));
+    SolutionManager.updateShadowVariables(solution);
 
     var scoreDirector = mockScoreDirector(TestdataListSolution.buildSolutionDescriptor());
     scoreDirector.setWorkingSolution(solution);
@@ -379,10 +394,10 @@ class ElementDestinationSelectorTest {
     var v5 = new TestdataPinnedUnassignedValuesListValue("5");
     var v6 = new TestdataPinnedUnassignedValuesListValue("6");
     var unassignedValue = new TestdataPinnedUnassignedValuesListValue("7");
-    var a = TestdataPinnedUnassignedValuesListEntity.createWithValues("A", v1, v2);
-    var b = TestdataPinnedUnassignedValuesListEntity.createWithValues("B");
-    var c = TestdataPinnedUnassignedValuesListEntity.createWithValues("C", v3);
-    var d = TestdataPinnedUnassignedValuesListEntity.createWithValues("D", v4, v5, v6);
+    var a = new TestdataPinnedUnassignedValuesListEntity("A", v1, v2);
+    var b = new TestdataPinnedUnassignedValuesListEntity("B");
+    var c = new TestdataPinnedUnassignedValuesListEntity("C", v3);
+    var d = new TestdataPinnedUnassignedValuesListEntity("D", v4, v5, v6);
     a.setPlanningPinToIndex(1);
     c.setPlanningPinToIndex(1);
     d.setPlanningPinToIndex(2);
@@ -390,6 +405,7 @@ class ElementDestinationSelectorTest {
     var solution = new TestdataPinnedUnassignedValuesListSolution();
     solution.setEntityList(List.of(a, b, c, d));
     solution.setValueList(List.of(v1, v2, v3, v4, v5, v6, unassignedValue));
+    SolutionManager.updateShadowVariables(solution);
 
     var random =
         new TestRandom(
@@ -419,7 +435,7 @@ class ElementDestinationSelectorTest {
 
     var solverScope = new SolverScope<TestdataPinnedUnassignedValuesListSolution>();
     solverScope.setScoreDirector(scoreDirector);
-    solverScope.setWorkingRandom(random);
+    solverScope.setWorkingRandom(new MockRandomSource(random));
     var entitySelector =
         new FromSolutionEntitySelector<>(
             solutionDescriptor.findEntityDescriptorOrFail(
@@ -459,11 +475,12 @@ class ElementDestinationSelectorTest {
   @Test
   void randomUnassignedSingleEntity() {
     var unassignedValue = new TestdataAllowsUnassignedValuesListValue("3");
-    var a = TestdataAllowsUnassignedValuesListEntity.createWithValues("A");
+    var a = new TestdataAllowsUnassignedValuesListEntity("A");
 
     var solution = new TestdataAllowsUnassignedValuesListSolution();
     solution.setEntityList(List.of(a));
     solution.setValueList(List.of(unassignedValue));
+    SolutionManager.updateShadowVariables(solution);
 
     var solutionDescriptor = TestdataAllowsUnassignedValuesListSolution.buildSolutionDescriptor();
     var scoreDirector = mockScoreDirector(solutionDescriptor);
@@ -473,7 +490,7 @@ class ElementDestinationSelectorTest {
     solverScope.setScoreDirector(scoreDirector);
     // This needs to use a real Random instance, otherwise the test never covers the situation where
     // the random value of 1 needs to be produced to get to the entity.
-    solverScope.setWorkingRandom(new Random(0));
+    solverScope.setWorkingRandom(new MockRandomSource(new Random(0)));
     var entitySelector =
         new FromSolutionEntitySelector<>(
             solutionDescriptor.findEntityDescriptorOrFail(
@@ -501,15 +518,16 @@ class ElementDestinationSelectorTest {
     var v1 = new TestdataPinnedWithIndexListValue("1");
     var v2 = new TestdataPinnedWithIndexListValue("2");
     var v3 = new TestdataPinnedWithIndexListValue("3");
-    var a = TestdataPinnedWithIndexListEntity.createWithValues("A", v1, v2);
-    var b = TestdataPinnedWithIndexListEntity.createWithValues("B");
-    var c = TestdataPinnedWithIndexListEntity.createWithValues("C", v3);
-    a.setPlanningPinToIndex(2);
+    var a = new TestdataPinnedWithIndexListEntity("A", v1, v2);
+    var b = new TestdataPinnedWithIndexListEntity("B");
+    var c = new TestdataPinnedWithIndexListEntity("C", v3);
+    a.setPinIndex(2);
     c.setPinned(true);
 
     var solution = new TestdataPinnedWithIndexListSolution();
     solution.setEntityList(List.of(a, b, c));
     solution.setValueList(List.of(v1, v2, v3));
+    SolutionManager.updateShadowVariables(solution);
 
     var scoreDirector =
         mockScoreDirector(TestdataPinnedWithIndexListSolution.buildSolutionDescriptor());
@@ -530,7 +548,7 @@ class ElementDestinationSelectorTest {
 
     var solverScope = new SolverScope<TestdataPinnedWithIndexListSolution>();
     solverScope.setScoreDirector(scoreDirector);
-    solverScope.setWorkingRandom(random);
+    solverScope.setWorkingRandom(new MockRandomSource(random));
     selector.solvingStarted(solverScope);
     selector.phaseStarted(new LocalSearchPhaseScope<>(solverScope, 0));
 
@@ -543,6 +561,78 @@ class ElementDestinationSelectorTest {
     // entitySelector or valueSelector
     // will be used; and then on the order of entities and values in the mocked selectors.
     assertAllCodesOfIterator(selector.iterator(), "A[2]", "B[0]");
+  }
+
+  @Test
+  void refreshReachableEntities() {
+    var v1 = new TestdataValue("1");
+    var v2 = new TestdataValue("2");
+    var a = new TestdataListUnassignedPinnedEntityProvidingEntity("A", List.of(v1)); // Pinned
+    var b = new TestdataListUnassignedPinnedEntityProvidingEntity("B", List.of(v2)); // Not pinned
+    // a is pinned
+    a.setPinned(true);
+    a.setValueList(List.of(v1));
+    b.setValueList(List.of(v2));
+    var solution = new TestdataListUnassignedPinnedEntityProvidingSolution();
+    solution.setEntityList(List.of(a, b));
+    SolutionManager.updateShadowVariables(solution);
+
+    var scoreDirector =
+        mockScoreDirector(
+            TestdataListUnassignedPinnedEntityProvidingSolution.buildSolutionDescriptor());
+    scoreDirector.setWorkingSolution(solution);
+
+    // Value selector
+    var listVariableDescriptor =
+        TestdataListUnassignedPinnedEntityProvidingEntity.buildVariableDescriptorForValueList();
+    var iterableValueSelector = mockIterableValueSelector(listVariableDescriptor, v1, v2);
+    var mimicRecorder = new ManualValueMimicRecorder<>(iterableValueSelector);
+    var replayingValueSelector = new MimicReplayingValueSelector<>(mimicRecorder);
+    // Entity selector with non-pinned entity filtered by value
+    var entityDescriptor =
+        TestdataListUnassignedPinnedEntityProvidingEntity.buildEntityDescriptor();
+    var entitySelector =
+        new FromSolutionEntitySelector<>(entityDescriptor, SelectionCacheType.PHASE, true);
+    var filteringEntity =
+        new FilteringEntityByValueSelector<>(entitySelector, replayingValueSelector, true, false);
+    var pinningFilterFunction = entityDescriptor.getEffectiveMovableEntityFilter();
+    var nonPinnedEntitySelector =
+        FilteringEntitySelector.of(
+            filteringEntity,
+            SelectionFilter.compose(
+                (director, selection) ->
+                    pinningFilterFunction.test(director.getWorkingSolution(), selection)));
+    // Destination selector with non-pinned entity selector filtered by value
+    var selector =
+        new ElementDestinationSelector<>(
+            nonPinnedEntitySelector, replayingValueSelector, iterableValueSelector, true, false);
+
+    // First, we select v1, which is pinned, and the entity iterator does not return a feasible
+    // destination.
+    // However, the value selector has another assigned value,
+    // which makes maybeMovableValues in ElementDestinationSelector to be set to true
+    // We always return 0 to meet the bailout size,
+    // and then return 1 to ensure the entity is selected by destination iterator
+    var random =
+        new TestRandom(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+    var solverScope = solvingStarted(selector, scoreDirector, random);
+    phaseStarted(selector, solverScope);
+    var iterator = selector.iterator();
+    mimicRecorder.setRecordedValue(v1);
+    assertThat(iterator.hasNext()).isTrue();
+    // The expected position is unassigned as v1 has no feasible destination
+    assertThat(iterator.next()).isSameAs(ElementPosition.unassigned());
+    // Next, we select v2, which is not pinned, and the entity iterator returns a feasible
+    // destination.
+    // This will cause the iterator to call tryUpdateEntityIterator, and reload the entity list
+    // b is the only reachable non-pinned entity for v2
+    mimicRecorder.setRecordedValue(v2);
+    assertThat(iterator.hasNext()).isTrue();
+    var position = iterator.next().ensureAssigned();
+    var entity = position.entity();
+    var index = position.index();
+    assertThat(entity).isSameAs(b);
+    assertThat(index).isSameAs(0);
   }
 
   @Test
@@ -572,12 +662,13 @@ class ElementDestinationSelectorTest {
 
   @Test
   void notEmptyIfThereAreEntities() {
-    var a = TestdataListEntity.createWithValues("A");
-    var b = TestdataListEntity.createWithValues("B");
+    var a = new TestdataListEntity("A");
+    var b = new TestdataListEntity("B");
     var v1 = new TestdataListValue("1");
     var solution = new TestdataListSolution();
     solution.setEntityList(List.of(a, b));
     solution.setValueList(List.of(v1));
+    SolutionManager.updateShadowVariables(solution);
 
     var scoreDirector = mockScoreDirector(TestdataListSolution.buildSolutionDescriptor());
     scoreDirector.setWorkingSolution(solution);
@@ -598,16 +689,17 @@ class ElementDestinationSelectorTest {
 
   @Test
   void notEmptyIfThereAreEntitiesWithPinning() {
-    var a = TestdataPinnedWithIndexListEntity.createWithValues("A");
+    var a = new TestdataPinnedWithIndexListEntity("A");
     var b =
-        TestdataPinnedWithIndexListEntity.createWithValues(
+        new TestdataPinnedWithIndexListEntity(
             "B",
             new TestdataPinnedWithIndexListValue("B0"),
             new TestdataPinnedWithIndexListValue("B1"));
-    b.setPlanningPinToIndex(1); // B0 will be ignored.
+    b.setPinIndex(1); // B0 will be ignored.
     var solution = new TestdataPinnedWithIndexListSolution();
     solution.setEntityList(List.of(a, b));
     solution.setValueList(List.of(b.getValueList().get(0), b.getValueList().get(1)));
+    SolutionManager.updateShadowVariables(solution);
 
     var scoreDirector =
         mockScoreDirector(TestdataPinnedWithIndexListSolution.buildSolutionDescriptor());
@@ -683,11 +775,57 @@ class ElementDestinationSelectorTest {
         new ElementDestinationSelector<>(
             entitySelector, replayingValueSelector, valueSelector, true, false);
 
+    // <4 => entity selector; >=4 => value selector
+    // Picks value selector twice
     var random = new TestRandom(5, 5, 5, 5);
 
     solvingStarted(selector, scoreDirector, random);
     assertAllCodesOfIterator(selector.iterator(), "B[1]", "B[1]");
 
+    // Even using only the value selector,
+    // the entity iterator must discard the previous entity during the hasNext() calls
     verify(entityIterator, times(1)).discardUpcomingSelection();
+  }
+
+  @Test
+  void discardOldValuesAndResetState() {
+    var v1 = new TestdataListEntityProvidingValue("V1");
+    var v2 = new TestdataListEntityProvidingValue("V2");
+    var a = new TestdataListEntityProvidingEntity("A", List.of(), List.of());
+    var solution = new TestdataListEntityProvidingSolution();
+    solution.setEntityList(List.of(a));
+
+    var scoreDirector =
+        mockScoreDirector(TestdataListEntityProvidingSolution.buildSolutionDescriptor());
+    scoreDirector.setWorkingSolution(solution);
+
+    var entitySelector = mockEntitySelector(a);
+    var entityIterator = mockUpcomingSelectionIterator(a, null, a);
+    doReturn(entityIterator).when(entitySelector).iterator();
+    var valueSelector =
+        mockIterableValueSelector(getEntityRangeListVariableDescriptor(scoreDirector), v1);
+    IterableValueSelector<TestdataListEntityProvidingSolution> replayingValueSelector =
+        mockReplayingValueSelector(getEntityRangeListVariableDescriptor(scoreDirector), v1, v1, v2);
+
+    var selector =
+        new ElementDestinationSelector<>(
+            entitySelector, replayingValueSelector, valueSelector, true, false);
+    // Value 0 makes the iterator to always request an entity from the related iterator
+    var random = new TestRandom(0, 0);
+    solvingStarted(selector, scoreDirector, random);
+    var iterator = selector.iterator();
+    // entityIterator returns a
+    assertThat(iterator.hasNext()).isTrue();
+    assertThat(iterator.next()).isNotNull();
+    // entityIterator gets null and call noUpcomingSelection
+    assertThat(iterator.hasNext()).isFalse();
+    assertThatCode(iterator::next).isInstanceOf(NoSuchElementException.class);
+    // replayingValueSelector returns v2, discardUpcomingSelection is called, and entityIterator
+    // returns a again
+    assertThat(iterator.hasNext()).isTrue();
+    assertThat(iterator.next()).isNotNull();
+    // iterator exhausted again
+    assertThat(iterator.hasNext()).isFalse();
+    assertThatCode(iterator::next).isInstanceOf(NoSuchElementException.class);
   }
 }

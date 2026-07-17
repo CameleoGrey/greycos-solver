@@ -39,9 +39,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.env.Environment;
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
-import com.fasterxml.jackson.databind.Module;
+import tools.jackson.databind.JacksonModule;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Must be seperated from {@link GreyCOSSolverAutoConfiguration} since {@link
@@ -202,11 +202,11 @@ public class GreyCOSSolverBeanFactory implements ApplicationContextAware, Enviro
 
   // @Bean wrapped by static class to avoid classloading issues if dependencies are absent
   @Configuration(proxyBeanMethods = false)
-  @ConditionalOnClass({Jackson2ObjectMapperBuilder.class, Score.class})
+  @ConditionalOnClass({JsonMapper.class, Score.class})
   static class GreyCOSJacksonConfiguration {
 
     @Bean
-    Module jacksonModule() {
+    JacksonModule jacksonModule() {
       return GreyCOSJacksonModule.createModule();
     }
   }

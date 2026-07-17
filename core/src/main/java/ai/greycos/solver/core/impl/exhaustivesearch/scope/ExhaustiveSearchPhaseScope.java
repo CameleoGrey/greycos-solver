@@ -89,21 +89,17 @@ public final class ExhaustiveSearchPhaseScope<Solution_> extends AbstractPhaseSc
     if (!expandableNodeQueue.add(moveNode)) {
       return;
     }
-    moveNode.setExpandable(true);
     addToBoundBucket(moveNode);
   }
 
   public ExhaustiveSearchNode pollExpandableNode() {
     while (!expandableNodeQueue.isEmpty()) {
-      var node = expandableNodeQueue.last();
-      expandableNodeQueue.remove(node);
+      var node = expandableNodeQueue.removeLast();
       removeFromBoundBucket(node);
 
       if (isDominatedByBestBound(node)) {
-        node.setExpandable(false);
         continue;
       }
-      node.setExpandable(false);
       return node;
     }
     return null;
@@ -145,9 +141,7 @@ public final class ExhaustiveSearchPhaseScope<Solution_> extends AbstractPhaseSc
     }
     dominatedBuckets.clear();
     for (var doomedNode : doomedNodes) {
-      if (expandableNodeQueue.remove(doomedNode)) {
-        doomedNode.setExpandable(false);
-      }
+      expandableNodeQueue.remove(doomedNode);
     }
   }
 

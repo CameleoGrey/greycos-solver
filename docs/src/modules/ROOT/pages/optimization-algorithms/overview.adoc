@@ -126,7 +126,7 @@ However, this basic procedure provides a good starting configuration that will p
 See xref:optimization-algorithms/construction-heuristics.adoc#firstFit[First Fit].
 
 . Next,
-implement xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningEntitySorting[planning entity sorting]
+implement xref:using-greycos-solver/modeling-planning-problems.adoc#planningEntitySorting[planning entity sorting]
 and turn it into xref:optimization-algorithms/construction-heuristics.adoc#firstFitDecreasing[First Fit Decreasing].
 
 . Next, add Late Acceptance behind it:
@@ -136,14 +136,14 @@ and turn it into xref:optimization-algorithms/construction-heuristics.adoc#first
 At this point, the return on invested time lowers and the result is likely to be sufficient.
 
 However, this can be improved at a lower return on invested time.
-Use the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker]
+Use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker]
 and try a couple of different Tabu Search, Simulated Annealing and Late Acceptance configurations,
 for example:
 
 . First Fit Decreasing
 . xref:optimization-algorithms/local-search.adoc#tabuSearch[Tabu Search].
 
-Use the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker]
+Use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker]
 to improve the values for the size parameters.
 
 Other experiments can also be run.
@@ -178,7 +178,7 @@ Many optimization algorithms have parameters that affect results and scalability
 GreyCOS Solver applies __configuration by exception__, so all optimization algorithms have default parameter values.
 This is very similar to the Garbage Collection parameters in a JVM: most users have no need to tweak them, but power users often do.
 
-The default parameter values are sufficient for many cases (and especially for prototypes), but if development time allows, it may be beneficial to power tweak them with the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[benchmarker] for better results and scalability on a specific use case.
+The default parameter values are sufficient for many cases (and especially for prototypes), but if development time allows, it may be beneficial to power tweak them with the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[benchmarker] for better results and scalability on a specific use case.
 The documentation for each optimization algorithm also declares the advanced configuration for power tweaking.
 
 [WARNING]
@@ -270,7 +270,7 @@ These form four nested scopes:
 
 image::optimization-algorithms/overview/scopeOverview.png[align="center"]
 
-Configure xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#logging[logging] to display the log messages of each scope.
+Configure xref:using-greycos-solver/running-the-solver.adoc#logging[logging] to display the log messages of each scope.
 
 
 [#termination]
@@ -713,7 +713,7 @@ This is useful for benchmarking.
   </termination>
 ----
 
-Switching xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#environmentMode[EnvironmentMode] can heavily impact when this termination ends.
+Switching xref:using-greycos-solver/running-the-solver.adoc#environmentMode[EnvironmentMode] can heavily impact when this termination ends.
 
 [#moveCountTermination]
 ===== `MoveCountTermination`
@@ -728,7 +728,7 @@ This is useful for benchmarking.
   </termination>
 ----
 
-Switching xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#environmentMode[EnvironmentMode] can heavily impact when this termination ends.
+Switching xref:using-greycos-solver/running-the-solver.adoc#environmentMode[EnvironmentMode] can heavily impact when this termination ends.
 
 [#diminishedReturnsTermination]
 ===== `DiminishedReturnsTermination`
@@ -848,7 +848,7 @@ For example, to implement a custom Construction Heuristic without implementing a
 ====
 Most of the time, a custom solver phase is not worth the investment of development time.
 xref:optimization-algorithms/construction-heuristics.adoc#constructionHeuristics[Construction Heuristics] are configurable and support partially initialized solutions too.
-You can use the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker] to tweak them.
+You can use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] to tweak them.
 ====
 
 The `PhaseCommand` interface appears as follows:
@@ -901,8 +901,8 @@ Effectively nothing will have changed for the next `Phase` or `PhaseCommand`.
 ====
 
 To configure values of a `PhaseCommand` dynamically in the solver configuration
-(so the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `customProperties` element and use xref:xref:using-greycos-solver/configuration.adoc.adoc#customPropertiesConfiguration[custom properties]:
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `customProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
 
 [source,xml,options="nowrap"]
 ----
@@ -1539,7 +1539,7 @@ If you do explicitly configure the ``Selector``, it overwrites the default setti
 Some `Selector` types implement a `SorterManner` out of the box:
 
 * `EntitySelector` supports:
-** ``DESCENDING``: Sorts the planning entities in descending order based on a give metric (xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningEntitySorting[planning entity sorting]). Requires that planning entity is annotated on the domain model.
+** ``DESCENDING``: Sorts the planning entities in descending order based on a give metric (xref:using-greycos-solver/modeling-planning-problems.adoc#planningEntitySorting[planning entity sorting]). Requires that planning entity is annotated on the domain model.
 +
 [source,xml,options="nowrap"]
 ----
@@ -1550,7 +1550,7 @@ Some `Selector` types implement a `SorterManner` out of the box:
     </entitySelector>
 ----
 * `ValueSelector` supports:
-** ``ASCENDING``: Sorts the planning values in ascending order based on a given metric (xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningValueSorting[planning value sorting]). Requires that planning value is annotated on the domain model.
+** ``ASCENDING``: Sorts the planning values in ascending order based on a given metric (xref:using-greycos-solver/modeling-planning-problems.adoc#planningValueSorting[planning value sorting]). Requires that planning value is annotated on the domain model.
 +
 [source,xml,options="nowrap"]
 ----
@@ -1774,8 +1774,8 @@ of the xref:advanced-features/advanced-features.adoc[Advanced Features manual].
 ==== Which move types might be missing in my implementation?
 
 To determine which move types might be missing in your implementation,
-run a xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker] __for a short amount of time__
-and xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#writeTheOutputSolutionOfBenchmarkRuns[configure it to write the best solutions to disk].
+run a xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] __for a short amount of time__
+and xref:using-greycos-solver/benchmarking-and-tweaking.adoc#writeTheOutputSolutionOfBenchmarkRuns[configure it to write the best solutions to disk].
 Take a look at such a best solution: it will likely be a local optima.
 Try to figure out if there's a move that could get out of that local optima faster.
 
@@ -1901,7 +1901,7 @@ with xref:optimization-algorithms/move-selector-reference.adoc#moveSelectorRefer
 ----
 
 Optionally, implement the `getSimpleMoveTypeDescription()` method to support
-xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarkReportPickedMoveTypeBestScoreDiffOverTimeStatistic[picked move statistics]:
+xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarkReportPickedMoveTypeBestScoreDiffOverTimeStatistic[picked move statistics]:
 
 [source,java,options="nowrap"]
 ----
@@ -1933,7 +1933,7 @@ This allows multi-threaded solving to migrate moves from one thread to another.
 
 The `lookUpWorkingObject()` method translates a planning entity instance or problem fact instance
 from one working solution to that of the destination's working solution.
-Internally it often uses a mapping technique based on the xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningId[planning ID].
+Internally it often uses a mapping technique based on the xref:using-greycos-solver/modeling-planning-problems.adoc#planningId[planning ID].
 
 To rebase lists or arrays in bulk, use `rebaseList()` and `rebaseArray()` on `AbstractMove`.
 
@@ -2052,8 +2052,8 @@ it does not support `cacheType` ``JUST_IN_TIME``.
 Therefore, `moveListFactory` uses `cacheType` ``STEP`` by default and it scales badly.
 
 To configure values of a `MoveListFactory` dynamically in the solver configuration
-(so the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `moveListFactoryCustomProperties` element and use xref:xref:using-greycos-solver/configuration.adoc.adoc#customPropertiesConfiguration[custom properties].
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `moveListFactoryCustomProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties].
 
 [WARNING]
 ====
@@ -2217,8 +2217,8 @@ Advanced configuration:
 ----
 
 To configure values of a `MoveIteratorFactory` dynamically in the solver configuration
-(so the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `moveIteratorFactoryCustomProperties` element and use xref:xref:using-greycos-solver/configuration.adoc.adoc#customPropertiesConfiguration[custom properties].
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `moveIteratorFactoryCustomProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties].
 
 [WARNING]
 ====

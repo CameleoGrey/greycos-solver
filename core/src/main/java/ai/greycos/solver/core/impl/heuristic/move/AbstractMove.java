@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.move;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.SequencedSet;
 import java.util.Set;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
@@ -11,6 +12,7 @@ import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescri
 import ai.greycos.solver.core.impl.move.VariableChangeRecordingScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
+import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
 
 /**
  * Abstract superclass for {@link Move}, requiring implementation of undo moves.
@@ -35,7 +37,9 @@ public abstract class AbstractMove<Solution_> extends AbstractSelectorBasedMove<
   }
 
   @Override
-  protected final void execute(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
+  protected final void execute(
+      MutableSolutionView<Solution_> solutionView,
+      VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
     doMoveOnGenuineVariables(scoreDirector);
   }
 
@@ -62,6 +66,14 @@ public abstract class AbstractMove<Solution_> extends AbstractSelectorBasedMove<
    */
   protected abstract void doMoveOnGenuineVariables(ScoreDirector<Solution_> scoreDirector);
 
+  @Override
+  public String describe() {
+    var description = getSimpleMoveTypeDescription();
+    return description.startsWith("SelectorBased")
+        ? description.substring("SelectorBased".length())
+        : description;
+  }
+
   protected <Value_> ValueRange<Value_> extractValueRangeFromEntity(
       ScoreDirector<Solution_> scoreDirector,
       ValueRangeDescriptor<Solution_> valueRangeDescriptor,
@@ -83,9 +95,9 @@ public abstract class AbstractMove<Solution_> extends AbstractSelectorBasedMove<
     return rebasedObjectList;
   }
 
-  public static <E> Set<E> rebaseSet(
+  public static <E> SequencedSet<E> rebaseSet(
       Set<E> externalObjectSet, ScoreDirector<?> destinationScoreDirector) {
-    var rebasedObjectSet = new LinkedHashSet<E>(externalObjectSet.size());
+    var rebasedObjectSet = LinkedHashSet.<E>newLinkedHashSet(externalObjectSet.size());
     for (var entity : externalObjectSet) {
       rebasedObjectSet.add(destinationScoreDirector.lookUpWorkingObject(entity));
     }

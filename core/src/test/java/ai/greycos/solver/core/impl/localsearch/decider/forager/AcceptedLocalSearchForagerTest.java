@@ -1,15 +1,15 @@
 package ai.greycos.solver.core.impl.localsearch.decider.forager;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Proxy;
 import java.util.EnumSet;
-import java.util.Random;
 
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.localsearch.decider.forager.LocalSearchPickEarlyType;
 import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
-import ai.greycos.solver.core.impl.heuristic.move.DummyMove;
+import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedDummyMove;
 import ai.greycos.solver.core.impl.localsearch.decider.forager.finalist.HighestScoreFinalistPodium;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
@@ -252,8 +252,13 @@ class AcceptedLocalSearchForagerTest {
     SolverScope<TestdataSolution> solverScope = new SolverScope<>();
     LocalSearchPhaseScope<TestdataSolution> phaseScope =
         new LocalSearchPhaseScope<>(solverScope, 0);
-    solverScope.setScoreDirector(createScoreDirector());
-    Random workingRandom = new TestRandom(1, 1);
+    InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector =
+        mock(InnerScoreDirector.class);
+    when(scoreDirector.getSolutionDescriptor())
+        .thenReturn(TestdataSolution.buildSolutionDescriptor());
+    when(scoreDirector.getScoreDefinition()).thenReturn(new SimpleScoreDefinition());
+    solverScope.setScoreDirector(scoreDirector);
+    var workingRandom = new TestRandom(1, 1);
     solverScope.setWorkingRandom(workingRandom);
     solverScope.setInitializedBestScore(SimpleScore.of(-10));
     solverScope.setSolverMetricSet(EnumSet.of(SolverMetric.MOVE_EVALUATION_COUNT));
@@ -267,30 +272,9 @@ class AcceptedLocalSearchForagerTest {
   private static LocalSearchMoveScope<TestdataSolution> createMoveScope(
       LocalSearchStepScope<TestdataSolution> stepScope, SimpleScore score, boolean accepted) {
     LocalSearchMoveScope<TestdataSolution> moveScope =
-        new LocalSearchMoveScope<>(stepScope, 0, new DummyMove());
+        new LocalSearchMoveScope<>(stepScope, 0, new SelectorBasedDummyMove());
     moveScope.setInitializedScore(score);
     moveScope.setAccepted(accepted);
     return moveScope;
-  }
-
-  @SuppressWarnings("unchecked")
-  private static InnerScoreDirector<TestdataSolution, SimpleScore> createScoreDirector() {
-    var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
-    var scoreDefinition = new SimpleScoreDefinition();
-    return (InnerScoreDirector<TestdataSolution, SimpleScore>)
-        Proxy.newProxyInstance(
-            AcceptedLocalSearchForagerTest.class.getClassLoader(),
-            new Class[] {InnerScoreDirector.class},
-            (proxy, method, args) ->
-                switch (method.getName()) {
-                  case "getSolutionDescriptor" -> solutionDescriptor;
-                  case "getScoreDefinition" -> scoreDefinition;
-                  case "toString" -> "AcceptedLocalSearchForagerTestScoreDirector";
-                  case "hashCode" -> System.identityHashCode(proxy);
-                  case "equals" -> proxy == args[0];
-                  default ->
-                      throw new UnsupportedOperationException(
-                          "Unexpected score director call in test: " + method.getName());
-                });
   }
 }

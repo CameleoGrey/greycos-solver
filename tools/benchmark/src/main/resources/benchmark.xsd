@@ -305,7 +305,7 @@
   </xs:complexType>
       
   
-  <xs:complexType name="solverConfig">
+  <xs:complexType final="extension restriction" name="solverConfig">
             
     
     <xs:complexContent>
@@ -326,13 +326,7 @@
           <xs:element minOccurs="0" name="daemon" type="xs:boolean"/>
                               
           
-          <xs:element minOccurs="0" name="randomType" type="tns:randomType"/>
-                              
-          
           <xs:element minOccurs="0" name="randomSeed" type="xs:long"/>
-                              
-          
-          <xs:element minOccurs="0" name="randomFactoryClass" type="xs:string"/>
                               
           
           <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
@@ -342,9 +336,6 @@
                               
           
           <xs:element minOccurs="0" name="threadFactoryClass" type="xs:string"/>
-                              
-          
-          <xs:element minOccurs="0" name="threadPoolShutdownTimeoutSeconds" type="xs:int"/>
                               
           
           <xs:element minOccurs="0" name="monitoring" type="tns:monitoringConfig"/>
@@ -414,6 +405,9 @@
                               
           
           <xs:element maxOccurs="unbounded" minOccurs="0" name="metric" type="tns:solverMetric"/>
+
+
+          <xs:element minOccurs="0" name="constraintMatchMetricSampleInterval" type="xs:int"/>
                             
         
         </xs:sequence>
@@ -428,7 +422,7 @@
   </xs:complexType>
       
   
-  <xs:complexType name="scoreDirectorFactoryConfig">
+  <xs:complexType final="extension restriction" name="scoreDirectorFactoryConfig">
             
     
     <xs:complexContent>
@@ -836,7 +830,7 @@
   </xs:complexType>
       
   
-  <xs:complexType name="entitySelectorConfig">
+  <xs:complexType final="extension restriction" name="entitySelectorConfig">
             
     
     <xs:complexContent>
@@ -923,7 +917,7 @@
   </xs:complexType>
       
   
-  <xs:complexType name="nearbySelectionConfig">
+  <xs:complexType final="extension restriction" name="nearbySelectionConfig">
             
     
     <xs:complexContent>
@@ -1034,7 +1028,7 @@
   </xs:complexType>
       
   
-  <xs:complexType name="valueSelectorConfig">
+  <xs:complexType final="extension restriction" name="valueSelectorConfig">
             
     
     <xs:complexContent>
@@ -1394,7 +1388,7 @@
   </xs:complexType>
       
   
-  <xs:complexType name="moveIteratorFactoryConfig">
+  <xs:complexType final="extension restriction" name="moveIteratorFactoryConfig">
             
     
     <xs:complexContent>
@@ -1424,7 +1418,7 @@
   </xs:complexType>
       
   
-  <xs:complexType name="moveListFactoryConfig">
+  <xs:complexType final="extension restriction" name="moveListFactoryConfig">
             
     
     <xs:complexContent>
@@ -1922,7 +1916,7 @@
   </xs:complexType>
       
   
-  <xs:complexType name="queuedValuePlacerConfig">
+  <xs:complexType final="extension restriction" name="queuedValuePlacerConfig">
             
     
     <xs:complexContent>
@@ -2015,7 +2009,7 @@
   </xs:complexType>
       
   
-  <xs:complexType name="customPhaseConfig">
+  <xs:complexType final="extension restriction" name="customPhaseConfig">
             
     
     <xs:complexContent>
@@ -2432,7 +2426,7 @@
   </xs:complexType>
       
   
-  <xs:complexType name="partitionedSearchPhaseConfig">
+  <xs:complexType final="extension restriction" name="partitionedSearchPhaseConfig">
             
     
     <xs:complexContent>
@@ -2492,6 +2486,9 @@
     <xs:restriction base="xs:string">
                   
       
+      <xs:enumeration value="DIVERSIFIED_LATE_ACCEPTANCE"/>
+
+
       <xs:enumeration value="PLANNING_SOLUTION_DIFF"/>
                   
       
@@ -2535,42 +2532,6 @@
                   
       
       <xs:enumeration value="NON_REPRODUCIBLE"/>
-                
-    
-    </xs:restriction>
-          
-  
-  </xs:simpleType>
-      
-  
-  <xs:simpleType name="randomType">
-            
-    
-    <xs:restriction base="xs:string">
-                  
-      
-      <xs:enumeration value="JDK"/>
-                  
-      
-      <xs:enumeration value="MERSENNE_TWISTER"/>
-                  
-      
-      <xs:enumeration value="WELL512A"/>
-                  
-      
-      <xs:enumeration value="WELL1024A"/>
-                  
-      
-      <xs:enumeration value="WELL19937A"/>
-                  
-      
-      <xs:enumeration value="WELL19937C"/>
-                  
-      
-      <xs:enumeration value="WELL44497A"/>
-                  
-      
-      <xs:enumeration value="WELL44497B"/>
                 
     
     </xs:restriction>

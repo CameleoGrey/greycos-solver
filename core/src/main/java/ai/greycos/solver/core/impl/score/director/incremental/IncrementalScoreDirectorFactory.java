@@ -4,7 +4,6 @@ import java.util.function.Supplier;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.calculator.ConstraintMatchAwareIncrementalScoreCalculator;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
@@ -41,11 +40,12 @@ public final class IncrementalScoreDirectorFactory<Solution_, Score_ extends Sco
     return new IncrementalScoreDirectorFactory<>(
         solutionDescriptor,
         () -> {
-          IncrementalScoreCalculator<Solution_, Score_> incrementalScoreCalculator =
-              ConfigUtils.newInstance(
-                  config,
-                  "incrementalScoreCalculatorClass",
-                  config.getIncrementalScoreCalculatorClass());
+          var incrementalScoreCalculator =
+              (IncrementalScoreCalculator<Solution_, Score_>)
+                  ConfigUtils.newInstance(
+                      config,
+                      "incrementalScoreCalculatorClass",
+                      (Class) config.getIncrementalScoreCalculatorClass());
           ConfigUtils.applyCustomProperties(
               incrementalScoreCalculator,
               "incrementalScoreCalculatorClass",
@@ -54,12 +54,6 @@ public final class IncrementalScoreDirectorFactory<Solution_, Score_ extends Sco
           return incrementalScoreCalculator;
         },
         environmentMode);
-  }
-
-  public static <Solution_, Score_ extends Score<Score_>>
-      IncrementalScoreDirectorFactory<Solution_, Score_> buildScoreDirectorFactory(
-          SolutionDescriptor<Solution_> solutionDescriptor, ScoreDirectorFactoryConfig config) {
-    return buildScoreDirectorFactory(solutionDescriptor, config, null);
   }
 
   private final Supplier<IncrementalScoreCalculator<Solution_, Score_>>
@@ -71,18 +65,6 @@ public final class IncrementalScoreDirectorFactory<Solution_, Score_ extends Sco
       EnvironmentMode environmentMode) {
     super(solutionDescriptor, environmentMode);
     this.incrementalScoreCalculatorSupplier = incrementalScoreCalculatorSupplier;
-  }
-
-  public IncrementalScoreDirectorFactory(
-      SolutionDescriptor<Solution_> solutionDescriptor,
-      Supplier<IncrementalScoreCalculator<Solution_, Score_>> incrementalScoreCalculatorSupplier) {
-    this(solutionDescriptor, incrementalScoreCalculatorSupplier, null);
-  }
-
-  @Override
-  public boolean supportsConstraintMatching() {
-    return incrementalScoreCalculatorSupplier.get()
-        instanceof ConstraintMatchAwareIncrementalScoreCalculator;
   }
 
   @Override

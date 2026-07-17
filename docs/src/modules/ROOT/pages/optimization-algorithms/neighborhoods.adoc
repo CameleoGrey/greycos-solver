@@ -91,7 +91,7 @@ that the user can optionally override to gain access to additional solver featur
 
 `Move rebase(Rebaser rebaser)`::
 This method creates a copy of the move that is applicable to a different working solution.
-This is only necessary when the solver is configured to use xref:enterprise-edition/enterprise-edition.adoc#multithreadedSolving[multi-threaded solving].
+This is necessary when the solver is configured to use xref:advanced-features/advanced-features.adoc#multithreadedSolving[multi-threaded solving].
 `String describe()`::
 This method returns an identifier for the move type, which is used by parts of xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[the benchmarker]
 to separate results by move type.
@@ -135,15 +135,15 @@ We invite you to explore the interface to discover all the available options.
 
 `lesson` and `timeslot` are fields of the move class, introduced by the caller.
 
-`timeslotVariable` comes from the Domain MetaModel API,
+`timeslotVariable` comes from the Cotwin MetaModel API,
 and serves to uniquely identify the planning variable which the move will affect.
 
 
 [#neighborhoodsDomainMetamodel]
-==== Domain metamodel
+==== Cotwin metamodel
 
 In order to uniquely and quickly identify planning entities and planning variables,
-we use the Domain MetaModel API.
+we use the Cotwin MetaModel API.
 It provides classes that represent the structure of the planning solution, specifically:
 
 `PlanningSolutionMetaModel`::
@@ -171,8 +171,8 @@ from the `Timetable` planning solution class:
 ----
 PlanningSolutionMetaModel<Timetable> solutionMetaModel = ...; // The solver will give this to you.
 PlanningVariableMetaModel<Timetable, Lesson, Timeslot> timeslotVariable =
-        solutionMetaModel.entity(Lesson.class)
-                .genuineVariable("timeslot");
+        solutionMetaModel.genuineEntity(Lesson.class)
+                .basicVariable("timeslot", Timeslot.class);
 ----
 
 If any of the entities or variables cannot be found,
@@ -184,14 +184,14 @@ The code above can often be simplified with Java's local type inference:
 [source,java,options="nowrap"]
 ----
 var solutionMetaModel = ...; // The solver will give this to you.
-var timeslotVariable = solutionMetaModel.entity(Lesson.class)
-                .genuineVariable("timeslot", Timeslot.class);
+var timeslotVariable = solutionMetaModel.genuineEntity(Lesson.class)
+        .basicVariable("timeslot", Timeslot.class);
 ----
 
 NOTE: Long-time users of GreyCOS Solver may be familiar with the concept of variable descriptors.
-The Domain MetaModel API is a modern replacement for variable descriptors,
+The Cotwin MetaModel API is a modern replacement for variable descriptors,
 offering a more type-safe and user-friendly way to interact with the planning solution structure.
-It is recommended to use the Domain MetaModel API for all new developments,
+It is recommended to use the Cotwin MetaModel API for all new developments,
 especially as the variable descriptor API is not public
 and therefore not covered by backward compatibility guarantees.
 
@@ -423,7 +423,7 @@ the `MONDAY_MORNING` timeslot is a valid value for the `timeslotVariable` of the
 If that's not the case, we filter out this lesson from the enumeration
 and therefore will not generate moves which use this lesson.
 
-The same pattern applies to other building blocks as well, such as `join` and `ifExists`;
+The same pattern applies to other building blocks as well, such as `join`, `ifExists` and `groupBy`;
 essentially, the `solutionView` argument was added to every predicate or function where it could be useful.
 
 
@@ -477,7 +477,7 @@ and the process of sampling is repeated each time the solver requests a new move
 The sampling phase currently only supports applying filtering and a limited selection of joiners,
 found in the `ai.greycos.solver.core.preview.api.neighborhood.stream.joiner.NeighborhoodsJoiners` class.
 More advanced selection strategies,
-such as xref:enterprise-edition/enterprise-edition.adoc#nearbySelection[nearby selection],
+such as xref:advanced-features/advanced-features.adoc#nearbySelection[nearby selection],
 are likely to materialize here in the future as well.
 
 [#neighborhoodsMoveGeneration]
@@ -530,13 +530,18 @@ and reference the implementation class in the solver configuration like so:
 [source,xml]
 ----
 <solver xmlns="https://greycos.ai/xsd/solver">
+  ...
   <enablePreviewFeature>NEIGHBORHOODS</enablePreviewFeature>
-   ...
+  <constructionHeuristic/>
+
   <localSearch>
     <neighborhoodProviderClass>com.acme.MyNeighborhoodProvider</neighborhoodProviderClass>
   </localSearch>
 </solver>
 ----
+
+The Neighborhoods API is part of Local Search and therefore operates on an initialized solution.
+For an initially unassigned solution, configure a construction heuristic before Local Search.
 
 The `NeighborhoodProvider` interface has a single method:
 
@@ -559,8 +564,8 @@ public class MyNeighborhoodProvider implements NeighborhoodProvider<MySolution> 
     @Override
     public Neighborhood defineNeighborhood(NeighborhoodBuilder<MySolution> builder) {
         var timeslotVariable = builder.getSolutionMetaModel()
-                .entity(Lesson.class)
-                .variable("timeslot", Timeslot.class);
+                .genuineEntity(Lesson.class)
+                .basicVariable("timeslot", Timeslot.class);
         return builder.add(new TimeslotChangeMoveProvider(timeslotVariable))
                 .build();
     }

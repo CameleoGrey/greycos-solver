@@ -7,7 +7,7 @@ import java.util.Map;
 
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.score.SimpleScore;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
@@ -38,8 +38,8 @@ class ConstraintWeightOverridesTest {
             Map.of(
                 SECOND_WEIGHT, SimpleScore.ONE,
                 FIRST_WEIGHT, SimpleScore.ZERO));
-    assertThat(firstAndSecond.getKnownConstraintNames())
-        .containsExactly(secondAndFirst.getKnownConstraintNames().toArray(new String[0]));
+    assertThat(firstAndSecond.getKnownConstraintIds())
+        .containsExactly(secondAndFirst.getKnownConstraintIds().toArray(new String[0]));
   }
 
   @Test

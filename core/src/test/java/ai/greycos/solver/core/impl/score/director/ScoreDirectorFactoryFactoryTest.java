@@ -18,65 +18,17 @@ import ai.greycos.solver.core.impl.score.director.stream.BavetConstraintStreamSc
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
 
 class ScoreDirectorFactoryFactoryTest {
-
-  @Test
-  void incrementalScoreCalculatorWithCustomProperties() {
-    var config = new ScoreDirectorFactoryConfig();
-    config.setIncrementalScoreCalculatorClass(TestCustomPropertiesIncrementalScoreCalculator.class);
-    var customProperties = new HashMap<String, String>();
-    customProperties.put("stringProperty", "string 1");
-    customProperties.put("intProperty", "7");
-    config.setIncrementalScoreCalculatorCustomProperties(customProperties);
-
-    var scoreDirectorFactory =
-        (IncrementalScoreDirectorFactory<TestdataSolution, SimpleScore>)
-            buildTestdataScoreDirectoryFactory(config);
-    try (var scoreDirector = scoreDirectorFactory.buildScoreDirector()) {
-      var scoreCalculator =
-          (TestCustomPropertiesIncrementalScoreCalculator)
-              scoreDirector.getIncrementalScoreCalculator();
-      assertThat(scoreCalculator.getStringProperty()).isEqualTo("string 1");
-      assertThat(scoreCalculator.getIntProperty()).isEqualTo(7);
-    }
-  }
-
-  @Test
-  void buildWithAssertionScoreDirectorFactory() {
-    var assertionScoreDirectorConfig =
-        new ScoreDirectorFactoryConfig()
-            .withIncrementalScoreCalculatorClass(
-                TestCustomPropertiesIncrementalScoreCalculator.class);
-    var config =
-        new ScoreDirectorFactoryConfig()
-            .withIncrementalScoreCalculatorClass(
-                TestCustomPropertiesIncrementalScoreCalculator.class)
-            .withAssertionScoreDirectorFactory(assertionScoreDirectorConfig);
-
-    var scoreDirectorFactory =
-        (AbstractScoreDirectorFactory<TestdataSolution, ?, ?>)
-            buildTestdataScoreDirectoryFactory(config, EnvironmentMode.STEP_ASSERT);
-
-    var assertionScoreDirectorFactory =
-        (IncrementalScoreDirectorFactory<TestdataSolution, SimpleScore>)
-            scoreDirectorFactory.getAssertionScoreDirectorFactory();
-    try (var assertionScoreDirector = assertionScoreDirectorFactory.buildScoreDirector()) {
-      var assertionScoreCalculator = assertionScoreDirector.getIncrementalScoreCalculator();
-      assertThat(assertionScoreCalculator)
-          .isExactlyInstanceOf(TestCustomPropertiesIncrementalScoreCalculator.class);
-    }
-  }
 
   @Test
   void multipleScoreCalculations_throwsException() {
     var config =
         new ScoreDirectorFactoryConfig()
             .withConstraintProviderClass(TestdataConstraintProvider.class)
-            .withEasyScoreCalculatorClass(TestCustomPropertiesEasyScoreCalculator.class)
-            .withIncrementalScoreCalculatorClass(
-                TestCustomPropertiesIncrementalScoreCalculator.class);
+            .withEasyScoreCalculatorClass(TestCustomPropertiesEasyScoreCalculator.class);
     assertThatExceptionOfType(IllegalArgumentException.class)
         .isThrownBy(() -> buildTestdataScoreDirectoryFactory(config))
         .withMessageContaining("scoreDirectorFactory")
@@ -125,9 +77,8 @@ class ScoreDirectorFactoryFactoryTest {
             .withConstraintProviderClass(InvalidAutomaticNodeSharingConstraintProvider.class)
             .withConstraintStreamAutomaticNodeSharing(false);
 
-    var scoreDirectorFactory = buildTestdataScoreDirectoryFactory(config);
-
-    assertThat(scoreDirectorFactory).isInstanceOf(BavetConstraintStreamScoreDirectorFactory.class);
+    assertThat(buildTestdataScoreDirectoryFactory(config))
+        .isInstanceOf(BavetConstraintStreamScoreDirectorFactory.class);
   }
 
   public static class TestCustomPropertiesEasyScoreCalculator
@@ -160,6 +111,84 @@ class ScoreDirectorFactoryFactoryTest {
     }
   }
 
+  public static class TestdataConstraintProvider implements ConstraintProvider {
+    @Override
+    public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+      return new Constraint[0];
+    }
+  }
+
+  public static final class InvalidAutomaticNodeSharingConstraintProvider
+      implements ConstraintProvider {
+
+    @Override
+    public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+      return new Constraint[0];
+    }
+  }
+
+  @Test
+  void incrementalMultipleScoreCalculations_throwsException() {
+    var config =
+        new ScoreDirectorFactoryConfig()
+            .withConstraintProviderClass(
+                ai.greycos.solver.core.testcotwin.TestdataConstraintProvider.class)
+            .withIncrementalScoreCalculatorClass(
+                TestCustomPropertiesIncrementalScoreCalculator.class);
+    assertThatExceptionOfType(IllegalArgumentException.class)
+        .isThrownBy(() -> buildTestdataScoreDirectoryFactory(config))
+        .withMessageContaining("scoreDirectorFactory")
+        .withMessageContaining("together");
+  }
+
+  @Test
+  void incrementalScoreCalculatorWithCustomProperties() {
+    var config = new ScoreDirectorFactoryConfig();
+    config.setIncrementalScoreCalculatorClass(TestCustomPropertiesIncrementalScoreCalculator.class);
+    var customProperties = new HashMap<String, String>();
+    customProperties.put("stringProperty", "string 1");
+    customProperties.put("intProperty", "7");
+    config.setIncrementalScoreCalculatorCustomProperties(customProperties);
+
+    var scoreDirectorFactory =
+        (IncrementalScoreDirectorFactory<TestdataSolution, SimpleScore>)
+            buildTestdataScoreDirectoryFactory(config);
+    try (var scoreDirector = scoreDirectorFactory.buildScoreDirector()) {
+      var scoreCalculator =
+          (TestCustomPropertiesIncrementalScoreCalculator)
+              scoreDirector.getIncrementalScoreCalculator();
+      assertThat(scoreCalculator.getStringProperty()).isEqualTo("string 1");
+      assertThat(scoreCalculator.getIntProperty()).isEqualTo(7);
+    }
+  }
+
+  @Test
+  void buildWithAssertionScoreDirectorFactory() {
+    var assertionScoreDirectorConfig =
+        new ScoreDirectorFactoryConfig()
+            .withIncrementalScoreCalculatorClass(
+                TestCustomPropertiesIncrementalScoreCalculator.class);
+    var config =
+        new ScoreDirectorFactoryConfig()
+            .withIncrementalScoreCalculatorClass(
+                TestCustomPropertiesIncrementalScoreCalculator.class)
+            .withAssertionScoreDirectorFactory(assertionScoreDirectorConfig);
+
+    var scoreDirectorFactory =
+        (AbstractScoreDirectorFactory<TestdataSolution, ?, ?>)
+            buildTestdataScoreDirectoryFactory(config, EnvironmentMode.STEP_ASSERT);
+
+    var assertionScoreDirectorFactory =
+        (IncrementalScoreDirectorFactory<TestdataSolution, SimpleScore>)
+            scoreDirectorFactory.getAssertionScoreDirectorFactory();
+    try (var assertionScoreDirector = assertionScoreDirectorFactory.buildScoreDirector()) {
+      var assertionScoreCalculator = assertionScoreDirector.getIncrementalScoreCalculator();
+      assertThat(assertionScoreCalculator)
+          .isExactlyInstanceOf(TestCustomPropertiesIncrementalScoreCalculator.class);
+    }
+  }
+
+  @NullMarked
   public static class TestCustomPropertiesIncrementalScoreCalculator
       implements IncrementalScoreCalculator<TestdataSolution, SimpleScore> {
 
@@ -183,45 +212,17 @@ class ScoreDirectorFactoryFactoryTest {
     }
 
     @Override
-    public void resetWorkingSolution(@NonNull TestdataSolution workingSolution) {}
+    public void resetWorkingSolution(TestdataSolution workingSolution) {}
 
     @Override
-    public void beforeEntityAdded(@NonNull Object entity) {}
+    public void beforeVariableChanged(Object entity, String variableName) {}
 
     @Override
-    public void afterEntityAdded(@NonNull Object entity) {}
+    public void afterVariableChanged(Object entity, String variableName) {}
 
     @Override
-    public void beforeVariableChanged(@NonNull Object entity, @NonNull String variableName) {}
-
-    @Override
-    public void afterVariableChanged(@NonNull Object entity, @NonNull String variableName) {}
-
-    @Override
-    public void beforeEntityRemoved(@NonNull Object entity) {}
-
-    @Override
-    public void afterEntityRemoved(@NonNull Object entity) {}
-
-    @Override
-    public @NonNull SimpleScore calculateScore() {
+    public SimpleScore calculateScore() {
       return SimpleScore.ZERO;
-    }
-  }
-
-  public static class TestdataConstraintProvider implements ConstraintProvider {
-    @Override
-    public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
-      return new Constraint[0];
-    }
-  }
-
-  public static final class InvalidAutomaticNodeSharingConstraintProvider
-      implements ConstraintProvider {
-
-    @Override
-    public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
-      return new Constraint[0];
     }
   }
 }

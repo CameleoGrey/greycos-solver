@@ -7,7 +7,7 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.ToIntBiFunction;
+import java.util.function.ToLongBiFunction;
 
 import ai.greycos.solver.core.api.score.stream.ConstraintCollectors;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
@@ -398,8 +398,8 @@ public abstract class AbstractBiConstraintStreamNodeSharingTest extends Abstract
   @Override
   @TestTemplate
   public void sameParentDifferentCollectorFunctionGroupBy() {
-    ToIntBiFunction<TestdataEntity, TestdataEntity> sumFunction1 = (a, b) -> 0;
-    ToIntBiFunction<TestdataEntity, TestdataEntity> sumFunction2 = (a, b) -> 1;
+    ToLongBiFunction<TestdataEntity, TestdataEntity> sumFunction1 = (a, b) -> 0;
+    ToLongBiFunction<TestdataEntity, TestdataEntity> sumFunction2 = (a, b) -> 1;
 
     assertThat(baseStream.groupBy(ConstraintCollectors.sum(sumFunction1)))
         .isNotSameAs(baseStream.groupBy(ConstraintCollectors.sum(sumFunction2)));
@@ -416,7 +416,7 @@ public abstract class AbstractBiConstraintStreamNodeSharingTest extends Abstract
   @Override
   @TestTemplate
   public void sameParentSameCollectorGroupBy() {
-    ToIntBiFunction<TestdataEntity, TestdataEntity> sumFunction = (a, b) -> 0;
+    ToLongBiFunction<TestdataEntity, TestdataEntity> sumFunction = (a, b) -> 0;
 
     assertThat(baseStream.groupBy(ConstraintCollectors.sum(sumFunction)))
         .isSameAs(baseStream.groupBy(ConstraintCollectors.sum(sumFunction)));

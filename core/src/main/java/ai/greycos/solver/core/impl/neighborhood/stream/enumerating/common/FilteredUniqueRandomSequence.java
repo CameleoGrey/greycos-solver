@@ -38,7 +38,7 @@ public final class FilteredUniqueRandomSequence<T> implements UniqueRandomSequen
   @Override
   public SequenceElement<T> pick(RandomGenerator workingRandom) {
     var index = pickIndex(workingRandom);
-    return new SequenceElement<>(originalList.get(index).getElement(), index);
+    return new SequenceElement<>(originalList.get(index).element(), index);
   }
 
   private int pickIndex(RandomGenerator workingRandom) {
@@ -58,7 +58,7 @@ public final class FilteredUniqueRandomSequence<T> implements UniqueRandomSequen
       // We try the same random index again; the underlying sequence will find the next best
       // non-removed element.
       actualValueIndex = delegate.pickIndex(workingRandom, originalRandomIndex);
-      value = originalList.get(actualValueIndex).getElement();
+      value = originalList.get(actualValueIndex).element();
     }
     return actualValueIndex;
   }

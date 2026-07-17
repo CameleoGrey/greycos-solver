@@ -7,7 +7,7 @@ import java.util.function.Function;
 
 import ai.greycos.solver.core.api.function.QuadFunction;
 import ai.greycos.solver.core.api.function.QuadPredicate;
-import ai.greycos.solver.core.api.function.ToIntQuadFunction;
+import ai.greycos.solver.core.api.function.ToLongQuadFunction;
 import ai.greycos.solver.core.api.score.stream.ConstraintCollectors;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.Joiners;
@@ -344,10 +344,10 @@ public abstract class AbstractQuadConstraintStreamNodeSharingTest
   @Override
   @TestTemplate
   public void sameParentDifferentCollectorFunctionGroupBy() {
-    ToIntQuadFunction<TestdataEntity, TestdataEntity, TestdataEntity, TestdataEntity> sumFunction1 =
-        (a, b, c, d) -> 0;
-    ToIntQuadFunction<TestdataEntity, TestdataEntity, TestdataEntity, TestdataEntity> sumFunction2 =
-        (a, b, c, d) -> 0;
+    ToLongQuadFunction<TestdataEntity, TestdataEntity, TestdataEntity, TestdataEntity>
+        sumFunction1 = (a, b, c, d) -> 0;
+    ToLongQuadFunction<TestdataEntity, TestdataEntity, TestdataEntity, TestdataEntity>
+        sumFunction2 = (a, b, c, d) -> 0;
 
     assertThat(baseStream.groupBy(ConstraintCollectors.sum(sumFunction1)))
         .isNotSameAs(baseStream.groupBy(ConstraintCollectors.sum(sumFunction2)));
@@ -365,7 +365,7 @@ public abstract class AbstractQuadConstraintStreamNodeSharingTest
   @Override
   @TestTemplate
   public void sameParentSameCollectorGroupBy() {
-    ToIntQuadFunction<TestdataEntity, TestdataEntity, TestdataEntity, TestdataEntity> sumFunction =
+    ToLongQuadFunction<TestdataEntity, TestdataEntity, TestdataEntity, TestdataEntity> sumFunction =
         (a, b, c, d) -> 0;
 
     assertThat(baseStream.groupBy(ConstraintCollectors.sum(sumFunction)))

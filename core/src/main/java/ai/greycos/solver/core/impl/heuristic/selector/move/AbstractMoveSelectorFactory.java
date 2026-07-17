@@ -6,7 +6,6 @@ import ai.greycos.solver.core.config.heuristic.selector.common.decorator.Selecti
 import ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelectorFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.ComparatorFactorySelectionSorter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.ComparatorSelectionSorter;
@@ -19,6 +18,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.Probability
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.SelectedCountLimitMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.ShufflingMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.SortingMoveSelector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public abstract class AbstractMoveSelectorFactory<
         Solution_, MoveSelectorConfig_ extends MoveSelectorConfig<MoveSelectorConfig_>>

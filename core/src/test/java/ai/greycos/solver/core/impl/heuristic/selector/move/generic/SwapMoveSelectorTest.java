@@ -9,6 +9,7 @@ import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfMove
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertCodesOfNeverEndingIterableSelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
 import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockScoreDirector;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -63,7 +64,7 @@ class SwapMoveSelectorTest {
             entitySelector.getEntityDescriptor().getGenuineVariableDescriptorList(),
             false);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    SolverScope solverScope = mockSolverScope();
     moveSelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
@@ -130,7 +131,7 @@ class SwapMoveSelectorTest {
             entitySelector.getEntityDescriptor().getGenuineVariableDescriptorList(),
             false);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    SolverScope solverScope = mockSolverScope();
     moveSelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
@@ -206,7 +207,7 @@ class SwapMoveSelectorTest {
             leftEntitySelector.getEntityDescriptor().getGenuineVariableDescriptorList(),
             false);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    SolverScope solverScope = mockSolverScope();
     moveSelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
@@ -390,7 +391,7 @@ class SwapMoveSelectorTest {
             leftEntitySelector.getEntityDescriptor().getGenuineVariableDescriptorList(),
             false);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    SolverScope solverScope = mockSolverScope();
     moveSelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
@@ -651,6 +652,7 @@ class SwapMoveSelectorTest {
         new TestdataAllowsUnassignedMultiVarEntityProvidingEntity(
             "C", List.of(v1, v4), List.of(v1, v3, v4));
     solution.setEntityList(List.of(e1, e2, e3));
+    solution.setSolutionValueRange(List.of(v1));
 
     var scoreDirector =
         mockScoreDirector(

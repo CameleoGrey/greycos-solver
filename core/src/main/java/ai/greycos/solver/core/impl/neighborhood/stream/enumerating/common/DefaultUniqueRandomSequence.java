@@ -47,7 +47,7 @@ public final class DefaultUniqueRandomSequence<T> implements UniqueRandomSequenc
   @Override
   public SequenceElement<T> pick(RandomGenerator workingRandom) {
     var randomIndex = pickIndex(workingRandom);
-    return new SequenceElement<>(originalList.get(randomIndex).getElement(), randomIndex);
+    return new SequenceElement<>(originalList.get(randomIndex).element(), randomIndex);
   }
 
   private int pickIndex(RandomGenerator workingRandom) {
@@ -119,7 +119,7 @@ public final class DefaultUniqueRandomSequence<T> implements UniqueRandomSequenc
     if (index == rightmostIndex) {
       rightmostIndex = removed.previousClearBit(rightmostIndex);
     }
-    return originalList.get(index).getElement();
+    return originalList.get(index).element();
   }
 
   @Override

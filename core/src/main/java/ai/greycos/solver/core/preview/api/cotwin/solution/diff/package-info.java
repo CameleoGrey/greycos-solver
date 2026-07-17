@@ -8,9 +8,8 @@
  * removed without prior notice, although we will strive to avoid this as much as possible.
  *
  * <p>We encourage you to try the API and give us feedback on your experience with it, before we
- * finalize it. Please direct your feedback to <a
- * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver Github</a> or to
- * <a href="https://discord.com/channels/1413420192213631086/1414521616955605003">GreyCOS
- * Discord</a>.
+ * finalize it. Please direct your feedback to the <a
+ * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver GitHub
+ * discussions</a>.
  */
 package ai.greycos.solver.core.preview.api.cotwin.solution.diff;

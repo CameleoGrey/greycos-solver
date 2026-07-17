@@ -7,4 +7,5 @@ module ai.greycos.solver.migration {
   requires rewrite.core;
   requires rewrite.java;
   requires rewrite.maven;
+  requires rewrite.properties;
 }

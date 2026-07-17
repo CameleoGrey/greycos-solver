@@ -3,13 +3,12 @@ package ai.greycos.solver.core.impl.score.stream.bavet;
 import java.util.Map;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.Indictment;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.impl.bavet.AbstractSession;
-import ai.greycos.solver.core.impl.bavet.NodeNetwork;
 import ai.greycos.solver.core.impl.bavet.common.PropagationQueue;
 import ai.greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;
 
@@ -22,15 +21,17 @@ import ai.greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInli
  * @see PropagationQueue Description of the tuple propagation mechanism.
  * @param <Score_>
  */
-public final class BavetConstraintSession<Score_ extends Score<Score_>> extends AbstractSession {
+public final class BavetConstraintSession<Score_ extends Score<Score_>>
+    extends AbstractSession<ConstraintStreamsBavetNodeNetwork> {
 
   private final AbstractScoreInliner<Score_> scoreInliner;
 
   BavetConstraintSession(AbstractScoreInliner<Score_> scoreInliner) {
-    this(scoreInliner, NodeNetwork.EMPTY);
+    this(scoreInliner, ConstraintStreamsBavetNodeNetwork.EMPTY);
   }
 
-  BavetConstraintSession(AbstractScoreInliner<Score_> scoreInliner, NodeNetwork nodeNetwork) {
+  BavetConstraintSession(
+      AbstractScoreInliner<Score_> scoreInliner, ConstraintStreamsBavetNodeNetwork nodeNetwork) {
     super(nodeNetwork);
     this.scoreInliner = scoreInliner;
   }
@@ -44,11 +45,11 @@ public final class BavetConstraintSession<Score_ extends Score<Score_>> extends 
     return scoreInliner;
   }
 
-  public Map<String, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap() {
-    return scoreInliner.getConstraintIdToConstraintMatchTotalMap();
+  public Map<ConstraintRef, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap() {
+    return scoreInliner.getConstraintMatchTotalMap();
   }
 
-  public Map<Object, Indictment<Score_>> getIndictmentMap() {
-    return scoreInliner.getIndictmentMap();
+  public void summarizeProfileIfPresent() {
+    nodeNetwork.summarizeProfileIfPresent();
   }
 }

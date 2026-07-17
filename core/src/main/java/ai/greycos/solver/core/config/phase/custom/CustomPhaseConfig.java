@@ -1,7 +1,6 @@
 package ai.greycos.solver.core.config.phase.custom;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,7 +25,7 @@ import org.jspecify.annotations.Nullable;
       "customProperties",
     })
 @NullMarked
-public class CustomPhaseConfig extends PhaseConfig<CustomPhaseConfig> {
+public final class CustomPhaseConfig extends PhaseConfig<CustomPhaseConfig> {
 
   public static final String XML_ELEMENT_NAME = "customPhase";
 
@@ -34,24 +33,32 @@ public class CustomPhaseConfig extends PhaseConfig<CustomPhaseConfig> {
   // and also because the input config file should match the output config file
 
   @XmlElement(name = "customPhaseCommandClass")
-  protected @Nullable List<Class<? extends PhaseCommand>> customPhaseCommandClassList = null;
+  @Nullable
+  private List<String> customPhaseCommandClassList = null;
 
   @XmlJavaTypeAdapter(JaxbCustomPropertiesAdapter.class)
-  protected @Nullable Map<String, String> customProperties = null;
+  @Nullable
+  private Map<String, String> customProperties = null;
 
-  @XmlTransient protected @Nullable List<? extends PhaseCommand> customPhaseCommandList = null;
+  @XmlTransient @Nullable private List<? extends PhaseCommand> customPhaseCommandList = null;
 
   // ************************************************************************
   // Constructors and simple getters/setters
   // ************************************************************************
 
   public @Nullable List<Class<? extends PhaseCommand>> getCustomPhaseCommandClassList() {
-    return customPhaseCommandClassList;
+    if (customPhaseCommandClassList == null) {
+      return null;
+    }
+    return ConfigUtils.resolveClasses(customPhaseCommandClassList, "customPhaseCommandClass", this);
   }
 
   public void setCustomPhaseCommandClassList(
       @Nullable List<Class<? extends PhaseCommand>> customPhaseCommandClassList) {
-    this.customPhaseCommandClassList = customPhaseCommandClassList;
+    this.customPhaseCommandClassList =
+        customPhaseCommandClassList == null
+            ? null
+            : customPhaseCommandClassList.stream().map(Class::getName).toList();
   }
 
   public @Nullable Map<String, String> getCustomProperties() {
@@ -77,7 +84,8 @@ public class CustomPhaseConfig extends PhaseConfig<CustomPhaseConfig> {
 
   public CustomPhaseConfig withCustomPhaseCommandClassList(
       List<Class<? extends PhaseCommand>> customPhaseCommandClassList) {
-    this.customPhaseCommandClassList = customPhaseCommandClassList;
+    this.customPhaseCommandClassList =
+        customPhaseCommandClassList.stream().map(Class::getName).toList();
     return this;
   }
 
@@ -88,14 +96,11 @@ public class CustomPhaseConfig extends PhaseConfig<CustomPhaseConfig> {
 
   public CustomPhaseConfig withCustomPhaseCommandList(
       List<? extends PhaseCommand> customPhaseCommandList) {
-    boolean hasNullCommand =
-        Objects.requireNonNullElse(customPhaseCommandList, Collections.emptyList()).stream()
-            .anyMatch(Objects::isNull);
+    var hasNullCommand = customPhaseCommandList.stream().anyMatch(Objects::isNull);
     if (hasNullCommand) {
       throw new IllegalArgumentException(
-          "Custom phase commands ("
-              + customPhaseCommandList
-              + ") must not contain a null element.");
+          "Custom phase commands (%s) must not contain a null element."
+              .formatted(customPhaseCommandList));
     }
     this.customPhaseCommandList = List.copyOf(customPhaseCommandList);
     return this;
@@ -112,7 +117,7 @@ public class CustomPhaseConfig extends PhaseConfig<CustomPhaseConfig> {
     super.inherit(inheritedConfig);
     customPhaseCommandClassList =
         ConfigUtils.inheritMergeableListProperty(
-            customPhaseCommandClassList, inheritedConfig.getCustomPhaseCommandClassList());
+            customPhaseCommandClassList, inheritedConfig.customPhaseCommandClassList);
     customPhaseCommandList =
         ConfigUtils.inheritMergeableListProperty(
             customPhaseCommandList, (List) inheritedConfig.getCustomPhaseCommandList());
@@ -133,7 +138,7 @@ public class CustomPhaseConfig extends PhaseConfig<CustomPhaseConfig> {
       terminationConfig.visitReferencedClasses(classVisitor);
     }
     if (customPhaseCommandClassList != null) {
-      customPhaseCommandClassList.forEach(classVisitor);
+      getCustomPhaseCommandClassList().forEach(classVisitor);
     }
   }
 }

@@ -306,7 +306,8 @@ public final class ConnectedRangeChainImpl<
 
   @Override
   public int hashCode() {
-    return Objects.hash(startSplitPointToConnectedRange, splitPointSet, startSplitPointToNextGap);
+    // splitPointSet excluded on purpose: see the comment on ConnectedRangeImpl.equals().
+    return Objects.hash(startSplitPointToConnectedRange, startSplitPointToNextGap);
   }
 
   @Override

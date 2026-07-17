@@ -6,6 +6,7 @@ import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManne
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
+import ai.greycos.solver.core.impl.solver.random.MockRandomSource;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 public final class HeuristicConfigPolicyTestUtils {
@@ -23,7 +24,7 @@ public final class HeuristicConfigPolicyTestUtils {
       SolutionDescriptor<Solution_> solutionDescriptor, EntitySorterManner entitySorterManner) {
     return new HeuristicConfigPolicy.Builder<Solution_>()
         .withEnvironmentMode(EnvironmentMode.PHASE_ASSERT)
-        .withRandom(new Random())
+        .withRandom(new MockRandomSource(new Random(0)))
         .withSolutionDescriptor(solutionDescriptor)
         .withClassInstanceCache(ClassInstanceCache.create())
         .withEntitySorterManner(entitySorterManner)

@@ -4,6 +4,7 @@ module ai.greycos.solver.quarkus.deployment {
 
   requires transitive ai.greycos.solver.quarkus;
   requires arc.processor;
+  requires io.quarkus.core;
   requires io.quarkus.gizmo;
   requires io.quarkus.gizmo2;
   requires io.smallrye.config;
@@ -14,7 +15,6 @@ module ai.greycos.solver.quarkus.deployment {
   requires org.objectweb.asm;
   requires quarkus.arc.deployment;
   requires quarkus.builder;
-  requires quarkus.core;
   requires quarkus.core.deployment;
   requires quarkus.devui.deployment.spi;
 }

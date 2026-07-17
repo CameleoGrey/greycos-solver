@@ -9,6 +9,7 @@ import jakarta.xml.bind.annotation.XmlElements;
 import jakarta.xml.bind.annotation.XmlType;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
+import ai.greycos.solver.core.api.solver.Solver;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import ai.greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
@@ -28,7 +29,7 @@ import org.jspecify.annotations.Nullable;
       "runnablePartThreadLimit",
       "phaseConfigList"
     })
-public class PartitionedSearchPhaseConfig extends PhaseConfig<PartitionedSearchPhaseConfig> {
+public final class PartitionedSearchPhaseConfig extends PhaseConfig<PartitionedSearchPhaseConfig> {
 
   public static final String XML_ELEMENT_NAME = "partitionedSearch";
   public static final String ACTIVE_THREAD_COUNT_AUTO = "AUTO";
@@ -37,12 +38,12 @@ public class PartitionedSearchPhaseConfig extends PhaseConfig<PartitionedSearchP
   // Warning: all fields are null (and not defaulted) because they can be inherited
   // and also because the input config file should match the output config file
 
-  protected Class<? extends SolutionPartitioner<?>> solutionPartitionerClass = null;
+  private String solutionPartitionerClass = null;
 
   @XmlJavaTypeAdapter(JaxbCustomPropertiesAdapter.class)
-  protected Map<String, String> solutionPartitionerCustomProperties = null;
+  private Map<String, String> solutionPartitionerCustomProperties = null;
 
-  protected String runnablePartThreadLimit = null;
+  private String runnablePartThreadLimit = null;
 
   @XmlElements({
     @XmlElement(
@@ -59,19 +60,20 @@ public class PartitionedSearchPhaseConfig extends PhaseConfig<PartitionedSearchP
         name = PartitionedSearchPhaseConfig.XML_ELEMENT_NAME,
         type = PartitionedSearchPhaseConfig.class)
   })
-  protected List<PhaseConfig> phaseConfigList = null;
+  private List<PhaseConfig> phaseConfigList = null;
 
   // ************************************************************************
   // Constructors and simple getters/setters
   // ************************************************************************
 
   public @Nullable Class<? extends SolutionPartitioner<?>> getSolutionPartitionerClass() {
-    return solutionPartitionerClass;
+    return ConfigUtils.resolveClass(solutionPartitionerClass, "solutionPartitionerClass", this);
   }
 
   public void setSolutionPartitionerClass(
       @Nullable Class<? extends SolutionPartitioner<?>> solutionPartitionerClass) {
-    this.solutionPartitionerClass = solutionPartitionerClass;
+    this.solutionPartitionerClass =
+        solutionPartitionerClass == null ? null : solutionPartitionerClass.getName();
   }
 
   public @Nullable Map<String, String> getSolutionPartitionerCustomProperties() {
@@ -83,6 +85,27 @@ public class PartitionedSearchPhaseConfig extends PhaseConfig<PartitionedSearchP
     this.solutionPartitionerCustomProperties = solutionPartitionerCustomProperties;
   }
 
+  /**
+   * Similar to a thread pool size, but instead of limiting the number of {@link Thread}s, it limits
+   * the number of {@link java.lang.Thread.State#RUNNABLE runnable} {@link Thread}s to avoid
+   * consuming all CPU resources (which would starve UI, Servlets and REST threads).
+   *
+   * <p>The number of {@link Thread}s is always equal to the number of partitions returned by {@link
+   * SolutionPartitioner#splitWorkingSolution(Object, Integer)}, because otherwise some partitions
+   * would never run (especially with {@link Solver#terminateEarly() asynchronous termination}). If
+   * this limit (or {@link Runtime#availableProcessors()}) is lower than the number of partitions,
+   * this results in a slower score calculation speed per partition {@link Solver}.
+   *
+   * <p>Defaults to {@value #ACTIVE_THREAD_COUNT_AUTO} which consumes the majority but not all of
+   * the CPU cores on multi-core machines, to prevent a livelock that hangs other processes (such as
+   * your IDE, REST servlets threads or SSH connections) on the machine.
+   *
+   * <p>Use {@value #ACTIVE_THREAD_COUNT_UNLIMITED} to give it all CPU cores. This is useful if
+   * you're handling the CPU consumption on an OS level.
+   *
+   * @return null, a number, {@value #ACTIVE_THREAD_COUNT_AUTO} or {@value
+   *     #ACTIVE_THREAD_COUNT_UNLIMITED}.
+   */
   public @Nullable String getRunnablePartThreadLimit() {
     return runnablePartThreadLimit;
   }
@@ -105,7 +128,7 @@ public class PartitionedSearchPhaseConfig extends PhaseConfig<PartitionedSearchP
 
   public @NonNull PartitionedSearchPhaseConfig withSolutionPartitionerClass(
       @NonNull Class<? extends SolutionPartitioner<?>> solutionPartitionerClass) {
-    this.setSolutionPartitionerClass(solutionPartitionerClass);
+    this.solutionPartitionerClass = solutionPartitionerClass.getName();
     return this;
   }
 
@@ -139,7 +162,7 @@ public class PartitionedSearchPhaseConfig extends PhaseConfig<PartitionedSearchP
     super.inherit(inheritedConfig);
     solutionPartitionerClass =
         ConfigUtils.inheritOverwritableProperty(
-            solutionPartitionerClass, inheritedConfig.getSolutionPartitionerClass());
+            solutionPartitionerClass, inheritedConfig.solutionPartitionerClass);
     solutionPartitionerCustomProperties =
         ConfigUtils.inheritMergeableMapProperty(
             solutionPartitionerCustomProperties,
@@ -163,7 +186,7 @@ public class PartitionedSearchPhaseConfig extends PhaseConfig<PartitionedSearchP
     if (terminationConfig != null) {
       terminationConfig.visitReferencedClasses(classVisitor);
     }
-    classVisitor.accept(solutionPartitionerClass);
+    classVisitor.accept(getSolutionPartitionerClass());
     if (phaseConfigList != null) {
       phaseConfigList.forEach(pc -> pc.visitReferencedClasses(classVisitor));
     }

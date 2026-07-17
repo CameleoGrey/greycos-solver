@@ -1,12 +1,18 @@
 package ai.greycos.solver.core.impl.score.stream.test;
 
+import java.util.Collection;
 import java.util.Map;
+import java.util.TreeMap;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.Indictment;
+import ai.greycos.solver.core.api.score.analysis.ConstraintAnalysis;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
+import ai.greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
+import ai.greycos.solver.core.impl.score.analysis.DefaultScoreAnalysis;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirector;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamScoreDirectorFactory;
 
@@ -25,8 +31,7 @@ public abstract class AbstractConstraintAssertion<Solution_, Score_ extends Scor
 
   abstract void update(
       InnerScore<Score_> score,
-      Map<String, ConstraintMatchTotal<Score_>> constraintMatchTotalMap,
-      Map<Object, Indictment<Score_>> indictmentMap);
+      Map<ConstraintRef, ConstraintMatchTotal<Score_>> constraintMatchTotalMap);
 
   /**
    * The logic ensures the solution is initialized only once. This is necessary because
@@ -73,15 +78,27 @@ public abstract class AbstractConstraintAssertion<Solution_, Score_ extends Scor
       if (bavetConstraintStreamScoreDirector != null) {
         bavetConstraintStreamScoreDirector.clearShadowVariablesListenerQueue();
       }
-      update(
-          scoreDirector.calculateScore(),
-          scoreDirector.getConstraintMatchTotalMap(),
-          scoreDirector.getIndictmentMap());
+      update(scoreDirector.calculateScore(), scoreDirector.getConstraintMatchTotalMap());
       initialized = true;
     }
   }
 
   void toggleInitialized() {
     this.initialized = true;
+  }
+
+  protected String explainScore(
+      InnerScore<Score_> workingScore,
+      Collection<ConstraintMatchTotal<Score_>> constraintMatchTotalCollection) {
+    var constraintAnalyses = new TreeMap<ConstraintRef, ConstraintAnalysis<Score_>>();
+    for (var constraintMatchTotal : constraintMatchTotalCollection) {
+      constraintAnalyses.put(
+          constraintMatchTotal.getConstraintRef(),
+          InnerScoreDirector.getConstraintAnalysis(
+              constraintMatchTotal, ScoreAnalysisFetchPolicy.FETCH_ALL));
+    }
+    return new DefaultScoreAnalysis<>(
+            workingScore.raw(), constraintAnalyses, workingScore.isFullyAssigned())
+        .summarize();
   }
 }

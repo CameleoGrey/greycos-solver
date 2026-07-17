@@ -1,7 +1,0 @@
-<solver>
-  <solutionClass>ai.greycos.solver.core.testcotwin.shadow.TestdataShadowedSolution</solutionClass>
-  <entityClass>ai.greycos.solver.core.testcotwin.shadow.TestdataShadowedEntity</entityClass>
-  <scoreDirectorFactory>
-    <incrementalScoreCalculatorClass>ai.greycos.solver.core.testcotwin.shadow.TestdataShadowedIncrementalScoreCalculator</incrementalScoreCalculatorClass>
-  </scoreDirectorFactory>
-</solver>

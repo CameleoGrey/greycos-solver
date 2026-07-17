@@ -13,10 +13,14 @@ For example:
 
 * To read a planning problem from the database (and store the best solution in it), annotate the domain POJOs with JPA annotations.
 * To read a planning problem from an XML file (and store the best solution in it), annotate the domain POJOs with JAXB annotations.
-* To expose the Solver as a REST Service that reads the planning problem and responds with the best solution, annotate the domain POJOs with JAXB or Jackson annotations and hook the `Solver` in RESTEasy or a similar framework.
+* To expose the Solver as a REST service that reads the planning problem and responds with the best solution, annotate the domain POJOs with JAXB or Jackson annotations and hook the `Solver` into RESTEasy or a similar framework.
 
+[#compatibilityMatrix]
+== Compatibility matrix
 
-image::integration/integrationOverview.png[align="center"]
+GreyCOS Solver 2.x uses Java 21 as its bytecode baseline,
+integrates with Quarkus 3.x, and targets Spring Boot 4.1.
+Use Java 25 for native-image builds and CI parity with the project build.
 
 
 [#integrationWithPersistentStorage]
@@ -71,7 +75,7 @@ To avoid this limitation, https://docs.jboss.org/hibernate/orm/current/userguide
 
 In JPA and Hibernate, there is usually a `@ManyToOne` relationship from most problem fact classes to the planning solution class.
 Therefore, the problem fact classes reference the planning solution class,
-which implies that when the solution is xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#cloningASolution[planning cloned], they need to be cloned too.
+which implies that when the solution is xref:using-greycos-solver/modeling-planning-problems.adoc#cloningASolution[planning cloned], they need to be cloned too.
 Use an `@DeepPlanningClone` on each such problem fact class to enforce that:
 
 [source,java,options="nowrap"]
@@ -182,6 +186,11 @@ var objectMapper = JsonMapper.builder()
             .build();
 ----
 
+The standalone persistence and Spring integrations use Jackson 3 (`tools.jackson.*`).
+The Quarkus extension uses the Jackson 2 API supplied by Quarkus (`com.fasterxml.jackson.*`)
+and registers its module through the Quarkus integration.
+Keep object mappers from these two API generations inside their respective module boundaries.
+
 
 [#jacksonMarshallingAScore]
 ==== Jackson: marshalling a `Score`
@@ -275,6 +284,12 @@ To use GreyCOS Solver with Quarkus, read the xref:quickstart/quarkus/quarkus-qui
 If you are starting a new project, visit the https://code.quarkus.io/[code.quarkus.io] and select
 the _GreyCOS AI constraint solver_ extension before generating your application.
 
+[#integrationWithQuarkusVersionPolicy]
+=== Supported Quarkus versions
+
+GreyCOS tracks the latest Quarkus 3 release and validates its native integration on Java 25.
+Quarkus supplies its own Jackson 2 stack; keep it separate from the standalone Jackson 3 persistence modules.
+
 [#integrationWithQuarkusProperties]
 === Available configuration properties
 
@@ -282,19 +297,19 @@ Following properties are supported in the Quarkus `application.properties`:
 
 :property_prefix: quarkus.
 :solver_name_prefix:
-include::config-properties.adoc[]
+include::_config-properties.adoc[]
 
 [#integrationWithQuarkusManagedResources]
 === Injecting managed resources
 
 The Quarkus integration allows the injection of several managed resources, including `SolverConfig`, `SolverFactory`,
-`SolverManager`, `SolutionManager`, `ScoreManager`, `ConstraintVerifier` and `ConstraintMetaModel`.
+`SolverManager`, `SolutionManager`, `ConstraintVerifier` and `ConstraintMetaModel`.
 
-The `SolverConfig` resource is constructed by reading the `application.properties` file and classpath. Therefore, Domain entities
-(solution, entities, and constraint classes) and customized properties (`spent-limit`, `domain-access-type`, etc.) for the
+The `SolverConfig` resource is constructed by reading `application.properties` and the classpath. Therefore, Cotwin types
+(solution, entities and constraint classes) and customized properties such as `spent-limit` for the
 planning problem are identified and loaded into the solver configuration.
 
-The available resouses can be injected as follows:
+The available resources can be injected as follows:
 
 [tabs]
 ====
@@ -317,9 +332,6 @@ public class Resource {
 
     @Inject
     SolutionManager<Timetable, SimpleScore> simpleSolutionManager; // <1>
-
-    @Inject
-    ScoreManager<Timetable, SimpleScore> simpleScoreManager; // <1>
 
     @Inject
     ConstraintMetaModel constraintMetaModel;
@@ -351,9 +363,6 @@ class Resource {
 
     @Inject
     var simpleSolutionManager:SolutionManager<Timetable, SimpleScore>? // <1>
-
-    @Inject
-    var simpleScoreManager:ScoreManager<Timetable, SimpleScore>? // <1>
 
     @Inject
     var constraintMetaModel: ConstraintMetaModel?
@@ -450,7 +459,7 @@ Following properties are supported:
 
 :property_prefix: quarkus.
 :solver_name_prefix: <solverName>.
-include::config-properties.adoc[]
+include::_config-properties.adoc[]
 
 ==== Working with multiple Solvers
 
@@ -626,8 +635,6 @@ class Resource {
 --
 ====
 
-**Multi-stage** planning can also be accomplished by using a separate solver configuration for each optimization stage.
-
 [#integrationWithSpringBoot]
 == Spring Boot
 
@@ -636,7 +643,7 @@ and read the xref:quickstart/spring-boot/spring-boot-quickstart.adoc#springBootQ
 
 [NOTE]
 ====
-GreyCOS Solver Spring Boot Starter only supports Spring Boot version 3.5.x.
+GreyCOS Solver Spring Boot Starter targets Spring Boot version 4.1.x.
 ====
 
 [#integrationWithSpringBootProperties]
@@ -646,19 +653,19 @@ These properties are supported in Spring's `application.properties`:
 
 :property_prefix:
 :solver_name_prefix:
-include::config-properties.adoc[]
+include::_config-properties.adoc[]
 
 [#integrationWithSpringBootManagedResources]
 === Injecting managed resources
 
 The Spring Boot integration allows the injection of several managed resources, including `SolverConfig`, `SolverFactory`,
-`SolverManager`, `SolutionManager`, `ScoreManager`, `ConstraintMetaModel` and `ConstraintVerifier`.
+`SolverManager`, `SolutionManager`, `ConstraintMetaModel` and `ConstraintVerifier`.
 
-The `SolverConfig` resource is constructed by reading the `application.properties` file and classpath. Therefore, Domain entities
-(solution, entities, and constraint classes) and customized properties (`spent-limit`, `domain-access-type`, etc.) for the
+The `SolverConfig` resource is constructed by reading `application.properties` and the classpath. Therefore, Cotwin types
+(solution, entities and constraint classes) and customized properties such as `spent-limit` for the
 planning problem are identified and loaded into the solver configuration.
 
-The available resouses can be injected as follows:
+The available resources can be injected as follows:
 
 [tabs]
 ====
@@ -682,9 +689,6 @@ public class Resource {
 
     @Autowired
     SolutionManager<Timetable, SimpleScore> simpleSolutionManager; // <1>
-
-    @Autowired
-    ScoreManager<Timetable, SimpleScore> simpleScoreManager; // <1>
 
     @Autowired
     ConstraintMetaModel constraintMetaModel;
@@ -717,9 +721,6 @@ class Resource {
 
     @Autowired
     var simpleSolutionManager:SolutionManager<Timetable, SimpleScore>? // <1>
-
-    @Autowired
-    var simpleScoreManager:ScoreManager<Timetable, SimpleScore>? // <1>
 
     @Autowired
     var constraintMetaModel:ConstraintMetaModel? = null
@@ -822,7 +823,7 @@ Following properties are supported:
 
 :property_prefix:
 :solver_name_prefix: <solverName>.
-include::config-properties.adoc[]
+include::_config-properties.adoc[]
 
 ==== Working with multiple Solvers
 
@@ -997,8 +998,6 @@ class Resource {
 ----
 --
 ====
-**Multi-stage** planning can also be accomplished by using a separate solver configuration for each optimization stage.
-
 [#integrationWithOtherEnvironments]
 == Other environments
 
@@ -1087,7 +1086,7 @@ Understand these guidelines to decide the hardware for a GreyCOS Solver service:
 * **RAM memory**: Provision plenty, but no need to provide more.
 ** The problem dataset, loaded before GreyCOS Solver is called, often consumes the most memory. It depends on the problem scale.
 *** If this is a problem, review the domain class structure: remove classes or fields that GreyCOS Solver doesn't need during solving.
-*** GreyCOS Solver usually has up to three solution instances: the internal working solution, the best solution and the old best solution (when it's being replaced). However, these are all a xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#cloningASolution[planning clone] of each other, so many problem fact instances are shared between those solution instances.
+*** GreyCOS Solver usually has up to three solution instances: the internal working solution, the best solution and the old best solution (when it's being replaced). However, these are all a xref:using-greycos-solver/modeling-planning-problems.adoc#cloningASolution[planning clone] of each other, so many problem fact instances are shared between those solution instances.
 ** During solving, the memory is very volatile, because solving creates many short-lived objects. The Garbage Collector deletes these in bulk and therefore needs some heap space as a buffer.
 ** The maximum size of the JVM heap space can be in three states:
 *** **Insufficient**: An `OutOfMemoryException` is thrown (often because the Garbage Collector is using more than 98% of the CPU time).

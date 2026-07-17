@@ -1,0 +1,9 @@
+[NOTE]
+====
+The solver runs considerably slower in dev mode because the
+https://www.baeldung.com/jvm-tiered-compilation#2c2---server-complier[JVM C2 compiler]
+is disabled to decrease live reload times.
+Do not use dev mode to benchmark the solver or assess solution quality.
+See xref:frequently-asked-questions.adoc#quarkus-dev-mode-performance[the Quarkus dev mode performance FAQ]
+for details.
+====

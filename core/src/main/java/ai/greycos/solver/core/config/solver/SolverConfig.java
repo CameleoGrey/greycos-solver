@@ -19,6 +19,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElements;
@@ -42,7 +43,6 @@ import ai.greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.monitoring.MonitoringConfig;
 import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
-import ai.greycos.solver.core.config.solver.random.RandomType;
 import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
@@ -50,12 +50,9 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistan
 import ai.greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 import ai.greycos.solver.core.impl.io.jaxb.SolverConfigIO;
 import ai.greycos.solver.core.impl.phase.PhaseFactory;
-import ai.greycos.solver.core.impl.solver.random.RandomFactory;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * To read it from XML, use {@link #createFromXmlResource(String)}. To build a {@link SolverFactory}
@@ -68,13 +65,10 @@ import org.slf4j.LoggerFactory;
       "enablePreviewFeatureSet",
       "environmentMode",
       "daemon",
-      "randomType",
       "randomSeed",
-      "randomFactoryClass",
       "moveThreadCount",
       "moveThreadBufferSize",
       "threadFactoryClass",
-      "threadPoolShutdownTimeoutSeconds",
       "monitoringConfig",
       "solutionClass",
       "entityClassList",
@@ -83,9 +77,7 @@ import org.slf4j.LoggerFactory;
       "nearbyDistanceMeterClass",
       "phaseConfigList",
     })
-public class SolverConfig extends AbstractConfig<SolverConfig> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(SolverConfig.class);
+public final class SolverConfig extends AbstractConfig<SolverConfig> {
 
   public static final String XML_ELEMENT_NAME = "solver";
   public static final String XML_NAMESPACE =
@@ -228,38 +220,38 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
   public static final String MOVE_THREAD_COUNT_AUTO = "AUTO";
 
   @XmlTransient private Clock clock = null;
-  @XmlTransient private ClassLoader classLoader = null;
+
+  @XmlTransient
+  @Deprecated(since = "2.1.0", forRemoval = true)
+  private ClassLoader classLoader = null;
 
   // Warning: all fields are null (and not defaulted) because they can be inherited
   // and also because the input config file should match the output config file
   @XmlElement(name = "enablePreviewFeature")
-  protected Set<PreviewFeature> enablePreviewFeatureSet = null;
+  private Set<PreviewFeature> enablePreviewFeatureSet = null;
 
-  protected EnvironmentMode environmentMode = null;
-  protected Boolean daemon = null;
-  protected RandomType randomType = null;
-  protected Long randomSeed = null;
-  protected Class<? extends RandomFactory> randomFactoryClass = null;
-  protected String moveThreadCount = null;
-  protected Integer moveThreadBufferSize = null;
-  protected Class<? extends ThreadFactory> threadFactoryClass = null;
-  protected Integer threadPoolShutdownTimeoutSeconds = null;
+  private EnvironmentMode environmentMode = null;
+  private Boolean daemon = null;
+  private Long randomSeed = null;
+  private String moveThreadCount = null;
+  private Integer moveThreadBufferSize = null;
+  private String threadFactoryClass = null;
 
-  protected Class<?> solutionClass = null;
+  private String solutionClass = null;
 
   @XmlElement(name = "entityClass")
-  protected List<Class<?>> entityClassList = null;
+  private List<String> entityClassList = null;
 
-  @XmlTransient protected Map<String, MemberAccessor> gizmoMemberAccessorMap = null;
-  @XmlTransient protected Map<String, SolutionCloner> gizmoSolutionClonerMap = null;
+  @XmlTransient private Map<String, MemberAccessor> gizmoMemberAccessorMap = null;
+  @XmlTransient private Map<String, SolutionCloner> gizmoSolutionClonerMap = null;
 
   @XmlElement(name = "scoreDirectorFactory")
-  protected ScoreDirectorFactoryConfig scoreDirectorFactoryConfig = null;
+  private ScoreDirectorFactoryConfig scoreDirectorFactoryConfig = null;
 
   @XmlElement(name = "termination")
   private TerminationConfig terminationConfig;
 
-  protected Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass = null;
+  private String nearbyDistanceMeterClass = null;
 
   @XmlElements({
     @XmlElement(
@@ -279,10 +271,10 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
         name = PartitionedSearchPhaseConfig.XML_ELEMENT_NAME,
         type = PartitionedSearchPhaseConfig.class)
   })
-  protected List<PhaseConfig> phaseConfigList = null;
+  private List<PhaseConfig> phaseConfigList = null;
 
   @XmlElement(name = "monitoring")
-  protected MonitoringConfig monitoringConfig = null;
+  private MonitoringConfig monitoringConfig = null;
 
   // ************************************************************************
   // Constructors and simple getters/setters
@@ -296,6 +288,10 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     this.clock = Objects.requireNonNull(clock);
   }
 
+  /**
+   * @deprecated does not have any effect.
+   */
+  @Deprecated(since = "2.1.0", forRemoval = true)
   public SolverConfig(@Nullable ClassLoader classLoader) {
     this.classLoader = classLoader;
   }
@@ -324,10 +320,18 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     this.clock = clock;
   }
 
+  /**
+   * @deprecated does not have any effect.
+   */
+  @Deprecated(since = "2.1.0", forRemoval = true)
   public @Nullable ClassLoader getClassLoader() {
     return classLoader;
   }
 
+  /**
+   * @deprecated does not have any effect.
+   */
+  @Deprecated(since = "2.1.0", forRemoval = true)
   public void setClassLoader(@Nullable ClassLoader classLoader) {
     this.classLoader = classLoader;
   }
@@ -356,14 +360,6 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     this.daemon = daemon;
   }
 
-  public @Nullable RandomType getRandomType() {
-    return randomType;
-  }
-
-  public void setRandomType(@Nullable RandomType randomType) {
-    this.randomType = randomType;
-  }
-
   public @Nullable Long getRandomSeed() {
     return randomSeed;
   }
@@ -372,49 +368,11 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     this.randomSeed = randomSeed;
   }
 
-  public @Nullable Class<? extends RandomFactory> getRandomFactoryClass() {
-    return randomFactoryClass;
-  }
-
-  public void setRandomFactoryClass(@Nullable Class<? extends RandomFactory> randomFactoryClass) {
-    this.randomFactoryClass = randomFactoryClass;
-  }
-
   public @Nullable String getMoveThreadCount() {
     return moveThreadCount;
   }
 
   public void setMoveThreadCount(@Nullable String moveThreadCount) {
-    // Validate moveThreadCount if provided
-    if (moveThreadCount != null
-        && !MOVE_THREAD_COUNT_NONE.equals(moveThreadCount)
-        && !MOVE_THREAD_COUNT_AUTO.equals(moveThreadCount)) {
-      try {
-        int count = Integer.parseInt(moveThreadCount);
-        if (count <= 0) {
-          throw new IllegalArgumentException(
-              "The moveThreadCount (" + moveThreadCount + ") must be positive.");
-        }
-        int availableProcessorCount = Runtime.getRuntime().availableProcessors();
-        if (count > availableProcessorCount) {
-          LOGGER.warn(
-              "The moveThreadCount ({}) is higher than the availableProcessorCount ({}), "
-                  + "which is counter-efficient.",
-              count,
-              availableProcessorCount);
-        }
-      } catch (NumberFormatException e) {
-        throw new IllegalArgumentException(
-            "The moveThreadCount ("
-                + moveThreadCount
-                + ") is not a valid number or one of the constants ("
-                + MOVE_THREAD_COUNT_NONE
-                + ", "
-                + MOVE_THREAD_COUNT_AUTO
-                + ").",
-            e);
-      }
-    }
     this.moveThreadCount = moveThreadCount;
   }
 
@@ -423,51 +381,37 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
   }
 
   public void setMoveThreadBufferSize(@Nullable Integer moveThreadBufferSize) {
-    // Validate moveThreadBufferSize if provided
-    if (moveThreadBufferSize != null && moveThreadBufferSize <= 0) {
-      throw new IllegalArgumentException(
-          "The moveThreadBufferSize (" + moveThreadBufferSize + ") must be positive.");
-    }
     this.moveThreadBufferSize = moveThreadBufferSize;
   }
 
   public @Nullable Class<? extends ThreadFactory> getThreadFactoryClass() {
-    return threadFactoryClass;
+    return ConfigUtils.resolveClass(threadFactoryClass, "threadFactoryClass", this);
   }
 
   public void setThreadFactoryClass(@Nullable Class<? extends ThreadFactory> threadFactoryClass) {
-    this.threadFactoryClass = threadFactoryClass;
-  }
-
-  public @Nullable Integer getThreadPoolShutdownTimeoutSeconds() {
-    return threadPoolShutdownTimeoutSeconds;
-  }
-
-  public void setThreadPoolShutdownTimeoutSeconds(
-      @Nullable Integer threadPoolShutdownTimeoutSeconds) {
-    if (threadPoolShutdownTimeoutSeconds != null && threadPoolShutdownTimeoutSeconds <= 0) {
-      throw new IllegalArgumentException(
-          "The threadPoolShutdownTimeoutSeconds ("
-              + threadPoolShutdownTimeoutSeconds
-              + ") must be positive.");
-    }
-    this.threadPoolShutdownTimeoutSeconds = threadPoolShutdownTimeoutSeconds;
+    this.threadFactoryClass = threadFactoryClass == null ? null : threadFactoryClass.getName();
   }
 
   public @Nullable Class<?> getSolutionClass() {
-    return solutionClass;
+    return ConfigUtils.resolveClass(solutionClass, "solutionClass", this);
   }
 
   public void setSolutionClass(@Nullable Class<?> solutionClass) {
-    this.solutionClass = solutionClass;
+    this.solutionClass = solutionClass == null ? null : solutionClass.getName();
   }
 
   public @Nullable List<Class<?>> getEntityClassList() {
-    return entityClassList;
+    if (entityClassList == null) {
+      return null;
+    }
+    return ConfigUtils.resolveClasses(entityClassList, "entityClass", this);
   }
 
   public void setEntityClassList(@Nullable List<Class<?>> entityClassList) {
-    this.entityClassList = entityClassList;
+    this.entityClassList =
+        entityClassList == null
+            ? null
+            : entityClassList.stream().map(Class::getName).collect(Collectors.toList());
   }
 
   public @Nullable Map<@NonNull String, @NonNull MemberAccessor> getGizmoMemberAccessorMap() {
@@ -506,12 +450,13 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
   }
 
   public @Nullable Class<? extends NearbyDistanceMeter<?, ?>> getNearbyDistanceMeterClass() {
-    return nearbyDistanceMeterClass;
+    return ConfigUtils.resolveClass(nearbyDistanceMeterClass, "nearbyDistanceMeterClass", this);
   }
 
   public void setNearbyDistanceMeterClass(
       @Nullable Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass) {
-    this.nearbyDistanceMeterClass = nearbyDistanceMeterClass;
+    this.nearbyDistanceMeterClass =
+        nearbyDistanceMeterClass == null ? null : nearbyDistanceMeterClass.getName();
   }
 
   public @Nullable List<@NonNull PhaseConfig> getPhaseConfigList() {
@@ -549,19 +494,8 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     return this;
   }
 
-  public @NonNull SolverConfig withRandomType(@NonNull RandomType randomType) {
-    this.randomType = randomType;
-    return this;
-  }
-
   public @NonNull SolverConfig withRandomSeed(@NonNull Long randomSeed) {
     this.randomSeed = randomSeed;
-    return this;
-  }
-
-  public @NonNull SolverConfig withRandomFactoryClass(
-      @NonNull Class<? extends RandomFactory> randomFactoryClass) {
-    this.randomFactoryClass = randomFactoryClass;
     return this;
   }
 
@@ -577,28 +511,24 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
 
   public @NonNull SolverConfig withThreadFactoryClass(
       @NonNull Class<? extends ThreadFactory> threadFactoryClass) {
-    this.threadFactoryClass = threadFactoryClass;
-    return this;
-  }
-
-  public @NonNull SolverConfig withThreadPoolShutdownTimeoutSeconds(
-      @NonNull Integer threadPoolShutdownTimeoutSeconds) {
-    this.threadPoolShutdownTimeoutSeconds = threadPoolShutdownTimeoutSeconds;
+    this.threadFactoryClass = threadFactoryClass.getName();
     return this;
   }
 
   public @NonNull SolverConfig withSolutionClass(@NonNull Class<?> solutionClass) {
-    this.solutionClass = solutionClass;
+    this.solutionClass = solutionClass.getName();
     return this;
   }
 
   public @NonNull SolverConfig withEntityClassList(@NonNull List<Class<?>> entityClassList) {
-    this.entityClassList = entityClassList;
+    this.entityClassList =
+        entityClassList.stream().map(Class::getName).collect(Collectors.toList());
     return this;
   }
 
   public @NonNull SolverConfig withEntityClasses(@NonNull Class<?>... entityClasses) {
-    this.entityClassList = Arrays.asList(entityClasses);
+    this.entityClassList =
+        Arrays.stream(entityClasses).map(Class::getName).collect(Collectors.toList());
     return this;
   }
 
@@ -620,6 +550,10 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
     return this;
   }
 
+  /**
+   * @deprecated does not have any effect.
+   */
+  @Deprecated(since = "2.1.0", forRemoval = true)
   public @NonNull SolverConfig withClassLoader(@NonNull ClassLoader classLoader) {
     this.setClassLoader(classLoader);
     return this;
@@ -679,7 +613,7 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
 
   public @NonNull SolverConfig withNearbyDistanceMeterClass(
       @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeterClass) {
-    this.nearbyDistanceMeterClass = distanceMeterClass;
+    this.nearbyDistanceMeterClass = distanceMeterClass.getName();
     return this;
   }
 
@@ -742,9 +676,7 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
   // ************************************************************************
 
   public void offerRandomSeedFromSubSingleIndex(long subSingleIndex) {
-    if ((environmentMode == null || environmentMode.isReproducible())
-        && randomFactoryClass == null
-        && randomSeed == null) {
+    if ((environmentMode == null || environmentMode.isReproducible()) && randomSeed == null) {
       randomSeed = subSingleIndex;
     }
   }
@@ -765,13 +697,8 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
         ConfigUtils.inheritOverwritableProperty(
             environmentMode, inheritedConfig.getEnvironmentMode());
     daemon = ConfigUtils.inheritOverwritableProperty(daemon, inheritedConfig.getDaemon());
-    randomType =
-        ConfigUtils.inheritOverwritableProperty(randomType, inheritedConfig.getRandomType());
     randomSeed =
         ConfigUtils.inheritOverwritableProperty(randomSeed, inheritedConfig.getRandomSeed());
-    randomFactoryClass =
-        ConfigUtils.inheritOverwritableProperty(
-            randomFactoryClass, inheritedConfig.getRandomFactoryClass());
     moveThreadCount =
         ConfigUtils.inheritOverwritableProperty(
             moveThreadCount, inheritedConfig.getMoveThreadCount());
@@ -780,12 +707,11 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
             moveThreadBufferSize, inheritedConfig.getMoveThreadBufferSize());
     threadFactoryClass =
         ConfigUtils.inheritOverwritableProperty(
-            threadFactoryClass, inheritedConfig.getThreadFactoryClass());
+            threadFactoryClass, inheritedConfig.threadFactoryClass);
     solutionClass =
-        ConfigUtils.inheritOverwritableProperty(solutionClass, inheritedConfig.getSolutionClass());
+        ConfigUtils.inheritOverwritableProperty(solutionClass, inheritedConfig.solutionClass);
     entityClassList =
-        ConfigUtils.inheritMergeableListProperty(
-            entityClassList, inheritedConfig.getEntityClassList());
+        ConfigUtils.inheritMergeableListProperty(entityClassList, inheritedConfig.entityClassList);
     gizmoMemberAccessorMap =
         ConfigUtils.inheritMergeableMapProperty(
             gizmoMemberAccessorMap, inheritedConfig.getGizmoMemberAccessorMap());
@@ -800,7 +726,7 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
         ConfigUtils.inheritConfig(terminationConfig, inheritedConfig.getTerminationConfig());
     nearbyDistanceMeterClass =
         ConfigUtils.inheritOverwritableProperty(
-            nearbyDistanceMeterClass, inheritedConfig.getNearbyDistanceMeterClass());
+            nearbyDistanceMeterClass, inheritedConfig.nearbyDistanceMeterClass);
     phaseConfigList =
         ConfigUtils.inheritMergeableListConfig(
             phaseConfigList, inheritedConfig.getPhaseConfigList());
@@ -816,17 +742,16 @@ public class SolverConfig extends AbstractConfig<SolverConfig> {
 
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
-    classVisitor.accept(randomFactoryClass);
-    classVisitor.accept(threadFactoryClass);
-    classVisitor.accept(solutionClass);
+    classVisitor.accept(getThreadFactoryClass());
+    classVisitor.accept(getSolutionClass());
     if (entityClassList != null) {
-      entityClassList.forEach(classVisitor);
+      getEntityClassList().forEach(classVisitor);
     }
     if (scoreDirectorFactoryConfig != null) {
       scoreDirectorFactoryConfig.visitReferencedClasses(classVisitor);
     }
     if (nearbyDistanceMeterClass != null) {
-      classVisitor.accept(nearbyDistanceMeterClass);
+      classVisitor.accept(getNearbyDistanceMeterClass());
     }
     if (terminationConfig != null) {
       terminationConfig.visitReferencedClasses(classVisitor);

@@ -1,5 +1,6 @@
 package ai.greycos.solver.core.impl.solver.termination;
 
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Offset.offset;
 import static org.mockito.Mockito.doReturn;
@@ -25,7 +26,7 @@ class BestScoreFeasibleTerminationTest {
     when(scoreDefinition.getFeasibleLevelsSize()).thenReturn(1);
     SolverTermination<TestdataSolution> termination =
         new BestScoreFeasibleTermination<>(scoreDefinition, new double[] {});
-    SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
+    SolverScope<TestdataSolution> solverScope = mockSolverScope();
     when(solverScope.getScoreDefinition()).thenReturn(new HardSoftScoreDefinition());
     doReturn(HardSoftScore.of(-100, -100)).when(solverScope).getStartingInitializedScore();
     when(solverScope.isBestSolutionInitialized()).thenReturn(true);

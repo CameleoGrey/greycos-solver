@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyTestUtils;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
@@ -63,8 +64,7 @@ class NearEntityNearbyEntitySelectorTest {
         };
 
     var mimicReplayingEntitySelector =
-        SelectorTestUtils.mockReplayingEntitySelector(
-            entityDescriptor, morocco, spain, australia, brazil, morocco);
+        SelectorTestUtils.mockReplayingEntitySelector(entityDescriptor, morocco);
 
     NearEntityNearbyEntitySelector<TestdataSolution> entitySelector =
         new NearEntityNearbyEntitySelector<>(
@@ -73,6 +73,7 @@ class NearEntityNearbyEntitySelectorTest {
     TestRandom workingRandom = new TestRandom(0, 1, 2, 0);
 
     InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, null);
     SolverScope<TestdataSolution> solverScope =
         SelectorTestUtils.solvingStarted(entitySelector, scoreDirector, workingRandom);
     AbstractPhaseScope<TestdataSolution> phaseScopeA =
@@ -84,7 +85,7 @@ class NearEntityNearbyEntitySelectorTest {
     var iterator = entitySelector.iterator();
     assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
     assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Brazil");
-    assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
+    assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Australia");
     assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
     assertThat(entitySelector.isNeverEnding()).isTrue();
     entitySelector.stepEnded(stepScopeA1);
@@ -132,8 +133,7 @@ class NearEntityNearbyEntitySelectorTest {
         };
 
     var mimicReplayingEntitySelector =
-        SelectorTestUtils.mockReplayingEntitySelector(
-            entityDescriptor, morocco, spain, australia, brazil);
+        SelectorTestUtils.mockReplayingEntitySelector(entityDescriptor, morocco);
 
     NearEntityNearbyEntitySelector<TestdataSolution> entitySelector =
         new NearEntityNearbyEntitySelector<>(
@@ -146,6 +146,7 @@ class NearEntityNearbyEntitySelectorTest {
     TestRandom workingRandom = new TestRandom(0);
 
     InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, null);
     SolverScope<TestdataSolution> solverScope =
         SelectorTestUtils.solvingStarted(entitySelector, scoreDirector, workingRandom);
     AbstractPhaseScope<TestdataSolution> phaseScopeA =
@@ -154,7 +155,7 @@ class NearEntityNearbyEntitySelectorTest {
     AbstractStepScope<TestdataSolution> stepScopeA1 =
         PlannerTestUtils.delegatingStepScope(phaseScopeA);
     entitySelector.stepStarted(stepScopeA1);
-    assertAllCodesOfEntitySelector(entitySelector, "Spain", "Brazil", "Spain");
+    assertAllCodesOfEntitySelector(entitySelector, "Spain", "Brazil", "Australia");
     entitySelector.stepEnded(stepScopeA1);
     entitySelector.phaseEnded(phaseScopeA);
     entitySelector.solvingEnded(solverScope);
@@ -185,7 +186,7 @@ class NearEntityNearbyEntitySelectorTest {
         };
 
     var mimicReplayingEntitySelector =
-        SelectorTestUtils.mockReplayingEntitySelector(entityDescriptor, morocco, morocco, morocco);
+        SelectorTestUtils.mockReplayingEntitySelector(entityDescriptor, morocco);
 
     NearEntityNearbyEntitySelector<TestdataSolution> entitySelector =
         new NearEntityNearbyEntitySelector<>(
@@ -200,6 +201,7 @@ class NearEntityNearbyEntitySelectorTest {
     TestRandom workingRandom = new TestRandom(0, 0, 0);
 
     InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, null);
     SolverScope<TestdataSolution> solverScope =
         SelectorTestUtils.solvingStarted(entitySelector, scoreDirector, workingRandom);
     AbstractPhaseScope<TestdataSolution> phaseScopeA =

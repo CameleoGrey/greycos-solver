@@ -3,13 +3,13 @@ package ai.greycos.solver.core.impl.islandmodel;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import ai.greycos.solver.core.impl.localsearch.LocalSearchPhase;
 import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 
 import org.slf4j.Logger;
@@ -30,7 +30,7 @@ public class IslandAgent<Solution_> implements Runnable {
   private final BoundedChannel<AgentUpdate<Solution_>> sender;
   private final BoundedChannel<AgentUpdate<Solution_>> receiver;
   private final IslandModelConfig config;
-  private final Random random;
+  private final RandomSource random;
   private final SolverScope<Solution_> islandScope;
   private final CountDownLatch completionLatch;
 
@@ -46,7 +46,7 @@ public class IslandAgent<Solution_> implements Runnable {
       BoundedChannel<AgentUpdate<Solution_>> sender,
       BoundedChannel<AgentUpdate<Solution_>> receiver,
       IslandModelConfig config,
-      Random random,
+      RandomSource random,
       SolverScope<Solution_> islandScope,
       CountDownLatch completionLatch) {
     this.agentId = agentId;
@@ -67,6 +67,7 @@ public class IslandAgent<Solution_> implements Runnable {
   @Override
   public void run() {
     try {
+      islandScope.transferWorkingRandomOwnershipToCurrentThread();
       LOGGER.info("Agent {} started with {} phases", agentId, phases.size());
 
       aliveBits = new BitSet(config.getIslandCount());
@@ -106,6 +107,11 @@ public class IslandAgent<Solution_> implements Runnable {
       islandScope.getSolver().solvingEnded(islandScope);
       markAsDead();
     } catch (Exception e) {
+      try {
+        islandScope.getSolver().solvingError(islandScope, e);
+      } catch (Exception cleanupException) {
+        e.addSuppressed(cleanupException);
+      }
       LOGGER.error("Agent {} encountered unexpected error", agentId, e);
       markAsDead();
       throw new IllegalStateException("Island agent " + agentId + " failed.", e);

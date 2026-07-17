@@ -1,5 +1,6 @@
 package ai.greycos.solver.core.impl.solver.termination;
 
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Offset.offset;
 import static org.mockito.Mockito.doReturn;
@@ -31,7 +32,7 @@ class BestScoreTerminationTest {
     var termination =
         new BestScoreTermination<TestdataSolution>(
             scoreDefinition, SimpleScore.of(-1000), new double[] {});
-    SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
+    SolverScope<TestdataSolution> solverScope = mockSolverScope();
     when(solverScope.getScoreDefinition()).thenReturn(new SimpleScoreDefinition());
     when(solverScope.isBestSolutionInitialized()).thenReturn(true);
     doReturn(SimpleScore.of(-1100)).when(solverScope).getStartingInitializedScore();
@@ -417,7 +418,7 @@ class BestScoreTerminationTest {
             termination.calculateTimeGradient(
                 BendableScore.of(new long[] {-10}, new long[] {-400}),
                 BendableScore.of(new long[] {-10}, new long[] {-300}),
-                BendableScore.of(new long[] {0}, new long[] {-340})))
+                BendableScore.of(new long[] {-0}, new long[] {-340})))
         .isEqualTo(1.0, offset(0.0));
 
     // Soft total delta is 0
@@ -437,7 +438,7 @@ class BestScoreTerminationTest {
             termination.calculateTimeGradient(
                 BendableScore.of(new long[] {-20}, new long[] {-300}),
                 BendableScore.of(new long[] {-10}, new long[] {-300}),
-                BendableScore.of(new long[] {-14}, new long[] {0})))
+                BendableScore.of(new long[] {-14}, new long[] {-0})))
         .isEqualTo((0.6 * 0.75) + 0.25, offset(0.0));
   }
 

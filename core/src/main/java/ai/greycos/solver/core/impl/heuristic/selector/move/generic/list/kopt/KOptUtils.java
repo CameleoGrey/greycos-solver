@@ -7,9 +7,8 @@ import java.util.function.Function;
 
 import ai.greycos.solver.core.api.function.TriPredicate;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import ai.greycos.solver.core.impl.util.MathUtils;
 import ai.greycos.solver.core.impl.util.Pair;
-
-import org.apache.commons.math3.util.CombinatoricsUtils;
 
 final class KOptUtils {
 
@@ -110,7 +109,6 @@ final class KOptUtils {
     return out;
   }
 
-  @SuppressWarnings("unchecked")
   public static <Node_> Function<Node_, Node_> getMultiEntitySuccessorFunction(
       Node_[] pickedValues, ListVariableStateSupply<?, Object, Object> listVariableStateSupply) {
     var entityOrderInfo = EntityOrderInfo.of(pickedValues, listVariableStateSupply);
@@ -118,11 +116,11 @@ final class KOptUtils {
   }
 
   public static <Node_> TriPredicate<Node_, Node_, Node_> getBetweenPredicate(
-      ListVariableStateSupply<?, Object, Object> listVariableStateSupply) {
+      ListVariableStateSupply<?, ?, ?> listVariableStateSupply) {
     return (start, middle, end) -> {
-      int startIndex = listVariableStateSupply.getIndexOrElse(start, -1);
-      int middleIndex = listVariableStateSupply.getIndexOrElse(middle, -1);
-      int endIndex = listVariableStateSupply.getIndexOrElse(end, -1);
+      int startIndex = listVariableStateSupply.getIndexOrFail(start);
+      int middleIndex = listVariableStateSupply.getIndexOrFail(middle);
+      int endIndex = listVariableStateSupply.getIndexOrFail(end);
 
       if (startIndex <= endIndex) {
         // test middleIndex in [startIndex, endIndex]
@@ -196,10 +194,7 @@ final class KOptUtils {
       for (var j = 0; j <= i; j++) {
         var sign = ((k + j - 1) % 2 == 0) ? 1 : -1;
         totalTypes +=
-            sign
-                * CombinatoricsUtils.binomialCoefficient(i, j)
-                * CombinatoricsUtils.factorial(j)
-                * (1L << j);
+            sign * MathUtils.binomialCoefficient(i, j) * MathUtils.factorial(j) * (1L << j);
       }
     }
     return totalTypes;

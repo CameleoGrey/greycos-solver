@@ -27,11 +27,6 @@ public abstract class AbstractConstraintStreamScoreDirectorFactory<
     super(solutionDescriptor, environmentMode);
   }
 
-  protected AbstractConstraintStreamScoreDirectorFactory(
-      SolutionDescriptor<Solution_> solutionDescriptor) {
-    super(solutionDescriptor);
-  }
-
   /**
    * Creates a new score director, inserts facts and calculates score.
    *
@@ -41,9 +36,4 @@ public abstract class AbstractConstraintStreamScoreDirectorFactory<
   public abstract AbstractScoreInliner<Score_> fireAndForget(Object... facts);
 
   public abstract ConstraintMetaModel getConstraintMetaModel();
-
-  @Override
-  public boolean supportsConstraintMatching() {
-    return true;
-  }
 }

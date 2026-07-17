@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import ai.greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
 import ai.greycos.solver.core.impl.heuristic.move.DummyMove;
@@ -38,7 +37,7 @@ class UnionMoveSelectorTest {
     UnionMoveSelector<TestdataSolution> moveSelector =
         new UnionMoveSelector<>(childMoveSelectorList, false);
 
-    SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
+    SolverScope<TestdataSolution> solverScope = PlannerTestUtils.mockSolverScope();
     moveSelector.solvingStarted(solverScope);
     AbstractPhaseScope<TestdataSolution> phaseScopeA = mock(AbstractPhaseScope.class);
     when(phaseScopeA.getSolverScope()).thenReturn(solverScope);
@@ -65,7 +64,7 @@ class UnionMoveSelectorTest {
     UnionMoveSelector<TestdataSolution> moveSelector =
         new UnionMoveSelector<>(childMoveSelectorList, false);
 
-    SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
+    SolverScope<TestdataSolution> solverScope = PlannerTestUtils.mockSolverScope();
     moveSelector.solvingStarted(solverScope);
     AbstractPhaseScope<TestdataSolution> phaseScopeA = mock(AbstractPhaseScope.class);
     when(phaseScopeA.getSolverScope()).thenReturn(solverScope);
@@ -101,7 +100,7 @@ class UnionMoveSelectorTest {
             true,
             new FixedSelectorProbabilityWeightFactory<>(fixedProbabilityWeightMap));
 
-    Random workingRandom =
+    var workingRandom =
         new TestRandom(1.0 / 1020.0, 1019.0 / 1020.0, 1000.0 / 1020.0, 0.0, 999.0 / 1020.0);
     SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
     when(solverScope.getWorkingRandom()).thenReturn(workingRandom);
@@ -134,7 +133,7 @@ class UnionMoveSelectorTest {
     UnionMoveSelector<TestdataSolution> moveSelector =
         new UnionMoveSelector<>(childMoveSelectorList, true, null);
 
-    Random workingRandom = new TestRandom(0, 1, 1, 0, 0);
+    var workingRandom = new TestRandom(0, 1, 1, 0, 0);
     SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
     when(solverScope.getWorkingRandom()).thenReturn(workingRandom);
     moveSelector.solvingStarted(solverScope);
@@ -164,7 +163,7 @@ class UnionMoveSelectorTest {
     UnionMoveSelector<TestdataSolution> moveSelector =
         new UnionMoveSelector<>(childMoveSelectorList, true, null);
 
-    Random workingRandom = new TestRandom(1);
+    var workingRandom = new TestRandom(1);
 
     SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
     when(solverScope.getWorkingRandom()).thenReturn(workingRandom);
@@ -201,7 +200,7 @@ class UnionMoveSelectorTest {
             true,
             new FixedSelectorProbabilityWeightFactory<>(fixedProbabilityWeightMap));
 
-    Random workingRandom = new TestRandom(1);
+    var workingRandom = new TestRandom(1);
 
     SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
     when(solverScope.getWorkingRandom()).thenReturn(workingRandom);

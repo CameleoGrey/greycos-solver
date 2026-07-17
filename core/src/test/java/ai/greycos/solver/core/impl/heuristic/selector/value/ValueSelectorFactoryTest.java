@@ -427,11 +427,6 @@ class ValueSelectorFactoryTest {
     }
 
     @Override
-    public boolean isCountable() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
     public boolean isNeverEnding() {
       return false;
     }

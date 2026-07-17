@@ -1,33 +1,31 @@
 package ai.greycos.solver.jackson.api.score;
 
 import ai.greycos.solver.core.api.score.HardSoftScore;
-import ai.greycos.solver.jackson.api.score.buildin.HardSoftScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.HardSoftScoreJacksonSerializer;
 
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 class HardSoftScoreJacksonRoundTripTest extends AbstractScoreJacksonRoundTripTest {
 
   @Test
   void serializeAndDeserialize() {
-    assertSerializeAndDeserialize(null, new TestHardSoftScoreWrapper(null));
-    var score = HardSoftScore.of(1200, 34);
-    assertSerializeAndDeserialize(score, new TestHardSoftScoreWrapper(score));
+    assertSerializeAndDeserialize(null, new TestHardSoftLongScoreWrapper(null));
+    var score = HardSoftScore.of(1200L, 34L);
+    assertSerializeAndDeserialize(score, new TestHardSoftLongScoreWrapper(score));
   }
 
-  public static class TestHardSoftScoreWrapper extends TestScoreWrapper<HardSoftScore> {
+  public static class TestHardSoftLongScoreWrapper extends TestScoreWrapper<HardSoftScore> {
 
     @JsonSerialize(using = HardSoftScoreJacksonSerializer.class)
     @JsonDeserialize(using = HardSoftScoreJacksonDeserializer.class)
     private HardSoftScore score;
 
     @SuppressWarnings("unused")
-    private TestHardSoftScoreWrapper() {}
+    private TestHardSoftLongScoreWrapper() {}
 
-    public TestHardSoftScoreWrapper(HardSoftScore score) {
+    public TestHardSoftLongScoreWrapper(HardSoftScore score) {
       this.score = score;
     }
 

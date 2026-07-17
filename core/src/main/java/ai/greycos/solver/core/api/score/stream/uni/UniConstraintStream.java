@@ -2,17 +2,16 @@ package ai.greycos.solver.core.api.score.stream.uni;
 
 import static ai.greycos.solver.core.impl.util.ConstantLambdaUtils.notEquals;
 import static ai.greycos.solver.core.impl.util.ConstantLambdaUtils.uniConstantNull;
-import static ai.greycos.solver.core.impl.util.ConstantLambdaUtils.uniConstantOne;
 import static ai.greycos.solver.core.impl.util.ConstantLambdaUtils.uniConstantOneBigDecimal;
 import static ai.greycos.solver.core.impl.util.ConstantLambdaUtils.uniConstantOneLong;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
 
@@ -20,11 +19,7 @@ import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
-import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintCollectors;
-import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
 import ai.greycos.solver.core.api.score.stream.ConstraintStream;
 import ai.greycos.solver.core.api.score.stream.Joiners;
 import ai.greycos.solver.core.api.score.stream.bi.BiConstraintStream;
@@ -163,10 +158,6 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    * {@link BiConstraintStream#filter(BiPredicate) filter}, because it applies hashing and/or
    * indexing on the properties, so it doesn't create nor checks every combination of A and B.
    *
-   * <p>Note that, if a legacy constraint stream uses {@link ConstraintFactory#from(Class)} as
-   * opposed to {@link ConstraintFactory#forEach(Class)}, a different range of B may be selected.
-   * (See {@link ConstraintFactory#from(Class)} Javadoc.)
-   *
    * <p>This method is syntactic sugar for {@link #join(UniConstraintStream)}.
    *
    * @param <B> the type of the second matched fact
@@ -183,10 +174,6 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    * <p>Important: This is faster and more scalable than a {@link #join(Class) join} followed by a
    * {@link BiConstraintStream#filter(BiPredicate) filter}, because it applies hashing and/or
    * indexing on the properties, so it doesn't create nor checks every combination of A and B.
-   *
-   * <p>Note that, if a legacy constraint stream uses {@link ConstraintFactory#from(Class)} as
-   * opposed to {@link ConstraintFactory#forEach(Class)}, a different range of B may be selected.
-   * (See {@link ConstraintFactory#from(Class)} Javadoc.)
    *
    * <p>This method is syntactic sugar for {@link #join(UniConstraintStream, BiJoiner)}.
    *
@@ -273,10 +260,6 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    * BiJoiner} is true (for the properties it extracts from both facts).
    *
    * <p>This method has overloaded methods with multiple {@link BiJoiner} parameters.
-   *
-   * <p>Note that, if a legacy constraint stream uses {@link ConstraintFactory#from(Class)} as
-   * opposed to {@link ConstraintFactory#forEach(Class)}, a different definition of exists applies.
-   * (See {@link ConstraintFactory#from(Class)} Javadoc.)
    *
    * @param <B> the type of the second matched fact
    * @return a stream that matches every A where B exists for which the {@link BiJoiner} is true
@@ -510,10 +493,6 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    * Create a new {@link UniConstraintStream} for every A, if another A exists that does not {@link
    * Object#equals(Object)} the first.
    *
-   * <p>Note that, if a legacy constraint stream uses {@link ConstraintFactory#from(Class)} as
-   * opposed to {@link ConstraintFactory#forEach(Class)}, a different definition of exists applies.
-   * (See {@link ConstraintFactory#from(Class)} Javadoc.)
-   *
    * @return a stream that matches every A where a different A exists
    */
   default @NonNull UniConstraintStream<A> ifExistsOther(@NonNull Class<A> otherClass) {
@@ -526,10 +505,6 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    * properties it extracts from both facts).
    *
    * <p>This method has overloaded methods with multiple {@link BiJoiner} parameters.
-   *
-   * <p>Note that, if a legacy constraint stream uses {@link ConstraintFactory#from(Class)} as
-   * opposed to {@link ConstraintFactory#forEach(Class)}, a different definition of exists applies.
-   * (See {@link ConstraintFactory#from(Class)} Javadoc.)
    *
    * @return a stream that matches every A where a different A exists for which the {@link BiJoiner}
    *     is true
@@ -708,10 +683,6 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    * {@link BiJoiner} is true (for the properties it extracts from both facts).
    *
    * <p>This method has overloaded methods with multiple {@link BiJoiner} parameters.
-   *
-   * <p>Note that, if a legacy constraint stream uses {@link ConstraintFactory#from(Class)} as
-   * opposed to {@link ConstraintFactory#forEach(Class)}, a different definition of exists applies.
-   * (See {@link ConstraintFactory#from(Class)} Javadoc.)
    *
    * @param <B> the type of the second matched fact
    * @return a stream that matches every A where B does not exist for which the {@link BiJoiner} is
@@ -950,10 +921,6 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    * Create a new {@link UniConstraintStream} for every A, if no other A exists that does not {@link
    * Object#equals(Object)} the first.
    *
-   * <p>Note that, if a legacy constraint stream uses {@link ConstraintFactory#from(Class)} as
-   * opposed to {@link ConstraintFactory#forEach(Class)}, a different definition of exists applies.
-   * (See {@link ConstraintFactory#from(Class)} Javadoc.)
-   *
    * @return a stream that matches every A where a different A does not exist
    */
   default @NonNull UniConstraintStream<A> ifNotExistsOther(@NonNull Class<A> otherClass) {
@@ -966,10 +933,6 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    * properties it extracts from both facts).
    *
    * <p>This method has overloaded methods with multiple {@link BiJoiner} parameters.
-   *
-   * <p>Note that, if a legacy constraint stream uses {@link ConstraintFactory#from(Class)} as
-   * opposed to {@link ConstraintFactory#forEach(Class)}, a different definition of exists applies.
-   * (See {@link ConstraintFactory#from(Class)} Javadoc.)
    *
    * @return a stream that matches every A where a different A does not exist for which the {@link
    *     BiJoiner} is true
@@ -1144,72 +1107,9 @@ public interface UniConstraintStream<A> extends ConstraintStream {
     return ifNotExistsIncludingUnassigned(otherClass, allJoiners);
   }
 
-  /**
-   * @deprecated Prefer {@link #ifNotExistsOtherIncludingUnassigned(Class)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifNotExistsOtherIncludingNullVars(Class<A> otherClass) {
-    return ifNotExistsOtherIncludingUnassigned(otherClass, new BiJoiner[0]);
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifNotExistsOtherIncludingUnassigned(Class, BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifNotExistsOtherIncludingNullVars(
-      Class<A> otherClass, BiJoiner<A, A> joiner) {
-    return ifNotExistsOtherIncludingUnassigned(otherClass, new BiJoiner[] {joiner});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifNotExistsOtherIncludingUnassigned(Class, BiJoiner, BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifNotExistsOtherIncludingNullVars(
-      Class<A> otherClass, BiJoiner<A, A> joiner1, BiJoiner<A, A> joiner2) {
-    return ifNotExistsOtherIncludingUnassigned(otherClass, new BiJoiner[] {joiner1, joiner2});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifNotExistsOtherIncludingUnassigned(Class, BiJoiner, BiJoiner,
-   *     BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifNotExistsOtherIncludingNullVars(
-      Class<A> otherClass, BiJoiner<A, A> joiner1, BiJoiner<A, A> joiner2, BiJoiner<A, A> joiner3) {
-    return ifNotExistsOtherIncludingUnassigned(
-        otherClass, new BiJoiner[] {joiner1, joiner2, joiner3});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifNotExistsOtherIncludingUnassigned(Class, BiJoiner, BiJoiner,
-   *     BiJoiner, BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifNotExistsOtherIncludingNullVars(
-      Class<A> otherClass,
-      BiJoiner<A, A> joiner1,
-      BiJoiner<A, A> joiner2,
-      BiJoiner<A, A> joiner3,
-      BiJoiner<A, A> joiner4) {
-    return ifNotExistsOtherIncludingUnassigned(
-        otherClass, new BiJoiner[] {joiner1, joiner2, joiner3, joiner4});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifNotExistsOtherIncludingUnassigned(Class, BiJoiner...)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifNotExistsOtherIncludingNullVars(
-      Class<A> otherClass, BiJoiner<A, A>... joiners) {
-    return ifNotExistsOtherIncludingUnassigned(otherClass, joiners);
-  }
-
   // ************************************************************************
   // Group by
   // ************************************************************************
-
-  // TODO: Continue here
 
   /**
    * Convert the {@link UniConstraintStream} to a different {@link UniConstraintStream}, containing
@@ -1718,26 +1618,34 @@ public interface UniConstraintStream<A> extends ConstraintStream {
 
   /**
    * Takes each tuple and applies a mapping on it, which turns the tuple into a {@link Iterable}.
-   * Returns a constraint stream consisting of contents of those iterables. This may produce a
-   * stream with duplicate tuples. See {@link #distinct()} for details.
-   *
-   * <p>In cases where the original tuple is already an {@link Iterable}, use {@link
-   * Function#identity()} as the argument.
+   * Returns a constraint stream consisting of new tuples, each made of the original fact and one
+   * item from that iterable. This may produce a stream with duplicate tuples. See {@link
+   * #distinct()} for details.
    *
    * <p>Simple example: assuming a constraint stream of tuples of {@code Person}s {@code [Ann(roles
    * = [USER, ADMIN]]), Beth(roles = [USER]), Cathy(roles = [ADMIN, AUDITOR])]}, calling {@code
-   * flattenLast(Person::getRoles)} on such stream will produce a stream of {@code [USER, ADMIN,
-   * USER, ADMIN, AUDITOR]}.
+   * flatten(Person::getRoles)} on such stream will produce a stream of {@code [(Ann, USER), (Ann,
+   * ADMIN), (Beth, USER), (Cathy, ADMIN), (Cathy, AUDITOR)]}.
    *
    * @param mapping function to convert the original tuple into {@link Iterable}. For performance,
-   *     returning an implementation of {@link java.util.Collection} is preferred.
-   * @param <ResultA_> the type of facts in the resulting tuples. It is recommended that this type
-   *     be deeply immutable. Not following this recommendation may lead to hard-to-debug hashing
-   *     issues down the stream, especially if this value is ever used as a group key.
+   *     returning an implementation of {@link Collection} is preferred.
+   * @param <ResultA_> the type of the last fact in the resulting tuples. It is recommended that
+   *     this type be deeply immutable. Not following this recommendation may lead to hard-to-debug
+   *     hashing issues down the stream, especially if this value is ever used as a group key.
    */
   <ResultA_> @NonNull BiConstraintStream<A, ResultA_> flatten(
       @NonNull Function<A, Iterable<ResultA_>> mapping);
 
+  /**
+   * As defined by {@link #flatten(Function)}, only replacing the only fact in the original tuple by
+   * an item from the iterable. This means the resulting stream is a {@link UniConstraintStream},
+   * not a {@link BiConstraintStream}.
+   *
+   * <p>Simple example: assuming a constraint stream of tuples of {@code Person}s {@code [Ann(roles
+   * = [USER, ADMIN]]), Beth(roles = [USER]), Cathy(roles = [ADMIN, AUDITOR])]}, calling {@code
+   * flattenLast(Person::getRoles)} on such stream will produce a stream of {@code [(USER), (ADMIN),
+   * (USER), (ADMIN), (AUDITOR)]}.
+   */
   <ResultA_> @NonNull UniConstraintStream<ResultA_> flattenLast(
       @NonNull Function<A, Iterable<ResultA_>> mapping);
 
@@ -1940,7 +1848,7 @@ public interface UniConstraintStream<A> extends ConstraintStream {
     if (firstStream instanceof AbstractConstraintStream<?> abstractConstraintStream) {
       var secondStream =
           switch (abstractConstraintStream.getRetrievalSemantics()) {
-            case STANDARD, LEGACY -> getConstraintFactory().forEach(otherClass);
+            case STANDARD -> getConstraintFactory().forEach(otherClass);
             case PRECOMPUTE -> getConstraintFactory().forEachUnfiltered(otherClass);
           };
       return firstStream.concat(secondStream.ifNotExists(firstStream, Joiners.equal()));
@@ -1962,18 +1870,10 @@ public interface UniConstraintStream<A> extends ConstraintStream {
   // Penalize/reward
   // ************************************************************************
 
-  /** As defined by {@link #penalize(Score, ToIntFunction)}, where the match weight is one (1). */
+  /** As defined by {@link #penalize(Score, ToLongFunction)}, where the match weight is one (1). */
   default <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> penalize(
       @NonNull Score_ constraintWeight) {
-    return penalize(constraintWeight, uniConstantOne());
-  }
-
-  /**
-   * As defined by {@link #penalizeLong(Score, ToLongFunction)}, where the match weight is one (1).
-   */
-  default <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> penalizeLong(
-      @NonNull Score_ constraintWeight) {
-    return penalizeLong(constraintWeight, uniConstantOneLong());
+    return penalize(constraintWeight, uniConstantOneLong());
   }
 
   /**
@@ -1992,86 +1892,24 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    * <p>The constraintWeight specified here can be overridden using {@link
    * ConstraintWeightOverrides} on the {@link PlanningSolution}-annotated class
    *
-   * <p>For non-int {@link Score} types use {@link #penalizeLong(Score, ToLongFunction)} or {@link
-   * #penalizeBigDecimal(Score, Function)} instead.
-   *
    * @param matchWeigher the result of this function (matchWeight) is multiplied by the
    *     constraintWeight
+   * @see #penalizeBigDecimal(Score, Function) You may use BigDecimal instead of long.
    */
   <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> penalize(
-      @NonNull Score_ constraintWeight, @NonNull ToIntFunction<A> matchWeigher);
-
-  /** As defined by {@link #penalize(Score, ToIntFunction)}, with a penalty of type long. */
-  <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> penalizeLong(
       @NonNull Score_ constraintWeight, @NonNull ToLongFunction<A> matchWeigher);
 
   /**
-   * As defined by {@link #penalize(Score, ToIntFunction)}, with a penalty of type {@link
+   * As defined by {@link #penalize(Score, ToLongFunction)}, with a penalty of type {@link
    * BigDecimal}.
    */
   <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> penalizeBigDecimal(
       @NonNull Score_ constraintWeight, @NonNull Function<A, BigDecimal> matchWeigher);
 
-  /**
-   * Negatively impacts the {@link Score}, subtracting the {@link ConstraintWeight} for each match,
-   * and returns a builder to apply optional constraint properties.
-   *
-   * <p>The constraintWeight comes from an {@link ConstraintWeight} annotated member on the {@link
-   * ConstraintConfiguration}, so end users can change the constraint weights dynamically. This
-   * constraint may be deactivated if the {@link ConstraintWeight} is zero.
-   *
-   * @return never null
-   * @deprecated Prefer {@link #penalize(Score)} and {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  default UniConstraintBuilder<A, ?> penalizeConfigurable() {
-    return penalizeConfigurable(uniConstantOne());
-  }
-
-  /**
-   * Negatively impacts the {@link Score}, subtracting the {@link ConstraintWeight} multiplied by
-   * match weight for each match, and returns a builder to apply optional constraint properties.
-   *
-   * <p>The constraintWeight comes from an {@link ConstraintWeight} annotated member on the {@link
-   * ConstraintConfiguration}, so end users can change the constraint weights dynamically. This
-   * constraint may be deactivated if the {@link ConstraintWeight} is zero.
-   *
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   * @deprecated Prefer {@link #penalize(Score, ToIntFunction)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  UniConstraintBuilder<A, ?> penalizeConfigurable(ToIntFunction<A> matchWeigher);
-
-  /**
-   * As defined by {@link #penalizeConfigurable(ToIntFunction)}, with a penalty of type long.
-   *
-   * <p>
-   *
-   * @deprecated Prefer {@link #penalizeLong(Score, ToLongFunction)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  UniConstraintBuilder<A, ?> penalizeConfigurableLong(ToLongFunction<A> matchWeigher);
-
-  /**
-   * As defined by {@link #penalizeConfigurable(ToIntFunction)}, with a penalty of type {@link
-   * BigDecimal}.
-   *
-   * <p>
-   *
-   * @deprecated Prefer {@link #penalizeBigDecimal(Score, Function)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  UniConstraintBuilder<A, ?> penalizeConfigurableBigDecimal(Function<A, BigDecimal> matchWeigher);
-
-  /** As defined by {@link #reward(Score, ToIntFunction)}, where the match weight is one (1). */
+  /** As defined by {@link #reward(Score, ToLongFunction)}, where the match weight is one (1). */
   default <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> reward(
       @NonNull Score_ constraintWeight) {
-    return reward(constraintWeight, uniConstantOne());
+    return reward(constraintWeight, uniConstantOneLong());
   }
 
   /**
@@ -2081,75 +1919,19 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    * <p>The constraintWeight specified here can be overridden using {@link
    * ConstraintWeightOverrides} on the {@link PlanningSolution}-annotated class
    *
-   * <p>For non-int {@link Score} types use {@link #rewardLong(Score, ToLongFunction)} or {@link
-   * #rewardBigDecimal(Score, Function)} instead.
-   *
    * @param matchWeigher the result of this function (matchWeight) is multiplied by the
    *     constraintWeight
+   * @see #rewardBigDecimal(Score, Function) You may use BigDecimal instead of long.
    */
   <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> reward(
-      @NonNull Score_ constraintWeight, @NonNull ToIntFunction<A> matchWeigher);
-
-  /** As defined by {@link #reward(Score, ToIntFunction)}, with a penalty of type long. */
-  @NonNull <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> rewardLong(
       @NonNull Score_ constraintWeight, @NonNull ToLongFunction<A> matchWeigher);
 
   /**
-   * As defined by {@link #reward(Score, ToIntFunction)}, with a penalty of type {@link BigDecimal}.
+   * As defined by {@link #reward(Score, ToLongFunction)}, with a penalty of type {@link
+   * BigDecimal}.
    */
   @NonNull <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> rewardBigDecimal(
       @NonNull Score_ constraintWeight, @NonNull Function<A, BigDecimal> matchWeigher);
-
-  /**
-   * Positively impacts the {@link Score}, adding the {@link ConstraintWeight} for each match, and
-   * returns a builder to apply optional constraint properties.
-   *
-   * <p>The constraintWeight comes from an {@link ConstraintWeight} annotated member on the {@link
-   * ConstraintConfiguration}, so end users can change the constraint weights dynamically. This
-   * constraint may be deactivated if the {@link ConstraintWeight} is zero.
-   *
-   * @return never null
-   * @deprecated Prefer {@link #reward(Score)} and {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  default UniConstraintBuilder<A, ?> rewardConfigurable() {
-    return rewardConfigurable(uniConstantOne());
-  }
-
-  /**
-   * Positively impacts the {@link Score}, adding the {@link ConstraintWeight} multiplied by match
-   * weight for each match, and returns a builder to apply optional constraint properties.
-   *
-   * <p>The constraintWeight comes from an {@link ConstraintWeight} annotated member on the {@link
-   * ConstraintConfiguration}, so end users can change the constraint weights dynamically. This
-   * constraint may be deactivated if the {@link ConstraintWeight} is zero.
-   *
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   * @deprecated Prefer {@link #reward(Score, ToIntFunction)} and {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  UniConstraintBuilder<A, ?> rewardConfigurable(ToIntFunction<A> matchWeigher);
-
-  /**
-   * As defined by {@link #rewardConfigurable(ToIntFunction)}, with a penalty of type long.
-   *
-   * @deprecated Prefer {@link #rewardLong(Score, ToLongFunction)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  UniConstraintBuilder<A, ?> rewardConfigurableLong(ToLongFunction<A> matchWeigher);
-
-  /**
-   * As defined by {@link #rewardConfigurable(ToIntFunction)}, with a penalty of type {@link
-   * BigDecimal}.
-   *
-   * @deprecated Prefer {@link #rewardBigDecimal(Score, Function)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  UniConstraintBuilder<A, ?> rewardConfigurableBigDecimal(Function<A, BigDecimal> matchWeigher);
 
   /**
    * Positively or negatively impacts the {@link Score} by the constraintWeight for each match and
@@ -2160,7 +1942,7 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    */
   default <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> impact(
       @NonNull Score_ constraintWeight) {
-    return impact(constraintWeight, uniConstantOne());
+    return impact(constraintWeight, uniConstantOneLong());
   }
 
   /**
@@ -2175,930 +1957,15 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    *
    * @param matchWeigher the result of this function (matchWeight) is multiplied by the
    *     constraintWeight
+   * @see #impactBigDecimal(Score, Function) You may use BigDecimal instead of long.
    */
   <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> impact(
-      @NonNull Score_ constraintWeight, @NonNull ToIntFunction<A> matchWeigher);
-
-  /** As defined by {@link #impact(Score, ToIntFunction)}, with an impact of type long. */
-  <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> impactLong(
       @NonNull Score_ constraintWeight, @NonNull ToLongFunction<A> matchWeigher);
 
   /**
-   * As defined by {@link #impact(Score, ToIntFunction)}, with an impact of type {@link BigDecimal}.
+   * As defined by {@link #impact(Score, ToLongFunction)}, with an impact of type {@link
+   * BigDecimal}.
    */
   <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> impactBigDecimal(
       @NonNull Score_ constraintWeight, @NonNull Function<A, BigDecimal> matchWeigher);
-
-  /**
-   * Positively impacts the {@link Score} by the {@link ConstraintWeight} for each match, and
-   * returns a builder to apply optional constraint properties.
-   *
-   * <p>The constraintWeight comes from an {@link ConstraintWeight} annotated member on the {@link
-   * ConstraintConfiguration}, so end users can change the constraint weights dynamically. This
-   * constraint may be deactivated if the {@link ConstraintWeight} is zero.
-   *
-   * @return never null
-   * @deprecated Prefer {@link #impact(Score)} and {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  default UniConstraintBuilder<A, ?> impactConfigurable() {
-    return impactConfigurable(uniConstantOne());
-  }
-
-  /**
-   * Positively impacts the {@link Score} by the {@link ConstraintWeight} multiplied by match weight
-   * for each match, and returns a builder to apply optional constraint properties.
-   *
-   * <p>The constraintWeight comes from an {@link ConstraintWeight} annotated member on the {@link
-   * ConstraintConfiguration}, so end users can change the constraint weights dynamically. This
-   * constraint may be deactivated if the {@link ConstraintWeight} is zero.
-   *
-   * @return never null
-   * @deprecated Prefer {@link #impact(Score, ToIntFunction)} and {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  UniConstraintBuilder<A, ?> impactConfigurable(ToIntFunction<A> matchWeigher);
-
-  /**
-   * As defined by {@link #impactConfigurable(ToIntFunction)}, with an impact of type long.
-   *
-   * @deprecated Prefer {@link #impactLong(Score, ToLongFunction)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  UniConstraintBuilder<A, ?> impactConfigurableLong(ToLongFunction<A> matchWeigher);
-
-  /**
-   * As defined by {@link #impactConfigurable(ToIntFunction)}, with an impact of type BigDecimal.
-   *
-   * <p>
-   *
-   * @deprecated Prefer {@link #impactBigDecimal(Score, Function)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  UniConstraintBuilder<A, ?> impactConfigurableBigDecimal(Function<A, BigDecimal> matchWeigher);
-
-  // ************************************************************************
-  // Deprecated declarations
-  // ************************************************************************
-
-  /**
-   * @deprecated Prefer {@link #ifExistsIncludingUnassigned(Class, BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default <B> UniConstraintStream<A> ifExistsIncludingNullVars(
-      Class<B> otherClass, BiJoiner<A, B> joiner) {
-    return ifExistsIncludingUnassigned(otherClass, new BiJoiner[] {joiner});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifExistsIncludingUnassigned(Class, BiJoiner, BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default <B> UniConstraintStream<A> ifExistsIncludingNullVars(
-      Class<B> otherClass, BiJoiner<A, B> joiner1, BiJoiner<A, B> joiner2) {
-    return ifExistsIncludingUnassigned(otherClass, new BiJoiner[] {joiner1, joiner2});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifExistsIncludingUnassigned(Class, BiJoiner, BiJoiner, BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default <B> UniConstraintStream<A> ifExistsIncludingNullVars(
-      Class<B> otherClass, BiJoiner<A, B> joiner1, BiJoiner<A, B> joiner2, BiJoiner<A, B> joiner3) {
-    return ifExistsIncludingUnassigned(otherClass, new BiJoiner[] {joiner1, joiner2, joiner3});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifExistsIncludingUnassigned(Class, BiJoiner, BiJoiner, BiJoiner,
-   *     BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default <B> UniConstraintStream<A> ifExistsIncludingNullVars(
-      Class<B> otherClass,
-      BiJoiner<A, B> joiner1,
-      BiJoiner<A, B> joiner2,
-      BiJoiner<A, B> joiner3,
-      BiJoiner<A, B> joiner4) {
-    return ifExistsIncludingUnassigned(
-        otherClass, new BiJoiner[] {joiner1, joiner2, joiner3, joiner4});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifExistsIncludingUnassigned(Class, BiJoiner...)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default <B> UniConstraintStream<A> ifExistsIncludingNullVars(
-      Class<B> otherClass, BiJoiner<A, B>... joiners) {
-    return ifExistsIncludingUnassigned(otherClass, joiners);
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifExistsOtherIncludingUnassigned(Class)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifExistsOtherIncludingNullVars(Class<A> otherClass) {
-    return ifExistsOtherIncludingUnassigned(otherClass, new BiJoiner[0]);
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifExistsOtherIncludingUnassigned(Class, BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifExistsOtherIncludingNullVars(
-      Class<A> otherClass, BiJoiner<A, A> joiner) {
-    return ifExistsOtherIncludingUnassigned(otherClass, new BiJoiner[] {joiner});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifExistsOtherIncludingUnassigned(Class, BiJoiner, BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifExistsOtherIncludingNullVars(
-      Class<A> otherClass, BiJoiner<A, A> joiner1, BiJoiner<A, A> joiner2) {
-    return ifExistsOtherIncludingUnassigned(otherClass, new BiJoiner[] {joiner1, joiner2});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifExistsOtherIncludingUnassigned(Class, BiJoiner, BiJoiner,
-   *     BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifExistsOtherIncludingNullVars(
-      Class<A> otherClass, BiJoiner<A, A> joiner1, BiJoiner<A, A> joiner2, BiJoiner<A, A> joiner3) {
-    return ifExistsOtherIncludingUnassigned(otherClass, new BiJoiner[] {joiner1, joiner2, joiner3});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifExistsOtherIncludingUnassigned(Class, BiJoiner, BiJoiner,
-   *     BiJoiner, BiJoiner)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifExistsOtherIncludingNullVars(
-      Class<A> otherClass,
-      BiJoiner<A, A> joiner1,
-      BiJoiner<A, A> joiner2,
-      BiJoiner<A, A> joiner3,
-      BiJoiner<A, A> joiner4) {
-    return ifExistsOtherIncludingUnassigned(
-        otherClass, new BiJoiner[] {joiner1, joiner2, joiner3, joiner4});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifExistsOtherIncludingUnassigned(Class, BiJoiner...)}.
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default UniConstraintStream<A> ifExistsOtherIncludingNullVars(
-      Class<A> otherClass, BiJoiner<A, A>... joiners) {
-    return ifExistsOtherIncludingUnassigned(otherClass, joiners);
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifNotExistsIncludingUnassigned(Class, BiJoiner)}
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default <B> UniConstraintStream<A> ifNotExistsIncludingNullVars(
-      Class<B> otherClass, BiJoiner<A, B> joiner) {
-    return ifNotExistsIncludingUnassigned(otherClass, new BiJoiner[] {joiner});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifNotExistsIncludingUnassigned(Class, BiJoiner, BiJoiner)}
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default <B> UniConstraintStream<A> ifNotExistsIncludingNullVars(
-      Class<B> otherClass, BiJoiner<A, B> joiner1, BiJoiner<A, B> joiner2) {
-    return ifNotExistsIncludingUnassigned(otherClass, new BiJoiner[] {joiner1, joiner2});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifNotExistsIncludingUnassigned(Class, BiJoiner, BiJoiner, BiJoiner)}
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default <B> UniConstraintStream<A> ifNotExistsIncludingNullVars(
-      Class<B> otherClass, BiJoiner<A, B> joiner1, BiJoiner<A, B> joiner2, BiJoiner<A, B> joiner3) {
-    return ifNotExistsIncludingUnassigned(otherClass, new BiJoiner[] {joiner1, joiner2, joiner3});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifNotExistsIncludingUnassigned(Class, BiJoiner, BiJoiner, BiJoiner,
-   *     BiJoiner)}
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default <B> UniConstraintStream<A> ifNotExistsIncludingNullVars(
-      Class<B> otherClass,
-      BiJoiner<A, B> joiner1,
-      BiJoiner<A, B> joiner2,
-      BiJoiner<A, B> joiner3,
-      BiJoiner<A, B> joiner4) {
-    return ifNotExistsIncludingUnassigned(
-        otherClass, new BiJoiner[] {joiner1, joiner2, joiner3, joiner4});
-  }
-
-  /**
-   * @deprecated Prefer {@link #ifNotExistsIncludingUnassigned(Class, BiJoiner...)}
-   */
-  @Deprecated(forRemoval = true, since = "1.8.0")
-  default <B> UniConstraintStream<A> ifNotExistsIncludingNullVars(
-      Class<B> otherClass, BiJoiner<A, B>... joiners) {
-    return ifNotExistsIncludingUnassigned(otherClass, joiners);
-  }
-
-  /**
-   * Negatively impact the {@link Score}: subtract the constraintWeight multiplied by the match
-   * weight. Otherwise as defined by {@link #penalize(String, Score)}.
-   *
-   * <p>For non-int {@link Score} types use {@link #penalizeLong(String, Score, ToLongFunction)} or
-   * {@link #penalizeBigDecimal(String, Score, Function)} instead.
-   *
-   * @deprecated Prefer {@link #penalize(Score, ToIntFunction)}.
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param constraintWeight never null
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalize(
-      String constraintName, Score<?> constraintWeight, ToIntFunction<A> matchWeigher) {
-    return penalize((Score) constraintWeight, matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #penalize(String, Score, ToIntFunction)}.
-   *
-   * @deprecated Prefer {@link #penalize(Score, ToIntFunction)}.
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param constraintWeight never null
-   * @param matchWeigher never null
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalize(
-      String constraintPackage,
-      String constraintName,
-      Score<?> constraintWeight,
-      ToIntFunction<A> matchWeigher) {
-    return penalize((Score) constraintWeight, matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Negatively impact the {@link Score}: subtract the constraintWeight multiplied by the match
-   * weight. Otherwise as defined by {@link #penalize(String, Score)}.
-   *
-   * @deprecated Prefer {@link #penalizeLong(Score, ToLongFunction)}.
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param constraintWeight never null
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalizeLong(
-      String constraintName, Score<?> constraintWeight, ToLongFunction<A> matchWeigher) {
-    return penalizeLong((Score) constraintWeight, matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #penalizeLong(String, Score, ToLongFunction)}.
-   *
-   * @deprecated Prefer {@link #penalizeLong(Score, ToLongFunction)}.
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param constraintWeight never null
-   * @param matchWeigher never null
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalizeLong(
-      String constraintPackage,
-      String constraintName,
-      Score<?> constraintWeight,
-      ToLongFunction<A> matchWeigher) {
-    return penalizeLong((Score) constraintWeight, matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Negatively impact the {@link Score}: subtract the constraintWeight multiplied by the match
-   * weight. Otherwise as defined by {@link #penalize(String, Score)}.
-   *
-   * @deprecated Prefer {@link #penalizeBigDecimal(Score, Function)}.
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param constraintWeight never null
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalizeBigDecimal(
-      String constraintName, Score<?> constraintWeight, Function<A, BigDecimal> matchWeigher) {
-    return penalizeBigDecimal((Score) constraintWeight, matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #penalizeBigDecimal(String, Score, Function)}.
-   *
-   * @deprecated Prefer {@link #penalizeBigDecimal(Score, Function)}.
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param constraintWeight never null
-   * @param matchWeigher never null
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalizeBigDecimal(
-      String constraintPackage,
-      String constraintName,
-      Score<?> constraintWeight,
-      Function<A, BigDecimal> matchWeigher) {
-    return penalizeBigDecimal((Score) constraintWeight, matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Negatively impact the {@link Score}: subtract the {@link ConstraintWeight} multiplied by the
-   * match weight. Otherwise as defined by {@link #penalizeConfigurable(String)}.
-   *
-   * <p>For non-int {@link Score} types use {@link #penalizeConfigurableLong(String,
-   * ToLongFunction)} or {@link #penalizeConfigurableBigDecimal(String, Function)} instead.
-   *
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   * @deprecated Prefer {@link #penalize(Score)} and {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalizeConfigurable(String constraintName, ToIntFunction<A> matchWeigher) {
-    return penalizeConfigurable(matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #penalizeConfigurable(String, ToIntFunction)}.
-   *
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param matchWeigher never null
-   * @return never null
-   * @deprecated Prefer {@link #penalize(Score)} and {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalizeConfigurable(
-      String constraintPackage, String constraintName, ToIntFunction<A> matchWeigher) {
-    return penalizeConfigurable(matchWeigher).asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Negatively impact the {@link Score}: subtract the {@link ConstraintWeight} multiplied by the
-   * match weight. Otherwise as defined by {@link #penalizeConfigurable(String)}.
-   *
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   * @deprecated Prefer {@link #penalizeLong(Score, ToLongFunction)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalizeConfigurableLong(
-      String constraintName, ToLongFunction<A> matchWeigher) {
-    return penalizeConfigurableLong(matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #penalizeConfigurableLong(String, ToLongFunction)}.
-   *
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param matchWeigher never null
-   * @return never null
-   * @deprecated Prefer {@link #penalizeLong(Score, ToLongFunction)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalizeConfigurableLong(
-      String constraintPackage, String constraintName, ToLongFunction<A> matchWeigher) {
-    return penalizeConfigurableLong(matchWeigher).asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Negatively impact the {@link Score}: subtract the {@link ConstraintWeight} multiplied by the
-   * match weight. Otherwise as defined by {@link #penalizeConfigurable(String)}.
-   *
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   * @deprecated Prefer {@link #penalizeBigDecimal(Score, Function)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalizeConfigurableBigDecimal(
-      String constraintName, Function<A, BigDecimal> matchWeigher) {
-    return penalizeConfigurableBigDecimal(matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #penalizeConfigurableBigDecimal(String, Function)}.
-   *
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param matchWeigher never null
-   * @return never null
-   * @deprecated Prefer {@link #penalizeBigDecimal(Score, Function)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint penalizeConfigurableBigDecimal(
-      String constraintPackage, String constraintName, Function<A, BigDecimal> matchWeigher) {
-    return penalizeConfigurableBigDecimal(matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively impact the {@link Score}: add the constraintWeight multiplied by the match weight.
-   * Otherwise as defined by {@link #reward(String, Score)}.
-   *
-   * <p>For non-int {@link Score} types use {@link #rewardLong(String, Score, ToLongFunction)} or
-   * {@link #rewardBigDecimal(String, Score, Function)} instead.
-   *
-   * @deprecated Prefer {@link #reward(Score, ToIntFunction)}.
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param constraintWeight never null
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint reward(
-      String constraintName, Score<?> constraintWeight, ToIntFunction<A> matchWeigher) {
-    return reward((Score) constraintWeight, matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #reward(String, Score, ToIntFunction)}.
-   *
-   * @deprecated Prefer {@link #reward(Score, ToIntFunction)}.
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param constraintWeight never null
-   * @param matchWeigher never null
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint reward(
-      String constraintPackage,
-      String constraintName,
-      Score<?> constraintWeight,
-      ToIntFunction<A> matchWeigher) {
-    return reward((Score) constraintWeight, matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively impact the {@link Score}: add the constraintWeight multiplied by the match weight.
-   * Otherwise as defined by {@link #reward(String, Score)}.
-   *
-   * @deprecated Prefer {@link #rewardLong(Score, ToLongFunction)}.
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param constraintWeight never null
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint rewardLong(
-      String constraintName, Score<?> constraintWeight, ToLongFunction<A> matchWeigher) {
-    return rewardLong((Score) constraintWeight, matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #rewardLong(String, Score, ToLongFunction)}.
-   *
-   * @deprecated Prefer {@link #rewardLong(Score, ToLongFunction)}.
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param constraintWeight never null
-   * @param matchWeigher never null
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint rewardLong(
-      String constraintPackage,
-      String constraintName,
-      Score<?> constraintWeight,
-      ToLongFunction<A> matchWeigher) {
-    return rewardLong((Score) constraintWeight, matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively impact the {@link Score}: add the constraintWeight multiplied by the match weight.
-   * Otherwise as defined by {@link #reward(String, Score)}.
-   *
-   * @deprecated Prefer {@link #rewardBigDecimal(Score, Function)}.
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param constraintWeight never null
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint rewardBigDecimal(
-      String constraintName, Score<?> constraintWeight, Function<A, BigDecimal> matchWeigher) {
-    return rewardBigDecimal((Score) constraintWeight, matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #rewardBigDecimal(String, Score, Function)}.
-   *
-   * @deprecated Prefer {@link #rewardBigDecimal(Score, Function)}.
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param constraintWeight never null
-   * @param matchWeigher never null
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint rewardBigDecimal(
-      String constraintPackage,
-      String constraintName,
-      Score<?> constraintWeight,
-      Function<A, BigDecimal> matchWeigher) {
-    return rewardBigDecimal((Score) constraintWeight, matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively impact the {@link Score}: add the {@link ConstraintWeight} multiplied by the match
-   * weight. Otherwise as defined by {@link #rewardConfigurable(String)}.
-   *
-   * <p>For non-int {@link Score} types use {@link #rewardConfigurableLong(String, ToLongFunction)}
-   * or {@link #rewardConfigurableBigDecimal(String, Function)} instead.
-   *
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   * @deprecated Prefer {@link #reward(Score, ToIntFunction)} and {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint rewardConfigurable(String constraintName, ToIntFunction<A> matchWeigher) {
-    return rewardConfigurable(matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #rewardConfigurable(String, ToIntFunction)}.
-   *
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param matchWeigher never null
-   * @return never null
-   * @deprecated Prefer {@link #reward(Score, ToIntFunction)} and {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint rewardConfigurable(
-      String constraintPackage, String constraintName, ToIntFunction<A> matchWeigher) {
-    return rewardConfigurable(matchWeigher).asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively impact the {@link Score}: add the {@link ConstraintWeight} multiplied by the match
-   * weight. Otherwise as defined by {@link #rewardConfigurable(String)}.
-   *
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   * @deprecated Prefer {@link #rewardLong(Score, ToLongFunction)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint rewardConfigurableLong(String constraintName, ToLongFunction<A> matchWeigher) {
-    return rewardConfigurableLong(matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #rewardConfigurableLong(String, ToLongFunction)}.
-   *
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param matchWeigher never null
-   * @return never null
-   * @deprecated Prefer {@link #rewardLong(Score, ToLongFunction)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint rewardConfigurableLong(
-      String constraintPackage, String constraintName, ToLongFunction<A> matchWeigher) {
-    return rewardConfigurableLong(matchWeigher).asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively impact the {@link Score}: add the {@link ConstraintWeight} multiplied by the match
-   * weight. Otherwise as defined by {@link #rewardConfigurable(String)}.
-   *
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   * @deprecated Prefer {@link #rewardBigDecimal(Score, Function)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint rewardConfigurableBigDecimal(
-      String constraintName, Function<A, BigDecimal> matchWeigher) {
-    return rewardConfigurableBigDecimal(matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #rewardConfigurableBigDecimal(String, Function)}.
-   *
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param matchWeigher never null
-   * @return never null
-   * @deprecated Prefer {@link #rewardBigDecimal(Score, Function)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint rewardConfigurableBigDecimal(
-      String constraintPackage, String constraintName, Function<A, BigDecimal> matchWeigher) {
-    return rewardConfigurableBigDecimal(matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively or negatively impact the {@link Score} by the constraintWeight multiplied by the
-   * match weight. Otherwise as defined by {@link #impact(String, Score)}.
-   *
-   * <p>Use {@code penalize(...)} or {@code reward(...)} instead, unless this constraint can both
-   * have positive and negative weights.
-   *
-   * <p>For non-int {@link Score} types use {@link #impactLong(String, Score, ToLongFunction)} or
-   * {@link #impactBigDecimal(String, Score, Function)} instead.
-   *
-   * @deprecated Prefer {@link #impact(Score, ToIntFunction)}.
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param constraintWeight never null
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint impact(
-      String constraintName, Score<?> constraintWeight, ToIntFunction<A> matchWeigher) {
-    return impact((Score) constraintWeight, matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #impact(String, Score, ToIntFunction)}.
-   *
-   * @deprecated Prefer {@link #impact(Score, ToIntFunction)}.
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param constraintWeight never null
-   * @param matchWeigher never null
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint impact(
-      String constraintPackage,
-      String constraintName,
-      Score<?> constraintWeight,
-      ToIntFunction<A> matchWeigher) {
-    return impact((Score) constraintWeight, matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively or negatively impact the {@link Score} by the constraintWeight multiplied by the
-   * match weight. Otherwise as defined by {@link #impact(String, Score)}.
-   *
-   * <p>Use {@code penalizeLong(...)} or {@code rewardLong(...)} instead, unless this constraint can
-   * both have positive and negative weights.
-   *
-   * @deprecated Prefer {@link #impactLong(Score, ToLongFunction)}.
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param constraintWeight never null
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint impactLong(
-      String constraintName, Score<?> constraintWeight, ToLongFunction<A> matchWeigher) {
-    return impactLong((Score) constraintWeight, matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #impactLong(String, Score, ToLongFunction)}.
-   *
-   * @deprecated Prefer {@link #impactLong(Score, ToLongFunction)}.
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param constraintWeight never null
-   * @param matchWeigher never null
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint impactLong(
-      String constraintPackage,
-      String constraintName,
-      Score<?> constraintWeight,
-      ToLongFunction<A> matchWeigher) {
-    return impactLong((Score) constraintWeight, matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively or negatively impact the {@link Score} by the constraintWeight multiplied by the
-   * match weight. Otherwise as defined by {@link #impact(String, Score)}.
-   *
-   * <p>Use {@code penalizeBigDecimal(...)} or {@code rewardBigDecimal(...)} instead, unless this
-   * constraint can both have positive and negative weights.
-   *
-   * @deprecated Prefer {@link #impactBigDecimal(Score, Function)}.
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param constraintWeight never null
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint impactBigDecimal(
-      String constraintName, Score<?> constraintWeight, Function<A, BigDecimal> matchWeigher) {
-    return impactBigDecimal((Score) constraintWeight, matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #impactBigDecimal(String, Score, Function)}.
-   *
-   * @deprecated Prefer {@link #impactBigDecimal(Score, Function)}.
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param constraintWeight never null
-   * @param matchWeigher never null
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint impactBigDecimal(
-      String constraintPackage,
-      String constraintName,
-      Score<?> constraintWeight,
-      Function<A, BigDecimal> matchWeigher) {
-    return impactBigDecimal((Score) constraintWeight, matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively or negatively impact the {@link Score} by the {@link ConstraintWeight} multiplied by
-   * the match weight.
-   *
-   * <p>Use {@code penalizeConfigurable(...)} or {@code rewardConfigurable(...)} instead, unless
-   * this constraint can both have positive and negative weights.
-   *
-   * <p>The constraintWeight comes from an {@link ConstraintWeight} annotated member on the {@link
-   * ConstraintConfiguration}, so end users can change the constraint weights dynamically. This
-   * constraint may be deactivated if the {@link ConstraintWeight} is zero.
-   *
-   * <p>For non-int {@link Score} types use {@link #impactConfigurableLong(String, ToLongFunction)}
-   * or {@link #impactConfigurableBigDecimal(String, Function)} instead.
-   *
-   * <p>The {@link ConstraintRef#packageName() constraint package} defaults to {@link
-   * ConstraintConfiguration#constraintPackage()}.
-   *
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   * @deprecated Prefer {@link #impact(Score, ToIntFunction)} and {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint impactConfigurable(String constraintName, ToIntFunction<A> matchWeigher) {
-    return impactConfigurable(matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #impactConfigurable(String, ToIntFunction)}.
-   *
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param matchWeigher never null
-   * @return never null
-   * @deprecated Prefer {@link #impact(Score, ToIntFunction)} and {@link ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint impactConfigurable(
-      String constraintPackage, String constraintName, ToIntFunction<A> matchWeigher) {
-    return impactConfigurable(matchWeigher).asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively or negatively impact the {@link Score} by the {@link ConstraintWeight} multiplied by
-   * the match weight.
-   *
-   * <p>Use {@code penalizeConfigurableLong(...)} or {@code rewardConfigurableLong(...)} instead,
-   * unless this constraint can both have positive and negative weights.
-   *
-   * <p>The constraintWeight comes from an {@link ConstraintWeight} annotated member on the {@link
-   * ConstraintConfiguration}, so end users can change the constraint weights dynamically. This
-   * constraint may be deactivated if the {@link ConstraintWeight} is zero.
-   *
-   * <p>The {@link ConstraintRef#packageName() constraint package} defaults to {@link
-   * ConstraintConfiguration#constraintPackage()}.
-   *
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   * @deprecated Prefer {@link #impactLong(Score, ToLongFunction)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true, since = "1.13.0")
-  default Constraint impactConfigurableLong(String constraintName, ToLongFunction<A> matchWeigher) {
-    return impactConfigurableLong(matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #impactConfigurableLong(String, ToLongFunction)}.
-   *
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param matchWeigher never null
-   * @return never null
-   * @deprecated Prefer {@link #impactLong(Score, ToLongFunction)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint impactConfigurableLong(
-      String constraintPackage, String constraintName, ToLongFunction<A> matchWeigher) {
-    return impactConfigurableLong(matchWeigher).asConstraint(constraintPackage, constraintName);
-  }
-
-  /**
-   * Positively or negatively impact the {@link Score} by the {@link ConstraintWeight} multiplied by
-   * the match weight.
-   *
-   * <p>Use {@code penalizeConfigurableBigDecimal(...)} or {@code rewardConfigurableBigDecimal(...)}
-   * instead, unless this constraint can both have positive and negative weights.
-   *
-   * <p>The constraintWeight comes from an {@link ConstraintWeight} annotated member on the {@link
-   * ConstraintConfiguration}, so end users can change the constraint weights dynamically. This
-   * constraint may be deactivated if the {@link ConstraintWeight} is zero.
-   *
-   * <p>The {@link ConstraintRef#packageName() constraint package} defaults to {@link
-   * ConstraintConfiguration#constraintPackage()}.
-   *
-   * @param constraintName never null, shows up in {@link ConstraintMatchTotal} during score
-   *     justification
-   * @param matchWeigher never null, the result of this function (matchWeight) is multiplied by the
-   *     constraintWeight
-   * @return never null
-   * @deprecated Prefer {@link #impactBigDecimal(Score, Function)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint impactConfigurableBigDecimal(
-      String constraintName, Function<A, BigDecimal> matchWeigher) {
-    return impactConfigurableBigDecimal(matchWeigher).asConstraint(constraintName);
-  }
-
-  /**
-   * As defined by {@link #impactConfigurableBigDecimal(String, Function)}.
-   *
-   * @param constraintPackage never null
-   * @param constraintName never null
-   * @param matchWeigher never null
-   * @return never null
-   * @deprecated Prefer {@link #impactBigDecimal(Score, Function)} and {@link
-   *     ConstraintWeightOverrides}.
-   */
-  @Deprecated(forRemoval = true)
-  default Constraint impactConfigurableBigDecimal(
-      String constraintPackage, String constraintName, Function<A, BigDecimal> matchWeigher) {
-    return impactConfigurableBigDecimal(matchWeigher)
-        .asConstraint(constraintPackage, constraintName);
-  }
 }

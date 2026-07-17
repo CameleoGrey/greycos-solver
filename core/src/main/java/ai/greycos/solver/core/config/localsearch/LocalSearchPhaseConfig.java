@@ -94,7 +94,7 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
   })
   private MoveSelectorConfig moveSelectorConfig = null;
 
-  private Class<? extends NeighborhoodProvider> neighborhoodProviderClass = null;
+  private String neighborhoodProviderClass = null;
 
   @XmlElement(name = "acceptor")
   private LocalSearchAcceptorConfig acceptorConfig = null;
@@ -138,10 +138,9 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
    *
    * <p>Part of {@link PreviewFeature#NEIGHBORHOODS}.
    */
-  @SuppressWarnings("unchecked")
   public @Nullable <Solution_>
       Class<? extends NeighborhoodProvider<Solution_>> getNeighborhoodProviderClass() {
-    return (Class<? extends NeighborhoodProvider<Solution_>>) neighborhoodProviderClass;
+    return ConfigUtils.resolveClass(neighborhoodProviderClass, "neighborhoodProviderClass", this);
   }
 
   /**
@@ -150,7 +149,8 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
   @SuppressWarnings("rawtypes")
   public void setNeighborhoodProviderClass(
       @Nullable Class<? extends NeighborhoodProvider> neighborhoodProviderClass) {
-    this.neighborhoodProviderClass = neighborhoodProviderClass;
+    this.neighborhoodProviderClass =
+        neighborhoodProviderClass == null ? null : neighborhoodProviderClass.getName();
   }
 
   public @Nullable LocalSearchAcceptorConfig getAcceptorConfig() {
@@ -193,7 +193,7 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
   /** Part of {@link PreviewFeature#NEIGHBORHOODS}. */
   public @NonNull LocalSearchPhaseConfig withMoveProviderClass(
       @NonNull Class<? extends NeighborhoodProvider<?>> moveProviderClass) {
-    this.neighborhoodProviderClass = moveProviderClass;
+    this.neighborhoodProviderClass = moveProviderClass.getName();
     return this;
   }
 
@@ -221,9 +221,9 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
     setMoveSelectorConfig(
         ConfigUtils.inheritOverwritableProperty(
             getMoveSelectorConfig(), inheritedConfig.getMoveSelectorConfig()));
-    setNeighborhoodProviderClass(
+    neighborhoodProviderClass =
         ConfigUtils.inheritOverwritableProperty(
-            getNeighborhoodProviderClass(), inheritedConfig.getNeighborhoodProviderClass()));
+            neighborhoodProviderClass, inheritedConfig.neighborhoodProviderClass);
     acceptorConfig = ConfigUtils.inheritConfig(acceptorConfig, inheritedConfig.getAcceptorConfig());
     foragerConfig = ConfigUtils.inheritConfig(foragerConfig, inheritedConfig.getForagerConfig());
     return this;
@@ -243,7 +243,7 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
       moveSelectorConfig.visitReferencedClasses(classVisitor);
     }
     if (neighborhoodProviderClass != null) {
-      classVisitor.accept(neighborhoodProviderClass);
+      classVisitor.accept(getNeighborhoodProviderClass());
     }
     if (acceptorConfig != null) {
       acceptorConfig.visitReferencedClasses(classVisitor);

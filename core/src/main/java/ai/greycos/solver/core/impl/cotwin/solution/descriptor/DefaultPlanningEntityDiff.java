@@ -7,11 +7,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningEntityDiff;
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningSolutionDiff;
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningVariableDiff;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.GenuineVariableMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningEntityMetaModel;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningEntityDiff;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningSolutionDiff;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningVariableDiff;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

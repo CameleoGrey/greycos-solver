@@ -5,6 +5,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+import ai.greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniLeftDatasetInstance;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniRightDatasetInstance;
 import ai.greycos.solver.core.preview.api.move.Move;
@@ -83,8 +84,7 @@ final class BiOriginalMoveIterator<Solution_, A, B> implements Iterator<Move<Sol
         var leftFact = leftTuple.getA();
         var rightFact = rightTupleIterator.next().getA();
         nextMove = context.buildMove(leftFact, rightFact);
-        if (nextMove
-            instanceof ai.greycos.solver.core.impl.heuristic.move.Move<Solution_> legacyMove) {
+        if (nextMove instanceof AbstractSelectorBasedMove<Solution_> legacyMove) {
           throw new UnsupportedOperationException(
               """
                             Neighborhoods do not support legacy moves.

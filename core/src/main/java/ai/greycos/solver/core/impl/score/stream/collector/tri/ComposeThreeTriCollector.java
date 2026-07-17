@@ -4,12 +4,14 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import ai.greycos.solver.core.api.function.QuadFunction;
 import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollector;
+import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollectorAccumulator;
+import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollectorValueHandle;
 import ai.greycos.solver.core.impl.util.Triple;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class ComposeThreeTriCollector<
         A,
@@ -33,9 +35,9 @@ final class ComposeThreeTriCollector<
   private final Supplier<ResultHolder2_> secondSupplier;
   private final Supplier<ResultHolder3_> thirdSupplier;
 
-  private final QuadFunction<ResultHolder1_, A, B, C, Runnable> firstAccumulator;
-  private final QuadFunction<ResultHolder2_, A, B, C, Runnable> secondAccumulator;
-  private final QuadFunction<ResultHolder3_, A, B, C, Runnable> thirdAccumulator;
+  private final TriConstraintCollectorAccumulator<ResultHolder1_, A, B, C> firstIncremental;
+  private final TriConstraintCollectorAccumulator<ResultHolder2_, A, B, C> secondIncremental;
+  private final TriConstraintCollectorAccumulator<ResultHolder3_, A, B, C> thirdIncremental;
 
   private final Function<ResultHolder1_, Result1_> firstFinisher;
   private final Function<ResultHolder2_, Result2_> secondFinisher;
@@ -55,9 +57,9 @@ final class ComposeThreeTriCollector<
     this.secondSupplier = second.supplier();
     this.thirdSupplier = third.supplier();
 
-    this.firstAccumulator = first.accumulator();
-    this.secondAccumulator = second.accumulator();
-    this.thirdAccumulator = third.accumulator();
+    this.firstIncremental = first.accumulator();
+    this.secondIncremental = second.accumulator();
+    this.thirdIncremental = third.accumulator();
 
     this.firstFinisher = first.finisher();
     this.secondFinisher = second.finisher();
@@ -75,25 +77,15 @@ final class ComposeThreeTriCollector<
 
   @Override
   public @NonNull
-      QuadFunction<Triple<ResultHolder1_, ResultHolder2_, ResultHolder3_>, A, B, C, Runnable>
+      TriConstraintCollectorAccumulator<
+          Triple<ResultHolder1_, ResultHolder2_, ResultHolder3_>, A, B, C>
       accumulator() {
-    return (resultHolder, a, b, c) ->
-        composeUndo(
-            firstAccumulator.apply(resultHolder.a(), a, b, c),
-            secondAccumulator.apply(resultHolder.b(), a, b, c),
-            thirdAccumulator.apply(resultHolder.c(), a, b, c));
-  }
-
-  private static Runnable composeUndo(Runnable first, Runnable second, Runnable third) {
-    return () -> {
-      first.run();
-      second.run();
-      third.run();
-    };
+    return ValueHandle::new;
   }
 
   @Override
-  public @NonNull Function<Triple<ResultHolder1_, ResultHolder2_, ResultHolder3_>, Result_>
+  public @NonNull
+      Function<Triple<ResultHolder1_, ResultHolder2_, ResultHolder3_>, @Nullable Result_>
       finisher() {
     return resultHolder ->
         composeFunction.apply(
@@ -116,5 +108,38 @@ final class ComposeThreeTriCollector<
   @Override
   public int hashCode() {
     return Objects.hash(first, second, third, composeFunction);
+  }
+
+  private final class ValueHandle implements TriConstraintCollectorValueHandle<A, B, C> {
+    private final TriConstraintCollectorValueHandle<A, B, C> v1;
+    private final TriConstraintCollectorValueHandle<A, B, C> v2;
+    private final TriConstraintCollectorValueHandle<A, B, C> v3;
+
+    ValueHandle(Triple<ResultHolder1_, ResultHolder2_, ResultHolder3_> container) {
+      this.v1 = firstIncremental.intoGroup(container.a());
+      this.v2 = secondIncremental.intoGroup(container.b());
+      this.v3 = thirdIncremental.intoGroup(container.c());
+    }
+
+    @Override
+    public void add(A a, B b, C c) {
+      v1.add(a, b, c);
+      v2.add(a, b, c);
+      v3.add(a, b, c);
+    }
+
+    @Override
+    public void replaceWith(A a, B b, C c) {
+      v1.replaceWith(a, b, c);
+      v2.replaceWith(a, b, c);
+      v3.replaceWith(a, b, c);
+    }
+
+    @Override
+    public void remove() {
+      v1.remove();
+      v2.remove();
+      v3.remove();
+    }
   }
 }

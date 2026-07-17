@@ -11,6 +11,7 @@ import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
 
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
@@ -84,10 +85,24 @@ class SingleConstraintAssertionTest {
               TestdataDependencyEntity.class,
               TestdataDependencyValue.class);
 
-  private static final String JUSTIFICATION_WITH_FIRST =
-      "Justification: Justify with first justification";
-  private static final String INDICTMENT_WITH_FIRST =
-      "Indictment: Justify with first justification";
+  private static final String REWARD_CODE = "A";
+  private static final String PENALIZE_CODE = "B";
+
+  private static final String THERE_SHOULD_BE_PENALTIES = "There should be penalties";
+  private static final String THERE_SHOULD_BE_NO_PENALTIES = "There should be no penalties";
+  private static final String EXPECTED_PENALTY_MORE_THAN = "Expected penalty more than";
+  private static final String EXPECTED_PENALTY_LESS_THAN = "Expected penalty less than";
+  private static final String EXPECTED_EXACTLY_ONE_PENALTY = "There should only be one penalty";
+  private static final String EXPECTED_PENALTY = "Expected penalty";
+
+  private static final String THERE_SHOULD_BE_REWARDS = "There should be rewards";
+  private static final String THERE_SHOULD_BE_NO_REWARDS = "There should be no rewards";
+  private static final String EXPECTED_REWARD_MORE_THAN = "Expected reward more than";
+  private static final String EXPECTED_REWARD_LESS_THAN = "Expected reward less than";
+  private static final String EXPECTED_EXACTLY_ONE_REWARD = "There should only be one reward";
+  private static final String EXPECTED_REWARD = "Expected reward";
+
+  private static final String THERE_SHOULD_BE_NO_IMPACT = "There should be no impact";
 
   @Test
   void triggerVariableListenersListSingleSolution() {
@@ -128,71 +143,7 @@ class SingleConstraintAssertionTest {
                     .settingAllShadowVariables()
                     .justifiesWith(
                         DefaultConstraintJustification.of(
-                            SimpleScore.of(-10), solution.getValueList().get(0))))
-        .doesNotThrowAnyException();
-
-    // Test cascade indictment
-    assertThatCode(
-            () ->
-                shadowConstraintVerifier
-                    .verifyThat(
-                        TestdataListMultipleShadowVariableConstraintProvider
-                            ::penalizeCascadingUpdate)
-                    .givenSolution(solution)
-                    .settingAllShadowVariables()
-                    .indictsWith(solution.getValueList().get(0)))
-        .doesNotThrowAnyException();
-
-    // Custom listener
-    solution.getEntityList().get(0).setValueList(List.of(solution.getValueList().get(1)));
-    solution.getValueList().get(0).setEntity(null);
-    // Test listener penalty
-    assertThatCode(
-            () ->
-                shadowConstraintVerifier
-                    .verifyThat(
-                        TestdataListMultipleShadowVariableConstraintProvider
-                            ::penalizeCascadingUpdate)
-                    .givenSolution(solution)
-                    .settingAllShadowVariables()
-                    .penalizesBy(10))
-        .doesNotThrowAnyException();
-
-    // Test listener reward
-    assertThatCode(
-            () ->
-                shadowConstraintVerifier
-                    .verifyThat(
-                        TestdataListMultipleShadowVariableConstraintProvider::rewardCascadingUpdate)
-                    .givenSolution(solution)
-                    .settingAllShadowVariables()
-                    .rewardsWith(20))
-        .doesNotThrowAnyException();
-
-    // Test listener justification
-    assertThatCode(
-            () ->
-                shadowConstraintVerifier
-                    .verifyThat(
-                        TestdataListMultipleShadowVariableConstraintProvider
-                            ::penalizeCascadingUpdate)
-                    .givenSolution(solution)
-                    .settingAllShadowVariables()
-                    .justifiesWith(
-                        DefaultConstraintJustification.of(
-                            SimpleScore.of(-10), solution.getValueList().get(1))))
-        .doesNotThrowAnyException();
-
-    // Test listener indictment
-    assertThatCode(
-            () ->
-                shadowConstraintVerifier
-                    .verifyThat(
-                        TestdataListMultipleShadowVariableConstraintProvider
-                            ::penalizeCascadingUpdate)
-                    .givenSolution(solution)
-                    .settingAllShadowVariables()
-                    .indictsWith(solution.getValueList().get(1)))
+                            SimpleScore.of(-10), solution.getValueList().getFirst())))
         .doesNotThrowAnyException();
   }
 
@@ -234,16 +185,16 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .penalizes("There should be penalties."))
+                    .penalizes(THERE_SHOULD_BE_PENALTIES))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .rewards("There should be rewards"))
-        .hasMessageContaining("There should be rewards")
-        .hasMessageContaining("Expected reward");
+                    .rewards(THERE_SHOULD_BE_REWARDS))
+        .hasMessageContaining(THERE_SHOULD_BE_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD);
   }
 
   @Test
@@ -255,16 +206,16 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::rewardEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .rewards("There should be rewards"))
+                    .rewards(THERE_SHOULD_BE_REWARDS))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::rewardEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .penalizes("There should be penalties."))
-        .hasMessageContaining("There should be penalties")
-        .hasMessageContaining("Expected penalty");
+                    .penalizes(THERE_SHOULD_BE_PENALTIES))
+        .hasMessageContaining(THERE_SHOULD_BE_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY);
   }
 
   @Test
@@ -277,7 +228,7 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
                     .given()
-                    .hasNoImpact("There should be no impact"))
+                    .hasNoImpact(THERE_SHOULD_BE_NO_IMPACT))
         .doesNotThrowAnyException();
 
     // Test without custom message - no entities
@@ -295,9 +246,9 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .hasNoImpact("There should be no impact"))
+                    .hasNoImpact(THERE_SHOULD_BE_NO_IMPACT))
         .isInstanceOf(AssertionError.class)
-        .hasMessageContaining("There should be no impact")
+        .hasMessageContaining(THERE_SHOULD_BE_NO_IMPACT)
         .hasMessageContaining("Constraint")
         .hasMessageContaining("Expected")
         .hasMessageContaining("no impact")
@@ -322,9 +273,9 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::rewardEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .hasNoImpact("There should be no impact"))
+                    .hasNoImpact(THERE_SHOULD_BE_NO_IMPACT))
         .isInstanceOf(AssertionError.class)
-        .hasMessageContaining("There should be no impact")
+        .hasMessageContaining(THERE_SHOULD_BE_NO_IMPACT)
         .hasMessageContaining("Constraint")
         .hasMessageContaining("Expected")
         .hasMessageContaining("no impact")
@@ -360,45 +311,19 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .hasNoImpact("There should be no impact"))
+                    .hasNoImpact(THERE_SHOULD_BE_NO_IMPACT))
         .doesNotThrowAnyException();
-
-    // Test mixed constraint with entities that cause rewards - should fail
-    assertThatCode(
-            () ->
-                constraintVerifier
-                    .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .hasNoImpact("There should be no impact"))
-        .isInstanceOf(AssertionError.class)
-        .hasMessageContaining("There should be no impact")
-        .hasMessageContaining("Constraint")
-        .hasMessageContaining("Expected")
-        .hasMessageContaining("no impact")
-        .hasMessageContaining("Actual impact");
-
-    // Test mixed constraint with entities that cause rewards - without custom message
-    assertThatCode(
-            () ->
-                constraintVerifier
-                    .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .hasNoImpact())
-        .hasMessageContaining("Broken expectation")
-        .hasMessageContaining("Constraint")
-        .hasMessageContaining("Expected")
-        .hasMessageContaining("no impact")
-        .hasMessageContaining("Actual impact");
 
     // Test mixed constraint with entities that cause penalties - should fail
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .hasNoImpact("There should be no impact"))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .hasNoImpact(THERE_SHOULD_BE_NO_IMPACT))
         .isInstanceOf(AssertionError.class)
-        .hasMessageContaining("There should be no impact")
+        .hasMessageContaining(THERE_SHOULD_BE_NO_IMPACT)
         .hasMessageContaining("Constraint")
         .hasMessageContaining("Expected")
         .hasMessageContaining("no impact")
@@ -409,7 +334,39 @@ class SingleConstraintAssertionTest {
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .hasNoImpact())
+        .hasMessageContaining("Broken expectation")
+        .hasMessageContaining("Constraint")
+        .hasMessageContaining("Expected")
+        .hasMessageContaining("no impact")
+        .hasMessageContaining("Actual impact");
+
+    // Test mixed constraint with entities that cause rewards - should fail
+    assertThatCode(
+            () ->
+                constraintVerifier
+                    .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .hasNoImpact(THERE_SHOULD_BE_NO_IMPACT))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining(THERE_SHOULD_BE_NO_IMPACT)
+        .hasMessageContaining("Constraint")
+        .hasMessageContaining("Expected")
+        .hasMessageContaining("no impact")
+        .hasMessageContaining("Actual impact");
+
+    // Test mixed constraint with entities that cause rewards - without custom message
+    assertThatCode(
+            () ->
+                constraintVerifier
+                    .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
                     .hasNoImpact())
         .hasMessageContaining("Broken expectation")
         .hasMessageContaining("Constraint")
@@ -425,78 +382,90 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .rewards("There should be no rewards", 0))
+                    .rewards(THERE_SHOULD_BE_NO_REWARDS, 0))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewards("There should be no rewards", 0))
-        .hasMessageContaining("There should be no rewards")
-        .hasMessageContaining("Expected reward");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewards(THERE_SHOULD_BE_NO_REWARDS, 0))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewards("There should be rewards", 1))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewards(THERE_SHOULD_BE_REWARDS, 1))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewards("There should only be one reward", 2))
-        .hasMessageContaining("There should only be one reward")
-        .hasMessageContaining("Expected reward");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewards(EXPECTED_EXACTLY_ONE_REWARD, 2))
+        .hasMessageContaining(EXPECTED_EXACTLY_ONE_REWARD)
+        .hasMessageContaining(EXPECTED_REWARD);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .penalizes("There should not be penalties", 1))
-        .hasMessageContaining("There should not be penalties")
-        .hasMessageContaining("Expected penalty");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .penalizes(THERE_SHOULD_BE_NO_PENALTIES, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY);
 
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .penalizes("There should be no penalties", 0))
+                    .penalizes(THERE_SHOULD_BE_NO_PENALTIES, 0))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizes("There should be no penalties", 0))
-        .hasMessageContaining("There should be no penalties")
-        .hasMessageContaining("Expected penalty");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizes(THERE_SHOULD_BE_NO_PENALTIES, 0))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizes("There should be penalties", 1))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizes(THERE_SHOULD_BE_NO_PENALTIES, 1))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizes("There should only be one penalty", 2))
-        .hasMessageContaining("There should only be one penalty")
-        .hasMessageContaining("Expected penalty");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizes(EXPECTED_EXACTLY_ONE_PENALTY, 2))
+        .hasMessageContaining(EXPECTED_EXACTLY_ONE_PENALTY)
+        .hasMessageContaining(EXPECTED_PENALTY);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .rewards("There should not be rewards", 1))
-        .hasMessageContaining("There should not be rewards")
-        .hasMessageContaining("Expected reward");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .rewards(THERE_SHOULD_BE_NO_REWARDS, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD);
   }
 
   @Test
@@ -506,80 +475,92 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .rewardsMoreThan("There should be rewards", 0))
-        .hasMessageContaining("There should be rewards")
-        .hasMessageContaining("Expected reward more than");
+                    .rewardsMoreThan(THERE_SHOULD_BE_REWARDS, 0))
+        .hasMessageContaining(THERE_SHOULD_BE_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD_MORE_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsMoreThan("There should be no rewards", 0))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsMoreThan(THERE_SHOULD_BE_NO_REWARDS, 0))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsMoreThan("There should be rewards", 1))
-        .hasMessageContaining("There should be rewards")
-        .hasMessageContaining("Expected reward more than");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsMoreThan(THERE_SHOULD_BE_REWARDS, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD_MORE_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsMoreThan("There should only be one reward", 2))
-        .hasMessageContaining("There should only be one reward")
-        .hasMessageContaining("Expected reward");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsMoreThan(EXPECTED_EXACTLY_ONE_REWARD, 2))
+        .hasMessageContaining(EXPECTED_EXACTLY_ONE_REWARD)
+        .hasMessageContaining(EXPECTED_REWARD);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .penalizesMoreThan("There should not be penalties", 1))
-        .hasMessageContaining("There should not be penalties")
-        .hasMessageContaining("Expected penalty");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .penalizesMoreThan(THERE_SHOULD_BE_NO_PENALTIES, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY);
 
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .penalizesMoreThan("There should be no penalties", 0))
-        .hasMessageContaining("There should be no penalties")
-        .hasMessageContaining("Expected penalty more than");
+                    .penalizesMoreThan(THERE_SHOULD_BE_NO_PENALTIES, 0))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY_MORE_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesMoreThan("There should be no penalties", 0))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesMoreThan(THERE_SHOULD_BE_NO_PENALTIES, 0))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesMoreThan("There should be penalties", 1))
-        .hasMessageContaining("There should be penalties")
-        .hasMessageContaining("Expected penalty more than");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesMoreThan(THERE_SHOULD_BE_PENALTIES, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY_MORE_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesMoreThan("There should only be one penalty", 2))
-        .hasMessageContaining("There should only be one penalty")
-        .hasMessageContaining("Expected penalty");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesMoreThan(EXPECTED_EXACTLY_ONE_PENALTY, 2))
+        .hasMessageContaining(EXPECTED_EXACTLY_ONE_PENALTY)
+        .hasMessageContaining(EXPECTED_PENALTY);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .rewardsMoreThan("There should not be rewards", 1))
-        .hasMessageContaining("There should not be rewards")
-        .hasMessageContaining("Expected reward");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .rewardsMoreThan(THERE_SHOULD_BE_NO_REWARDS, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD);
   }
 
   @Test
@@ -589,36 +570,40 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .rewardsLessThan("There should be rewards", 1))
+                    .rewardsLessThan(THERE_SHOULD_BE_REWARDS, 1))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsLessThan("There should be no rewards", 1))
-        .hasMessageContaining("There should be no rewards")
-        .hasMessageContaining("Expected reward less than");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsLessThan(THERE_SHOULD_BE_NO_REWARDS, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD_LESS_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
                     .rewardsLessThan("There should be less than 2 rewards", 2))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
                     .rewardsLessThan("There be less than 3 rewards", 3))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .penalizesLessThan("There should be 1 penalty", 2))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .penalizesLessThan("There should be 1 reward", 2))
         .doesNotThrowAnyException();
 
     assertThatCode(
@@ -626,36 +611,44 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .penalizesLessThan("There should be no penalties", 1))
+                    .penalizesLessThan(THERE_SHOULD_BE_NO_PENALTIES, 1))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesLessThan("There should be no penalties", 1))
-        .hasMessageContaining("There should be no penalties")
-        .hasMessageContaining("Expected penalty less than");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesLessThan(THERE_SHOULD_BE_NO_PENALTIES, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY_LESS_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesLessThan("There should be less than 2 penalties", 2))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesLessThan("There should be less than 2 penalities", 2))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesLessThan("There should be less than 3 penalties", 3))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesLessThan("There should be less than 2 penalities", 3))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .rewardsLessThan("There should not be rewards", 2))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .rewardsLessThan(THERE_SHOULD_BE_NO_REWARDS, 2))
         .doesNotThrowAnyException();
   }
 
@@ -666,78 +659,90 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .rewardsWith("There should be no rewards", 0))
+                    .rewardsWith(THERE_SHOULD_BE_NO_REWARDS, 0))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsWith("There should be no rewards", 0))
-        .hasMessageContaining("There should be no rewards")
-        .hasMessageContaining("Expected reward");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsWith(THERE_SHOULD_BE_NO_REWARDS, 0))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsWith("There should be rewards", 1))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsWith(THERE_SHOULD_BE_REWARDS, 1))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsWith("There should only be one reward", 2))
-        .hasMessageContaining("There should only be one reward")
-        .hasMessageContaining("Expected reward");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsWith(EXPECTED_EXACTLY_ONE_REWARD, 2))
+        .hasMessageContaining(EXPECTED_EXACTLY_ONE_REWARD)
+        .hasMessageContaining(EXPECTED_REWARD);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .penalizesBy("There should not be penalties", 1))
-        .hasMessageContaining("There should not be penalties")
-        .hasMessageContaining("Expected penalty");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .penalizesBy(THERE_SHOULD_BE_NO_PENALTIES, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY);
 
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .penalizesBy("There should be no penalties", 0))
+                    .penalizesBy(THERE_SHOULD_BE_NO_PENALTIES, 0))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesBy("There should be no penalties", 0))
-        .hasMessageContaining("There should be no penalties")
-        .hasMessageContaining("Expected penalty");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesBy(THERE_SHOULD_BE_NO_PENALTIES, 0))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesBy("There should be penalties", 1))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesBy(THERE_SHOULD_BE_PENALTIES, 1))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesBy("There should only be one penalty", 2))
-        .hasMessageContaining("There should only be one penalty")
-        .hasMessageContaining("Expected penalty");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesBy(EXPECTED_EXACTLY_ONE_PENALTY, 2))
+        .hasMessageContaining(EXPECTED_EXACTLY_ONE_PENALTY)
+        .hasMessageContaining(EXPECTED_PENALTY);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .rewardsWith("There should not be rewards", 1))
-        .hasMessageContaining("There should not be rewards")
-        .hasMessageContaining("Expected reward");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .rewardsWith(THERE_SHOULD_BE_NO_REWARDS, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD);
   }
 
   @Test
@@ -747,80 +752,92 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .rewardsWithMoreThan("There should be no rewards", 0))
-        .hasMessageContaining("There should be no rewards")
-        .hasMessageContaining("Expected reward more than");
+                    .rewardsWithMoreThan(THERE_SHOULD_BE_NO_REWARDS, 0))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD_MORE_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsWithMoreThan("There should be no rewards", 0))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsWithMoreThan(THERE_SHOULD_BE_NO_REWARDS, 0))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsWithMoreThan("There should be rewards", 1))
-        .hasMessageContaining("There should be rewards")
-        .hasMessageContaining("Expected reward more than");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsWithMoreThan(THERE_SHOULD_BE_REWARDS, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD_MORE_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsWithMoreThan("There should only be one reward", 2))
-        .hasMessageContaining("There should only be one reward")
-        .hasMessageContaining("Expected reward more than");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsWithMoreThan(EXPECTED_EXACTLY_ONE_REWARD, 2))
+        .hasMessageContaining(EXPECTED_EXACTLY_ONE_REWARD)
+        .hasMessageContaining(EXPECTED_REWARD_MORE_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .penalizesByMoreThan("There should not be penalties", 1))
-        .hasMessageContaining("There should not be penalties")
-        .hasMessageContaining("Expected penalty");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .penalizesByMoreThan(THERE_SHOULD_BE_NO_PENALTIES, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY);
 
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .penalizesByMoreThan("There should be no penalties", 0))
-        .hasMessageContaining("There should be no penalties")
-        .hasMessageContaining("Expected penalty more than");
+                    .penalizesByMoreThan(THERE_SHOULD_BE_NO_PENALTIES, 0))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY_MORE_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesByMoreThan("There should be no penalties", 0))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesByMoreThan(THERE_SHOULD_BE_NO_PENALTIES, 0))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesByMoreThan("There should be penalties", 1))
-        .hasMessageContaining("There should be penalties")
-        .hasMessageContaining("Expected penalty more than");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesByMoreThan(THERE_SHOULD_BE_PENALTIES, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY_MORE_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesByMoreThan("There should only be one penalty", 2))
-        .hasMessageContaining("There should only be one penalty")
-        .hasMessageContaining("Expected penalty");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesByMoreThan(EXPECTED_EXACTLY_ONE_PENALTY, 2))
+        .hasMessageContaining(EXPECTED_EXACTLY_ONE_PENALTY)
+        .hasMessageContaining(EXPECTED_PENALTY);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .rewardsWithMoreThan("There should not be rewards", 1))
-        .hasMessageContaining("There should not be rewards")
-        .hasMessageContaining("Expected reward");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .rewardsWithMoreThan(THERE_SHOULD_BE_NO_REWARDS, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD);
   }
 
   @Test
@@ -830,36 +847,40 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .rewardsWithLessThan("There should be no rewards", 1))
+                    .rewardsWithLessThan(THERE_SHOULD_BE_NO_PENALTIES, 1))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsWithLessThan("There should be rewards", 1))
-        .hasMessageContaining("There should be rewards")
-        .hasMessageContaining("Expected reward less than");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsWithLessThan(THERE_SHOULD_BE_REWARDS, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD_LESS_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsWithLessThan("There should be rewards", 2))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsWithLessThan(THERE_SHOULD_BE_REWARDS, 2))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .rewardsWithLessThan("There should only be one reward", 3))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .rewardsWithLessThan(EXPECTED_EXACTLY_ONE_REWARD, 3))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("A", new TestdataValue()))
-                    .penalizesByLessThan("There should not be penalties", 2))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(REWARD_CODE, new TestdataValue()))
+                    .penalizesByLessThan(THERE_SHOULD_BE_NO_PENALTIES, 2))
         .doesNotThrowAnyException();
 
     assertThatCode(
@@ -867,37 +888,112 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
                     .given()
-                    .penalizesByLessThan("There should be no penalties", 1))
+                    .penalizesByLessThan(THERE_SHOULD_BE_NO_PENALTIES, 1))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesByLessThan("There should be no penalties", 1))
-        .hasMessageContaining("There should be no penalties")
-        .hasMessageContaining("Expected penalty less than");
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesByLessThan(THERE_SHOULD_BE_NO_PENALTIES, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY_LESS_THAN);
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesByLessThan("There should be penalties", 2))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesByLessThan(THERE_SHOULD_BE_PENALTIES, 2))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .penalizesByLessThan("There should only be one penalty", 3))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .penalizesByLessThan(EXPECTED_EXACTLY_ONE_PENALTY, 3))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::impactEveryEntity)
-                    .given(new TestdataConstraintVerifierFirstEntity("B", new TestdataValue()))
-                    .rewardsWithLessThan("There should not be rewards", 2))
+                    .given(
+                        new TestdataConstraintVerifierFirstEntity(
+                            PENALIZE_CODE, new TestdataValue()))
+                    .rewardsWithLessThan(THERE_SHOULD_BE_NO_REWARDS, 2))
         .doesNotThrowAnyException();
+  }
+
+  @Test
+  void getImpactEnablesRelativeComparison() {
+    var entityA = new TestdataConstraintVerifierFirstEntity("A", new TestdataValue());
+    var solution = TestdataConstraintVerifierSolution.generateSolution(2, 3);
+
+    var impactA =
+        constraintVerifier
+            .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
+            .given(entityA)
+            .getImpact();
+    var impactB =
+        constraintVerifier
+            .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
+            .given(solution.getEntityList().toArray())
+            .getImpact();
+
+    assertThat(impactB.intValue()).isGreaterThan(impactA.intValue());
+  }
+
+  @Test
+  void getScoreEnablesRelativeComparisonForRewards() {
+    var entityA = new TestdataConstraintVerifierFirstEntity("A", new TestdataValue());
+    var solution = TestdataConstraintVerifierSolution.generateSolution(2, 3);
+
+    HardSoftScore scoreA =
+        constraintVerifier
+            .verifyThat(TestdataConstraintVerifierConstraintProvider::rewardEveryEntity)
+            .given(entityA)
+            .getScore();
+    HardSoftScore scoreB =
+        constraintVerifier
+            .verifyThat(TestdataConstraintVerifierConstraintProvider::rewardEveryEntity)
+            .given(solution.getEntityList().toArray())
+            .getScore();
+
+    assertThat(scoreA).isNotNull();
+    assertThat(scoreA).isInstanceOf(HardSoftScore.class);
+    assertThat(scoreA.hardScore()).isEqualTo(0);
+    assertThat(scoreA.softScore()).isEqualTo(2);
+
+    assertThat(scoreB).isNotNull();
+    assertThat(scoreB).isInstanceOf(HardSoftScore.class);
+    assertThat(scoreB.hardScore()).isEqualTo(0);
+    assertThat(scoreB.softScore()).isEqualTo(6);
+
+    assertThat(scoreB).isGreaterThan(scoreA);
+  }
+
+  @Test
+  void getScoreComparesGivenSolutions() {
+    var smallSolution = TestdataConstraintVerifierExtendedSolution.generateSolution(2, 2);
+    var largeSolution = TestdataConstraintVerifierExtendedSolution.generateSolution(2, 4);
+
+    HardSoftScore smallScore =
+        constraintVerifier
+            .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
+            .givenSolution(smallSolution)
+            .getScore();
+    HardSoftScore largeScore =
+        constraintVerifier
+            .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
+            .givenSolution(largeSolution)
+            .getScore();
+
+    assertThat(smallScore).isGreaterThan(largeScore);
   }
 
   @Test
@@ -909,16 +1005,16 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .penalizes("There should be penalties.", 3))
+                    .penalizes(THERE_SHOULD_BE_PENALTIES, 3))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .rewards("There should be rewards", 1))
-        .hasMessageContaining("There should be rewards")
-        .hasMessageContaining("Expected reward");
+                    .rewards(THERE_SHOULD_BE_REWARDS, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD);
   }
 
   @Test
@@ -930,16 +1026,16 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .penalizesBy("There should be penalties.", BigDecimal.valueOf(3)))
+                    .penalizesBy(THERE_SHOULD_BE_PENALTIES, BigDecimal.valueOf(3)))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::penalizeEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .penalizesBy("There should be penalties.", new BigDecimal("3.01")))
-        .hasMessageContaining("There should be penalties")
-        .hasMessageContaining("Expected penalty");
+                    .penalizesBy(THERE_SHOULD_BE_PENALTIES, new BigDecimal("3.01")))
+        .hasMessageContaining(THERE_SHOULD_BE_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY);
   }
 
   @Test
@@ -951,16 +1047,16 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::rewardEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .rewards("There should be rewards", 3))
+                    .rewards(THERE_SHOULD_BE_REWARDS, 3))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::rewardEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .penalizes("There should be penalties.", 1))
-        .hasMessageContaining("There should be penalties")
-        .hasMessageContaining("Expected penalty");
+                    .penalizes(THERE_SHOULD_BE_PENALTIES, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_PENALTIES)
+        .hasMessageContaining(EXPECTED_PENALTY);
   }
 
   @Test
@@ -972,16 +1068,16 @@ class SingleConstraintAssertionTest {
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::rewardEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .rewardsWith("There should be rewards", BigDecimal.valueOf(3)))
+                    .rewardsWith(THERE_SHOULD_BE_REWARDS, BigDecimal.valueOf(3)))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 constraintVerifier
                     .verifyThat(TestdataConstraintVerifierConstraintProvider::rewardEveryEntity)
                     .given(solution.getEntityList().toArray())
-                    .rewardsWith("There should be rewards.", new BigDecimal("3.01")))
-        .hasMessageContaining("There should be rewards")
-        .hasMessageContaining("Expected reward");
+                    .rewardsWith(THERE_SHOULD_BE_REWARDS, new BigDecimal("3.01")))
+        .hasMessageContaining(THERE_SHOULD_BE_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD);
   }
 
   @Test
@@ -995,7 +1091,7 @@ class SingleConstraintAssertionTest {
                     .given(
                         new TestdataConstraintVerifierSecondEntity("A", "1"),
                         new TestdataConstraintVerifierSecondEntity("B", "1"))
-                    .penalizes("There should be penalties", 1))
+                    .penalizes(THERE_SHOULD_BE_PENALTIES, 1))
         .doesNotThrowAnyException();
 
     assertThatCode(
@@ -1007,9 +1103,9 @@ class SingleConstraintAssertionTest {
                     .given(
                         new TestdataConstraintVerifierSecondEntity("A", "1"),
                         new TestdataConstraintVerifierSecondEntity("B", "1"))
-                    .rewards("There should be rewards", 1))
-        .hasMessageContaining("There should be rewards")
-        .hasMessageContaining("Expected reward");
+                    .rewards(THERE_SHOULD_BE_REWARDS, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_REWARDS)
+        .hasMessageContaining(EXPECTED_REWARD);
   }
 
   @Test
@@ -1034,15 +1130,15 @@ class SingleConstraintAssertionTest {
                     .verifyThat(
                         TestdataAllowsUnassignedListConstraintProvider::penalizeEveryAssignedValue)
                     .given(entity, value1, value2)
-                    .penalizes("There should be no penalties", 0))
-        .hasMessageContaining("There should be no penalties");
+                    .penalizes(THERE_SHOULD_BE_NO_PENALTIES, 0))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES);
     assertThatCode(
             () ->
                 verifier
                     .verifyThat(TestdataAllowsUnassignedListConstraintProvider::penalizeEveryValue)
                     .given(entity, value1, value2)
-                    .penalizes("There should be no penalties", 1))
-        .hasMessageContaining("There should be no penalties");
+                    .penalizes(THERE_SHOULD_BE_NO_PENALTIES, 1))
+        .hasMessageContaining(THERE_SHOULD_BE_NO_PENALTIES);
 
     assertThatCode(
             () ->
@@ -1050,14 +1146,14 @@ class SingleConstraintAssertionTest {
                     .verifyThat(
                         TestdataAllowsUnassignedListConstraintProvider::penalizeEveryAssignedValue)
                     .given(entity, value1, value2)
-                    .penalizes("There should be penalties", 1))
+                    .penalizes(THERE_SHOULD_BE_PENALTIES, 1))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
                 verifier
                     .verifyThat(TestdataAllowsUnassignedListConstraintProvider::penalizeEveryValue)
                     .given(entity, value1, value2)
-                    .penalizes("There should be penalties", 2))
+                    .penalizes(THERE_SHOULD_BE_PENALTIES, 2))
         .doesNotThrowAnyException();
   }
 
@@ -1108,7 +1204,7 @@ class SingleConstraintAssertionTest {
                         TestdataDisallowsUnassignedListConstraintProvider
                             ::penalizeEveryAssignedValue)
                     .given(entity, value1, value2)
-                    .penalizes("There should be penalties", 1))
+                    .penalizes(THERE_SHOULD_BE_PENALTIES, 1))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
@@ -1116,7 +1212,7 @@ class SingleConstraintAssertionTest {
                     .verifyThat(
                         TestdataDisallowsUnassignedListConstraintProvider::penalizeEveryValue)
                     .given(entity, value1, value2)
-                    .penalizes("There should be penalties", 2))
+                    .penalizes(THERE_SHOULD_BE_PENALTIES, 2))
         .doesNotThrowAnyException();
   }
 
@@ -1166,7 +1262,7 @@ class SingleConstraintAssertionTest {
                         TestdataDisallowsUnassignedListWithoutInverseShadowVarConstraintProvider
                             ::penalizeEveryAssignedValue)
                     .given(entity, value1, value2)
-                    .penalizes("There should be penalties", 1))
+                    .penalizes(THERE_SHOULD_BE_PENALTIES, 1))
         .doesNotThrowAnyException();
     assertThatCode(
             () ->
@@ -1175,7 +1271,7 @@ class SingleConstraintAssertionTest {
                         TestdataDisallowsUnassignedListWithoutInverseShadowVarConstraintProvider
                             ::penalizeEveryValue)
                     .given(entity, value1, value2)
-                    .penalizes("There should be penalties", 2))
+                    .penalizes(THERE_SHOULD_BE_PENALTIES, 2))
         .doesNotThrowAnyException();
   }
 
@@ -1244,7 +1340,7 @@ class SingleConstraintAssertionTest {
                     .given(solution.getEntityList().toArray())
                     .justifiesWith(new TestFirstJustification("2")))
         .hasMessageContaining("Broken expectation")
-        .hasMessageContaining(JUSTIFICATION_WITH_FIRST)
+        .hasMessageContaining("Justification: Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1262,7 +1358,7 @@ class SingleConstraintAssertionTest {
                     .givenSolution(solution)
                     .justifiesWith(new TestFirstJustification("2")))
         .hasMessageContaining("Broken expectation")
-        .hasMessageContaining(JUSTIFICATION_WITH_FIRST)
+        .hasMessageContaining("Justification: Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1283,7 +1379,7 @@ class SingleConstraintAssertionTest {
                         new TestFirstJustification("Generated Entity 0"),
                         new TestFirstJustification("2")))
         .hasMessageContaining("Broken expectation")
-        .hasMessageContaining(JUSTIFICATION_WITH_FIRST)
+        .hasMessageContaining("Justification: Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("TestFirstJustification[id=Generated Entity 0]")
@@ -1306,7 +1402,7 @@ class SingleConstraintAssertionTest {
                         new TestFirstJustification("2"),
                         new TestSecondJustification("1")))
         .hasMessageContaining("Broken expectation")
-        .hasMessageContaining(JUSTIFICATION_WITH_FIRST)
+        .hasMessageContaining("Justification: Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("TestFirstJustification[id=Generated Entity 0]")
@@ -1333,7 +1429,7 @@ class SingleConstraintAssertionTest {
                     .given(solution.getEntityList().toArray())
                     .justifiesWith("Custom Message", new TestFirstJustification("2")))
         .hasMessageContaining("Custom Message")
-        .hasMessageContaining(JUSTIFICATION_WITH_FIRST)
+        .hasMessageContaining("Justification: Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1351,7 +1447,7 @@ class SingleConstraintAssertionTest {
                     .givenSolution(solution)
                     .justifiesWith("Custom Message", new TestFirstJustification("2")))
         .hasMessageContaining("Custom Message")
-        .hasMessageContaining(JUSTIFICATION_WITH_FIRST)
+        .hasMessageContaining("Justification: Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1449,7 +1545,7 @@ class SingleConstraintAssertionTest {
                     .given(solution.getEntityList().toArray())
                     .justifiesWithExactly(new TestFirstJustification("2")))
         .hasMessageContaining("Broken expectation")
-        .hasMessageContaining(JUSTIFICATION_WITH_FIRST)
+        .hasMessageContaining("Justification: Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1473,7 +1569,7 @@ class SingleConstraintAssertionTest {
                     .given(solution.getEntityList().toArray())
                     .justifiesWithExactly("Custom Message", new TestFirstJustification("2")))
         .hasMessageContaining("Custom Message")
-        .hasMessageContaining(JUSTIFICATION_WITH_FIRST)
+        .hasMessageContaining("Justification: Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1492,7 +1588,7 @@ class SingleConstraintAssertionTest {
                     .givenSolution(solution)
                     .justifiesWithExactly("Custom Message", new TestFirstJustification("2")))
         .hasMessageContaining("Custom Message")
-        .hasMessageContaining(JUSTIFICATION_WITH_FIRST)
+        .hasMessageContaining("Justification: Justify with first justification")
         .hasMessageContaining("Expected")
         .hasMessageContaining("TestFirstJustification[id=2]")
         .hasMessageContaining("Actual")
@@ -1547,362 +1643,6 @@ class SingleConstraintAssertionTest {
         .hasMessageContaining("TestFirstJustification[id=1]")
         .hasMessageContaining("Actual")
         .hasMessageContaining("No Justification")
-        .hasMessageContaining("Expected but not found:");
-  }
-
-  @Test
-  void indicts() {
-    var solution = TestdataConstraintVerifierSolution.generateSolution(2, 3);
-
-    // No error
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWith(solution.getEntityList().toArray()))
-        .doesNotThrowAnyException();
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .givenSolution(solution)
-                    .indictsWith(solution.getEntityList().toArray()))
-        .doesNotThrowAnyException();
-
-    // Invalid indictment
-    var badEntity =
-        new TestdataConstraintVerifierFirstEntity("bad code", new TestdataValue("bad code"));
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWith(badEntity))
-        .hasMessageContaining("Broken expectation")
-        .hasMessageContaining(INDICTMENT_WITH_FIRST)
-        .hasMessageContaining("Expected")
-        .hasMessageContaining(badEntity.toString())
-        .hasMessageContaining("Actual")
-        .hasMessageContaining(solution.getEntityList().get(0).toString())
-        .hasMessageContaining(solution.getEntityList().get(1).toString())
-        .hasMessageContaining(solution.getEntityList().get(2).toString())
-        .hasMessageContaining("Expected but not found:");
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .givenSolution(solution)
-                    .indictsWith(badEntity))
-        .hasMessageContaining("Broken expectation")
-        .hasMessageContaining(INDICTMENT_WITH_FIRST)
-        .hasMessageContaining("Expected")
-        .hasMessageContaining(badEntity.toString())
-        .hasMessageContaining("Actual")
-        .hasMessageContaining(solution.getEntityList().get(0).toString())
-        .hasMessageContaining(solution.getEntityList().get(1).toString())
-        .hasMessageContaining(solution.getEntityList().get(2).toString())
-        .hasMessageContaining("Expected but not found:");
-
-    // Multiple indictments
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .givenSolution(solution)
-                    .indictsWith(solution.getEntityList().get(0), badEntity))
-        .hasMessageContaining("Broken expectation")
-        .hasMessageContaining(INDICTMENT_WITH_FIRST)
-        .hasMessageContaining("Expected")
-        .hasMessageContaining(solution.getEntityList().get(0).toString())
-        .hasMessageContaining(badEntity.toString())
-        .hasMessageContaining("Actual")
-        .hasMessageContaining(solution.getEntityList().get(0).toString())
-        .hasMessageContaining(solution.getEntityList().get(1).toString())
-        .hasMessageContaining(solution.getEntityList().get(2).toString())
-        .hasMessageContaining("Expected but not found:");
-
-    // Invalid matches and classes
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWith(solution.getEntityList().get(0), badEntity, "bad indictment"))
-        .hasMessageContaining("Broken expectation")
-        .hasMessageContaining(INDICTMENT_WITH_FIRST)
-        .hasMessageContaining("Expected")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='Generated Entity 0')")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='bad code')")
-        .hasMessageContaining("bad indictment")
-        .hasMessageContaining("Actual")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='Generated Entity 0')")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='Generated Entity 1')")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='Generated Entity 2')")
-        .hasMessageContaining("Expected but not found:")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='bad code')")
-        .hasMessageContaining("bad indictment");
-  }
-
-  @Test
-  void indictsWithCustomMessage() {
-    var solution = TestdataConstraintVerifierSolution.generateSolution(2, 3);
-
-    var badEntity =
-        new TestdataConstraintVerifierFirstEntity("bad code", new TestdataValue("bad code"));
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWith("Custom Message", badEntity))
-        .hasMessageContaining("Custom Message")
-        .hasMessageContaining(INDICTMENT_WITH_FIRST)
-        .hasMessageContaining("Expected")
-        .hasMessageContaining(badEntity.toString())
-        .hasMessageContaining("Actual")
-        .hasMessageContaining(solution.getEntityList().get(0).toString())
-        .hasMessageContaining(solution.getEntityList().get(1).toString())
-        .hasMessageContaining(solution.getEntityList().get(2).toString())
-        .hasMessageContaining("Expected but not found:");
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .givenSolution(solution)
-                    .indictsWith("Custom Message", badEntity))
-        .hasMessageContaining("Custom Message")
-        .hasMessageContaining(INDICTMENT_WITH_FIRST)
-        .hasMessageContaining("Expected")
-        .hasMessageContaining(badEntity.toString())
-        .hasMessageContaining("Actual")
-        .hasMessageContaining(solution.getEntityList().get(0).toString())
-        .hasMessageContaining(solution.getEntityList().get(1).toString())
-        .hasMessageContaining(solution.getEntityList().get(2).toString())
-        .hasMessageContaining("Expected but not found:");
-  }
-
-  @Test
-  void indictEmptyMatches() {
-    var solution = TestdataConstraintVerifierSolution.generateSolution(2, 3);
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithNoJustifications)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWith())
-        .doesNotThrowAnyException();
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWith())
-        .hasMessageContaining("Broken expectation")
-        .hasMessageContaining("Expected")
-        .hasMessageContaining("No Indictment")
-        .hasMessageContaining("Actual")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='Generated Entity 0')")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='Generated Entity 1')")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='Generated Entity 2')")
-        .hasMessageContaining("Unexpected but found:");
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithNoJustifications)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWith(new TestFirstJustification("1")))
-        .hasMessageContaining("Broken expectation")
-        .hasMessageContaining("Expected")
-        .hasMessageContaining("TestFirstJustification[id=1]")
-        .hasMessageContaining("Actual")
-        .hasMessageContaining("No Indictment")
-        .hasMessageContaining("Expected but not found:");
-  }
-
-  @Test
-  void indictsWithExactly() {
-    var solution = TestdataConstraintVerifierSolution.generateSolution(2, 3);
-
-    // No error
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWithExactly(solution.getEntityList().toArray()))
-        .doesNotThrowAnyException();
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .givenSolution(solution)
-                    .indictsWithExactly(solution.getEntityList().toArray()))
-        .doesNotThrowAnyException();
-
-    // Invalid indictment
-    var badEntity =
-        new TestdataConstraintVerifierFirstEntity("bad code", new TestdataValue("bad code"));
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWithExactly(badEntity))
-        .hasMessageContaining("Broken expectation")
-        .hasMessageContaining(INDICTMENT_WITH_FIRST)
-        .hasMessageContaining("Expected")
-        .hasMessageContaining(badEntity.toString())
-        .hasMessageContaining("Actual")
-        .hasMessageContaining(solution.getEntityList().get(0).toString())
-        .hasMessageContaining(solution.getEntityList().get(1).toString())
-        .hasMessageContaining(solution.getEntityList().get(2).toString())
-        .hasMessageContaining("Expected but not found:");
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .givenSolution(solution)
-                    .indictsWithExactly(badEntity))
-        .hasMessageContaining("Broken expectation")
-        .hasMessageContaining(INDICTMENT_WITH_FIRST)
-        .hasMessageContaining("Expected")
-        .hasMessageContaining(badEntity.toString())
-        .hasMessageContaining("Actual")
-        .hasMessageContaining(solution.getEntityList().get(0).toString())
-        .hasMessageContaining(solution.getEntityList().get(1).toString())
-        .hasMessageContaining(solution.getEntityList().get(2).toString())
-        .hasMessageContaining("Expected but not found:")
-        .hasMessageContaining("Unexpected but found:");
-  }
-
-  @Test
-  void indictsWithExactlyWithCustomMessage() {
-    var solution = TestdataConstraintVerifierSolution.generateSolution(2, 3);
-
-    var badEntity =
-        new TestdataConstraintVerifierFirstEntity("bad code", new TestdataValue("bad code"));
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWithExactly("Custom Message", badEntity))
-        .hasMessageContaining("Custom Message")
-        .hasMessageContaining(INDICTMENT_WITH_FIRST)
-        .hasMessageContaining("Expected")
-        .hasMessageContaining(badEntity.toString())
-        .hasMessageContaining("Actual")
-        .hasMessageContaining(solution.getEntityList().get(0).toString())
-        .hasMessageContaining(solution.getEntityList().get(1).toString())
-        .hasMessageContaining(solution.getEntityList().get(2).toString())
-        .hasMessageContaining("Expected but not found:")
-        .hasMessageContaining("Unexpected but found:");
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .givenSolution(solution)
-                    .indictsWithExactly("Custom Message", badEntity))
-        .hasMessageContaining("Custom Message")
-        .hasMessageContaining(INDICTMENT_WITH_FIRST)
-        .hasMessageContaining("Expected")
-        .hasMessageContaining(badEntity.toString())
-        .hasMessageContaining("Actual")
-        .hasMessageContaining(solution.getEntityList().get(0).toString())
-        .hasMessageContaining(solution.getEntityList().get(1).toString())
-        .hasMessageContaining(solution.getEntityList().get(2).toString())
-        .hasMessageContaining("Expected but not found:")
-        .hasMessageContaining("Unexpected but found:");
-  }
-
-  @Test
-  void indictsWithExactlyEmptyMatches() {
-    var solution = TestdataConstraintVerifierSolution.generateSolution(2, 3);
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithNoJustifications)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWithExactly())
-        .doesNotThrowAnyException();
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithFirstJustification)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWithExactly())
-        .hasMessageContaining("Broken expectation")
-        .hasMessageContaining("Expected")
-        .hasMessageContaining("No Indictment")
-        .hasMessageContaining("Actual")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='Generated Entity 0')")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='Generated Entity 1')")
-        .hasMessageContaining("TestdataConstraintVerifierFirstEntity(code='Generated Entity 2')")
-        .hasMessageContaining("Unexpected but found:");
-
-    assertThatCode(
-            () ->
-                constraintVerifierForJustification
-                    .verifyThat(
-                        TestdataConstraintVerifierJustificationProvider
-                            ::justifyWithNoJustifications)
-                    .given(solution.getEntityList().toArray())
-                    .indictsWithExactly(new TestFirstJustification("1")))
-        .hasMessageContaining("Broken expectation")
-        .hasMessageContaining("Expected")
-        .hasMessageContaining("TestFirstJustification[id=1]")
-        .hasMessageContaining("Actual")
-        .hasMessageContaining("No Indictment")
         .hasMessageContaining("Expected but not found:");
   }
 

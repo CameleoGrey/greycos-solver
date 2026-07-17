@@ -26,6 +26,10 @@ final class SequenceImpl<
   ComparableValue<Value_, Point_> firstItem;
   ComparableValue<Value_, Point_> lastItem;
 
+  // null iff this is the first sequence; otherwise previousBreak.nextSequence == this.
+  // The tree maintains N-1 breaks for N sequences.
+  @Nullable BreakImpl<Value_, Point_, Difference_> previousBreak;
+
   // Memorized calculations
   private Difference_ length;
   private NavigableMap<ComparableValue<Value_, Point_>, Value_> comparableItems;
@@ -61,7 +65,7 @@ final class SequenceImpl<
 
   @Override
   public @Nullable Break<Value_, Difference_> getPreviousBreak() {
-    return sourceTree.getBreakBefore(firstItem);
+    return previousBreak;
   }
 
   @Override

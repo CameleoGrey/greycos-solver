@@ -5,7 +5,7 @@ import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleState;
 
 public abstract class AbstractMapNode<InTuple_ extends Tuple, OutTuple_ extends Tuple>
-    extends AbstractNode implements TupleLifecycle<InTuple_> {
+    extends AbstractSingleInputNode<InTuple_> {
 
   private final int inputStoreIndex;
   protected final int outputStoreSize;
@@ -13,6 +13,7 @@ public abstract class AbstractMapNode<InTuple_ extends Tuple, OutTuple_ extends 
 
   protected AbstractMapNode(
       int inputStoreIndex, TupleLifecycle<OutTuple_> nextNodesTupleLifecycle, int outputStoreSize) {
+    super(nextNodesTupleLifecycle);
     this.inputStoreIndex = inputStoreIndex;
     this.outputStoreSize = outputStoreSize;
     this.propagationQueue = new StaticPropagationQueue<>(nextNodesTupleLifecycle);

@@ -3,10 +3,10 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.decorator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public class SelectedCountLimitMoveSelector<Solution_> extends AbstractMoveSelector<Solution_> {
 
@@ -31,11 +31,6 @@ public class SelectedCountLimitMoveSelector<Solution_> extends AbstractMoveSelec
   // ************************************************************************
   // Worker methods
   // ************************************************************************
-
-  @Override
-  public boolean isCountable() {
-    return true;
-  }
 
   @Override
   public boolean isNeverEnding() {

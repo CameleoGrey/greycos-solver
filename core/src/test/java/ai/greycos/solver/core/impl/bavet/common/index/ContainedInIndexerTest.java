@@ -8,7 +8,9 @@ import java.util.List;
 
 import ai.greycos.solver.core.api.score.stream.Joiners;
 import ai.greycos.solver.core.impl.bavet.bi.joiner.DefaultBiJoiner;
-import ai.greycos.solver.core.impl.score.stream.UnfinishedJoiners;
+import ai.greycos.solver.core.impl.bavet.common.joiner.JoinerType;
+import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+import ai.greycos.solver.core.impl.neighborhood.stream.joiner.DefaultBiNeighborhoodsJoiner;
 
 import org.junit.jupiter.api.Test;
 
@@ -16,8 +18,12 @@ class ContainedInIndexerTest extends AbstractIndexerTest {
 
   private final DefaultBiJoiner<TestJob, TestWorker> joiner =
       (DefaultBiJoiner<TestJob, TestWorker>)
-          UnfinishedJoiners.containedIn(TestJob::skill, TestWorker::skills)
+          Joiners.containedIn(TestJob::skill, TestWorker::skills)
               .and(Joiners.equal(TestJob::department, TestWorker::department));
+
+  private final DefaultBiNeighborhoodsJoiner<TestWorker, TestJob> randomAccessSingleJoiner =
+      new DefaultBiNeighborhoodsJoiner<>(
+          TestWorker::skills, JoinerType.CONTAINED_IN, TestJob::skill);
 
   @Test
   void isRemovable() {
@@ -60,10 +66,7 @@ class ContainedInIndexerTest extends AbstractIndexerTest {
   @Test
   void removeTwice() {
     var indexer = new IndexerFactory<>(joiner).buildIndexer(true);
-    var annEntry =
-        indexer.put(
-            CompositeKey.ofMany("X", "1"),
-            ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple.of("Ann", 0));
+    var annEntry = indexer.put(CompositeKey.ofMany("X", "1"), UniTuple.of("Ann", 0));
 
     indexer.remove(CompositeKey.ofMany("X", "1"), annEntry);
     assertThatThrownBy(() -> indexer.remove(CompositeKey.ofMany("X", "1"), annEntry))
@@ -78,9 +81,11 @@ class ContainedInIndexerTest extends AbstractIndexerTest {
     var bethY1 = putTuple(indexer, "Y", "1");
     var carlX2 = putTuple(indexer, "X", "2");
     var ednaX1 = putTuple(indexer, "X", "1");
+    @SuppressWarnings("unused")
     var zeroNull1 = putTuple(indexer, null, "1");
 
     assertForEach(indexer, List.of("X"), "1").containsExactlyInAnyOrder(annX1, ednaX1);
+    assertForEach(indexer, List.of("X"), "2").containsExactlyInAnyOrder(carlX2);
     assertForEach(indexer, List.of("X", "Y"), "1").containsExactlyInAnyOrder(annX1, bethY1, ednaX1);
     assertForEach(indexer, List.of("Y"), "1").containsExactlyInAnyOrder(bethY1);
     assertForEach(indexer, List.of("Y", "AAA"), "1").containsExactlyInAnyOrder(bethY1);
@@ -93,8 +98,8 @@ class ContainedInIndexerTest extends AbstractIndexerTest {
 
   private final DefaultBiJoiner<TestJob, TestWorker> containComboJoiner =
       (DefaultBiJoiner<TestJob, TestWorker>)
-          UnfinishedJoiners.containedIn(TestJob::skill, TestWorker::skills)
-              .and(UnfinishedJoiners.containing(TestJob::affinities, TestWorker::affinity));
+          Joiners.containedIn(TestJob::skill, TestWorker::skills)
+              .and(Joiners.containing(TestJob::affinities, TestWorker::affinity));
 
   @Test
   void forEach_containCombo() {
@@ -110,6 +115,30 @@ class ContainedInIndexerTest extends AbstractIndexerTest {
         .containsExactlyInAnyOrder(annX12, bethY13, ednaX23);
 
     assertForEach(indexer, List.of(), "1").isEmpty();
+  }
+
+  @Test
+  void randomIterator() {
+    var indexer = new IndexerFactory<>(randomAccessSingleJoiner).buildIndexer(true);
+
+    var annX1 = putContainedInIndexer(indexer, "X");
+    var annY1 = putContainedInIndexer(indexer, "Y");
+    var bethX1 = putContainedInIndexer(indexer, "X");
+    var bethZ1 = putContainedInIndexer(indexer, "Z");
+    var carlX2 = putContainedInIndexer(indexer, "X");
+    var carlY2 = putContainedInIndexer(indexer, "Y");
+
+    assertThat(randomIterableForCollectionQuery(indexer, "X"))
+        .containsExactlyInAnyOrder(annX1, bethX1, carlX2);
+    assertThat(randomIterableForCollectionQuery(indexer, "Y"))
+        .containsExactlyInAnyOrder(annY1, carlY2);
+    assertThat(randomIterableForCollectionQuery(indexer, "Z")).containsExactlyInAnyOrder(bethZ1);
+
+    var list1 = randomListForCollectionQuery(indexer, 0, "X");
+    // seed 0 and 1 has the same list, but 2 is different
+    var list2 = randomListForCollectionQuery(indexer, 2, "X");
+    assertThat(list1).containsExactlyInAnyOrderElementsOf(list2);
+    assertThat(list1).isNotEqualTo(list2);
   }
 
   record TestWorker(String name, List<String> skills, String department, String affinity) {}

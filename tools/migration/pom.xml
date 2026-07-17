@@ -49,7 +49,6 @@
     <dependency>
       <groupId>org.openrewrite</groupId>
       <artifactId>rewrite-properties</artifactId>
-      <scope>runtime</scope>
     </dependency>
 
     <dependency>
@@ -84,16 +83,6 @@
         <filtering>true</filtering>
       </resource>
     </resources>
-    <plugins>
-      <plugin>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <configuration>
-          <ignoredUnusedDeclaredDependencies>
-            <dependency>org.openrewrite:rewrite-maven:jar</dependency>
-          </ignoredUnusedDeclaredDependencies>
-        </configuration>
-      </plugin>
-    </plugins>
   </build>
 
 </project>

@@ -1,7 +1,6 @@
 package ai.greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import java.util.Iterator;
-import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
@@ -11,7 +10,7 @@ import ai.greycos.solver.core.config.heuristic.selector.list.DestinationSelector
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.supply.Demand;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
@@ -48,9 +47,9 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
   private final boolean eagerInitialization;
 
   // Distance matrix for caching sorted destinations by distance from origin
-  // Initialized lazily in solvingStarted()
+  // Initialized in phaseStarted(), after child selector caches are available.
   private @Nullable NearbyDistanceMatrix<Object, Object> distanceMatrix;
-  private @Nullable Demand<NearbyDistanceMatrix<Object, Object>> distanceMatrixDemand;
+  private @Nullable NearbyDistanceMatrixDemand<Object, Object> distanceMatrixDemand;
   private boolean eagerInitialized = false;
 
   private @Nullable ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
@@ -112,9 +111,13 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
             : Integer.MAX_VALUE;
 
     this.eagerInitialization = NearbySelectionTuning.isEagerInitialization(nearbySelectionConfig);
+    if (eagerInitialization && originSubListSelector != null) {
+      throw new IllegalArgumentException(
+          "Eager nearby initialization requires an enumerable entity or value origin selector; "
+              + "a replaying subList origin selector can only be initialized lazily.");
+    }
 
-    // Distance matrix will be initialized lazily in solvingStarted()
-    // when selectors are fully initialized (their cachedEntityList won't be null)
+    // Distance matrix will be initialized in phaseStarted(), when child selector caches exist.
     this.distanceMatrix = null;
 
     phaseLifecycleSupport.addEventListener(destinationSelector);
@@ -131,15 +134,23 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
+    if (distanceMatrix != null || distanceMatrixDemand != null || listVariableStateSupply != null) {
+      throw new IllegalStateException("The nearby destination selector is already solving.");
+    }
     super.solvingStarted(solverScope);
     var supplyManager = solverScope.getScoreDirector().getSupplyManager();
     listVariableStateSupply = supplyManager.demand(listVariableDescriptor.getStateDemand());
+    distanceMatrix = null;
+    distanceMatrixDemand = null;
+    eagerInitialized = false;
+  }
 
+  private void initializeDistanceMatrix(@NonNull SupplyManager supplyManager) {
     // Initialize distance matrix now that selectors are initialized
     @SuppressWarnings("unchecked")
     var castedDistanceMeter = (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
 
-    var matrixDemand =
+    distanceMatrixDemand =
         new NearbyDistanceMatrixDemand<>(
             castedDistanceMeter,
             nearbyRandom,
@@ -151,30 +162,19 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
             this::calculateOriginSizeEstimate,
             origin -> new CombinedDestinationIterator(),
             origin -> calculateDestinationSize());
-    if (supplyManager == null) {
-      this.distanceMatrix = matrixDemand.createExternalizedSupply(null);
-      this.distanceMatrixDemand = null;
-    } else {
-      @SuppressWarnings({"rawtypes", "unchecked"})
-      Object supplied =
-          ((ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager) supplyManager)
-              .demand((Demand) matrixDemand);
-      if (supplied instanceof NearbyDistanceMatrix<?, ?> suppliedMatrix) {
-        @SuppressWarnings("unchecked")
-        var castedMatrix = (NearbyDistanceMatrix<Object, Object>) suppliedMatrix;
-        this.distanceMatrix = castedMatrix;
-        this.distanceMatrixDemand = matrixDemand;
-      } else {
-        this.distanceMatrix = matrixDemand.createExternalizedSupply(supplyManager);
-        this.distanceMatrixDemand = null;
-      }
-    }
-    eagerInitialized = false;
+    distanceMatrix = supplyManager.demand(distanceMatrixDemand);
   }
 
   @Override
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
+    if (distanceMatrix == null) {
+      if (distanceMatrixDemand != null) {
+        throw new IllegalStateException(
+            "The nearby distance matrix demand exists without its supply.");
+      }
+      initializeDistanceMatrix(phaseScope.getScoreDirector().getSupplyManager());
+    }
     if (eagerInitialization && !eagerInitialized) {
       initializeAllOrigins();
       eagerInitialized = true;
@@ -182,11 +182,19 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
   }
 
   @Override
+  public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
+    super.phaseEnded(phaseScope);
+    eagerInitialized = false;
+  }
+
+  @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
     super.solvingEnded(solverScope);
     var supplyManager = solverScope.getScoreDirector().getSupplyManager();
-    if (distanceMatrixDemand != null && supplyManager != null) {
-      supplyManager.cancel(distanceMatrixDemand);
+    if (distanceMatrixDemand != null) {
+      if (!supplyManager.cancel(distanceMatrixDemand)) {
+        throw new IllegalStateException("The nearby distance matrix demand is not active.");
+      }
       distanceMatrixDemand = null;
     }
     listVariableStateSupply = null;
@@ -206,11 +214,6 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
     } else {
       return new OriginalNearbyDestinationIterator();
     }
-  }
-
-  @Override
-  public boolean isCountable() {
-    return entitySelector.isCountable() && valueSelector.isCountable();
   }
 
   @Override
@@ -291,7 +294,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
     } else if (originValueSelector != null) {
       originIterator = originValueSelector.endingIterator(null);
     } else {
-      return;
+      throw new IllegalStateException("No origin selector is configured.");
     }
 
     // Pre-compute distance matrices for all origins
@@ -533,12 +536,12 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
 
   private int calculateOriginSizeEstimate() {
     if (originEntitySelector != null) {
-      return safeToIntSize(originEntitySelector::getSize, "originEntitySelector");
+      return toIntSize(originEntitySelector.getSize(), "originEntitySelector");
     }
     if (originSubListSelector != null) {
-      return safeToIntSize(originSubListSelector::getValueCount, "originSubListSelector");
+      return toIntSize(originSubListSelector.getValueCount(), "originSubListSelector");
     }
-    return safeToIntSize(originValueSelector::getSize, "originValueSelector");
+    return toIntSize(originValueSelector.getSize(), "originValueSelector");
   }
 
   private int calculateDestinationSize() {
@@ -553,24 +556,14 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
   }
 
   private static int toIntSize(long size, String selectorLabel) {
-    if (size > Integer.MAX_VALUE) {
+    if (size < 0 || size > Integer.MAX_VALUE) {
       throw new IllegalStateException(
           "The "
               + selectorLabel
               + " has a size ("
               + size
-              + ") which is higher than Integer.MAX_VALUE.");
+              + ") outside the supported range [0, Integer.MAX_VALUE].");
     }
     return (int) size;
-  }
-
-  private static int safeToIntSize(LongSupplier sizeSupplier, String selectorLabel) {
-    try {
-      return toIntSize(sizeSupplier.getAsLong(), selectorLabel);
-    } catch (NullPointerException ignored) {
-      // Some selectors initialize their size caches in phaseStarted().
-      // During solvingStarted() this estimate is best-effort only.
-      return 100;
-    }
   }
 }

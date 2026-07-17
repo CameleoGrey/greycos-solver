@@ -1,12 +1,13 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ruin;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Objects;
-import java.util.Set;
+import java.util.SequencedCollection;
+import java.util.SequencedSet;
 import java.util.TreeSet;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
@@ -17,31 +18,50 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateC
 import ai.greycos.solver.core.impl.move.VariableChangeRecordingScoreDirector;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.solver.random.DefaultRandomSource;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-import ai.greycos.solver.core.impl.util.CollectionUtils;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 
 public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
 
   private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final List<Object> ruinedValueList;
-  private final Set<Object> affectedEntitySet;
+  private final SequencedSet<Object> affectedEntitySet;
   private final RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>
       constructionHeuristicPhaseBuilder;
   private final SolverScope<Solution_> solverScope;
   private final Map<Object, NavigableSet<RuinedPosition>> entityToNewPositionMap;
+  private final long randomSeed;
 
   public ListRuinRecreateMove(
       ListVariableDescriptor<Solution_> listVariableDescriptor,
       RuinRecreateConstructionHeuristicPhaseBuilder<Solution_> constructionHeuristicPhaseBuilder,
       SolverScope<Solution_> solverScope,
       List<Object> ruinedValueList,
-      Set<Object> affectedEntitySet) {
+      SequencedSet<Object> affectedEntitySet) {
+    this(
+        listVariableDescriptor,
+        constructionHeuristicPhaseBuilder,
+        solverScope,
+        ruinedValueList,
+        affectedEntitySet,
+        0L);
+  }
+
+  public ListRuinRecreateMove(
+      ListVariableDescriptor<Solution_> listVariableDescriptor,
+      RuinRecreateConstructionHeuristicPhaseBuilder<Solution_> constructionHeuristicPhaseBuilder,
+      SolverScope<Solution_> solverScope,
+      List<Object> ruinedValueList,
+      SequencedSet<Object> affectedEntitySet,
+      long randomSeed) {
     this.listVariableDescriptor = listVariableDescriptor;
     this.constructionHeuristicPhaseBuilder = constructionHeuristicPhaseBuilder;
     this.solverScope = solverScope;
     this.ruinedValueList = ruinedValueList;
     this.affectedEntitySet = affectedEntitySet;
-    this.entityToNewPositionMap = CollectionUtils.newIdentityHashMap(affectedEntitySet.size());
+    this.entityToNewPositionMap = new IdentityHashMap<>(affectedEntitySet.size());
+    this.randomSeed = randomSeed;
   }
 
   @Override
@@ -58,8 +78,7 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
             .getSupplyManager()
             .demand(listVariableDescriptor.getStateDemand())) {
       var entityToOriginalPositionMap =
-          CollectionUtils.<Object, NavigableSet<RuinedPosition>>newIdentityHashMap(
-              affectedEntitySet.size());
+          new IdentityHashMap<Object, NavigableSet<RuinedPosition>>(affectedEntitySet.size());
       for (var valueToRuin : ruinedValueList) {
         var position = listVariableStateSupply.getElementPosition(valueToRuin).ensureAssigned();
         entityToOriginalPositionMap
@@ -105,18 +124,22 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
       var nestedSolverScope = new SolverScope<Solution_>(solverScope.getClock());
       nestedSolverScope.setSolver(solverScope.getSolver());
       nestedSolverScope.setScoreDirector(variableChangeRecordingScoreDirector.getBacking());
+      nestedSolverScope.setWorkingRandom(DefaultRandomSource.seeded(randomSeed));
       constructionHeuristicPhase.solvingStarted(nestedSolverScope);
       constructionHeuristicPhase.solve(nestedSolverScope);
       constructionHeuristicPhase.solvingEnded(nestedSolverScope);
       scoreDirector.triggerVariableListeners();
 
-      var entityToInsertedValuesMap = CollectionUtils.<Object, List<Object>>newIdentityHashMap(0);
+      var entityToInsertedValuesMap = new IdentityHashMap<Object, List<Object>>();
       for (var entity : entityToOriginalPositionMap.keySet()) {
         entityToInsertedValuesMap.put(entity, new ArrayList<>());
       }
 
       for (var ruinedValue : ruinedValueList) {
-        var position = listVariableStateSupply.getElementPosition(ruinedValue).ensureAssigned();
+        if (!(listVariableStateSupply.getElementPosition(ruinedValue)
+            instanceof PositionInList position)) {
+          continue;
+        }
         entityToNewPositionMap
             .computeIfAbsent(position.entity(), ignored -> new TreeSet<>())
             .add(new RuinedPosition(ruinedValue, position.index()));
@@ -172,12 +195,12 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<?> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     return affectedEntitySet;
   }
 
   @Override
-  public Collection<?> getPlanningValues() {
+  public SequencedCollection<Object> getPlanningValues() {
     return ruinedValueList;
   }
 
@@ -200,7 +223,8 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
         constructionHeuristicPhaseBuilder,
         solverScope,
         rebasedRuinedValueList,
-        rebasedAffectedEntitySet);
+        rebasedAffectedEntitySet,
+        randomSeed);
   }
 
   protected ListVariableDescriptor<Solution_> getListVariableDescriptor() {
@@ -211,7 +235,7 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
     return ruinedValueList;
   }
 
-  protected Set<Object> getAffectedEntitySet() {
+  protected SequencedSet<Object> getAffectedEntitySet() {
     return affectedEntitySet;
   }
 
@@ -222,6 +246,10 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
 
   protected SolverScope<Solution_> getSolverScope() {
     return solverScope;
+  }
+
+  protected long getRandomSeed() {
+    return randomSeed;
   }
 
   @Override

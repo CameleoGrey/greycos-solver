@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
@@ -21,6 +22,7 @@ import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescri
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
+import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelectorFactory;
@@ -116,7 +118,6 @@ public final class TestdataListUtils {
     doReturn(childMoveSelector.getVariableDescriptor())
         .when(fromEntityValueSelector)
         .getVariableDescriptor();
-    doReturn(childMoveSelector.isCountable()).when(fromEntityValueSelector).isCountable();
     return new IterableFromEntityPropertyValueSelector(fromEntityValueSelector, randomSelection);
   }
 
@@ -215,16 +216,15 @@ public final class TestdataListUtils {
     return mockNeverEndingDestinationSelector(locationsInList.length, locationsInList);
   }
 
-  public static DestinationSelector<TestdataListUnassignedEntityProvidingSolution>
-      mockAllowsUnassignedValuesEntityRangeNeverEndingDestinationSelector(
-          ElementPosition... locationsInList) {
-    return mockNeverEndingDestinationSelector(locationsInList.length, locationsInList);
+  public static <Selection_>
+      MockedUpcomingSelectionIterator<Selection_> mockUpcomingSelectionIterator(
+          Selection_... values) {
+    return new MockedUpcomingSelectionIterator<>(values);
   }
 
   public static <Solution_> DestinationSelector<Solution_> mockNeverEndingDestinationSelector(
       long size, ElementPosition... locationsInList) {
     var destinationSelector = mock(DestinationSelector.class);
-    when(destinationSelector.isCountable()).thenReturn(true);
     when(destinationSelector.isNeverEnding()).thenReturn(true);
     when(destinationSelector.getSize()).thenReturn(size);
     when(destinationSelector.iterator())
@@ -236,7 +236,6 @@ public final class TestdataListUtils {
       ElementPosition... locationsInList) {
     DestinationSelector<Solution_> destinationSelector = mock(DestinationSelector.class);
     var refList = Arrays.asList(locationsInList);
-    when(destinationSelector.isCountable()).thenReturn(true);
     when(destinationSelector.isNeverEnding()).thenReturn(false);
     when(destinationSelector.getSize()).thenReturn((long) refList.size());
     when(destinationSelector.iterator()).thenAnswer(invocation -> refList.iterator());
@@ -401,6 +400,26 @@ public final class TestdataListUtils {
     return DestinationSelectorFactory.<S>create(destinationSelectorConfig)
         .buildDestinationSelector(
             configPolicy, SelectionCacheType.JUST_IN_TIME, randomSelection, "any", false);
+  }
+
+  public static class MockedUpcomingSelectionIterator<Selection_>
+      extends UpcomingSelectionIterator<Selection_> {
+
+    private final Selection_[] values;
+    private int index = 0;
+
+    public MockedUpcomingSelectionIterator(Selection_[] values) {
+      this.values = Objects.requireNonNull(values);
+    }
+
+    @Override
+    protected Selection_ createUpcomingSelection() {
+      if (index >= values.length || values[index] == null) {
+        index++;
+        return noUpcomingSelection();
+      }
+      return values[index++];
+    }
   }
 
   private static <T> Iterator<T> cyclicIterator(List<T> elements) {

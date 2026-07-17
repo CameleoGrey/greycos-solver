@@ -15,10 +15,9 @@ import org.jspecify.annotations.NullMarked;
  * notice, although we will strive to avoid this as much as possible.
  *
  * <p>We encourage you to try the API and give us feedback on your experience with it, before we
- * finalize the API. Please direct your feedback to <a
- * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver Github</a> or to
- * <a href="https://discord.com/channels/1413420192213631086/1414521616955605003">GreyCOS
- * Discord</a>.
+ * finalize the API. Please direct your feedback to the <a
+ * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver GitHub
+ * discussions</a>.
  */
 @NullMarked
 public sealed interface PositionInList extends ElementPosition, Comparable<PositionInList>

@@ -4,10 +4,10 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import ai.greycos.solver.core.api.function.QuadFunction;
 import ai.greycos.solver.core.api.function.TriPredicate;
 import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollector;
-import ai.greycos.solver.core.impl.util.ConstantLambdaUtils;
+import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollectorAccumulator;
+import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollectorValueHandle;
 
 import org.jspecify.annotations.NonNull;
 
@@ -15,14 +15,14 @@ final class ConditionalTriCollector<A, B, C, ResultContainer_, Result_>
     implements TriConstraintCollector<A, B, C, ResultContainer_, Result_> {
   private final TriPredicate<A, B, C> predicate;
   private final TriConstraintCollector<A, B, C, ResultContainer_, Result_> delegate;
-  private final QuadFunction<ResultContainer_, A, B, C, Runnable> innerAccumulator;
+  private final TriConstraintCollectorAccumulator<ResultContainer_, A, B, C> innerIncremental;
 
   ConditionalTriCollector(
       TriPredicate<A, B, C> predicate,
       TriConstraintCollector<A, B, C, ResultContainer_, Result_> delegate) {
     this.predicate = predicate;
     this.delegate = delegate;
-    this.innerAccumulator = delegate.accumulator();
+    this.innerIncremental = delegate.accumulator();
   }
 
   @Override
@@ -31,14 +31,8 @@ final class ConditionalTriCollector<A, B, C, ResultContainer_, Result_>
   }
 
   @Override
-  public @NonNull QuadFunction<ResultContainer_, A, B, C, Runnable> accumulator() {
-    return (resultContainer, a, b, c) -> {
-      if (predicate.test(a, b, c)) {
-        return innerAccumulator.apply(resultContainer, a, b, c);
-      } else {
-        return ConstantLambdaUtils.noop();
-      }
-    };
+  public @NonNull TriConstraintCollectorAccumulator<ResultContainer_, A, B, C> accumulator() {
+    return ValueHandle::new;
   }
 
   @Override
@@ -57,5 +51,46 @@ final class ConditionalTriCollector<A, B, C, ResultContainer_, Result_>
   @Override
   public int hashCode() {
     return Objects.hash(predicate, delegate);
+  }
+
+  private final class ValueHandle implements TriConstraintCollectorValueHandle<A, B, C> {
+    private final TriConstraintCollectorValueHandle<A, B, C> innerValue;
+    private boolean active = false;
+
+    ValueHandle(ResultContainer_ container) {
+      this.innerValue = innerIncremental.intoGroup(container);
+    }
+
+    @Override
+    public void add(A a, B b, C c) {
+      if (!predicate.test(a, b, c)) {
+        return;
+      }
+      active = true;
+      innerValue.add(a, b, c);
+    }
+
+    @Override
+    public void replaceWith(A a, B b, C c) {
+      var nowActive = predicate.test(a, b, c);
+      if (active && nowActive) {
+        innerValue.replaceWith(a, b, c);
+      } else if (active) {
+        active = false;
+        innerValue.remove();
+      } else if (nowActive) {
+        active = true;
+        innerValue.add(a, b, c);
+      }
+    }
+
+    @Override
+    public void remove() {
+      if (!active) {
+        return;
+      }
+      active = false;
+      innerValue.remove();
+    }
   }
 }

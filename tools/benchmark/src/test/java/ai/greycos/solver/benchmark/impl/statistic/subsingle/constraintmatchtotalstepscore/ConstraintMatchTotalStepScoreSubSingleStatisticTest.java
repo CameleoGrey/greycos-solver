@@ -8,7 +8,7 @@ import java.util.function.Function;
 import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.statistic.AbstractSubSingleStatisticTest;
 import ai.greycos.solver.core.api.score.SimpleScore;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.assertj.core.api.SoftAssertions;
@@ -44,8 +44,7 @@ public final class ConstraintMatchTotalStepScoreSubSingleStatisticTest
         .hasSize(1)
         .first()
         .matches(
-            s -> Objects.equals(s.getConstraintRef().constraintName(), "CP"),
-            "Constraint IDs do not match.")
+            s -> Objects.equals(s.getConstraintRef().id(), "CP"), "Constraint IDs do not match.")
         .matches(
             s -> s.getConstraintMatchCount() == Integer.MAX_VALUE,
             "Constraint match counts do not match.")

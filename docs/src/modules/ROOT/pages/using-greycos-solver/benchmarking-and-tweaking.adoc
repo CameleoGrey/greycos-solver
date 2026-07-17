@@ -418,7 +418,7 @@ To write those solutions in the ``benchmarkDirectory``, enable ``writeOutputSolu
 [#benchmarkLogging]
 === Benchmark logging
 
-Benchmark logging is configured like xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#logging[solver logging].
+Benchmark logging is configured like xref:using-greycos-solver/running-the-solver.adoc#logging[solver logging].
 
 To separate the log messages of each single benchmark run into a separate file, use the http://logback.qos.ch/manual/mdc.html[MDC] with key `subSingleBenchmark.name` in a sifting appender.
 For example with Logback in ``logback.xml``:
@@ -1110,8 +1110,8 @@ The `subSingleCount` defaults to `1` (so no statistical benchmarking).
 [NOTE]
 ====
 If `subSingleCount` is higher than ``1``,
-the benchmarker will automatically use a _different_ xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#randomNumberGenerator[`Random` seed] for every sub single run,
-without losing reproducibility (for each sub single index) in xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#environmentMode[EnvironmentMode] ``NO_ASSERT`` and lower.
+the benchmarker will automatically use a _different_ xref:using-greycos-solver/running-the-solver.adoc#randomNumberGenerator[`Random` seed] for every sub single run,
+without losing reproducibility (for each sub single index) in xref:using-greycos-solver/running-the-solver.adoc#environmentMode[EnvironmentMode] ``NO_ASSERT`` and lower.
 ====
 
 

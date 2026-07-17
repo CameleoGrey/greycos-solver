@@ -1,7 +1,6 @@
 package ai.greycos.solver.core.config.util;
 
 import static ai.greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType.FIELD_OR_READ_METHOD;
-import static ai.greycos.solver.core.impl.cotwin.solution.cloner.DeepCloningUtils.IMMUTABLE_CLASSES;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -46,6 +45,43 @@ public class ConfigUtils {
 
   private static final AlphabeticMemberComparator alphabeticMemberComparator =
       new AlphabeticMemberComparator();
+
+  @SuppressWarnings("unchecked")
+  public static <T> @Nullable Class<T> resolveClass(
+      @Nullable String className, @NonNull String fieldName, @NonNull Object context) {
+    if (className == null) {
+      return null;
+    }
+    var trimmedClassName = className.strip();
+    if (trimmedClassName.isEmpty()) {
+      return null;
+    }
+    var classloader =
+        Objects.requireNonNullElse(
+            Thread.currentThread().getContextClassLoader(), ConfigUtils.class.getClassLoader());
+    try {
+      return (Class<T>) Class.forName(trimmedClassName, false, classloader);
+    } catch (ClassNotFoundException e) {
+      throw new IllegalArgumentException(
+          "The %s (%s) of %s cannot be found.".formatted(fieldName, trimmedClassName, context), e);
+    }
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public static <T> List<Class<? extends T>> resolveClasses(
+      List<@Nullable String> classList, @NonNull String fieldName, @NonNull Object context) {
+    return (List)
+        classList.stream()
+            .map(cn -> ConfigUtils.resolveClass(cn, fieldName, context))
+            .peek(
+                clz -> {
+                  if (clz == null) {
+                    throw new IllegalArgumentException(
+                        "The %s of %s cannot be null or empty.".formatted(fieldName, context));
+                  }
+                })
+            .toList();
+  }
 
   /**
    * Create a new instance of clazz from a config's property.
@@ -110,10 +146,6 @@ public class ConfigUtils {
     }
   }
 
-  /**
-   * Applies custom properties to a bean via setter methods. Supports String, Boolean, Integer,
-   * Long, Float, Double, BigDecimal, and Enum types.
-   */
   public static void applyCustomProperties(
       @NonNull Object bean,
       @NonNull String beanClassPropertyName,
@@ -129,9 +161,10 @@ public class ConfigUtils {
           if (setterMethod == null) {
             throw new IllegalStateException(
                 """
-                                The custom property %s (%s) in the %s cannot be set on the %s (%s) because that class has no public setter for that property.
-                                Maybe add a public setter for that custom property (%s) on that class (%s).
-                                Maybe don't configure that custom property %s (%s) in the %s."""
+                The custom property %s (%s) in the %s cannot be set on the %s (%s) because that class has no public setter for that property.
+                Maybe add a public setter for that custom property (%s) on that class (%s).
+                Maybe don't configure that custom property %s (%s) in the %s.\
+                """
                     .formatted(
                         propertyName,
                         valueString,
@@ -209,30 +242,6 @@ public class ConfigUtils {
                 e.getCause());
           }
         });
-  }
-
-  /**
-   * @param containingClass never null
-   * @param propertyName never null
-   * @return null if it doesn't exist
-   */
-  private static Method getSetterMethod(Class<?> containingClass, String propertyName) {
-    String setterName =
-        ReflectionHelper.PROPERTY_MUTATOR_PREFIX
-            + ReflectionHelper.capitalizePropertyName(propertyName);
-    Method[] methods =
-        Arrays.stream(containingClass.getMethods())
-            .filter(method -> method.getName().equals(setterName))
-            .toArray(Method[]::new);
-    if (methods.length == 0) {
-      return null;
-    }
-    if (methods.length > 1) {
-      throw new IllegalStateException(
-          "The containingClass (%s) has multiple setter methods (%s) with the propertyName (%s)."
-              .formatted(containingClass, Arrays.toString(methods), propertyName));
-    }
-    return methods[0];
   }
 
   public static <Config_ extends AbstractConfig<Config_>> @Nullable Config_ inheritConfig(
@@ -380,8 +389,8 @@ public class ConfigUtils {
    * {@link Math#floorDiv(long, long)}.
    *
    * @throws ArithmeticException if {@code divisor == 0}
-   * @param dividend dividend
-   * @param divisor divisor
+   * @param dividend the dividend
+   * @param divisor the divisor
    * @return dividend / divisor, ceiled
    */
   public static int ceilDivide(int dividend, int divisor) {
@@ -540,8 +549,9 @@ public class ConfigUtils {
             () ->
                 new IllegalArgumentException(
                     """
-                        The %s (%s) has a %s member (%s) with a member type (%s) which has no generic parameters.
-                        Maybe the member (%s) should return a parameterized %s."""
+                    The %s (%s) has a %s member (%s) with a member type (%s) which has no generic parameters.
+                    Maybe the member (%s) should return a parameterized %s.\
+                    """
                         .formatted(
                             parentClassConcept,
                             parentClass,
@@ -552,17 +562,6 @@ public class ConfigUtils {
                             type,
                             memberName,
                             type.getSimpleName())));
-  }
-
-  /**
-   * @param type the class type
-   * @return true if it is immutable; otherwise false
-   */
-  public static boolean isGenericTypeImmutable(Class<?> type) {
-    if (type == null) {
-      return false;
-    }
-    return type.isRecord() || IMMUTABLE_CLASSES.contains(type);
   }
 
   public static Optional<Class<?>> extractGenericTypeParameter(
@@ -579,8 +578,9 @@ public class ConfigUtils {
     if (typeArguments.length != 1) {
       throw new IllegalArgumentException(
           """
-                    The %s (%s) has a %s member (%s) with a member type (%s) which is a parameterized collection \
-                    with an unsupported number of generic parameters (%s)."""
+          The %s (%s) has a %s member (%s) with a member type (%s) which is a parameterized collection \
+          with an unsupported number of generic parameters (%s).\
+          """
               .formatted(
                   parentClassConcept,
                   parentClass,
@@ -607,9 +607,10 @@ public class ConfigUtils {
             default ->
                 throw new IllegalArgumentException(
                     """
-                        The %s (%s) has a %s  member (%s) with a member type (%s) which is a parameterized collection \
-                        with a wildcard type argument (%s) that has multiple upper bounds (%s).
-                        Maybe don't use wildcards with multiple upper bounds for the member (%s)."""
+                    The %s (%s) has a %s  member (%s) with a member type (%s) which is a parameterized collection \
+                    with a wildcard type argument (%s) that has multiple upper bounds (%s).
+                    Maybe don't use wildcards with multiple upper bounds for the member (%s).\
+                    """
                         .formatted(
                             parentClassConcept,
                             parentClass,
@@ -631,8 +632,9 @@ public class ConfigUtils {
     } else {
       throw new IllegalArgumentException(
           """
-                    The %s (%s) has a %s member (%s) with a member type (%s) which is a parameterized collection \
-                    with a type argument (%s) that is not a class or interface."""
+          The %s (%s) has a %s member (%s) with a member type (%s) which is a parameterized collection \
+          with a type argument (%s) that is not a class or interface.\
+          """
               .formatted(
                   parentClassConcept,
                   parentClass,
@@ -673,8 +675,9 @@ public class ConfigUtils {
         && !Comparable.class.isAssignableFrom(memberAccessor.getType())) {
       throw new IllegalArgumentException(
           """
-                            The class (%s) has a member (%s) with a @%s annotation that returns a type (%s) that does not implement %s.
-                            Maybe use a %s or %s type instead."""
+          The class (%s) has a member (%s) with a @%s annotation that returns a type (%s) that does not implement %s.
+          Maybe use a %s or %s type instead.\
+          """
               .formatted(
                   clazz,
                   member,
@@ -696,8 +699,8 @@ public class ConfigUtils {
     if (clazz.isRecord()) {
       /*
        * A record has a field and a getter for each record component.
-       * When component is annotated with @PlanningId,
-       * annotation ends up both on field and on the getter.
+       * When the component is annotated with @PlanningId,
+       * the annotation ends up both on the field and on the getter.
        */
       if (size == 2) { // The getter is used to retrieve the value of the record component.
         var methodMembers = getMembers(memberList, true);
@@ -758,6 +761,30 @@ public class ConfigUtils {
         .limit(4) // 4 letters
         .forEach(value::appendCodePoint);
     return value.toString();
+  }
+
+  /**
+   * @param containingClass never null
+   * @param propertyName never null
+   * @return null if it doesn't exist
+   */
+  private static Method getSetterMethod(Class<?> containingClass, String propertyName) {
+    String setterName =
+        ReflectionHelper.PROPERTY_MUTATOR_PREFIX
+            + ReflectionHelper.capitalizePropertyName(propertyName);
+    Method[] methods =
+        Arrays.stream(containingClass.getMethods())
+            .filter(method -> method.getName().equals(setterName))
+            .toArray(Method[]::new);
+    if (methods.length == 0) {
+      return null;
+    }
+    if (methods.length > 1) {
+      throw new IllegalStateException(
+          "The containingClass (%s) has multiple setter methods (%s) with the propertyName (%s)."
+              .formatted(containingClass, Arrays.toString(methods), propertyName));
+    }
+    return methods[0];
   }
 
   // ************************************************************************

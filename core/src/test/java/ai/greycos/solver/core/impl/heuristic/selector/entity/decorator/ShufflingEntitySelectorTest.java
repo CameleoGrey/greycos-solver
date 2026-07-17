@@ -16,11 +16,4 @@ class ShufflingEntitySelectorTest {
         new ShufflingEntitySelector(mock(EntitySelector.class), SelectionCacheType.PHASE);
     assertThat(selector.isNeverEnding()).isFalse();
   }
-
-  @Test
-  void isCountable() {
-    ShufflingEntitySelector selector =
-        new ShufflingEntitySelector(mock(EntitySelector.class), SelectionCacheType.PHASE);
-    assertThat(selector.isCountable()).isTrue();
-  }
 }

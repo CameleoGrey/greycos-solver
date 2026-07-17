@@ -2,7 +2,6 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.decorator;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
@@ -10,6 +9,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public final class FilteringMoveSelector<Solution_> extends AbstractMoveSelector<Solution_> {
 
@@ -57,11 +57,6 @@ public final class FilteringMoveSelector<Solution_> extends AbstractMoveSelector
     super.phaseEnded(phaseScope);
     this.scoreDirector = null;
     this.phaseScope = null;
-  }
-
-  @Override
-  public boolean isCountable() {
-    return childMoveSelector.isCountable();
   }
 
   @Override

@@ -205,6 +205,14 @@ class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
               var solverConfig = context.getBean(SolverConfig.class);
               assertThat(solverConfig.getRandomSeed()).isEqualTo(123L);
             });
+    assertThatCode(
+            () ->
+                contextRunner
+                    .withPropertyValues("greycos.solver.daemon=not-a-boolean")
+                    .run(context -> context.getBean(SolverConfig.class)))
+        .rootCause()
+        .message()
+        .contains("Cannot convert (not-a-boolean) to Boolean");
   }
 
   @Test
@@ -423,6 +431,16 @@ class GreyCOSSolverWithSolverConfigXmlAutoConfigurationTest {
                   .extracting(PhaseConfig::getTerminationConfig)
                   .isNull();
             });
+
+    assertThatCode(
+            () ->
+                contextRunner
+                    .withPropertyValues(
+                        "greycos.solver.termination.diminished-returns.enabled=not-a-boolean")
+                    .run(context -> context.getBean(SolverConfig.class)))
+        .rootCause()
+        .message()
+        .contains("Cannot convert (not-a-boolean) to Boolean");
   }
 
   @Test

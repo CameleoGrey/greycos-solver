@@ -5,7 +5,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

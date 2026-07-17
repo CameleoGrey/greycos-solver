@@ -4,8 +4,9 @@ import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
 /**
  * Used for incremental java {@link Score} calculation. This is much faster than {@link
@@ -15,68 +16,51 @@ import org.jspecify.annotations.NonNull;
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  * @param <Score_> the score type to go with the solution
+ * @see AnalyzableIncrementalScoreCalculator See incremental calculator with support for {@link
+ *     ScoreAnalysis}.
  */
+@NullMarked
 public interface IncrementalScoreCalculator<Solution_, Score_ extends Score<Score_>> {
 
   /**
-   * There are no {@link #beforeEntityAdded(Object)} and {@link #afterEntityAdded(Object)} calls for
-   * entities that are already present in the workingSolution.
+   * Resets the internal caches and score to match the given working solution. It is recommended to
+   * build the internal caches lazily as the before/after events come in, as this method may be
+   * called several times in a row with the same working solution, and building the internal caches
+   * eagerly can be expensive.
+   *
+   * @param workingSolution the working solution to operate on
    */
-  void resetWorkingSolution(@NonNull Solution_ workingSolution);
-
-  /**
-   * @param entity an instance of a {@link PlanningEntity} class
-   */
-  void beforeEntityAdded(@NonNull Object entity);
-
-  /**
-   * @param entity an instance of a {@link PlanningEntity} class
-   */
-  void afterEntityAdded(@NonNull Object entity);
+  void resetWorkingSolution(Solution_ workingSolution);
 
   /**
    * @param entity an instance of a {@link PlanningEntity} class
    * @param variableName either a genuine or shadow {@link PlanningVariable}
    */
-  void beforeVariableChanged(@NonNull Object entity, @NonNull String variableName);
+  void beforeVariableChanged(Object entity, String variableName);
 
   /**
    * @param entity an instance of a {@link PlanningEntity} class
    * @param variableName either a genuine or shadow {@link PlanningVariable}
    */
-  void afterVariableChanged(@NonNull Object entity, @NonNull String variableName);
+  void afterVariableChanged(Object entity, String variableName);
 
-  default void beforeListVariableElementAssigned(
-      @NonNull String variableName, @NonNull Object element) {}
+  default void beforeListVariableElementAssigned(String variableName, Object element) {}
 
-  default void afterListVariableElementAssigned(
-      @NonNull String variableName, @NonNull Object element) {}
+  default void afterListVariableElementAssigned(String variableName, Object element) {}
 
-  default void beforeListVariableElementUnassigned(
-      @NonNull String variableName, @NonNull Object element) {}
+  default void beforeListVariableElementUnassigned(String variableName, Object element) {}
 
-  default void afterListVariableElementUnassigned(
-      @NonNull String variableName, @NonNull Object element) {}
+  default void afterListVariableElementUnassigned(String variableName, Object element) {}
 
   default void beforeListVariableChanged(
-      @NonNull Object entity, @NonNull String variableName, int fromIndex, int toIndex) {}
+      Object entity, String variableName, int fromIndex, int toIndex) {}
 
   default void afterListVariableChanged(
-      @NonNull Object entity, @NonNull String variableName, int fromIndex, int toIndex) {}
-
-  /**
-   * @param entity an instance of a {@link PlanningEntity} class
-   */
-  void beforeEntityRemoved(@NonNull Object entity);
-
-  /**
-   * @param entity an instance of a {@link PlanningEntity} class
-   */
-  void afterEntityRemoved(@NonNull Object entity);
+      Object entity, String variableName, int fromIndex, int toIndex) {}
 
   /**
    * This method is only called if the {@link Score} cannot be predicted. The {@link Score} can be
    * predicted for example after an undo move.
    */
-  @NonNull Score_ calculateScore();
+  Score_ calculateScore();
 }

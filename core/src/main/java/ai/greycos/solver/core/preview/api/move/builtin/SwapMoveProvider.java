@@ -58,7 +58,7 @@ public class SwapMoveProvider<Solution_, Entity_> implements MoveProvider<Soluti
           case 0 ->
               throw new IllegalArgumentException(
                   "The variableMetaModelList (%s) is empty.".formatted(variableMetaModelList));
-          case 1 -> entityMetaModels.get(0);
+          case 1 -> entityMetaModels.getFirst();
           default ->
               throw new IllegalArgumentException(
                   "The variableMetaModelList (%s) contains variables from multiple entity classes."
@@ -71,6 +71,8 @@ public class SwapMoveProvider<Solution_, Entity_> implements MoveProvider<Soluti
     var entityType = entityMetaModel.type();
     var entityStream = moveStreamFactory.forEach(entityType, false);
     var moveConstructor = (BiMoveConstructor<Solution_, Entity_, Entity_>) this::buildMove;
+    // We do not exclude duplicate swaps (A<>B and B<>A) to keep it simple and fast.
+    // Move selectors don't do anything about duplicate moves either.
     return moveStreamFactory
         .pick(entityStream)
         .pick(entityStream, NeighborhoodsJoiners.filtering(this::isValidSwap))

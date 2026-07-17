@@ -23,6 +23,8 @@ final class ConnectedRangeImpl<
   private int minimumOverlap;
   private int maximumOverlap;
   private boolean hasOverlap;
+  private int cachedHashCode;
+  private boolean hashCodeDirty = true;
 
   ConnectedRangeImpl(
       NavigableSet<RangeSplitPoint<Range_, Point_>> splitPointSet,
@@ -74,6 +76,7 @@ final class ConnectedRangeImpl<
     }
     minimumOverlap = -1;
     maximumOverlap = -1;
+    hashCodeDirty = true;
     count++;
   }
 
@@ -94,6 +97,7 @@ final class ConnectedRangeImpl<
     count += laterConnectedRange.count;
     minimumOverlap = -1;
     maximumOverlap = -1;
+    hashCodeDirty = true;
     hasOverlap |= laterConnectedRange.hasOverlap;
   }
 
@@ -163,26 +167,38 @@ final class ConnectedRangeImpl<
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof ConnectedRangeImpl<?, ?, ?> that)) return false;
-    return count == that.count
-        && getMinimumOverlap() == that.getMinimumOverlap()
-        && getMaximumOverlap() == that.getMaximumOverlap()
+    // splitPointSet is the tracker's full, problem-wide split-point set,
+    // shared by reference across every ConnectedRangeImpl built from it.
+    // It's compared here for correctness, but deliberately excluded from hashCode():
+    // equals() gets it for free because both sides are almost always the same reference
+    // (Objects.equals short-circuits on ==),
+    // whereas hashCode() has no such shortcut
+    // and would have to walk and hash every split point in the whole problem,
+    // not just this range's.
+    // The checks are ordered from cheapest to most expensive.
+    // Min/max overlap are excluded as they are derived from the split points.
+    return o instanceof ConnectedRangeImpl<?, ?, ?> that
         && hasOverlap == that.hasOverlap
-        && Objects.equals(splitPointSet, that.splitPointSet)
+        && count == that.count
         && Objects.equals(startSplitPoint, that.startSplitPoint)
-        && Objects.equals(endSplitPoint, that.endSplitPoint);
+        && Objects.equals(endSplitPoint, that.endSplitPoint)
+        && Objects.equals(splitPointSet, that.splitPointSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        splitPointSet,
-        startSplitPoint,
-        endSplitPoint,
-        count,
-        getMinimumOverlap(),
-        getMaximumOverlap(),
-        hasOverlap);
+    if (hashCodeDirty) {
+      // Hand-rolled instead of Objects.hash(...):
+      // that boxes every argument and allocates a varargs array per call,
+      // on what is already a hot path.
+      var result = Boolean.hashCode(hasOverlap);
+      result = 31 * result + count;
+      result = 31 * result + startSplitPoint.hashCode();
+      result = 31 * result + endSplitPoint.hashCode();
+      cachedHashCode = result;
+      hashCodeDirty = false;
+    }
+    return cachedHashCode;
   }
 
   @Override
@@ -194,10 +210,6 @@ final class ConnectedRangeImpl<
         + endSplitPoint
         + ", count="
         + count
-        + ", minimumOverlap="
-        + getMinimumOverlap()
-        + ", maximumOverlap="
-        + getMaximumOverlap()
         + ", hasOverlap="
         + hasOverlap
         + '}';

@@ -1,27 +1,22 @@
 package ai.greycos.solver.core.impl.score.director;
 
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toList;
-
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.Consumer;
 
-import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.analysis.ConstraintAnalysis;
 import ai.greycos.solver.core.api.score.analysis.MatchAnalysis;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
-import ai.greycos.solver.core.api.score.constraint.Indictment;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
@@ -32,71 +27,80 @@ import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescri
 import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.move.MoveDirector;
 import ai.greycos.solver.core.impl.neighborhood.MoveRepository;
+import ai.greycos.solver.core.impl.neighborhood.NeighborhoodsBasedMoveRepository;
 import ai.greycos.solver.core.impl.phase.scope.SolverLifecyclePoint;
+import ai.greycos.solver.core.impl.score.analysis.DefaultConstraintAnalysis;
+import ai.greycos.solver.core.impl.score.analysis.DefaultMatchAnalysis;
+import ai.greycos.solver.core.impl.score.analysis.DefaultScoreAnalysis;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatch;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 import ai.greycos.solver.core.preview.api.move.Move;
 import ai.greycos.solver.core.preview.api.move.SolutionView;
 
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  * @param <Score_> the score type to go with the solution
  */
+@NullMarked
 public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
     extends VariableDescriptorAwareScoreDirector<Solution_>, AutoCloseable {
 
   static <Score_ extends Score<Score_>> ConstraintAnalysis<Score_> getConstraintAnalysis(
-      ConstraintMatchTotal<Score_> constraintMatchTotal,
-      ScoreAnalysisFetchPolicy scoreAnalysisFetchPolicy) {
-    return switch (scoreAnalysisFetchPolicy) {
+      ConstraintMatchTotal<Score_> constraintMatchTotal, ScoreAnalysisFetchPolicy fetchPolicy) {
+    return switch (fetchPolicy) {
       case FETCH_ALL -> {
-        // Justification can not be null here, because they are enabled by FETCH_ALL.
-        var deduplicatedConstraintMatchMap =
-            constraintMatchTotal.getConstraintMatchSet().stream()
-                .collect(groupingBy(c -> (ConstraintJustification) c.getJustification(), toList()));
-        var matchAnalyses =
-            sumMatchesWithSameJustification(constraintMatchTotal, deduplicatedConstraintMatchMap);
-        yield new ConstraintAnalysis<>(
+        var matchesByJustification =
+            new LinkedHashMap<ConstraintJustification, List<ConstraintMatch<Score_>>>();
+        for (var constraintMatch : constraintMatchTotal.getConstraintMatchSet()) {
+          ConstraintJustification justification =
+              Objects.requireNonNull(
+                  constraintMatch.<ConstraintJustification>getJustification(),
+                  () ->
+                      "Constraint (%s) produced a match without a justification while FETCH_ALL was requested."
+                          .formatted(constraintMatchTotal.getConstraintRef()));
+          matchesByJustification
+              .computeIfAbsent(justification, ignored -> new ArrayList<>())
+              .add(constraintMatch);
+        }
+        List<MatchAnalysis<Score_>> matchAnalyses =
+            matchesByJustification.entrySet().stream()
+                .map(
+                    entry -> {
+                      var score =
+                          entry.getValue().stream()
+                              .map(ConstraintMatch::getScore)
+                              .reduce(constraintMatchTotal.getScore().zero(), Score::add);
+                      return (MatchAnalysis<Score_>)
+                          new DefaultMatchAnalysis<>(
+                              constraintMatchTotal.getConstraintRef(), score, entry.getKey());
+                    })
+                .toList();
+        yield new DefaultConstraintAnalysis<>(
             constraintMatchTotal.getConstraintRef(),
             constraintMatchTotal.getConstraintWeight(),
             constraintMatchTotal.getScore(),
             matchAnalyses);
       }
       case FETCH_MATCH_COUNT ->
-          new ConstraintAnalysis<>(
+          new DefaultConstraintAnalysis<>(
               constraintMatchTotal.getConstraintRef(),
               constraintMatchTotal.getConstraintWeight(),
               constraintMatchTotal.getScore(),
               null,
               constraintMatchTotal.getConstraintMatchCount());
       case FETCH_SHALLOW ->
-          new ConstraintAnalysis<>(
+          new DefaultConstraintAnalysis<>(
               constraintMatchTotal.getConstraintRef(),
               constraintMatchTotal.getConstraintWeight(),
               constraintMatchTotal.getScore(),
               null);
     };
-  }
-
-  private static <Score_ extends Score<Score_>>
-      List<MatchAnalysis<Score_>> sumMatchesWithSameJustification(
-          ConstraintMatchTotal<Score_> constraintMatchTotal,
-          Map<ConstraintJustification, List<ConstraintMatch<Score_>>>
-              deduplicatedConstraintMatchMap) {
-    return deduplicatedConstraintMatchMap.entrySet().stream()
-        .map(
-            entry -> {
-              var score =
-                  entry.getValue().stream()
-                      .map(ConstraintMatch::getScore)
-                      .reduce(constraintMatchTotal.getScore().zero(), Score::add);
-              return new MatchAnalysis<>(
-                  constraintMatchTotal.getConstraintRef(), score, entry.getKey());
-            })
-        .toList();
   }
 
   /**
@@ -129,9 +133,13 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    */
   void setMoveRepository(@Nullable MoveRepository<Solution_> moveRepository);
 
-  default NeighborhoodNotifier<Solution_> getNeighborhoodNotifier() {
-    return null;
-  }
+  /**
+   * A notifier that can be used to notify a {@link NeighborhoodsBasedMoveRepository} of changes to
+   * the internal state that do not affect any variables (genuine or shadow).
+   *
+   * @return never null
+   */
+  NeighborhoodNotifier<Solution_> getNeighborhoodNotifier();
 
   /**
    * Calculates the {@link Score} and updates the {@link PlanningSolution working solution}
@@ -142,10 +150,9 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
   InnerScore<Score_> calculateScore();
 
   /**
-   * @return {@link ConstraintMatchPolicy#ENABLED} if {@link #getConstraintMatchTotalMap()} and
-   *     {@link #getIndictmentMap()} can be called. {@link
-   *     ConstraintMatchPolicy#ENABLED_WITHOUT_JUSTIFICATIONS} if only the former can be called.
-   *     {@link ConstraintMatchPolicy#DISABLED} if neither can be called.
+   * @return {@link ConstraintMatchPolicy#ENABLED} if {@link #getConstraintMatchTotalMap()} can be
+   *     called. {@link ConstraintMatchPolicy#ENABLED_WITHOUT_JUSTIFICATIONS} if only the former can
+   *     be called. {@link ConstraintMatchPolicy#DISABLED} if neither can be called.
    */
   ConstraintMatchPolicy getConstraintMatchPolicy();
 
@@ -158,35 +165,13 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    * <p>Call {@link #calculateScore()} before calling this method, unless that method has already
    * been called since the last {@link PlanningVariable} changes.
    *
-   * @return never null, the key is the constraintId (to create one, use {@link
-   *     ConstraintRef#composeConstraintId(String, String)}). If a constraint is present in the
+   * @return never null, the key is the constraint reference. If a constraint is present in the
    *     problem but resulted in no matches, it will still be in the map with a {@link
    *     ConstraintMatchTotal#getConstraintMatchSet()} size of 0.
    * @throws IllegalStateException if {@link #getConstraintMatchPolicy()} returns {@link
    *     ConstraintMatchPolicy#DISABLED}.
-   * @see #getIndictmentMap()
    */
-  Map<String, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap();
-
-  /**
-   * Explains the impact of each planning entity or problem fact on the {@link Score}. An {@link
-   * Indictment} is basically the inverse of a {@link ConstraintMatchTotal}: it is a {@link Score}
-   * total for each {@link ConstraintMatch#getJustification() constraint justification}.
-   *
-   * <p>The sum of {@link ConstraintMatchTotal#getScore()} differs from {@link #calculateScore()}
-   * because each {@link ConstraintMatch#getScore()} is counted for each {@link
-   * ConstraintMatch#getJustification() constraint justification}.
-   *
-   * <p>Call {@link #calculateScore()} before calling this method, unless that method has already
-   * been called since the last {@link PlanningVariable} changes.
-   *
-   * @return never null, the key is a {@link ProblemFactCollectionProperty problem fact} or a {@link
-   *     PlanningEntity planning entity}
-   * @throws IllegalStateException unless {@link #getConstraintMatchPolicy()} returns {@link
-   *     ConstraintMatchPolicy#ENABLED}.
-   * @see #getConstraintMatchTotalMap()
-   */
-  Map<Object, Indictment<Score_>> getIndictmentMap();
+  Map<ConstraintRef, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap();
 
   /**
    * @return used to check {@link #isWorkingEntityListDirty(long)} later on
@@ -200,28 +185,32 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
   void executeMove(Move<Solution_> move);
 
   /**
-   * Executes a move, finds out its score, and immediately undoes it.
+   * Executes a move, finds out its score, and immediately undoes it. If appropriate, consider
+   * setting {@link #setAllChangesWillBeUndoneBeforeStepEnds(boolean)} to true beforehand, and
+   * resetting it to false afterward. There are performance gains to be made if your use case does
+   * not require step-level mechanisms to be aware of the changes.
    *
    * @param move never null
+   * @param consumer callback to run after move execution but before undo
    * @param assertMoveScoreFromScratch true will hurt performance
    * @return never null
    */
-  default InnerScore<Score_> executeTemporaryMove(
+  InnerScore<Score_> executeTemporaryMove(
       Move<Solution_> move,
       @Nullable Consumer<SolutionView<Solution_>> consumer,
-      boolean assertMoveScoreFromScratch) {
-    return executeTemporaryMove(move, assertMoveScoreFromScratch);
-  }
+      boolean assertMoveScoreFromScratch);
 
-  InnerScore<Score_> executeTemporaryMove(Move<Solution_> move, boolean assertMoveScoreFromScratch);
+  /** As defined by {@link #executeTemporaryMove(Move, Consumer, boolean)}, but with no consumer. */
+  default InnerScore<Score_> executeTemporaryMove(
+      Move<Solution_> move, boolean assertMoveScoreFromScratch) {
+    return executeTemporaryMove(move, null, assertMoveScoreFromScratch);
+  }
 
   /**
    * @param expectedWorkingEntityListRevision an
    * @return true if the entityList might have a different set of instances now
    */
   boolean isWorkingEntityListDirty(long expectedWorkingEntityListRevision);
-
-  boolean isWorkingSolutionInitialized();
 
   /**
    * Some score directors keep a set of changes that they only apply when {@link #calculateScore()}
@@ -309,7 +298,11 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
   /**
    * Do not waste performance by propagating changes to step (or higher) mechanisms.
    *
-   * @param allChangesWillBeUndoneBeforeStepEnds true if all changes will be undone
+   * @param allChangesWillBeUndoneBeforeStepEnds true if all changes will be undone; until reset
+   *     back to false, any change and resulting before/after events will not be propagated to a
+   *     neighborhood session. Moves will only be re-generated once the solution has actually
+   *     changed, which will happen at the end of the step, after {@link #executeMove(Move)} was
+   *     called.
    */
   void setAllChangesWillBeUndoneBeforeStepEnds(boolean allChangesWillBeUndoneBeforeStepEnds);
 
@@ -409,24 +402,16 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
     return false;
   }
 
-  default ScoreAnalysis<Score_> buildScoreAnalysis(
-      ScoreAnalysisFetchPolicy scoreAnalysisFetchPolicy) {
+  default ScoreAnalysis<Score_> buildScoreAnalysis(ScoreAnalysisFetchPolicy fetchPolicy) {
     var state = calculateScore();
     var constraintAnalysisMap = new TreeMap<ConstraintRef, ConstraintAnalysis<Score_>>();
     for (var constraintMatchTotal : getConstraintMatchTotalMap().values()) {
-      var constraintAnalysis =
-          getConstraintAnalysis(constraintMatchTotal, scoreAnalysisFetchPolicy);
-      constraintAnalysisMap.put(constraintMatchTotal.getConstraintRef(), constraintAnalysis);
+      constraintAnalysisMap.put(
+          constraintMatchTotal.getConstraintRef(),
+          getConstraintAnalysis(constraintMatchTotal, fetchPolicy));
     }
-    return new ScoreAnalysis<>(state.raw(), constraintAnalysisMap, state.isFullyAssigned());
+    return new DefaultScoreAnalysis<>(state.raw(), constraintAnalysisMap, state.isFullyAssigned());
   }
-
-  /*
-   * The following methods are copied here from ScoreDirector because they are deprecated there for removal.
-   * They will only be supported on this type, which serves for internal use only,
-   * as opposed to ScoreDirector, which is a public type.
-   * This way, we can ensure that these methods are used correctly and in a safe manner.
-   */
 
   default void beforeEntityAdded(Object entity) {
     beforeEntityAdded(

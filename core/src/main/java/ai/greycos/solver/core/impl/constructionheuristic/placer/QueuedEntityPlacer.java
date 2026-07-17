@@ -5,12 +5,12 @@ import java.util.Iterator;
 import java.util.List;
 
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public class QueuedEntityPlacer<Solution_> extends AbstractEntityPlacer<Solution_>
     implements EntityPlacer<Solution_> {
@@ -74,7 +74,7 @@ public class QueuedEntityPlacer<Solution_> extends AbstractEntityPlacer<Solution
         MoveSelector<Solution_> moveSelector = moveSelectorIterator.next();
         moveIterator = moveSelector.iterator();
       }
-      return new Placement<>(Placement.toNewMoveIterator(moveIterator));
+      return new Placement<>(moveIterator);
     }
   }
 }

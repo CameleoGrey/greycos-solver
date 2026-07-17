@@ -25,8 +25,7 @@ final class SessionBasedAssertionBuilder<Solution_, Score_ extends Score<Score_>
         constraintProvider,
         constraintStreamScoreDirectorFactory,
         scoreInliner.extractScore(),
-        scoreInliner.getConstraintIdToConstraintMatchTotalMap(),
-        scoreInliner.getIndictmentMap());
+        scoreInliner.getConstraintMatchTotalMap());
   }
 
   public DefaultSingleConstraintAssertion<Solution_, Score_> singleConstraintGiven(
@@ -35,7 +34,6 @@ final class SessionBasedAssertionBuilder<Solution_, Score_ extends Score<Score_>
     return new DefaultSingleConstraintAssertion<>(
         constraintStreamScoreDirectorFactory,
         scoreInliner.extractScore(),
-        scoreInliner.getConstraintIdToConstraintMatchTotalMap(),
-        scoreInliner.getIndictmentMap());
+        scoreInliner.getConstraintMatchTotalMap());
   }
 }

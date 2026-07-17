@@ -2,37 +2,43 @@ package ai.greycos.solver.core.impl.bavet.bi;
 
 import java.util.function.Function;
 
-import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.score.stream.bi.BiConstraintCollector;
+import ai.greycos.solver.core.api.score.stream.bi.BiConstraintCollectorAccumulator;
+import ai.greycos.solver.core.api.score.stream.bi.BiConstraintCollectorValueHandle;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.bavet.common.AbstractGroupNode;
 import ai.greycos.solver.core.impl.bavet.common.tuple.BiTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 abstract class AbstractGroupBiNode<
         OldA, OldB, OutTuple_ extends Tuple, GroupKey_, ResultContainer_, Result_>
     extends AbstractGroupNode<
         BiTuple<OldA, OldB>, OutTuple_, GroupKey_, ResultContainer_, Result_> {
 
-  private final TriFunction<ResultContainer_, OldA, OldB, Runnable> accumulator;
+  private final int groupAccumulatorIndex;
+  private final @Nullable BiConstraintCollectorAccumulator<ResultContainer_, OldA, OldB>
+      incrementalAccumulator;
 
   protected AbstractGroupBiNode(
       int groupStoreIndex,
-      int undoStoreIndex,
+      int groupAccumulatorIndex,
       Function<BiTuple<OldA, OldB>, GroupKey_> groupKeyFunction,
-      BiConstraintCollector<OldA, OldB, ResultContainer_, Result_> collector,
+      @NonNull BiConstraintCollector<OldA, OldB, ResultContainer_, Result_> collector,
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
     super(
         groupStoreIndex,
-        undoStoreIndex,
         groupKeyFunction,
-        collector == null ? null : collector.supplier(),
-        collector == null ? null : collector.finisher(),
+        collector.supplier(),
+        collector.finisher(),
         nextNodesTupleLifecycle,
         environmentMode);
-    accumulator = collector == null ? null : collector.accumulator();
+    this.groupAccumulatorIndex = groupAccumulatorIndex;
+    this.incrementalAccumulator = collector.accumulator();
   }
 
   protected AbstractGroupBiNode(
@@ -41,11 +47,28 @@ abstract class AbstractGroupBiNode<
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
     super(groupStoreIndex, groupKeyFunction, nextNodesTupleLifecycle, environmentMode);
-    accumulator = null;
+    this.groupAccumulatorIndex = -1;
+    this.incrementalAccumulator = null;
   }
 
   @Override
-  protected final Runnable accumulate(ResultContainer_ resultContainer, BiTuple<OldA, OldB> tuple) {
-    return accumulator.apply(resultContainer, tuple.getA(), tuple.getB());
+  protected void groupInsert(ResultContainer_ resultContainer, BiTuple<OldA, OldB> tuple) {
+    var groupElement = incrementalAccumulator.intoGroup(resultContainer);
+    tuple.setStore(groupAccumulatorIndex, groupElement);
+    groupElement.add(tuple.getA(), tuple.getB());
+  }
+
+  @Override
+  protected void groupUpdate(ResultContainer_ resultContainer, BiTuple<OldA, OldB> tuple) {
+    BiConstraintCollectorValueHandle<OldA, OldB> groupElement =
+        tuple.getStore(groupAccumulatorIndex);
+    groupElement.replaceWith(tuple.getA(), tuple.getB());
+  }
+
+  @Override
+  protected void groupRetract(BiTuple<OldA, OldB> tuple) {
+    BiConstraintCollectorValueHandle<OldA, OldB> groupElement =
+        tuple.removeStore(groupAccumulatorIndex);
+    groupElement.remove();
   }
 }

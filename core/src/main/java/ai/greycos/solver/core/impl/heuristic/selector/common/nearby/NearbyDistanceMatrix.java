@@ -73,24 +73,25 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
       @NonNull ToIntFunction<Origin> destinationSizeFunction,
       int maxNearbySortSize,
       boolean strictDestinationSize) {
+    if (originSize < 0) {
+      throw new IllegalArgumentException(
+          "The originSize (%d) must be non-negative.".formatted(originSize));
+    }
+    if (maxNearbySortSize < 1) {
+      throw new IllegalArgumentException(
+          "The maxNearbySortSize (%d) must be at least 1.".formatted(maxNearbySortSize));
+    }
     this.nearbyDistanceMeter = nearbyDistanceMeter;
     this.originToDestinationsMap =
         new ConcurrentHashMap<>(originSize, 0.75f, Runtime.getRuntime().availableProcessors());
     this.destinationIteratorProvider = destinationIteratorProvider;
     this.destinationSizeFunction = destinationSizeFunction;
-    this.maxNearbySortSize = maxNearbySortSize > 0 ? maxNearbySortSize : Integer.MAX_VALUE;
+    this.maxNearbySortSize = maxNearbySortSize;
     this.strictDestinationSize = strictDestinationSize;
   }
 
   public void addAllDestinations(@NonNull Origin origin) {
-    int destinationSize = destinationSizeFunction.applyAsInt(origin);
-    int sortLimit = Math.min(maxNearbySortSize, destinationSize);
-
-    if (sortLimit >= destinationSize) {
-      originToDestinationsMap.put(origin, computeFullSort(origin, destinationSize));
-    } else {
-      originToDestinationsMap.put(origin, computePartialSort(origin, sortLimit, destinationSize));
-    }
+    originToDestinationsMap.put(origin, computeDestinations(origin));
   }
 
   public @NonNull Object getDestination(@NonNull Origin origin, int nearbyIndex) {
@@ -108,6 +109,11 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
 
   private Destination[] computeDestinations(@NonNull Origin origin) {
     int destinationSize = destinationSizeFunction.applyAsInt(origin);
+    if (destinationSize < 0) {
+      throw new IllegalStateException(
+          "The destination size (%d) for origin (%s) must be non-negative."
+              .formatted(destinationSize, origin));
+    }
     int sortLimit = Math.min(maxNearbySortSize, destinationSize);
 
     if (sortLimit >= destinationSize) {

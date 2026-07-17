@@ -56,9 +56,9 @@ Java::
 
 ====
 
-This constraint stream iterates over all instances of class `Shift` in the xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#problemFacts[problem facts] and
-xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningEntity[planning entities]
-in the xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningProblemAndPlanningSolution[planning problem].
+This constraint stream iterates over all instances of class `Shift` in the xref:using-greycos-solver/modeling-planning-problems.adoc#problemFacts[problem facts] and
+xref:using-greycos-solver/modeling-planning-problems.adoc#planningEntity[planning entities]
+in the xref:using-greycos-solver/modeling-planning-problems.adoc#planningProblemAndPlanningSolution[planning problem].
 It finds every `Shift` which is assigned to employee `Ann` and for every such instance (also called a match), it adds a
 soft penalty of `1` to the overall xref:constraints-and-score/overview.adoc#calculateTheScore[score].
 The following figure illustrates this process on a problem with 4 different shifts:
@@ -72,7 +72,7 @@ The following figure illustrates this xref:constraints-and-score/performance.ado
 image::constraints-and-score/score-calculation/constraintStreamIncrementalCalculation.png[align="center"]
 
 Constraint Streams API also has advanced support for xref:constraints-and-score/understanding-the-score.adoc[score explanation]
-through xref:constraintStreamsCustomizingJustificationsAndIndictments[custom justifications and indictments].
+through xref:constraintStreamsCustomizingJustifications[custom justifications].
 
 image::constraints-and-score/score-calculation/constraintStreamJustification.png[align="center"]
 
@@ -261,14 +261,14 @@ This constraint stream penalizes each known and initialized instance of `Shift`.
 === ForEach
 
 The `.forEach(T)` building block selects every `T` instance that
-is in a xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#problemFacts[problem fact collection]
-or a xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningEntitiesOfASolution[planning entity collection]
-that is xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#detectingInconsistencies[consistent]
+is in a xref:using-greycos-solver/modeling-planning-problems.adoc#problemFacts[problem fact collection]
+or a xref:using-greycos-solver/modeling-planning-problems.adoc#planningEntitiesOfASolution[planning entity collection]
+that is xref:using-greycos-solver/modeling-planning-problems.adoc#detectingInconsistencies[consistent]
 and has no `null` genuine planning variables.
 
-To include instances with a `null` xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningVariable[genuine planning variable],
+To include instances with a `null` xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariable[genuine planning variable],
 or planning values
-not assigned to any xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningListVariable[planning list variable],
+not assigned to any xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable],
 replace the `forEach()` building block by `forEachIncludingUnassigned()`:
 
 [tabs]
@@ -301,9 +301,9 @@ Java::
 ----
 ====
 
-In cases utilizing the xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningListVariable[planning list variable],
+In cases utilizing the xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[planning list variable],
 you may want
-to include an xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#listVariableShadowVariablesInverseRelation[inverse relation shadow variable]
+to include an xref:using-greycos-solver/modeling-planning-problems.adoc#listVariableShadowVariablesInverseRelation[inverse relation shadow variable]
 to maximize performance of your constraints.
 
 [NOTE]
@@ -312,7 +312,7 @@ The `forEach()` building block has a legacy counterpart, `from()`.
 This alternative approach included instances based on the initialization status of their genuine planning variables.
 As an unwanted consequence,
 `from()`
-behaves unexpectedly for xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningVariableAllowingUnassigned[variables with unassigned values].
+behaves unexpectedly for xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariableAllowingUnassigned[variables with unassigned values].
 These are considered initialized even when `null`,
 and therefore this legacy method could still return entities with `null` variables.
 `from()`, `fromUnfiltered()` and `fromUniquePair()` are now deprecated and will be removed in a future major version of GreyCOS Solver.
@@ -321,34 +321,12 @@ and therefore this legacy method could still return entities with `null` variabl
 [#constraintStreamsPenaltiesRewards]
 === Penalties and rewards
 
-The purpose of constraint streams is to build up a xref:constraints-and-score/overview.adoc#whatIsAScore[score] for a xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningProblemAndPlanningSolution[solution].
+The purpose of constraint streams is to build up a xref:constraints-and-score/overview.adoc#whatIsAScore[score] for a xref:using-greycos-solver/modeling-planning-problems.adoc#planningProblemAndPlanningSolution[solution].
 To do this, every constraint stream must contain a call to either a `penalize()` or a `reward()`
 building block.
 The `penalize()` building block makes the score worse and the `reward()` building block improves the score.
 
 Each constraint stream is then terminated by calling `asConstraint()` method, which finally builds the constraint.
-Constraints have several components:
-
-- Constraint name is the human-readable descriptive name for the constraint,
-which must be unique within the entire `ConstraintProvider` implementation.
-- Constraint weight is a constant score value indicating how much every breach of the constraint affects the score.
-Valid examples include `SimpleScore.ONE`, `HardSoftScore.ONE_HARD` and `HardMediumSoftScore.of(1, 2, 3)`.
-- Constraint match weigher is an optional function indicating how many times the constraint weight should be applied in
-the score.
-The penalty or reward score impact is the constraint weight multiplied by the match weight.
-The default value is `1`.
-
-[NOTE]
-====
-Constraints with zero constraint weight are automatically disabled and do not impose any performance penalty.
-====
-
-[NOTE]
-====
-The constraint has another component: a constraint package.
-It has no practical impact on the solver and it has been deprecated.
-We recommend you don't use constraint packages; the solver will choose a suitable default value.
-====
 
 The Constraint Streams API supports many different types of penalties.
 Browse the API in your IDE for the full list of method overloads.
@@ -359,25 +337,62 @@ constraint stream.
 The score type must be the same type as used on the `@PlanningScore` annotated member on the planning solution.
 - Dynamic penalty (`penalize(SimpleScore.ONE, Shift::getHours)`) makes the score worse by the number
 of hours in every matching `Shift` in the constraint stream.
-This is an example of using a constraint match weigher.
-- Configurable penalty (`penalizeConfigurable()`) makes the score worse using constraint weights
-defined in xref:constraints-and-score/constraint-configuration.adoc#constraintConfiguration[constraint configuration].
-- Configurable dynamic penalty(`penalizeConfigurable(Shift::getHours)`) makes the score worse using
-constraint weights defined in xref:constraints-and-score/constraint-configuration.adoc#constraintConfiguration[constraint configuration], multiplied by the number of hours in
-every matching `Shift` in the constraint stream.
+This is an example of using a constraint match weight.
 
 By replacing the keyword `penalize` by `reward` in the name of these building blocks, you get operations that
 affect score in the opposite direction.
 
+[#constraintAnatomy]
+==== Anatomy of a constraint
 
-[#constraintStreamsCustomizingJustificationsAndIndictments]
-==== Customizing justifications and indictments
+Constraints have several components:
+
+- Constraint ID is a short name which must be unique within the entire `ConstraintProvider` implementation.
+It may not contain most special characters.
+- Constraint weight is a constant score value indicating how much every match affects the score.
+Valid examples include `SimpleScore.ONE`, `HardSoftScore.ONE_HARD` and `HardMediumSoftScore.of(1, 2, 3)`.
+- Constraint match weight is an optional function indicating how many times the constraint weight is applied.
+The penalty or reward is the constraint weight multiplied by the match weight; the default match weight is `1`.
+
+Constraints with zero weight are disabled and impose no runtime cost.
+Weights can be overridden through the `ConstraintWeightOverrides` member of the planning solution.
+
+[#constraintMetadata]
+===== Attaching metadata to constraints
+
+`asConstraint(String id)` creates a constraint whose metadata contains only the constraint ID.
+For richer metadata, implement `ConstraintMetadata` and pass it to `asConstraint(ConstraintMetadata)`:
+
+[tabs]
+====
+Java::
++
+[source,java,options="nowrap"]
+----
+public record MyConstraintMetadata(String id, String displayName) implements ConstraintMetadata {
+}
+
+private Constraint penalizeEveryShift(ConstraintFactory factory) {
+    return factory.forEach(Shift.class)
+            .penalize(HardSoftScore.ONE_SOFT)
+            .asConstraint(new MyConstraintMetadata("penalizeEveryShift", "Penalize every shift"));
+}
+----
+====
+
+The solver snapshots `ConstraintMetadata.id()` while building the constraint,
+but retains the complete metadata object for `Constraint.getConstraintMetadata()`.
+The ID must remain stable for the lifetime of that object;
+accessing metadata after its ID changes fails immediately instead of exposing inconsistent constraint identities.
+
+[#constraintStreamsCustomizingJustifications]
+==== Customizing justifications
 
 One of important GreyCOS Solver features is its ability to xref:constraints-and-score/understanding-the-score.adoc[explain the score] of solutions it produced
-through the use of justifications and indictments.
+through justifications.
 By default, each constraint is justified with `ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification`,
-and the final tuple makes up the indicted objects.
-For example, in the following constraint, the indicted objects will be of type `Vehicle` and an `Integer`:
+which captures the matched tuple and its score impact.
+For example:
 
 [tabs]
 ====
@@ -390,7 +405,7 @@ Java::
                 .filter(customer -> customer.getVehicle() != null)
                 .groupBy(Customer::getVehicle, sum(Customer::getDemand))
                 .filter((vehicle, demand) -> demand > vehicle.getCapacity())
-                .penalizeLong(HardSoftLongScore.ONE_HARD,
+                .penalize(HardSoftScore.ONE_HARD,
                         (vehicle, demand) -> demand - vehicle.getCapacity())
                 .asConstraint("vehicleCapacity");
     }
@@ -399,29 +414,6 @@ Java::
 
 ====
 
-For the purposes of creating a xref:constraints-and-score/understanding-the-score.adoc#indictmentHeatMap[heat map], the `Vehicle` is very important, but the naked `Integer` carries no semantics.
-We can remove it by providing the `indictWith(...)` method with a custom indictment mapping:
-
-[tabs]
-====
-Java::
-+
-[source,java,options="nowrap"]
-----
-    protected Constraint vehicleCapacity(ConstraintFactory factory) {
-        return factory.forEach(Customer.class)
-                .filter(customer -> customer.getVehicle() != null)
-                .groupBy(Customer::getVehicle, sum(Customer::getDemand))
-                .filter((vehicle, demand) -> demand > vehicle.getCapacity())
-                .penalizeLong(HardSoftLongScore.ONE_HARD,
-                        (vehicle, demand) -> demand - vehicle.getCapacity())
-                .indictWith((vehicle, demand) -> List.of(vehicle))
-                .asConstraint("vehicleCapacity");
-    }
-----
-====
-
-The same mechanism can also be used to transform any of the indicted objects to any other object.
 To present the constraint matches to the user or to send them over the wire where they can be further processed,
 use the `justifyWith(...)` method to provide a custom constraint justification:
 
@@ -436,11 +428,10 @@ Java::
                 .filter(customer -> customer.getVehicle() != null)
                 .groupBy(Customer::getVehicle, sum(Customer::getDemand))
                 .filter((vehicle, demand) -> demand > vehicle.getCapacity())
-                .penalizeLong(HardSoftLongScore.ONE_HARD,
+                .penalize(HardSoftScore.ONE_HARD,
                         (vehicle, demand) -> demand - vehicle.getCapacity())
                 .justifyWith((vehicle, demand, score) ->
                     new VehicleDemandOveruse(vehicle, demand, score))
-                .indictWith((vehicle, demand) -> List.of(vehicle))
                 .asConstraint("vehicleCapacity");
     }
 ----
@@ -570,6 +561,9 @@ pairing a match from each side:
 the paired matches have a `Comparable` property following the prescribed ordering.
 - `overlapping()`: the paired matches have two properties (a _start_ and an _end_ property) of the same `Comparable` type
 that both represent an interval which overlap.
+- `containing()`: the match on the left is a collection containing the match on the right.
+- `containedIn()`: the match on the right is a collection containing the match on the left.
+- `containingAnyOf()`: the collections on both sides have at least one element in common.
 
 All `Joiners` methods have an overloaded method to use the same property of the same class on both stream sides.
 For example, calling `equal(Shift::getEmployee)` is the same as calling `equal(Shift::getEmployee, Shift::getEmployee)`.
@@ -644,6 +638,25 @@ Java::
 ----
 ====
 
+==== Performance considerations
+
+It is tempting to replace filters with joiners where applicable, expecting better performance.
+However, joiners carry the overhead of maintaining indexes,
+and if a joiner does not significantly reduce the number of matches,
+it may perform worse than a filter.
+Some advanced joiners require large datasets before they outperform filtering.
+
+Follow these guidelines:
+
+* First implement the constraint in the most readable way; do not optimize prematurely.
+* Measure instead of assuming how an API performs, because performance characteristics may change between versions.
+* Use xref:performance.adoc#constraintProfiling[constraint profiling] to locate the most expensive constraint,
+  optimize that constraint, and repeat until performance is satisfactory.
+
+NOTE: To maximize performance, index evaluation order may differ from joiner declaration order.
+Typically all `equal()` joiners are fused into one key and evaluated first,
+followed by the remaining indexing joiners and finally the filtering joiners.
+
 [#constraintStreamsGroupingAndCollectors]
 === Grouping and collectors
 
@@ -655,7 +668,7 @@ image::constraints-and-score/score-calculation/constraintStreamGroupBy.png[align
 
 [NOTE]
 ====
-Objects used as group key must obey the https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#hashCode()[general contract of `hashCode`].
+Objects used as group key must obey the https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#hashCode()[general contract of `hashCode`].
 Most importantly, "whenever it is invoked on the same object more than once during an execution of a Java application, the `hashCode` method must consistently return the same integer."
 
 For this reason, it is not recommended to use mutable objects (especially mutable collections) as group keys.
@@ -726,10 +739,7 @@ private Constraint speakerAvailability(ConstraintFactory factory) {
 ----
 ====
 
-The count is collected in an `int`. Variants of this collector:
-
-* `countLong()` collects a `long` value instead of an `int` value.
-
+The count is collected in a `long`.
 To count a bi, tri or quad stream, use `countBi()`, `countTri()` or `countQuad()` respectively,
 because - unlike the other built-in collectors - they aren't overloaded methods due to Java's generics erasure.
 
@@ -758,9 +768,7 @@ private Constraint roomCount(ConstraintFactory factory) {
 
 ====
 
-The distinct count is collected in an `int`. Variants of this collector:
-
-* `countDistinctLong()` collects a `long` value instead of an `int` value.
+The distinct count is collected in a `long`.
 
 
 [#collectorsSum]
@@ -787,13 +795,13 @@ private Constraint totalServiceDuration(ConstraintFactory constraintFactory) {
 ----
 ====
 
-The sum is collected in an `int`. Variants of this collector:
+The sum is collected in a `long`.
+Other variants of this collector:
 
-* `sumLong()` collects a `long` value instead of an `int` value.
-* `sumBigDecimal()` collects a `java.math.BigDecimal` value instead of an `int` value.
-* `sumBigInteger()` collects a `java.math.BigInteger` value instead of an `int` value.
-* `sumDuration()` collects a `java.time.Duration` value instead of an `int` value.
-* `sumPeriod()` collects a `java.time.Period` value instead of an `int` value.
+* `sumBigDecimal()` collects a `java.math.BigDecimal` value.
+* `sumBigInteger()` collects a `java.math.BigInteger` value.
+* `sumDuration()` collects a `java.time.Duration` value.
+* `sumPeriod()` collects a `java.time.Period` value.
 * a generic `sum()` variant for summing up custom types
 
 
@@ -824,12 +832,11 @@ private Constraint averageServiceDuration(ConstraintFactory constraintFactory) {
 ====
 
 The average is collected as a `double`, and the average of no elements is `null`.
-Variants of this collector:
+Other variants of this collector:
 
-* `averageLong()` collects a `long` value instead of an `int` value.
-* `averageBigDecimal()` collects a `java.math.BigDecimal` value instead of an `int` value, resulting in a `BigDecimal` average.
-* `averageBigInteger()` collects a `java.math.BigInteger` value instead of an `int` value, resulting in a `BigDecimal` average.
-* `averageDuration()` collects a `java.time.Duration` value instead of an `int` value, resulting in a `Duration` average.
+* `averageBigDecimal()` collects a `java.math.BigDecimal` value, resulting in a `BigDecimal` average.
+* `averageBigInteger()` collects a `java.math.BigInteger` value, resulting in a `BigDecimal` average.
+* `averageDuration()` collects a `java.time.Duration` value, resulting in a `Duration` average.
 
 
 [#collectorsMinMax]
@@ -864,7 +871,7 @@ private Constraint maxServiceDuration(ConstraintFactory constraintFactory) {
 ====
 `Comparator` and `Comparable` implementations used with `min(...)` and `max(...)` constraint collectors are expected to
 be consistent with `equals(...)`.
-See https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Comparable.html[Javadoc for `Comparable`] to learn more.
+See https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Comparable.html[Javadoc for `Comparable`] to learn more.
 ====
 
 
@@ -1124,9 +1131,9 @@ Java::
 [source,java,options="nowrap"]
 ----
 <A> UniConstraintCollector<A, ?, Double>
-    average(ToIntFunction<A> groupValueMapping) {
+    average(ToLongFunction<A> groupValueMapping) {
         return compose(count(), sum(groupValueMapping), (count, sum) -> {
-            if (count == 0) {
+            if (count == 0L) {
                 return null;
             } else {
                 return sum / (double) count;
@@ -1145,7 +1152,7 @@ Java::
 +
 [source,java,options="nowrap"]
 ----
-UniConstraintCollector<A, ?, Triple<Integer, Integer, Integer>> collector =
+UniConstraintCollector<A, ?, Triple<Long, Integer, Integer>> collector =
     compose(count(),
             min(),
             max(),
@@ -1190,6 +1197,69 @@ ConstraintCollectors.collectAndThen(
     doubleValue -> (int) Math.round(doubleValue))
 ----
 ====
+
+[#constraintStreamsCustomCollector]
+==== Implementing a custom collector
+
+When no built-in collector covers the required aggregation,
+implement `UniConstraintCollector<A, ResultContainer_, Result_>` directly,
+or its `Bi...`, `Tri...` or `Quad...` counterpart.
+The supplier creates a mutable container for each group,
+the specialized accumulator creates one value handle for every tuple entering that group,
+and the finisher converts the container into the result.
+
+[source,java,options="nowrap"]
+----
+public final class IncrementalToListCollector<A>
+        implements UniConstraintCollector<A, List<A>, List<A>> {
+
+    @Override
+    public Supplier<List<A>> supplier() {
+        return ArrayList::new;
+    }
+
+    @Override
+    public UniConstraintCollectorAccumulator<List<A>, A> accumulator() {
+        return list -> new UniConstraintCollectorValueHandle<>() {
+            private A current;
+
+            @Override
+            public void add(A element) {
+                current = element;
+                list.add(element);
+            }
+
+            @Override
+            public void replaceWith(A element) {
+                list.set(list.indexOf(current), element);
+                current = element;
+            }
+
+            @Override
+            public void remove() {
+                list.remove(current);
+                current = null;
+            }
+        };
+    }
+
+    @Override
+    public Function<List<A>, List<A>> finisher() {
+        return Collections::unmodifiableList;
+    }
+}
+----
+
+For every tuple, the solver calls `add()` exactly once,
+then `replaceWith()` zero or more times while the tuple changes,
+and `remove()` at most once when it leaves the group.
+Implement updates directly instead of rebuilding the entire accumulated value;
+that is the main performance benefit of the incremental collector contract.
+
+NOTE: This simplified example uses `List.indexOf()` and `List.remove(Object)`,
+which are linear-time operations and identify elements by equality.
+Use it only when equal duplicate elements cannot occur.
+Production collectors that accept duplicates need a stable per-handle identity in their result container.
 
 
 [#constraintStreamsConditionalPropagation]
@@ -1747,7 +1817,7 @@ Java::
     Constraint vehicleCapacity(ConstraintFactory factory) {
         return factory.forEach(Vehicle.class)
                 .filter(vehicle -> vehicle.getTotalDemand() > vehicle.getCapacity())
-                .penalizeLong(HardSoftLongScore.ONE_HARD,
+                .penalize(HardSoftScore.ONE_HARD,
                         vehicle -> vehicle.getTotalDemand() - vehicle.getCapacity())
                 .asConstraint(VEHICLE_CAPACITY);
     }
@@ -1846,7 +1916,7 @@ In this case, the `given(...)` call takes the `vehicleA`, `visit1` and `visit2` 
 Alternatively, you can use a `givenSolution(...)` method here and provide a planning solution instead.
 
 It's important to understand
-that calling `givenSolution(...)` does not update any xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#shadowVariable[shadow variables].
+that calling `givenSolution(...)` does not update any xref:using-greycos-solver/modeling-planning-problems.adoc#shadowVariable[shadow variables].
 This is the default behavior and can be modified by invoking `settingAllShadowVariables()`.
 
 [tabs]
@@ -1864,8 +1934,8 @@ Java::
 
 [NOTE]
 ====
-You can also use methods `justifiesWith(...)`, `justifiesWithExactly(...)`, `indictsWith(...)` and `indictsWithExactly(...)`
-to validate the expected constraint justifications and indictments mapped by the constraint definition.
+You can also use `justifiesWith(...)` and `justifiesWithExactly(...)`
+to validate the expected constraint justifications mapped by the constraint definition.
 ====
 
 Finally, the `penalizesBy(...)` call completes the test,
@@ -1883,9 +1953,29 @@ It will neither set nor update shadow variables.
 If the tested constraints depend on shadow variables,
 it is your responsibility to assign the correct values beforehand.
 
-When executing `justifiesWith(...)`, `justifiesWithExactly(...)`, `indictsWith(...)` and `indictsWithExactly(...)`,
+When executing `justifiesWith(...)` and `justifiesWithExactly(...)`,
 comparisons are made using the standard method `equals` on the fact problem instances.
 ====
+
+[#constraintStreamsTestingCustomAssertions]
+=== Employing custom assertions
+
+`getScore()` returns the score produced by a single constraint,
+while `getImpact()` returns its raw aggregate match weight.
+Use these values with an assertion library when a comparison is clearer than a fixed expected value:
+
+[source,java,options="nowrap"]
+----
+HardSoftScore scoreA = constraintVerifier.verifyThat(MyConstraints::roomConflict)
+        .given(entity1, entity2)
+        .getScore();
+HardSoftScore scoreB = constraintVerifier.verifyThat(MyConstraints::roomConflict)
+        .given(entity3, entity4)
+        .getScore();
+assertThat(scoreA).isLessThan(scoreB);
+----
+
+This is useful when comparing the severity of a constraint across scenarios.
 
 [#constraintStreamsTestingAllConstraints]
 === Testing all constraints together
@@ -1931,7 +2021,7 @@ remains consistent as your code base evolves.
 It is therefore necessary for the `given(...)` method to list all planning entities and problem facts,
 or provide the entire planning solution instead.
 
-To test all constraints while updating all xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#shadowVariable[shadow variables],
+To test all constraints while updating all xref:using-greycos-solver/modeling-planning-problems.adoc#shadowVariable[shadow variables],
 call `giveSolution(...)` and `settingAllShadowVariables()`.
 This approach ensures that the shadow variable listeners are triggered,
 and the constraints that depend on the related variables are evaluated accordingly.
@@ -2032,8 +2122,8 @@ Configure it in the solver configuration:
 ----
 
 To configure values of an `EasyScoreCalculator` dynamically in the solver configuration
-(so the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `easyScoreCalculatorCustomProperties` element and use xref:xref:using-greycos-solver/configuration.adoc.adoc#customPropertiesConfiguration[custom properties]:
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `easyScoreCalculatorCustomProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
 
 [source,xml,options="nowrap"]
 ----
@@ -2049,17 +2139,16 @@ add the `easyScoreCalculatorCustomProperties` element and use xref:xref:using-gr
 [#incrementalScoreCalculation]
 === Incremental score calculation
 
-A way to implement your score calculation incrementally in a supported programming language.
+A way to implement your score calculation incrementally in Java.
 
-* Advantages:
-** Very fast and scalable; currently the fastest if implemented correctly.
-* Disadvantages:
-** Hard to write
-*** A scalable implementation heavily uses maps, indexes etc.
+Advantages::
+- Very fast and scalable; potentially faster than Constraint Streams if implemented correctly.
+Disadvantages::
+- Difficult to write; a scalable implementation heavily uses maps, indexes and other specialized data structures.
 You have to learn, design, write and improve all these performance optimizations yourself.
-Why not have <<constraintStreams,constraint streams>> do the hard work for you?
-** Hard to read
-*** Regular score constraint changes can lead to high maintenance costs.
+- Difficult to maintain; regular constraint changes can lead to high maintenance costs.
+
+Use <<constraintStreams,Constraint Streams>> unless measurements show that a custom incremental calculator is necessary.
 
 To start using an Incremental score calculator,
 implement all the methods of the interface `IncrementalScoreCalculator`:
@@ -2105,14 +2194,14 @@ Configure it in the solver configuration:
 
 [IMPORTANT]
 ====
-Incremental score calculator code can be difficult to write and to review.
-xref:constraints-and-score/overview.adoc#invalidScoreDetection[Assert its correctness] by using an ``EasyScoreCalculator`` to fulfill
-the assertions triggered by the ``environmentMode``.
+Incremental score calculator code can be difficult to write and review.
+xref:constraints-and-score/overview.adoc#invalidScoreDetection[Assert its correctness]
+against an equivalent Constraint Streams implementation in an asserted environment mode.
 ====
 
 To configure values of an `IncrementalScoreCalculator` dynamically in the solver configuration
-(so the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `incrementalScoreCalculatorCustomProperties` element and use xref:xref:using-greycos-solver/configuration.adoc.adoc#customPropertiesConfiguration[custom properties]:
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `incrementalScoreCalculatorCustomProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
 
 [source,xml,options="nowrap"]
 ----
@@ -2125,26 +2214,22 @@ add the `incrementalScoreCalculatorCustomProperties` element and use xref:xref:u
 ----
 
 
-[#constraintMatchAwareIncrementalScoreCalculator]
-==== `ConstraintMatchAwareIncrementalScoreCalculator`
+[#analyzableIncrementalScoreCalculator]
+==== Incremental score calculation with score analysis
 
 To add support for xref:constraints-and-score/understanding-the-score.adoc[score analysis],
-optionally also implement the `ConstraintMatchAwareIncrementalScoreCalculator` interface:
+implement `AnalyzableIncrementalScoreCalculator` instead of `IncrementalScoreCalculator`:
 
 [source,java,options="nowrap"]
 ----
-public interface ConstraintMatchAwareIncrementalScoreCalculator<Solution_, Score_ extends Score<Score_>> {
+public interface AnalyzableIncrementalScoreCalculator<Solution_, Score_ extends Score<Score_>>
+        extends IncrementalScoreCalculator<Solution_, Score_> {
 
-    void resetWorkingSolution(Solution_ workingSolution, boolean constraintMatchEnabled);
-
-    Collection<ConstraintMatchTotal<Score_>> getConstraintMatchTotals();
-
-    Map<Object, Indictment<Score_>> getIndictmentMap();
+    void enableConstraintMatch(ConstraintMatchRegistry<Score_> constraintMatchRegistry);
 }
 ----
 
-Typically it means creating one `ConstraintMatchTotal` per constraint type
-and calling `addConstraintMatch()` for each constraint match.
-`getConstraintMatchTotals()` code often duplicates some logic of the normal `IncrementalScoreCalculator` methods.
-Constraint Streams doesn't have this disadvantage, because they are aware of constraint matches by design,
-without any extra domain-specific code.
+The solver calls `enableConstraintMatch()` once before analysis starts.
+Register each match through the supplied `ConstraintMatchRegistry` and retain the returned
+`ConstraintMatchRegistration` so that the match can be updated or canceled incrementally.
+All registrations are canceled automatically when the working solution is reset.

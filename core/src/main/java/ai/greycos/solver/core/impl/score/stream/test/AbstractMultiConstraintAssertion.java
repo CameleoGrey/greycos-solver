@@ -6,11 +6,10 @@ import java.util.Collection;
 import java.util.Map;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.Indictment;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.test.MultiConstraintAssertion;
-import ai.greycos.solver.core.impl.score.DefaultScoreExplanation;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamScoreDirectorFactory;
 
@@ -24,7 +23,6 @@ public abstract sealed class AbstractMultiConstraintAssertion<
   private final ConstraintProvider constraintProvider;
   private InnerScore<Score_> actualScore;
   private Collection<ConstraintMatchTotal<Score_>> constraintMatchTotalCollection;
-  private Collection<Indictment<Score_>> indictmentCollection;
 
   AbstractMultiConstraintAssertion(
       ConstraintProvider constraintProvider,
@@ -36,13 +34,11 @@ public abstract sealed class AbstractMultiConstraintAssertion<
   @Override
   final void update(
       InnerScore<Score_> innerScore,
-      Map<String, ConstraintMatchTotal<Score_>> constraintMatchTotalMap,
-      Map<Object, Indictment<Score_>> indictmentMap) {
+      Map<ConstraintRef, ConstraintMatchTotal<Score_>> constraintMatchTotalMap) {
     this.actualScore =
         InnerScore.fullyAssigned(
             requireNonNull(innerScore).raw()); // Strip initialization information.
     this.constraintMatchTotalCollection = requireNonNull(constraintMatchTotalMap).values();
-    this.indictmentCollection = requireNonNull(indictmentMap).values();
     toggleInitialized();
   }
 
@@ -69,7 +65,13 @@ public abstract sealed class AbstractMultiConstraintAssertion<
                 score.getClass(),
                 actualScore,
                 actualScore.getClass(),
-                DefaultScoreExplanation.explainScore(
-                    actualScore, constraintMatchTotalCollection, indictmentCollection)));
+                explainScore(actualScore, constraintMatchTotalCollection)));
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public <S extends Score<S>> S getScore() {
+    ensureInitialized();
+    return (S) actualScore.raw();
   }
 }

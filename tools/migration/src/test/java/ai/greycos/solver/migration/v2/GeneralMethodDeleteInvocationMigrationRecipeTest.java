@@ -92,6 +92,32 @@ class GeneralMethodDeleteInvocationMigrationRecipeTest implements RewriteTest {
                                             String getConstraintPackage();
                                             String getConstraintId();
                                             ConstraintFactory getConstraintFactory();
+                                        }""",
+                    """
+                                        package ai.greycos.solver.core.api.score.stream.uni;
+                                        public interface UniConstraintBuilder<A, Score_> {
+                                            UniConstraintBuilder<A, Score_> indictWith(Object indictment);
+                                        }""",
+                    """
+                                        package ai.greycos.solver.core.api.score.stream.bi;
+                                        public interface BiConstraintBuilder<A, B, Score_> {
+                                            BiConstraintBuilder<A, B, Score_> indictWith(Object indictment);
+                                        }""",
+                    """
+                                        package ai.greycos.solver.core.api.score.stream.tri;
+                                        public interface TriConstraintBuilder<A, B, C, Score_> {
+                                            TriConstraintBuilder<A, B, C, Score_> indictWith(Object indictment);
+                                        }""",
+                    """
+                                        package ai.greycos.solver.core.api.score.stream.quad;
+                                        public interface QuadConstraintBuilder<A, B, C, D, Score_> {
+                                            QuadConstraintBuilder<A, B, C, D, Score_> indictWith(Object indictment);
+                                        }""",
+                    """
+                                        package ai.greycos.solver.test.api.score.stream;
+                                        public interface SingleConstraintAssertion {
+                                            SingleConstraintAssertion indictsWith(Object matcher);
+                                            SingleConstraintAssertion indictsWithExactly(Object... matchers);
                                         }"""));
   }
 
@@ -309,6 +335,54 @@ class GeneralMethodDeleteInvocationMigrationRecipeTest implements RewriteTest {
 
                         public class Test {
                                 SolverConfig solverConfig;
+                                public void test() {
+                                }
+                        }"""));
+  }
+
+  @Test
+  void removeIndictmentCalls() {
+    rewriteRun(
+        java(
+            """
+                        package greycos;
+
+                        import ai.greycos.solver.core.api.score.stream.uni.UniConstraintBuilder;
+                        import ai.greycos.solver.core.api.score.stream.bi.BiConstraintBuilder;
+                        import ai.greycos.solver.core.api.score.stream.tri.TriConstraintBuilder;
+                        import ai.greycos.solver.core.api.score.stream.quad.QuadConstraintBuilder;
+                        import ai.greycos.solver.test.api.score.stream.SingleConstraintAssertion;
+
+                        public class Test {
+                                UniConstraintBuilder<Object, ?> uni;
+                                BiConstraintBuilder<Object, Object, ?> bi;
+                                TriConstraintBuilder<Object, Object, Object, ?> tri;
+                                QuadConstraintBuilder<Object, Object, Object, Object, ?> quad;
+                                SingleConstraintAssertion assertion;
+                                public void test() {
+                                    uni.indictWith(null);
+                                    bi.indictWith(null);
+                                    tri.indictWith(null);
+                                    quad.indictWith(null);
+                                    assertion.indictsWith(null);
+                                    assertion.indictsWithExactly(null);
+                                }
+                        }""",
+            """
+                        package greycos;
+
+                        import ai.greycos.solver.core.api.score.stream.uni.UniConstraintBuilder;
+                        import ai.greycos.solver.core.api.score.stream.bi.BiConstraintBuilder;
+                        import ai.greycos.solver.core.api.score.stream.tri.TriConstraintBuilder;
+                        import ai.greycos.solver.core.api.score.stream.quad.QuadConstraintBuilder;
+                        import ai.greycos.solver.test.api.score.stream.SingleConstraintAssertion;
+
+                        public class Test {
+                                UniConstraintBuilder<Object, ?> uni;
+                                BiConstraintBuilder<Object, Object, ?> bi;
+                                TriConstraintBuilder<Object, Object, Object, ?> tri;
+                                QuadConstraintBuilder<Object, Object, Object, Object, ?> quad;
+                                SingleConstraintAssertion assertion;
                                 public void test() {
                                 }
                         }"""));

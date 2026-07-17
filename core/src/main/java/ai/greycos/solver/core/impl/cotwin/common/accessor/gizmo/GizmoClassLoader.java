@@ -42,6 +42,42 @@ public final class GizmoClassLoader extends ClassLoader {
     return "GreyCOS Solver Gizmo ClassLoader";
   }
 
+  @Nullable
+  private Class<?> loadClassFrom(@Nullable ClassLoader otherClassLoader, String name) {
+    if (otherClassLoader == null || otherClassLoader == this) {
+      return null;
+    }
+    try {
+      return otherClassLoader.loadClass(name);
+    } catch (ClassNotFoundException ignored) {
+      return null;
+    }
+  }
+
+  @Override
+  public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+    synchronized (getClassLoadingLock(name)) {
+      var loadedClass = findLoadedClass(name);
+      if (loadedClass == null) {
+        if (hasBytecodeFor(name)) {
+          loadedClass = findClass(name);
+        } else {
+          var contextClassLoader = Thread.currentThread().getContextClassLoader();
+
+          // First context, then parent
+          loadedClass = loadClassFrom(contextClassLoader, name);
+          if (loadedClass == null) {
+            loadedClass = super.loadClass(name, false);
+          }
+        }
+      }
+      if (resolve) {
+        resolveClass(loadedClass);
+      }
+      return loadedClass;
+    }
+  }
+
   @Override
   public Class<?> findClass(String name) throws ClassNotFoundException {
     var byteCode = getBytecodeFor(name);
@@ -92,6 +128,8 @@ public final class GizmoClassLoader extends ClassLoader {
           MethodHandles.lookup().defineHiddenClass(bytecodeHolder.get(), true).lookupClass();
       var instance = generatedClass.getConstructor().newInstance();
       if (instance == null) {
+        // Should be impossible, but a native image might decide to optimize out
+        // instance if it is unused
         gizmoSupportStatus = GizmoSupportStatus.UNSUPPORTED;
         return false;
       } else {
@@ -99,6 +137,9 @@ public final class GizmoClassLoader extends ClassLoader {
         return true;
       }
     } catch (Throwable e) {
+      // Note: GraalVM will throw a com.oracle.svm.core.jdk.UnsupportedFeatureError
+      //       on defineHiddenClass, so we catch "Throwable" here so we don't need
+      //       to add GraalVM as a library
       gizmoSupportStatus = GizmoSupportStatus.UNSUPPORTED;
       return false;
     }

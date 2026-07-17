@@ -7,10 +7,11 @@ import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.DefaultPlanningSolutionMetaModel;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import ai.greycos.solver.core.impl.move.DefaultMoveTestContext;
-import ai.greycos.solver.core.impl.move.DefaultMoveTester;
 import ai.greycos.solver.core.impl.neighborhood.stream.DefaultMoveStreamFactory;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
+import ai.greycos.solver.core.preview.api.move.test.MoveTester;
 import ai.greycos.solver.core.preview.api.neighborhood.MoveProvider;
 import ai.greycos.solver.core.preview.api.neighborhood.test.NeighborhoodTestContext;
 import ai.greycos.solver.core.preview.api.neighborhood.test.NeighborhoodTester;
@@ -22,14 +23,14 @@ public final class DefaultNeighborhoodTester<Solution_> implements NeighborhoodT
 
   private final MoveProvider<Solution_> moveProvider;
   private final DefaultMoveStreamFactory<Solution_> moveStreamFactory;
-  private final DefaultMoveTester<Solution_> moveTester;
+  private final MoveTester<Solution_> moveTester;
 
   public DefaultNeighborhoodTester(
       MoveProvider<Solution_> moveProvider,
       PlanningSolutionMetaModel<Solution_> solutionMetaModel) {
     this.moveProvider = Objects.requireNonNull(moveProvider, "moveProvider");
     this.moveTester =
-        new DefaultMoveTester<>(Objects.requireNonNull(solutionMetaModel, "solutionMetaModel"));
+        MoveTester.build(Objects.requireNonNull(solutionMetaModel, "solutionMetaModel"));
     var solutionDescriptor =
         ((DefaultPlanningSolutionMetaModel<Solution_>) solutionMetaModel).solutionDescriptor();
     this.moveStreamFactory =
@@ -43,6 +44,7 @@ public final class DefaultNeighborhoodTester<Solution_> implements NeighborhoodT
     var moveTestContext = (DefaultMoveTestContext<Solution_>) moveTester.using(solution);
     var scoreDirector = moveTestContext.getScoreDirector();
     var solverScope = new SolverScope<Solution_>();
+    solverScope.setWorkingRandom(RandomSource.seeded(0L));
     solverScope.setScoreDirector(scoreDirector);
     repository.solvingStarted(solverScope);
     var phaseScope = new LocalSearchPhaseScope<>(solverScope, 0);

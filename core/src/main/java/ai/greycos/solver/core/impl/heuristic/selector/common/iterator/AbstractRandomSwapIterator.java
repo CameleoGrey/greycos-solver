@@ -2,7 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.common.iterator;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public abstract class AbstractRandomSwapIterator<
         Solution_, Move_ extends Move<Solution_>, SubSelection_>

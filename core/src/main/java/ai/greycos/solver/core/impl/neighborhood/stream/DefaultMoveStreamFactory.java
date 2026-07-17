@@ -1,5 +1,7 @@
 package ai.greycos.solver.core.impl.neighborhood.stream;
 
+import static ai.greycos.solver.core.preview.api.neighborhood.stream.joiner.NeighborhoodsJoiners.filtering;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -16,12 +18,12 @@ import ai.greycos.solver.core.preview.api.cotwin.metamodel.GenuineVariableMetaMo
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
+import ai.greycos.solver.core.preview.api.cotwin.metamodel.UnassignedElement;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.MoveStreamFactory;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsMapper;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsPredicate;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.function.UniNeighborhoodsPredicate;
-import ai.greycos.solver.core.preview.api.neighborhood.stream.joiner.NeighborhoodsJoiners;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.sampling.UniSamplingStream;
 
 import org.jspecify.annotations.NullMarked;
@@ -111,6 +113,14 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
   }
 
   @Override
+  public <Entity_, Value_> UniEnumeratingStream<Solution_, Value_> forEachUnassignedValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel) {
+    var nodeSharingSupportFunctions = getNodeSharingSupportFunctions(variableMetaModel);
+    return forEach(variableMetaModel.type(), false)
+        .filter(nodeSharingSupportFunctions.unassignedValueFilter);
+  }
+
+  @Override
   public <Entity_, Value_> UniEnumeratingStream<Solution_, PositionInList> forEachDestination(
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel) {
     var unpinnedEntities = forEach(variableMetaModel.entity().type(), false);
@@ -125,9 +135,7 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
     // eliminating values which do not match that entity's value range.
     // It maps these pairs to expected target positions in that entity's list variable.
     return unpinnedEntities
-        .join(
-            unpinnedValues,
-            NeighborhoodsJoiners.filtering(nodeSharingSupportFunctions.valueInRangeFilter))
+        .join(unpinnedValues, filtering(nodeSharingSupportFunctions.valueInRangeFilter))
         .map(nodeSharingSupportFunctions.toPositionInListMapper)
         .distinct();
   }
@@ -140,6 +148,7 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
     if (!variableMetaModel.allowsUnassignedValues()) {
       return (UniEnumeratingStream) forEachDestination(variableMetaModel);
     }
+    // We include null, as that signifies the future unassigned element.
     var unpinnedEntities = forEach(variableMetaModel.entity().type(), true);
     // Stream with unpinned values, which are assigned to any list variable;
     // always includes null so that we can later create a position at the end of the list,
@@ -152,36 +161,7 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
     // eliminating values which do not match that entity's value range.
     // It maps these pairs to expected target positions in that entity's list variable.
     return unpinnedEntities
-        .join(
-            unpinnedValues,
-            NeighborhoodsJoiners.filtering(nodeSharingSupportFunctions.valueInRangeFilter))
-        .map(nodeSharingSupportFunctions.toElementPositionMapper)
-        .distinct();
-  }
-
-  @Deprecated(forRemoval = true)
-  @Override
-  public <Entity_, Value_>
-      UniEnumeratingStream<Solution_, ElementPosition> forEachAssignablePosition(
-          PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel) {
-    // Stream with unpinned entities;
-    // includes null if the variable allows unassigned values.
-    var unpinnedEntities =
-        forEach(variableMetaModel.entity().type(), variableMetaModel.allowsUnassignedValues());
-    // Stream with unpinned values, which are assigned to any list variable;
-    // always includes null so that we can later create a position at the end of the list,
-    // i.e. with no value after it.
-    var nodeSharingSupportFunctions = getNodeSharingSupportFunctions(variableMetaModel);
-    var unpinnedValues =
-        forEach(variableMetaModel.type(), true)
-            .filter(nodeSharingSupportFunctions.assignedValueOrNullFilter);
-    // Joins the two previous streams to create pairs of (entity, value),
-    // eliminating values which do not match that entity's value range.
-    // It maps these pairs to expected target positions in that entity's list variable.
-    return unpinnedEntities
-        .join(
-            unpinnedValues,
-            NeighborhoodsJoiners.filtering(nodeSharingSupportFunctions.valueInRangeFilter))
+        .join(unpinnedValues, filtering(nodeSharingSupportFunctions.valueInRangeFilter))
         .map(nodeSharingSupportFunctions.toElementPositionMapper)
         .distinct();
   }
@@ -209,6 +189,7 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
 
   public record NodeSharingSupportFunctions<Solution_, Entity_, Value_>(
       PlanningVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      UniNeighborhoodsPredicate<Solution_, Entity_> assignedValueFilter,
       BiNeighborhoodsPredicate<Solution_, Entity_, Value_> differentValueFilter,
       BiNeighborhoodsPredicate<Solution_, Entity_, Value_> valueInRangeFilter) {
 
@@ -216,6 +197,7 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
         PlanningVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel) {
       this(
           variableMetaModel,
+          (solutionView, entity) -> solutionView.getValue(variableMetaModel, entity) != null,
           (solutionView, entity, value) ->
               !Objects.equals(solutionView.getValue(variableMetaModel, entity), value),
           (solutionView, entity, value) ->
@@ -228,7 +210,9 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
       UniNeighborhoodsPredicate<Solution_, Value_> unpinnedValueFilter,
       UniNeighborhoodsPredicate<Solution_, Value_> assignedValueOrNullFilter,
       UniNeighborhoodsPredicate<Solution_, Value_> assignedValueFilter,
+      UniNeighborhoodsPredicate<Solution_, Value_> unassignedValueFilter,
       BiNeighborhoodsPredicate<Solution_, Entity_, Value_> valueInRangeFilter,
+      BiNeighborhoodsPredicate<Solution_, Value_, PositionInList> valueInRangeFilterForPosition,
       BiNeighborhoodsMapper<Solution_, Entity_, Value_, ElementPosition> toElementPositionMapper,
       BiNeighborhoodsMapper<Solution_, Entity_, Value_, PositionInList> toPositionInListMapper) {
 
@@ -243,11 +227,21 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
                   || solutionView.getPositionOf(variableMetaModel, value) instanceof PositionInList,
           (solutionView, value) ->
               solutionView.getPositionOf(variableMetaModel, value) instanceof PositionInList,
+          (solutionView, value) ->
+              solutionView.getPositionOf(variableMetaModel, value) instanceof UnassignedElement,
           (solutionView, entity, value) -> {
-            if (entity == null || value == null) {
+            if (value == null) {
               // Necessary for the null to survive until the later stage,
-              // where we will use it as a special marker to either unassign the value,
-              // or move it to the end of list.
+              // where we will use it as a special marker to move it to the end of list.
+              return true;
+            }
+            return solutionView.isValueInRange(variableMetaModel, entity, value);
+          },
+          (solutionView, value, positionInList) -> {
+            Entity_ entity = positionInList.entity();
+            if (value == null) {
+              // Necessary for the null to survive until the later stage,
+              // where we will use it as a special marker to move it to the end of list.
               return true;
             }
             return solutionView.isValueInRange(variableMetaModel, entity, value);

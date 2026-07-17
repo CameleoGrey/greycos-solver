@@ -2,7 +2,6 @@ package ai.greycos.solver.core.impl.score.stream.bavet.tri;
 
 import java.math.BigDecimal;
 
-import ai.greycos.solver.core.api.function.ToIntTriFunction;
 import ai.greycos.solver.core.api.function.ToLongTriFunction;
 import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.score.Score;
@@ -19,14 +18,6 @@ final class BavetScoringTriConstraintStream<Solution_, A, B, C>
 
   private final TriImpactHandler<A, B, C> scoreImpact;
   private BavetConstraint<Solution_> constraint;
-
-  public BavetScoringTriConstraintStream(
-      BavetConstraintFactory<Solution_> constraintFactory,
-      BavetAbstractTriConstraintStream<Solution_, A, B, C> parent,
-      ToIntTriFunction<A, B, C> intMatchWeigher) {
-    super(constraintFactory, parent);
-    this.scoreImpact = new TriIntImpactHandler<>(intMatchWeigher);
-  }
 
   public BavetScoringTriConstraintStream(
       BavetConstraintFactory<Solution_> constraintFactory,

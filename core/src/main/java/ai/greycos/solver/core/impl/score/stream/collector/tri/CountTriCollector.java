@@ -1,0 +1,62 @@
+package ai.greycos.solver.core.impl.score.stream.collector.tri;
+
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollector;
+import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollectorAccumulator;
+import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollectorValueHandle;
+import ai.greycos.solver.core.impl.score.stream.collector.AbstractCountSlot;
+import ai.greycos.solver.core.impl.util.MutableLong;
+
+import org.jspecify.annotations.NonNull;
+
+final class CountTriCollector<A, B, C>
+    implements TriConstraintCollector<A, B, C, MutableLong, Long> {
+  private static final CountTriCollector<?, ?, ?> INSTANCE = new CountTriCollector<>();
+
+  private CountTriCollector() {}
+
+  @SuppressWarnings("unchecked")
+  static <A, B, C> CountTriCollector<A, B, C> getInstance() {
+    return (CountTriCollector<A, B, C>) INSTANCE;
+  }
+
+  @Override
+  public @NonNull Supplier<MutableLong> supplier() {
+    return MutableLong::new;
+  }
+
+  @Override
+  public @NonNull TriConstraintCollectorAccumulator<MutableLong, A, B, C> accumulator() {
+    return Slot::new;
+  }
+
+  @Override
+  public @NonNull Function<MutableLong, Long> finisher() {
+    return MutableLong::longValue;
+  }
+
+  private static final class Slot<A, B, C> extends AbstractCountSlot
+      implements TriConstraintCollectorValueHandle<A, B, C> {
+
+    Slot(MutableLong state) {
+      super(state);
+    }
+
+    @Override
+    public void add(A a, B b, C c) {
+      addMapped();
+    }
+
+    @Override
+    public void replaceWith(A a, B b, C c) {
+      replaceWithMapped();
+    }
+
+    @Override
+    public void remove() {
+      removeMapped();
+    }
+  }
+}

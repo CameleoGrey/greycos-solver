@@ -8,13 +8,13 @@ module ai.greycos.solver.spring.boot.autoconfigure {
   requires static ai.greycos.solver.benchmark;
   requires transitive ai.greycos.solver.core;
   requires transitive ai.greycos.solver.jackson;
-  requires com.fasterxml.jackson.databind;
+  requires org.apache.commons.logging;
   requires org.jspecify;
   requires spring.beans;
   requires spring.boot;
   requires spring.boot.autoconfigure;
+  requires spring.boot.persistence;
   requires spring.context;
   requires spring.core;
-  requires spring.jcl;
-  requires spring.web;
+  requires tools.jackson.databind;
 }

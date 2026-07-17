@@ -17,6 +17,49 @@ import org.junit.jupiter.api.Test;
 class ReachableValuesTest {
 
   @Test
+  void testSharedEntityValueRange() {
+    var v1 = new TestdataListEntityProvidingValue("V1");
+    var v2 = new TestdataListEntityProvidingValue("V2");
+    var v3 = new TestdataListEntityProvidingValue("V3");
+    var v4 = new TestdataListEntityProvidingValue("V4");
+    // A and B share an identical value range; C has a distinct one.
+    var a = new TestdataListEntityProvidingEntity("A", List.of(v1, v2, v3));
+    var b = new TestdataListEntityProvidingEntity("B", List.of(v1, v2, v3));
+    var c = new TestdataListEntityProvidingEntity("C", List.of(v3, v4));
+    var solution = new TestdataListEntityProvidingSolution();
+    solution.setEntityList(List.of(a, b, c));
+
+    var scoreDirector =
+        mockScoreDirector(TestdataListEntityProvidingSolution.buildSolutionDescriptor());
+    scoreDirector.setWorkingSolution(solution);
+
+    var solutionDescriptor = scoreDirector.getSolutionDescriptor();
+    var entityDescriptor =
+        solutionDescriptor.findEntityDescriptor(TestdataListEntityProvidingEntity.class);
+    var reachableValues =
+        scoreDirector
+            .getValueRangeManager()
+            .getReachableValues(entityDescriptor.getListVariableDescriptor());
+
+    // Both A and B must appear — addEntity must be called for each entity, not just the canonical
+    // one.
+    assertThat(reachableValues.extractEntitiesAsList(v1)).containsExactlyInAnyOrder(a, b);
+    assertThat(reachableValues.extractEntitiesAsList(v2)).containsExactlyInAnyOrder(a, b);
+    assertThat(reachableValues.extractEntitiesAsList(v3)).containsExactlyInAnyOrder(a, b, c);
+    assertThat(reachableValues.extractEntitiesAsList(v4)).containsExactlyInAnyOrder(c);
+
+    assertThat(reachableValues.isEntityReachable(v1, a)).isTrue();
+    assertThat(reachableValues.isEntityReachable(v1, b)).isTrue();
+    assertThat(reachableValues.isEntityReachable(v1, c)).isFalse();
+
+    // v3 appears in both the shared range [v1,v2,v3] and C's range [v3,v4]; co-values = union minus
+    // self.
+    assertThat(reachableValues.extractValuesAsList(v3)).containsExactlyInAnyOrder(v1, v2, v4);
+    assertThat(reachableValues.extractValuesAsList(v1)).containsExactlyInAnyOrder(v2, v3);
+    assertThat(reachableValues.extractValuesAsList(v4)).containsExactlyInAnyOrder(v3);
+  }
+
+  @Test
   void testReachableValuesByEntity() {
     var v1 = new TestdataListEntityProvidingValue("V1");
     var v2 = new TestdataListEntityProvidingValue("V2");
@@ -120,7 +163,7 @@ class ReachableValuesTest {
     var reachableValues =
         scoreDirector
             .getValueRangeManager()
-            .getReachableValues(entityDescriptor.getGenuineVariableDescriptorList().get(0));
+            .getReachableValues(entityDescriptor.getGenuineVariableDescriptorList().getFirst());
 
     assertThat(reachableValues.extractValuesAsList(v1)).containsExactlyInAnyOrder(v2, v3);
     assertThat(reachableValues.extractValuesAsList(v2)).containsExactlyInAnyOrder(v1, v3);
@@ -163,7 +206,7 @@ class ReachableValuesTest {
         scoreDirector
             .getValueRangeManager()
             .getReachableValues(
-                entityDescriptor.getGenuineVariableDescriptorList().get(0),
+                entityDescriptor.getGenuineVariableDescriptorList().getFirst(),
                 new TestdataObjectSorter<
                     TestdataAllowsUnassignedEntityProvidingSolution, TestdataValue>());
 
@@ -200,7 +243,7 @@ class ReachableValuesTest {
         scoreDirector
             .getValueRangeManager()
             .getReachableValues(
-                entityDescriptor.getGenuineVariableDescriptorList().get(0),
+                entityDescriptor.getGenuineVariableDescriptorList().getFirst(),
                 new TestdataObjectSorter<
                     TestdataAllowsUnassignedEntityProvidingSolution, TestdataValue>(false));
 
@@ -239,7 +282,8 @@ class ReachableValuesTest {
     var noSorterValues =
         scoreDirector
             .getValueRangeManager()
-            .getReachableValues(entityDescriptor.getGenuineVariableDescriptorList().get(0), null);
+            .getReachableValues(
+                entityDescriptor.getGenuineVariableDescriptorList().getFirst(), null);
     assertThat(noSorterValues.extractValuesAsList(v2)).containsExactlyInAnyOrder(v3, v1, v4, v5);
 
     // Ascending sorter replaces the no sorter
@@ -250,14 +294,15 @@ class ReachableValuesTest {
         scoreDirector
             .getValueRangeManager()
             .getReachableValues(
-                entityDescriptor.getGenuineVariableDescriptorList().get(0), ascendingSorter);
+                entityDescriptor.getGenuineVariableDescriptorList().getFirst(), ascendingSorter);
     assertThat(ascendingValues)
         .isNotSameAs(noSorterValues)
         .isSameAs(
             scoreDirector
                 .getValueRangeManager()
                 .getReachableValues(
-                    entityDescriptor.getGenuineVariableDescriptorList().get(0), ascendingSorter));
+                    entityDescriptor.getGenuineVariableDescriptorList().getFirst(),
+                    ascendingSorter));
     assertThat(noSorterValues.extractValuesAsList(v2)).containsExactlyInAnyOrder(v1, v3, v4, v5);
 
     // Descending sorter
@@ -268,7 +313,7 @@ class ReachableValuesTest {
         scoreDirector
             .getValueRangeManager()
             .getReachableValues(
-                entityDescriptor.getGenuineVariableDescriptorList().get(0), descendingSorter);
+                entityDescriptor.getGenuineVariableDescriptorList().getFirst(), descendingSorter);
     assertThat(descendingValues)
         .isNotSameAs(ascendingValues)
         .isNotSameAs(noSorterValues)
@@ -276,7 +321,8 @@ class ReachableValuesTest {
             scoreDirector
                 .getValueRangeManager()
                 .getReachableValues(
-                    entityDescriptor.getGenuineVariableDescriptorList().get(0), descendingSorter));
+                    entityDescriptor.getGenuineVariableDescriptorList().getFirst(),
+                    descendingSorter));
     assertThat(descendingValues.extractValuesAsList(v2)).containsExactlyInAnyOrder(v5, v4, v3, v1);
 
     // Null sorter returns the ascending sorter
@@ -284,7 +330,7 @@ class ReachableValuesTest {
         scoreDirector
             .getValueRangeManager()
             .getReachableValues(
-                entityDescriptor.getGenuineVariableDescriptorList().get(0), ascendingSorter);
+                entityDescriptor.getGenuineVariableDescriptorList().getFirst(), ascendingSorter);
     assertThat(otherNoSorterValues).isSameAs(ascendingValues);
   }
 }

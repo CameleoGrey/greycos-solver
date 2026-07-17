@@ -55,10 +55,10 @@ import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.context.properties.bind.BindResult;
 import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.EnvironmentAware;
@@ -299,14 +299,14 @@ public class GreyCOSSolverAutoConfiguration
       SolverConfig solverConfig,
       SolverProperties solverProperties) {
     applyScoreDirectorFactoryProperties(entityScanner, solverConfig);
-    if (solverProperties.getConstraintStreamAutomaticNodeSharing() != null
-        && solverProperties.getConstraintStreamAutomaticNodeSharing()) {
-      if (NativeDetector.inNativeImage()) {
+    var automaticNodeSharing = solverProperties.getConstraintStreamAutomaticNodeSharing();
+    if (automaticNodeSharing != null) {
+      if (automaticNodeSharing && NativeDetector.inNativeImage()) {
         throw new UnsupportedOperationException(
             "Constraint stream automatic node sharing is unsupported in a Spring native image.");
       }
       Objects.requireNonNull(solverConfig.getScoreDirectorFactoryConfig())
-          .setConstraintStreamAutomaticNodeSharing(true);
+          .setConstraintStreamAutomaticNodeSharing(automaticNodeSharing);
     }
     if (solverProperties.getEnvironmentMode() != null) {
       solverConfig.setEnvironmentMode(solverProperties.getEnvironmentMode());

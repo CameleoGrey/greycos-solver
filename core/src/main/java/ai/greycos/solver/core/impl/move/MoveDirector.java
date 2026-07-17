@@ -14,7 +14,6 @@ import ai.greycos.solver.core.impl.cotwin.solution.descriptor.DefaultPlanningVar
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.InnerGenuineVariableMetaModel;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.move.MoveAdapters;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
@@ -439,29 +438,47 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
 
   /** Execute a given move and make sure shadow variables are up to date after that. */
   public final void execute(Move<Solution_> move) {
-    MoveAdapters.unadapt(move).execute(this);
+    move.execute(this);
     externalScoreDirector.triggerVariableListeners();
   }
 
   public final InnerScore<Score_> executeTemporary(Move<Solution_> move) {
     var ephemeralMoveDirector = borrowEphemeralMoveDirector();
-    ephemeralMoveDirector.execute(move);
-    var score = backingScoreDirector.calculateScore();
-    ephemeralMoveDirector.close(); // This undoes the move.
-    releaseEphemeralMoveDirector(ephemeralMoveDirector);
-    return score;
+    var moveExecuted = false;
+    try {
+      ephemeralMoveDirector.execute(move);
+      moveExecuted = true;
+      return backingScoreDirector.calculateScore();
+    } finally {
+      if (moveExecuted) {
+        try {
+          ephemeralMoveDirector.close(); // This undoes the move.
+        } finally {
+          releaseEphemeralMoveDirector(ephemeralMoveDirector);
+        }
+      }
+    }
   }
 
   public <Result_> @Nullable Result_ executeTemporary(
       Move<Solution_> move,
       TemporaryMovePostprocessor<Solution_, Score_, @Nullable Result_> postprocessor) {
     var ephemeralMoveDirector = borrowEphemeralMoveDirector();
-    ephemeralMoveDirector.execute(move);
-    var score = backingScoreDirector.calculateScore();
-    var result = postprocessor.apply(score, ephemeralMoveDirector.createUndoMove());
-    ephemeralMoveDirector.close(); // This undoes the move.
-    releaseEphemeralMoveDirector(ephemeralMoveDirector);
-    return result;
+    var moveExecuted = false;
+    try {
+      ephemeralMoveDirector.execute(move);
+      moveExecuted = true;
+      var score = backingScoreDirector.calculateScore();
+      return postprocessor.apply(score, ephemeralMoveDirector.createUndoMove());
+    } finally {
+      if (moveExecuted) {
+        try {
+          ephemeralMoveDirector.close(); // This undoes the move.
+        } finally {
+          releaseEphemeralMoveDirector(ephemeralMoveDirector);
+        }
+      }
+    }
   }
 
   public <Result_> @Nullable Result_ executeTemporary(
@@ -469,14 +486,23 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
       Function<Solution_, @Nullable Result_> postprocessor,
       boolean guaranteeFreshScore) {
     var ephemeralMoveDirector = borrowEphemeralMoveDirector();
-    ephemeralMoveDirector.execute(move);
-    var result = postprocessor.apply(backingScoreDirector.getWorkingSolution());
-    ephemeralMoveDirector.close(); // This undoes the move.
-    releaseEphemeralMoveDirector(ephemeralMoveDirector);
-    if (guaranteeFreshScore) {
-      backingScoreDirector.calculateScore();
+    var moveExecuted = false;
+    try {
+      ephemeralMoveDirector.execute(move);
+      moveExecuted = true;
+      return postprocessor.apply(backingScoreDirector.getWorkingSolution());
+    } finally {
+      if (moveExecuted) {
+        try {
+          ephemeralMoveDirector.close(); // This undoes the move.
+        } finally {
+          releaseEphemeralMoveDirector(ephemeralMoveDirector);
+        }
+        if (guaranteeFreshScore) {
+          backingScoreDirector.calculateScore();
+        }
+      }
     }
-    return result;
   }
 
   @Override

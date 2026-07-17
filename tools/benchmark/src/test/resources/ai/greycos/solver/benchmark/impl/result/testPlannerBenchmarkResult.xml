@@ -16,7 +16,7 @@
     <subSingleCount>1</subSingleCount>
     <solverConfig>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -62,7 +62,7 @@
     <subSingleCount>1</subSingleCount>
     <solverConfig>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -108,7 +108,7 @@
     <subSingleCount>1</subSingleCount>
     <solverConfig>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -166,7 +166,7 @@
     <subSingleCount>1</subSingleCount>
     <solverConfig>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -224,7 +224,7 @@
     <subSingleCount>1</subSingleCount>
     <solverConfig>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -300,7 +300,7 @@
     <subSingleCount>1</subSingleCount>
     <solverConfig>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.impl.result.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>

@@ -1,23 +1,25 @@
 package ai.greycos.solver.jackson.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.ServiceLoader;
 
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.score.BendableScore;
 import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.analysis.ConstraintAnalysis;
-import ai.greycos.solver.core.api.score.analysis.MatchAnalysis;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification;
 import ai.greycos.solver.core.api.solver.RecommendedAssignment;
+import ai.greycos.solver.core.impl.score.analysis.DefaultConstraintAnalysis;
+import ai.greycos.solver.core.impl.score.analysis.DefaultMatchAnalysis;
+import ai.greycos.solver.core.impl.score.analysis.DefaultScoreAnalysis;
 import ai.greycos.solver.core.impl.solver.DefaultRecommendedAssignment;
 import ai.greycos.solver.core.impl.util.Pair;
 import ai.greycos.solver.jackson.api.cotwin.solution.AbstractConstraintWeightOverridesDeserializer;
@@ -27,11 +29,16 @@ import ai.greycos.solver.jackson.api.solver.AbstractRecommendedAssignmentJackson
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.type.TypeFactory;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JacksonModule;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.module.SimpleModule;
+import tools.jackson.databind.type.TypeFactory;
 
 class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
 
@@ -45,7 +52,7 @@ class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
     var objectMapper =
         JsonMapper.builder()
             .addModule(GreyCOSJacksonModule.createModule())
-            .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+            .disable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
             .build();
 
     var input = new TestGreyCOSJacksonModuleWrapper();
@@ -69,30 +76,29 @@ class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
   }
 
   @Test
-  void scoreAnalysisWithoutMatches() throws JsonProcessingException {
+  void scoreAnalysisWithoutMatches() throws JacksonException {
     var objectMapper =
         JsonMapper.builder()
-            .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-            .defaultPropertyInclusion(
-                JsonInclude.Value.construct(
-                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
             .addModule(GreyCOSJacksonModule.createModule())
+            .addModule(new CustomJacksonModule())
+            .changeDefaultPropertyInclusion(
+                incl -> incl.withValueInclusion(JsonInclude.Include.NON_DEFAULT))
             .build();
 
-    var constraintRef1 = ConstraintRef.of("packageB", "constraint1");
-    var constraintRef2 = ConstraintRef.of("packageA", "constraint2");
+    var constraintRef1 = ConstraintRef.of("constraint1");
+    var constraintRef2 = ConstraintRef.of("constraint2");
     var constraintAnalysis1 =
-        new ConstraintAnalysis<>(
+        new DefaultConstraintAnalysis<>(
             constraintRef1, HardSoftScore.ofSoft(1), HardSoftScore.ofSoft(2), null);
     var constraintAnalysis2 =
-        new ConstraintAnalysis<>(
+        new DefaultConstraintAnalysis<>(
             constraintRef2, HardSoftScore.ofHard(1), HardSoftScore.ofHard(1), null, 2);
     var originalScoreAnalysis =
-        new ScoreAnalysis<>(
+        new DefaultScoreAnalysis<>(
             HardSoftScore.of(1, 2),
             Map.of(constraintRef1, constraintAnalysis1, constraintRef2, constraintAnalysis2));
 
-    // Hardest constraints first.
+    // Hardest constraints first, package name second.
     var serialized = objectMapper.writeValueAsString(originalScoreAnalysis);
     assertThat(serialized)
         .isEqualToIgnoringWhitespace(
@@ -101,80 +107,213 @@ class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
                            "score" : "1hard/2soft",
                            "initialized" : true,
                            "constraints" : [ {
-                             "name" : "constraint2",
+                             "id" : "constraint2",
                              "weight" : "1hard/0soft",
                              "score" : "1hard/0soft",
                              "matchCount" : 2
                            }, {
-                             "name" : "constraint1",
+                             "id" : "constraint1",
                              "weight" : "0hard/1soft",
                              "score" : "0hard/2soft"
                            } ]
                          }""");
 
-    objectMapper.registerModule(new CustomJacksonModule());
     ScoreAnalysis<HardSoftScore> deserialized =
         objectMapper.readValue(serialized, ScoreAnalysis.class);
     assertThat(deserialized).isEqualTo(originalScoreAnalysis);
   }
 
   @Test
-  void scoreAnalysisWithMatches() throws JsonProcessingException {
+  void scoreAnalysisRejectsLegacyConstraintName() {
     var objectMapper =
         JsonMapper.builder()
-            .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-            .defaultPropertyInclusion(
-                JsonInclude.Value.construct(
-                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
             .addModule(GreyCOSJacksonModule.createModule())
+            .addModule(new CustomJacksonModule())
+            .build();
+
+    assertThatThrownBy(
+            () ->
+                objectMapper.readValue(
+                    """
+                {
+                  "score": "0hard/0soft",
+                  "initialized": true,
+                  "constraints": [ {
+                    "name": "legacyConstraintName",
+                    "weight": "0hard/1soft",
+                    "score": "0hard/0soft"
+                  } ]
+                }
+                """,
+                    ScoreAnalysis.class))
+        .hasMessageContaining("required JSON property (id)");
+  }
+
+  @Test
+  void scoreAnalysisWithMatches() throws JacksonException {
+    var objectMapper =
+        JsonMapper.builder()
+            .addModule(GreyCOSJacksonModule.createModule())
+            .addModule(new CustomJacksonModule())
+            .changeDefaultPropertyInclusion(
+                incl -> incl.withValueInclusion(JsonInclude.Include.NON_DEFAULT))
             .build();
 
     var originalScoreAnalysis = getScoreAnalysis();
     var serialized = objectMapper.writeValueAsString(originalScoreAnalysis);
     assertThat(serialized).isEqualToIgnoringWhitespace(getSerializedScoreAnalysis());
 
-    objectMapper.registerModule(new CustomJacksonModule());
     ScoreAnalysis<HardSoftScore> deserialized =
         objectMapper.readValue(serialized, ScoreAnalysis.class);
     assertThat(deserialized).isEqualTo(originalScoreAnalysis);
   }
 
+  @Test
+  void scoreAnalysisWithDiffMatchCounts() throws JacksonException {
+    var objectMapper =
+        JsonMapper.builder()
+            .addModule(GreyCOSJacksonModule.createModule())
+            .addModule(new CustomJacksonModule())
+            .build();
+
+    var negativeCountConstraintRef = ConstraintRef.of("negativeCount");
+    var negativeMatchScore = HardSoftScore.ofHard(-1);
+    var negativeMatch =
+        new DefaultMatchAnalysis<>(
+            negativeCountConstraintRef,
+            negativeMatchScore,
+            DefaultConstraintJustification.of(negativeMatchScore, "removed"));
+    var negativeCountConstraintAnalysis =
+        new DefaultConstraintAnalysis<>(
+            negativeCountConstraintRef,
+            HardSoftScore.ofHard(1),
+            negativeMatchScore,
+            List.of(negativeMatch),
+            -1);
+
+    var unequalCountConstraintRef = ConstraintRef.of("unequalCount");
+    var unequalCountMatchScore = HardSoftScore.ofSoft(2);
+    var unequalCountMatch =
+        new DefaultMatchAnalysis<>(
+            unequalCountConstraintRef,
+            unequalCountMatchScore,
+            DefaultConstraintJustification.of(unequalCountMatchScore, "changed"));
+    var unequalCountConstraintAnalysis =
+        new DefaultConstraintAnalysis<>(
+            unequalCountConstraintRef,
+            HardSoftScore.ofSoft(1),
+            unequalCountMatchScore,
+            List.of(unequalCountMatch),
+            3);
+
+    var originalScoreAnalysis =
+        new DefaultScoreAnalysis<>(
+            HardSoftScore.of(-1, 2),
+            Map.of(
+                negativeCountConstraintRef,
+                negativeCountConstraintAnalysis,
+                unequalCountConstraintRef,
+                unequalCountConstraintAnalysis));
+
+    var serialized = objectMapper.writeValueAsString(originalScoreAnalysis);
+    assertThat(serialized).contains("\"matchCount\":-1", "\"matchCount\":3");
+
+    ScoreAnalysis<HardSoftScore> deserialized =
+        objectMapper.readValue(serialized, ScoreAnalysis.class);
+    assertThat(deserialized).isEqualTo(originalScoreAnalysis);
+  }
+
+  @Test
+  void scoreAnalysisWithMatchesRequiresMatchCount() {
+    var objectMapper =
+        JsonMapper.builder()
+            .addModule(GreyCOSJacksonModule.createModule())
+            .addModule(new CustomJacksonModule())
+            .build();
+
+    assertThatThrownBy(
+            () ->
+                objectMapper.readValue(
+                    """
+                    {
+                      "score": "0hard/0soft",
+                      "initialized": true,
+                      "constraints": [ {
+                        "id": "missingMatchCount",
+                        "weight": "0hard/1soft",
+                        "score": "0hard/0soft",
+                        "matches": []
+                      } ]
+                    }
+                    """,
+                    ScoreAnalysis.class))
+        .hasMessageContaining("required JSON property (matchCount)");
+  }
+
+  @Test
+  void scoreAnalysisRejectsNonIntegralMatchCount() {
+    var objectMapper =
+        JsonMapper.builder()
+            .addModule(GreyCOSJacksonModule.createModule())
+            .addModule(new CustomJacksonModule())
+            .build();
+
+    assertThatThrownBy(
+            () ->
+                objectMapper.readValue(
+                    """
+                    {
+                      "score": "0hard/0soft",
+                      "initialized": true,
+                      "constraints": [ {
+                        "id": "invalidMatchCount",
+                        "weight": "0hard/1soft",
+                        "score": "0hard/0soft",
+                        "matches": [],
+                        "matchCount": "1"
+                      } ]
+                    }
+                    """,
+                    ScoreAnalysis.class))
+        .hasMessageContaining("matchCount", "must be a 32-bit integer");
+  }
+
   private static ScoreAnalysis<HardSoftScore> getScoreAnalysis() {
-    var constraintRef1 = ConstraintRef.of("package1", "constraint1");
-    var constraintRef2 = ConstraintRef.of("package2", "constraint2");
+    var constraintRef1 = ConstraintRef.of("constraint1");
+    var constraintRef2 = ConstraintRef.of("constraint2");
     var matchAnalysis1 =
-        new MatchAnalysis<>(
+        new DefaultMatchAnalysis<>(
             constraintRef1,
             HardSoftScore.ofHard(1),
             DefaultConstraintJustification.of(HardSoftScore.ofHard(1), "A", "B"));
     var matchAnalysis2 =
-        new MatchAnalysis<>(
+        new DefaultMatchAnalysis<>(
             constraintRef1,
             HardSoftScore.ofHard(1),
             DefaultConstraintJustification.of(HardSoftScore.ofHard(1), "B", "C", "D"));
     var matchAnalysis3 =
-        new MatchAnalysis<>(
+        new DefaultMatchAnalysis<>(
             constraintRef2,
             HardSoftScore.ofSoft(1),
             DefaultConstraintJustification.of(HardSoftScore.ofSoft(1), "D"));
     var matchAnalysis4 =
-        new MatchAnalysis<>(
+        new DefaultMatchAnalysis<>(
             constraintRef2,
             HardSoftScore.ofSoft(3),
             DefaultConstraintJustification.of(HardSoftScore.ofSoft(3), "A", "C"));
     var constraintAnalysis1 =
-        new ConstraintAnalysis<>(
+        new DefaultConstraintAnalysis<>(
             constraintRef1,
             HardSoftScore.ofHard(1),
             HardSoftScore.ofHard(2),
             List.of(matchAnalysis1, matchAnalysis2));
     var constraintAnalysis2 =
-        new ConstraintAnalysis<>(
+        new DefaultConstraintAnalysis<>(
             constraintRef2,
             HardSoftScore.ofSoft(1),
             HardSoftScore.ofSoft(4),
             List.of(matchAnalysis3, matchAnalysis4));
-    return new ScoreAnalysis<>(
+    return new DefaultScoreAnalysis<>(
         HardSoftScore.of(2, 4),
         Map.of(constraintRef1, constraintAnalysis1, constraintRef2, constraintAnalysis2));
   }
@@ -185,7 +324,7 @@ class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
                   "score" : "2hard/4soft",
                   "initialized" : true,
                   "constraints" : [ {
-                    "name" : "constraint1",
+                    "id" : "constraint1",
                     "weight" : "1hard/0soft",
                     "score" : "2hard/0soft",
                     "matches" : [ {
@@ -198,7 +337,7 @@ class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
                      ],
                     "matchCount" : 2
                   }, {
-                    "name" : "constraint2",
+                    "id" : "constraint2",
                     "weight" : "0hard/1soft",
                     "score" : "0hard/4soft",
                     "matches" : [ {
@@ -214,14 +353,13 @@ class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
   }
 
   @Test
-  void recommendedAssignment() throws JsonProcessingException {
+  void recommendedAssignment() throws JacksonException {
     var objectMapper =
         JsonMapper.builder()
-            .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-            .defaultPropertyInclusion(
-                JsonInclude.Value.construct(
-                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
             .addModule(GreyCOSJacksonModule.createModule())
+            .addModule(new CustomJacksonModule())
+            .changeDefaultPropertyInclusion(
+                incl -> incl.withValueInclusion(JsonInclude.Include.NON_DEFAULT))
             .build();
 
     var proposition = new Pair<>("A", "1");
@@ -243,24 +381,22 @@ class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
                            } ]"""
                 .formatted(getSerializedScoreAnalysis()));
 
-    objectMapper.registerModule(new CustomJacksonModule());
     List<RecommendedAssignment<Pair<String, String>, HardSoftScore>> deserialized =
         objectMapper.readValue(
             serialized,
-            TypeFactory.defaultInstance()
+            TypeFactory.createDefaultInstance()
                 .constructCollectionType(List.class, RecommendedAssignment.class));
     assertThat(deserialized).hasSize(1).first().isEqualTo(originalRecommendedAssignment);
   }
 
   @Test
-  void constraintWeightOverrides() throws JsonProcessingException {
+  void constraintWeightOverrides() throws JacksonException {
     var objectMapper =
         JsonMapper.builder()
-            .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-            .defaultPropertyInclusion(
-                JsonInclude.Value.construct(
-                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
             .addModule(GreyCOSJacksonModule.createModule())
+            .addModule(new CustomJacksonModule())
+            .changeDefaultPropertyInclusion(
+                incl -> incl.withValueInclusion(JsonInclude.Include.NON_DEFAULT))
             .build();
 
     var constraintWeightOverrides =
@@ -278,9 +414,14 @@ class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
                             "constraint2":"0hard/2soft"
                         }""");
 
-    objectMapper.registerModule(new CustomJacksonModule());
     var deserialized = objectMapper.readValue(serialized, ConstraintWeightOverrides.class);
     assertThat(deserialized).isEqualTo(constraintWeightOverrides);
+  }
+
+  @Test
+  void testServiceProvider() {
+    ServiceLoader<JacksonModule> loader = ServiceLoader.load(JacksonModule.class);
+    assertThat(loader).hasSizeGreaterThan(0);
   }
 
   public static final class CustomJacksonModule extends SimpleModule {
@@ -313,16 +454,14 @@ class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
     }
 
     @Override
-    protected <ConstraintJustification_ extends ConstraintJustification>
-        ConstraintJustification_ parseConstraintJustification(
-            ConstraintRef constraintRef,
-            String constraintJustificationString,
-            HardSoftScore score) {
-      List<Object> justificationList =
-          Arrays.stream(constraintJustificationString.split(","))
-              .map(s -> s.replace("[", "").replace("]", "").replace("\"", "").strip())
-              .collect(Collectors.toList());
-      return (ConstraintJustification_) DefaultConstraintJustification.of(score, justificationList);
+    protected ConstraintJustification deserializeConstraintJustification(
+        ConstraintRef constraintRef,
+        JsonNode constraintJustificationNode,
+        DeserializationContext context,
+        HardSoftScore score) {
+      List<Object> justificationList = new ArrayList<>();
+      constraintJustificationNode.forEach(factNode -> justificationList.add(factNode.asString()));
+      return DefaultConstraintJustification.of(score, justificationList);
     }
   }
 

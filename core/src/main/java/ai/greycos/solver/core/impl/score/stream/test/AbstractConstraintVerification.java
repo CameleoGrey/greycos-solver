@@ -33,7 +33,7 @@ abstract class AbstractConstraintVerification<Solution_, Score_ extends Score<Sc
           facts[0]);
     }
     Arrays.stream(facts)
-        .filter(fact -> fact instanceof Collection)
+        .filter(Collection.class::isInstance)
         .findFirst()
         .ifPresent(
             collection ->

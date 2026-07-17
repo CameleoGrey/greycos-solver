@@ -1,37 +1,43 @@
 package ai.greycos.solver.core.impl.bavet.uni;
 
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
+import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollectorAccumulator;
+import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollectorValueHandle;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.bavet.common.AbstractGroupNode;
 import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 abstract class AbstractGroupUniNode<
         OldA, OutTuple_ extends Tuple, GroupKey_, ResultContainer_, Result_>
     extends AbstractGroupNode<UniTuple<OldA>, OutTuple_, GroupKey_, ResultContainer_, Result_> {
 
-  private final BiFunction<ResultContainer_, OldA, Runnable> accumulator;
+  private final int groupAccumulatorIndex;
+  private final @Nullable UniConstraintCollectorAccumulator<ResultContainer_, OldA>
+      incrementalAccumulator;
 
   protected AbstractGroupUniNode(
       int groupStoreIndex,
-      int undoStoreIndex,
+      int groupAccumulatorIndex,
       Function<UniTuple<OldA>, GroupKey_> groupKeyFunction,
-      UniConstraintCollector<OldA, ResultContainer_, Result_> collector,
+      @NonNull UniConstraintCollector<OldA, ResultContainer_, Result_> collector,
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
     super(
         groupStoreIndex,
-        undoStoreIndex,
         groupKeyFunction,
-        collector == null ? null : collector.supplier(),
-        collector == null ? null : collector.finisher(),
+        collector.supplier(),
+        collector.finisher(),
         nextNodesTupleLifecycle,
         environmentMode);
-    accumulator = collector == null ? null : collector.accumulator();
+    this.groupAccumulatorIndex = groupAccumulatorIndex;
+    this.incrementalAccumulator = collector.accumulator();
   }
 
   protected AbstractGroupUniNode(
@@ -40,11 +46,26 @@ abstract class AbstractGroupUniNode<
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
     super(groupStoreIndex, groupKeyFunction, nextNodesTupleLifecycle, environmentMode);
-    accumulator = null;
+    this.groupAccumulatorIndex = -1;
+    this.incrementalAccumulator = null;
   }
 
   @Override
-  protected final Runnable accumulate(ResultContainer_ resultContainer, UniTuple<OldA> tuple) {
-    return accumulator.apply(resultContainer, tuple.getA());
+  protected void groupInsert(ResultContainer_ resultContainer, UniTuple<OldA> tuple) {
+    var groupElement = incrementalAccumulator.intoGroup(resultContainer);
+    tuple.setStore(groupAccumulatorIndex, groupElement);
+    groupElement.add(tuple.getA());
+  }
+
+  @Override
+  protected void groupUpdate(ResultContainer_ resultContainer, UniTuple<OldA> tuple) {
+    UniConstraintCollectorValueHandle<OldA> groupElement = tuple.getStore(groupAccumulatorIndex);
+    groupElement.replaceWith(tuple.getA());
+  }
+
+  @Override
+  protected void groupRetract(UniTuple<OldA> tuple) {
+    UniConstraintCollectorValueHandle<OldA> groupElement = tuple.removeStore(groupAccumulatorIndex);
+    groupElement.remove();
   }
 }

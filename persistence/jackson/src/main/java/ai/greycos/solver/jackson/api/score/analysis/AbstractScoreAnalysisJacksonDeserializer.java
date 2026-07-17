@@ -1,22 +1,26 @@
 package ai.greycos.solver.jackson.api.score.analysis;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Objects;
 
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.analysis.ConstraintAnalysis;
 import ai.greycos.solver.core.api.score.analysis.MatchAnalysis;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
+import ai.greycos.solver.core.impl.score.analysis.DefaultConstraintAnalysis;
+import ai.greycos.solver.core.impl.score.analysis.DefaultMatchAnalysis;
+import ai.greycos.solver.core.impl.score.analysis.DefaultScoreAnalysis;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ValueDeserializer;
 
 /**
  * Extend this to implement {@link ScoreAnalysis} deserialization specific for your cotwin.
@@ -24,61 +28,54 @@ import com.fasterxml.jackson.databind.JsonNode;
  * @param <Score_>
  */
 public abstract class AbstractScoreAnalysisJacksonDeserializer<Score_ extends Score<Score_>>
-    extends JsonDeserializer<ScoreAnalysis<Score_>> {
+    extends ValueDeserializer<ScoreAnalysis<Score_>> {
 
   @Override
   public final ScoreAnalysis<Score_> deserialize(JsonParser p, DeserializationContext ctxt)
-      throws IOException {
+      throws JacksonException {
     JsonNode node = p.readValueAsTree();
-    var score = parseScore(node.get("score").asText());
-    var initialized = node.get("initialized").asBoolean();
-    var constraintAnalysisList = new HashMap<ConstraintRef, ConstraintAnalysis<Score_>>();
-    for (var constraintNode : node.get("constraints")) {
-      var constraintName = constraintNode.get("name").asText();
-      var constraintRef = ConstraintRef.of(constraintName);
-      var constraintWeight = parseScore(constraintNode.get("weight").asText());
-      var constraintScore = parseScore(constraintNode.get("score").asText());
+    var score = parseScore(required(node, "score").asString());
+    var initialized = required(node, "initialized").asBoolean();
+    var constraintAnalysisList = new LinkedHashMap<ConstraintRef, ConstraintAnalysis<Score_>>();
+    for (var constraintNode : required(node, "constraints")) {
+      var constraintId = required(constraintNode, "id").asString();
+      var constraintRef = ConstraintRef.of(constraintId);
+      var constraintWeight = parseScore(required(constraintNode, "weight").asString());
+      var constraintScore = parseScore(required(constraintNode, "score").asString());
       var matchScoreList = new ArrayList<MatchAnalysis<Score_>>();
       var matchesNode = constraintNode.get("matches");
       var matchCountNode = constraintNode.get("matchCount");
       if (matchesNode == null) {
         constraintAnalysisList.put(
             constraintRef,
-            new ConstraintAnalysis<>(
+            new DefaultConstraintAnalysis<>(
                 constraintRef,
                 constraintWeight,
                 constraintScore,
                 null,
-                matchCountNode == null ? -1 : Integer.parseInt(matchCountNode.asText())));
+                matchCountNode == null ? -1 : parseMatchCount(matchCountNode)));
       } else {
-        for (var matchNode : constraintNode.get("matches")) {
-          var matchScore = parseScore(matchNode.get("score").asText());
-          var justificationNode = matchNode.get("justification");
-          if (justificationNode == null) {
-            // Not allowed; if matches are present, they must have justifications.
-            throw new IllegalStateException(
-                "The match justification of constraint (%s)'s match is missing."
-                    .formatted(constraintRef));
-          }
-          var justificationString = justificationNode.toString();
-          if (getConstraintJustificationClass(constraintRef) == null) { // String-based fallback.
-            var parsedJustification =
-                parseConstraintJustification(constraintRef, justificationString, matchScore);
-            matchScoreList.add(new MatchAnalysis<>(constraintRef, matchScore, parsedJustification));
-          } else { // Deserializer-based method.
-            var parsedJustification =
-                ctxt.readTreeAsValue(
-                    justificationNode, getConstraintJustificationClass(constraintRef));
-            matchScoreList.add(new MatchAnalysis<>(constraintRef, matchScore, parsedJustification));
-          }
+        var matchCount = parseMatchCount(required(constraintNode, "matchCount"));
+        for (var matchNode : matchesNode) {
+          var matchScore = parseScore(required(matchNode, "score").asString());
+          var justificationNode = required(matchNode, "justification");
+          var parsedJustification =
+              Objects.requireNonNull(
+                  deserializeConstraintJustification(
+                      constraintRef, justificationNode, ctxt, matchScore),
+                  () ->
+                      "The constraint justification deserializer returned null for constraint (%s)."
+                          .formatted(constraintRef));
+          matchScoreList.add(
+              new DefaultMatchAnalysis<>(constraintRef, matchScore, parsedJustification));
         }
         constraintAnalysisList.put(
             constraintRef,
-            new ConstraintAnalysis<>(
-                constraintRef, constraintWeight, constraintScore, matchScoreList));
+            new DefaultConstraintAnalysis<>(
+                constraintRef, constraintWeight, constraintScore, matchScoreList, matchCount));
       }
     }
-    return new ScoreAnalysis<>(score, constraintAnalysisList, initialized);
+    return new DefaultScoreAnalysis<>(score, constraintAnalysisList, initialized);
   }
 
   /**
@@ -92,36 +89,37 @@ public abstract class AbstractScoreAnalysisJacksonDeserializer<Score_ extends Sc
 
   /**
    * Each {@link Constraint} in the {@link ConstraintProvider} is justified with a custom
-   * implementation {@link ConstraintJustification}. This method is responsible for telling Jackson
-   * which type to serialize the justification into. This type must have a deserializer registered.
+   * implementation {@link ConstraintJustification}. This method is responsible for deserializing
+   * the justification.
    *
    * @param constraintRef never null
-   * @return null if fallback {@link #parseConstraintJustification(ConstraintRef, String, Score)}
-   *     should be used instead.
-   * @param <ConstraintJustification_> Cotwin-specific custom implementation, typically
-   *     constraint-specific.
-   */
-  protected <ConstraintJustification_ extends ConstraintJustification>
-      Class<ConstraintJustification_> getConstraintJustificationClass(ConstraintRef constraintRef) {
-    return null;
-  }
-
-  /**
-   * Each {@link Constraint} in the {@link ConstraintProvider} is justified with a custom
-   * implementation {@link ConstraintJustification}. This method is responsible for parsing the
-   * justification string into that subtype. It is a fallback for when using a deserializer for
-   * {@link #getConstraintJustificationClass(ConstraintRef)} isn't possible
-   *
-   * @param constraintRef never null
-   * @param constraintJustificationString never null
+   * @param constraintJustificationNode never null
+   * @param context never null
    * @param score never null
    * @return never null
-   * @param <ConstraintJustification_> Cotwin-specific custom implementation, typically
-   *     constraint-specific.
    */
-  protected <ConstraintJustification_ extends ConstraintJustification>
-      ConstraintJustification_ parseConstraintJustification(
-          ConstraintRef constraintRef, String constraintJustificationString, Score_ score) {
-    throw new UnsupportedOperationException();
+  protected abstract ConstraintJustification deserializeConstraintJustification(
+      ConstraintRef constraintRef,
+      JsonNode constraintJustificationNode,
+      DeserializationContext context,
+      Score_ score)
+      throws JacksonException;
+
+  private static JsonNode required(JsonNode parent, String propertyName) {
+    var value = parent.get(propertyName);
+    if (value == null || value.isNull()) {
+      throw new IllegalArgumentException(
+          "The required JSON property (%s) is missing or null.".formatted(propertyName));
+    }
+    return value;
+  }
+
+  private static int parseMatchCount(JsonNode matchCountNode) {
+    if (!matchCountNode.isIntegralNumber() || !matchCountNode.canConvertToInt()) {
+      throw new IllegalArgumentException(
+          "The JSON property (matchCount) must be a 32-bit integer, but was (%s)."
+              .formatted(matchCountNode));
+    }
+    return matchCountNode.intValue();
   }
 }

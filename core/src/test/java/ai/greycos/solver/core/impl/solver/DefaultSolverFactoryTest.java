@@ -7,10 +7,13 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.solver.SolverConfigOverride;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
+import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.SolverConfig;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
-import ai.greycos.solver.core.impl.solver.random.RandomFactory;
+import ai.greycos.solver.core.impl.solver.DefaultSolverTest.DummyEasyScoreCalculator;
+import ai.greycos.solver.core.impl.solver.random.DelegatingSplittableRandomGenerator;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.testcotwin.TestdataConstraintProvider;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
@@ -20,6 +23,64 @@ import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 
 class DefaultSolverFactoryTest {
+
+  @Test
+  void moveThreadCountAutoIsCorrectlyResolvedWhenCpuCountIsPositive() {
+    assertThat(mockMoveThreadCountResolverAuto(1)).isNull();
+    assertThat(mockMoveThreadCountResolverAuto(2)).isNull();
+    assertThat(mockMoveThreadCountResolverAuto(4)).isEqualTo(2);
+    assertThat(mockMoveThreadCountResolverAuto(5)).isEqualTo(3);
+    assertThat(mockMoveThreadCountResolverAuto(6)).isEqualTo(4);
+    assertThat(mockMoveThreadCountResolverAuto(100)).isEqualTo(4);
+  }
+
+  @Test
+  void moveThreadCountAutoIsResolvedToNullWhenCpuCountIsNegative() {
+    assertThat(mockMoveThreadCountResolverAuto(-1)).isNull();
+  }
+
+  private Integer mockMoveThreadCountResolverAuto(int mockCpuCount) {
+    DefaultSolverFactory.MoveThreadCountResolver moveThreadCountResolverMock =
+        new DefaultSolverFactory.MoveThreadCountResolver() {
+          @Override
+          protected int getAvailableProcessors() {
+            return mockCpuCount;
+          }
+        };
+    var maybeCount =
+        moveThreadCountResolverMock.resolveMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_AUTO);
+    if (maybeCount.isPresent()) {
+      return maybeCount.getAsInt();
+    } else {
+      return null;
+    }
+  }
+
+  @Test
+  void moveThreadCountIsCorrectlyResolvedWhenValueIsPositive() {
+    assertThat(resolveMoveThreadCount("2")).isEqualTo(2);
+  }
+
+  @Test
+  void moveThreadCountThrowsExceptionWhenValueIsNegative() {
+    assertThatIllegalArgumentException().isThrownBy(() -> resolveMoveThreadCount("-1"));
+  }
+
+  @Test
+  void moveThreadCountIsResolvedToNullWhenValueIsNone() {
+    assertThat(resolveMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_NONE)).isNull();
+  }
+
+  private Integer resolveMoveThreadCount(String moveThreadCountString) {
+    DefaultSolverFactory.MoveThreadCountResolver moveThreadCountResolver =
+        new DefaultSolverFactory.MoveThreadCountResolver();
+    var maybeCount = moveThreadCountResolver.resolveMoveThreadCount(moveThreadCountString);
+    if (maybeCount.isPresent()) {
+      return maybeCount.getAsInt();
+    } else {
+      return null;
+    }
+  }
 
   @Test
   void cachesScoreDirectorFactory() {
@@ -54,6 +115,29 @@ class DefaultSolverFactoryTest {
   }
 
   @Test
+  void useCorrectRandomSeed() {
+    // Reproducible
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(DummyEasyScoreCalculator.class)
+            .withRandomSeed(123456L);
+    var defaultSolverFactory = new DefaultSolverFactory<TestdataSolution>(solverConfig);
+    var randomGenerator =
+        (DelegatingSplittableRandomGenerator)
+            defaultSolverFactory
+                .buildRandomSupplier(EnvironmentMode.PHASE_ASSERT)
+                .get()
+                .moveIteratorUsage();
+    var otherRandomGenerator =
+        (DelegatingSplittableRandomGenerator)
+            RandomSource.seeded(solverConfig.getRandomSeed()).moveIteratorUsage();
+    assertThat(randomGenerator.getSeed()).isEqualTo(otherRandomGenerator.getSeed());
+    assertThat(otherRandomGenerator.nextLong()).isEqualTo(randomGenerator.nextLong());
+  }
+
+  @Test
   void testNoSolutionConfiguration() {
     SolverConfig solverConfig = new SolverConfig();
     assertThatCode(() -> new DefaultSolverFactory<>(solverConfig))
@@ -73,28 +157,13 @@ class DefaultSolverFactoryTest {
   }
 
   @Test
-  void testInvalidRandomConfiguration() {
-    SolverConfig solverConfig =
-        SolverConfig.createFromXmlResource(
-                "ai/greycos/solver/core/config/solver/testdataSolverConfig.xml")
-            .withRandomFactoryClass(RandomFactory.class)
-            .withRandomSeed(1000L);
-    assertThatCode(
-            () ->
-                new DefaultSolverFactory<>(solverConfig).buildSolver(new SolverConfigOverride<>()))
-        .hasMessageContaining("The solverConfig with randomFactoryClass ")
-        .hasMessageContaining("has a non-null randomType (null) or a non-null randomSeed (1000).");
-  }
-
-  @Test
   void testInvalidMoveThreadCountConfiguration() {
     SolverConfig solverConfig =
         SolverConfig.createFromXmlResource(
                 "ai/greycos/solver/core/config/solver/testdataSolverConfig.xml")
             .withMoveThreadCount("-1");
     assertThatCode(
-            () ->
-                new DefaultSolverFactory<>(solverConfig).buildSolver(new SolverConfigOverride<>()))
+            () -> new DefaultSolverFactory<>(solverConfig).buildSolver(new SolverConfigOverride()))
         .hasMessageContaining("The moveThreadCount")
         .hasMessageContaining("resulted in a resolvedMoveThreadCount")
         .hasMessageContaining("that is lower than 1.");
@@ -111,63 +180,7 @@ class DefaultSolverFactoryTest {
                     .withConstraintProviderClass(TestdataConstraintProvider.class)
                     .withConstraintStreamProfilingEnabled(true));
     assertThatCode(
-            () ->
-                new DefaultSolverFactory<>(solverConfig).buildSolver(new SolverConfigOverride<>()))
+            () -> new DefaultSolverFactory<>(solverConfig).buildSolver(new SolverConfigOverride()))
         .doesNotThrowAnyException();
-  }
-
-  // ************************************************************************
-  // MoveThreadCount resolution tests
-  // ************************************************************************
-
-  @Test
-  void moveThreadCountAutoIsCorrectlyResolvedWhenCpuCountIsPositive() {
-    assertThat(mockMoveThreadCountResolverAuto(1)).isNull();
-    assertThat(mockMoveThreadCountResolverAuto(2)).isNull();
-    assertThat(mockMoveThreadCountResolverAuto(4)).isEqualTo(2);
-    assertThat(mockMoveThreadCountResolverAuto(5)).isEqualTo(3);
-    assertThat(mockMoveThreadCountResolverAuto(6)).isEqualTo(4);
-    assertThat(mockMoveThreadCountResolverAuto(100)).isEqualTo(4);
-  }
-
-  @Test
-  void moveThreadCountAutoIsResolvedToNullWhenCpuCountIsNegative() {
-    assertThat(mockMoveThreadCountResolverAuto(-1)).isNull();
-  }
-
-  private Integer mockMoveThreadCountResolverAuto(int mockCpuCount) {
-    DefaultSolverFactory.MoveThreadCountResolver moveThreadCountResolverMock =
-        new DefaultSolverFactory.MoveThreadCountResolver() {
-          @Override
-          protected int getAvailableProcessors() {
-            return mockCpuCount;
-          }
-        };
-
-    var maybeCount =
-        moveThreadCountResolverMock.resolveMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_AUTO);
-    return maybeCount.isPresent() ? maybeCount.getAsInt() : null;
-  }
-
-  @Test
-  void moveThreadCountIsCorrectlyResolvedWhenValueIsPositive() {
-    assertThat(resolveMoveThreadCount("2")).isEqualTo(2);
-  }
-
-  @Test
-  void moveThreadCountThrowsExceptionWhenValueIsNegative() {
-    assertThatIllegalArgumentException().isThrownBy(() -> resolveMoveThreadCount("-1"));
-  }
-
-  @Test
-  void moveThreadCountIsResolvedToNullWhenValueIsNone() {
-    assertThat(resolveMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_NONE)).isNull();
-  }
-
-  private Integer resolveMoveThreadCount(String moveThreadCountString) {
-    DefaultSolverFactory.MoveThreadCountResolver moveThreadCountResolver =
-        new DefaultSolverFactory.MoveThreadCountResolver();
-    var maybeCount = moveThreadCountResolver.resolveMoveThreadCount(moveThreadCountString);
-    return maybeCount.isPresent() ? maybeCount.getAsInt() : null;
   }
 }

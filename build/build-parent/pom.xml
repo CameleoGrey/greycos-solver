@@ -20,19 +20,22 @@
     <!-- ************************************************************************ -->
     <!-- Dependencies -->
     <!-- ************************************************************************ -->
-    <version.ch.qos.logback>1.5.32</version.ch.qos.logback>
-    <version.io.quarkus>3.32.3</version.io.quarkus>
+    <version.ch.qos.logback>1.5.38</version.ch.qos.logback>
+    <version.io.quarkus>3.37.2</version.io.quarkus>
     <version.org.apache.commons.math3>3.6.1</version.org.apache.commons.math3>
-    <version.org.apache.logging.log4j>2.25.3</version.org.apache.logging.log4j>
+    <version.org.apache.logging.log4j>2.26.1</version.org.apache.logging.log4j>
     <version.org.assertj>3.27.7</version.org.assertj>
     <version.org.awaitility>4.3.0</version.org.awaitility>
-    <version.org.eclipse.microprofile.config>3.1.1-RC1</version.org.eclipse.microprofile.config>
+    <version.org.eclipse.microprofile.config>3.1.1</version.org.eclipse.microprofile.config>
     <version.org.freemarker>2.3.34</version.org.freemarker>
     <version.org.jspecify>1.0.0</version.org.jspecify>
-    <version.org.junit.jupiter>6.0.3</version.org.junit.jupiter>
-    <version.org.openrewrite.recipe>3.26.0</version.org.openrewrite.recipe>
-    <version.org.springframework.boot>3.5.10</version.org.springframework.boot>
-    <version.ow2.asm>9.9.1</version.ow2.asm>
+    <version.org.junit.jupiter>6.1.2</version.org.junit.jupiter>
+    <version.org.openrewrite.recipe>3.34.0</version.org.openrewrite.recipe>
+    <version.org.springframework.boot>4.1.0</version.org.springframework.boot>
+    <version.ow2.asm>9.10.1</version.ow2.asm>
+    <!-- Jackson 3 and Jackson 2 annotations must advance together. -->
+    <version.tools.jackson>3.2.1</version.tools.jackson>
+    <version.com.fasterxml.jackson.core>2.22</version.com.fasterxml.jackson.core>
 
     <!-- ************************************************************************ -->
     <!-- Plugins -->
@@ -42,17 +45,17 @@
     <version.asciidoctor.plugin.pdf>2.3.23</version.asciidoctor.plugin.pdf>
     <version.assembly.plugin>3.8.0</version.assembly.plugin>
     <version.compiler.plugin>3.15.0</version.compiler.plugin>
-    <version.dependency.plugin>3.10.0</version.dependency.plugin>
+    <version.dependency.plugin>3.11.0</version.dependency.plugin>
     <version.exec.plugin>3.6.3</version.exec.plugin>
-    <version.enforcer.plugin>3.6.2</version.enforcer.plugin>
-    <version.jacoco.plugin>0.8.14</version.jacoco.plugin>
+    <version.enforcer.plugin>3.6.3</version.enforcer.plugin>
+    <version.jacoco.plugin>0.8.15</version.jacoco.plugin>
     <version.jar.plugin>3.5.0</version.jar.plugin>
     <version.jaxb2.plugin>4.1.0</version.jaxb2.plugin>
     <version.revapi.plugin>0.15.1</version.revapi.plugin>
-    <version.sonar.plugin>5.5.0.6356</version.sonar.plugin>
+    <version.sonar.plugin>5.7.0.6970</version.sonar.plugin>
     <version.source.plugin>3.4.0</version.source.plugin>
-    <version.spotless.plugin>3.3.0</version.spotless.plugin>
-    <version.surefire.plugin>3.5.5</version.surefire.plugin>
+    <version.spotless.plugin>3.8.0</version.spotless.plugin>
+    <version.surefire.plugin>3.5.6</version.surefire.plugin>
     <version.versions.plugin>2.21.0</version.versions.plugin>
 
     <!-- Plugin configuration properties -->
@@ -144,6 +147,12 @@
         <artifactId>jspecify</artifactId>
         <version>${version.org.jspecify}</version>
       </dependency>
+      <!-- Quarkus uses Jackson 2, while Spring and persistence use Jackson 3. -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-annotations</artifactId>
+        <version>${version.com.fasterxml.jackson.core}</version>
+      </dependency>
 
       <!-- ASM -->
       <dependency>
@@ -187,6 +196,11 @@
           <extensions>true</extensions>
         </plugin>
         <plugin>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <version>${version.org.springframework.boot}</version>
+        </plugin>
+        <plugin>
           <artifactId>maven-dependency-plugin</artifactId>
           <version>${version.dependency.plugin}</version>
         </plugin>
@@ -207,7 +221,7 @@
             <dependency>
               <groupId>org.codehaus.mojo</groupId>
               <artifactId>extra-enforcer-rules</artifactId>
-              <version>1.11.0</version>
+              <version>1.12.0</version>
             </dependency>
           </dependencies>
           <executions>
@@ -234,9 +248,8 @@
               </goals>
               <configuration>
                 <rules>
-                  <requireManagedDeps implementation="org.commonjava.maven.enforcer.rule.EnforceManagedDepsRule">
+                  <requireManagedDeps>
                     <checkProfiles>true</checkProfiles>
-                    <failOnViolation>true</failOnViolation>
                   </requireManagedDeps>
                 </rules>
               </configuration>
@@ -592,7 +605,6 @@
             <configuration>
               <failOnWarning>true</failOnWarning>
               <ignoreNonCompile>true</ignoreNonCompile>
-              <verbose>true</verbose>
             </configuration>
           </execution>
         </executions>

@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.constructionheuristic.placer.entity;
 
 import static ai.greycos.solver.core.impl.constructionheuristic.placer.entity.PlacementAssertions.assertValuePlacement;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -53,7 +54,7 @@ class QueuedValuePlacerTest {
             entitySelector, new MimicReplayingValueSelector<>(recordingValueSelector), false);
     var placer = new QueuedValuePlacer<>(null, null, recordingValueSelector, moveSelector);
 
-    var solverScope = mock(SolverScope.class);
+    SolverScope<TestdataSolution> solverScope = mockSolverScope();
     placer.solvingStarted(solverScope);
 
     var phaseScopeA = mock(AbstractPhaseScope.class);

@@ -24,7 +24,7 @@ public class ConstructionHeuristicForagerConfig
     extends AbstractConfig<ConstructionHeuristicForagerConfig> {
 
   private ConstructionHeuristicPickEarlyType pickEarlyType = null;
-  private Class<? extends ConstructionHeuristicForager> foragerClass = null;
+  private String foragerClass = null;
 
   @XmlJavaTypeAdapter(JaxbCustomPropertiesAdapter.class)
   private Map<String, String> customProperties = null;
@@ -38,12 +38,12 @@ public class ConstructionHeuristicForagerConfig
   }
 
   public @Nullable Class<? extends ConstructionHeuristicForager> getForagerClass() {
-    return foragerClass;
+    return ConfigUtils.resolveClass(foragerClass, "foragerClass", this);
   }
 
   public void setForagerClass(
       @Nullable Class<? extends ConstructionHeuristicForager> foragerClass) {
-    this.foragerClass = foragerClass;
+    this.foragerClass = foragerClass == null ? null : foragerClass.getName();
   }
 
   public @Nullable Map<String, String> getCustomProperties() {
@@ -82,7 +82,7 @@ public class ConstructionHeuristicForagerConfig
     pickEarlyType =
         ConfigUtils.inheritOverwritableProperty(pickEarlyType, inheritedConfig.getPickEarlyType());
     foragerClass =
-        ConfigUtils.inheritOverwritableProperty(foragerClass, inheritedConfig.getForagerClass());
+        ConfigUtils.inheritOverwritableProperty(foragerClass, inheritedConfig.foragerClass);
     customProperties =
         ConfigUtils.inheritOverwritableProperty(
             customProperties, inheritedConfig.getCustomProperties());
@@ -97,7 +97,7 @@ public class ConstructionHeuristicForagerConfig
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
     if (foragerClass != null) {
-      classVisitor.accept(foragerClass);
+      classVisitor.accept(getForagerClass());
     }
   }
 }

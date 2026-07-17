@@ -4,10 +4,10 @@ import java.util.Iterator;
 import java.util.List;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractOriginalSwapIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractRandomSwapIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.pillar.PillarSelector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public class PillarSwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
 
@@ -67,11 +67,6 @@ public class PillarSwapMoveSelector<Solution_> extends GenericMoveSelector<Solut
   // ************************************************************************
   // Worker methods
   // ************************************************************************
-
-  @Override
-  public boolean isCountable() {
-    return leftPillarSelector.isCountable() && rightPillarSelector.isCountable();
-  }
 
   @Override
   public boolean isNeverEnding() {

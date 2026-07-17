@@ -3,7 +3,7 @@ package ai.greycos.solver.core.impl.localsearch.decider;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
-import ai.greycos.solver.core.impl.heuristic.move.MoveAdapters;
+import ai.greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
 import ai.greycos.solver.core.impl.localsearch.decider.acceptor.Acceptor;
 import ai.greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
@@ -127,9 +127,9 @@ public class LocalSearchDecider<Solution_> {
 
   protected <Score_ extends Score<Score_>> void doMove(LocalSearchMoveScope<Solution_> moveScope) {
     var scoreDirector = moveScope.<Score_>getScoreDirector();
-    var moveDirector = moveScope.getStepScope().<Score_>getMoveDirector();
     var move = moveScope.getMove();
-    if (!MoveAdapters.isDoable(moveDirector, move)) {
+    if (move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove
+        && !selectorBasedMove.isMoveDoable(scoreDirector)) {
       throw new IllegalStateException(
           "Impossible state: Local search move selector (%s) provided a non-doable move (%s)."
               .formatted(moveRepository, move));

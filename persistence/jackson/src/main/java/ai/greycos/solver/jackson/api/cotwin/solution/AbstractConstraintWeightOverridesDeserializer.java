@@ -1,15 +1,15 @@
 package ai.greycos.solver.jackson.api.cotwin.solution;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import ai.greycos.solver.core.api.score.Score;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ValueDeserializer;
 
 /**
  * Extend this to implement {@link ConstraintWeightOverrides} deserialization specific for your
@@ -18,19 +18,20 @@ import com.fasterxml.jackson.databind.JsonNode;
  * @param <Score_>
  */
 public abstract class AbstractConstraintWeightOverridesDeserializer<Score_ extends Score<Score_>>
-    extends JsonDeserializer<ConstraintWeightOverrides<Score_>> {
+    extends ValueDeserializer<ConstraintWeightOverrides<Score_>> {
 
   @Override
   public final ConstraintWeightOverrides<Score_> deserialize(
-      JsonParser p, DeserializationContext ctxt) throws IOException {
+      JsonParser p, DeserializationContext ctxt) throws JacksonException {
     var resultMap = new LinkedHashMap<String, Score_>();
     JsonNode node = p.readValueAsTree();
     node.properties()
-        .forEach(
+        .iterator()
+        .forEachRemaining(
             entry -> {
-              var constraintName = entry.getKey();
-              var weight = parseScore(entry.getValue().asText());
-              resultMap.put(constraintName, weight);
+              var constraintId = entry.getKey();
+              var weight = parseScore(entry.getValue().asString());
+              resultMap.put(constraintId, weight);
             });
     return ConstraintWeightOverrides.of(resultMap);
   }

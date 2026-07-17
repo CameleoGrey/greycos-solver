@@ -5,9 +5,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.ScoreExplanation;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import ai.greycos.solver.core.api.solver.RecommendedAssignment;
 import ai.greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
@@ -17,14 +15,11 @@ import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.api.solver.SolverManager;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.PreviewFeature;
-import ai.greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import ai.greycos.solver.core.impl.cotwin.variable.listener.support.violation.VariableSnapshotTotal;
-import ai.greycos.solver.core.impl.score.DefaultScoreExplanation;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
-import ai.greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
-import ai.greycos.solver.core.impl.util.MutableReference;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningSolutionDiff;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -111,22 +106,6 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
     }
   }
 
-  @SuppressWarnings("unchecked")
-  @Override
-  public ScoreExplanation<Solution_, Score_> explain(
-      Solution_ solution, SolutionUpdatePolicy solutionUpdatePolicy) {
-    var currentScore = (Score_) scoreDirectorFactory.getSolutionDescriptor().getScore(solution);
-    var explanation =
-        callScoreDirector(
-            solution,
-            solutionUpdatePolicy,
-            DefaultScoreExplanation::new,
-            ConstraintMatchPolicy.ENABLED,
-            false);
-    assertFreshScore(solution, currentScore, explanation.getScore(), solutionUpdatePolicy);
-    return explanation;
-  }
-
   private void assertFreshScore(
       Solution_ solution,
       Score_ currentScore,
@@ -198,47 +177,5 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
         assigner,
         ConstraintMatchPolicy.match(fetchPolicy),
         true);
-  }
-
-  /**
-   * Generates a Bavet node network visualization for the given solution. It uses a Graphviz DOT
-   * language representation. The string returned by this method can be converted to an image using
-   * {@code dot}:
-   *
-   * <pre>
-   * $ dot -Tsvg input.dot > output.svg
-   * </pre>
-   *
-   * This assumes the string returned by this method is saved to a file named {@code input.dot}.
-   *
-   * <p>The node network itself is an internal implementation detail of Constraint Streams. Do not
-   * rely on any particular node network structure in production code, and do not micro-optimize
-   * your constraints to match the node network. Such optimizations are destined to become obsolete
-   * and possibly harmful as the node network evolves.
-   *
-   * <p>This method is only provided for debugging purposes and is deliberately not part of the
-   * public API. Its signature or behavior may change without notice, and it may be removed in
-   * future versions.
-   *
-   * @see <a href="https://graphviz.org/doc/info/lang.html">Graphviz DOT language</a>
-   * @param solution Will be used to read constraint weights, which determine the final node
-   *     network.
-   * @return A string representing the node network in Graphviz DOT language.
-   */
-  public @Nullable String visualizeNodeNetwork(Solution_ solution) {
-    if (scoreDirectorFactory
-        instanceof
-        BavetConstraintStreamScoreDirectorFactory<Solution_, ?> bavetScoreDirectorFactory) {
-      var result = new MutableReference<String>(null);
-      bavetScoreDirectorFactory.newSession(
-          solution,
-          new ConsistencyTracker<>(),
-          ConstraintMatchPolicy.ENABLED,
-          false,
-          result::setValue);
-      return result.getValue();
-    }
-    throw new UnsupportedOperationException(
-        "Node network visualization is only supported when using Constraint Streams.");
   }
 }

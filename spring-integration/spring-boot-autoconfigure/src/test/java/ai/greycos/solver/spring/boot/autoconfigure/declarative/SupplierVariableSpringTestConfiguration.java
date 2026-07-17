@@ -4,7 +4,7 @@ import ai.greycos.solver.spring.boot.autoconfigure.declarative.constraints.Testd
 import ai.greycos.solver.spring.boot.autoconfigure.declarative.cotwin.TestdataSpringSupplierVariableSolution;
 
 import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration

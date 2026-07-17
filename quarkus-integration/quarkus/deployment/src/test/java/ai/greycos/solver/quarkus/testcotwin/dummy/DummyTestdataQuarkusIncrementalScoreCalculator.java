@@ -1,24 +1,15 @@
 package ai.greycos.solver.quarkus.testcotwin.dummy;
 
-import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 
 import org.jspecify.annotations.NonNull;
 
-public class DummyTestdataQuarkusIncrementalScoreCalculator implements IncrementalScoreCalculator {
+public class DummyTestdataQuarkusIncrementalScoreCalculator
+    implements IncrementalScoreCalculator<Object, SimpleScore> {
 
   @Override
   public void resetWorkingSolution(@NonNull Object workingSolution) {
-    // Ignore
-  }
-
-  @Override
-  public void beforeEntityAdded(@NonNull Object entity) {
-    // Ignore
-  }
-
-  @Override
-  public void afterEntityAdded(@NonNull Object entity) {
     // Ignore
   }
 
@@ -33,17 +24,7 @@ public class DummyTestdataQuarkusIncrementalScoreCalculator implements Increment
   }
 
   @Override
-  public void beforeEntityRemoved(@NonNull Object entity) {
-    // Ignore
-  }
-
-  @Override
-  public void afterEntityRemoved(@NonNull Object entity) {
-    // Ignore
-  }
-
-  @Override
-  public @NonNull Score calculateScore() {
+  public @NonNull SimpleScore calculateScore() {
     return null;
   }
 }

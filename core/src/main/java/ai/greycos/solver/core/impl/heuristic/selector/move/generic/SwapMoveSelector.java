@@ -5,10 +5,10 @@ import java.util.List;
 
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractOriginalSwapIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractRandomSwapIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public class SwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
 
@@ -75,11 +75,6 @@ public class SwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> 
   // ************************************************************************
   // Worker methods
   // ************************************************************************
-
-  @Override
-  public boolean isCountable() {
-    return leftEntitySelector.isCountable() && rightEntitySelector.isCountable();
-  }
 
   @Override
   public boolean isNeverEnding() {

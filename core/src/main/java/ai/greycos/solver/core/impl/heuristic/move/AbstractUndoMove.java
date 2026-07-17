@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.move;
 
-import java.util.Collection;
 import java.util.Objects;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
@@ -44,12 +44,12 @@ public abstract class AbstractUndoMove<Solution_> implements Move<Solution_> {
   protected abstract void doMoveOnGenuineVariables(ScoreDirector<Solution_> scoreDirector);
 
   @Override
-  public final Collection<?> getPlanningEntities() {
+  public final SequencedCollection<Object> getPlanningEntities() {
     return parentMove.getPlanningEntities();
   }
 
   @Override
-  public final Collection<?> getPlanningValues() {
+  public final SequencedCollection<Object> getPlanningValues() {
     return parentMove.getPlanningValues();
   }
 

@@ -25,6 +25,7 @@ on:
       - '.gitignore'
       - '**.md'
       - '*.txt'
+      - 'docs/**'
 
 jobs:
   # Check if the user is a member of the organization; if so, allow the PR to sail through.
@@ -78,10 +79,12 @@ jobs:
       # Clone greycos-solver
       # No need to check for stale repo, as Github merges the main repo into the fork automatically.
       - name: Checkout greycos-solver
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: ./greycos-solver
           ref: ${{ github.event.pull_request.head.sha }} # The GHA event will pull the main branch by default, and we must specify the PR reference version
+          # The approval gate above ensures this pull request is trusted.
+          allow-unsafe-pr-checkout: true
 
       - name: Setup Temurin 25 and Maven
         uses: actions/setup-java@v5
@@ -99,7 +102,7 @@ jobs:
       - name: Checkout greycos-solver-benchmarks (PR) # Checkout the PR branch first, if it exists
         if: github.head_ref # Only true if this is a PR.
         id: checkout-solver-benchmarks-pr
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         continue-on-error: true
         with:
           repository: CameleoGrey/greycos-solver-benchmarks
@@ -108,7 +111,7 @@ jobs:
           fetch-depth: 0 # Otherwise merge will fail on account of not having history.
       - name: Checkout greycos-solver-benchmarks (main) # Checkout the main branch if the PR branch does not exist
         if: ${{ steps.checkout-solver-benchmarks-pr.outcome != 'success' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: CameleoGrey/greycos-solver-benchmarks
           ref: main
@@ -136,14 +139,16 @@ jobs:
       checks: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
           ref: ${{ github.event.pull_request.head.sha }} # The GHA event will pull the main branch by default, and we must specify the PR reference version
-      - name: Set up JDK 17
+          # The approval gate above ensures this pull request is trusted.
+          allow-unsafe-pr-checkout: true
+      - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
-          java-version: 17
+          java-version: 21
           distribution: 'temurin'
           cache: 'maven'
       - name: Cache SonarCloud packages

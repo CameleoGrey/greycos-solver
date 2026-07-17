@@ -21,7 +21,7 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
     implements RevertableScoreDirector<Solution_> {
 
   private final InnerScoreDirector<Solution_, Score_> backingScoreDirector;
-  private final List<ChangeAction<Solution_>> variableChanges;
+  private List<ChangeAction<Solution_>> variableChanges;
 
   /*
    * The fromIndex of afterListVariableChanged must match the fromIndex of its beforeListVariableChanged call.
@@ -63,9 +63,10 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
   }
 
   @Override
-  @SuppressWarnings("unchecked")
-  public List<ChangeAction<Solution_>> copyChanges() {
-    return List.copyOf(variableChanges);
+  public ai.greycos.solver.core.preview.api.move.Move<Solution_> createUndoMove() {
+    // Keep this off the hot path: the undo move retains the current list, and undoChanges()
+    // replaces our reference instead of mutating the retained list.
+    return new RecordedUndoMove<>(variableChanges);
   }
 
   @Override
@@ -78,7 +79,7 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
       variableChanges.get(i).undo(backingScoreDirector);
     }
     Objects.requireNonNull(backingScoreDirector).triggerVariableListeners();
-    variableChanges.clear();
+    variableChanges = new ArrayList<>();
     if (cache != null) {
       cache.clear();
     }

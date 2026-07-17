@@ -12,10 +12,14 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
+import ai.greycos.solver.core.api.score.stream.ConstraintMetadata;
 import ai.greycos.solver.core.api.score.stream.ConstraintStream;
+import ai.greycos.solver.core.api.score.stream.bi.BiConstraintStream;
+import ai.greycos.solver.core.api.score.stream.quad.QuadConstraintStream;
+import ai.greycos.solver.core.api.score.stream.tri.TriConstraintStream;
+import ai.greycos.solver.core.api.score.stream.uni.UniConstraintStream;
 import ai.greycos.solver.core.impl.score.stream.bavet.BavetConstraint;
 import ai.greycos.solver.core.impl.score.stream.bavet.BavetConstraintFactory;
 import ai.greycos.solver.core.impl.score.stream.bavet.common.BavetScoringConstraintStream;
@@ -25,18 +29,16 @@ import ai.greycos.solver.core.impl.score.stream.common.RetrievalSemantics;
 import ai.greycos.solver.core.impl.score.stream.common.ScoreImpactType;
 
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.NullMarked;
 
-@NullMarked
 public abstract class BavetAbstractConstraintStream<Solution_>
     extends AbstractConstraintStream<Solution_> implements BavetStream {
 
-  private static final Set<String> CONSTRAINT_STREAM_API_METHOD_SET =
+  private static final Set<String> constraintStreamApiMethodSet =
       Stream.of(
-              ai.greycos.solver.core.api.score.stream.uni.UniConstraintStream.class,
-              ai.greycos.solver.core.api.score.stream.bi.BiConstraintStream.class,
-              ai.greycos.solver.core.api.score.stream.tri.TriConstraintStream.class,
-              ai.greycos.solver.core.api.score.stream.quad.QuadConstraintStream.class)
+              UniConstraintStream.class,
+              BiConstraintStream.class,
+              TriConstraintStream.class,
+              QuadConstraintStream.class)
           .flatMap(clazz -> Arrays.stream(clazz.getMethods()))
           .map(Method::getName)
           .collect(Collectors.toUnmodifiableSet());
@@ -72,19 +74,21 @@ public abstract class BavetAbstractConstraintStream<Solution_>
             stack ->
                 stack
                     .dropWhile(
-                        frame ->
-                            !ConstraintStream.class.isAssignableFrom(frame.getDeclaringClass())
-                                && !CONSTRAINT_STREAM_API_METHOD_SET.contains(
-                                    frame.getMethodName()))
+                        stackFrame ->
+                            !ConstraintStream.class.isAssignableFrom(stackFrame.getDeclaringClass())
+                                && !constraintStreamApiMethodSet.contains(
+                                    stackFrame.getMethodName()))
                     .dropWhile(
-                        frame ->
-                            ConstraintStream.class.isAssignableFrom(frame.getDeclaringClass())
+                        stackFrame ->
+                            ConstraintStream.class.isAssignableFrom(stackFrame.getDeclaringClass())
                                 || ConstraintFactory.class.isAssignableFrom(
-                                    frame.getDeclaringClass()))
+                                    stackFrame.getDeclaringClass()))
                     .map(
-                        frame ->
+                        stackFrame ->
                             new ConstraintNodeLocation(
-                                frame.getClassName(), frame.getMethodName(), frame.getLineNumber()))
+                                stackFrame.getClassName(),
+                                stackFrame.getMethodName(),
+                                stackFrame.getLineNumber()))
                     .findFirst()
                     .orElseGet(ConstraintNodeLocation::unknown));
   }
@@ -116,32 +120,21 @@ public abstract class BavetAbstractConstraintStream<Solution_>
   }
 
   protected <Score_ extends Score<Score_>> Constraint buildConstraint(
-      String constraintPackage,
-      String constraintName,
-      String description,
-      String constraintGroup,
+      ConstraintMetadata description,
       Score_ constraintWeight,
       ScoreImpactType impactType,
       Object justificationFunction,
-      Object indictedObjectsMapping,
       BavetScoringConstraintStream<Solution_> stream) {
     var resolvedJustificationMapping =
         Objects.requireNonNullElseGet(justificationFunction, this::getDefaultJustificationMapping);
-    var resolvedIndictedObjectsMapping =
-        Objects.requireNonNullElseGet(
-            indictedObjectsMapping, this::getDefaultIndictedObjectsMapping);
     var isConstraintWeightConfigurable = constraintWeight == null;
-    var constraintRef = ConstraintRef.of(constraintName);
     var constraint =
         new BavetConstraint<>(
             constraintFactory,
-            constraintRef,
             description,
-            constraintGroup,
             isConstraintWeightConfigurable ? null : constraintWeight,
             impactType,
             resolvedJustificationMapping,
-            resolvedIndictedObjectsMapping,
             stream);
     stream.setConstraint(constraint);
     return constraint;

@@ -17,7 +17,6 @@ import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 
 import ai.greycos.solver.core.api.function.QuadFunction;
-import ai.greycos.solver.core.api.function.ToIntTriFunction;
 import ai.greycos.solver.core.api.function.ToLongTriFunction;
 import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.function.TriPredicate;
@@ -25,38 +24,33 @@ import ai.greycos.solver.core.api.score.stream.common.ConnectedRangeChain;
 import ai.greycos.solver.core.api.score.stream.common.LoadBalance;
 import ai.greycos.solver.core.api.score.stream.common.SequenceChain;
 import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollector;
-import ai.greycos.solver.core.impl.score.stream.collector.ReferenceAverageCalculator;
+import ai.greycos.solver.core.impl.score.stream.collector.AbstractReferenceAverageSlot;
 
-public class InnerTriConstraintCollectors {
-  public static <A, B, C> TriConstraintCollector<A, B, C, ?, Double> average(
-      ToIntTriFunction<? super A, ? super B, ? super C> mapper) {
-    return new AverageIntTriCollector<>(mapper);
-  }
-
+public final class InnerTriConstraintCollectors {
   public static <A, B, C> TriConstraintCollector<A, B, C, ?, Double> average(
       ToLongTriFunction<? super A, ? super B, ? super C> mapper) {
-    return new AverageLongTriCollector<>(mapper);
+    return new AverageTriCollector<>(mapper);
   }
 
   static <A, B, C, Mapped_, Average_> TriConstraintCollector<A, B, C, ?, Average_> average(
       TriFunction<? super A, ? super B, ? super C, ? extends Mapped_> mapper,
-      Supplier<ReferenceAverageCalculator<Mapped_, Average_>> calculatorSupplier) {
-    return new AverageReferenceTriCollector<>(mapper, calculatorSupplier);
+      Supplier<AbstractReferenceAverageSlot.State<Mapped_, Average_>> stateSupplier) {
+    return new AverageReferenceTriCollector<>(mapper, stateSupplier);
   }
 
   public static <A, B, C> TriConstraintCollector<A, B, C, ?, BigDecimal> averageBigDecimal(
       TriFunction<? super A, ? super B, ? super C, ? extends BigDecimal> mapper) {
-    return average(mapper, ReferenceAverageCalculator.bigDecimal());
+    return average(mapper, AbstractReferenceAverageSlot.bigDecimalState());
   }
 
   public static <A, B, C> TriConstraintCollector<A, B, C, ?, BigDecimal> averageBigInteger(
       TriFunction<? super A, ? super B, ? super C, ? extends BigInteger> mapper) {
-    return average(mapper, ReferenceAverageCalculator.bigInteger());
+    return average(mapper, AbstractReferenceAverageSlot.bigIntegerState());
   }
 
   public static <A, B, C> TriConstraintCollector<A, B, C, ?, Duration> averageDuration(
       TriFunction<? super A, ? super B, ? super C, ? extends Duration> mapper) {
-    return average(mapper, ReferenceAverageCalculator.duration());
+    return average(mapper, AbstractReferenceAverageSlot.durationState());
   }
 
   public static <
@@ -115,34 +109,19 @@ public class InnerTriConstraintCollectors {
     return new ConditionalTriCollector<>(predicate, delegate);
   }
 
-  public static <A, B, C> TriConstraintCollector<A, B, C, ?, Integer> count() {
-    return CountIntTriCollector.getInstance();
+  public static <A, B, C> TriConstraintCollector<A, B, C, ?, Long> count() {
+    return CountTriCollector.getInstance();
   }
 
-  public static <A, B, C, Mapped_> TriConstraintCollector<A, B, C, ?, Integer> countDistinct(
+  public static <A, B, C, Mapped_> TriConstraintCollector<A, B, C, ?, Long> countDistinct(
       TriFunction<? super A, ? super B, ? super C, ? extends Mapped_> mapper) {
-    return new CountDistinctIntTriCollector<>(mapper);
-  }
-
-  public static <A, B, C, Mapped_> TriConstraintCollector<A, B, C, ?, Long> countDistinctLong(
-      TriFunction<? super A, ? super B, ? super C, ? extends Mapped_> mapper) {
-    return new CountDistinctLongTriCollector<>(mapper);
-  }
-
-  public static <A, B, C> TriConstraintCollector<A, B, C, ?, Long> countLong() {
-    return CountLongTriCollector.getInstance();
+    return new CountDistinctTriCollector<>(mapper);
   }
 
   public static <A, B, C, Result_ extends Comparable<? super Result_>>
       TriConstraintCollector<A, B, C, ?, Result_> max(
           TriFunction<? super A, ? super B, ? super C, ? extends Result_> mapper) {
     return new MaxComparableTriCollector<>(mapper);
-  }
-
-  public static <A, B, C, Result_> TriConstraintCollector<A, B, C, ?, Result_> max(
-      TriFunction<? super A, ? super B, ? super C, ? extends Result_> mapper,
-      Comparator<? super Result_> comparator) {
-    return new MaxComparatorTriCollector<>(mapper, comparator);
   }
 
   public static <A, B, C, Result_, Property_ extends Comparable<? super Property_>>
@@ -158,12 +137,6 @@ public class InnerTriConstraintCollectors {
     return new MinComparableTriCollector<>(mapper);
   }
 
-  public static <A, B, C, Result_> TriConstraintCollector<A, B, C, ?, Result_> min(
-      TriFunction<? super A, ? super B, ? super C, ? extends Result_> mapper,
-      Comparator<? super Result_> comparator) {
-    return new MinComparatorTriCollector<>(mapper, comparator);
-  }
-
   public static <A, B, C, Result_, Property_ extends Comparable<? super Property_>>
       TriConstraintCollector<A, B, C, ?, Result_> min(
           TriFunction<? super A, ? super B, ? super C, ? extends Result_> mapper,
@@ -171,14 +144,9 @@ public class InnerTriConstraintCollectors {
     return new MinPropertyTriCollector<>(mapper, propertyMapper);
   }
 
-  public static <A, B, C> TriConstraintCollector<A, B, C, ?, Integer> sum(
-      ToIntTriFunction<? super A, ? super B, ? super C> mapper) {
-    return new SumIntTriCollector<>(mapper);
-  }
-
   public static <A, B, C> TriConstraintCollector<A, B, C, ?, Long> sum(
       ToLongTriFunction<? super A, ? super B, ? super C> mapper) {
-    return new SumLongTriCollector<>(mapper);
+    return new SumTriCollector<>(mapper);
   }
 
   public static <A, B, C, Result_> TriConstraintCollector<A, B, C, ?, Result_> sum(

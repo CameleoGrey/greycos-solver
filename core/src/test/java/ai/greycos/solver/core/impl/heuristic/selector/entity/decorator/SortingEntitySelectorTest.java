@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.entity.decorator;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfEntitySelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -65,15 +66,16 @@ class SortingEntitySelectorTest {
             cacheType,
             new TestdataObjectSorter<TestdataSolution, TestdataEntity>());
 
+    SolverScope solverScope = mockSolverScope();
     InnerScoreDirector<?, ?> scoreDirector = mock(InnerScoreDirector.class);
+    doReturn(scoreDirector).when(solverScope).getScoreDirector();
     doReturn(new TestdataSolution()).when(scoreDirector).getWorkingSolution();
     when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
     when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
-    SolverScope solverScope = SelectorTestUtils.solvingStarted(entitySelector, scoreDirector);
+    entitySelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
     when(phaseScopeA.getSolverScope()).thenReturn(solverScope);
-    when(phaseScopeA.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.phaseStarted(phaseScopeA);
 
     AbstractStepScope stepScopeA1 = mock(AbstractStepScope.class);
@@ -94,7 +96,6 @@ class SortingEntitySelectorTest {
 
     AbstractPhaseScope phaseScopeB = mock(AbstractPhaseScope.class);
     when(phaseScopeB.getSolverScope()).thenReturn(solverScope);
-    when(phaseScopeB.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.phaseStarted(phaseScopeB);
 
     AbstractStepScope stepScopeB1 = mock(AbstractStepScope.class);
@@ -133,13 +134,5 @@ class SortingEntitySelectorTest {
         new SortingEntitySelector(
             mock(EntitySelector.class), SelectionCacheType.PHASE, mock(SelectionSorter.class));
     assertThat(entitySelector.isNeverEnding()).isFalse();
-  }
-
-  @Test
-  void isCountable() {
-    EntitySelector entitySelector =
-        new SortingEntitySelector(
-            mock(EntitySelector.class), SelectionCacheType.PHASE, mock(SelectionSorter.class));
-    assertThat(entitySelector.isCountable()).isTrue();
   }
 }

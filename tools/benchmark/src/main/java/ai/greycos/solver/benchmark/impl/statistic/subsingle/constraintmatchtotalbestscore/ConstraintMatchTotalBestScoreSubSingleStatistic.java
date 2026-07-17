@@ -9,7 +9,7 @@ import ai.greycos.solver.benchmark.impl.report.LineChart;
 import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.statistic.PureSubSingleStatistic;
 import ai.greycos.solver.benchmark.impl.statistic.StatisticRegistry;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
 
@@ -73,7 +73,7 @@ public class ConstraintMatchTotalBestScoreSubSingleStatistic<Solution_>
           builderList.add(new LineChart.Builder<>());
         }
         LineChart.Builder<Long, Double> builder = builderList.get(i);
-        String seriesLabel = point.getConstraintRef().constraintName() + " weight";
+        String seriesLabel = point.getConstraintRef().id() + " weight";
         // Only add changes
         double lastValue =
             (builder.count(seriesLabel) == 0) ? 0.0 : builder.getLastValue(seriesLabel);

@@ -17,11 +17,16 @@ public final class NearbySelectionTuning {
 
   public static int calculateMaxNearbySortSize(@NonNull NearbySelectionConfig config) {
     Integer userSpecified = config.getMaxNearbySortSize();
-    if (userSpecified != null && userSpecified > 0) {
+    if (userSpecified != null) {
+      if (userSpecified < 1) {
+        throw new IllegalArgumentException(
+            "The maxNearbySortSize (%d) must be at least 1.".formatted(userSpecified));
+      }
       return userSpecified;
     }
     int distributionSize = getDistributionSize(config);
-    return Math.max(AUTO_SORT_SIZE_MINIMUM, distributionSize * AUTO_SORT_SIZE_MULTIPLIER);
+    long automaticSortSize = (long) distributionSize * AUTO_SORT_SIZE_MULTIPLIER;
+    return (int) Math.min(Integer.MAX_VALUE, Math.max(AUTO_SORT_SIZE_MINIMUM, automaticSortSize));
   }
 
   public static boolean isEagerInitialization(@NonNull NearbySelectionConfig config) {

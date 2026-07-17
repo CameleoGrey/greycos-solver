@@ -8,8 +8,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Random;
-
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import ai.greycos.solver.core.impl.heuristic.move.DummyMove;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
@@ -52,7 +50,7 @@ class ProbabilityMoveSelectorTest {
         new ProbabilityMoveSelector<>(
             childMoveSelector, SelectionCacheType.STEP, probabilityWeightFactory);
 
-    Random workingRandom =
+    var workingRandom =
         new TestRandom(1222.0 / 1234.0, 111.0 / 1234.0, 0.0, 1230.0 / 1234.0, 1199.0 / 1234.0);
 
     InnerScoreDirector scoreDirector = mock(InnerScoreDirector.class);

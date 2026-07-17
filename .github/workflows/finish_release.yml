@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Checkout greycos-solver
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0 # Otherwise merge will fail on account of not having history.
@@ -30,8 +30,10 @@ jobs:
 
       - name: Update release branch
         shell: bash
+        env:
+          TAG_REF: ${{ github.ref }}
         run: |
-          tag=${{ github.ref }}
+          tag="$TAG_REF"
           tag_version=${tag##*/}
           version=${tag_version%.*}
           version="${version:1}.x"

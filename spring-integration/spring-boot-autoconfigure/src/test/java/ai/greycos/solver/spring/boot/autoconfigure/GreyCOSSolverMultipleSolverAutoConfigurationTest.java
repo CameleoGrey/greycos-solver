@@ -386,7 +386,7 @@ class GreyCOSSolverMultipleSolverAutoConfigurationTest {
                             .withProblemId(1L)
                             .withProblem(problem)
                             .withConfigOverride(
-                                new SolverConfigOverride<TestdataSpringSolution>()
+                                new SolverConfigOverride()
                                     .withTerminationConfig(
                                         new TerminationConfig()
                                             .withSpentLimit(Duration.ofSeconds(2L))))

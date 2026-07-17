@@ -1,14 +1,11 @@
 package ai.greycos.solver.core.impl.score.stream.bavet.bi;
 
-import static ai.greycos.solver.core.impl.score.stream.common.bi.InnerBiConstraintStream.createDefaultIndictedObjectsMapping;
 import static ai.greycos.solver.core.impl.score.stream.common.bi.InnerBiConstraintStream.createDefaultJustificationMapping;
 
 import java.math.BigDecimal;
-import java.util.Collection;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
-import java.util.function.ToIntBiFunction;
 import java.util.function.ToLongBiFunction;
 
 import ai.greycos.solver.core.api.function.TriFunction;
@@ -588,7 +585,7 @@ public abstract class BavetAbstractBiConstraintStream<Solution_, A, B>
   @Override
   public <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> innerImpact(
       Score_ constraintWeight,
-      ToIntBiFunction<A, B> matchWeigher,
+      ToLongBiFunction<A, B> matchWeigher,
       ScoreImpactType scoreImpactType) {
     var stream =
         shareAndAddChild(
@@ -601,37 +598,11 @@ public abstract class BavetAbstractBiConstraintStream<Solution_, A, B>
       ScoreImpactType impactType,
       Score_ constraintWeight) {
     return new BiConstraintBuilderImpl<>(
-        (constraintPackage,
-            constraintName,
-            constraintDescription,
-            constraintGroup,
-            constraintWeight_,
-            impactType_,
-            justificationMapping,
-            indictedObjectsMapping) ->
+        (description, constraintWeight_, impactType_, justificationMapping) ->
             buildConstraint(
-                constraintPackage,
-                constraintName,
-                constraintDescription,
-                constraintGroup,
-                constraintWeight_,
-                impactType_,
-                justificationMapping,
-                indictedObjectsMapping,
-                stream),
+                description, constraintWeight_, impactType_, justificationMapping, stream),
         impactType,
         constraintWeight);
-  }
-
-  @Override
-  public <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> innerImpact(
-      Score_ constraintWeight,
-      ToLongBiFunction<A, B> matchWeigher,
-      ScoreImpactType scoreImpactType) {
-    var stream =
-        shareAndAddChild(
-            new BavetScoringBiConstraintStream<>(constraintFactory, this, matchWeigher));
-    return newTerminator(stream, scoreImpactType, constraintWeight);
   }
 
   @Override
@@ -649,10 +620,5 @@ public abstract class BavetAbstractBiConstraintStream<Solution_, A, B>
   protected final TriFunction<A, B, Score<?>, DefaultConstraintJustification>
       getDefaultJustificationMapping() {
     return createDefaultJustificationMapping();
-  }
-
-  @Override
-  protected final BiFunction<A, B, Collection<?>> getDefaultIndictedObjectsMapping() {
-    return createDefaultIndictedObjectsMapping();
   }
 }

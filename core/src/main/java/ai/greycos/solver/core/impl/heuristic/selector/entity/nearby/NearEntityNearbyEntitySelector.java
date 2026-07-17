@@ -126,7 +126,11 @@ public final class NearEntityNearbyEntitySelector<Solution_>
     private int cachedNearbySize = -1;
 
     public RandomNearbyEntityIterator(RandomGenerator random) {
-      this.random = random != null ? random : NearEntityNearbyEntitySelector.this.workingRandom;
+      if (random == null) {
+        throw new IllegalStateException(
+            "The working random is not initialized. Make sure solvingStarted() was called.");
+      }
+      this.random = random;
       this.replayingOriginIterator = originEntitySelector.iterator();
     }
 
@@ -140,8 +144,11 @@ public final class NearEntityNearbyEntitySelector<Solution_>
       if (replayingOriginIterator.hasNext()) {
         origin = replayingOriginIterator.next();
       }
-      if (origin == null || nearbyRandom == null) {
+      if (origin == null) {
         throw new NoSuchElementException();
+      }
+      if (nearbyRandom == null) {
+        throw new IllegalStateException("The random nearby distribution is not configured.");
       }
       if (origin != cachedOrigin) {
         cachedOrigin = origin;
@@ -161,18 +168,33 @@ public final class NearEntityNearbyEntitySelector<Solution_>
   private class OriginalNearbyEntityIterator implements Iterator<Object> {
 
     private final Iterator<Object> replayingOriginIterator;
-    private final long childSize;
+    private int nearbySize = -1;
     private int nextNearbyIndex;
+    private boolean originSelected = false;
+    private boolean originIsNotEmpty;
+    private Object origin = null;
 
     public OriginalNearbyEntityIterator() {
       this.replayingOriginIterator = originEntitySelector.iterator();
-      this.childSize = childEntitySelector.getSize();
       this.nextNearbyIndex = discardNearbyIndexZero ? 1 : 0;
+    }
+
+    private void selectOrigin() {
+      if (originSelected) {
+        return;
+      }
+      originIsNotEmpty = replayingOriginIterator.hasNext();
+      if (originIsNotEmpty) {
+        origin = replayingOriginIterator.next();
+        nearbySize = getNearbySize(origin);
+      }
+      originSelected = true;
     }
 
     @Override
     public boolean hasNext() {
-      return replayingOriginIterator.hasNext() && nextNearbyIndex < childSize;
+      selectOrigin();
+      return originIsNotEmpty && nextNearbyIndex < nearbySize;
     }
 
     @Override
@@ -180,7 +202,6 @@ public final class NearEntityNearbyEntitySelector<Solution_>
       if (!hasNext()) {
         throw new NoSuchElementException();
       }
-      Object origin = replayingOriginIterator.next();
       Object destination = getNearbyDestination(origin, nextNearbyIndex);
       nextNearbyIndex++;
       return destination;

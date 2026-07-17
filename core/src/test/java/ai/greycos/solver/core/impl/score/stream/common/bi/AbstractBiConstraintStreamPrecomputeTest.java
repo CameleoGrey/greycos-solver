@@ -64,7 +64,7 @@ public abstract class AbstractBiConstraintStreamPrecomputeTest extends AbstractC
                                             && value.getValueGroup() == valueGroup))
                     .filter((entity, value) -> entity.getValue() == value1)
                     .penalize(SimpleScore.ONE)
-                    .asConstraint(TEST_CONSTRAINT_NAME));
+                    .asConstraint(TEST_CONSTRAINT_ID));
 
     // From scratch
     Mockito.reset(entity1);
@@ -151,7 +151,7 @@ public abstract class AbstractBiConstraintStreamPrecomputeTest extends AbstractC
                                             && value.getValueGroup() == valueGroup))
                     .filter((value, entity) -> entity.getValue() == value1)
                     .penalize(SimpleScore.ONE)
-                    .asConstraint(TEST_CONSTRAINT_NAME));
+                    .asConstraint(TEST_CONSTRAINT_ID));
 
     // From scratch
     Mockito.reset(entity1);
@@ -234,7 +234,7 @@ public abstract class AbstractBiConstraintStreamPrecomputeTest extends AbstractC
                                 Joiners.equal(TestdataLavishEntity::getEntityGroup)))
                     .filter((a, b) -> a.getValue() == value1)
                     .penalize(SimpleScore.ONE)
-                    .asConstraint(TEST_CONSTRAINT_NAME));
+                    .asConstraint(TEST_CONSTRAINT_ID));
 
     // From scratch
     Mockito.reset(entity1);
@@ -318,7 +318,7 @@ public abstract class AbstractBiConstraintStreamPrecomputeTest extends AbstractC
                                 Joiners.equal(TestdataLavishEntity::getEntityGroup)))
                     .filter((a, b) -> b.getValue() == value1)
                     .penalize(SimpleScore.ONE)
-                    .asConstraint(TEST_CONSTRAINT_NAME));
+                    .asConstraint(TEST_CONSTRAINT_ID));
 
     // From scratch
     Mockito.reset(entity2);
@@ -381,7 +381,7 @@ public abstract class AbstractBiConstraintStreamPrecomputeTest extends AbstractC
                     .precompute(entityStreamSupplier)
                     .ifExists(TestdataLavishEntity.class)
                     .penalize(SimpleScore.ONE)
-                    .asConstraint(TEST_CONSTRAINT_NAME));
+                    .asConstraint(TEST_CONSTRAINT_ID));
 
     // From scratch
     scoreDirector.setWorkingSolution(solution);
@@ -466,7 +466,7 @@ public abstract class AbstractBiConstraintStreamPrecomputeTest extends AbstractC
 
     assertPrecompute(
         solution,
-        List.of(new Pair<>(entityGroup, 1)),
+        List.of(new Pair<>(entityGroup, 1L)),
         pf ->
             pf.forEachUnfiltered(TestdataLavishEntity.class)
                 .filter(entity -> entity.getEntityGroup() != null)
@@ -497,6 +497,7 @@ public abstract class AbstractBiConstraintStreamPrecomputeTest extends AbstractC
   @Override
   @TestTemplate
   public void flattenNewInstances() {
+    // Needed since Integers use a cache of instances that we don't want to accidentally use
     record ValueHolder(int value) {}
 
     var solution = TestdataLavishSolution.generateEmptySolution();

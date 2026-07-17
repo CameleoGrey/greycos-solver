@@ -5,6 +5,6 @@
 
   <!-- Score configuration -->
   <scoreDirectorFactory>
-    <incrementalScoreCalculatorClass>ai.greycos.solver.core.testcotwin.TestdataIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+    <easyScoreCalculatorClass>ai.greycos.solver.core.testcotwin.TestdataEasyScoreCalculator</easyScoreCalculatorClass>
   </scoreDirectorFactory>
 </solver>

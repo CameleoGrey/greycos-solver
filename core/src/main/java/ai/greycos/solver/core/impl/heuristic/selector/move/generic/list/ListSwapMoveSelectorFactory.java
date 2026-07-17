@@ -48,7 +48,7 @@ public class ListSwapMoveSelectorFactory<Solution_>
     // and FilteringValueRangeSelector
     // to replay the selected value and return only reachable values.
     var enableEntityValueRangeFilter =
-        !entityDescriptor.getGenuineListVariableDescriptor().canExtractValueRangeFromSolution();
+        !entityDescriptor.getListVariableDescriptor().canExtractValueRangeFromSolution();
     // A null ID means to turn off the entity value range filtering
     String entityValueRangeRecorderId = null;
     if (enableEntityValueRangeFilter) {
@@ -57,7 +57,7 @@ public class ListSwapMoveSelectorFactory<Solution_>
         var variableName = Objects.requireNonNull(valueSelectorConfig.getVariableName());
         // We set the id to make sure the value selector will use the mimic recorder
         entityValueRangeRecorderId =
-            ConfigUtils.addRandomSuffix(variableName, configPolicy.getRandom());
+            ConfigUtils.addRandomSuffix(variableName, configPolicy.getRandom().factoryUsage());
         valueSelectorConfig.setId(entityValueRangeRecorderId);
       } else {
         entityValueRangeRecorderId =

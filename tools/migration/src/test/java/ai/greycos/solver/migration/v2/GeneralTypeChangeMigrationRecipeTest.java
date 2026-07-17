@@ -40,6 +40,7 @@ class GeneralTypeChangeMigrationRecipeTest implements RewriteTest {
                     "package ai.greycos.solver.core.api.score.buildin.bendable; public class BendableScore {}",
                     "package ai.greycos.solver.core.api.score.buildin.bendablelong; public class BendableLongScore {}",
                     "package ai.greycos.solver.core.api.score.buildin.bendablebigdecimal; public class BendableBigDecimalScore {}",
+                    "package ai.greycos.solver.core.api.score.constraint; public class ConstraintRef {}",
                     "package ai.greycos.solver.core.api.solver; public class ProblemFactChange {}",
                     "package ai.greycos.solver.core.api.domain.valuerange; public class CountableValueRange {}",
                     "package ai.greycos.solver.core.api.domain.valuerange; public class ValueRange {}",
@@ -84,7 +85,7 @@ class GeneralTypeChangeMigrationRecipeTest implements RewriteTest {
             """
                         package greycos;
 
-                        import ai.greycos.solver.core.api.domain.common.PlanningId;
+                        import ai.greycos.solver.core.api.cotwin.common.PlanningId;
                         import ai.greycos.solver.core.api.solver.change.ProblemChange;
 
                         public class Test {
@@ -161,6 +162,28 @@ class GeneralTypeChangeMigrationRecipeTest implements RewriteTest {
   }
 
   @Test
+  void migrateConstraintRef() {
+    rewriteRun(
+        java(
+            """
+                        package greycos;
+
+                        import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+
+                        public class Test {
+                                ConstraintRef constraintRef;
+                        }""",
+            """
+                        package greycos;
+
+                        import ai.greycos.solver.core.api.score.stream.ConstraintRef;
+
+                        public class Test {
+                                ConstraintRef constraintRef;
+                        }"""));
+  }
+
+  @Test
   void migrateValueRange() {
     rewriteRun(
         java(
@@ -179,9 +202,9 @@ class GeneralTypeChangeMigrationRecipeTest implements RewriteTest {
             """
                         package greycos;
 
-                        import ai.greycos.solver.core.api.domain.valuerange.ValueRange;
-                        import ai.greycos.solver.core.impl.domain.valuerange.CompositeValueRange;
-                        import ai.greycos.solver.core.impl.domain.valuerange.NullAllowingValueRange;
+                        import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
+                        import ai.greycos.solver.core.impl.cotwin.valuerange.CompositeValueRange;
+                        import ai.greycos.solver.core.impl.cotwin.valuerange.NullAllowingValueRange;
 
                         public class Test {
                                 ValueRange valueRange;

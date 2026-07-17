@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.constructionheuristic.placer.entity;
 import static ai.greycos.solver.core.impl.constructionheuristic.placer.entity.PlacementAssertions.assertEntityPlacement;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfIterator;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -61,7 +62,7 @@ class QueuedEntityPlacerTest {
         new QueuedEntityPlacer<>(
             null, null, recordingEntitySelector, Collections.singletonList(moveSelector));
 
-    var solverScope = mock(SolverScope.class);
+    SolverScope<TestdataSolution> solverScope = mockSolverScope();
     placer.solvingStarted(solverScope);
 
     var phaseScopeA = mock(AbstractPhaseScope.class);
@@ -149,7 +150,7 @@ class QueuedEntityPlacerTest {
             false));
     var placer = new QueuedEntityPlacer<>(null, null, recordingEntitySelector, moveSelectorList);
 
-    var solverScope = mock(SolverScope.class);
+    SolverScope<TestdataMultiVarSolution> solverScope = mockSolverScope();
     placer.solvingStarted(solverScope);
 
     var phaseScopeA = mock(AbstractPhaseScope.class);
@@ -234,7 +235,7 @@ class QueuedEntityPlacerTest {
         new QueuedEntityPlacer<>(
             null, null, recordingEntitySelector, Collections.singletonList(moveSelector));
 
-    var solverScope = mock(SolverScope.class);
+    SolverScope<TestdataMultiVarSolution> solverScope = mockSolverScope();
     placer.solvingStarted(solverScope);
 
     var phaseScopeA = mock(AbstractPhaseScope.class);

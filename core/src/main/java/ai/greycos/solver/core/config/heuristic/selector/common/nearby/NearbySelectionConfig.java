@@ -21,10 +21,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistan
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-/**
- * Configuration for nearby selection to prioritize spatially proximate items. Supports entity,
- * sub-list, and value origin selectors with probability distributions.
- */
 @XmlType(
     propOrder = {
       "originEntitySelectorConfig",
@@ -43,35 +39,35 @@ import org.jspecify.annotations.Nullable;
       "maxNearbySortSize",
       "eagerInitialization"
     })
-public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig> {
+public final class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig> {
 
   @XmlElement(name = "originEntitySelector")
-  protected EntitySelectorConfig originEntitySelectorConfig = null;
+  private EntitySelectorConfig originEntitySelectorConfig = null;
 
   @XmlElement(name = "originSubListSelector")
-  protected SubListSelectorConfig originSubListSelectorConfig = null;
+  private SubListSelectorConfig originSubListSelectorConfig = null;
 
   @XmlElement(name = "originValueSelector")
-  protected ValueSelectorConfig originValueSelectorConfig = null;
+  private ValueSelectorConfig originValueSelectorConfig = null;
 
-  protected Class<? extends NearbyDistanceMeter> nearbyDistanceMeterClass = null;
+  private String nearbyDistanceMeterClass = null;
 
-  protected NearbySelectionDistributionType nearbySelectionDistributionType = null;
+  private NearbySelectionDistributionType nearbySelectionDistributionType = null;
 
-  protected Integer blockDistributionSizeMinimum = null;
-  protected Integer blockDistributionSizeMaximum = null;
-  protected Double blockDistributionSizeRatio = null;
-  protected Double blockDistributionUniformDistributionProbability = null;
+  private Integer blockDistributionSizeMinimum = null;
+  private Integer blockDistributionSizeMaximum = null;
+  private Double blockDistributionSizeRatio = null;
+  private Double blockDistributionUniformDistributionProbability = null;
 
-  protected Integer linearDistributionSizeMaximum = null;
+  private Integer linearDistributionSizeMaximum = null;
 
-  protected Integer parabolicDistributionSizeMaximum = null;
+  private Integer parabolicDistributionSizeMaximum = null;
 
-  protected Double betaDistributionAlpha = null;
-  protected Double betaDistributionBeta = null;
+  private Double betaDistributionAlpha = null;
+  private Double betaDistributionBeta = null;
 
-  protected Integer maxNearbySortSize = null;
-  protected Boolean eagerInitialization = null;
+  private Integer maxNearbySortSize = null;
+  private Boolean eagerInitialization = null;
 
   public @Nullable EntitySelectorConfig getOriginEntitySelectorConfig() {
     return originEntitySelectorConfig;
@@ -101,12 +97,13 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
   }
 
   public @Nullable Class<? extends NearbyDistanceMeter> getNearbyDistanceMeterClass() {
-    return nearbyDistanceMeterClass;
+    return ConfigUtils.resolveClass(nearbyDistanceMeterClass, "nearbyDistanceMeterClass", this);
   }
 
   public void setNearbyDistanceMeterClass(
       @Nullable Class<? extends NearbyDistanceMeter> nearbyDistanceMeterClass) {
-    this.nearbyDistanceMeterClass = nearbyDistanceMeterClass;
+    this.nearbyDistanceMeterClass =
+        nearbyDistanceMeterClass == null ? null : nearbyDistanceMeterClass.getName();
   }
 
   public @Nullable NearbySelectionDistributionType getNearbySelectionDistributionType() {
@@ -225,7 +222,7 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
 
   public @NonNull NearbySelectionConfig withNearbyDistanceMeterClass(
       @NonNull Class<? extends NearbyDistanceMeter> nearbyDistanceMeterClass) {
-    this.setNearbyDistanceMeterClass(nearbyDistanceMeterClass);
+    this.nearbyDistanceMeterClass = nearbyDistanceMeterClass.getName();
     return this;
   }
 
@@ -310,22 +307,25 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
     if (originSelectorCount == 0) {
       throw new IllegalArgumentException(
           """
-                    The nearbySelectorConfig (%s) is nearby selection but lacks an origin selector config.
-                    Set one of originEntitySelectorConfig, originSubListSelectorConfig or originValueSelectorConfig."""
+          The nearbySelectorConfig (%s) is nearby selection but lacks an origin selector config.
+          Set one of originEntitySelectorConfig, originSubListSelectorConfig or originValueSelectorConfig.\
+          """
               .formatted(this));
     } else if (originSelectorCount > 1) {
       throw new IllegalArgumentException(
           """
-                    The nearbySelectorConfig (%s) has multiple origin selector configs but exactly one is expected.
-                    Set one of originEntitySelectorConfig, originSubListSelectorConfig or originValueSelectorConfig."""
+          The nearbySelectorConfig (%s) has multiple origin selector configs but exactly one is expected.
+          Set one of originEntitySelectorConfig, originSubListSelectorConfig or originValueSelectorConfig.\
+          """
               .formatted(this));
     }
     if (originEntitySelectorConfig != null
         && originEntitySelectorConfig.getMimicSelectorRef() == null) {
       throw new IllegalArgumentException(
           """
-                    The nearbySelectorConfig (%s) has an originEntitySelectorConfig (%s) which has no mimicSelectorRef (%s).
-                    Nearby selection's original entity should always be the same as an entity selected earlier in the move."""
+          The nearbySelectorConfig (%s) has an originEntitySelectorConfig (%s) which has no mimicSelectorRef (%s).
+          Nearby selection's original entity should always be the same as an entity selected earlier in the move.\
+          """
               .formatted(
                   this,
                   originEntitySelectorConfig,
@@ -335,8 +335,9 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
         && originSubListSelectorConfig.getMimicSelectorRef() == null) {
       throw new IllegalArgumentException(
           """
-                    The nearbySelectorConfig (%s) has an originSubListSelectorConfig (%s) which has no mimicSelectorRef (%s).
-                    Nearby selection's original subList should always be the same as a subList selected earlier in the move."""
+          The nearbySelectorConfig (%s) has an originSubListSelectorConfig (%s) which has no mimicSelectorRef (%s).
+          Nearby selection's original subList should always be the same as a subList selected earlier in the move.\
+          """
               .formatted(
                   this,
                   originSubListSelectorConfig,
@@ -346,8 +347,9 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
         && originValueSelectorConfig.getMimicSelectorRef() == null) {
       throw new IllegalArgumentException(
           """
-                    The nearbySelectorConfig (%s) has an originValueSelectorConfig (%s) which has no mimicSelectorRef (%s).
-                    Nearby selection's original value should always be the same as a value selected earlier in the move."""
+          The nearbySelectorConfig (%s) has an originValueSelectorConfig (%s) which has no mimicSelectorRef (%s).
+          Nearby selection's original value should always be the same as a value selected earlier in the move.\
+          """
               .formatted(
                   this,
                   originValueSelectorConfig,
@@ -358,15 +360,21 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
           "The nearbySelectorConfig (%s) enables nearby selection but lacks a nearbyDistanceMeterClass (%s)."
               .formatted(this, nearbyDistanceMeterClass));
     }
+    if (maxNearbySortSize != null && maxNearbySortSize < 1) {
+      throw new IllegalArgumentException(
+          "The nearbySelectorConfig (%s) has a maxNearbySortSize (%d) that is lower than 1."
+              .formatted(this, maxNearbySortSize));
+    }
     if (resolvedSelectionOrder != SelectionOrder.ORIGINAL
         && resolvedSelectionOrder != SelectionOrder.RANDOM) {
       throw new IllegalArgumentException(
           """
-                            The nearbySelectorConfig (%s) with originEntitySelector (%s), originSubListSelector (%s), originValueSelector (%s) and nearbyDistanceMeterClass (%s) \
-                            has a resolvedSelectionOrder (%s) that is not %s or %s.
-                            Maybe remove difficultyComparatorClass or difficultyWeightFactoryClass from your @%s annotation.
-                            Maybe remove strengthComparatorClass or strengthWeightFactoryClass from your @%s annotation.
-                            Maybe disable nearby selection."""
+          The nearbySelectorConfig (%s) with originEntitySelector (%s), originSubListSelector (%s), originValueSelector (%s) and nearbyDistanceMeterClass (%s) \
+          has a resolvedSelectionOrder (%s) that is not %s or %s.
+          Maybe remove difficultyComparatorClass or difficultyWeightFactoryClass from your @%s annotation.
+          Maybe remove strengthComparatorClass or strengthWeightFactoryClass from your @%s annotation.
+          Maybe disable nearby selection.\
+          """
               .formatted(
                   this,
                   originEntitySelectorConfig,
@@ -382,8 +390,9 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
     if (resolvedCacheType.isCached()) {
       throw new IllegalArgumentException(
           """
-                            The nearbySelectorConfig (%s) with originEntitySelector (%s), originSubListSelector (%s), originValueSelector (%s) and nearbyDistanceMeterClass (%s) \
-                            has a resolvedCacheType (%s) that is cached."""
+          The nearbySelectorConfig (%s) with originEntitySelector (%s), originSubListSelector (%s), originValueSelector (%s) and nearbyDistanceMeterClass (%s) \
+          has a resolvedCacheType (%s) that is cached.\
+          """
               .formatted(
                   this,
                   originEntitySelectorConfig,
@@ -407,7 +416,7 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
             originValueSelectorConfig, inheritedConfig.getOriginValueSelectorConfig());
     nearbyDistanceMeterClass =
         ConfigUtils.inheritOverwritableProperty(
-            nearbyDistanceMeterClass, inheritedConfig.getNearbyDistanceMeterClass());
+            nearbyDistanceMeterClass, inheritedConfig.nearbyDistanceMeterClass);
     nearbySelectionDistributionType =
         ConfigUtils.inheritOverwritableProperty(
             nearbySelectionDistributionType, inheritedConfig.getNearbySelectionDistributionType());
@@ -462,7 +471,7 @@ public class NearbySelectionConfig extends SelectorConfig<NearbySelectionConfig>
     if (originValueSelectorConfig != null) {
       originValueSelectorConfig.visitReferencedClasses(classVisitor);
     }
-    classVisitor.accept(nearbyDistanceMeterClass);
+    classVisitor.accept(getNearbyDistanceMeterClass());
   }
 
   @Override

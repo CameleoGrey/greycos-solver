@@ -5,18 +5,15 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
-import ai.greycos.solver.core.impl.bavet.NodeNetwork;
-import ai.greycos.solver.core.impl.bavet.common.AbstractNodeBuildHelper;
-import ai.greycos.solver.core.impl.bavet.common.BavetRootNode;
+import ai.greycos.solver.core.impl.bavet.common.AbstractRootNode;
 import ai.greycos.solver.core.impl.bavet.uni.AbstractForEachUniNode;
+import ai.greycos.solver.core.impl.neighborhood.NeighborhoodsBavetNodeNetwork;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractEnumeratingStream;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.DataNodeBuildHelper;
 import ai.greycos.solver.core.impl.score.director.SessionContext;
 
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public final class DatasetSessionFactory<Solution_> {
@@ -35,19 +32,17 @@ public final class DatasetSessionFactory<Solution_> {
     }
     var buildHelper = new DataNodeBuildHelper<>(context, activeEnumeratingStreamSet);
     var session =
-        new DatasetSession<Solution_>(
-            buildNodeNetwork(activeEnumeratingStreamSet, buildHelper, null));
+        new DatasetSession<Solution_>(buildNodeNetwork(activeEnumeratingStreamSet, buildHelper));
     for (var datasetInstance : buildHelper.getDatasetInstanceList()) {
       session.registerDatasetInstance(datasetInstance.getParent(), datasetInstance);
     }
     return session;
   }
 
-  private NodeNetwork buildNodeNetwork(
+  private NeighborhoodsBavetNodeNetwork buildNodeNetwork(
       Set<AbstractEnumeratingStream<Solution_>> enumeratingStreamSet,
-      DataNodeBuildHelper<Solution_> buildHelper,
-      @Nullable Consumer<String> nodeNetworkVisualizationConsumer) {
-    var declaredClassToNodeMap = new LinkedHashMap<Class<?>, List<BavetRootNode<?>>>();
+      DataNodeBuildHelper<Solution_> buildHelper) {
+    var declaredClassToNodeMap = new LinkedHashMap<Class<?>, List<AbstractRootNode<?>>>();
     var nodeList =
         buildHelper.buildNodeList(
             enumeratingStreamSet,
@@ -69,10 +64,6 @@ public final class DatasetSessionFactory<Solution_> {
               }
               forEachUniNodeList.add(forEachUniNode);
             });
-    if (nodeNetworkVisualizationConsumer != null) {
-      // TODO implement node network visualization
-      throw new UnsupportedOperationException("Not implemented yet");
-    }
-    return AbstractNodeBuildHelper.buildNodeNetwork(nodeList, declaredClassToNodeMap, buildHelper);
+    return DataNodeBuildHelper.buildNodeNetwork(nodeList, declaredClassToNodeMap);
   }
 }

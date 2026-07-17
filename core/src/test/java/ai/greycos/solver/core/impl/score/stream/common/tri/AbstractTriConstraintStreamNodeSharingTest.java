@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import ai.greycos.solver.core.api.function.ToIntTriFunction;
+import ai.greycos.solver.core.api.function.ToLongTriFunction;
 import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.function.TriPredicate;
 import ai.greycos.solver.core.api.score.stream.ConstraintCollectors;
@@ -406,8 +406,8 @@ public abstract class AbstractTriConstraintStreamNodeSharingTest
   @Override
   @TestTemplate
   public void sameParentDifferentCollectorFunctionGroupBy() {
-    ToIntTriFunction<TestdataEntity, TestdataEntity, TestdataEntity> sumFunction1 = (a, b, c) -> 0;
-    ToIntTriFunction<TestdataEntity, TestdataEntity, TestdataEntity> sumFunction2 = (a, b, c) -> 1;
+    ToLongTriFunction<TestdataEntity, TestdataEntity, TestdataEntity> sumFunction1 = (a, b, c) -> 0;
+    ToLongTriFunction<TestdataEntity, TestdataEntity, TestdataEntity> sumFunction2 = (a, b, c) -> 1;
 
     assertThat(baseStream.groupBy(ConstraintCollectors.sum(sumFunction1)))
         .isNotSameAs(baseStream.groupBy(ConstraintCollectors.sum(sumFunction2)));
@@ -425,7 +425,7 @@ public abstract class AbstractTriConstraintStreamNodeSharingTest
   @Override
   @TestTemplate
   public void sameParentSameCollectorGroupBy() {
-    ToIntTriFunction<TestdataEntity, TestdataEntity, TestdataEntity> sumFunction = (a, b, c) -> 0;
+    ToLongTriFunction<TestdataEntity, TestdataEntity, TestdataEntity> sumFunction = (a, b, c) -> 0;
 
     assertThat(baseStream.groupBy(ConstraintCollectors.sum(sumFunction)))
         .isSameAs(baseStream.groupBy(ConstraintCollectors.sum(sumFunction)));

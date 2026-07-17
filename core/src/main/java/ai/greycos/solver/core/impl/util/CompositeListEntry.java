@@ -15,16 +15,6 @@ public record CompositeListEntry<Key_, T>(T element, List<Pair<Key_, ListEntry<T
     implements ListEntry<T> {
 
   @Override
-  public boolean isRemoved() {
-    return children.stream().allMatch(child -> child.value().isRemoved());
-  }
-
-  @Override
-  public T getElement() {
-    return element;
-  }
-
-  @Override
   public String toString() {
     return element.toString();
   }

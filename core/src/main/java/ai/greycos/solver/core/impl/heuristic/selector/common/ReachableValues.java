@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 
 import ai.greycos.solver.core.impl.cotwin.valuerange.descriptor.FromEntityPropertyValueRangeDescriptor;
@@ -85,6 +86,14 @@ public final class ReachableValues<Entity_, Value_> {
     return entityList;
   }
 
+  public int getReachableEntitiesSize(Object value) {
+    var itemValue = fetchItemValue(value);
+    if (itemValue == null) {
+      return 0;
+    }
+    return itemValue.getReachableEntitySize();
+  }
+
   public List<Value_> extractValuesAsList(Object value) {
     var itemValue = fetchItemValue(value);
     if (itemValue == null) {
@@ -96,6 +105,14 @@ public final class ReachableValues<Entity_, Value_> {
       onDemandRandomAccessValue[itemValue.ordinal] = valueList;
     }
     return valueList;
+  }
+
+  public Set<Entity_> extractAllEntitiesAsSet() {
+    return entitiesIndex.indexMap().keySet();
+  }
+
+  public Set<Value_> extractAllValuesAsSet() {
+    return valuesIndex.indexMap().keySet();
   }
 
   public int getSize() {
@@ -186,6 +203,10 @@ public final class ReachableValues<Entity_, Value_> {
 
     boolean containsValue(int valueIndex) {
       return valueBitSet.get(valueIndex);
+    }
+
+    int getReachableEntitySize() {
+      return entityBitSet.cardinality();
     }
 
     List<Entity_> getRandomAccessEntityList(List<Entity_> allEntities) {

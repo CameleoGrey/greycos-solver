@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.decorator;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfMoveSelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -29,7 +30,7 @@ class SelectedCountLimitMoveSelectorTest {
             new DummyMove("a5"));
     MoveSelector moveSelector = new SelectedCountLimitMoveSelector(childMoveSelector, 3L);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    SolverScope solverScope = mockSolverScope();
     moveSelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
@@ -88,7 +89,7 @@ class SelectedCountLimitMoveSelectorTest {
             new DummyMove("a1"), new DummyMove("a2"), new DummyMove("a3"));
     MoveSelector moveSelector = new SelectedCountLimitMoveSelector(childMoveSelector, 5L);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    SolverScope solverScope = mockSolverScope();
     moveSelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);

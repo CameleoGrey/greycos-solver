@@ -47,7 +47,7 @@ Java::
 +
 [source,java,options="nowrap"]
 ----
-public interface NearbyDistanceMeter<Origin_, Desination_> {
+public interface NearbyDistanceMeter<Origin_, Destination_> {
 
     double getNearbyDistance(Origin_ origin, Destination_ destination);
 
@@ -55,10 +55,10 @@ public interface NearbyDistanceMeter<Origin_, Desination_> {
 ----
 ====
 
-In a nutshell, when nearby selection is used in a list move selector,
-`Origin_` is always a planning value (for example `Customer`)
-but `Destination_` can be either a planning value or a planning entity.
-That means that in VRP the distance meter must be able to handle both `Customer` and `Vehicle` as the `Destination_` argument:
+The `Origin_` and `Destination_` types are determined by the selectors carrying `nearbySelection`.
+For a basic variable, `Origin_` is the planning entity and `Destination_` may be a planning value or entity.
+For a list variable, `Origin_` is always a planning value, while `Destination_` may be a planning value or entity.
+For example, in vehicle routing the distance meter must accept both `Customer` and `Vehicle` destinations:
 
 [tabs]
 ====
@@ -87,6 +87,55 @@ Adding Nearby in this situation would only result in unnecessary costs
 involving the generation of the distance matrix and sorting operations without taking advantage of the feature.
 ====
 
+[#basicVariableNearbySelection]
+==== Nearby selection with a basic variable
+
+To configure nearby selection for a solution that only uses basic variables,
+set `nearbyDistanceMeterClass` at solver level:
+
+[source,xml,options="nowrap"]
+----
+<solver xmlns="https://greycos.ai/xsd/solver">
+  ...
+  <nearbyDistanceMeterClass>org.acme.schooltimetabling.cotwin.solver.nearby.LectureNearbyDistanceMeter</nearbyDistanceMeterClass>
+  ...
+</solver>
+----
+
+The default Local Search neighborhood then includes Change, Swap, Change with Nearby and Swap with Nearby.
+For a mixed basic/list model, configure nearby selection explicitly on the basic-variable move selectors.
+
+For advanced configuration, add `nearbySelection` to a change move's `valueSelector`
+or a swap move's `secondaryEntitySelector` and use mimic selection to identify the origin:
+
+[source,xml,options="nowrap"]
+----
+<unionMoveSelector>
+  <changeMoveSelector>
+    <entitySelector id="entitySelector1"/>
+    <valueSelector variableName="room">
+      <nearbySelection>
+        <originEntitySelector mimicSelectorRef="entitySelector1"/>
+        <nearbyDistanceMeterClass>org.acme.schooltimetabling.cotwin.solver.nearby.LectureNearbyDistanceMeter</nearbyDistanceMeterClass>
+      </nearbySelection>
+    </valueSelector>
+  </changeMoveSelector>
+  <swapMoveSelector>
+    <entitySelector id="entitySelector2"/>
+    <secondaryEntitySelector>
+      <nearbySelection>
+        <originEntitySelector mimicSelectorRef="entitySelector2"/>
+        <nearbyDistanceMeterClass>org.acme.schooltimetabling.cotwin.solver.nearby.LectureNearbyDistanceMeter</nearbyDistanceMeterClass>
+      </nearbySelection>
+    </secondaryEntitySelector>
+  </swapMoveSelector>
+</unionMoveSelector>
+----
+
+For Change, the origin is the selected entity and the destination is the selected planning value.
+For Swap, both are planning entities.
+
+[#listVariableNearbySelection]
 ==== Nearby selection with a list variable
 
 To quickly configure nearby selection with a planning list variable,
@@ -109,7 +158,7 @@ xref:optimization-algorithms/move-selector-reference.adoc#changeMoveSelector[Cha
 xref:optimization-algorithms/move-selector-reference.adoc#swapMoveSelector[Swap],
 Change with Nearby,
 Swap with Nearby,
-and xref:optimization-algorithms/move-selector-reference.adoc#kOptListMoveSelector[2-OPT] with Nearby.
+and xref:optimization-algorithms/move-selector-reference.adoc#kOptListMoveSelector[K-OPT] with Nearby.
 
 ===== Advanced configuration for local search
 
@@ -140,7 +189,7 @@ to specify which destination, value, or subList should be nearby the selection.
         </secondaryValueSelector>
       </listSwapMoveSelector>
       <subListChangeMoveSelector>
-        <selectReversingMoveToo>true</selectReversingMoveToo</selectReversingMoveToo>
+        <selectReversingMoveToo>true</selectReversingMoveToo>
         <subListSelector id="subListSelector3"/>
         <destinationSelector>
           <nearbySelection>
@@ -150,7 +199,7 @@ to specify which destination, value, or subList should be nearby the selection.
         </destinationSelector>
       </subListChangeMoveSelector>
       <subListSwapMoveSelector>
-        <selectReversingMoveToo>true</selectReversingMoveToo</selectReversingMoveToo>
+        <selectReversingMoveToo>true</selectReversingMoveToo>
         <subListSelector id="subListSelector4"/>
         <secondarySubListSelector>
           <nearbySelection>
@@ -235,7 +284,7 @@ or how likely are the nearest elements to be selected based on their distance fr
 [NOTE]
 ====
 Only tweak the default settings if you are prepared
-to back your choices by extensive xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[benchmarking].
+to back your choices by extensive xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[benchmarking].
 ====
 
 The following ``NearbySelectionDistributionType``s are supported:
@@ -296,7 +345,7 @@ GreyCOS Solver supports powerful multi-threaded solving features including
 <<multithreadedIncrementalSolving,multi-threaded incremental solving>> and
 <<partitionedSearch,partitioned search>>.
 
-For a primer on multi-threaded solving in general, see xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#multithreadedSolving[Multi-threaded solving].
+For a primer on multi-threaded solving in general, see xref:using-greycos-solver/running-the-solver.adoc#multithreadedSolving[Multi-threaded solving].
 
 [#multithreadedIncrementalSolving]
 ==== Multi-threaded incremental solving
@@ -333,7 +382,7 @@ to determine the optimal number of move threads for your problem.
 ===== Enabling multi-threaded incremental solving
 
 Enable multi-threaded incremental solving
-by xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningId[adding a `@PlanningId` annotation]
+by xref:using-greycos-solver/modeling-planning-problems.adoc#planningId[adding a `@PlanningId` annotation]
 on every planning entity class and planning value class.
 Then configure a `moveThreadCount`:
 
@@ -471,7 +520,7 @@ without any of the constraints crossing boundaries between partitions.
 
 [WARNING]
 ====
-Models with xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#chainedPlanningVariable[chained variables] cannot apply the partitioned search method.
+Models with xref:using-greycos-solver/modeling-planning-problems.adoc#chainedPlanningVariable[chained variables] cannot apply the partitioned search method.
 ====
 
 [#partitionedSearchConfiguration]
@@ -486,7 +535,7 @@ Simplest configuration:
   </partitionedSearch>
 ----
 
-Also xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningId[add a `@PlanningId` annotation]
+Also xref:using-greycos-solver/modeling-planning-problems.adoc#planningId[add a `@PlanningId` annotation]
 on every planning entity class and planning value class.
 There are several ways to <<partitioningASolution,partition a solution>>.
 
@@ -511,7 +560,7 @@ plug in a <<customThreadFactory,custom thread factory>>.
 
 [IMPORTANT]
 ====
-A xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#logging[logging level] of `debug` or `trace` causes congestion in multi-threaded Partitioned Search
+A xref:using-greycos-solver/running-the-solver.adoc#logging[logging level] of `debug` or `trace` causes congestion in multi-threaded Partitioned Search
 and slows down the xref:constraints-and-score/performance.adoc#moveEvaluationSpeed[move evaluation speed].
 ====
 
@@ -571,8 +620,8 @@ This can be decided dynamically, for example, based on the size of the non-parti
 The `partCount` is unrelated to the `runnablePartThreadLimit`.
 
 To configure values of a `SolutionPartitioner` dynamically in the solver configuration
-(so the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker] can tweak those parameters),
-add the `solutionPartitionerCustomProperties` element and use xref:xref:using-greycos-solver/configuration.adoc.adoc#customPropertiesConfiguration[custom properties]:
+(so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
+add the `solutionPartitionerCustomProperties` element and use xref:using-greycos-solver/configuration.adoc#customPropertiesConfiguration[custom properties]:
 
 [source,xml,options="nowrap"]
 ----
@@ -666,7 +715,7 @@ by maintaining diversity in the search process and enabling parallel exploration
 
 [IMPORTANT]
 ====
-The island model requires xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningId[`@PlanningId` annotations]
+The island model requires xref:using-greycos-solver/modeling-planning-problems.adoc#planningId[`@PlanningId` annotations]
 on all planning entity and planning value classes to enable solution cloning and migration.
 ====
 
@@ -718,11 +767,15 @@ quarkus.greycos.solver.constraint-stream-automatic-node-sharing=true
 
 [IMPORTANT]
 ====
-To use automatic node sharing outside Quarkus, your `ConstraintProvider` class must oblige by several restrictions so a valid subclass can be generated:
+To use automatic node sharing outside Quarkus, your `ConstraintProvider` class must meet several restrictions so a valid subclass can be generated:
 
 - The `ConstraintProvider` class cannot be final.
 - The `ConstraintProvider` class cannot have any final methods.
 - The `ConstraintProvider` class cannot access non-public classes, methods or fields outside the provider itself.
+
+GreyCOS validates these requirements while building the solver factory.
+If transformation is requested but cannot be completed, solver creation fails with the transformation cause;
+it does not silently run the original provider.
 
 Debugging breakpoints put inside your constraints will not be respected, because the `ConstraintProvider` class will be transformed when this feature is enabled.
 ====
@@ -783,7 +836,7 @@ var b = factory.forEach(Shift.class)
                .filter(predicate2);
 ----
 
-Counterintuitively, the building blocks produced by these (seemly) identical methods are not necessarily functionally equivalent:
+Counterintuitively, the building blocks produced by these seemingly identical methods are not necessarily functionally equivalent:
 
 [source,java,options="nowrap"]
 ----

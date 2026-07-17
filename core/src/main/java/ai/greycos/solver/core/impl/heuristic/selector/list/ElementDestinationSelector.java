@@ -5,19 +5,18 @@ import static ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.L
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Objects;
-import java.util.Spliterators;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractSelector;
+import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.ConcatenatingIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.impl.util.MappingIterator;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 
@@ -149,45 +148,47 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
           valueSelector,
           workingRandom,
           totalSize,
-          allowsUnassignedValues);
+          allowsUnassignedValues,
+          allowsUnassignedValues && totalValueSize > 0);
     } else {
       if (entitySelector.getSize() == 0) {
         return Collections.emptyIterator();
       }
       if (isExhaustiveSearch) {
-        Stream<ElementPosition> stream =
-            StreamSupport.stream(entitySelector.spliterator(), false)
-                .map(
-                    entity ->
-                        ElementPosition.of(entity, listVariableDescriptor.getListSize(entity)));
-        return stream.iterator();
+        // The exhaustive search method requires elements to be placed only at the end of the
+        // entity's list
+        return new MappingIterator<>(
+            entitySelector.iterator(),
+            entity -> ElementPosition.of(entity, listVariableDescriptor.getListSize(entity)));
       } else {
-        Stream<ElementPosition> stream =
-            StreamSupport.stream(entitySelector.spliterator(), false)
-                .map(
-                    entity ->
-                        ElementPosition.of(
-                            entity, listVariableDescriptor.getFirstUnpinnedIndex(entity)));
-        stream =
-            Stream.concat(
-                stream,
-                StreamSupport.stream(valueSelector.spliterator(), false)
-                    .map(v -> listVariableStateSupply.getElementPosition(v).ensureAssigned())
-                    .map(
-                        positionInList ->
-                            ElementPosition.of(
-                                positionInList.entity(), positionInList.index() + 1)));
+        // Start with the first unpinned value of each entity, or zero if no pinning.
+        // Entity selector is guaranteed to return only unpinned entities.
+        var entityIterator =
+            new MappingIterator<>(
+                entitySelector.iterator(),
+                entity ->
+                    ElementPosition.of(
+                        entity, listVariableDescriptor.getFirstUnpinnedIndex(entity)));
+        // Filter guarantees that we only get values that are actually in one of the lists.
+        // Value selector guarantees only unpinned values.
+        var valueIterator =
+            new MappingIterator<>(
+                valueSelector.iterator(),
+                v -> {
+                  var pos = listVariableStateSupply.getElementPosition(v).ensureAssigned();
+                  return ElementPosition.of(pos.entity(), pos.index() + 1);
+                });
         if (listVariableDescriptor.allowsUnassignedValues()) {
-          stream = Stream.concat(stream, Stream.of(ElementPosition.unassigned()));
+          // If the list variable allows unassigned values, add the option of unassigning.
+          return new ConcatenatingIterator<>(
+              entityIterator,
+              valueIterator,
+              Collections.singletonList(ElementPosition.unassigned()).iterator());
+        } else {
+          return new ConcatenatingIterator<>(entityIterator, valueIterator);
         }
-        return stream.iterator();
       }
     }
-  }
-
-  @Override
-  public boolean isCountable() {
-    return entitySelector.isCountable() && valueSelector.isCountable();
   }
 
   @Override
@@ -204,16 +205,8 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
   }
 
   public Iterator<Object> endingIterator() {
-    return Stream.concat(
-            StreamSupport.stream(
-                Spliterators.spliterator(
-                    entitySelector.endingIterator(), entitySelector.getSize(), 0),
-                false),
-            StreamSupport.stream(
-                Spliterators.spliterator(
-                    valueSelector.endingIterator(null), valueSelector.getSize(), 0),
-                false))
-        .iterator();
+    return new ConcatenatingIterator<>(
+        entitySelector.endingIterator(), valueSelector.endingIterator(null));
   }
 
   @Override

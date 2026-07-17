@@ -2,13 +2,13 @@ package ai.greycos.solver.jackson.api.score;
 
 import ai.greycos.solver.core.api.score.Score;
 
-import com.fasterxml.jackson.databind.JsonDeserializer;
+import tools.jackson.databind.ValueDeserializer;
 
 /**
  * Jackson binding support for a {@link Score} type.
  *
  * <p>For example: use {@code @JsonSerialize(using =
- * HardSoftScoreScoreJacksonSerializer.class) @JsonDeserialize(using =
+ * HardSoftScoreJacksonSerializer.class) @JsonDeserialize(using =
  * HardSoftScoreJacksonDeserializer.class)} on a {@code HardSoftScore score} field and it will
  * marshalled to JSON as {@code "score":"-999hard/-999soft"}.
  *
@@ -16,4 +16,4 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
  * @param <Score_> the actual score type
  */
 public abstract class AbstractScoreJacksonDeserializer<Score_ extends Score<Score_>>
-    extends JsonDeserializer<Score_> {}
+    extends ValueDeserializer<Score_> {}

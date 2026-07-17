@@ -41,9 +41,8 @@ public enum SolutionUpdatePolicy {
   UPDATE_SHADOW_VARIABLES_ONLY(false, true),
   /**
    * Does not run anything. Improves performance during {@link SolutionManager#analyze(Object,
-   * ScoreAnalysisFetchPolicy, SolutionUpdatePolicy)} and {@link SolutionManager#explain(Object,
-   * SolutionUpdatePolicy)}, where the user can guarantee that the solution is already up to date.
-   * Otherwise serves no purpose.
+   * ScoreAnalysisFetchPolicy, SolutionUpdatePolicy)}, where the user can guarantee that the
+   * solution is already up to date. Otherwise serves no purpose.
    */
   NO_UPDATE(false, false);
 

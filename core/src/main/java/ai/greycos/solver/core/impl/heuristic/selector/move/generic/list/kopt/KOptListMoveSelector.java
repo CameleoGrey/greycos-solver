@@ -8,13 +8,12 @@ import java.util.function.Supplier;
 
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-
-import org.apache.commons.math3.util.CombinatoricsUtils;
+import ai.greycos.solver.core.impl.util.MathUtils;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 final class KOptListMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
 
@@ -89,7 +88,7 @@ final class KOptListMoveSelector<Solution_> extends GenericMoveSelector<Solution
         // And we chose k of them to remove in a k-opt
         final long edgeChoices;
         if (valueSelectorSize <= Integer.MAX_VALUE) {
-          edgeChoices = CombinatoricsUtils.binomialCoefficient((int) (valueSelectorSize - 1), i);
+          edgeChoices = MathUtils.binomialCoefficient((int) (valueSelectorSize - 1), i);
         } else {
           edgeChoices = Long.MAX_VALUE;
         }
@@ -110,11 +109,6 @@ final class KOptListMoveSelector<Solution_> extends GenericMoveSelector<Solution
         minK,
         maxK,
         pickedKDistribution);
-  }
-
-  @Override
-  public boolean isCountable() {
-    return false;
   }
 
   @Override

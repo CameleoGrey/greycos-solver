@@ -6,6 +6,7 @@ import java.util.Set;
 
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintStream;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
 import ai.greycos.solver.core.impl.cotwin.solution.DefaultConstraintWeightOverrides;
@@ -43,15 +44,23 @@ public interface ConstraintWeightOverrides<Score_ extends Score<Score_>> {
   /**
    * Return a constraint weight for a particular constraint.
    *
-   * @return null if the constraint name is not known
+   * @return null if the constraint id is not known
    */
-  @Nullable Score_ getConstraintWeight(String constraintName);
+  @Nullable Score_ getConstraintWeight(String constraintId);
+
+  /**
+   * As defined by {@link #getConstraintWeight(String)}, but accepts {@link ConstraintRef} instead
+   * of the ID directly.
+   */
+  default @Nullable Score_ getConstraintWeight(ConstraintRef constraintRef) {
+    return getConstraintWeight(constraintRef.id());
+  }
 
   /**
    * Returns all known constraints.
    *
-   * @return All constraint names for which {@link #getConstraintWeight(String)} returns a non-null
+   * @return All constraint IDs for which {@link #getConstraintWeight(String)} returns a non-null
    *     value.
    */
-  Set<String> getKnownConstraintNames();
+  Set<String> getKnownConstraintIds();
 }

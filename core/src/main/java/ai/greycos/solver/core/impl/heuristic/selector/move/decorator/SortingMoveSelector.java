@@ -3,10 +3,10 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.decorator;
 import java.util.Iterator;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public class SortingMoveSelector<Solution_> extends AbstractCachingMoveSelector<Solution_> {
 

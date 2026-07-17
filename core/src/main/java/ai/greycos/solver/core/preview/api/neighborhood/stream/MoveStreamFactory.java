@@ -89,6 +89,15 @@ public interface MoveStreamFactory<Solution_> {
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel);
 
   /**
+   * Enumerate all values not assigned to any entity's {@link PlanningListVariable}.
+   *
+   * @param variableMetaModel the meta model of the list variable to enumerate
+   * @return enumerating stream with all values as defined above
+   */
+  <Entity_, Value_> UniEnumeratingStream<Solution_, Value_> forEachUnassignedValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel);
+
+  /**
    * Enumerate all possible positions of a list variable to which a value can be assigned. This will
    * include one position past the current end of the list, allowing for assigning at the end of a
    * list. It will not include any pinned positions or fully pinned entities, as well as {@link
@@ -116,24 +125,4 @@ public interface MoveStreamFactory<Solution_> {
           PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel);
 
   <A> UniSamplingStream<Solution_, A> pick(UniEnumeratingStream<Solution_, A> enumeratingStream);
-
-  /**
-   * Enumerate all possible positions of a list variable to which a value can be assigned. This will
-   * eliminate all positions on {@link PlanningPin pinned entities}, as well as all {@link
-   * PlanningPinToIndex pinned indexes}. If the list variable {@link
-   * PlanningListVariable#allowsUnassignedValues() allows unassigned values}, the resulting stream
-   * will include a single instance of {@link UnassignedElement} instance.
-   *
-   * <p><strong>Will be removed right before this API is moved out of preview.</strong>
-   *
-   * @param variableMetaModel the meta model of the list variable to enumerate
-   * @return enumerating stream with all assignable positions of a given list variable
-   * @see ElementPosition Read more about element positions.
-   * @deprecated Use {@link #forEachDestinationIncludingUnassigned(PlanningListVariableMetaModel)}
-   *     instead, or see if {@link #forEachDestination(PlanningListVariableMetaModel)} or {@link
-   *     #forEachAssignedValue(PlanningListVariableMetaModel)} fits your needs better.
-   */
-  @Deprecated(forRemoval = true)
-  <Entity_, Value_> UniEnumeratingStream<Solution_, ElementPosition> forEachAssignablePosition(
-      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel);
 }

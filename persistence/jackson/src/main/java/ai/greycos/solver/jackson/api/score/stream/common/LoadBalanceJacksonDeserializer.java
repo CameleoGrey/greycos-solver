@@ -1,20 +1,20 @@
 package ai.greycos.solver.jackson.api.score.stream.common;
 
-import java.io.IOException;
-
 import ai.greycos.solver.core.api.score.stream.common.LoadBalance;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ValueDeserializer;
 
 public final class LoadBalanceJacksonDeserializer<Value_>
-    extends JsonDeserializer<LoadBalance<Value_>> {
+    extends ValueDeserializer<LoadBalance<Value_>> {
 
   @Override
   public LoadBalance<Value_> deserialize(
-      JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException {
+      JsonParser jsonParser, DeserializationContext deserializationContext)
+      throws JacksonException {
     JsonNode jsonNode = jsonParser.readValueAsTree();
     return deserializationContext.readTreeAsValue(jsonNode, DeserializableLoadBalance.class);
   }

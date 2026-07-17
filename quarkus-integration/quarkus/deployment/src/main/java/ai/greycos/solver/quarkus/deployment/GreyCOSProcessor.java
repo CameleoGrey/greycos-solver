@@ -204,7 +204,8 @@ class GreyCOSProcessor {
       BuildProducer<GeneratedClassBuildItem> generatedClasses,
       BuildProducer<GeneratedResourceBuildItem> generatedResources,
       BuildProducer<ReflectiveClassBuildItem> registerReflectiveClasses,
-      BuildProducer<BytecodeTransformerBuildItem> transformers) {
+      BuildProducer<BytecodeTransformerBuildItem> transformers,
+      DetermineIfNativeBuildItem nativeBuild) {
     var indexView = combinedIndex.getIndex();
 
     // Step 0 - determine list of names used for injected solver components
@@ -265,7 +266,6 @@ class GreyCOSProcessor {
 
     // Step 2 - validate all SolverConfig definitions
     assertNoMemberAnnotationWithoutClassAnnotation(indexView);
-    assertNodeSharingDisabled(solverConfigMap);
     assertSolverConfigSolutionClasses(indexView, solverConfigMap);
     assertSolverConfigEntityClasses(indexView);
     assertSolverConfigConstraintClasses(indexView, solverConfigMap);
@@ -276,6 +276,7 @@ class GreyCOSProcessor {
         (solverName, solverConfig) ->
             loadSolverConfig(
                 indexView, reflectiveHierarchyClass, solverConfig, solverName, reflectiveClassSet));
+    assertNodeSharingSupported(solverConfigMap, nativeBuild.isNative());
 
     // Register all annotated cotwin model classes
     registerClassesFromAnnotations(indexView, reflectiveClassSet);
@@ -444,7 +445,11 @@ class GreyCOSProcessor {
     }
   }
 
-  private void assertNodeSharingDisabled(Map<String, SolverConfig> solverConfigMap) {
+  private void assertNodeSharingSupported(
+      Map<String, SolverConfig> solverConfigMap, boolean nativeBuild) {
+    if (!nativeBuild) {
+      return;
+    }
     for (var entry : solverConfigMap.entrySet()) {
       var solverConfig = entry.getValue();
       var scoreDirectorFactoryConfig = solverConfig.getScoreDirectorFactoryConfig();
@@ -453,11 +458,9 @@ class GreyCOSProcessor {
               scoreDirectorFactoryConfig.getConstraintStreamAutomaticNodeSharing())) {
         throw new IllegalStateException(
             """
-                        SolverConfig %s enabled automatic node sharing via SolverConfig, which is not allowed.
-                        Enable automatic node sharing with the property %s instead."""
-                .formatted(
-                    entry.getKey(),
-                    "quarkus.greycos.solver.constraint-stream-automatic-node-sharing=true"));
+                        SolverConfig %s enables automatic node sharing, which requires runtime bytecode \
+                        transformation and is unsupported in a Quarkus native image."""
+                .formatted(entry.getKey()));
       }
     }
   }
@@ -1038,6 +1041,15 @@ class GreyCOSProcessor {
                   (Class<? extends NearbyDistanceMeter<?, ?>>) clazz);
             });
 
+    greycosBuildTimeConfig
+        .getSolverConfig(solverName)
+        .flatMap(SolverBuildTimeConfig::constraintStreamAutomaticNodeSharing)
+        .ifPresent(
+            automaticNodeSharing ->
+                solverConfig
+                    .getScoreDirectorFactoryConfig()
+                    .withConstraintStreamAutomaticNodeSharing(automaticNodeSharing));
+
     // Termination properties are set at runtime
   }
 
@@ -1201,7 +1213,18 @@ class GreyCOSProcessor {
       Set<Class<?>> reflectiveClassSet) {
     // Use mvn quarkus:dev -Dquarkus.debug.generated-classes-dir=dump-classes
     // to dump generated classes
-    var classOutput = new GeneratedClassGizmo2Adaptor(generatedClasses, generatedResources, true);
+    var createdClassSet = new LinkedHashSet<String>();
+    var classOutput =
+        new GeneratedClassGizmo2Adaptor(
+            createdClass -> {
+              // Multiple annotated paths may produce the same accessor. Quarkus rejects duplicate
+              // generated classes, so publish each binary name exactly once.
+              if (createdClassSet.add(createdClass.binaryName())) {
+                generatedClasses.produce(createdClass);
+              }
+            },
+            generatedResources,
+            true);
     var beanClassOutput = new GeneratedBeanGizmo2Adaptor(generatedBeans);
 
     var generatedMemberAccessorsClassNameSet = new HashSet<String>();

@@ -10,7 +10,7 @@ import ai.greycos.solver.core.api.score.stream.common.Break;
 import ai.greycos.solver.core.api.score.stream.common.Sequence;
 import ai.greycos.solver.core.api.score.stream.common.SequenceChain;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
-import ai.greycos.solver.core.impl.score.stream.collector.SequenceCalculator;
+import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollectorAccumulator;
 import ai.greycos.solver.jackson.api.GreyCOSJacksonModule;
 
 import org.junit.jupiter.api.Test;
@@ -18,10 +18,11 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 class SequenceRoundTripTest {
 
@@ -32,19 +33,18 @@ class SequenceRoundTripTest {
   private record Item(String id, int index) {}
 
   @Test
-  void roundTrip() throws JsonProcessingException {
+  <Ctx_> void roundTrip() throws JacksonException {
     // Prepare the data to be serialized.
-    Item sequence1Item1 = new Item("sequence1Item1", 0);
-    Item sequence1Item2 = new Item("sequence1Item2", 1);
-    Item sequence2Item1 = new Item("sequence2Item1", 3);
-    Item sequence2Item2 = new Item("sequence2Item2", 4);
-    Item sequence2Item3 = new Item("sequence2Item3", 5);
-    Item sequence3Item1 = new Item("sequence3Item1", 7);
-    UniConstraintCollector<Item, SequenceCalculator<Integer>, SequenceChain<Item, Integer>>
-        collector =
-            (UniConstraintCollector) ConstraintCollectors.toConsecutiveSequences(Item::index);
+    var sequence1Item1 = new Item("sequence1Item1", 0);
+    var sequence1Item2 = new Item("sequence1Item2", 1);
+    var sequence2Item1 = new Item("sequence2Item1", 3);
+    var sequence2Item2 = new Item("sequence2Item2", 4);
+    var sequence2Item3 = new Item("sequence2Item3", 5);
+    var sequence3Item1 = new Item("sequence3Item1", 7);
+    UniConstraintCollector<Item, Ctx_, SequenceChain<Item, Integer>> collector =
+        (UniConstraintCollector) ConstraintCollectors.toConsecutiveSequences(Item::index);
     var context = collector.supplier().get();
-    var accumulator = collector.accumulator();
+    var accumulator = (UniConstraintCollectorAccumulator<Object, Item>) collector.accumulator();
     for (var item :
         List.of(
             sequence1Item1,
@@ -53,7 +53,7 @@ class SequenceRoundTripTest {
             sequence2Item2,
             sequence2Item3,
             sequence3Item1)) {
-      accumulator.apply(context, item);
+      accumulator.intoGroup(context).add(item);
     }
 
     // Retrieve the instances to be serialized.
@@ -63,11 +63,12 @@ class SequenceRoundTripTest {
 
     ObjectMapper objectMapper =
         JsonMapper.builder()
-            .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-            .defaultPropertyInclusion(
-                JsonInclude.Value.construct(
-                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+            .changeDefaultPropertyInclusion(
+                incl ->
+                    incl.withContentInclusion(JsonInclude.Include.NON_NULL)
+                        .withValueInclusion(JsonInclude.Include.NON_NULL))
             .addModule(GreyCOSJacksonModule.createModule())
+            .disable(MapperFeature.SORT_CREATOR_PROPERTIES_FIRST)
             .build();
 
     assertSequenceChainRoundTrip(
@@ -226,7 +227,7 @@ class SequenceRoundTripTest {
 
   private static void assertSequenceChainRoundTrip(
       ObjectMapper objectMapper, SequenceChain<?, ?> original, String expectedSerialization)
-      throws JsonProcessingException {
+      throws JacksonException {
     var serialized = objectMapper.writeValueAsString(original);
     assertThat(serialized).isEqualToIgnoringWhitespace(expectedSerialization);
 
@@ -244,7 +245,7 @@ class SequenceRoundTripTest {
 
   private static void assertSequenceRoundTrip(
       ObjectMapper objectMapper, Sequence<?, ?> original, String expectedSerialization)
-      throws JsonProcessingException {
+      throws JacksonException {
     var serialized = objectMapper.writeValueAsString(original);
     assertThat(serialized).isEqualToIgnoringWhitespace(expectedSerialization);
 
@@ -272,7 +273,7 @@ class SequenceRoundTripTest {
 
   private static void assertBreakRoundTrip(
       ObjectMapper objectMapper, Break<?, ?> original, String expectedSerialization)
-      throws JsonProcessingException {
+      throws JacksonException {
     var serialized = objectMapper.writeValueAsString(original);
     assertThat(serialized).isEqualToIgnoringWhitespace(expectedSerialization);
 

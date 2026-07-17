@@ -3,10 +3,9 @@ package ai.greycos.solver.core.impl.heuristic.selector.entity.nearby;
 import java.util.Iterator;
 import java.util.ListIterator;
 import java.util.Objects;
-import java.util.function.LongSupplier;
 
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import ai.greycos.solver.core.impl.cotwin.variable.supply.Demand;
+import ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import ai.greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.ListIterable;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMatrix;
@@ -36,7 +35,7 @@ abstract class AbstractNearbyEntitySelector<Solution_>
   private boolean eagerInitialized = false;
 
   protected @Nullable NearbyDistanceMatrix<Object, Object> distanceMatrix;
-  private @Nullable Demand<NearbyDistanceMatrix<Object, Object>> distanceMatrixDemand;
+  private @Nullable NearbyDistanceMatrixDemand<Object, Object> distanceMatrixDemand;
 
   protected AbstractNearbyEntitySelector(
       @NonNull EntitySelector<Solution_> childEntitySelector,
@@ -79,6 +78,10 @@ abstract class AbstractNearbyEntitySelector<Solution_>
     }
     this.nearbyRandom = nearbyRandom;
     this.randomSelection = randomSelection;
+    if (maxNearbySortSize < 1) {
+      throw new IllegalArgumentException(
+          "The maxNearbySortSize (%d) must be at least 1.".formatted(maxNearbySortSize));
+    }
     this.maxNearbySortSize = maxNearbySortSize;
     this.eagerInitialization = eagerInitialization;
     this.originSelectorKey = originSelectorKey;
@@ -88,11 +91,19 @@ abstract class AbstractNearbyEntitySelector<Solution_>
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
+    if (distanceMatrix != null || distanceMatrixDemand != null) {
+      throw new IllegalStateException("The nearby entity selector is already solving.");
+    }
     super.solvingStarted(solverScope);
-    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
+    distanceMatrix = null;
+    distanceMatrixDemand = null;
+    eagerInitialized = false;
+  }
+
+  private void initializeDistanceMatrix(@NonNull SupplyManager supplyManager) {
     @SuppressWarnings("unchecked")
     var castedDistanceMeter = (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
-    var matrixDemand =
+    distanceMatrixDemand =
         new NearbyDistanceMatrixDemand<>(
             castedDistanceMeter,
             nearbyRandom,
@@ -104,30 +115,19 @@ abstract class AbstractNearbyEntitySelector<Solution_>
             this::calculateOriginSizeEstimate,
             origin -> childEntitySelector.endingIterator(),
             origin -> calculateDestinationSize());
-    if (supplyManager == null) {
-      this.distanceMatrix = matrixDemand.createExternalizedSupply(null);
-      this.distanceMatrixDemand = null;
-    } else {
-      @SuppressWarnings({"rawtypes", "unchecked"})
-      Object supplied =
-          ((ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager) supplyManager)
-              .demand((Demand) matrixDemand);
-      if (supplied instanceof NearbyDistanceMatrix<?, ?> suppliedMatrix) {
-        @SuppressWarnings("unchecked")
-        var castedMatrix = (NearbyDistanceMatrix<Object, Object>) suppliedMatrix;
-        this.distanceMatrix = castedMatrix;
-        this.distanceMatrixDemand = matrixDemand;
-      } else {
-        this.distanceMatrix = matrixDemand.createExternalizedSupply(supplyManager);
-        this.distanceMatrixDemand = null;
-      }
-    }
-    eagerInitialized = false;
+    distanceMatrix = supplyManager.demand(distanceMatrixDemand);
   }
 
   @Override
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
+    if (distanceMatrix == null) {
+      if (distanceMatrixDemand != null) {
+        throw new IllegalStateException(
+            "The nearby distance matrix demand exists without its supply.");
+      }
+      initializeDistanceMatrix(phaseScope.getScoreDirector().getSupplyManager());
+    }
     if (eagerInitialization && !eagerInitialized) {
       initializeAllOrigins();
       eagerInitialized = true;
@@ -135,11 +135,19 @@ abstract class AbstractNearbyEntitySelector<Solution_>
   }
 
   @Override
+  public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
+    super.phaseEnded(phaseScope);
+    eagerInitialized = false;
+  }
+
+  @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
     super.solvingEnded(solverScope);
     var supplyManager = solverScope.getScoreDirector().getSupplyManager();
-    if (distanceMatrixDemand != null && supplyManager != null) {
-      supplyManager.cancel(distanceMatrixDemand);
+    if (distanceMatrixDemand != null) {
+      if (!supplyManager.cancel(distanceMatrixDemand)) {
+        throw new IllegalStateException("The nearby distance matrix demand is not active.");
+      }
       distanceMatrixDemand = null;
     }
     distanceMatrix = null;
@@ -177,12 +185,14 @@ abstract class AbstractNearbyEntitySelector<Solution_>
 
   private int calculateOriginSizeEstimate() {
     if (originSelectorKey instanceof EntitySelector<?> originEntitySelector) {
-      return safeToIntSize(originEntitySelector::getSize, "originEntitySelector");
+      return toIntSize(originEntitySelector.getSize(), "originEntitySelector");
     }
     if (originSelectorKey instanceof IterableValueSelector<?> originValueSelector) {
-      return safeToIntSize(originValueSelector::getSize, "originValueSelector");
+      return toIntSize(originValueSelector.getSize(), "originValueSelector");
     }
-    return 100;
+    throw new IllegalStateException(
+        "The originSelectorKey (%s) is neither an EntitySelector nor an IterableValueSelector."
+            .formatted(originSelectorKey));
   }
 
   private int calculateDestinationSize() {
@@ -190,25 +200,15 @@ abstract class AbstractNearbyEntitySelector<Solution_>
   }
 
   protected static int toIntSize(long size, String selectorLabel) {
-    if (size > Integer.MAX_VALUE) {
+    if (size < 0 || size > Integer.MAX_VALUE) {
       throw new IllegalStateException(
           "The "
               + selectorLabel
               + " has a size ("
               + size
-              + ") which is higher than Integer.MAX_VALUE.");
+              + ") outside the supported range [0, Integer.MAX_VALUE].");
     }
     return (int) size;
-  }
-
-  private static int safeToIntSize(LongSupplier sizeSupplier, String selectorLabel) {
-    try {
-      return toIntSize(sizeSupplier.getAsLong(), selectorLabel);
-    } catch (NullPointerException ignored) {
-      // Some selectors initialize their size caches in phaseStarted().
-      // During solvingStarted() this estimate is best-effort only.
-      return 100;
-    }
   }
 
   private int calculateEffectiveMaxNearbySortSize() {
@@ -230,11 +230,6 @@ abstract class AbstractNearbyEntitySelector<Solution_>
   @Override
   public EntityDescriptor<Solution_> getEntityDescriptor() {
     return childEntitySelector.getEntityDescriptor();
-  }
-
-  @Override
-  public boolean isCountable() {
-    return true;
   }
 
   @Override

@@ -87,7 +87,7 @@ public class ListChangeMoveSelectorFactory<Solution_>
     // and FilteringValueRangeSelector
     // to replay the selected value and return only reachable values.
     var enableEntityValueRangeFilter =
-        !entityDescriptor.getGenuineListVariableDescriptor().canExtractValueRangeFromSolution();
+        !entityDescriptor.getListVariableDescriptor().canExtractValueRangeFromSolution();
     // A null ID means to turn off the entity value range filtering
     String entityValueRangeRecorderId = null;
     if (enableEntityValueRangeFilter) {
@@ -97,7 +97,7 @@ public class ListChangeMoveSelectorFactory<Solution_>
         var variableName = Objects.requireNonNull(mimicSelectorConfig.getVariableName());
         // We set the id to make sure the value selector will use the mimic recorder
         entityValueRangeRecorderId =
-            ConfigUtils.addRandomSuffix(variableName, configPolicy.getRandom());
+            ConfigUtils.addRandomSuffix(variableName, configPolicy.getRandom().factoryUsage());
         mimicSelectorConfig.setId(entityValueRangeRecorderId);
       } else {
         entityValueRangeRecorderId =
@@ -152,7 +152,7 @@ public class ListChangeMoveSelectorFactory<Solution_>
         onlyEntityDescriptor == null
             ? configPolicy.getSolutionDescriptor().getGenuineEntityDescriptors().stream()
                 // We need to filter the entity that defines the list variable
-                .filter(EntityDescriptor::hasAnyGenuineListVariables)
+                .filter(EntityDescriptor::hasAnyListVariables)
                 .toList()
             : Collections.singletonList(onlyEntityDescriptor);
 
@@ -165,8 +165,9 @@ public class ListChangeMoveSelectorFactory<Solution_>
     if (entityDescriptors.size() > 1) {
       throw new IllegalArgumentException(
           """
-                    The listChangeMoveSelector (%s) cannot unfold when there are multiple entities (%s).
-                    Please use one listChangeMoveSelector per each planning list variable."""
+          The listChangeMoveSelector (%s) cannot unfold when there are multiple entities (%s).
+          Please use one listChangeMoveSelector per each planning list variable.\
+          """
               .formatted(config, entityDescriptors));
     }
     var entityDescriptor = entityDescriptors.iterator().next();
@@ -191,10 +192,11 @@ public class ListChangeMoveSelectorFactory<Solution_>
       if (!onlyVariableDescriptor.isListVariable()) {
         throw new IllegalArgumentException(
             """
-                        The listChangeMoveSelector (%s) is configured to use a planning variable (%s), \
-                        which is not a planning list variable.
-                        Either fix your annotations and use a @%s on the variable to make it work with listChangeMoveSelector
-                        or use a changeMoveSelector instead."""
+            The listChangeMoveSelector (%s) is configured to use a planning variable (%s), \
+            which is not a planning list variable.
+            Either fix your annotations and use a @%s on the variable to make it work with listChangeMoveSelector
+            or use a changeMoveSelector instead.\
+            """
                 .formatted(
                     config, onlyVariableDescriptor, PlanningListVariable.class.getSimpleName()));
       }

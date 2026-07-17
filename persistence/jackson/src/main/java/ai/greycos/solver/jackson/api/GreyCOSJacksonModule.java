@@ -1,9 +1,6 @@
 package ai.greycos.solver.jackson.api;
 
 import ai.greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningEntityDiff;
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningSolutionDiff;
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningVariableDiff;
 import ai.greycos.solver.core.api.score.BendableBigDecimalScore;
 import ai.greycos.solver.core.api.score.BendableScore;
 import ai.greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
@@ -14,7 +11,7 @@ import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.SimpleBigDecimalScore;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.common.Break;
 import ai.greycos.solver.core.api.score.stream.common.LoadBalance;
 import ai.greycos.solver.core.api.score.stream.common.Sequence;
@@ -22,26 +19,29 @@ import ai.greycos.solver.core.api.score.stream.common.SequenceChain;
 import ai.greycos.solver.core.api.solver.RecommendedAssignment;
 import ai.greycos.solver.core.impl.cotwin.solution.DefaultConstraintWeightOverrides;
 import ai.greycos.solver.core.impl.solver.DefaultRecommendedAssignment;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningEntityDiff;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningSolutionDiff;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningVariableDiff;
 import ai.greycos.solver.jackson.api.cotwin.solution.ConstraintWeightOverridesSerializer;
+import ai.greycos.solver.jackson.api.score.BendableBigDecimalScoreJacksonDeserializer;
+import ai.greycos.solver.jackson.api.score.BendableBigDecimalScoreJacksonSerializer;
+import ai.greycos.solver.jackson.api.score.BendableScoreJacksonDeserializer;
+import ai.greycos.solver.jackson.api.score.BendableScoreJacksonSerializer;
+import ai.greycos.solver.jackson.api.score.HardMediumSoftBigDecimalScoreJacksonDeserializer;
+import ai.greycos.solver.jackson.api.score.HardMediumSoftBigDecimalScoreJacksonSerializer;
+import ai.greycos.solver.jackson.api.score.HardMediumSoftScoreJacksonDeserializer;
+import ai.greycos.solver.jackson.api.score.HardMediumSoftScoreJacksonSerializer;
+import ai.greycos.solver.jackson.api.score.HardSoftBigDecimalScoreJacksonDeserializer;
+import ai.greycos.solver.jackson.api.score.HardSoftBigDecimalScoreJacksonSerializer;
+import ai.greycos.solver.jackson.api.score.HardSoftScoreJacksonDeserializer;
+import ai.greycos.solver.jackson.api.score.HardSoftScoreJacksonSerializer;
 import ai.greycos.solver.jackson.api.score.PolymorphicScoreJacksonDeserializer;
 import ai.greycos.solver.jackson.api.score.PolymorphicScoreJacksonSerializer;
+import ai.greycos.solver.jackson.api.score.SimpleBigDecimalScoreJacksonDeserializer;
+import ai.greycos.solver.jackson.api.score.SimpleBigDecimalScoreJacksonSerializer;
+import ai.greycos.solver.jackson.api.score.SimpleScoreJacksonDeserializer;
+import ai.greycos.solver.jackson.api.score.SimpleScoreJacksonSerializer;
 import ai.greycos.solver.jackson.api.score.analysis.ScoreAnalysisJacksonSerializer;
-import ai.greycos.solver.jackson.api.score.buildin.BendableBigDecimalScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.BendableBigDecimalScoreJacksonSerializer;
-import ai.greycos.solver.jackson.api.score.buildin.BendableScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.BendableScoreJacksonSerializer;
-import ai.greycos.solver.jackson.api.score.buildin.HardMediumSoftBigDecimalScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.HardMediumSoftBigDecimalScoreJacksonSerializer;
-import ai.greycos.solver.jackson.api.score.buildin.HardMediumSoftScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.HardMediumSoftScoreJacksonSerializer;
-import ai.greycos.solver.jackson.api.score.buildin.HardSoftBigDecimalScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.HardSoftBigDecimalScoreJacksonSerializer;
-import ai.greycos.solver.jackson.api.score.buildin.HardSoftScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.HardSoftScoreJacksonSerializer;
-import ai.greycos.solver.jackson.api.score.buildin.SimpleBigDecimalScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.SimpleBigDecimalScoreJacksonSerializer;
-import ai.greycos.solver.jackson.api.score.buildin.SimpleScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.SimpleScoreJacksonSerializer;
 import ai.greycos.solver.jackson.api.score.constraint.ConstraintRefJacksonDeserializer;
 import ai.greycos.solver.jackson.api.score.constraint.ConstraintRefJacksonSerializer;
 import ai.greycos.solver.jackson.api.score.stream.common.BreakJacksonDeserializer;
@@ -58,10 +58,10 @@ import ai.greycos.solver.jackson.preview.api.cotwin.solution.diff.PlanningEntity
 import ai.greycos.solver.jackson.preview.api.cotwin.solution.diff.PlanningSolutionDiffJacksonSerializer;
 import ai.greycos.solver.jackson.preview.api.cotwin.solution.diff.PlanningVariableDiffJacksonSerializer;
 
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.Module;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
+import tools.jackson.databind.JacksonModule;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.module.SimpleModule;
 
 /** This class adds all Jackson serializers and deserializers. */
 public class GreyCOSJacksonModule extends SimpleModule {
@@ -69,17 +69,21 @@ public class GreyCOSJacksonModule extends SimpleModule {
   /**
    * Jackson modules can be loaded automatically via {@link java.util.ServiceLoader}. This will
    * happen if you use {@link JacksonSolutionFileIO}. Otherwise, register the module with {@link
-   * ObjectMapper#registerModule(Module)}.
+   * JsonMapper.Builder#addModule(JacksonModule)}.
    *
    * @return never null
    */
-  public static Module createModule() {
+  public static JacksonModule createModule() {
     return new GreyCOSJacksonModule();
   }
 
-  @SuppressWarnings({"rawtypes", "unchecked"})
   public GreyCOSJacksonModule() {
-    super("GreyCOS");
+    this("GreyCOS");
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  protected GreyCOSJacksonModule(String name) {
+    super(name);
     // For non-subtype Score fields/properties, we also need to record the score type
     addSerializer(Score.class, new PolymorphicScoreJacksonSerializer());
     addDeserializer(Score.class, new PolymorphicScoreJacksonDeserializer());
@@ -106,15 +110,13 @@ public class GreyCOSJacksonModule extends SimpleModule {
     addDeserializer(
         BendableBigDecimalScore.class, new BendableBigDecimalScoreJacksonDeserializer());
 
-    // Score analysis
+    // Constraint weights
     addSerializer(ConstraintRef.class, new ConstraintRefJacksonSerializer());
     addDeserializer(ConstraintRef.class, new ConstraintRefJacksonDeserializer());
     addSerializer(ScoreAnalysis.class, new ScoreAnalysisJacksonSerializer());
-    var serializer = (JsonSerializer) new RecommendedAssignmentJacksonSerializer<>();
-    addSerializer(RecommendedAssignment.class, serializer);
-    addSerializer(DefaultRecommendedAssignment.class, serializer);
-
-    // Constraint weights
+    var recommendationSerializer = (ValueSerializer) new RecommendedAssignmentJacksonSerializer<>();
+    addSerializer(RecommendedAssignment.class, recommendationSerializer);
+    addSerializer(DefaultRecommendedAssignment.class, recommendationSerializer);
     addSerializer(ConstraintWeightOverrides.class, new ConstraintWeightOverridesSerializer());
     addSerializer(
         DefaultConstraintWeightOverrides.class, new ConstraintWeightOverridesSerializer());
@@ -129,7 +131,7 @@ public class GreyCOSJacksonModule extends SimpleModule {
     addSerializer(LoadBalance.class, new LoadBalanceJacksonSerializer());
     addDeserializer(LoadBalance.class, new LoadBalanceJacksonDeserializer<>());
 
-    // Solution diff
+    // Native GreyCOS solution diff support.
     addSerializer(PlanningSolutionDiff.class, new PlanningSolutionDiffJacksonSerializer());
     addSerializer(PlanningEntityDiff.class, new PlanningEntityDiffJacksonSerializer());
     addSerializer(PlanningVariableDiff.class, new PlanningVariableDiffJacksonSerializer());

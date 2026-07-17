@@ -2,11 +2,11 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.factory;
 
 import java.util.Iterator;
 
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 /** Bridges a {@link MoveIteratorFactory} to a {@link MoveSelector}. */
 public class MoveIteratorFactoryToMoveSelectorBridge<Solution_>
@@ -44,11 +44,6 @@ public class MoveIteratorFactoryToMoveSelectorBridge<Solution_>
     moveIteratorFactory.phaseEnded(scoreDirector);
     super.phaseEnded(phaseScope);
     scoreDirector = null;
-  }
-
-  @Override
-  public boolean isCountable() {
-    return true;
   }
 
   @Override

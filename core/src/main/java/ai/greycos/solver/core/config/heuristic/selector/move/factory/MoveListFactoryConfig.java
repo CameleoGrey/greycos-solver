@@ -15,22 +15,23 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @XmlType(propOrder = {"moveListFactoryClass", "moveListFactoryCustomProperties"})
-public class MoveListFactoryConfig extends MoveSelectorConfig<MoveListFactoryConfig> {
+public final class MoveListFactoryConfig extends MoveSelectorConfig<MoveListFactoryConfig> {
 
   public static final String XML_ELEMENT_NAME = "moveListFactory";
 
-  protected Class<? extends MoveListFactory> moveListFactoryClass = null;
+  private String moveListFactoryClass = null;
 
   @XmlJavaTypeAdapter(JaxbCustomPropertiesAdapter.class)
-  protected Map<String, String> moveListFactoryCustomProperties = null;
+  private Map<String, String> moveListFactoryCustomProperties = null;
 
   public @Nullable Class<? extends MoveListFactory> getMoveListFactoryClass() {
-    return moveListFactoryClass;
+    return ConfigUtils.resolveClass(moveListFactoryClass, "moveListFactoryClass", this);
   }
 
   public void setMoveListFactoryClass(
       @Nullable Class<? extends MoveListFactory> moveListFactoryClass) {
-    this.moveListFactoryClass = moveListFactoryClass;
+    this.moveListFactoryClass =
+        moveListFactoryClass == null ? null : moveListFactoryClass.getName();
   }
 
   public @Nullable Map<String, String> getMoveListFactoryCustomProperties() {
@@ -48,7 +49,7 @@ public class MoveListFactoryConfig extends MoveSelectorConfig<MoveListFactoryCon
 
   public @NonNull MoveListFactoryConfig withMoveListFactoryClass(
       @NonNull Class<? extends MoveListFactory> moveListFactoryClass) {
-    this.setMoveListFactoryClass(moveListFactoryClass);
+    this.moveListFactoryClass = moveListFactoryClass.getName();
     return this;
   }
 
@@ -67,7 +68,7 @@ public class MoveListFactoryConfig extends MoveSelectorConfig<MoveListFactoryCon
     super.inherit(inheritedConfig);
     moveListFactoryClass =
         ConfigUtils.inheritOverwritableProperty(
-            moveListFactoryClass, inheritedConfig.getMoveListFactoryClass());
+            moveListFactoryClass, inheritedConfig.moveListFactoryClass);
     moveListFactoryCustomProperties =
         ConfigUtils.inheritMergeableMapProperty(
             moveListFactoryCustomProperties, inheritedConfig.getMoveListFactoryCustomProperties());
@@ -82,7 +83,7 @@ public class MoveListFactoryConfig extends MoveSelectorConfig<MoveListFactoryCon
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
     visitCommonReferencedClasses(classVisitor);
-    classVisitor.accept(moveListFactoryClass);
+    classVisitor.accept(getMoveListFactoryClass());
   }
 
   @Override

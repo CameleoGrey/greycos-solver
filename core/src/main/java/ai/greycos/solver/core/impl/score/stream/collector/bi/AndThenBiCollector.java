@@ -4,8 +4,8 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.score.stream.bi.BiConstraintCollector;
+import ai.greycos.solver.core.api.score.stream.bi.BiConstraintCollectorAccumulator;
 
 import org.jspecify.annotations.NonNull;
 
@@ -14,12 +14,14 @@ final class AndThenBiCollector<A, B, ResultContainer_, Intermediate_, Result_>
 
   private final BiConstraintCollector<A, B, ResultContainer_, Intermediate_> delegate;
   private final Function<Intermediate_, Result_> mappingFunction;
+  private final BiConstraintCollectorAccumulator<ResultContainer_, A, B> innerIncremental;
 
   AndThenBiCollector(
       BiConstraintCollector<A, B, ResultContainer_, Intermediate_> delegate,
       Function<Intermediate_, Result_> mappingFunction) {
     this.delegate = Objects.requireNonNull(delegate);
     this.mappingFunction = Objects.requireNonNull(mappingFunction);
+    this.innerIncremental = delegate.accumulator();
   }
 
   @Override
@@ -28,8 +30,8 @@ final class AndThenBiCollector<A, B, ResultContainer_, Intermediate_, Result_>
   }
 
   @Override
-  public @NonNull TriFunction<ResultContainer_, A, B, Runnable> accumulator() {
-    return delegate.accumulator();
+  public @NonNull BiConstraintCollectorAccumulator<ResultContainer_, A, B> accumulator() {
+    return innerIncremental;
   }
 
   @Override

@@ -21,6 +21,8 @@ import ai.greycos.solver.core.preview.api.neighborhood.MoveProvider;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
+import ai.greycos.solver.core.testcotwin.pinned.TestdataPinnedEntity;
+import ai.greycos.solver.core.testcotwin.pinned.TestdataPinnedSolution;
 import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEntity;
 import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedSolution;
 import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.TestdataEntityProvidingEntity;
@@ -212,21 +214,15 @@ class ChangeMoveProviderTest {
             .basicVariable();
 
     var solution = TestdataAllowsUnassignedEntityProvidingSolution.generateSolution(2, 2);
-    var firstEntity = solution.getEntityList().get(0);
     var secondEntity = solution.getEntityList().get(1);
-    var firstValue = firstEntity.getValueRange().get(0);
+    var firstValue = solution.getEntityList().get(0).getValueRange().get(0);
 
-    // Three moves are expected:
-    // - Assign firstEntity to null,
-    //   as it is currently assigned to firstValue, and the value range only contains firstValue.
-    // - Assign secondEntity to null and to firstValue,
-    //   as it is currently assigned to secondValue, and the value range only contains firstValue.
-    // Null is not in the value range, but as documented,
-    // null is added automatically to value ranges when allowsUnassigned is true.
+    // secondEntity is assigned to secondValue and can change to firstValue.
+    // firstEntity already has its only non-null value. Unassign moves are generated separately.
     var moveIterable =
         createMoveIterable(
             new ChangeMoveProvider<>(variableMetaModel), solutionDescriptor, solution);
-    assertThat(moveIterable).hasSize(3);
+    assertThat(moveIterable).hasSize(1);
 
     var moveList =
         StreamSupport.stream(moveIterable.spliterator(), false)
@@ -238,27 +234,44 @@ class ChangeMoveProviderTest {
                             TestdataValue>)
                         m)
             .toList();
-    assertThat(moveList).hasSize(3);
+    assertThat(moveList).hasSize(1);
 
     var firstMove = moveList.get(0);
     assertSoftly(
         softly -> {
-          softly.assertThat(firstMove.getPlanningEntities()).containsExactly(firstEntity);
-          softly.assertThat(firstMove.getPlanningValues()).hasSize(1).containsNull();
+          softly.assertThat(firstMove.getPlanningEntities()).containsExactly(secondEntity);
+          softly.assertThat(firstMove.getPlanningValues()).containsExactly(firstValue);
         });
+  }
 
-    var secondMove = moveList.get(1);
+  @Test
+  void pinnedEntitySkipped() {
+    var solutionDescriptor = TestdataPinnedSolution.buildSolutionDescriptor();
+    var variableMetaModel =
+        solutionDescriptor.getMetaModel().genuineEntity(TestdataPinnedEntity.class).basicVariable();
+
+    var solution = TestdataPinnedSolution.generateSolution(2, 2);
+    var firstEntity = solution.getEntityList().get(0);
+    var secondEntity = solution.getEntityList().get(1);
+    var firstValue = solution.getValueList().get(0);
+    firstEntity.setPinned(true);
+
+    var moveIterable =
+        createMoveIterable(
+            new ChangeMoveProvider<>(variableMetaModel), solutionDescriptor, solution);
+    var moveList =
+        StreamSupport.stream(moveIterable.spliterator(), false)
+            .map(
+                move ->
+                    (ChangeMove<TestdataPinnedSolution, TestdataPinnedEntity, TestdataValue>) move)
+            .toList();
+    assertThat(moveList).hasSize(1);
+
+    var move = moveList.get(0);
     assertSoftly(
         softly -> {
-          softly.assertThat(secondMove.getPlanningEntities()).containsExactly(secondEntity);
-          softly.assertThat(secondMove.getPlanningValues()).hasSize(1).containsNull();
-        });
-
-    var thirdMove = moveList.get(2);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(thirdMove.getPlanningEntities()).containsExactly(secondEntity);
-          softly.assertThat(thirdMove.getPlanningValues()).containsExactly(firstValue);
+          softly.assertThat(move.getPlanningEntities()).containsExactly(secondEntity);
+          softly.assertThat(move.getPlanningValues()).containsExactly(firstValue);
         });
   }
 
@@ -272,14 +285,11 @@ class ChangeMoveProviderTest {
             .basicVariable();
 
     var solution = TestdataAllowsUnassignedSolution.generateSolution(2, 2);
-    var firstEntity = solution.getEntityList().get(0); // Assigned to null.
     var secondEntity = solution.getEntityList().get(1); // Assigned to secondValue.
     var firstValue = solution.getValueList().get(0); // Not assigned to any entity.
-    var secondValue = solution.getValueList().get(1);
 
-    // Filters out moves that would change the value to the value the entity already has.
-    // Therefore this will have 4 moves (2 entities * 2 values) as opposed to 6 (2 entities * 3
-    // values).
+    // The unassigned first entity is handled by AssignMoveProvider. The second entity can change
+    // from secondValue to firstValue. Unassign moves are generated separately.
     var moveIterable =
         createMoveIterable(
             new ChangeMoveProvider<>(variableMetaModel), solutionDescriptor, solution);
@@ -293,40 +303,13 @@ class ChangeMoveProviderTest {
                             TestdataValue>)
                         m)
             .toList();
-    assertThat(moveList).hasSize(4);
+    assertThat(moveList).hasSize(1);
 
-    // First entity is assigned to null, therefore the applicable moves assign to firstValue and
-    // secondValue.
     var firstMove = moveList.get(0);
     assertSoftly(
         softly -> {
-          softly.assertThat(firstMove.getPlanningEntities()).containsExactly(firstEntity);
+          softly.assertThat(firstMove.getPlanningEntities()).containsExactly(secondEntity);
           softly.assertThat(firstMove.getPlanningValues()).containsExactly(firstValue);
-        });
-
-    var secondMove = moveList.get(1);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(secondMove.getPlanningEntities()).containsExactly(firstEntity);
-          softly.assertThat(secondMove.getPlanningValues()).containsExactly(secondValue);
-        });
-
-    // Second entity is assigned to secondValue, therefore the applicable moves assign to null and
-    // firstValue.
-    var thirdMove = moveList.get(2);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(thirdMove.getPlanningEntities()).containsExactly(secondEntity);
-          softly
-              .assertThat(thirdMove.getPlanningValues())
-              .containsExactly(new TestdataValue[] {null});
-        });
-
-    var fourthMove = moveList.get(3);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(fourthMove.getPlanningEntities()).containsExactly(secondEntity);
-          softly.assertThat(fourthMove.getPlanningValues()).containsExactly(firstValue);
         });
   }
 

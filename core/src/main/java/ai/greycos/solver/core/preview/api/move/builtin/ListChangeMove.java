@@ -1,9 +1,8 @@
 package ai.greycos.solver.core.preview.api.move.builtin;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
@@ -146,17 +145,17 @@ public class ListChangeMove<Solution_, Entity_, Value_> extends AbstractMove<Sol
   }
 
   @Override
-  public Collection<Entity_> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     if (sourceEntity == destinationEntity) {
-      return Collections.singleton(sourceEntity);
+      return List.of(sourceEntity);
     } else {
       return List.of(sourceEntity, destinationEntity);
     }
   }
 
   @Override
-  public Collection<Value_> getPlanningValues() {
-    return Collections.singleton(getMovedValue());
+  public SequencedCollection<Object> getPlanningValues() {
+    return List.of(getMovedValue());
   }
 
   @Override

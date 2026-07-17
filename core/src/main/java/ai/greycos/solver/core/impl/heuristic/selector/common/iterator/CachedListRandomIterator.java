@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.random.RandomGenerator;
 
-import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 /**
  * This {@link Iterator} does not shuffle and is never ending.

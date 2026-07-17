@@ -119,13 +119,8 @@ public final class IterableFromEntityPropertyValueSelector<Solution_>
   }
 
   @Override
-  public boolean isCountable() {
-    return valueRangeDescriptor.isCountable();
-  }
-
-  @Override
   public boolean isNeverEnding() {
-    return randomSelection || !isCountable();
+    return randomSelection;
   }
 
   @Override

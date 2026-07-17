@@ -7,8 +7,8 @@ import java.util.function.Supplier;
 
 import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.score.stream.common.ConnectedRangeChain;
-import ai.greycos.solver.core.impl.score.stream.collector.ConnectedRangesCalculator;
-import ai.greycos.solver.core.impl.score.stream.collector.connected_ranges.Range;
+import ai.greycos.solver.core.api.score.stream.tri.TriConstraintCollectorValueHandle;
+import ai.greycos.solver.core.impl.score.stream.collector.AbstractConnectedRangesSlot;
 
 import org.jspecify.annotations.NonNull;
 
@@ -19,14 +19,13 @@ final class ConnectedRangesTriConstraintCollector<
         Interval_,
         Point_ extends Comparable<Point_>,
         Difference_ extends Comparable<Difference_>>
-    extends ObjectCalculatorTriCollector<
+    extends AbstractReferenceBasedTriCollector<
         A,
         B,
         C,
         Interval_,
         ConnectedRangeChain<Interval_, Point_, Difference_>,
-        Range<Interval_, Point_>,
-        ConnectedRangesCalculator<Interval_, Point_, Difference_>> {
+        AbstractConnectedRangesSlot.State<Interval_, Point_, Difference_>> {
 
   private final Function<? super Interval_, ? extends Point_> startMap;
   private final Function<? super Interval_, ? extends Point_> endMap;
@@ -45,8 +44,46 @@ final class ConnectedRangesTriConstraintCollector<
   }
 
   @Override
-  public @NonNull Supplier<ConnectedRangesCalculator<Interval_, Point_, Difference_>> supplier() {
-    return () -> new ConnectedRangesCalculator<>(startMap, endMap, differenceFunction);
+  public @NonNull Supplier<AbstractConnectedRangesSlot.State<Interval_, Point_, Difference_>>
+      supplier() {
+    return () -> new AbstractConnectedRangesSlot.State<>(startMap, endMap, differenceFunction);
+  }
+
+  @Override
+  public @NonNull
+      Function<
+          AbstractConnectedRangesSlot.State<Interval_, Point_, Difference_>,
+          ConnectedRangeChain<Interval_, Point_, Difference_>>
+      finisher() {
+    return AbstractConnectedRangesSlot.State::result;
+  }
+
+  @Override
+  protected TriConstraintCollectorValueHandle<A, B, C> newAccumulatedValue(
+      AbstractConnectedRangesSlot.State<Interval_, Point_, Difference_> state) {
+    return new Slot(state);
+  }
+
+  private final class Slot extends AbstractConnectedRangesSlot<Interval_, Point_, Difference_>
+      implements TriConstraintCollectorValueHandle<A, B, C> {
+    Slot(AbstractConnectedRangesSlot.State<Interval_, Point_, Difference_> state) {
+      super(state);
+    }
+
+    @Override
+    public void add(A a, B b, C c) {
+      addMapped(mapper.apply(a, b, c));
+    }
+
+    @Override
+    public void replaceWith(A a, B b, C c) {
+      replaceWithMapped(mapper.apply(a, b, c));
+    }
+
+    @Override
+    public void remove() {
+      removeMapped();
+    }
   }
 
   @Override

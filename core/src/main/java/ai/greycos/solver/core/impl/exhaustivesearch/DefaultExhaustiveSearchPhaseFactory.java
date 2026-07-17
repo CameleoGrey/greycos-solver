@@ -25,7 +25,7 @@ import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import ai.greycos.solver.core.impl.exhaustivesearch.decider.AbstractExhaustiveSearchDecider;
-import ai.greycos.solver.core.impl.exhaustivesearch.decider.BasicExhaustiveSearchDecider;
+import ai.greycos.solver.core.impl.exhaustivesearch.decider.BasicVariableExhaustiveSearchDecider;
 import ai.greycos.solver.core.impl.exhaustivesearch.decider.ListVariableExhaustiveSearchDecider;
 import ai.greycos.solver.core.impl.exhaustivesearch.decider.MixedVariableExhaustiveSearchDecider;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.bounder.ScoreBounder;
@@ -213,7 +213,8 @@ public class DefaultExhaustiveSearchPhaseFactory<Solution_>
           boolean isListVariable) {
     var manualEntityMimicRecorder = new ManualEntityMimicRecorder<>(sourceEntitySelector);
     var entityClassName = sourceEntitySelector.getEntityDescriptor().getEntityClass().getName();
-    var mimicSelectorId = ConfigUtils.addRandomSuffix(entityClassName, configPolicy.getRandom());
+    var mimicSelectorId =
+        ConfigUtils.addRandomSuffix(entityClassName, configPolicy.getRandom().factoryUsage());
     configPolicy.addEntityMimicRecorder(mimicSelectorId, manualEntityMimicRecorder);
     var variableDescriptorList =
         getGenuineVariableDescriptorList(sourceEntitySelector, isListVariable);
@@ -266,7 +267,7 @@ public class DefaultExhaustiveSearchPhaseFactory<Solution_>
               scoreBounder);
     } else {
       decider =
-          new BasicExhaustiveSearchDecider<>(
+          new BasicVariableExhaustiveSearchDecider<>(
               configPolicy.getLogIndentation(),
               bestSolutionRecaller,
               termination,

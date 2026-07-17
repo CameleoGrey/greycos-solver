@@ -9,8 +9,8 @@ import jakarta.xml.bind.annotation.XmlEnum;
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
 import ai.greycos.solver.core.api.solver.Solver;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 /**
  * The environment mode also allows you to detect common bugs in your implementation.

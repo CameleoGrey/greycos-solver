@@ -14,26 +14,25 @@ import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.core.impl.solver.DefaultSolutionManager;
 import ai.greycos.solver.core.impl.util.Pair;
 import ai.greycos.solver.core.testcotwin.TestdataConstraintProvider;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
-import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListCMAIncrementalScoreCalculator;
 import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListEntity;
+import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListRecommendationConstraintProvider;
 import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListSolution;
 import ai.greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListValue;
 import ai.greycos.solver.core.testcotwin.list.shadowhistory.TestdataListEntityWithShadowHistory;
 import ai.greycos.solver.core.testcotwin.list.shadowhistory.TestdataListSolutionWithShadowHistory;
 import ai.greycos.solver.core.testcotwin.list.shadowhistory.TestdataListValueWithShadowHistory;
-import ai.greycos.solver.core.testcotwin.list.shadowhistory.TestdataListWithShadowHistoryIncrementalScoreCalculator;
+import ai.greycos.solver.core.testcotwin.list.shadowhistory.TestdataListWithShadowHistoryConstraintProvider;
+import ai.greycos.solver.core.testcotwin.multivar.TestdataMultiVarConstraintProvider;
 import ai.greycos.solver.core.testcotwin.multivar.TestdataMultiVarEntity;
 import ai.greycos.solver.core.testcotwin.multivar.TestdataMultiVarSolution;
-import ai.greycos.solver.core.testcotwin.multivar.TestdataMultivarIncrementalScoreCalculator;
 import ai.greycos.solver.core.testcotwin.multivar.TestdataOtherValue;
+import ai.greycos.solver.core.testcotwin.shadow.TestdataShadowedConstraintProviderClass;
 import ai.greycos.solver.core.testcotwin.shadow.TestdataShadowedEntity;
-import ai.greycos.solver.core.testcotwin.shadow.TestdataShadowedIncrementalScoreCalculator;
 import ai.greycos.solver.core.testcotwin.shadow.TestdataShadowedSolution;
 import ai.greycos.solver.core.testcotwin.shadow.concurrent.TestdataConcurrentConstraintProvider;
 import ai.greycos.solver.core.testcotwin.shadow.concurrent.TestdataConcurrentEntity;
@@ -43,8 +42,8 @@ import ai.greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseR
 import ai.greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseRelationEntity;
 import ai.greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseRelationSolution;
 import ai.greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseRelationValue;
+import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedConstraintProvider;
 import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEntity;
-import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedIncrementalScoreCalculator;
 import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedSolution;
 
 import org.assertj.core.api.SoftAssertions;
@@ -55,12 +54,18 @@ import org.junit.jupiter.params.provider.EnumSource;
 public class SolutionManagerTest {
 
   public static final SolverFactory<TestdataShadowedSolution> SOLVER_FACTORY =
-      SolverFactory.createFromXmlResource(
-          "ai/greycos/solver/core/api/solver/testdataShadowedSolverConfig.xml");
+      SolverFactory.create(
+          new SolverConfig()
+              .withSolutionClass(TestdataShadowedSolution.class)
+              .withEntityClasses(TestdataShadowedEntity.class)
+              .withConstraintProviderClass(TestdataShadowedConstraintProviderClass.class));
   public static final SolverFactory<TestdataAllowsUnassignedSolution>
       SOLVER_FACTORY_OVERCONSTRAINED =
-          SolverFactory.createFromXmlResource(
-              "ai/greycos/solver/core/api/solver/testdataOverconstrainedSolverConfig.xml");
+          SolverFactory.create(
+              new SolverConfig()
+                  .withSolutionClass(TestdataAllowsUnassignedSolution.class)
+                  .withEntityClasses(TestdataAllowsUnassignedEntity.class)
+                  .withConstraintProviderClass(TestdataAllowsUnassignedConstraintProvider.class));
   public static final SolverFactory<TestdataShadowedSolution> SOLVER_FACTORY_SHADOWED =
       SolverFactory.create(
           new SolverConfig()
@@ -68,8 +73,7 @@ public class SolutionManagerTest {
               .withEntityClasses(TestdataShadowedEntity.class)
               .withScoreDirectorFactory(
                   new ScoreDirectorFactoryConfig()
-                      .withIncrementalScoreCalculatorClass(
-                          TestdataShadowedIncrementalScoreCalculator.class)));
+                      .withConstraintProviderClass(TestdataShadowedConstraintProviderClass.class)));
   public static final SolverFactory<TestdataConcurrentSolution> SOLVER_FACTORY_DECLARATIVE_SHADOW =
       SolverFactory.create(
           new SolverConfig()
@@ -81,19 +85,13 @@ public class SolutionManagerTest {
           new SolverConfig()
               .withSolutionClass(TestdataAllowsUnassignedSolution.class)
               .withEntityClasses(TestdataAllowsUnassignedEntity.class)
-              .withScoreDirectorFactory(
-                  new ScoreDirectorFactoryConfig()
-                      .withIncrementalScoreCalculatorClass(
-                          TestdataAllowsUnassignedIncrementalScoreCalculator.class)));
+              .withConstraintProviderClass(TestdataAllowsUnassignedConstraintProvider.class));
   public static final SolverFactory<TestdataMultiVarSolution> SOLVER_FACTORY_MULTIVAR =
       SolverFactory.create(
           new SolverConfig()
               .withSolutionClass(TestdataMultiVarSolution.class)
               .withEntityClasses(TestdataMultiVarEntity.class)
-              .withScoreDirectorFactory(
-                  new ScoreDirectorFactoryConfig()
-                      .withIncrementalScoreCalculatorClass(
-                          TestdataMultivarIncrementalScoreCalculator.class)));
+              .withConstraintProviderClass(TestdataMultiVarConstraintProvider.class));
   public static final SolverFactory<TestdataListSolutionWithShadowHistory> SOLVER_FACTORY_LIST =
       SolverFactory.create(
           new SolverConfig()
@@ -101,10 +99,7 @@ public class SolutionManagerTest {
               .withEntityClasses(
                   TestdataListEntityWithShadowHistory.class,
                   TestdataListValueWithShadowHistory.class)
-              .withScoreDirectorFactory(
-                  new ScoreDirectorFactoryConfig()
-                      .withIncrementalScoreCalculatorClass(
-                          TestdataListWithShadowHistoryIncrementalScoreCalculator.class)));
+              .withConstraintProviderClass(TestdataListWithShadowHistoryConstraintProvider.class));
   public static final SolverFactory<TestdataPinnedWithIndexListSolution>
       SOLVER_FACTORY_LIST_PINNED =
           SolverFactory.create(
@@ -113,10 +108,8 @@ public class SolutionManagerTest {
                   .withEntityClasses(
                       TestdataPinnedWithIndexListEntity.class,
                       TestdataPinnedWithIndexListValue.class)
-                  .withScoreDirectorFactory(
-                      new ScoreDirectorFactoryConfig()
-                          .withIncrementalScoreCalculatorClass(
-                              TestdataPinnedWithIndexListCMAIncrementalScoreCalculator.class)));
+                  .withConstraintProviderClass(
+                      TestdataPinnedWithIndexListRecommendationConstraintProvider.class));
   public static final SolverFactory<TestdataSolution> SOLVER_FACTORY_WITH_CS =
       SolverFactory.create(
           new SolverConfig()
@@ -432,29 +425,6 @@ public class SolutionManagerTest {
                 + " and one of its elements (e1 -> a1 -> b1)"
                 + " which has a shadow variable (entity)"
                 + " has an oldInverseEntity (e2) which is not that entity.");
-  }
-
-  @ParameterizedTest
-  @EnumSource(SolutionManagerSource.class)
-  void explain(SolutionManagerSource SolutionManagerSource) {
-    var solution = TestdataShadowedSolution.generateSolution();
-
-    var solutionManager = SolutionManagerSource.createSolutionManager(SOLVER_FACTORY);
-    assertThat(solutionManager).isNotNull();
-
-    var scoreExplanation = solutionManager.explain(solution);
-    assertThat(scoreExplanation).isNotNull();
-    assertSoftly(
-        softly -> {
-          softly.assertThat(scoreExplanation.getScore()).isNotNull();
-          softly.assertThat(scoreExplanation.getSummary()).isNotBlank();
-          softly
-              .assertThat(scoreExplanation.getConstraintMatchTotalMap())
-              .containsOnlyKeys("testConstraint");
-          softly
-              .assertThat(scoreExplanation.getIndictmentMap())
-              .containsOnlyKeys(solution.getEntityList().toArray());
-        });
   }
 
   @ParameterizedTest
@@ -2104,41 +2074,6 @@ public class SolutionManagerTest {
             uninitializedValue,
             v -> new Pair<>(v.getEntity(), v.getEntity().getValueList().indexOf(v)));
     assertThat(recommendationList).hasSize(4);
-  }
-
-  @SuppressWarnings("unchecked")
-  @ParameterizedTest
-  @EnumSource(SolutionManagerSource.class)
-  void visualizeNodeNetwork(SolutionManagerSource SolutionManagerSource) {
-    var solution = new TestdataSolution();
-    var solutionManager =
-        (DefaultSolutionManager<TestdataSolution, SimpleScore>)
-            SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_WITH_CS);
-    var result = solutionManager.visualizeNodeNetwork(solution);
-    assertThat(result)
-        .isEqualToIgnoringWhitespace(
-            """
-                        digraph {
-                            rankdir=LR;
-                            label=<<B>Bavet Node Network for 'null'</B><BR />1 constraints, 1 nodes>;
-                            node0 -> impact0;
-                            node0 [pad="0.2", fillcolor="#3e00ff", shape="plaintext", fontcolor="white", style="filled", label=<<B>ForEachFilteredUni</B><BR/>(TestdataEntity)>, fontname="Courier New"];
-                            impact0 [pad="0.2", fillcolor="#3423a6", shape="plaintext", fontcolor="white", style="filled", label=<<B>Always penalize</B><BR />(Weight: -1)>, fontname="Courier New"];
-                            { rank=same; node0; }
-                        }""");
-  }
-
-  @SuppressWarnings("unchecked")
-  @ParameterizedTest
-  @EnumSource(SolutionManagerSource.class)
-  void visualizeNodeNetworkNoBavet(SolutionManagerSource SolutionManagerSource) {
-    var solution = new TestdataPinnedWithIndexListSolution();
-    var solutionManager =
-        (DefaultSolutionManager<TestdataPinnedWithIndexListSolution, SimpleScore>)
-            SolutionManagerSource.createSolutionManager(SOLVER_FACTORY_LIST_PINNED);
-    assertThatThrownBy(() -> solutionManager.visualizeNodeNetwork(solution))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Constraint Streams");
   }
 
   @SuppressWarnings({"unchecked", "rawtypes"})

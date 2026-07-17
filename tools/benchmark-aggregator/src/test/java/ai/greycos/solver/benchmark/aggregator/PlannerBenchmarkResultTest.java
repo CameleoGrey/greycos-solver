@@ -11,7 +11,7 @@ import ai.greycos.solver.benchmark.config.report.BenchmarkReportConfig;
 import ai.greycos.solver.benchmark.impl.report.BenchmarkReportFactory;
 import ai.greycos.solver.benchmark.impl.result.BenchmarkResultIO;
 import ai.greycos.solver.core.api.score.SimpleScore;
-import ai.greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
+import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
@@ -48,13 +48,25 @@ class PlannerBenchmarkResultTest {
     assertThat(aggregatedPlannerBenchmarkResult.getFailureCount()).isZero();
   }
 
-  // nested class below are used in the testPlannerBenchmarkResult.xml
+  // nested classes below are used in the testPlannerBenchmarkResult.xml
 
-  private abstract static class DummyIncrementalScoreCalculator
-      implements IncrementalScoreCalculator<TestdataSolution, SimpleScore> {}
+  public static class DummyEasyScoreCalculator
+      implements EasyScoreCalculator<TestdataSolution, SimpleScore> {
 
-  private abstract static class DummyDistanceNearbyMeter
-      implements NearbyDistanceMeter<TestdataSolution, TestdataEntity> {}
+    @Override
+    public SimpleScore calculateScore(TestdataSolution solution) {
+      return null;
+    }
+  }
+
+  public static class DummyDistanceNearbyMeter
+      implements NearbyDistanceMeter<TestdataSolution, TestdataEntity> {
+
+    @Override
+    public double getNearbyDistance(TestdataSolution origin, TestdataEntity destination) {
+      return 0;
+    }
+  }
 
   private static final class TestableBenchmarkResultIO extends BenchmarkResultIO {
 

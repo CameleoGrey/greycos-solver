@@ -33,9 +33,17 @@
     <dependencies>
       <dependency>
         <!--
-          Import dependency management from Spring Boot, as recommended here:
-          https://github.com/CameleoGrey/greycos-solver/issues/395
-         -->
+          GreyCOS Solver's Jackson 3 version is independent of Spring Boot.
+          Import this first so that the persistence and Spring modules stay aligned.
+        -->
+        <groupId>tools.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${version.tools.jackson}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <!-- Import dependency management from Spring Boot. -->
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>
         <version>${version.org.springframework.boot}</version>

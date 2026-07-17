@@ -129,8 +129,11 @@ public final class NearValueNearbyEntitySelector<Solution_>
       if (replayingOriginIterator.hasNext()) {
         origin = replayingOriginIterator.next();
       }
-      if (origin == null || nearbyRandom == null) {
+      if (origin == null) {
         throw new NoSuchElementException();
+      }
+      if (nearbyRandom == null) {
+        throw new IllegalStateException("The random nearby distribution is not configured.");
       }
       if (origin != cachedOrigin) {
         cachedOrigin = origin;

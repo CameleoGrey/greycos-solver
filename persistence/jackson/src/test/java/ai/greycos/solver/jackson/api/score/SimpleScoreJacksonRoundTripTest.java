@@ -1,33 +1,32 @@
 package ai.greycos.solver.jackson.api.score;
 
 import ai.greycos.solver.core.api.score.SimpleScore;
-import ai.greycos.solver.jackson.api.score.buildin.SimpleScoreJacksonDeserializer;
-import ai.greycos.solver.jackson.api.score.buildin.SimpleScoreJacksonSerializer;
 
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 class SimpleScoreJacksonRoundTripTest extends AbstractScoreJacksonRoundTripTest {
 
   @Test
   void serializeAndDeserialize() {
-    assertSerializeAndDeserialize(null, new TestSimpleScoreWrapper(null));
-    var score = SimpleScore.of(1234);
-    assertSerializeAndDeserialize(score, new TestSimpleScoreWrapper(score));
+    assertSerializeAndDeserialize(null, new TestSimpleLongScoreWrapper(null));
+    var score = SimpleScore.of(1234L);
+    assertSerializeAndDeserialize(score, new TestSimpleLongScoreWrapper(score));
   }
 
-  public static class TestSimpleScoreWrapper extends TestScoreWrapper<SimpleScore> {
+  public static class TestSimpleLongScoreWrapper
+      extends AbstractScoreJacksonRoundTripTest.TestScoreWrapper<SimpleScore> {
 
     @JsonSerialize(using = SimpleScoreJacksonSerializer.class)
     @JsonDeserialize(using = SimpleScoreJacksonDeserializer.class)
     private SimpleScore score;
 
     @SuppressWarnings("unused")
-    private TestSimpleScoreWrapper() {}
+    private TestSimpleLongScoreWrapper() {}
 
-    public TestSimpleScoreWrapper(SimpleScore score) {
+    public TestSimpleLongScoreWrapper(SimpleScore score) {
       this.score = score;
     }
 

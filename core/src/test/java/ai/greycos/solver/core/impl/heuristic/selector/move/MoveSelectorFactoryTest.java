@@ -12,7 +12,7 @@ import ai.greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import ai.greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
 import ai.greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import ai.greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.CachingMoveSelector;
@@ -21,6 +21,8 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.Probability
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.ShufflingMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.decorator.SortingMoveSelector;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
+import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.common.DummyValueComparatorFactory;
 
@@ -301,16 +303,18 @@ class MoveSelectorFactoryTest {
 
   @Test
   void applyFilter_nonMovableMoves() {
-    Move<TestdataSolution> notDoableMove =
-        new Move<>() {
+    var notDoableMove =
+        new AbstractSelectorBasedMove<TestdataSolution>() {
           @Override
           public boolean isMoveDoable(ScoreDirector<TestdataSolution> scoreDirector) {
             return false;
           }
 
           @Override
-          public Move<TestdataSolution> doMove(ScoreDirector<TestdataSolution> scoreDirector) {
-            return null;
+          protected void execute(
+              MutableSolutionView<TestdataSolution> solutionView,
+              VariableDescriptorAwareScoreDirector<TestdataSolution> scoreDirector) {
+            throw new IllegalStateException("This move should not be executed.");
           }
         };
     final MoveSelector<TestdataSolution> baseMoveSelector =

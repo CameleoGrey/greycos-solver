@@ -3,22 +3,22 @@ package ai.greycos.solver.core.testutil;
 import java.util.List;
 import java.util.Objects;
 
-import ai.greycos.solver.core.impl.heuristic.move.CompositeMove;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
-import ai.greycos.solver.core.impl.heuristic.move.NoChangeMove;
+import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedCompositeMove;
+import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.list.SubList;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.PillarChangeMove;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.SwapMove;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ListAssignMove;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMove;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ListSwapMove;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.ListUnassignMove;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListChangeMove;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListSwapMove;
-import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListUnassignMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.SelectorBasedChangeMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.SelectorBasedPillarChangeMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.SelectorBasedSwapMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SelectorBasedListAssignMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SelectorBasedListChangeMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SelectorBasedListSwapMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SelectorBasedListUnassignMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SelectorBasedSubListChangeMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SelectorBasedSubListSwapMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.list.SelectorBasedSubListUnassignMove;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.UnassignedElement;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public interface CodeAssertable {
 
@@ -28,34 +28,34 @@ public interface CodeAssertable {
     Objects.requireNonNull(o);
     if (o instanceof CodeAssertable assertable) {
       return assertable;
-    } else if (o instanceof NoChangeMove<?>) {
+    } else if (o instanceof SelectorBasedNoChangeMove<?>) {
       return () -> "No change";
-    } else if (o instanceof ChangeMove<?> changeMove) {
+    } else if (o instanceof SelectorBasedChangeMove<?> changeMove) {
       final String code =
           convert(changeMove.getEntity()).getCode()
               + "->"
               + convert(changeMove.getToPlanningValue()).getCode();
       return () -> code;
-    } else if (o instanceof SwapMove<?> swapMove) {
+    } else if (o instanceof SelectorBasedSwapMove<?> swapMove) {
       final String code =
           convert(swapMove.getLeftEntity()).getCode()
               + "<->"
               + convert(swapMove.getRightEntity()).getCode();
       return () -> code;
-    } else if (o instanceof PillarChangeMove<?> pillarChangeMove) {
+    } else if (o instanceof SelectorBasedPillarChangeMove<?> pillarChangeMove) {
       final String code =
           pillarChangeMove.getPillar()
               + "->"
               + convert(pillarChangeMove.getToPlanningValue()).getCode();
       return () -> code;
-    } else if (o instanceof CompositeMove<?> compositeMove) {
+    } else if (o instanceof SelectorBasedCompositeMove<?> compositeMove) {
       StringBuilder codeBuilder = new StringBuilder(compositeMove.getMoves().length * 80);
       for (Move<?> move : compositeMove.getMoves()) {
         codeBuilder.append("+").append(convert(move).getCode());
       }
       final String code = codeBuilder.substring(1);
       return () -> code;
-    } else if (o instanceof ListAssignMove<?> listAssignMove) {
+    } else if (o instanceof SelectorBasedListAssignMove<?> listAssignMove) {
       return () ->
           convert(listAssignMove.getMovedValue())
               + " {null->"
@@ -63,7 +63,7 @@ public interface CodeAssertable {
               + "["
               + listAssignMove.getDestinationIndex()
               + "]}";
-    } else if (o instanceof ListUnassignMove<?> listUnassignMove) {
+    } else if (o instanceof SelectorBasedListUnassignMove<?> listUnassignMove) {
       return () ->
           convert(listUnassignMove.getMovedValue())
               + " {"
@@ -71,7 +71,7 @@ public interface CodeAssertable {
               + "["
               + listUnassignMove.getSourceIndex()
               + "]->null}";
-    } else if (o instanceof ListChangeMove<?> listChangeMove) {
+    } else if (o instanceof SelectorBasedListChangeMove<?> listChangeMove) {
       return () ->
           convert(listChangeMove.getMovedValue())
               + " {"
@@ -83,7 +83,7 @@ public interface CodeAssertable {
               + "["
               + listChangeMove.getDestinationIndex()
               + "]}";
-    } else if (o instanceof ListSwapMove<?> listSwapMove) {
+    } else if (o instanceof SelectorBasedListSwapMove<?> listSwapMove) {
       return () ->
           convert(listSwapMove.getLeftValue())
               + " {"
@@ -97,7 +97,7 @@ public interface CodeAssertable {
               + "["
               + listSwapMove.getRightIndex()
               + "]}";
-    } else if (o instanceof SubListChangeMove<?> subListChangeMove) {
+    } else if (o instanceof SelectorBasedSubListChangeMove<?> subListChangeMove) {
       return () ->
           "|"
               + subListChangeMove.getSubListSize()
@@ -113,7 +113,7 @@ public interface CodeAssertable {
               + "["
               + subListChangeMove.getDestinationIndex()
               + "]}";
-    } else if (o instanceof SubListUnassignMove<?> subListUnassignMove) {
+    } else if (o instanceof SelectorBasedSubListUnassignMove<?> subListUnassignMove) {
       return () ->
           "|"
               + subListUnassignMove.getSubListSize()
@@ -124,7 +124,7 @@ public interface CodeAssertable {
               + ".."
               + subListUnassignMove.getToIndex()
               + "]->null}";
-    } else if (o instanceof SubListSwapMove<?> subListSwapMove) {
+    } else if (o instanceof SelectorBasedSubListSwapMove<?> subListSwapMove) {
       return () ->
           "{"
               + convert(subListSwapMove.getLeftSubList()).getCode()

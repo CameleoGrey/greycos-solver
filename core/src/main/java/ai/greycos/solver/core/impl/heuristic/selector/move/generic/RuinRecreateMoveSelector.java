@@ -3,12 +3,11 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic;
 import java.util.Iterator;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
-
-import org.apache.commons.math3.util.CombinatoricsUtils;
+import ai.greycos.solver.core.impl.util.MathUtils;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 final class RuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
 
@@ -47,16 +46,9 @@ final class RuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<Solu
         selectedCount <= maximumSelectedCount;
         selectedCount++) {
       // Order is significant, and each entity can only be picked once
-      totalSize +=
-          CombinatoricsUtils.factorial((int) entityCount)
-              / CombinatoricsUtils.factorial(selectedCount);
+      totalSize += MathUtils.factorial((int) entityCount) / MathUtils.factorial(selectedCount);
     }
     return totalSize;
-  }
-
-  @Override
-  public boolean isCountable() {
-    return entitySelector.isCountable();
   }
 
   @Override
@@ -68,14 +60,12 @@ final class RuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<Solu
   public void solvingStarted(SolverScope<Solution_> solverScope) {
     super.solvingStarted(solverScope);
     this.solverScope = solverScope;
-    this.workingRandom = solverScope.getWorkingRandom();
   }
 
   @Override
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
     super.phaseEnded(phaseScope);
     this.solverScope = null;
-    this.workingRandom = null;
   }
 
   @Override

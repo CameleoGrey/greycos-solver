@@ -15,7 +15,10 @@ import java.util.Collections;
 
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.SelectorBasedChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.SelectorBasedSwapMove;
-import ai.greycos.solver.core.impl.score.director.ScoreDirector;
+import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
+import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
+import ai.greycos.solver.core.preview.api.move.Move;
+import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
@@ -33,13 +36,14 @@ class SelectorBasedCompositeMoveTest {
     when(a.isMoveDoable(any())).thenReturn(true);
     var b = mock(SelectorBasedDummyMove.class);
     when(b.isMoveDoable(any())).thenReturn(true);
-    var c = mock(SelectorBasedDummyMove.class);
-    when(c.isMoveDoable(any())).thenReturn(true);
+    Move<TestdataSolution> c = mock(Move.class);
     var move = new SelectorBasedCompositeMove<>(a, b, c);
-    move.doMoveOnly(scoreDirector);
-    verify(a, times(1)).doMoveOnly(any());
-    verify(b, times(1)).doMoveOnly(any());
-    verify(c, times(1)).doMoveOnly(any());
+    move.execute(scoreDirector.getMoveDirector());
+    verify(a, times(1))
+        .execute(any(MutableSolutionView.class), any(VariableDescriptorAwareScoreDirector.class));
+    verify(b, times(1))
+        .execute(any(MutableSolutionView.class), any(VariableDescriptorAwareScoreDirector.class));
+    verify(c, times(1)).execute(any(MutableSolutionView.class));
   }
 
   @Test
@@ -58,7 +62,7 @@ class SelectorBasedCompositeMoveTest {
     var destinationE2 = new TestdataEntity("e2", null);
     var destinationE3 = new TestdataEntity("e3", destinationV1);
 
-    ScoreDirector<TestdataSolution> destinationScoreDirector =
+    InnerScoreDirector<TestdataSolution, ?> destinationScoreDirector =
         mockRebasingScoreDirector(
             variableDescriptor.getEntityDescriptor().getSolutionDescriptor(),
             new Object[][] {
@@ -71,7 +75,8 @@ class SelectorBasedCompositeMoveTest {
 
     var a = new SelectorBasedChangeMove<>(variableDescriptor, e1, v2);
     var b = new SelectorBasedChangeMove<>(variableDescriptor, e2, v1);
-    var rebaseMove = new SelectorBasedCompositeMove<>(a, b).rebase(destinationScoreDirector);
+    var rebaseMove =
+        new SelectorBasedCompositeMove<>(a, b).rebase(destinationScoreDirector.getMoveDirector());
     var rebasedChildMoves = rebaseMove.getMoves();
     assertThat(rebasedChildMoves).hasSize(2);
     var rebasedA = (SelectorBasedChangeMove<TestdataSolution>) rebasedChildMoves[0];
@@ -144,6 +149,12 @@ class SelectorBasedCompositeMoveTest {
         (SelectorBasedCompositeMove<TestdataSolution>)
             SelectorBasedCompositeMove.buildMove(first, second);
     assertThat(move.isMoveDoable(scoreDirector)).isFalse();
+
+    var previewMove = mock(Move.class);
+    move =
+        (SelectorBasedCompositeMove<TestdataSolution>)
+            SelectorBasedCompositeMove.buildMove(first, second, previewMove);
+    assertThat(move.isMoveDoable(scoreDirector)).isTrue();
   }
 
   @Test
@@ -179,9 +190,10 @@ class SelectorBasedCompositeMoveTest {
     assertThat(e1.getValue()).isSameAs(v1);
     assertThat(e2.getValue()).isSameAs(v2);
 
-    var scoreDirector =
-        mockScoreDirector(variableDescriptor.getEntityDescriptor().getSolutionDescriptor());
-    move.doMoveOnly(scoreDirector);
+    try (var scoreDirector =
+        mockScoreDirector(variableDescriptor.getEntityDescriptor().getSolutionDescriptor())) {
+      move.execute(scoreDirector.getMoveDirector());
+    }
 
     assertThat(e1.getValue()).isSameAs(v2);
     assertThat(e2.getValue()).isSameAs(v3);

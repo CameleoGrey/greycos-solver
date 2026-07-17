@@ -26,15 +26,13 @@ final class DefaultVariableReferenceGraph<Solution_>
             .computeIfAbsent(entity, ignored -> new ArrayList<>())
             .add(instance);
       } else {
-        for (var groupEntity : instance.variableReferences().get(0).groupEntities()) {
+        for (var groupEntity : instance.variableReferences().getFirst().groupEntities()) {
           entityToVariableReferenceMap
               .computeIfAbsent(groupEntity, ignored -> new ArrayList<>())
               .add(instance);
         }
       }
     }
-    // Immutable optimized version of the map, now that it won't be updated anymore.
-    var immutableEntityToVariableReferenceMap = mapOfListsDeepCopyOf(entityToVariableReferenceMap);
     // This mutable structure is created once, and reused from there on.
     // Otherwise its internal collections were observed being re-created so often
     // that the allocation of arrays would become a major bottleneck.
@@ -43,33 +41,33 @@ final class DefaultVariableReferenceGraph<Solution_>
             graph,
             nodeList,
             nodeTopologicalOrders,
-            immutableEntityToVariableReferenceMap::get,
+            entityToVariableReferenceMap::get,
             outerGraph.entityToEntityId.size(),
             outerGraph.changedVariableNotifier);
   }
 
   @Override
-  protected BitSet createChangeSet(int instanceCount) {
+  protected BitSet createChangeTracker(int instanceCount) {
     return new BitSet(instanceCount);
   }
 
   @Override
-  public void markChanged(@NonNull GraphNode<Solution_> node) {
-    changeSet.set(node.graphNodeId());
+  void markChanged(@NonNull GraphNode<Solution_> node) {
+    changeTracker.set(node.graphNodeId());
   }
 
   @Override
-  public void updateChanged() {
-    if (changeSet.isEmpty()) {
+  void innerUpdateChanged() {
+    if (changeTracker.isEmpty()) {
       return;
     }
-    graph.commitChanges(changeSet);
-    affectedEntitiesUpdater.accept(changeSet);
+    graph.commitChanges(changeTracker);
+    affectedEntitiesUpdater.accept(changeTracker);
   }
 
   /** See {@link ConsistencyTracker#setUnknownConsistencyFromEntityShadowVariablesInconsistent} */
   public void setUnknownInconsistencyValues() {
-    graph.commitChanges(changeSet);
+    graph.commitChanges(changeTracker);
     affectedEntitiesUpdater.setUnknownInconsistencyValues();
   }
 }

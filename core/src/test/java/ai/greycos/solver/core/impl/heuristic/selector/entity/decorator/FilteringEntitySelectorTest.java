@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.entity.decorator;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfEntitySelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfOrderedEntitySelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -17,7 +18,6 @@ import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
-import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
@@ -89,14 +89,15 @@ class FilteringEntitySelectorTest {
       entitySelector = new CachingEntitySelector(entitySelector, cacheType, false);
     }
 
-    InnerScoreDirector scoreDirector = mock(InnerScoreDirector.class);
+    var solverScope = mockSolverScope();
+    var scoreDirector = mock(InnerScoreDirector.class);
     when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
     when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
-    SolverScope solverScope = SelectorTestUtils.solvingStarted(entitySelector, scoreDirector);
+    when(solverScope.getScoreDirector()).thenReturn(scoreDirector);
+    entitySelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
     when(phaseScopeA.getSolverScope()).thenReturn(solverScope);
-    when(phaseScopeA.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.phaseStarted(phaseScopeA);
 
     AbstractStepScope stepScopeA1 = mock(AbstractStepScope.class);
@@ -109,7 +110,6 @@ class FilteringEntitySelectorTest {
 
     AbstractPhaseScope phaseScopeB = mock(AbstractPhaseScope.class);
     when(phaseScopeB.getSolverScope()).thenReturn(solverScope);
-    when(phaseScopeB.getScoreDirector()).thenReturn(scoreDirector);
     entitySelector.phaseStarted(phaseScopeB);
 
     AbstractStepScope stepScopeB1 = mock(AbstractStepScope.class);

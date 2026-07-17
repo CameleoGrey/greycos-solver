@@ -72,7 +72,7 @@ The network latency will kill your move evaluation performance.
 Cache the results of those remote services if possible.
 
 If some parts of a constraint can be calculated once, when the `Solver` starts, and never change during solving,
-then turn them into xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#cachedProblemFact[cached problem facts].
+then turn them into xref:using-greycos-solver/modeling-planning-problems.adoc#cachedProblemFact[cached problem facts].
 
 
 [#pointlessConstraints]
@@ -84,19 +84,24 @@ set the xref:constraints-and-score/constraint-configuration.adoc#definingAndOver
 In xref:constraints-and-score/score-calculation.adoc#constraintStreams[Constraint Streams],
 this will result in the constraint not being added to the node network and therefore have no performance impact at all.
 
+If a non-zero constraint can never contribute for the current problem,
+the runtime may deactivate its node network after proving that no input can reach it.
+For example, a constraint starting with `forEach(Visit.class)` can be deactivated when the solution contains no visits.
+An explicit zero weight is still preferable because it communicates intent and lets the solver omit the network immediately.
+
 [#buildInHardConstraint]
 == Built-in hard constraint
 
 Instead of implementing a hard constraint, it can sometimes be built in.
 For example, if `Lecture` A should never be assigned to `Room` X, but it uses `ValueRangeProvider` on Solution,
 so the `Solver` will often try to assign it to `Room` X too (only to find out that it breaks a hard constraint).
-Use xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#valueRangeProviderOnPlanningEntity[a ValueRangeProvider on the planning entity]
+Use xref:using-greycos-solver/modeling-planning-problems.adoc#valueRangeProviderOnPlanningEntity[a ValueRangeProvider on the planning entity]
 or xref:optimization-algorithms/overview.adoc#filteredSelection[filtered selection]
 to define that Course A should only be assigned a `Room` different than X.
 
 This can give a good performance gain in some use cases, not just because the move evaluation is faster,
 but mainly because most optimization algorithms will spend less time evaluating infeasible solutions.
-However, usually this is not a good idea because there is a real risk of trading short-term benefits for long-term harm:
+However, there is a real risk of trading short-term benefits for long-term harm:
 
 * Many optimization algorithms rely on the freedom to break hard constraints when changing planning entities,
 to get out of local optima.
@@ -299,7 +304,7 @@ For that reason, it is generally recommended putting Joiners based on enum field
 == Indexing, Hashing, Looping
 The code on the hot path of your application needs to be as fast as possible.
 
-* When you use xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#shadowVariable[Shadow Variables], you will provide a `supplier` method that computes the value of the shadow variable.
+* When you use xref:using-greycos-solver/modeling-planning-problems.adoc#shadowVariable[Shadow Variables], you will provide a `supplier` method that computes the value of the shadow variable.
 * This method will be called very often during score calculation, so it needs to be fast.
 * If you need to do a lookup in a collection to find an element, ideally you are indexing into an array.
 * The second best option is to use a `HashMap` or `HashSet`.
@@ -313,11 +318,54 @@ You should xref:advanced-features/advanced-features.adoc#automaticNodeSharing[en
 == Benchmark
 Whatever you do, benchmark on a large and diverse set of inputs.
 
-JVM performance may differ by as much as 20% between runs. To decide whether your changes helped or made things worse, make sure to always average the move evaluation speed from multiple runs on the same machine with the same solver configuration. We provide a xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker] to help you with that.
+JVM performance may differ by as much as 20% between runs.
+To decide whether a change helped, run measurements sequentially on the same otherwise-idle machine,
+using the same solver configuration, and average the move evaluation speed across multiple runs.
+We provide a xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] to help with that.
+
+[#constraintProfiling]
+== Constraint profiling
+
+Constraint profiling identifies which constraints consume the most score-calculation time.
+Enable it only while diagnosing performance, because collecting timings adds overhead.
+
+[tabs]
+====
+XML::
++
+[source,xml,options="nowrap"]
+----
+<scoreDirectorFactory>
+  <constraintProviderClass>...ConstraintProvider</constraintProviderClass>
+  <constraintStreamProfilingEnabled>true</constraintStreamProfilingEnabled>
+</scoreDirectorFactory>
+----
+
+Spring Boot::
++
+[source,properties,options="nowrap"]
+----
+greycos.solver.constraint-stream-profiling-enabled=true
+----
+
+Quarkus::
++
+[source,properties,options="nowrap"]
+----
+quarkus.greycos.solver.constraint-stream-profiling-enabled=true
+----
+====
+
+At the end of solving, GreyCOS Solver logs a summary ordered from the most expensive constraint to the least expensive.
+The timings are wall-clock measurements and may include garbage collection pauses,
+so use them to locate bottlenecks rather than as exact measurements.
+
+Constraint profiling supports xref:score-calculation.adoc#constraintStreams[Constraint Streams]
+and requires xref:advanced-features/advanced-features.adoc#multithreadedSolving[multi-threaded solving] to be disabled.
 
 [#fullAssert]
 == Validate the implementation using FULL_ASSERT
-When you are done optimizing your score calculation, make sure to validate it using xref:xref:using-greycos-solver/running-the-solver.adoc.adoc#environmentModeFullAssert[`FULL_ASSERT`] mode. Make sure not to run with this mode in production.
+When you are done optimizing your score calculation, make sure to validate it using xref:using-greycos-solver/running-the-solver.adoc#environmentModeFullAssert[`FULL_ASSERT`] mode. Make sure not to run with this mode in production.
 
 [#otherScoreCalculationPerformanceTricks]
 == Other score calculation performance tricks
@@ -390,6 +438,6 @@ For example, move multiple items from the same container to another container.
 
 Not all score constraints have the same performance cost.
 Sometimes one score constraint can ruin performance outright.
-Use the xref:xref:using-greycos-solver/benchmarking-and-tweaking.adoc.adoc#benchmarker[Benchmarker]
+Use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker]
 to do a one minute run and check what happens to the move evaluation speed
 if you comment out all but one of the score constraints.

@@ -2,37 +2,44 @@ package ai.greycos.solver.core.impl.bavet.quad;
 
 import java.util.function.Function;
 
-import ai.greycos.solver.core.api.function.PentaFunction;
 import ai.greycos.solver.core.api.score.stream.quad.QuadConstraintCollector;
+import ai.greycos.solver.core.api.score.stream.quad.QuadConstraintCollectorAccumulator;
+import ai.greycos.solver.core.api.score.stream.quad.QuadConstraintCollectorValueHandle;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.bavet.common.AbstractGroupNode;
 import ai.greycos.solver.core.impl.bavet.common.tuple.QuadTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 abstract class AbstractGroupQuadNode<
         OldA, OldB, OldC, OldD, OutTuple_ extends Tuple, GroupKey_, ResultContainer_, Result_>
     extends AbstractGroupNode<
         QuadTuple<OldA, OldB, OldC, OldD>, OutTuple_, GroupKey_, ResultContainer_, Result_> {
 
-  private final PentaFunction<ResultContainer_, OldA, OldB, OldC, OldD, Runnable> accumulator;
+  private final int groupAccumulatorIndex;
+  private final @Nullable
+      QuadConstraintCollectorAccumulator<ResultContainer_, OldA, OldB, OldC, OldD>
+      incrementalAccumulator;
 
   protected AbstractGroupQuadNode(
       int groupStoreIndex,
-      int undoStoreIndex,
+      int groupAccumulatorIndex,
       Function<QuadTuple<OldA, OldB, OldC, OldD>, GroupKey_> groupKeyFunction,
-      QuadConstraintCollector<OldA, OldB, OldC, OldD, ResultContainer_, Result_> collector,
+      @NonNull QuadConstraintCollector<OldA, OldB, OldC, OldD, ResultContainer_, Result_> collector,
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
     super(
         groupStoreIndex,
-        undoStoreIndex,
         groupKeyFunction,
-        collector == null ? null : collector.supplier(),
-        collector == null ? null : collector.finisher(),
+        collector.supplier(),
+        collector.finisher(),
         nextNodesTupleLifecycle,
         environmentMode);
-    accumulator = collector == null ? null : collector.accumulator();
+    this.groupAccumulatorIndex = groupAccumulatorIndex;
+    this.incrementalAccumulator = collector.accumulator();
   }
 
   protected AbstractGroupQuadNode(
@@ -41,13 +48,30 @@ abstract class AbstractGroupQuadNode<
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
     super(groupStoreIndex, groupKeyFunction, nextNodesTupleLifecycle, environmentMode);
-    accumulator = null;
+    this.groupAccumulatorIndex = -1;
+    this.incrementalAccumulator = null;
   }
 
   @Override
-  protected final Runnable accumulate(
+  protected void groupInsert(
       ResultContainer_ resultContainer, QuadTuple<OldA, OldB, OldC, OldD> tuple) {
-    return accumulator.apply(
-        resultContainer, tuple.getA(), tuple.getB(), tuple.getC(), tuple.getD());
+    var groupElement = incrementalAccumulator.intoGroup(resultContainer);
+    tuple.setStore(groupAccumulatorIndex, groupElement);
+    groupElement.add(tuple.getA(), tuple.getB(), tuple.getC(), tuple.getD());
+  }
+
+  @Override
+  protected void groupUpdate(
+      ResultContainer_ resultContainer, QuadTuple<OldA, OldB, OldC, OldD> tuple) {
+    QuadConstraintCollectorValueHandle<OldA, OldB, OldC, OldD> groupElement =
+        tuple.getStore(groupAccumulatorIndex);
+    groupElement.replaceWith(tuple.getA(), tuple.getB(), tuple.getC(), tuple.getD());
+  }
+
+  @Override
+  protected void groupRetract(QuadTuple<OldA, OldB, OldC, OldD> tuple) {
+    QuadConstraintCollectorValueHandle<OldA, OldB, OldC, OldD> groupElement =
+        tuple.removeStore(groupAccumulatorIndex);
+    groupElement.remove();
   }
 }

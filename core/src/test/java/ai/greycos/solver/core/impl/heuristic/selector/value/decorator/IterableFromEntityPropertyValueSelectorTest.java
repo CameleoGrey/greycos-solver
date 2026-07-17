@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.value.decorator;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfIterator;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfValueSelector;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -55,7 +56,7 @@ class IterableFromEntityPropertyValueSelectorTest {
     secondEntity.setValueRange(
         List.of(new TestdataValue("apr"), new TestdataValue("may"), new TestdataValue("jun")));
     solution.setEntityList(List.of(firstEntity, secondEntity));
-    var solverScope = mock(SolverScope.class);
+    SolverScope<TestdataEntityProvidingSolution> solverScope = mockSolverScope();
     InnerScoreDirector<?, ?> scoreDirector = mock(InnerScoreDirector.class);
     doReturn(scoreDirector).when(solverScope).getScoreDirector();
     doReturn(solution).when(scoreDirector).getWorkingSolution();

@@ -7,7 +7,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.ToIntFunction;
+import java.util.function.ToLongFunction;
 
 import ai.greycos.solver.core.api.score.stream.ConstraintCollectors;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
@@ -549,8 +549,8 @@ public abstract class AbstractUniConstraintStreamNodeSharingTest
   @Override
   @TestTemplate
   public void sameParentDifferentCollectorFunctionGroupBy() {
-    ToIntFunction<TestdataEntity> sumFunction1 = a -> 0;
-    ToIntFunction<TestdataEntity> sumFunction2 = a -> 1;
+    ToLongFunction<TestdataEntity> sumFunction1 = a -> 0;
+    ToLongFunction<TestdataEntity> sumFunction2 = a -> 1;
 
     assertThat(baseStream.groupBy(ConstraintCollectors.sum(sumFunction1)))
         .isNotSameAs(baseStream.groupBy(ConstraintCollectors.sum(sumFunction2)));
@@ -567,7 +567,7 @@ public abstract class AbstractUniConstraintStreamNodeSharingTest
   @Override
   @TestTemplate
   public void sameParentSameCollectorGroupBy() {
-    ToIntFunction<TestdataEntity> sumFunction = a -> 0;
+    ToLongFunction<TestdataEntity> sumFunction = a -> 0;
 
     assertThat(baseStream.groupBy(ConstraintCollectors.sum(sumFunction)))
         .isSameAs(baseStream.groupBy(ConstraintCollectors.sum(sumFunction)));
@@ -628,6 +628,30 @@ public abstract class AbstractUniConstraintStreamNodeSharingTest
     Function<TestdataEntity, TestdataEntity> mapper = a -> a;
 
     assertThat(baseStream.map(mapper)).isSameAs(baseStream.map(mapper));
+  }
+
+  @Override
+  public void differentParentSameFunctionFlatten() {
+    Predicate<TestdataEntity> filter1 = a -> true;
+    Function<TestdataEntity, Iterable<TestdataEntity>> flattener = a -> Collections.emptyList();
+
+    assertThat(baseStream.flatten(flattener))
+        .isNotSameAs(baseStream.filter(filter1).flatten(flattener));
+  }
+
+  @Override
+  public void sameParentDifferentFunctionFlatten() {
+    Function<TestdataEntity, Iterable<TestdataEntity>> flattener1 = a -> Collections.emptyList();
+    Function<TestdataEntity, Iterable<TestdataEntity>> flattener2 = a -> Collections.emptySet();
+
+    assertThat(baseStream.flatten(flattener1)).isNotSameAs(baseStream.flatten(flattener2));
+  }
+
+  @Override
+  public void sameParentSameFunctionFlatten() {
+    Function<TestdataEntity, Iterable<TestdataEntity>> flattener = a -> Collections.emptyList();
+
+    assertThat(baseStream.flatten(flattener)).isSameAs(baseStream.flatten(flattener));
   }
 
   @Override

@@ -2,7 +2,8 @@ package ai.greycos.solver.core.impl.score.stream.bavet.common;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import ai.greycos.solver.core.api.score.Score;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import ai.greycos.solver.core.impl.score.stream.common.inliner.ScoreImpact;
@@ -16,6 +17,7 @@ public final class Scorer<Tuple_ extends Tuple> implements TupleLifecycle<Tuple_
   private final ScoreImpacter<Tuple_> scoreImpacter;
   private final WeightedScoreImpacter<?, ?> weightedScoreImpacter;
   private final int inputStoreIndex;
+  private boolean isActive = true;
 
   public Scorer(
       ScoreImpacter<Tuple_> scoreImpacter,
@@ -24,6 +26,18 @@ public final class Scorer<Tuple_ extends Tuple> implements TupleLifecycle<Tuple_
     this.scoreImpacter = Objects.requireNonNull(scoreImpacter);
     this.weightedScoreImpacter = Objects.requireNonNull(weightedScoreImpacter);
     this.inputStoreIndex = inputStoreIndex;
+  }
+
+  @Override
+  public void afterAllFactsInserted(boolean upstreamCanProduceTuples) {
+    if (!upstreamCanProduceTuples) {
+      isActive = false;
+    }
+  }
+
+  @Override
+  public boolean isActive() {
+    return isActive;
   }
 
   @Override
@@ -60,10 +74,6 @@ public final class Scorer<Tuple_ extends Tuple> implements TupleLifecycle<Tuple_
     }
   }
 
-  public ConstraintRef getConstraintRef() {
-    return weightedScoreImpacter.getContext().getConstraint().getConstraintRef();
-  }
-
   @Override
   public void retract(Tuple_ tuple) {
     ScoreImpact<?> undoScoreImpacter = tuple.removeStore(inputStoreIndex);
@@ -72,6 +82,15 @@ public final class Scorer<Tuple_ extends Tuple> implements TupleLifecycle<Tuple_
     if (undoScoreImpacter != null) {
       undoScoreImpacter.undo();
     }
+  }
+
+  public ConstraintRef getConstraintRef() {
+    var context = weightedScoreImpacter.getContext();
+    return context.getConstraint().getConstraintRef();
+  }
+
+  public Score<?> getWeight() {
+    return weightedScoreImpacter.getContext().getConstraintWeight();
   }
 
   @Override

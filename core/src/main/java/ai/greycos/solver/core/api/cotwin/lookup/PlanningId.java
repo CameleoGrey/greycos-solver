@@ -6,12 +6,13 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
+import java.util.UUID;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.api.solver.change.ProblemChange;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 /**
  * Specifies that a bean property (or a field) is the id to match when {@link
@@ -23,8 +24,9 @@ import ai.greycos.solver.core.impl.heuristic.move.Move;
  * ProblemFactCollectionProperty problem fact} class.
  *
  * <p>The return type can be any {@link Comparable} type which overrides {@link
- * Object#equals(Object)} and {@link Object#hashCode()}, and is usually {@link Long} or {@link
- * String}. It must never return a null instance.
+ * Object#equals(Object)} and {@link Object#hashCode()}, or a primitive type whose boxed type
+ * implements {@link Comparable}; it is usually {@link Long}, {@link UUID} or {@link String}. It
+ * must never return a null instance.
  */
 @Target({METHOD, FIELD})
 @Retention(RUNTIME)

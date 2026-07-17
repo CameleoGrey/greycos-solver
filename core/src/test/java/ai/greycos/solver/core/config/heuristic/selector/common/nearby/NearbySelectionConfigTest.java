@@ -102,6 +102,19 @@ class NearbySelectionConfigTest {
         .withMessageContaining("nearbyDistanceMeterClass");
   }
 
+  @Test
+  void withNonPositiveMaxNearbySortSize() {
+    var nearbySelectionConfig = buildNearbySelectionConfig();
+    nearbySelectionConfig.setMaxNearbySortSize(0);
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                nearbySelectionConfig.validateNearby(
+                    SelectionCacheType.JUST_IN_TIME, SelectionOrder.RANDOM))
+        .withMessageContainingAll("maxNearbySortSize", "lower than 1");
+  }
+
   // ************************************************************************
   // Selection order validation tests
   // ************************************************************************

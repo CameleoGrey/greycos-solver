@@ -9,22 +9,19 @@ import java.util.function.Function;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.cotwin.solution.diff.PlanningSolutionDiff;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.ScoreExplanation;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.Indictment;
 import ai.greycos.solver.core.impl.cotwin.variable.ShadowVariableUpdateHelper;
 import ai.greycos.solver.core.impl.solver.DefaultSolutionManager;
+import ai.greycos.solver.core.preview.api.cotwin.solution.diff.PlanningSolutionDiff;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A stateless service to help calculate {@link Score}, {@link ConstraintMatchTotal}, {@link
- * Indictment}, etc.
+ * A stateless service to update solutions, calculate {@link Score scores}, and analyze their
+ * quality.
  *
  * <p>To create a {@link SolutionManager} instance, use {@link #create(SolverFactory)}.
  *
@@ -116,28 +113,6 @@ public interface SolutionManager<Solution_, Score_ extends Score<Score_>> {
   }
 
   /**
-   * As defined by {@link #explain(Object, SolutionUpdatePolicy)}, using {@link
-   * SolutionUpdatePolicy#UPDATE_ALL}.
-   */
-  default ScoreExplanation<Solution_, Score_> explain(Solution_ solution) {
-    return explain(solution, UPDATE_ALL);
-  }
-
-  /**
-   * Calculates and retrieves {@link ConstraintMatchTotal}s and {@link Indictment}s necessary for
-   * describing the quality of a particular solution. For a simplified, faster and JSON-friendly
-   * alternative, see {@link #analyze(Object)}}.
-   *
-   * @param solutionUpdatePolicy if unsure, pick {@link SolutionUpdatePolicy#UPDATE_ALL}
-   * @throws IllegalStateException when constraint matching is disabled or not supported by the
-   *     underlying score calculator, such as {@link EasyScoreCalculator}.
-   * @see SolutionUpdatePolicy Description of individual policies with respect to performance
-   *     trade-offs.
-   */
-  ScoreExplanation<Solution_, Score_> explain(
-      Solution_ solution, SolutionUpdatePolicy solutionUpdatePolicy);
-
-  /**
    * As defined by {@link #analyze(Object, ScoreAnalysisFetchPolicy, SolutionUpdatePolicy)}, using
    * {@link SolutionUpdatePolicy#UPDATE_ALL} and {@link ScoreAnalysisFetchPolicy#FETCH_ALL}.
    */
@@ -155,7 +130,7 @@ public interface SolutionManager<Solution_, Score_ extends Score<Score_>> {
 
   /**
    * Calculates and retrieves information about which constraints contributed to the solution's
-   * score. This is a faster, JSON-friendly version of {@link #explain(Object)}.
+   * score.
    *
    * @param solution must be fully initialized otherwise an exception is thrown
    * @param fetchPolicy if unsure, pick {@link ScoreAnalysisFetchPolicy#FETCH_MATCH_COUNT}

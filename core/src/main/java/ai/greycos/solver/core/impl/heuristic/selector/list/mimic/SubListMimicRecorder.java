@@ -11,8 +11,6 @@ public interface SubListMimicRecorder<Solution_> {
 
   ListVariableDescriptor<Solution_> getVariableDescriptor();
 
-  boolean isCountable();
-
   boolean isNeverEnding();
 
   long getSize();

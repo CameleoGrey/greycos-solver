@@ -5,15 +5,12 @@ import static ai.greycos.solver.core.impl.bavet.common.GroupNodeConstructor.oneK
 import static ai.greycos.solver.core.impl.bavet.common.GroupNodeConstructor.threeKeysGroupBy;
 import static ai.greycos.solver.core.impl.bavet.common.GroupNodeConstructor.twoKeysGroupBy;
 import static ai.greycos.solver.core.impl.bavet.common.GroupNodeConstructor.zeroKeysGroupBy;
-import static ai.greycos.solver.core.impl.score.stream.common.uni.InnerUniConstraintStream.createDefaultIndictedObjectsMapping;
 import static ai.greycos.solver.core.impl.score.stream.common.uni.InnerUniConstraintStream.createDefaultJustificationMapping;
 
 import java.math.BigDecimal;
-import java.util.Collection;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 
 import ai.greycos.solver.core.api.score.Score;
@@ -611,7 +608,7 @@ public abstract class BavetAbstractUniConstraintStream<Solution_, A>
 
   @Override
   public <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> innerImpact(
-      Score_ constraintWeight, ToIntFunction<A> matchWeigher, ScoreImpactType scoreImpactType) {
+      Score_ constraintWeight, ToLongFunction<A> matchWeigher, ScoreImpactType scoreImpactType) {
     var stream =
         shareAndAddChild(
             new BavetScoringUniConstraintStream<>(constraintFactory, this, matchWeigher));
@@ -623,35 +620,11 @@ public abstract class BavetAbstractUniConstraintStream<Solution_, A>
       Score_ constraintWeight,
       ScoreImpactType impactType) {
     return new UniConstraintBuilderImpl<>(
-        (constraintPackage,
-            constraintName,
-            constraintDescription,
-            constraintGroup,
-            constraintWeight_,
-            impactType_,
-            justificationMapping,
-            indictedObjectsMapping) ->
+        (description, constraintWeight_, impactType_, justificationMapping) ->
             buildConstraint(
-                constraintPackage,
-                constraintName,
-                constraintDescription,
-                constraintGroup,
-                constraintWeight_,
-                impactType_,
-                justificationMapping,
-                indictedObjectsMapping,
-                stream),
+                description, constraintWeight_, impactType_, justificationMapping, stream),
         impactType,
         constraintWeight);
-  }
-
-  @Override
-  public <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> innerImpact(
-      Score_ constraintWeight, ToLongFunction<A> matchWeigher, ScoreImpactType scoreImpactType) {
-    var stream =
-        shareAndAddChild(
-            new BavetScoringUniConstraintStream<>(constraintFactory, this, matchWeigher));
-    return newTerminator(stream, constraintWeight, scoreImpactType);
   }
 
   @Override
@@ -669,10 +642,5 @@ public abstract class BavetAbstractUniConstraintStream<Solution_, A>
   protected final BiFunction<A, Score<?>, DefaultConstraintJustification>
       getDefaultJustificationMapping() {
     return createDefaultJustificationMapping();
-  }
-
-  @Override
-  protected final Function<A, Collection<?>> getDefaultIndictedObjectsMapping() {
-    return createDefaultIndictedObjectsMapping();
   }
 }

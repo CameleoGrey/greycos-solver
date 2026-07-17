@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-import ai.greycos.solver.core.impl.bavet.NodeNetwork;
+import ai.greycos.solver.core.impl.bavet.AbstractBavetNodeNetwork;
 import ai.greycos.solver.core.impl.bavet.common.tuple.RecordingTupleLifecycle;
 import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
@@ -22,9 +22,9 @@ import ai.greycos.solver.core.impl.util.CollectionUtils;
 import org.jspecify.annotations.NullMarked;
 
 /**
- * The implementation records the tuples each object affects inside an internal {@link NodeNetwork}
- * and replays them on update. Used by {@link AbstractPrecomputeNode} to precompute constraint
- * streams.
+ * The implementation records the tuples each object affects inside an internal {@link
+ * AbstractBavetNodeNetwork} and replays them on update. Used by {@link AbstractPrecomputeNode} to
+ * precompute constraint streams.
  *
  * @param <Tuple_>
  */
@@ -45,9 +45,10 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
   private final Supplier<BavetPrecomputeBuildHelper<Tuple_>> precomputeBuildHelperSupplier;
   private final UnaryOperator<Tuple_> internalTupleToOutputTupleMapper;
   private final Map<Object, List<Tuple_>> objectToOutputTuplesMap;
+  private final List<Tuple_> factOutputTupleList;
   private final Set<Object> alreadyUpdatingSet = Collections.newSetFromMap(new IdentityHashMap<>());
   private final Map<Class<?>, Boolean> objectClassToIsEntitySourceClassMap;
-  private final Map<Class<?>, List<BavetRootNode<?>>> rootNodesByClassScratch;
+  private final Map<Class<?>, List<AbstractRootNode<?>>> rootNodesByClassScratch;
   private final IdentityHashMap<Tuple_, Tuple_> internalTupleToOutputTupleMapScratch;
   private final ArrayDeque<ArrayList<Tuple_>> reusableTupleListPool;
 
@@ -60,7 +61,8 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
       int size) {
     this.precomputeBuildHelperSupplier = precomputeBuildHelperSupplier;
     this.internalTupleToOutputTupleMapper = internalTupleToOutputTupleMapper;
-    this.objectToOutputTuplesMap = CollectionUtils.newIdentityHashMap(size);
+    this.objectToOutputTuplesMap = new IdentityHashMap<>(size);
+    this.factOutputTupleList = new ArrayList<>();
 
     // Guesstimate that updates are dominant.
     this.retractQueue = CollectionUtils.newIdentityHashSet(size / 20);
@@ -84,6 +86,12 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
         internalTupleToOutputTupleMapper,
         nextNodesTupleLifecycle,
         1000);
+  }
+
+  public boolean canProduceTuples() {
+    return !objectToOutputTuplesMap.isEmpty()
+        || !factOutputTupleList.isEmpty()
+        || !insertQueue.isEmpty();
   }
 
   public void insert(Object object) {
@@ -167,15 +175,15 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
   }
 
   @SuppressWarnings({"unchecked", "rawtypes"})
-  private static <A> List<BavetRootNode<A>> getRootNodes(
+  private static <A> List<AbstractRootNode<A>> getRootNodes(
       Object object,
-      NodeNetwork internalNodeNetwork,
-      Map<Class<?>, List<BavetRootNode<?>>> objectClassToRootNodes) {
+      AbstractBavetNodeNetwork internalNodeNetwork,
+      Map<Class<?>, List<AbstractRootNode<?>>> objectClassToRootNodes) {
     return (List)
         objectClassToRootNodes.computeIfAbsent(
             object.getClass(),
             clazz -> {
-              var out = new ArrayList<BavetRootNode<?>>();
+              var out = new ArrayList<AbstractRootNode<?>>();
               internalNodeNetwork.getRootNodesAcceptingType(clazz).forEach(out::add);
               return out;
             });
@@ -223,11 +231,15 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
       recycleTupleList(tupleList);
     }
     objectToOutputTuplesMap.clear();
+    for (int i = 0, tupleListSize = factOutputTupleList.size(); i < tupleListSize; i++) {
+      retractIfPresent(factOutputTupleList.get(i));
+    }
+    factOutputTupleList.clear();
   }
 
   private void recalculateTuples(
-      NodeNetwork internalNodeNetwork,
-      Map<Class<?>, List<BavetRootNode<?>>> classToRootNodeList,
+      AbstractBavetNodeNetwork internalNodeNetwork,
+      Map<Class<?>, List<AbstractRootNode<?>>> classToRootNodeList,
       RecordingTupleLifecycle<Tuple_> recordingTupleLifecycle) {
     internalTupleToOutputTupleMapScratch.clear();
     for (var invalidated : seenEntitySet) {
@@ -242,13 +254,12 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
         // tuples mapped to this node, which will then be recorded
         var rootNodeList = classToRootNodeList.get(invalidated.getClass());
         for (int i = 0, rootNodeListSize = rootNodeList.size(); i < rootNodeListSize; i++) {
-          ((BavetRootNode<Object>) rootNodeList.get(i)).update(invalidated);
+          ((AbstractRootNode<Object>) rootNodeList.get(i)).update(invalidated);
         }
         internalNodeNetwork.settle();
       }
       if (mappedTuples.isEmpty()) {
         recycleTupleList(mappedTuples);
-        objectToOutputTuplesMap.put(invalidated, Collections.emptyList());
       } else {
         objectToOutputTuplesMap.put(invalidated, mappedTuples);
       }
@@ -258,6 +269,26 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
         insertIfAbsent(tupleList.get(i));
       }
     }
+    if (!seenFactSet.isEmpty()) {
+      try (var unusedActiveRecordingLifecycle =
+          recordingTupleLifecycle.recordInto(
+              new TupleRecorder<>(
+                  factOutputTupleList,
+                  internalTupleToOutputTupleMapper,
+                  internalTupleToOutputTupleMapScratch))) {
+        for (var fact : seenFactSet) {
+          var rootNodeList = classToRootNodeList.get(fact.getClass());
+          for (int i = 0, rootNodeListSize = rootNodeList.size(); i < rootNodeListSize; i++) {
+            ((AbstractRootNode<Object>) rootNodeList.get(i)).update(fact);
+          }
+        }
+        internalNodeNetwork.settle();
+      }
+      for (int i = 0, tupleListSize = factOutputTupleList.size(); i < tupleListSize; i++) {
+        insertIfAbsent(factOutputTupleList.get(i));
+      }
+    }
+    internalTupleToOutputTupleMapScratch.clear();
   }
 
   private ArrayList<Tuple_> borrowTupleList() {

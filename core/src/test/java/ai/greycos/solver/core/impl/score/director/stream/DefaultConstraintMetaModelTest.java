@@ -5,12 +5,10 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import java.util.List;
 
 import ai.greycos.solver.core.api.score.SimpleScore;
-import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.testconstraint.TestConstraint;
 import ai.greycos.solver.core.testconstraint.TestConstraintFactory;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class DefaultConstraintMetaModelTest {
@@ -25,10 +23,9 @@ class DefaultConstraintMetaModelTest {
     var constraint2 =
         new TestConstraint<>(constraintFactory, "Test Constraint 2", SimpleScore.of(10));
     var constraint3 =
-        new TestConstraint<>(constraintFactory, "Test Constraint 3", "test", SimpleScore.of(100));
+        new TestConstraint<>(constraintFactory, "Test Constraint 3", SimpleScore.of(100));
     var constraint4 =
-        new TestConstraint<>(
-            constraintFactory, "Test Constraint 4", "another-test", SimpleScore.ZERO);
+        new TestConstraint<>(constraintFactory, "Test Constraint 4", SimpleScore.ZERO);
     var metaModel =
         DefaultConstraintMetaModel.of(List.of(constraint1, constraint2, constraint3, constraint4));
 
@@ -46,20 +43,6 @@ class DefaultConstraintMetaModelTest {
           softly
               .assertThat(metaModel.getConstraint(constraint4.getConstraintRef()))
               .isSameAs(constraint4);
-        });
-
-    Assertions.assertThat(metaModel.getConstraintGroups())
-        .containsExactly("another-test", Constraint.DEFAULT_CONSTRAINT_GROUP, "test");
-
-    assertSoftly(
-        softly -> {
-          softly
-              .assertThat(metaModel.getConstraintsPerGroup(Constraint.DEFAULT_CONSTRAINT_GROUP))
-              .containsExactly(constraint1, constraint2);
-          softly.assertThat(metaModel.getConstraintsPerGroup("test")).containsExactly(constraint3);
-          softly
-              .assertThat(metaModel.getConstraintsPerGroup("another-test"))
-              .containsExactly(constraint4);
         });
   }
 }

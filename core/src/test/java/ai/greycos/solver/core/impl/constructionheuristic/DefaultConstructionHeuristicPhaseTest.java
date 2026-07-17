@@ -12,8 +12,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.api.score.calculator.EasyScoreCalculator;
+import ai.greycos.solver.core.api.score.stream.Constraint;
+import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
+import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import ai.greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
 import ai.greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicForagerConfig;
@@ -30,10 +35,14 @@ import ai.greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveS
 import ai.greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
+import ai.greycos.solver.core.config.solver.SolverConfig;
+import ai.greycos.solver.core.config.solver.termination.TerminationConfig;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
 import ai.greycos.solver.core.testcotwin.common.DummyHardSoftEasyScoreCalculator;
+import ai.greycos.solver.core.testcotwin.common.DummyValueComparator;
+import ai.greycos.solver.core.testcotwin.common.DummyValueComparatorFactory;
 import ai.greycos.solver.core.testcotwin.common.TestdataObjectSortableDescendingComparator;
 import ai.greycos.solver.core.testcotwin.common.TestdataObjectSortableDescendingComparatorFactory;
 import ai.greycos.solver.core.testcotwin.list.TestDistanceMeter;
@@ -52,6 +61,8 @@ import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassi
 import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
 import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
 import ai.greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.sort.TestdataAllowsUnassignedListSortableEntity;
+import ai.greycos.solver.core.testcotwin.list.unassignedvar.sort.TestdataAllowsUnassignedListSortableSolution;
 import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingEntity;
 import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingScoreCalculator;
 import ai.greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingSolution;
@@ -73,15 +84,9 @@ import ai.greycos.solver.core.testcotwin.pinned.unassignedvar.TestdataPinnedAllo
 import ai.greycos.solver.core.testcotwin.sort.comparator.OneValuePerEntityComparatorEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.sort.comparator.TestdataComparatorSortableEntity;
 import ai.greycos.solver.core.testcotwin.sort.comparator.TestdataComparatorSortableSolution;
-import ai.greycos.solver.core.testcotwin.sort.comparatordifficulty.OneValuePerEntityDifficultyEasyScoreCalculator;
-import ai.greycos.solver.core.testcotwin.sort.comparatordifficulty.TestdataDifficultySortableEntity;
-import ai.greycos.solver.core.testcotwin.sort.comparatordifficulty.TestdataDifficultySortableSolution;
 import ai.greycos.solver.core.testcotwin.sort.factory.OneValuePerEntityFactoryEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.sort.factory.TestdataFactorySortableEntity;
 import ai.greycos.solver.core.testcotwin.sort.factory.TestdataFactorySortableSolution;
-import ai.greycos.solver.core.testcotwin.sort.factorydifficulty.OneValuePerEntityDifficultyFactoryEasyScoreCalculator;
-import ai.greycos.solver.core.testcotwin.sort.factorydifficulty.TestdataDifficultyFactorySortableEntity;
-import ai.greycos.solver.core.testcotwin.sort.factorydifficulty.TestdataDifficultyFactorySortableSolution;
 import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.comparator.TestdataInvalidMixedComparatorSortableEntity;
 import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.comparator.TestdataInvalidMixedComparatorSortableSolution;
 import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.strength.TestdataInvalidMixedStrengthSortableEntity;
@@ -89,21 +94,17 @@ import ai.greycos.solver.core.testcotwin.sort.invalid.mixed.strength.TestdataInv
 import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEntity;
 import ai.greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedSolution;
+import ai.greycos.solver.core.testcotwin.unassignedvar.sort.TestdataAllowsUnassignedSortableEntity;
+import ai.greycos.solver.core.testcotwin.unassignedvar.sort.TestdataAllowsUnassignedSortableSolution;
 import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingEntity;
 import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingScoreCalculator;
 import ai.greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.TestdataAllowsUnassignedEntityProvidingSolution;
 import ai.greycos.solver.core.testcotwin.valuerange.sort.comparator.OneValuePerEntityComparatorRangeEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.valuerange.sort.comparator.TestdataComparatorSortableEntityProvidingEntity;
 import ai.greycos.solver.core.testcotwin.valuerange.sort.comparator.TestdataComparatorSortableEntityProvidingSolution;
-import ai.greycos.solver.core.testcotwin.valuerange.sort.comparatorstrength.OneValuePerEntityStrengthRangeEasyScoreCalculator;
-import ai.greycos.solver.core.testcotwin.valuerange.sort.comparatorstrength.TestdataStrengthSortableEntityProvidingEntity;
-import ai.greycos.solver.core.testcotwin.valuerange.sort.comparatorstrength.TestdataStrengthSortableEntityProvidingSolution;
 import ai.greycos.solver.core.testcotwin.valuerange.sort.factory.OneValuePerEntityFactoryRangeEasyScoreCalculator;
 import ai.greycos.solver.core.testcotwin.valuerange.sort.factory.TestdataFactorySortableEntityProvidingEntity;
 import ai.greycos.solver.core.testcotwin.valuerange.sort.factory.TestdataFactorySortableEntityProvidingSolution;
-import ai.greycos.solver.core.testcotwin.valuerange.sort.factorystrength.OneValuePerEntityStrengthFactoryRangeEasyScoreCalculator;
-import ai.greycos.solver.core.testcotwin.valuerange.sort.factorystrength.TestdataStrengthFactorySortableEntityProvidingEntity;
-import ai.greycos.solver.core.testcotwin.valuerange.sort.factorystrength.TestdataStrengthFactorySortableEntityProvidingSolution;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.jspecify.annotations.NonNull;
@@ -135,7 +136,7 @@ class DefaultConstructionHeuristicPhaseTest {
 
     solution = PlannerTestUtils.solve(solverConfig, solution);
     assertThat(solution).isNotNull();
-    var solvedE1 = solution.getEntityList().get(0);
+    var solvedE1 = solution.getEntityList().getFirst();
     assertCode("e1", solvedE1);
     assertThat(solvedE1.getValue()).isNotNull();
     var solvedE2 = solution.getEntityList().get(1);
@@ -188,7 +189,7 @@ class DefaultConstructionHeuristicPhaseTest {
 
     solution = PlannerTestUtils.solve(solverConfig, solution);
     assertThat(solution).isNotNull();
-    var solvedE1 = solution.getEntityList().get(0);
+    var solvedE1 = solution.getEntityList().getFirst();
     assertCode("e1", solvedE1);
     assertThat(solvedE1.getValue()).isNotNull();
     var solvedE2 = solution.getEntityList().get(1);
@@ -293,8 +294,8 @@ class DefaultConstructionHeuristicPhaseTest {
           softly
               .assertThat(bestSolution.getScore())
               .isEqualTo(SimpleScore.of(-1)); // No value assigned twice, null once.
-          var firstEntity = bestSolution.getEntityList().get(0);
-          var firstValue = bestSolution.getValueList().get(0);
+          var firstEntity = bestSolution.getEntityList().getFirst();
+          var firstValue = bestSolution.getValueList().getFirst();
           softly.assertThat(firstEntity.getValue()).isEqualTo(firstValue);
           var secondEntity = bestSolution.getEntityList().get(1);
           var secondValue = bestSolution.getValueList().get(1);
@@ -319,11 +320,12 @@ class DefaultConstructionHeuristicPhaseTest {
     var value2 = new TestdataAllowsUnassignedValuesListValue("v2");
     var value3 = new TestdataAllowsUnassignedValuesListValue("v3");
     var value4 = new TestdataAllowsUnassignedValuesListValue("v4");
-    var entity = TestdataAllowsUnassignedValuesListEntity.createWithValues("e1", value1, value2);
+    var entity = new TestdataAllowsUnassignedValuesListEntity("e1", value1, value2);
 
     var solution = new TestdataAllowsUnassignedValuesListSolution();
     solution.setEntityList(List.of(entity));
     solution.setValueList(Arrays.asList(value1, value2, value3, value4));
+    SolutionManager.updateShadowVariables(solution);
 
     var bestSolution = PlannerTestUtils.solve(solverConfig, solution, true);
     assertSoftly(
@@ -331,7 +333,7 @@ class DefaultConstructionHeuristicPhaseTest {
           softly
               .assertThat(bestSolution.getScore())
               .isEqualTo(SimpleScore.of(-2)); // Length of the entity's value list.
-          var firstEntity = bestSolution.getEntityList().get(0);
+          var firstEntity = bestSolution.getEntityList().getFirst();
           var firstValue = bestSolution.getValueList().get(0);
           var secondValue = bestSolution.getValueList().get(1);
           softly.assertThat(firstEntity.getValueList()).containsExactly(firstValue, secondValue);
@@ -835,126 +837,6 @@ class DefaultConstructionHeuristicPhaseTest {
 
   @ParameterizedTest
   @MethodSource("generateBasicVariableConfiguration")
-  void solveStrengthBasicVariableQueueComparator(ConstructionHeuristicTestConfig phaseConfig) {
-    var solverConfig =
-        PlannerTestUtils.buildSolverConfig(
-            TestdataDifficultySortableSolution.class, TestdataDifficultySortableEntity.class);
-    solverConfig.withEasyScoreCalculatorClass(OneValuePerEntityDifficultyEasyScoreCalculator.class);
-    solverConfig.withPhases(phaseConfig.config());
-
-    var solution = TestdataDifficultySortableSolution.generateSolution(3, 3, phaseConfig.shuffle());
-
-    solution = PlannerTestUtils.solve(solverConfig, solution);
-    assertThat(solution).isNotNull();
-    if (phaseConfig.expected() != null) {
-      for (var i = 0; i < 3; i++) {
-        var id = "Generated Entity %d".formatted(i);
-        var entity =
-            solution.getEntityList().stream()
-                .filter(e -> e.getCode().equals(id))
-                .findFirst()
-                .orElseThrow(IllegalArgumentException::new);
-        assertThat(entity.getValue()).isNotNull();
-        assertThat(entity.getValue().getComparatorValue()).isEqualTo(phaseConfig.expected[i]);
-      }
-    }
-  }
-
-  @ParameterizedTest
-  @MethodSource("generateBasicVariableConfiguration")
-  void solveStrengthBasicVariableQueueFactory(ConstructionHeuristicTestConfig phaseConfig) {
-    var solverConfig =
-        PlannerTestUtils.buildSolverConfig(
-            TestdataDifficultyFactorySortableSolution.class,
-            TestdataDifficultyFactorySortableEntity.class);
-    solverConfig.withEasyScoreCalculatorClass(
-        OneValuePerEntityDifficultyFactoryEasyScoreCalculator.class);
-    solverConfig.withPhases(phaseConfig.config());
-
-    var solution =
-        TestdataDifficultyFactorySortableSolution.generateSolution(3, 3, phaseConfig.shuffle());
-
-    solution = PlannerTestUtils.solve(solverConfig, solution);
-    assertThat(solution).isNotNull();
-    if (phaseConfig.expected() != null) {
-      for (var i = 0; i < 3; i++) {
-        var id = "Generated Entity %d".formatted(i);
-        var entity =
-            solution.getEntityList().stream()
-                .filter(e -> e.getCode().equals(id))
-                .findFirst()
-                .orElseThrow(IllegalArgumentException::new);
-        assertThat(entity.getValue()).isNotNull();
-        assertThat(entity.getValue().getComparatorValue()).isEqualTo(phaseConfig.expected[i]);
-      }
-    }
-  }
-
-  @ParameterizedTest
-  @MethodSource("generateBasicVariableConfiguration")
-  void solveStrengthBasicVariableEntityRangeQueueComparator(
-      ConstructionHeuristicTestConfig phaseConfig) {
-    var solverConfig =
-        PlannerTestUtils.buildSolverConfig(
-                TestdataStrengthSortableEntityProvidingSolution.class,
-                TestdataStrengthSortableEntityProvidingEntity.class)
-            .withEasyScoreCalculatorClass(OneValuePerEntityStrengthRangeEasyScoreCalculator.class)
-            .withPhases(phaseConfig.config());
-
-    var solution =
-        TestdataStrengthSortableEntityProvidingSolution.generateSolution(
-            3, 3, phaseConfig.shuffle());
-
-    solution = PlannerTestUtils.solve(solverConfig, solution);
-    assertThat(solution).isNotNull();
-    if (phaseConfig.expected() != null) {
-      for (var i = 0; i < 3; i++) {
-        var id = "Generated Entity %d".formatted(i);
-        var entity =
-            solution.getEntityList().stream()
-                .filter(e -> e.getCode().equals(id))
-                .findFirst()
-                .orElseThrow(IllegalArgumentException::new);
-        assertThat(entity.getValue()).isNotNull();
-        assertThat(entity.getValue().getComparatorValue()).isEqualTo(phaseConfig.expected[i]);
-      }
-    }
-  }
-
-  @ParameterizedTest
-  @MethodSource("generateBasicVariableConfiguration")
-  void solveStrengthBasicVariableEntityRangeQueueFactory(
-      ConstructionHeuristicTestConfig phaseConfig) {
-    var solverConfig =
-        PlannerTestUtils.buildSolverConfig(
-                TestdataStrengthFactorySortableEntityProvidingSolution.class,
-                TestdataStrengthFactorySortableEntityProvidingEntity.class)
-            .withEasyScoreCalculatorClass(
-                OneValuePerEntityStrengthFactoryRangeEasyScoreCalculator.class)
-            .withPhases(phaseConfig.config());
-
-    var solution =
-        TestdataStrengthFactorySortableEntityProvidingSolution.generateSolution(
-            3, 3, phaseConfig.shuffle());
-
-    solution = PlannerTestUtils.solve(solverConfig, solution);
-    assertThat(solution).isNotNull();
-    if (phaseConfig.expected() != null) {
-      for (var i = 0; i < 3; i++) {
-        var id = "Generated Entity %d".formatted(i);
-        var entity =
-            solution.getEntityList().stream()
-                .filter(e -> e.getCode().equals(id))
-                .findFirst()
-                .orElseThrow(IllegalArgumentException::new);
-        assertThat(entity.getValue()).isNotNull();
-        assertThat(entity.getValue().getComparatorValue()).isEqualTo(phaseConfig.expected[i]);
-      }
-    }
-  }
-
-  @ParameterizedTest
-  @MethodSource("generateBasicVariableConfiguration")
   void solveBasicVariableQueueComparator(ConstructionHeuristicTestConfig phaseConfig) {
     var solverConfig =
         PlannerTestUtils.buildSolverConfig(
@@ -1145,7 +1027,7 @@ class DefaultConstructionHeuristicPhaseTest {
     var isPhaseScope = entityDestinationCacheType == SelectionCacheType.PHASE;
     if (isPhaseScope) {
       // Hack to prevent the default sorting option,
-      // which is DESCENDING_IF_AVAILABLE
+      // which is DECREASING_DIFFICULTY_IF_AVAILABLE
       // This hack does not work with STEP scope
       nonSortedEntityConfig.setSorterManner(EntitySorterManner.NONE);
       nonSortedEntityConfig.setSelectionOrder(SelectionOrder.SORTED);
@@ -1369,7 +1251,7 @@ class DefaultConstructionHeuristicPhaseTest {
                 .findFirst()
                 .orElseThrow(IllegalArgumentException::new);
         assertThat(entity.getValueList()).hasSize(1);
-        assertThat(entity.getValueList().get(0).getComparatorValue())
+        assertThat(entity.getValueList().getFirst().getComparatorValue())
             .isEqualTo(phaseConfig.expected[i]);
       }
     }
@@ -1398,7 +1280,7 @@ class DefaultConstructionHeuristicPhaseTest {
                 .findFirst()
                 .orElseThrow(IllegalArgumentException::new);
         assertThat(entity.getValueList()).hasSize(1);
-        assertThat(entity.getValueList().get(0).getComparatorValue())
+        assertThat(entity.getValueList().getFirst().getComparatorValue())
             .isEqualTo(phaseConfig.expected[i]);
       }
     }
@@ -1477,7 +1359,7 @@ class DefaultConstructionHeuristicPhaseTest {
                 .findFirst()
                 .orElseThrow(IllegalArgumentException::new);
         assertThat(entity.getValueList()).hasSize(1);
-        assertThat(entity.getValueList().get(0).getComparatorValue())
+        assertThat(entity.getValueList().getFirst().getComparatorValue())
             .isEqualTo(phaseConfig.expected[i]);
       }
     }
@@ -1509,7 +1391,7 @@ class DefaultConstructionHeuristicPhaseTest {
                 .findFirst()
                 .orElseThrow(IllegalArgumentException::new);
         assertThat(entity.getValueList()).hasSize(1);
-        assertThat(entity.getValueList().get(0).getComparatorValue())
+        assertThat(entity.getValueList().getFirst().getComparatorValue())
             .isEqualTo(phaseConfig.expected[i]);
       }
     }
@@ -1638,7 +1520,7 @@ class DefaultConstructionHeuristicPhaseTest {
         assertThat(entity.getValueList()).hasSize(1);
         assertThat(
                 TestdataObjectSortableDescendingComparator.extractCode(
-                    entity.getValueList().get(0).getCode()))
+                    entity.getValueList().getFirst().getCode()))
             .isEqualTo(phaseConfig.expected[i]);
       }
     }
@@ -1764,6 +1646,36 @@ class DefaultConstructionHeuristicPhaseTest {
   }
 
   @Test
+  void penalizeBasicVariable() {
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataAllowsUnassignedSortableSolution.class)
+            .withEntityClasses(TestdataAllowsUnassignedSortableEntity.class)
+            .withConstraintProviderClass(PenalizeAssignedConstraintProvider.class)
+            .withPhases(
+                new ConstructionHeuristicPhaseConfig()
+                    .withTerminationConfig(new TerminationConfig().withStepCountLimit(3)));
+    var problem = TestdataAllowsUnassignedSortableSolution.generateSolution(1, 1, false);
+    var solution = PlannerTestUtils.solve(solverConfig, problem);
+    assertThat(solution.getEntityList().getFirst().getValue()).isNull();
+  }
+
+  @Test
+  void penalizeListVariable() {
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataAllowsUnassignedListSortableSolution.class)
+            .withEntityClasses(TestdataAllowsUnassignedListSortableEntity.class)
+            .withConstraintProviderClass(ListPenalizeAssignedConstraintProvider.class)
+            .withPhases(
+                new ConstructionHeuristicPhaseConfig()
+                    .withTerminationConfig(new TerminationConfig().withStepCountLimit(3)));
+    var problem = TestdataAllowsUnassignedListSortableSolution.generateSolution(1, 1, false);
+    var solution = PlannerTestUtils.solve(solverConfig, problem);
+    assertThat(solution.getEntityList().getFirst().getValueList()).isEmpty();
+  }
+
+  @Test
   void failConstructionHeuristicEntityRange() {
     var solverConfig =
         PlannerTestUtils.buildSolverConfig(
@@ -1844,44 +1756,42 @@ class DefaultConstructionHeuristicPhaseTest {
     var solution = new TestdataInvalidListSortableSolution();
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, solution))
         .hasMessageContaining(
-            "The entityClass (class ai.greycos.solver.core.testcotwin.list.sort.invalid.TestdataInvalidListSortableEntity) property (valueList)")
+            "The entityClass (class %s) property (valueList)"
+                .formatted(TestdataInvalidListSortableEntity.class.getName()))
         .hasMessageContaining(
-            "cannot have a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
+            "cannot have a comparatorClass (%s)".formatted(DummyValueComparator.class.getName()))
         .hasMessageContaining(
-            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparatorFactory) at the same time.");
+            "comparatorFactoryClass (%s) at the same time."
+                .formatted(DummyValueComparatorFactory.class.getName()));
   }
 
   @Test
   void failConstructionHeuristicMixedProperties() {
-    // Strength and Factory properties
     var solverConfig =
         PlannerTestUtils.buildSolverConfig(
                 TestdataInvalidMixedStrengthSortableSolution.class,
                 TestdataInvalidMixedStrengthSortableEntity.class)
             .withEasyScoreCalculatorClass(DummyHardSoftEasyScoreCalculator.class);
-    var solution = new TestdataInvalidMixedStrengthSortableSolution();
-    assertThatCode(() -> PlannerTestUtils.solve(solverConfig, solution))
-        .hasMessageContaining(
-            "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.mixed.strength.TestdataInvalidMixedStrengthSortableEntity) property (value)")
-        .hasMessageContaining(
-            "cannot have a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
-        .hasMessageContaining(
-            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparatorFactory) at the same time.");
+    assertThatCode(
+            () ->
+                PlannerTestUtils.solve(
+                    solverConfig, new TestdataInvalidMixedStrengthSortableSolution()))
+        .hasMessageContaining("cannot have a comparatorClass")
+        .hasMessageContaining("comparatorFactoryClass")
+        .hasMessageContaining("at the same time");
 
-    // Comparator and Factory properties
     var otherSolverConfig =
         PlannerTestUtils.buildSolverConfig(
                 TestdataInvalidMixedComparatorSortableSolution.class,
                 TestdataInvalidMixedComparatorSortableEntity.class)
             .withEasyScoreCalculatorClass(DummyHardSoftEasyScoreCalculator.class);
-    var otherSolution = new TestdataInvalidMixedComparatorSortableSolution();
-    assertThatCode(() -> PlannerTestUtils.solve(otherSolverConfig, otherSolution))
-        .hasMessageContaining(
-            "The entityClass (class ai.greycos.solver.core.testcotwin.sort.invalid.mixed.comparator.TestdataInvalidMixedComparatorSortableEntity) property (value)")
-        .hasMessageContaining(
-            "cannot have a comparatorClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparator)")
-        .hasMessageContaining(
-            "comparatorFactoryClass (ai.greycos.solver.core.testcotwin.common.DummyValueComparatorFactory) at the same time.");
+    assertThatCode(
+            () ->
+                PlannerTestUtils.solve(
+                    otherSolverConfig, new TestdataInvalidMixedComparatorSortableSolution()))
+        .hasMessageContaining("cannot have a comparatorClass")
+        .hasMessageContaining("comparatorFactoryClass")
+        .hasMessageContaining("at the same time");
   }
 
   @Test
@@ -1984,4 +1894,35 @@ class DefaultConstructionHeuristicPhaseTest {
 
   private record ConstructionHeuristicTestConfig(
       ConstructionHeuristicPhaseConfig config, int[] expected, boolean shuffle) {}
+
+  public static class PenalizeAssignedConstraintProvider implements ConstraintProvider {
+
+    @Override
+    public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+      return new Constraint[] {penalizeAssigned(constraintFactory)};
+    }
+
+    Constraint penalizeAssigned(ConstraintFactory constraintFactory) {
+      return constraintFactory
+          .forEach(TestdataAllowsUnassignedSortableEntity.class)
+          .penalize(HardSoftScore.ONE_HARD)
+          .asConstraint("penalize assigned");
+    }
+  }
+
+  public static class ListPenalizeAssignedConstraintProvider implements ConstraintProvider {
+
+    @Override
+    public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+      return new Constraint[] {penalizeAssigned(constraintFactory)};
+    }
+
+    Constraint penalizeAssigned(ConstraintFactory constraintFactory) {
+      return constraintFactory
+          .forEach(TestdataAllowsUnassignedListSortableEntity.class)
+          .filter(entity -> !entity.getValueList().isEmpty())
+          .penalize(HardSoftScore.ONE_HARD)
+          .asConstraint("penalize assigned");
+    }
+  }
 }

@@ -1,5 +1,6 @@
 package ai.greycos.solver.core.impl.cotwin.variable;
 
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -73,7 +74,7 @@ final class ListVariableState<Solution_> {
             || externalizedNextElementProcessor == null;
     if (requiresPositionMap) {
       if (elementPositionMap == null) {
-        elementPositionMap = CollectionUtils.newIdentityHashMap(unassignedCount);
+        elementPositionMap = new IdentityHashMap<>(unassignedCount);
       } else {
         elementPositionMap.clear();
       }
@@ -166,39 +167,11 @@ final class ListVariableState<Solution_> {
               || elementUpdateSent;
     }
     unassignedCount--;
+    // Trigger notifier if none of the previous methods triggered a shadow var update for this
+    // element.
     if (!elementUpdateSent) {
       notifier.accept(element);
     }
-  }
-
-  public void removeElement(Object entity, Object element, int index) {
-    if (requiresPositionMap) {
-      var oldPosition = elementPositionMap.remove(element);
-      if (oldPosition == null) {
-        throw new IllegalStateException(
-            "The supply for list variable (%s) is corrupted, because the element (%s) at index (%d) was already unassigned (%s)."
-                .formatted(sourceVariableDescriptor, element, index, oldPosition));
-      }
-      var oldIndex = oldPosition.getIndex();
-      if (oldIndex != index) {
-        throw new IllegalStateException(
-            "The supply for list variable (%s) is corrupted, because the element (%s) at index (%d) had an old index (%d) which is not the current index (%d)."
-                .formatted(sourceVariableDescriptor, element, index, oldIndex, index));
-      }
-    }
-    if (externalizedIndexProcessor != null) {
-      externalizedIndexProcessor.removeElement(scoreDirector, element);
-    }
-    if (externalizedInverseProcessor != null) {
-      externalizedInverseProcessor.removeElement(scoreDirector, entity, element);
-    }
-    if (externalizedPreviousElementProcessor != null) {
-      externalizedPreviousElementProcessor.unsetElement(scoreDirector, element);
-    }
-    if (externalizedNextElementProcessor != null) {
-      externalizedNextElementProcessor.unsetElement(scoreDirector, element);
-    }
-    unassignedCount++;
   }
 
   public void unassignElement(Object element) {
@@ -229,6 +202,8 @@ final class ListVariableState<Solution_> {
               || elementUpdateSent;
     }
     unassignedCount++;
+    // Trigger notifier if none of the previous methods triggered a shadow var update for this
+    // element.
     if (!elementUpdateSent) {
       notifier.accept(element);
     }
@@ -258,6 +233,8 @@ final class ListVariableState<Solution_> {
           externalizedNextElementProcessor.setElement(scoreDirector, elements, element, index)
               || elementUpdateSent;
     }
+    // Trigger notifier if none of the previous methods triggered a shadow var update for this
+    // element.
     if (!elementUpdateSent) {
       notifier.accept(element);
     }
@@ -292,7 +269,7 @@ final class ListVariableState<Solution_> {
         return ChangeType.BOTH;
       }
       var oldIndex = getIndex(element);
-      if (oldIndex == null) { // Technically impossible, but we handle it anyway.
+      if (oldIndex < 0) { // Technically impossible, but we handle it anyway.
         return ChangeType.BOTH;
       }
       return comparePositions(entity, oldEntity, index, oldIndex);
@@ -326,15 +303,16 @@ final class ListVariableState<Solution_> {
     }
   }
 
-  public Integer getIndex(Object planningValue) {
+  public int getIndex(Object planningValue) {
     if (externalizedIndexProcessor == null) {
       var position = elementPositionMap.get(planningValue);
       if (position == null) {
-        return null;
+        return -1;
       }
       return position.getIndex();
     }
-    return externalizedIndexProcessor.getIndex(planningValue);
+    var indexOrNull = externalizedIndexProcessor.getIndex(planningValue);
+    return indexOrNull == null ? -1 : indexOrNull;
   }
 
   public Object getInverseSingleton(Object planningValue) {
@@ -443,7 +421,7 @@ final class ListVariableState<Solution_> {
     }
 
     @Override
-    public String toString() {
+    public String toString() { // Mimics PositionInList's toString().
       return entity + "[" + index + "]";
     }
   }

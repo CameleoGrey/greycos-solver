@@ -1,7 +1,5 @@
 package ai.greycos.solver.core.testcotwin.constraintverifier;
 
-import java.util.Set;
-
 import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
@@ -24,7 +22,6 @@ public final class TestdataConstraintVerifierJustificationProvider implements Co
         .forEach(TestdataConstraintVerifierFirstEntity.class)
         .penalize(HardSoftScore.ONE_HARD)
         .justifyWith((entity, score) -> new TestFirstJustification(entity.getCode()))
-        .indictWith(Set::of)
         .asConstraint("Justify with first justification");
   }
 
@@ -33,6 +30,6 @@ public final class TestdataConstraintVerifierJustificationProvider implements Co
         .forEach(TestdataConstraintVerifierFirstEntity.class)
         .filter(entity -> entity.getCode().equals("Should not filter"))
         .penalize(HardSoftScore.ONE_HARD)
-        .asConstraint("Justify without justifications and indictments");
+        .asConstraint("Justify without justifications");
   }
 }

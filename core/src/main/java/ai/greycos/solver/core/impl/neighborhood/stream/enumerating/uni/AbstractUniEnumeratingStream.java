@@ -1,16 +1,12 @@
 package ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni;
 
-import static ai.greycos.solver.core.impl.bavet.common.GroupNodeConstructor.oneKeyGroupBy;
-
-import java.util.Objects;
-import java.util.function.Function;
-
-import ai.greycos.solver.core.impl.bavet.common.GroupNodeConstructor;
+import ai.greycos.solver.core.impl.bavet.common.tuple.BiTuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
-import ai.greycos.solver.core.impl.bavet.uni.Group1Mapping0CollectorUniNode;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
+import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.bi.AbstractBiEnumeratingStream;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.bi.JoinBiEnumeratingStream;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractEnumeratingStream;
+import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.NeighborhoodsGroupNodeConstructor;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.bridge.AftBridgeBiEnumeratingStream;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.bridge.AftBridgeUniEnumeratingStream;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.bridge.ForeBridgeUniEnumeratingStream;
@@ -18,6 +14,7 @@ import ai.greycos.solver.core.impl.neighborhood.stream.joiner.BiNeighborhoodsJoi
 import ai.greycos.solver.core.impl.util.ConstantLambdaUtils;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.BiEnumeratingStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.collector.UniNeighborhoodsCollector;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.function.UniNeighborhoodsMapper;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.function.UniNeighborhoodsPredicate;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.joiner.BiNeighborhoodsJoiner;
@@ -127,35 +124,43 @@ public abstract class AbstractUniEnumeratingStream<Solution_, A>
         childStreamList::add);
   }
 
-  /**
-   * Convert the {@link UniEnumeratingStream} to a different {@link UniEnumeratingStream},
-   * containing the set of tuples resulting from applying the group key mapping function on all
-   * tuples of the original stream. Neither tuple of the new stream {@link Objects#equals(Object,
-   * Object)} any other.
-   *
-   * @param groupKeyMapping mapping function to convert each element in the stream to a different
-   *     element
-   * @param <GroupKey_> the type of a fact in the destination {@link UniEnumeratingStream}'s tuple;
-   *     must honor {@link Object#hashCode() the general contract of hashCode}.
-   */
-  protected <GroupKey_> AbstractUniEnumeratingStream<Solution_, GroupKey_> groupBy(
-      Function<A, GroupKey_> groupKeyMapping) {
-    // We do not expose this on the API, as this operation is not yet needed in any of the moves.
-    // The groupBy API will need revisiting if exposed as a feature of Neighborhoods API, do not
-    // expose as is.
-    GroupNodeConstructor<UniTuple<GroupKey_>> nodeConstructor =
-        oneKeyGroupBy(groupKeyMapping, Group1Mapping0CollectorUniNode::new);
-    return buildUniGroupBy(nodeConstructor);
+  @Override
+  public <GroupKey_> AbstractUniEnumeratingStream<Solution_, GroupKey_> groupBy(
+      UniNeighborhoodsMapper<Solution_, A, GroupKey_> key) {
+    return buildUniGroupBy(NeighborhoodsGroupNodeConstructor.uniOneKeyGroupBy(key));
+  }
+
+  @Override
+  public <Result_> AbstractUniEnumeratingStream<Solution_, Result_> groupBy(
+      UniNeighborhoodsCollector<Solution_, A, ?, Result_> collector) {
+    return buildUniGroupBy(NeighborhoodsGroupNodeConstructor.uniZeroKeysGroupBy(collector));
+  }
+
+  @Override
+  public <GroupKey_, Result_> AbstractBiEnumeratingStream<Solution_, GroupKey_, Result_> groupBy(
+      UniNeighborhoodsMapper<Solution_, A, GroupKey_> key,
+      UniNeighborhoodsCollector<Solution_, A, ?, Result_> collector) {
+    return buildBiGroupBy(
+        NeighborhoodsGroupNodeConstructor.uniOneKeyAndCollectorGroupBy(key, collector));
   }
 
   private <NewA> AbstractUniEnumeratingStream<Solution_, NewA> buildUniGroupBy(
-      GroupNodeConstructor<UniTuple<NewA>> nodeConstructor) {
+      NeighborhoodsGroupNodeConstructor<Solution_, UniTuple<NewA>> nodeConstructor) {
     var stream =
         shareAndAddChild(
             new UniGroupUniEnumeratingStream<>(enumeratingStreamFactory, this, nodeConstructor));
     return enumeratingStreamFactory.share(
         new AftBridgeUniEnumeratingStream<>(enumeratingStreamFactory, stream),
         stream::setAftBridge);
+  }
+
+  private <NewA, NewB> AbstractBiEnumeratingStream<Solution_, NewA, NewB> buildBiGroupBy(
+      NeighborhoodsGroupNodeConstructor<Solution_, BiTuple<NewA, NewB>> nodeConstructor) {
+    var stream =
+        shareAndAddChild(
+            new UniGroupBiEnumeratingStream<>(enumeratingStreamFactory, this, nodeConstructor));
+    return enumeratingStreamFactory.share(
+        new AftBridgeBiEnumeratingStream<>(enumeratingStreamFactory, stream), stream::setAftBridge);
   }
 
   @Override
@@ -184,7 +189,7 @@ public abstract class AbstractUniEnumeratingStream<Solution_, A>
     if (guaranteesDistinct()) {
       return this; // Already distinct, no need to create a new stream.
     }
-    return groupBy(ConstantLambdaUtils.identity());
+    return groupBy(ConstantLambdaUtils.neighborhoodsUniPickFirst());
   }
 
   public UniLeftDataset<Solution_, A> createLeftDataset() {

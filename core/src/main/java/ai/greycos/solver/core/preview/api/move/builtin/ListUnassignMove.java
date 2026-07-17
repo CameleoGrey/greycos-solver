@@ -1,9 +1,9 @@
 package ai.greycos.solver.core.preview.api.move.builtin;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.impl.move.AbstractMove;
@@ -48,13 +48,13 @@ public final class ListUnassignMove<Solution_, Entity_, Value_> extends Abstract
   }
 
   @Override
-  public Collection<Entity_> getPlanningEntities() {
-    return Collections.singleton(sourceEntity);
+  public SequencedCollection<Object> getPlanningEntities() {
+    return List.of(sourceEntity);
   }
 
   @Override
-  public Collection<Value_> getPlanningValues() {
-    return Collections.singleton(getUnassignedValue());
+  public SequencedCollection<Object> getPlanningValues() {
+    return List.of(getUnassignedValue());
   }
 
   private Value_ getUnassignedValue() {

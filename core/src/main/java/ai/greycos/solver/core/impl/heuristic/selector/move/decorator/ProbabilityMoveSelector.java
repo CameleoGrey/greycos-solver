@@ -5,7 +5,6 @@ import java.util.NavigableMap;
 import java.util.TreeMap;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
 import ai.greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleListener;
 import ai.greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
@@ -14,6 +13,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.solver.random.RandomUtils;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public class ProbabilityMoveSelector<Solution_> extends AbstractMoveSelector<Solution_>
     implements SelectionCacheLifecycleListener<Solution_> {
@@ -79,11 +79,6 @@ public class ProbabilityMoveSelector<Solution_> extends AbstractMoveSelector<Sol
   @Override
   public void disposeCache(SolverScope<Solution_> solverScope) {
     probabilityWeightTotal = -1.0;
-  }
-
-  @Override
-  public boolean isCountable() {
-    return true;
   }
 
   @Override

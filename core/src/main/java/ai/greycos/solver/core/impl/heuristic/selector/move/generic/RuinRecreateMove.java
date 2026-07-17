@@ -1,10 +1,10 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.generic;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
+import java.util.SequencedCollection;
+import java.util.SequencedSet;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.move.AbstractMove;
@@ -12,6 +12,7 @@ import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.move.VariableChangeRecordingScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
+import ai.greycos.solver.core.impl.solver.random.DefaultRandomSource;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 
 public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
@@ -21,7 +22,8 @@ public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
       constructionHeuristicPhaseBuilder;
   private final SolverScope<Solution_> solverScope;
   private final List<Object> ruinedEntityList;
-  private final Set<Object> affectedValueSet;
+  private final SequencedSet<Object> affectedValueSet;
+  private final long randomSeed;
 
   private Object[] recordedNewValues;
 
@@ -30,12 +32,29 @@ public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
       RuinRecreateConstructionHeuristicPhaseBuilder<Solution_> constructionHeuristicPhaseBuilder,
       SolverScope<Solution_> solverScope,
       List<Object> ruinedEntityList,
-      Set<Object> affectedValueSet) {
+      SequencedSet<Object> affectedValueSet) {
+    this(
+        genuineVariableDescriptor,
+        constructionHeuristicPhaseBuilder,
+        solverScope,
+        ruinedEntityList,
+        affectedValueSet,
+        0L);
+  }
+
+  public RuinRecreateMove(
+      GenuineVariableDescriptor<Solution_> genuineVariableDescriptor,
+      RuinRecreateConstructionHeuristicPhaseBuilder<Solution_> constructionHeuristicPhaseBuilder,
+      SolverScope<Solution_> solverScope,
+      List<Object> ruinedEntityList,
+      SequencedSet<Object> affectedValueSet,
+      long randomSeed) {
     this.genuineVariableDescriptor = genuineVariableDescriptor;
     this.ruinedEntityList = ruinedEntityList;
     this.affectedValueSet = affectedValueSet;
     this.constructionHeuristicPhaseBuilder = constructionHeuristicPhaseBuilder;
     this.solverScope = solverScope;
+    this.randomSeed = randomSeed;
     this.recordedNewValues = null;
   }
 
@@ -43,20 +62,12 @@ public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
   protected void doMoveOnGenuineVariables(ScoreDirector<Solution_> scoreDirector) {
     recordedNewValues = new Object[ruinedEntityList.size()];
 
+    var variableAwareScoreDirector =
+        (VariableDescriptorAwareScoreDirector<Solution_>) scoreDirector;
     for (var ruinedEntity : ruinedEntityList) {
-      if (scoreDirector instanceof VariableDescriptorAwareScoreDirector<Solution_> variableAware) {
-        variableAware.beforeVariableChanged(genuineVariableDescriptor, ruinedEntity);
-      } else {
-        scoreDirector.beforeVariableChanged(
-            ruinedEntity, genuineVariableDescriptor.getVariableName());
-      }
+      variableAwareScoreDirector.beforeVariableChanged(genuineVariableDescriptor, ruinedEntity);
       genuineVariableDescriptor.setValue(ruinedEntity, null);
-      if (scoreDirector instanceof VariableDescriptorAwareScoreDirector<Solution_> variableAware) {
-        variableAware.afterVariableChanged(genuineVariableDescriptor, ruinedEntity);
-      } else {
-        scoreDirector.afterVariableChanged(
-            ruinedEntity, genuineVariableDescriptor.getVariableName());
-      }
+      variableAwareScoreDirector.afterVariableChanged(genuineVariableDescriptor, ruinedEntity);
     }
     scoreDirector.triggerVariableListeners();
 
@@ -79,6 +90,7 @@ public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
     var nestedSolverScope = new SolverScope<Solution_>(solverScope.getClock());
     nestedSolverScope.setSolver(solverScope.getSolver());
     nestedSolverScope.setScoreDirector(backingScoreDirector);
+    nestedSolverScope.setWorkingRandom(DefaultRandomSource.seeded(randomSeed));
     constructionHeuristicPhase.solvingStarted(nestedSolverScope);
     constructionHeuristicPhase.solve(nestedSolverScope);
     constructionHeuristicPhase.solvingEnded(nestedSolverScope);
@@ -90,12 +102,12 @@ public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<?> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     return ruinedEntityList;
   }
 
   @Override
-  public Collection<?> getPlanningValues() {
+  public SequencedCollection<Object> getPlanningValues() {
     return affectedValueSet;
   }
 
@@ -113,7 +125,8 @@ public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
         constructionHeuristicPhaseBuilder,
         solverScope,
         rebasedRuinedEntityList,
-        rebasedAffectedValueSet);
+        rebasedAffectedValueSet,
+        randomSeed);
   }
 
   protected GenuineVariableDescriptor<Solution_> getGenuineVariableDescriptor() {
@@ -133,8 +146,12 @@ public class RuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
     return ruinedEntityList;
   }
 
-  protected Set<Object> getAffectedValueSet() {
+  protected SequencedSet<Object> getAffectedValueSet() {
     return affectedValueSet;
+  }
+
+  protected long getRandomSeed() {
+    return randomSeed;
   }
 
   @Override

@@ -33,7 +33,7 @@ public class LocalSearchForagerConfig extends AbstractConfig<LocalSearchForagerC
   protected Integer acceptedCountLimit = null;
   protected FinalistPodiumType finalistPodiumType = null;
   protected Boolean breakTieRandomly = null;
-  protected Class<? extends LocalSearchForager> foragerClass = null;
+  protected String foragerClass = null;
 
   @XmlJavaTypeAdapter(JaxbCustomPropertiesAdapter.class)
   protected Map<String, String> customProperties = null;
@@ -71,11 +71,11 @@ public class LocalSearchForagerConfig extends AbstractConfig<LocalSearchForagerC
   }
 
   public @Nullable Class<? extends LocalSearchForager> getForagerClass() {
-    return foragerClass;
+    return ConfigUtils.resolveClass(foragerClass, "foragerClass", this);
   }
 
   public void setForagerClass(@Nullable Class<? extends LocalSearchForager> foragerClass) {
-    this.foragerClass = foragerClass;
+    this.foragerClass = foragerClass == null ? null : foragerClass.getName();
   }
 
   public @Nullable Map<String, String> getCustomProperties() {
@@ -114,7 +114,7 @@ public class LocalSearchForagerConfig extends AbstractConfig<LocalSearchForagerC
 
   public @NonNull LocalSearchForagerConfig withForagerClass(
       @NonNull Class<? extends LocalSearchForager> foragerClass) {
-    this.foragerClass = foragerClass;
+    this.foragerClass = foragerClass.getName();
     return this;
   }
 
@@ -139,7 +139,7 @@ public class LocalSearchForagerConfig extends AbstractConfig<LocalSearchForagerC
         ConfigUtils.inheritOverwritableProperty(
             breakTieRandomly, inheritedConfig.getBreakTieRandomly());
     foragerClass =
-        ConfigUtils.inheritOverwritableProperty(foragerClass, inheritedConfig.getForagerClass());
+        ConfigUtils.inheritOverwritableProperty(foragerClass, inheritedConfig.foragerClass);
     customProperties =
         ConfigUtils.inheritOverwritableProperty(
             customProperties, inheritedConfig.getCustomProperties());
@@ -154,7 +154,7 @@ public class LocalSearchForagerConfig extends AbstractConfig<LocalSearchForagerC
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
     if (foragerClass != null) {
-      classVisitor.accept(foragerClass);
+      classVisitor.accept(getForagerClass());
     }
   }
 }

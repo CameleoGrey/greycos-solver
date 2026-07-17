@@ -77,7 +77,7 @@ public abstract class AbstractQuadConstraintStreamPrecomputeTest
                     .precompute(pf -> precomputeStream.apply(pf, entityGroup, valueGroup))
                     .filter((a, b, c, d) -> entityPicker.apply(a, b, c, d).getValue() == value1)
                     .penalize(SimpleScore.ONE)
-                    .asConstraint(TEST_CONSTRAINT_NAME));
+                    .asConstraint(TEST_CONSTRAINT_ID));
 
     // From scratch
     var createMatch =
@@ -238,7 +238,7 @@ public abstract class AbstractQuadConstraintStreamPrecomputeTest
                     .precompute(entityStreamSupplier)
                     .ifExists(TestdataLavishEntity.class)
                     .penalize(SimpleScore.ONE)
-                    .asConstraint(TEST_CONSTRAINT_NAME));
+                    .asConstraint(TEST_CONSTRAINT_ID));
 
     // From scratch
     scoreDirector.setWorkingSolution(solution);
@@ -327,7 +327,7 @@ public abstract class AbstractQuadConstraintStreamPrecomputeTest
 
     assertPrecompute(
         solution,
-        List.of(new Quadruple<>(entityGroup, 1, 1, 1)),
+        List.of(new Quadruple<>(entityGroup, 1L, 1L, 1L)),
         pf ->
             pf.forEachUnfiltered(TestdataLavishEntity.class)
                 .filter(entity -> entity.getEntityGroup() != null)

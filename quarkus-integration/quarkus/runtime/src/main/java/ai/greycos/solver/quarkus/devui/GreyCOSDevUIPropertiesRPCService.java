@@ -13,8 +13,8 @@ import jakarta.inject.Inject;
 
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.Constraint;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamScoreDirectorFactory;
@@ -85,10 +85,7 @@ public class GreyCOSDevUIPropertiesRPCService {
         (key, value) ->
             out.put(
                 key,
-                JsonArray.of(
-                    value.getConstraintList().stream()
-                        .map(ConstraintRef::constraintId)
-                        .toArray())));
+                JsonArray.of(value.getConstraintList().stream().map(ConstraintRef::id).toArray())));
     return out;
   }
 

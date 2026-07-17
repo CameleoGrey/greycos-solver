@@ -1,9 +1,8 @@
 package ai.greycos.solver.core.api.score.stream;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -11,34 +10,20 @@ import org.jspecify.annotations.Nullable;
  * Score}. It is defined in {@link ConstraintProvider#defineConstraints(ConstraintFactory)} by
  * calling {@link ConstraintFactory#forEach(Class)}.
  */
+@NullMarked
 public interface Constraint {
-
-  String DEFAULT_CONSTRAINT_GROUP = "default";
-
-  /**
-   * The {@link ConstraintFactory} that built this.
-   *
-   * @deprecated for removal as it is not necessary on the public API.
-   * @return never null
-   */
-  @Deprecated(forRemoval = true)
-  ConstraintFactory getConstraintFactory();
 
   ConstraintRef getConstraintRef();
 
   /**
-   * Returns a human-friendly description of the constraint. The format of the description is left
-   * unspecified and will not be parsed in any way.
+   * Returns the metadata for this constraint, as provided to {@link
+   * ConstraintBuilder#asConstraint(ConstraintMetadata)}. The constraint's identity ({@link
+   * ConstraintMetadata#id()}) is fixed at build time; any later mutation of the returned object
+   * does not affect the constraint's identity.
    *
-   * @return may be left empty
+   * @return never null
    */
-  default @NonNull String getDescription() {
-    return "";
-  }
-
-  default @NonNull String getConstraintGroup() {
-    return DEFAULT_CONSTRAINT_GROUP;
-  }
+  ConstraintMetadata getConstraintMetadata();
 
   /**
    * Returns the weight of the constraint as defined in the {@link ConstraintProvider}, without any
@@ -46,7 +31,5 @@ public interface Constraint {
    *
    * @return null if the constraint does not have a weight defined
    */
-  default <Score_ extends Score<Score_>> @Nullable Score_ getConstraintWeight() {
-    return null;
-  }
+  <Score_ extends Score<Score_>> @Nullable Score_ getConstraintWeight();
 }

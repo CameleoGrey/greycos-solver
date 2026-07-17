@@ -5,7 +5,6 @@ import java.util.UUID;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.analysis.MatchAnalysis;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatch;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintStream;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 
@@ -37,7 +36,5 @@ import ai.greycos.solver.core.api.solver.SolutionManager;
  * <p>If the user wishes to use score analysis, they are required to ensure that the class(es)
  * implementing this interface can be serialized into any format which is supported by the {@link
  * SolutionManager} implementation, typically JSON.
- *
- * @see ConstraintMatch#getJustification()
  */
 public interface ConstraintJustification {}

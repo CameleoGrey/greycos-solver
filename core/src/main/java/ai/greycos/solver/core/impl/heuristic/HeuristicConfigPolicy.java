@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadFactory;
-import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner;
 import ai.greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
@@ -23,6 +22,7 @@ import ai.greycos.solver.core.impl.heuristic.selector.value.mimic.ValueMimicReco
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
 import ai.greycos.solver.core.impl.score.trend.InitializingScoreTrend;
 import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 import ai.greycos.solver.core.impl.solver.thread.DefaultSolverThreadFactory;
 
@@ -42,7 +42,7 @@ public class HeuristicConfigPolicy<Solution_> {
   private final boolean reinitializeVariableFilterEnabled;
   private final boolean unassignedValuesAllowed;
   private final Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass;
-  private final RandomGenerator random;
+  private final RandomSource random;
 
   private final Map<String, EntityMimicRecorder<Solution_>> entityMimicRecorderMap =
       new HashMap<>();
@@ -120,7 +120,7 @@ public class HeuristicConfigPolicy<Solution_> {
     return nearbyDistanceMeterClass;
   }
 
-  public RandomGenerator getRandom() {
+  public RandomSource getRandom() {
     return random;
   }
 
@@ -175,8 +175,9 @@ public class HeuristicConfigPolicy<Solution_> {
     if (put != null) {
       throw new IllegalStateException(
           """
-                            Multiple %ss (usually %ss) have the same id (%s).
-                            Maybe specify a variable name for the mimicking selector in situations with multiple variables on the same entity?"""
+          Multiple %ss (usually %ss) have the same id (%s).
+          Maybe specify a variable name for the mimicking selector in situations with multiple variables on the same entity?\
+          """
               .formatted(
                   EntityMimicRecorder.class.getSimpleName(),
                   EntitySelector.class.getSimpleName(),
@@ -194,8 +195,9 @@ public class HeuristicConfigPolicy<Solution_> {
     if (put != null) {
       throw new IllegalStateException(
           """
-                            Multiple %ss (usually %ss) have the same id (%s).
-                            Maybe specify a variable name for the mimicking selector in situations with multiple variables on the same entity?"""
+          Multiple %ss (usually %ss) have the same id (%s).
+          Maybe specify a variable name for the mimicking selector in situations with multiple variables on the same entity?\
+          """
               .formatted(
                   SubListMimicRecorder.class.getSimpleName(),
                   SubListSelector.class.getSimpleName(),
@@ -213,8 +215,9 @@ public class HeuristicConfigPolicy<Solution_> {
     if (put != null) {
       throw new IllegalStateException(
           """
-                            Multiple %ss (usually %ss) have the same id (%s).
-                            Maybe specify a variable name for the mimicking selector in situations with multiple variables on the same entity?"""
+          Multiple %ss (usually %ss) have the same id (%s).
+          Maybe specify a variable name for the mimicking selector in situations with multiple variables on the same entity?\
+          """
               .formatted(
                   ValueMimicRecorder.class.getSimpleName(),
                   ValueSelector.class.getSimpleName(),
@@ -245,13 +248,23 @@ public class HeuristicConfigPolicy<Solution_> {
 
   public static void ensurePreviewFeature(
       PreviewFeature previewFeature, Collection<PreviewFeature> previewFeatureCollection) {
-    if (previewFeatureCollection == null || !previewFeatureCollection.contains(previewFeature)) {
+    if (!isPreviewFeatureEnabled(previewFeature, previewFeatureCollection)) {
       throw new IllegalStateException(
           """
-                    The preview feature %s is not enabled.
-                    Maybe add %s to <enablePreviewFeature> in your configuration file?"""
+          The preview feature %s is not enabled.
+          Maybe add %s to <enablePreviewFeature> in your configuration file?\
+          """
               .formatted(previewFeature, previewFeature));
     }
+  }
+
+  public boolean isPreviewFeatureEnabled(PreviewFeature previewFeature) {
+    return isPreviewFeatureEnabled(previewFeature, previewFeatureSet);
+  }
+
+  public static boolean isPreviewFeatureEnabled(
+      PreviewFeature previewFeature, Collection<PreviewFeature> previewFeatureCollection) {
+    return previewFeatureCollection != null && previewFeatureCollection.contains(previewFeature);
   }
 
   @Override
@@ -279,7 +292,7 @@ public class HeuristicConfigPolicy<Solution_> {
     private boolean unassignedValuesAllowed = false;
 
     private Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass;
-    private RandomGenerator random;
+    private RandomSource random;
 
     public Builder<Solution_> withPreviewFeatureSet(Set<PreviewFeature> previewFeatureSet) {
       this.previewFeatureSet = previewFeatureSet;
@@ -313,7 +326,7 @@ public class HeuristicConfigPolicy<Solution_> {
       return this;
     }
 
-    public Builder<Solution_> withRandom(RandomGenerator random) {
+    public Builder<Solution_> withRandom(RandomSource random) {
       this.random = random;
       return this;
     }

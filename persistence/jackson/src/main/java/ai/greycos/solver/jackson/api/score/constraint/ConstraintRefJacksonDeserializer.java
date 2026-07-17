@@ -1,16 +1,16 @@
 package ai.greycos.solver.jackson.api.score.constraint;
 
-import java.io.IOException;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 
-import ai.greycos.solver.core.api.score.constraint.ConstraintRef;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-
-public final class ConstraintRefJacksonDeserializer extends JsonDeserializer<ConstraintRef> {
+public final class ConstraintRefJacksonDeserializer extends ValueDeserializer<ConstraintRef> {
   @Override
-  public ConstraintRef deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+  public ConstraintRef deserialize(JsonParser p, DeserializationContext ctxt)
+      throws JacksonException {
     return ConstraintRef.of(p.getValueAsString());
   }
 }

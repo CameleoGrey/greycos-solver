@@ -1,12 +1,13 @@
 package ai.greycos.solver.core.impl.score.stream.collector.uni;
 
 import java.util.Objects;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
+import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollectorAccumulator;
+import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollectorValueHandle;
 import ai.greycos.solver.core.impl.util.Triple;
 
 import org.jspecify.annotations.NonNull;
@@ -25,9 +26,9 @@ final class ComposeThreeUniCollector<
   private final Supplier<ResultHolder2_> secondSupplier;
   private final Supplier<ResultHolder3_> thirdSupplier;
 
-  private final BiFunction<ResultHolder1_, A, Runnable> firstAccumulator;
-  private final BiFunction<ResultHolder2_, A, Runnable> secondAccumulator;
-  private final BiFunction<ResultHolder3_, A, Runnable> thirdAccumulator;
+  private final UniConstraintCollectorAccumulator<ResultHolder1_, A> firstIncremental;
+  private final UniConstraintCollectorAccumulator<ResultHolder2_, A> secondIncremental;
+  private final UniConstraintCollectorAccumulator<ResultHolder3_, A> thirdIncremental;
 
   private final Function<ResultHolder1_, Result1_> firstFinisher;
   private final Function<ResultHolder2_, Result2_> secondFinisher;
@@ -47,9 +48,9 @@ final class ComposeThreeUniCollector<
     this.secondSupplier = second.supplier();
     this.thirdSupplier = third.supplier();
 
-    this.firstAccumulator = first.accumulator();
-    this.secondAccumulator = second.accumulator();
-    this.thirdAccumulator = third.accumulator();
+    this.firstIncremental = first.accumulator();
+    this.secondIncremental = second.accumulator();
+    this.thirdIncremental = third.accumulator();
 
     this.firstFinisher = first.finisher();
     this.secondFinisher = second.finisher();
@@ -66,25 +67,15 @@ final class ComposeThreeUniCollector<
   }
 
   @Override
-  public @NonNull BiFunction<Triple<ResultHolder1_, ResultHolder2_, ResultHolder3_>, A, Runnable>
+  public @NonNull
+      UniConstraintCollectorAccumulator<Triple<ResultHolder1_, ResultHolder2_, ResultHolder3_>, A>
       accumulator() {
-    return (resultHolder, a) ->
-        composeUndo(
-            firstAccumulator.apply(resultHolder.a(), a),
-            secondAccumulator.apply(resultHolder.b(), a),
-            thirdAccumulator.apply(resultHolder.c(), a));
-  }
-
-  private static Runnable composeUndo(Runnable first, Runnable second, Runnable third) {
-    return () -> {
-      first.run();
-      second.run();
-      third.run();
-    };
+    return ValueHandle::new;
   }
 
   @Override
-  public @Nullable Function<Triple<ResultHolder1_, ResultHolder2_, ResultHolder3_>, Result_>
+  public @NonNull
+      Function<Triple<ResultHolder1_, ResultHolder2_, ResultHolder3_>, @Nullable Result_>
       finisher() {
     return resultHolder ->
         composeFunction.apply(
@@ -107,5 +98,38 @@ final class ComposeThreeUniCollector<
   @Override
   public int hashCode() {
     return Objects.hash(first, second, third, composeFunction);
+  }
+
+  private final class ValueHandle implements UniConstraintCollectorValueHandle<A> {
+    private final UniConstraintCollectorValueHandle<A> v1;
+    private final UniConstraintCollectorValueHandle<A> v2;
+    private final UniConstraintCollectorValueHandle<A> v3;
+
+    ValueHandle(Triple<ResultHolder1_, ResultHolder2_, ResultHolder3_> container) {
+      this.v1 = firstIncremental.intoGroup(container.a());
+      this.v2 = secondIncremental.intoGroup(container.b());
+      this.v3 = thirdIncremental.intoGroup(container.c());
+    }
+
+    @Override
+    public void add(A a) {
+      v1.add(a);
+      v2.add(a);
+      v3.add(a);
+    }
+
+    @Override
+    public void replaceWith(A a) {
+      v1.replaceWith(a);
+      v2.replaceWith(a);
+      v3.replaceWith(a);
+    }
+
+    @Override
+    public void remove() {
+      v1.remove();
+      v2.remove();
+      v3.remove();
+    }
   }
 }

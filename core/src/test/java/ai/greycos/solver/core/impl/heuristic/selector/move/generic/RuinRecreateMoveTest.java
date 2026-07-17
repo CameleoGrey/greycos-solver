@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -54,7 +55,7 @@ class RuinRecreateMoveTest {
             mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
             mock(SolverScope.class),
             Arrays.asList(e1, e2, e3),
-            Set.of(v1, v2));
+            new LinkedHashSet<>(Set.of(v1, v2)));
     var rebasedMove = move.rebase(destinationScoreDirector);
 
     assertSoftly(
@@ -84,14 +85,14 @@ class RuinRecreateMoveTest {
             mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
             mock(SolverScope.class),
             List.of(e1),
-            Set.of(v1));
+            new LinkedHashSet<>(Set.of(v1)));
     var sameMove =
         new RuinRecreateMove<TestdataSolution>(
             descriptor,
             mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
             mock(SolverScope.class),
             List.of(e1),
-            Set.of(v1));
+            new LinkedHashSet<>(Set.of(v1)));
     assertThat(move).isEqualTo(sameMove);
 
     var differentMove =
@@ -100,7 +101,7 @@ class RuinRecreateMoveTest {
             mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
             mock(SolverScope.class),
             List.of(e1),
-            Set.of(v2));
+            new LinkedHashSet<>(Set.of(v2)));
     assertThat(move).isNotEqualTo(differentMove);
 
     var anotherDifferentMove =
@@ -109,7 +110,7 @@ class RuinRecreateMoveTest {
             mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
             mock(SolverScope.class),
             List.of(e2),
-            Set.of(v1));
+            new LinkedHashSet<>(Set.of(v1)));
     assertThat(move).isNotEqualTo(anotherDifferentMove);
 
     var yetAnotherDifferentMove =
@@ -118,7 +119,7 @@ class RuinRecreateMoveTest {
             mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
             mock(SolverScope.class),
             List.of(e1),
-            Set.of(v1));
+            new LinkedHashSet<>(Set.of(v1)));
     assertThat(move).isNotEqualTo(yetAnotherDifferentMove);
   }
 }

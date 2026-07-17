@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.value.decorator;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfValueSelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -50,14 +51,15 @@ class CachingValueSelectorTest {
         new CachingValueSelector(childValueSelector, cacheType, false);
     verify(childValueSelector, times(1)).isNeverEnding();
 
+    SolverScope solverScope = mockSolverScope();
     InnerScoreDirector scoreDirector = mock(InnerScoreDirector.class);
     when(scoreDirector.getWorkingEntityListRevision()).thenReturn(0L);
     when(scoreDirector.isWorkingEntityListDirty(anyLong())).thenReturn(false);
-    SolverScope solverScope = SelectorTestUtils.solvingStarted(valueSelector, scoreDirector);
+    when(solverScope.getScoreDirector()).thenReturn(scoreDirector);
+    valueSelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
     when(phaseScopeA.getSolverScope()).thenReturn(solverScope);
-    when(phaseScopeA.getScoreDirector()).thenReturn(scoreDirector);
     valueSelector.phaseStarted(phaseScopeA);
 
     AbstractStepScope stepScopeA1 = mock(AbstractStepScope.class);
@@ -78,7 +80,6 @@ class CachingValueSelectorTest {
 
     AbstractPhaseScope phaseScopeB = mock(AbstractPhaseScope.class);
     when(phaseScopeB.getSolverScope()).thenReturn(solverScope);
-    when(phaseScopeB.getScoreDirector()).thenReturn(scoreDirector);
     valueSelector.phaseStarted(phaseScopeB);
 
     AbstractStepScope stepScopeB1 = mock(AbstractStepScope.class);

@@ -3,8 +3,8 @@ package ai.greycos.solver.core.impl.score.stream.test;
 import java.util.Map;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.Indictment;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamScoreDirectorFactory;
 
@@ -14,10 +14,9 @@ public final class DefaultSingleConstraintAssertion<Solution_, Score_ extends Sc
   DefaultSingleConstraintAssertion(
       AbstractConstraintStreamScoreDirectorFactory<Solution_, Score_, ?> scoreDirectorFactory,
       Score_ score,
-      Map<String, ConstraintMatchTotal<Score_>> constraintMatchTotalMap,
-      Map<Object, Indictment<Score_>> indictmentMap) {
+      Map<ConstraintRef, ConstraintMatchTotal<Score_>> constraintMatchTotalMap) {
     super(scoreDirectorFactory);
-    update(InnerScore.fullyAssigned(score), constraintMatchTotalMap, indictmentMap);
+    update(InnerScore.fullyAssigned(score), constraintMatchTotalMap);
   }
 
   @Override

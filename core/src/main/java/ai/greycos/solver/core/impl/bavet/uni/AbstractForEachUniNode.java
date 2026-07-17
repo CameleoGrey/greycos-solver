@@ -1,10 +1,10 @@
 package ai.greycos.solver.core.impl.bavet.uni;
 
-import java.util.IdentityHashMap;
+import java.util.HashMap;
 import java.util.Map;
 
-import ai.greycos.solver.core.impl.bavet.common.AbstractNode;
-import ai.greycos.solver.core.impl.bavet.common.BavetRootNode;
+import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import ai.greycos.solver.core.impl.bavet.common.AbstractRootNode;
 import ai.greycos.solver.core.impl.bavet.common.Propagator;
 import ai.greycos.solver.core.impl.bavet.common.StaticPropagationQueue;
 import ai.greycos.solver.core.impl.bavet.common.StreamKind;
@@ -24,13 +24,13 @@ import org.jspecify.annotations.Nullable;
  * @param <A>
  */
 @NullMarked
-public abstract sealed class AbstractForEachUniNode<A> extends AbstractNode
-    implements BavetRootNode<A> permits ForEachFilteredUniNode, ForEachUnfilteredUniNode {
+public abstract sealed class AbstractForEachUniNode<A> extends AbstractRootNode<A>
+    permits ForEachFilteredUniNode, ForEachUnfilteredUniNode {
 
   private final Class<A> forEachClass;
   private final int outputStoreSize;
   private final StaticPropagationQueue<UniTuple<A>> propagationQueue;
-  protected final Map<A, UniTuple<A>> tupleMap = new IdentityHashMap<>(1000);
+  protected final Map<A, UniTuple<A>> tupleMap = HashMap.newHashMap(1000);
 
   protected AbstractForEachUniNode(
       Class<A> forEachClass,
@@ -62,7 +62,12 @@ public abstract sealed class AbstractForEachUniNode<A> extends AbstractNode
     var old = tupleMap.put(a, tuple);
     if (old != null) {
       throw new IllegalStateException(
-          "The fact (%s) was already inserted, so it cannot insert again.".formatted(a));
+          """
+          The fact (%s) was already inserted.
+          Maybe your entities mistakenly equal each other?
+          Maybe your @%s's collection properties contain duplicates?\
+          """
+              .formatted(a, PlanningSolution.class.getSimpleName()));
     }
     propagationQueue.insert(tuple);
   }
@@ -71,8 +76,7 @@ public abstract sealed class AbstractForEachUniNode<A> extends AbstractNode
     var state = tuple.getState();
     if (state.isDirty()) {
       if (state == TupleState.DYING || state == TupleState.ABORTING) {
-        throw new IllegalStateException(
-            "The fact (%s) was retracted, so it cannot update.".formatted(a));
+        throw new IllegalStateException("The fact (%s) was already retracted.".formatted(a));
       }
       // CREATING or UPDATING is ignored; it's already in the queue.
     } else {
@@ -84,8 +88,7 @@ public abstract sealed class AbstractForEachUniNode<A> extends AbstractNode
   public void retract(@Nullable A a) {
     var tuple = tupleMap.remove(a);
     if (tuple == null) {
-      throw new IllegalStateException(
-          "The fact (%s) was never inserted, so it cannot retract.".formatted(a));
+      throw new IllegalStateException("The fact (%s) was never inserted.".formatted(a));
     }
     retractExisting(a, tuple);
   }
@@ -94,8 +97,7 @@ public abstract sealed class AbstractForEachUniNode<A> extends AbstractNode
     var state = tuple.getState();
     if (state.isDirty()) {
       if (state == TupleState.DYING || state == TupleState.ABORTING) {
-        throw new IllegalStateException(
-            "The fact (%s) was already retracted, so it cannot retract.".formatted(a));
+        throw new IllegalStateException("The fact (%s) was already retracted.".formatted(a));
       }
       propagationQueue.retract(
           tuple, state == TupleState.CREATING ? TupleState.ABORTING : TupleState.DYING);

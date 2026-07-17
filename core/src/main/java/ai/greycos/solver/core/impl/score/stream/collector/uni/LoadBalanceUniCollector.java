@@ -1,20 +1,21 @@
 package ai.greycos.solver.core.impl.score.stream.collector.uni;
 
 import java.util.Objects;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
 
 import ai.greycos.solver.core.api.score.stream.common.LoadBalance;
 import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
-import ai.greycos.solver.core.impl.score.stream.collector.LoadBalanceImpl;
+import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollectorAccumulator;
+import ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollectorValueHandle;
+import ai.greycos.solver.core.impl.score.stream.collector.AbstractLoadBalanceSlot;
+import ai.greycos.solver.core.impl.score.stream.collector.DefaultLoadBalance;
 
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 final class LoadBalanceUniCollector<A, Balanced_>
-    implements UniConstraintCollector<A, LoadBalanceImpl<Balanced_>, LoadBalance<Balanced_>> {
+    implements UniConstraintCollector<A, DefaultLoadBalance<Balanced_>, LoadBalance<Balanced_>> {
 
   private final Function<A, Balanced_> balancedItemFunction;
   private final ToLongFunction<A> loadFunction;
@@ -30,22 +31,18 @@ final class LoadBalanceUniCollector<A, Balanced_>
   }
 
   @Override
-  public @NonNull Supplier<LoadBalanceImpl<Balanced_>> supplier() {
-    return LoadBalanceImpl::new;
+  public @NonNull Supplier<DefaultLoadBalance<Balanced_>> supplier() {
+    return DefaultLoadBalance::new;
   }
 
   @Override
-  public @NonNull BiFunction<LoadBalanceImpl<Balanced_>, A, Runnable> accumulator() {
-    return (balanceStatistics, a) -> {
-      var balanced = balancedItemFunction.apply(a);
-      var initialLoad = initialLoadFunction.applyAsLong(a);
-      var load = loadFunction.applyAsLong(a);
-      return balanceStatistics.registerBalanced(balanced, load, initialLoad);
-    };
+  public @NonNull UniConstraintCollectorAccumulator<DefaultLoadBalance<Balanced_>, A>
+      accumulator() {
+    return Slot::new;
   }
 
   @Override
-  public @Nullable Function<LoadBalanceImpl<Balanced_>, LoadBalance<Balanced_>> finisher() {
+  public @NonNull Function<DefaultLoadBalance<Balanced_>, LoadBalance<Balanced_>> finisher() {
     return balanceStatistics -> balanceStatistics;
   }
 
@@ -60,5 +57,34 @@ final class LoadBalanceUniCollector<A, Balanced_>
   @Override
   public int hashCode() {
     return Objects.hash(balancedItemFunction, loadFunction, initialLoadFunction);
+  }
+
+  private final class Slot extends AbstractLoadBalanceSlot<Balanced_>
+      implements UniConstraintCollectorValueHandle<A> {
+
+    Slot(DefaultLoadBalance<Balanced_> container) {
+      super(container);
+    }
+
+    @Override
+    public void add(A a) {
+      addMapped(
+          balancedItemFunction.apply(a),
+          loadFunction.applyAsLong(a),
+          initialLoadFunction.applyAsLong(a));
+    }
+
+    @Override
+    public void replaceWith(A a) {
+      replaceWithMapped(
+          balancedItemFunction.apply(a),
+          loadFunction.applyAsLong(a),
+          initialLoadFunction.applyAsLong(a));
+    }
+
+    @Override
+    public void remove() {
+      removeMapped();
+    }
   }
 }

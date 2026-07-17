@@ -65,20 +65,6 @@ public final class MoveSelectorBasedMoveRepository<Solution_>
 
   @Override
   public Iterator<Move<Solution_>> iterator() {
-    return new Iterator<>() {
-
-      private final Iterator<ai.greycos.solver.core.impl.heuristic.move.Move<Solution_>> delegate =
-          moveSelector.iterator();
-
-      @Override
-      public boolean hasNext() {
-        return delegate.hasNext();
-      }
-
-      @Override
-      public Move<Solution_> next() {
-        return delegate.next();
-      }
-    };
+    return moveSelector.iterator();
   }
 }

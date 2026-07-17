@@ -18,7 +18,7 @@
       <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
       <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -66,7 +66,7 @@
       <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
       <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -114,7 +114,7 @@
       <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
       <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -180,7 +180,7 @@
       <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
       <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -246,7 +246,7 @@
       <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
       <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>
@@ -334,7 +334,7 @@
       <solutionClass>ai.greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
       <entityClass>ai.greycos.solver.core.testcotwin.TestdataEntity</entityClass>
       <scoreDirectorFactory>
-        <incrementalScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyIncrementalScoreCalculator</incrementalScoreCalculatorClass>
+        <easyScoreCalculatorClass>ai.greycos.solver.benchmark.aggregator.PlannerBenchmarkResultTest$DummyEasyScoreCalculator</easyScoreCalculatorClass>
         <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
       </scoreDirectorFactory>
       <termination>

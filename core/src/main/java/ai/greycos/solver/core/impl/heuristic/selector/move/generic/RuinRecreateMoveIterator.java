@@ -7,11 +7,11 @@ import java.util.LinkedHashSet;
 import java.util.random.RandomGenerator;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 final class RuinRecreateMoveIterator<Solution_> extends UpcomingSelectionIterator<Move<Solution_>> {
 
@@ -46,9 +46,8 @@ final class RuinRecreateMoveIterator<Solution_> extends UpcomingSelectionIterato
     var entityIterator = entitySelector.iterator();
     var ruinedCount = workingRandom.nextInt(minimumRuinedCount, maximumRuinedCount + 1);
     var selectedEntityList = new ArrayList<>(ruinedCount);
-    var affectedValueSet = new LinkedHashSet<Object>(ruinedCount);
-    var selectedEntitySet =
-        Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>(ruinedCount));
+    var affectedValueSet = LinkedHashSet.newLinkedHashSet(ruinedCount);
+    var selectedEntitySet = Collections.newSetFromMap(new IdentityHashMap<>(ruinedCount));
     for (var i = 0; i < ruinedCount; i++) {
       var remainingAttempts = ruinedCount;
       while (true) {
@@ -78,6 +77,7 @@ final class RuinRecreateMoveIterator<Solution_> extends UpcomingSelectionIterato
         constructionHeuristicPhaseBuilder,
         solverScope,
         selectedEntityList,
-        affectedValueSet);
+        affectedValueSet,
+        workingRandom.nextLong());
   }
 }

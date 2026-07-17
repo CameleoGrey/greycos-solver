@@ -4,10 +4,10 @@ module ai.greycos.solver.quarkus.benchmark {
 
   requires transitive ai.greycos.solver.benchmark;
   requires transitive ai.greycos.solver.quarkus;
-  requires arc;
+  requires io.quarkus.arc;
+  requires io.quarkus.core;
   requires io.smallrye.config;
   requires jakarta.cdi;
   requires jakarta.inject;
   requires org.eclipse.microprofile.config;
-  requires quarkus.core;
 }

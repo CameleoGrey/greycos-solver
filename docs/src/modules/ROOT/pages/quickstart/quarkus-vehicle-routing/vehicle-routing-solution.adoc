@@ -31,7 +31,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProper
 import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore;
+import ai.greycos.solver.core.api.score.HardSoftScore;
 import ai.greycos.solver.core.api.solver.SolverStatus;
 
 import org.acme.vehiclerouting.domain.geo.DrivingTimeCalculator;
@@ -48,7 +48,7 @@ public class VehicleRoutePlan {
     private List<Visit> visits;
 
     @PlanningScore
-    private HardSoftLongScore score;
+    private HardSoftScore score;
 
     // Fields and constructors used for visualization excluded
 
@@ -92,7 +92,7 @@ import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProper
 import ai.greycos.solver.core.api.cotwin.solution.PlanningScore
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution
 import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider
-import ai.greycos.solver.core.api.score.buildin.hardsoftlong.HardSoftLongScore
+import ai.greycos.solver.core.api.score.HardSoftScore
 import ai.greycos.solver.core.api.solver.SolverStatus
 
 import org.acme.vehiclerouting.domain.geo.DrivingTimeCalculator
@@ -112,7 +112,7 @@ class VehicleRoutePlan {
         private set
 
     @PlanningScore
-    var score: HardSoftLongScore? = null
+    var score: HardSoftScore? = null
 
     // Fields and constructors used for visualization excluded
 
@@ -172,7 +172,7 @@ However, this class is also the output of the solution:
 The `visits` field is a value range provider.
 It holds the `Visit` instances which GreyCOS Solver can pick from to assign to the `visits` field of `Vehicle` instances.
 The `visits` field has an `@ValueRangeProvider` annotation to connect the `@PlanningListVariable` with the `@ValueRangeProvider`,
-by matching the type of the planning list variable with the type returned by the xref:xref:using-greycos-solver/modeling-planning-problems.adoc.adoc#planningValueRangeProvider[value range provider].
+by matching the type of the planning list variable with the type returned by the xref:using-greycos-solver/modeling-planning-problems.adoc#planningValueRangeProvider[value range provider].
 
 == Distance calculation
 

@@ -3,7 +3,6 @@ package ai.greycos.solver.core.impl.score.stream.bavet.quad;
 import java.math.BigDecimal;
 
 import ai.greycos.solver.core.api.function.QuadFunction;
-import ai.greycos.solver.core.api.function.ToIntQuadFunction;
 import ai.greycos.solver.core.api.function.ToLongQuadFunction;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
@@ -19,14 +18,6 @@ final class BavetScoringQuadConstraintStream<Solution_, A, B, C, D>
 
   private final QuadImpactHandler<A, B, C, D> scoreImpact;
   private BavetConstraint<Solution_> constraint;
-
-  public BavetScoringQuadConstraintStream(
-      BavetConstraintFactory<Solution_> constraintFactory,
-      BavetAbstractQuadConstraintStream<Solution_, A, B, C, D> parent,
-      ToIntQuadFunction<A, B, C, D> intMatchWeigher) {
-    super(constraintFactory, parent);
-    this.scoreImpact = new QuadIntImpactHandler<>(intMatchWeigher);
-  }
 
   public BavetScoringQuadConstraintStream(
       BavetConstraintFactory<Solution_> constraintFactory,

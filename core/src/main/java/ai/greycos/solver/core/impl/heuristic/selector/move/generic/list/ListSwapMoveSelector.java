@@ -7,10 +7,10 @@ import java.util.Objects;
 
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public class ListSwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
 
@@ -66,11 +66,6 @@ public class ListSwapMoveSelector<Solution_> extends GenericMoveSelector<Solutio
       return new OriginalListSwapIterator<>(
           listVariableStateSupply, leftValueSelector, rightValueSelector);
     }
-  }
-
-  @Override
-  public boolean isCountable() {
-    return leftValueSelector.isCountable() && rightValueSelector.isCountable();
   }
 
   @Override

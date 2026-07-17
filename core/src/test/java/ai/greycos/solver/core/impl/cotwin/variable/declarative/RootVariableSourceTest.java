@@ -49,9 +49,7 @@ class RootVariableSourceTest {
   private final ShadowEntityMetaModel<
           TestdataInvalidDeclarativeSolution, TestdataInvalidDeclarativeValue>
       shadowEntityMetaModel =
-          (ShadowEntityMetaModel<
-                  TestdataInvalidDeclarativeSolution, TestdataInvalidDeclarativeValue>)
-              planningSolutionMetaModel.entity(TestdataInvalidDeclarativeValue.class);
+          planningSolutionMetaModel.shadowEntity(TestdataInvalidDeclarativeValue.class);
   private final ShadowVariableMetaModel<
           TestdataInvalidDeclarativeSolution,
           TestdataInvalidDeclarativeValue,
@@ -600,6 +598,25 @@ class RootVariableSourceTest {
   }
 
   @Test
+  void invalidPathUsingBareListVariable() {
+    assertThatCode(
+            () ->
+                RootVariableSource.from(
+                    planningSolutionMetaModel,
+                    TestdataInvalidDeclarativeEntity.class,
+                    "shadow",
+                    "values",
+                    DEFAULT_MEMBER_ACCESSOR_FACTORY,
+                    DEFAULT_DESCRIPTOR_POLICY))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContainingAll(
+            """
+                                The source path (values) starting from root class (TestdataInvalidDeclarativeEntity) \
+                                accesses a planning list variable (values), which is not allowed.""",
+            "Maybe remove the source path (values) from the @ShadowSources?");
+  }
+
+  @Test
   void invalidPathUsingGroupAfterVariable() {
     assertThatCode(
             () ->
@@ -612,10 +629,11 @@ class RootVariableSourceTest {
                     DEFAULT_DESCRIPTOR_POLICY))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
-            "The source path (values[].shadow)"
-                + " starting from root class (TestdataInvalidDeclarativeEntity)"
-                + " accesses a collection (values[])"
-                + " via a variable (values), which is not allowed.");
+            """
+                        The source path (values[].shadow) starting from root class \
+                        (TestdataInvalidDeclarativeEntity) accesses a collection (values[]) \
+                        via a variable (values), which is not allowed.\
+                        """);
   }
 
   @Test
@@ -702,8 +720,7 @@ class RootVariableSourceTest {
                         TestdataInvalidDeclarativeParameterValue.class)
                     .getMetaModel())
         .hasMessageContaining(
-            "Maybe you included a parameter which is not a planning solution "
-                + "(ai.greycos.solver.core.testcotwin.shadow.invalid.parameter.TestdataInvalidDeclarativeParameterSolution)?");
+            "Maybe you included a parameter which is not a planning solution (ai.greycos.solver.core.testcotwin.shadow.invalid.parameter.TestdataInvalidDeclarativeParameterSolution)?");
   }
 
   @Test

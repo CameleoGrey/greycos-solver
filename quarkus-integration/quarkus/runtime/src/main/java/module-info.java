@@ -6,7 +6,8 @@ module ai.greycos.solver.quarkus {
   exports ai.greycos.solver.quarkus.gizmo;
 
   requires transitive ai.greycos.solver.core;
-  requires arc;
+  requires io.quarkus.arc;
+  requires io.quarkus.core;
   requires io.smallrye.config;
   requires io.vertx.core;
   requires jakarta.cdi;
@@ -15,5 +16,4 @@ module ai.greycos.solver.quarkus {
   requires org.graalvm.nativeimage;
   requires org.jboss.logging;
   requires org.jspecify;
-  requires quarkus.core;
 }

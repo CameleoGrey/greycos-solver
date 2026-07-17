@@ -1,7 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.move;
 
-import java.util.Collection;
 import java.util.Collections;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
@@ -39,12 +39,12 @@ public class NoChangeMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<?> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     return Collections.emptyList();
   }
 
   @Override
-  public Collection<?> getPlanningValues() {
+  public SequencedCollection<Object> getPlanningValues() {
     return Collections.emptyList();
   }
 

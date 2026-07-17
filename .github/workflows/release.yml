@@ -13,16 +13,17 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. 1.0.0)'
+        description: 'Release version (MAJOR.MINOR.PATCH, e.g. 1.0.0)'
         required: true
       sourceBranch:
         description: 'Branch to cut the release from'
         default: main
         required: true
       dryRun:
-        description: 'Do a dry run? (true or false)'
+        description: 'Do a dry run?'
         default: true
         required: true
+        type: boolean
 jobs:
   build:
     env:
@@ -35,8 +36,22 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
       attestations: write  # IMPORTANT: mandatory for attestations
     steps:
+      - name: Validate release version
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [[ "$RELEASE_VERSION" == *-SNAPSHOT ]]; then
+            echo "Release version '$RELEASE_VERSION' must not be a SNAPSHOT version."
+            exit 1
+          fi
+          if [[ ! "$RELEASE_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Release version '$RELEASE_VERSION' must use MAJOR.MINOR.PATCH format."
+            exit 1
+          fi
+
       - name: Checkout greycos-solver
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.sourceBranch }}
@@ -61,13 +76,16 @@ jobs:
       # Technically, this goes against the main reason for doing a dry run; to eliminate potential problems.
       # But unless something catastrophic happened, PR checks on source branch already ensured that all tests pass.
       - name: Set release version and build release
+        env:
+          NEW_VERSION: ${{ github.event.inputs.version }}
+          DRY_RUN: ${{ github.event.inputs.dryRun }}
         run: |
-          ./mvnw -Dfull versions:set -DnewVersion=${{ github.event.inputs.version }}
-          ./mvnw -Dfull deploy -DskipTests=${{ github.event.inputs.dryRun }} -DaltDeploymentRepository=local::default::file://`pwd`/target/staging-deploy
+          ./mvnw -Dfull versions:set -DnewVersion="$NEW_VERSION" -DgenerateBackupPoms=false
+          ./mvnw -Dfull deploy -DskipTests="$DRY_RUN" -DaltDeploymentRepository=local::default::file://`pwd`/target/staging-deploy
           cp docs/target/antora.yml docs/src/antora.yml
           git add docs/src/antora.yml
           find . -name 'pom.xml' | xargs git add
-          git commit -m "build: release version ${{ github.event.inputs.version }}"
+          git commit -m "build: release version $NEW_VERSION"
           git push origin $RELEASE_BRANCH_NAME
 
       - name: Run JReleaser

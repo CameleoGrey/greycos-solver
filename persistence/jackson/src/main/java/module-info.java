@@ -1,12 +1,15 @@
 module ai.greycos.solver.jackson {
   exports ai.greycos.solver.jackson.api;
+  exports ai.greycos.solver.jackson.api.cotwin.solution;
+  exports ai.greycos.solver.jackson.api.score.analysis;
+  exports ai.greycos.solver.jackson.api.solver;
 
-  provides com.fasterxml.jackson.databind.Module with
+  provides tools.jackson.databind.JacksonModule with
       ai.greycos.solver.jackson.api.GreyCOSJacksonModule;
 
   requires transitive ai.greycos.solver.core;
-  requires com.fasterxml.jackson.databind;
   requires org.jspecify;
+  requires tools.jackson.databind;
 
-  uses com.fasterxml.jackson.databind.Module;
+  uses tools.jackson.databind.JacksonModule;
 }

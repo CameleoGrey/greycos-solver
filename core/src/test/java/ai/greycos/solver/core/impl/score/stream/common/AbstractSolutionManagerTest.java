@@ -2,19 +2,15 @@ package ai.greycos.solver.core.impl.score.stream.common;
 
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
-import java.util.Collections;
 import java.util.List;
 
 import ai.greycos.solver.core.api.score.SimpleScore;
-import ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolutionManagerTest;
 import ai.greycos.solver.core.api.solver.SolutionUpdatePolicy;
 import ai.greycos.solver.core.api.solver.SolverFactory;
 import ai.greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import ai.greycos.solver.core.config.solver.SolverConfig;
-import ai.greycos.solver.core.testcotwin.TestdataEntity;
-import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.list.unassignedvar.pinned.TestdataPinnedUnassignedValuesListEntity;
 import ai.greycos.solver.core.testcotwin.list.unassignedvar.pinned.TestdataPinnedUnassignedValuesListSolution;
 import ai.greycos.solver.core.testcotwin.list.unassignedvar.pinned.TestdataPinnedUnassignedValuesListValue;
@@ -27,39 +23,6 @@ public abstract class AbstractSolutionManagerTest {
 
   protected abstract ScoreDirectorFactoryConfig
       buildUnassignedWithPinningScoreDirectorFactoryConfig();
-
-  @Test
-  void indictmentsPresentOnFreshExplanation() {
-    // Create the environment.
-    var scoreDirectorFactoryConfig = buildScoreDirectorFactoryConfig();
-    var solverConfig = new SolverConfig();
-    solverConfig.setSolutionClass(TestdataSolution.class);
-    solverConfig.setEntityClassList(Collections.singletonList(TestdataEntity.class));
-    solverConfig.setScoreDirectorFactoryConfig(scoreDirectorFactoryConfig);
-    var solverFactory = SolverFactory.<TestdataSolution>create(solverConfig);
-    var solutionManager =
-        SolutionManagerTest.SolutionManagerSource.FROM_SOLVER_FACTORY.createSolutionManager(
-            solverFactory);
-
-    // Prepare the solution.
-    var entityCount = 3;
-    var solution = TestdataSolution.generateSolution(2, entityCount);
-    var scoreExplanation = solutionManager.explain(solution);
-
-    // Check for expected results.
-    assertSoftly(
-        softly -> {
-          softly.assertThat(scoreExplanation.getScore()).isEqualTo(SimpleScore.of(-entityCount));
-          softly.assertThat(scoreExplanation.getConstraintMatchTotalMap()).isNotEmpty();
-          softly.assertThat(scoreExplanation.getIndictmentMap()).isNotEmpty();
-          var constraintJustificationList = (List) scoreExplanation.getJustificationList();
-          softly.assertThat(constraintJustificationList).isNotEmpty();
-          softly
-              .assertThat(
-                  scoreExplanation.getJustificationList(DefaultConstraintJustification.class))
-              .containsExactlyElementsOf(constraintJustificationList);
-        });
-  }
 
   @Test
   void updateAssignedValueWithNullInverseRelation() {

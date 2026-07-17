@@ -20,6 +20,7 @@ import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.solver.ClassInstanceCache;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testutil.PlannerTestUtils;
 
@@ -111,7 +112,8 @@ class NearbySelectionIntegrationTest {
 
     var blockRandom = NearbyRandomFactory.create(blockConfig).buildNearbyRandom(true);
     assertTrue(blockRandom instanceof BlockDistributionNearbyRandom);
-    assertEquals(20, ((BlockDistributionNearbyRandom) blockRandom).getOverallSizeMaximum());
+    assertEquals(
+        Integer.MAX_VALUE, ((BlockDistributionNearbyRandom) blockRandom).getOverallSizeMaximum());
 
     // Test linear distribution
     var linearConfig =
@@ -164,7 +166,7 @@ class NearbySelectionIntegrationTest {
     var workingRandom = new Random(42);
 
     when(configPolicy.getClassInstanceCache()).thenReturn(classInstanceCache);
-    when(configPolicy.getRandom()).thenReturn(workingRandom);
+    when(configPolicy.getRandom()).thenReturn(RandomSource.seeded(42));
     when(entityDescriptor.getEntityClass()).thenReturn(TestEntity.class);
     when(classInstanceCache.newInstance(any(), any(), eq(TestDistanceMeter.class)))
         .thenReturn(new TestDistanceMeter());
@@ -215,6 +217,7 @@ class NearbySelectionIntegrationTest {
             false);
 
     InnerScoreDirector<TestEntity, ?> scoreDirector = mock(InnerScoreDirector.class);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, null);
     SolverScope<TestEntity> solverScope =
         SelectorTestUtils.solvingStarted(
             nearbyEntitySelectorOriginal, scoreDirector, workingRandom);
@@ -294,7 +297,7 @@ class NearbySelectionIntegrationTest {
     var workingRandom = new Random(42);
 
     when(configPolicy.getClassInstanceCache()).thenReturn(classInstanceCache);
-    when(configPolicy.getRandom()).thenReturn(workingRandom);
+    when(configPolicy.getRandom()).thenReturn(RandomSource.seeded(42));
     when(entityDescriptor.getEntityClass()).thenReturn(TestEntity.class);
     when(classInstanceCache.newInstance(any(), any(), eq(TestDistanceMeter.class)))
         .thenReturn(new TestDistanceMeter());

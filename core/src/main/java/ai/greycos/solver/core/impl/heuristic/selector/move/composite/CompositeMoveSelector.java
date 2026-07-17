@@ -1,11 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.composite;
 
-import java.util.Collection;
 import java.util.List;
 
-import ai.greycos.solver.core.api.cotwin.valuerange.CountableValueRange;
-import ai.greycos.solver.core.api.cotwin.valuerange.ValueRange;
-import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import ai.greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 
@@ -33,29 +29,12 @@ public abstract class CompositeMoveSelector<Solution_> extends AbstractMoveSelec
             childMoveSelectorList.subList(0, childMoveSelectorList.size() - 1)) {
           if (childMoveSelector.isNeverEnding()) {
             throw new IllegalStateException(
-                "The selector ("
-                    + this
-                    + ")'s non-last childMoveSelector ("
-                    + childMoveSelector
-                    + ") has neverEnding ("
-                    + childMoveSelector.isNeverEnding()
-                    + ") with randomSelection ("
-                    + randomSelection
-                    + ")."
-                    + (childMoveSelector.isCountable()
-                        ? ""
-                        : "\nThe selector is not countable, check the "
-                            + ValueRange.class.getSimpleName()
-                            + "s involved.\n"
-                            + "Verify that a @"
-                            + ValueRangeProvider.class.getSimpleName()
-                            + " does not return "
-                            + ValueRange.class.getSimpleName()
-                            + " when it can return "
-                            + CountableValueRange.class.getSimpleName()
-                            + " or "
-                            + Collection.class.getSimpleName()
-                            + "."));
+                "The selector (%s)'s non-last childMoveSelector (%s) has neverEnding (%s) with randomSelection (%s)."
+                    .formatted(
+                        this,
+                        childMoveSelector,
+                        childMoveSelector.isNeverEnding(),
+                        randomSelection));
           }
         }
       }
@@ -74,16 +53,6 @@ public abstract class CompositeMoveSelector<Solution_> extends AbstractMoveSelec
   // ************************************************************************
   // Worker methods
   // ************************************************************************
-
-  @Override
-  public boolean isCountable() {
-    for (MoveSelector<Solution_> moveSelector : childMoveSelectorList) {
-      if (!moveSelector.isCountable()) {
-        return false;
-      }
-    }
-    return true;
-  }
 
   @Override
   public String toString() {

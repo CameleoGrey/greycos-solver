@@ -33,7 +33,6 @@ record BiBigDecimalImpactHandler<A, B>(BiFunction<A, B, BigDecimal> matchWeigher
     var constraint = impacter.getContext().getConstraint();
     return impacter.impactScore(
         matchWeigher.apply(a, b),
-        ConstraintMatchSupplier.of(
-            constraint.getJustificationMapping(), constraint.getIndictedObjectsMapping(), a, b));
+        ConstraintMatchSupplier.of(constraint.getJustificationMapping(), a, b));
   }
 }

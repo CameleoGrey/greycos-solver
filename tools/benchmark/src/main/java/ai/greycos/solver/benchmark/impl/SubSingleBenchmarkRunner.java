@@ -6,6 +6,7 @@ import java.util.concurrent.Callable;
 
 import ai.greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
 import ai.greycos.solver.benchmark.impl.statistic.StatisticRegistry;
+import ai.greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import ai.greycos.solver.core.api.solver.SolutionManager;
 import ai.greycos.solver.core.api.solver.SolutionUpdatePolicy;
 import ai.greycos.solver.core.config.solver.SolverConfig;
@@ -135,8 +136,12 @@ public class SubSingleBenchmarkRunner<Solution_>
       var isConstraintMatchEnabled =
           solver.getSolverScope().getScoreDirector().getConstraintMatchPolicy().isEnabled();
       if (isConstraintMatchEnabled) { // Easy calculator fails otherwise.
-        var scoreExplanation = solutionManager.explain(solution, SolutionUpdatePolicy.NO_UPDATE);
-        subSingleBenchmarkResult.setScoreExplanationSummary(scoreExplanation.getSummary());
+        var scoreAnalysis =
+            solutionManager.analyze(
+                solution,
+                ScoreAnalysisFetchPolicy.FETCH_MATCH_COUNT,
+                SolutionUpdatePolicy.NO_UPDATE);
+        subSingleBenchmarkResult.setScoreExplanationSummary(scoreAnalysis.summarize());
       }
 
       problemBenchmarkResult.writeSolution(subSingleBenchmarkResult, solution);

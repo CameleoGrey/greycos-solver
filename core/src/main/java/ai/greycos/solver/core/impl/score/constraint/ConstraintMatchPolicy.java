@@ -8,7 +8,7 @@ import org.jspecify.annotations.NullMarked;
  * Determines whether constraint match is enabled and whether constraint match justification is
  * enabled.
  *
- * @see ai.greycos.solver.core.api.score.constraint.ConstraintMatch
+ * @see ConstraintMatch
  * @see ai.greycos.solver.core.api.score.stream.ConstraintJustification
  */
 @NullMarked

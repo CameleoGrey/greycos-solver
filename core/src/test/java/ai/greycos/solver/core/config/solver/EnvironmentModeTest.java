@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
 
 import ai.greycos.solver.core.api.score.SimpleScore;
@@ -29,7 +30,6 @@ import ai.greycos.solver.core.config.solver.testutil.corruptedundoshadow.Corrupt
 import ai.greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.solver.DefaultSolver;
-import ai.greycos.solver.core.impl.solver.random.RandomFactory;
 import ai.greycos.solver.core.preview.api.move.builtin.Moves;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
@@ -220,16 +220,16 @@ class EnvironmentModeTest {
   private void assertReproducibility(
       Solver<TestdataSolution> solver1, Solver<TestdataSolution> solver2) {
     assertGeneratingSameNumbers(
-        ((DefaultSolver<TestdataSolution>) solver1).getRandomFactory(),
-        ((DefaultSolver<TestdataSolution>) solver2).getRandomFactory());
+        ((DefaultSolver<TestdataSolution>) solver1).getRandomSource().moveIteratorUsage(),
+        ((DefaultSolver<TestdataSolution>) solver2).getRandomSource().moveIteratorUsage());
     assertSameScoreSeries(solver1, solver2);
   }
 
   private void assertNonReproducibility(
       Solver<TestdataSolution> solver1, Solver<TestdataSolution> solver2) {
     assertGeneratingDifferentNumbers(
-        ((DefaultSolver<TestdataSolution>) solver1).getRandomFactory(),
-        ((DefaultSolver<TestdataSolution>) solver2).getRandomFactory());
+        ((DefaultSolver<TestdataSolution>) solver1).getRandomSource().moveIteratorUsage(),
+        ((DefaultSolver<TestdataSolution>) solver2).getRandomSource().moveIteratorUsage());
     assertDifferentScoreSeries(solver1, solver2);
   }
 
@@ -333,10 +333,7 @@ class EnvironmentModeTest {
                     }));
   }
 
-  private void assertGeneratingSameNumbers(RandomFactory factory1, RandomFactory factory2) {
-    var random = factory1.createRandom();
-    var random2 = factory2.createRandom();
-
+  private void assertGeneratingSameNumbers(RandomGenerator random, RandomGenerator random2) {
     assertSoftly(
         softly ->
             IntStream.range(0, NUMBER_OF_RANDOM_NUMBERS_GENERATED)
@@ -350,10 +347,7 @@ class EnvironmentModeTest {
                             .isEqualTo(random2.nextInt())));
   }
 
-  private void assertGeneratingDifferentNumbers(RandomFactory factory1, RandomFactory factory2) {
-    var random = factory1.createRandom();
-    var random2 = factory2.createRandom();
-
+  private void assertGeneratingDifferentNumbers(RandomGenerator random, RandomGenerator random2) {
     assertSoftly(
         softly ->
             IntStream.range(0, NUMBER_OF_RANDOM_NUMBERS_GENERATED)
@@ -362,9 +356,10 @@ class EnvironmentModeTest {
                         softly
                             .assertThat(random.nextInt())
                             .as(
-                                "Random factories should not generate exactly the same results "
-                                    + "in the non-reproducible environment mode. "
-                                    + "It can happen but the probability is very low. Run test again")
+                                """
+                                Random factories should not generate exactly the same results \
+                                in the non-reproducible environment mode. \
+                                It can happen but the probability is very low. Run test again""")
                             .isNotEqualTo(random2.nextInt())));
   }
 
@@ -380,23 +375,15 @@ class EnvironmentModeTest {
     public void changeWorkingSolution(PhaseCommandContext<TestdataSolution> context) {
       var solution = context.getWorkingSolution();
       var firstValue = solution.getValueList().get(0);
+
       var variable =
           context
               .getSolutionMetaModel()
               .genuineEntity(TestdataEntity.class)
               .basicVariable("value", TestdataValue.class);
-
       for (var entity : solution.getEntityList()) {
-        context.executeAndCalculateScore(Moves.change(variable, entity, firstValue));
-      }
-
-      if (solution.getEntityList().stream().anyMatch(entity -> entity.getValue() == null)) {
-        throw new IllegalStateException(
-            "The solution ("
-                + TestdataEntity.class.getSimpleName()
-                + ") was not fully initialized by CustomSolverPhase: ("
-                + this.getClass().getCanonicalName()
-                + ")");
+        var move = Moves.change(variable, entity, firstValue);
+        context.executeAndCalculateScore(move);
       }
     }
   }

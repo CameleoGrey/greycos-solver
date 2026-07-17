@@ -3,9 +3,10 @@ package ai.greycos.solver.core.api.score.stream.test;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public interface MultiConstraintAssertion {
 
   /**
@@ -15,7 +16,7 @@ public interface MultiConstraintAssertion {
    * @param score total score calculated for the given set of facts
    * @throws AssertionError when the expected score does not match the calculated score
    */
-  default void scores(@NonNull Score<?> score) {
+  default void scores(Score<?> score) {
     scores(score, null);
   }
 
@@ -26,5 +27,29 @@ public interface MultiConstraintAssertion {
    * @param message description of the scenario being asserted
    * @throws AssertionError when the expected score does not match the calculated score
    */
-  void scores(@NonNull Score<?> score, @Nullable String message);
+  void scores(Score<?> score, @Nullable String message);
+
+  /**
+   * Returns the {@link Score} produced by all constraints in the {@link ConstraintProvider} for the
+   * given set of facts.
+   *
+   * <p>Unlike {@link #scores(Score)}, this method does not perform any assertion. Instead, it
+   * returns the raw score, allowing the caller to compare scores between different scenarios
+   * without hard-coding expected values.
+   *
+   * <p>Usage example:
+   *
+   * {@snippet :
+   * HardSoftScore scoreA = constraintVerifier.verifyThat()
+   *         .givenSolution(solutionA)
+   *         .getScore();
+   * HardSoftScore scoreB = constraintVerifier.verifyThat()
+   *         .givenSolution(solutionB)
+   *         .getScore();
+   * assertThat(scoreA).isGreaterThan(scoreB);
+   * }
+   *
+   * @return the score produced by all constraints for the given facts, never null
+   */
+  <S extends Score<S>> S getScore();
 }

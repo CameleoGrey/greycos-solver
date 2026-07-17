@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
@@ -16,7 +17,7 @@ import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
 import ai.greycos.solver.core.impl.phase.Phase;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ScoreDirectorFactory;
-import ai.greycos.solver.core.impl.solver.random.RandomFactory;
+import ai.greycos.solver.core.impl.solver.random.RandomSource;
 import ai.greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.BasicPlumbingTermination;
@@ -34,8 +35,8 @@ import io.micrometer.core.instrument.Tags;
  */
 public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
 
-  protected EnvironmentMode environmentMode;
-  protected RandomFactory randomFactory;
+  protected final EnvironmentMode environmentMode;
+  protected final Supplier<RandomSource> randomFactory;
 
   protected BasicPlumbingTermination<Solution_> basicPlumbingTermination;
 
@@ -51,7 +52,7 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
 
   public DefaultSolver(
       EnvironmentMode environmentMode,
-      RandomFactory randomFactory,
+      Supplier<RandomSource> randomFactory,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       BasicPlumbingTermination<Solution_> basicPlumbingTermination,
       UniversalTermination<Solution_> termination,
@@ -71,8 +72,8 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
     return environmentMode;
   }
 
-  public RandomFactory getRandomFactory() {
-    return randomFactory;
+  public RandomSource getRandomSource() {
+    return randomFactory.get();
   }
 
   public ScoreDirectorFactory<Solution_, ?> getScoreDirectorFactory() {
@@ -202,7 +203,7 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
     solving.set(true);
     basicPlumbingTermination.resetTerminateEarly();
     solverScope.setStartingSolverCount(0);
-    solverScope.setWorkingRandom(randomFactory.createRandom());
+    solverScope.setWorkingRandom(randomFactory.get());
   }
 
   @Override

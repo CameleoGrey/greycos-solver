@@ -95,7 +95,11 @@ public class ProblemBenchmarkResult<Solution_> {
   private Long entityCount = null;
   private Long variableCount = null;
   private Long maximumValueCount = null;
+  private String formattedProblemScale = null;
+
+  /** Note: this is a fixed-point long of the problem scale log. */
   private Long problemScale = null;
+
   private Long inputSolutionLoadingTimeMillisSpent = null;
 
   @XmlTransient // Loaded lazily from singleBenchmarkResults
@@ -188,6 +192,11 @@ public class ProblemBenchmarkResult<Solution_> {
     return maximumValueCount;
   }
 
+  public String getFormattedProblemScale() {
+    return formattedProblemScale;
+  }
+
+  /** Returns the fixed-point long of the problem scale log. */
   public Long getProblemScale() {
     return problemScale;
   }
@@ -492,17 +501,19 @@ public class ProblemBenchmarkResult<Solution_> {
       // The approximateValueCount is not unknown (null), but known to be ambiguous
       maximumValueCount = -1L;
     }
-    if (problemScale == null) {
+    if (formattedProblemScale == null) {
+      formattedProblemScale = problemSizeStatistics.approximateProblemScaleAsFormattedString();
       problemScale = problemSizeStatistics.approximateProblemScaleLogAsFixedPointLong();
-    } else if (problemScale.longValue()
-        != problemSizeStatistics.approximateProblemScaleLogAsFixedPointLong()) {
+    } else if (!Objects.equals(
+        problemScale, problemSizeStatistics.approximateProblemScaleLogAsFixedPointLong())) {
       LOGGER.warn(
           "The problemBenchmarkResult ({}) has different problemScale values ([{},{}]).\n"
               + "This is normally impossible for 1 inputSolutionFile.",
           getName(),
-          problemScale,
+          formattedProblemScale,
           problemSizeStatistics.approximateProblemScaleLogAsFixedPointLong());
       // The problemScale is not unknown (null), but known to be ambiguous
+      formattedProblemScale = "-1";
       problemScale = -1L;
     }
   }
@@ -562,6 +573,7 @@ public class ProblemBenchmarkResult<Solution_> {
           newResult.entityCount = oldResult.entityCount;
           newResult.variableCount = oldResult.variableCount;
           newResult.maximumValueCount = oldResult.maximumValueCount;
+          newResult.formattedProblemScale = oldResult.formattedProblemScale;
           newResult.problemScale = oldResult.problemScale;
           problemProviderToNewResultMap.put(oldResult.problemProvider, newResult);
           newPlannerBenchmarkResult.getUnifiedProblemBenchmarkResultList().add(newResult);
@@ -586,6 +598,9 @@ public class ProblemBenchmarkResult<Solution_> {
               ConfigUtils.meldProperty(oldResult.variableCount, newResult.variableCount);
           newResult.maximumValueCount =
               ConfigUtils.meldProperty(oldResult.maximumValueCount, newResult.maximumValueCount);
+          newResult.formattedProblemScale =
+              ConfigUtils.meldProperty(
+                  oldResult.formattedProblemScale, newResult.formattedProblemScale);
           newResult.problemScale =
               ConfigUtils.meldProperty(oldResult.problemScale, newResult.problemScale);
         }

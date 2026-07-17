@@ -2,9 +2,9 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
@@ -99,12 +99,12 @@ public class SwapMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<? extends Object> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     return Arrays.asList(leftEntity, rightEntity);
   }
 
   @Override
-  public Collection<? extends Object> getPlanningValues() {
+  public SequencedCollection<Object> getPlanningValues() {
     List<Object> values = new ArrayList<>(variableDescriptorList.size() * 2);
     for (GenuineVariableDescriptor<Solution_> variableDescriptor : variableDescriptorList) {
       values.add(variableDescriptor.getValue(leftEntity));

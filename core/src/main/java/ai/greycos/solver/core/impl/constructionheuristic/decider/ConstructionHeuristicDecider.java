@@ -8,8 +8,9 @@ import ai.greycos.solver.core.impl.constructionheuristic.decider.forager.Constru
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicMoveScope;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
-import ai.greycos.solver.core.impl.heuristic.move.MoveAdapters;
-import ai.greycos.solver.core.impl.heuristic.move.NoChangeMove;
+import ai.greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
+import ai.greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
+import ai.greycos.solver.core.impl.heuristic.selector.move.generic.SelectorBasedChangeMove;
 import ai.greycos.solver.core.impl.phase.scope.SolverLifecyclePoint;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.impl.solver.termination.PhaseTermination;
@@ -94,8 +95,8 @@ public class ConstructionHeuristicDecider<Solution_> {
       var move = moveIterator.next();
       var allowedNonDoableMove = isAllowedNonDoableMove(move);
       if (!allowedNonDoableMove) {
-        var moveDirector = stepScope.getMoveDirector();
-        if (!MoveAdapters.isDoable(moveDirector, move)) {
+        if (move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove
+            && !selectorBasedMove.isMoveDoable(stepScope.getScoreDirector())) {
           // Construction Heuristic should not do non-doable moves, but in some cases, it has to.
           // Specifically:
           //      1/ NoChangeMove for list variable; means "try to not assign that value".
@@ -138,15 +139,9 @@ public class ConstructionHeuristicDecider<Solution_> {
     }
   }
 
-  private static <Solution_> boolean isAllowedNonDoableMove(Move<Solution_> move) {
-    return MoveAdapters.testWhenLegacyMove(
-        move,
-        legacyMove ->
-            legacyMove instanceof NoChangeMove<Solution_>
-                || legacyMove
-                    instanceof
-                    ai.greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove<
-                        Solution_>);
+  protected static <Solution_> boolean isAllowedNonDoableMove(Move<Solution_> move) {
+    return move instanceof SelectorBasedNoChangeMove<Solution_>
+        || move instanceof SelectorBasedChangeMove<Solution_>;
   }
 
   protected void pickMove(ConstructionHeuristicStepScope<Solution_> stepScope) {

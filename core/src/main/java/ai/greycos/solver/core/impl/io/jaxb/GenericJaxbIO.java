@@ -1,7 +1,6 @@
 package ai.greycos.solver.core.impl.io.jaxb;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -25,7 +24,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Source;
-import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMResult;
@@ -36,51 +34,17 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
 
+@NullMarked
 public final class GenericJaxbIO<T> {
-
-  private static final int DEFAULT_INDENTATION = 2;
-
-  private static final String ERR_MSG_WRITE =
-      "Failed to marshall a root element class (%s) to XML.";
-  private static final String ERR_MSG_READ =
-      "Failed to unmarshall a root element class (%s) from XML.";
-  private static final String ERR_MSG_READ_OVERRIDE_NAMESPACE =
-      "Failed to unmarshall a root element class (%s) from XML with overriding elements' namespaces: (%s).";
-
-  private final JAXBContext jaxbContext;
-  private final Marshaller marshaller;
-  private final Class<T> rootClass;
-  private final int indentation;
-
-  public GenericJaxbIO(Class<T> rootClass) {
-    this(rootClass, DEFAULT_INDENTATION);
-  }
-
-  public GenericJaxbIO(Class<T> rootClass, int indentation) {
-    Objects.requireNonNull(rootClass);
-    this.rootClass = rootClass;
-    this.indentation = indentation;
-    try {
-      jaxbContext = JAXBContext.newInstance(rootClass);
-      marshaller = jaxbContext.createMarshaller();
-      marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-      marshaller.setProperty(Marshaller.JAXB_ENCODING, StandardCharsets.UTF_8.toString());
-    } catch (JAXBException jaxbException) {
-      String errorMessage =
-          String.format(
-              "Failed to create JAXB Marshaller for a root element class (%s).",
-              rootClass.getName());
-      throw new GreyCOSXmlSerializationException(errorMessage, jaxbException);
-    }
-  }
 
   public static DocumentBuilderFactory createDocumentBuilderFactory() {
     try {
@@ -105,8 +69,8 @@ public final class GenericJaxbIO<T> {
   }
 
   public static SchemaFactory createSchemaFactory(Class<?> rootClass, String schemaResource) {
-    var schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
     try {
+      var schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
       schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
       schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
       return schemaFactory;
@@ -132,20 +96,49 @@ public final class GenericJaxbIO<T> {
     }
   }
 
-  public T read(Reader reader) {
-    Objects.requireNonNull(reader);
+  private static final int DEFAULT_INDENTATION = 2;
+
+  private static final String ERR_MSG_WRITE =
+      "Failed to marshall a root element class (%s) to XML.";
+  private static final String ERR_MSG_READ =
+      "Failed to unmarshall a root element class (%s) from XML.";
+  private static final String ERR_MSG_READ_OVERRIDE_NAMESPACE =
+      "Failed to unmarshall a root element class (%s) from XML with overriding elements'"
+          + " namespaces: (%s).";
+
+  private final JAXBContext jaxbContext;
+  private final Marshaller marshaller;
+  private final Class<T> rootClass;
+  private final int indentation;
+
+  public GenericJaxbIO(Class<T> rootClass) {
+    this(rootClass, DEFAULT_INDENTATION);
+  }
+
+  public GenericJaxbIO(Class<T> rootClass, int indentation) {
+    this.rootClass = Objects.requireNonNull(rootClass, "rootClass");
+    this.indentation = indentation;
     try {
-      return (T) createUnmarshaller().unmarshal(reader);
+      jaxbContext = JAXBContext.newInstance(rootClass);
+      marshaller = jaxbContext.createMarshaller();
+      marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+      marshaller.setProperty(Marshaller.JAXB_ENCODING, StandardCharsets.UTF_8.toString());
     } catch (JAXBException jaxbException) {
-      String errorMessage = String.format(ERR_MSG_READ, rootClass.getName());
-      throw new GreyCOSXmlSerializationException(errorMessage, jaxbException);
+      throw new GreyCOSXmlSerializationException(
+          "Failed to create JAXB Marshaller for a root element class (%s)."
+              .formatted(rootClass.getName()),
+          jaxbException);
     }
   }
 
-  public T readAndValidate(Reader reader, String schemaResource) {
-    Objects.requireNonNull(reader);
-    Schema schema = readSchemaResource(schemaResource);
-    return readAndValidate(reader, schema);
+  public T read(Reader reader) {
+    Objects.requireNonNull(reader, "reader");
+    try {
+      return (T) createUnmarshaller().unmarshal(parseXml(reader));
+    } catch (JAXBException jaxbException) {
+      throw new GreyCOSXmlSerializationException(
+          ERR_MSG_READ.formatted(rootClass.getName()), jaxbException);
+    }
   }
 
   public T readAndValidate(Document document, String schemaResource) {
@@ -153,59 +146,49 @@ public final class GenericJaxbIO<T> {
   }
 
   private Schema readSchemaResource(String schemaResource) {
-    Objects.requireNonNull(schemaResource);
     var schemaResourceUrl = GenericJaxbIO.class.getResource(schemaResource);
     if (schemaResourceUrl == null) {
       throw new IllegalArgumentException(
-          "The XML schema ("
-              + schemaResource
-              + ") does not exist.\n"
-              + "Maybe build the sources with Maven first?");
+          """
+          The XML schema (%s) does not exist.
+          Maybe build the sources with Maven first?\
+          """
+              .formatted(schemaResource));
     }
-
     try {
-      SchemaFactory schemaFactory = createSchemaFactory(rootClass, schemaResource);
+      var schemaFactory = createSchemaFactory(rootClass, schemaResource);
       return schemaFactory.newSchema(schemaResourceUrl);
     } catch (SAXException saxException) {
-      String errorMessage =
-          String.format(
-              "Failed to read an XML Schema resource (%s) to validate an XML for a root class (%s).",
-              schemaResource, rootClass.getName());
-      throw new GreyCOSXmlSerializationException(errorMessage, saxException);
+      throw new GreyCOSXmlSerializationException(
+          "Failed to read an XML Schema resource (%s) to validate an XML for a root class (%s)."
+              .formatted(schemaResource, rootClass.getName()),
+          saxException);
     }
   }
 
   public T readAndValidate(Reader reader, Schema schema) {
-    Document document = parseXml(Objects.requireNonNull(reader));
-    return readAndValidate(document, Objects.requireNonNull(schema));
+    return readAndValidate(parseXml(reader), schema);
   }
 
   public T readAndValidate(Document document, Schema schema) {
-    Document nonNullDocument = Objects.requireNonNull(document);
-    Schema nonNullSchema = Objects.requireNonNull(schema);
-    Unmarshaller unmarshaller = createUnmarshaller();
-    unmarshaller.setSchema(nonNullSchema);
+    var unmarshaller = createUnmarshaller();
+    unmarshaller.setSchema(schema);
 
-    ValidationEventCollector validationEventCollector = new ValidationEventCollector();
+    var validationEventCollector = new ValidationEventCollector();
     try {
       unmarshaller.setEventHandler(validationEventCollector);
     } catch (JAXBException jaxbException) {
-      String errorMessage =
-          String.format(
-              "Failed to set a validation event handler to the %s for "
-                  + "a root element class (%s).",
-              Unmarshaller.class.getSimpleName(), rootClass.getName());
-      throw new GreyCOSXmlSerializationException(errorMessage, jaxbException);
+      throw new GreyCOSXmlSerializationException(
+          "Failed to set a validation event handler to the %s for a root element class (%s)."
+              .formatted(Unmarshaller.class.getSimpleName(), rootClass.getName()),
+          jaxbException);
     }
 
     try {
-      return (T) unmarshaller.unmarshal(nonNullDocument);
+      return (T) unmarshaller.unmarshal(document);
     } catch (JAXBException jaxbException) {
       if (validationEventCollector.hasEvents()) {
-        String errorMessage =
-            String.format(
-                "XML validation failed for a root element class (%s).", rootClass.getName());
-        String validationErrors =
+        var validationErrors =
             Stream.of(validationEventCollector.getEvents())
                 .map(
                     validationEvent ->
@@ -213,11 +196,16 @@ public final class GenericJaxbIO<T> {
                             + "\nNode: "
                             + validationEvent.getLocator().getNode().getNodeName())
                 .collect(Collectors.joining("\n"));
-        String errorMessageWithValidationEvents = errorMessage + "\n" + validationErrors;
-        throw new GreyCOSXmlSerializationException(errorMessageWithValidationEvents, jaxbException);
+        throw new GreyCOSXmlSerializationException(
+            """
+            XML validation failed for a root element class (%s).
+            %s
+            """
+                .formatted(rootClass.getName(), validationErrors),
+            jaxbException);
       } else {
-        String errorMessage = String.format(ERR_MSG_READ, rootClass.getName());
-        throw new GreyCOSXmlSerializationException(errorMessage, jaxbException);
+        throw new GreyCOSXmlSerializationException(
+            ERR_MSG_READ.formatted(rootClass.getName()), jaxbException);
       }
     }
   }
@@ -234,8 +222,6 @@ public final class GenericJaxbIO<T> {
    */
   public T readOverridingNamespace(
       Reader reader, ElementNamespaceOverride... elementNamespaceOverrides) {
-    Objects.requireNonNull(reader);
-    Objects.requireNonNull(elementNamespaceOverrides);
     return readOverridingNamespace(parseXml(reader), elementNamespaceOverrides);
   }
 
@@ -251,39 +237,34 @@ public final class GenericJaxbIO<T> {
    */
   public T readOverridingNamespace(
       Document document, ElementNamespaceOverride... elementNamespaceOverrides) {
-    Document translatedDocument =
-        overrideNamespaces(
-            Objects.requireNonNull(document), Objects.requireNonNull(elementNamespaceOverrides));
     try {
+      var translatedDocument = overrideNamespaces(document, elementNamespaceOverrides);
       return (T) createUnmarshaller().unmarshal(translatedDocument);
     } catch (JAXBException e) {
-      final String errorMessage =
-          String.format(
-              ERR_MSG_READ_OVERRIDE_NAMESPACE,
-              rootClass.getName(),
-              Arrays.toString(elementNamespaceOverrides));
-      throw new GreyCOSXmlSerializationException(errorMessage, e);
+      throw new GreyCOSXmlSerializationException(
+          ERR_MSG_READ_OVERRIDE_NAMESPACE.formatted(
+              rootClass.getName(), Arrays.toString(elementNamespaceOverrides)),
+          e);
     }
   }
 
   public Document parseXml(Reader reader) {
-    try (Reader nonNullReader = Objects.requireNonNull(reader)) {
-      DocumentBuilder builder = createDocumentBuilderFactory().newDocumentBuilder();
-      return builder.parse(new InputSource(nonNullReader));
+    try (reader) {
+      var builder = createDocumentBuilderFactory().newDocumentBuilder();
+      return builder.parse(new InputSource(reader));
     } catch (ParserConfigurationException e) {
-      String errorMessage =
-          String.format(
-              "Failed to create a %s instance to parse an XML for a root class (%s).",
-              DocumentBuilder.class.getSimpleName(), rootClass.getName());
-      throw new GreyCOSXmlSerializationException(errorMessage, e);
+      throw new GreyCOSXmlSerializationException(
+          "Failed to create a %s instance to parse an XML for a root class (%s)."
+              .formatted(DocumentBuilder.class.getSimpleName(), rootClass.getName()),
+          e);
     } catch (SAXException saxException) {
-      String errorMessage =
-          String.format("Failed to parse an XML for a root class (%s).", rootClass.getName());
-      throw new GreyCOSXmlSerializationException(errorMessage, saxException);
+      throw new GreyCOSXmlSerializationException(
+          "Failed to parse an XML for a root class (%s).".formatted(rootClass.getName()),
+          saxException);
     } catch (IOException ioException) {
-      String errorMessage =
-          String.format("Failed to read an XML for a root class (%s).", rootClass.getName());
-      throw new GreyCOSXmlSerializationException(errorMessage, ioException);
+      throw new GreyCOSXmlSerializationException(
+          "Failed to read an XML for a root class (%s).".formatted(rootClass.getName()),
+          ioException);
     }
   }
 
@@ -291,35 +272,30 @@ public final class GenericJaxbIO<T> {
     try {
       return jaxbContext.createUnmarshaller();
     } catch (JAXBException e) {
-      String errorMessage =
-          String.format(
-              "Failed to create a JAXB %s for a root element class (%s).",
-              Unmarshaller.class.getSimpleName(), rootClass.getName());
-      throw new GreyCOSXmlSerializationException(errorMessage, e);
+      throw new GreyCOSXmlSerializationException(
+          "Failed to create a JAXB %s for a root element class (%s)."
+              .formatted(Unmarshaller.class.getSimpleName(), rootClass.getName()),
+          e);
     }
   }
 
   public void validate(Document document, String schemaResource) {
-    Schema schema = readSchemaResource(Objects.requireNonNull(schemaResource));
-    validate(Objects.requireNonNull(document), schema);
+    validate(document, readSchemaResource(schemaResource));
   }
 
   public void validate(Document document, Schema schema) {
-    Validator validator = createValidator(Objects.requireNonNull(schema), rootClass);
     try {
-      validator.validate(new DOMSource(Objects.requireNonNull(document)));
+      var validator = createValidator(schema, rootClass);
+      validator.validate(new DOMSource(document));
     } catch (SAXException saxException) {
-      String errorMessage =
-          String.format("XML validation failed for a root element class (%s).", rootClass.getName())
-              + "\n"
-              + saxException.getMessage();
-      throw new GreyCOSXmlSerializationException(errorMessage, saxException);
+      throw new GreyCOSXmlSerializationException(
+          "XML validation failed for a root element class (%s).".formatted(rootClass.getName()),
+          saxException);
     } catch (IOException ioException) {
-      String errorMessage =
-          String.format(
-              "Failed to read an XML for a root element class (%s) during validation.",
-              rootClass.getName());
-      throw new GreyCOSXmlSerializationException(errorMessage, ioException);
+      throw new GreyCOSXmlSerializationException(
+          "Failed to read an XML for a root element class (%s) during validation."
+              .formatted(rootClass.getName()),
+          ioException);
     }
   }
 
@@ -327,14 +303,15 @@ public final class GenericJaxbIO<T> {
     write(root, writer, null);
   }
 
-  private void write(T root, Writer writer, StreamSource xslt) {
-    DOMResult domResult = marshall(Objects.requireNonNull(root));
-    Writer nonNullWriter = Objects.requireNonNull(writer);
-    formatXml(domResult, xslt, nonNullWriter);
+  private void write(T root, Writer writer, @Nullable StreamSource xslt) {
+    formatXml(
+        marshall(Objects.requireNonNull(root, "root")),
+        xslt,
+        Objects.requireNonNull(writer, "writer"));
   }
 
   public void writeWithoutNamespaces(T root, Writer writer) {
-    try (InputStream xsltInputStream = getClass().getResourceAsStream("removeNamespaces.xslt")) {
+    try (var xsltInputStream = getClass().getResourceAsStream("removeNamespaces.xslt")) {
       if (xsltInputStream == null) {
         throw new IllegalStateException(
             "Impossible state: Failed to load XSLT stylesheet to remove namespaces.");
@@ -347,21 +324,21 @@ public final class GenericJaxbIO<T> {
   }
 
   private DOMResult marshall(T root) {
-    Objects.requireNonNull(root);
-    DOMResult domResult = new DOMResult();
     try {
+      var domResult = new DOMResult();
       marshaller.marshal(root, domResult);
+      return domResult;
     } catch (JAXBException jaxbException) {
       throw new GreyCOSXmlSerializationException(
           String.format(ERR_MSG_WRITE, rootClass.getName()), jaxbException);
     }
-    return domResult;
   }
 
-  private void formatXml(DOMResult domResult, Source transformationTemplate, Writer writer) {
+  private void formatXml(
+      DOMResult domResult, @Nullable Source transformationTemplate, Writer writer) {
     try {
-      TransformerFactory transformerFactory = createTransformerFactory();
-      Transformer transformer =
+      var transformerFactory = createTransformerFactory();
+      var transformer =
           transformationTemplate == null
               ? transformerFactory.newTransformer()
               : transformerFactory.newTransformer(transformationTemplate);
@@ -370,40 +347,39 @@ public final class GenericJaxbIO<T> {
           "{http://xml.apache.org/xslt}indent-amount", String.valueOf(indentation));
       transformer.transform(new DOMSource(domResult.getNode()), new StreamResult(writer));
     } catch (TransformerException transformerException) {
-      String errorMessage =
-          String.format("Failed to format XML for a root element class (%s).", rootClass.getName());
-      throw new GreyCOSXmlSerializationException(errorMessage, transformerException);
+      throw new GreyCOSXmlSerializationException(
+          "Failed to format XML for a root element class (%s).".formatted(rootClass.getName()),
+          transformerException);
     }
   }
 
   private Document overrideNamespaces(
       Document document, ElementNamespaceOverride... elementNamespaceOverrides) {
-    Document nonNullDocument = Objects.requireNonNull(document);
     var elementNamespaceOverridesMap = new HashMap<String, String>();
-    for (ElementNamespaceOverride namespaceOverride :
-        Objects.requireNonNull(elementNamespaceOverrides)) {
+    for (var namespaceOverride : elementNamespaceOverrides) {
       elementNamespaceOverridesMap.put(
           namespaceOverride.elementLocalName(), namespaceOverride.namespaceOverride());
     }
 
     var preOrderNodes = new LinkedList<NamespaceOverride>();
-    preOrderNodes.push(new NamespaceOverride(nonNullDocument.getDocumentElement(), null));
+    preOrderNodes.push(new NamespaceOverride(document.getDocumentElement(), null));
     while (!preOrderNodes.isEmpty()) {
-      NamespaceOverride currentNodeOverride = preOrderNodes.pop();
-      Node currentNode = currentNodeOverride.node();
-      final String elementLocalName =
+      var currentNodeOverride = preOrderNodes.pop();
+      var currentNode = currentNodeOverride.node;
+      var elementLocalName =
           currentNode.getLocalName() == null
               ? currentNode.getNodeName()
               : currentNode.getLocalName();
 
-      String detectedNamespaceOverride = elementNamespaceOverridesMap.get(elementLocalName);
-      String effectiveNamespaceOverride =
+      // Is there any override defined for the current node?
+      var detectedNamespaceOverride = elementNamespaceOverridesMap.get(elementLocalName);
+      var effectiveNamespaceOverride =
           detectedNamespaceOverride != null
               ? detectedNamespaceOverride
-              : currentNodeOverride.namespace();
+              : currentNodeOverride.namespace;
 
       if (effectiveNamespaceOverride != null) {
-        nonNullDocument.renameNode(currentNode, effectiveNamespaceOverride, elementLocalName);
+        document.renameNode(currentNode, effectiveNamespaceOverride, elementLocalName);
       }
 
       processChildNodes(
@@ -415,14 +391,14 @@ public final class GenericJaxbIO<T> {
           }));
     }
 
-    return nonNullDocument;
+    return document;
   }
 
   private void processChildNodes(Node node, Consumer<Node> nodeConsumer) {
-    NodeList childNodes = node.getChildNodes();
+    var childNodes = node.getChildNodes();
     if (childNodes != null) {
-      for (int i = 0; i < childNodes.getLength(); i++) {
-        Node childNode = childNodes.item(i);
+      for (var i = 0; i < childNodes.getLength(); i++) {
+        var childNode = childNodes.item(i);
         if (childNode != null) {
           nodeConsumer.accept(childNode);
         }
@@ -430,5 +406,5 @@ public final class GenericJaxbIO<T> {
     }
   }
 
-  private record NamespaceOverride(Node node, String namespace) {}
+  private record NamespaceOverride(Node node, @Nullable String namespace) {}
 }

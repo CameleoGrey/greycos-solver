@@ -1,6 +1,7 @@
 package ai.greycos.solver.core.impl.heuristic.selector.value;
 
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfValueSelector;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -13,7 +14,6 @@ import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
 import ai.greycos.solver.core.impl.score.director.ValueRangeManager;
-import ai.greycos.solver.core.impl.solver.scope.SolverScope;
 import ai.greycos.solver.core.testcotwin.TestdataEntity;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
 import ai.greycos.solver.core.testcotwin.TestdataValue;
@@ -55,7 +55,7 @@ class IterableFromSolutionPropertyValueSelectorTest {
             new TestdataValue("apr"),
             new TestdataValue("may"),
             new TestdataValue("jun")));
-    var solverScope = mock(SolverScope.class);
+    var solverScope = mockSolverScope();
     InnerScoreDirector<?, ?> scoreDirector = mock(InnerScoreDirector.class);
     doReturn(scoreDirector).when(solverScope).getScoreDirector();
     doReturn(solution).when(scoreDirector).getWorkingSolution();

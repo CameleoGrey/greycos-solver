@@ -16,16 +16,16 @@ import ai.greycos.solver.core.impl.bavet.common.InnerConstraintProfiler;
 import ai.greycos.solver.core.impl.bavet.common.StreamKind;
 import ai.greycos.solver.core.impl.score.stream.bavet.common.Scorer;
 
-public interface TupleLifecycle<Tuple_ extends Tuple> {
+public interface TupleLifecycle<Tuple_ extends Tuple> extends ActivitySupport {
 
   static <Tuple_ extends Tuple> TupleLifecycle<Tuple_> ofLeft(
       LeftTupleLifecycle<Tuple_> leftTupleLifecycle) {
-    return new LeftTupleLifecycleImpl<>(leftTupleLifecycle);
+    return new LeftBridgeTupleLifecycle<>(leftTupleLifecycle);
   }
 
   static <Tuple_ extends Tuple> TupleLifecycle<Tuple_> ofRight(
       RightTupleLifecycle<Tuple_> rightTupleLifecycle) {
-    return new RightTupleLifecycleImpl<>(rightTupleLifecycle);
+    return new RightBridgeTupleLifecycle<>(rightTupleLifecycle);
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})
@@ -77,6 +77,8 @@ public interface TupleLifecycle<Tuple_ extends Tuple> {
       Stream_ stream,
       TupleLifecycle<Tuple_> delegate) {
     if (delegate instanceof AggregatedTupleLifecycle) {
+      // Do not profile aggregated tuple lifecycles; that will double
+      // count the lifecycles being aggregated.
       return delegate;
     }
 
@@ -86,12 +88,12 @@ public interface TupleLifecycle<Tuple_ extends Tuple> {
     if (delegate instanceof AbstractNode node) {
       streamKind = node.getStreamKind();
       qualifier = Qualifier.NODE;
-    } else if (delegate instanceof LeftTupleLifecycleImpl<?> leftTupleLifecycle
-        && leftTupleLifecycle.leftTupleLifecycle() instanceof AbstractNode node) {
+    } else if (delegate instanceof LeftBridgeTupleLifecycle<?> parent
+        && parent.leftTupleLifecycle() instanceof AbstractNode node) {
       streamKind = node.getStreamKind();
       qualifier = Qualifier.LEFT_INPUT;
-    } else if (delegate instanceof RightTupleLifecycleImpl<?> rightTupleLifecycle
-        && rightTupleLifecycle.rightTupleLifecycle() instanceof AbstractNode node) {
+    } else if (delegate instanceof RightBridgeTupleLifecycle<?> parent
+        && parent.rightTupleLifecycle() instanceof AbstractNode node) {
       streamKind = node.getStreamKind();
       qualifier = Qualifier.RIGHT_INPUT;
     } else if (delegate instanceof RecordingTupleLifecycle<Tuple_>) {

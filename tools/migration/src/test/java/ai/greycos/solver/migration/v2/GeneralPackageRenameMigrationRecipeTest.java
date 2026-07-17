@@ -105,7 +105,7 @@ class GeneralPackageRenameMigrationRecipeTest implements RewriteTest {
             """
                         package greycos;
 
-                        import ai.greycos.solver.core.api.domain.solution.SolutionFileIO;
+                        import ai.greycos.solver.core.api.cotwin.solution.SolutionFileIO;
                         import ai.greycos.solver.jpa.api.score.BendableBigDecimalScoreConverter;
                         import ai.greycos.solver.jpa.api.score.BendableScoreConverter;
                         import ai.greycos.solver.jpa.api.score.HardMediumSoftBigDecimalScoreConverter;
@@ -157,14 +157,14 @@ class GeneralPackageRenameMigrationRecipeTest implements RewriteTest {
             """
                         package greycos;
 
-                        import ai.greycos.solver.jackson.api.score.buildin.BendableBigDecimalScoreJacksonDeserializer;
-                        import ai.greycos.solver.jackson.api.score.buildin.BendableScoreJacksonDeserializer;
-                        import ai.greycos.solver.jackson.api.score.buildin.HardMediumSoftBigDecimalScoreJacksonDeserializer;
-                        import ai.greycos.solver.jackson.api.score.buildin.HardMediumSoftScoreJacksonDeserializer;
-                        import ai.greycos.solver.jackson.api.score.buildin.HardSoftBigDecimalScoreJacksonDeserializer;
-                        import ai.greycos.solver.jackson.api.score.buildin.HardSoftScoreJacksonDeserializer;
-                        import ai.greycos.solver.jackson.api.score.buildin.SimpleBigDecimalScoreJacksonDeserializer;
-                        import ai.greycos.solver.jackson.api.score.buildin.SimpleScoreJacksonDeserializer;
+                        import ai.greycos.solver.jackson.api.score.BendableBigDecimalScoreJacksonDeserializer;
+                        import ai.greycos.solver.jackson.api.score.BendableScoreJacksonDeserializer;
+                        import ai.greycos.solver.jackson.api.score.HardMediumSoftBigDecimalScoreJacksonDeserializer;
+                        import ai.greycos.solver.jackson.api.score.HardMediumSoftScoreJacksonDeserializer;
+                        import ai.greycos.solver.jackson.api.score.HardSoftBigDecimalScoreJacksonDeserializer;
+                        import ai.greycos.solver.jackson.api.score.HardSoftScoreJacksonDeserializer;
+                        import ai.greycos.solver.jackson.api.score.SimpleBigDecimalScoreJacksonDeserializer;
+                        import ai.greycos.solver.jackson.api.score.SimpleScoreJacksonDeserializer;
 
                         public class Test {
                                 BendableBigDecimalScoreJacksonDeserializer bendableBigDecimalScoreJacksonDeserializer;
@@ -307,14 +307,14 @@ class GeneralPackageRenameMigrationRecipeTest implements RewriteTest {
             """
                         package greycos;
 
-                        import ai.greycos.solver.core.impl.domain.valuerange.BigDecimalValueRange;
-                        import ai.greycos.solver.core.impl.domain.valuerange.BigIntegerValueRange;
-                        import ai.greycos.solver.core.impl.domain.valuerange.BooleanValueRange;
-                        import ai.greycos.solver.core.impl.domain.valuerange.IntValueRange;
-                        import ai.greycos.solver.core.impl.domain.valuerange.ListValueRange;
-                        import ai.greycos.solver.core.impl.domain.valuerange.LongValueRange;
-                        import ai.greycos.solver.core.impl.domain.valuerange.TemporalValueRange;
-                        import ai.greycos.solver.core.impl.domain.valuerange.EmptyValueRange;
+                        import ai.greycos.solver.core.impl.cotwin.valuerange.BigDecimalValueRange;
+                        import ai.greycos.solver.core.impl.cotwin.valuerange.BigIntegerValueRange;
+                        import ai.greycos.solver.core.impl.cotwin.valuerange.BooleanValueRange;
+                        import ai.greycos.solver.core.impl.cotwin.valuerange.IntValueRange;
+                        import ai.greycos.solver.core.impl.cotwin.valuerange.ListValueRange;
+                        import ai.greycos.solver.core.impl.cotwin.valuerange.LongValueRange;
+                        import ai.greycos.solver.core.impl.cotwin.valuerange.TemporalValueRange;
+                        import ai.greycos.solver.core.impl.cotwin.valuerange.EmptyValueRange;
 
                         public class Test {
                                 BigDecimalValueRange bigDecimalValueRange;

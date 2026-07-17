@@ -45,6 +45,10 @@ public final class NearbyDistanceMatrixDemand<Origin_, Destination_>
       @NonNull ToIntFunction<Origin_> destinationSizeFunction) {
     this.nearbyDistanceMeter = nearbyDistanceMeter;
     this.nearbyRandom = nearbyRandom;
+    if (maxNearbySortSize < 1) {
+      throw new IllegalArgumentException(
+          "The maxNearbySortSize (%d) must be at least 1.".formatted(maxNearbySortSize));
+    }
     this.maxNearbySortSize = maxNearbySortSize;
     this.strictDestinationSize = strictDestinationSize;
     this.destinationSelectorKey = destinationSelectorKey;

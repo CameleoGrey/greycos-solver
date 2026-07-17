@@ -1,8 +1,8 @@
 package ai.greycos.solver.core.impl.heuristic.move;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.impl.score.director.ScoreDirector;
 import ai.greycos.solver.core.testcotwin.TestdataSolution;
@@ -38,12 +38,12 @@ public class DummyMove extends AbstractMove<TestdataSolution> implements CodeAss
   }
 
   @Override
-  public Collection<?> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     return Collections.emptyList();
   }
 
   @Override
-  public Collection<?> getPlanningValues() {
+  public SequencedCollection<Object> getPlanningValues() {
     return Collections.emptyList();
   }
 

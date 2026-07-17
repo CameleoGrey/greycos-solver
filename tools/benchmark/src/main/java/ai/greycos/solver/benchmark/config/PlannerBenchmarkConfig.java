@@ -28,6 +28,7 @@ import ai.greycos.solver.benchmark.config.report.BenchmarkReportConfig;
 import ai.greycos.solver.benchmark.impl.io.jaxb.PlannerBenchmarkConfigIO;
 import ai.greycos.solver.benchmark.impl.report.BenchmarkReport;
 import ai.greycos.solver.core.config.solver.SolverConfig;
+import ai.greycos.solver.core.config.util.ConfigUtils;
 import ai.greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 
 import org.jspecify.annotations.NonNull;
@@ -478,7 +479,7 @@ public class PlannerBenchmarkConfig {
   private String name = null;
   private File benchmarkDirectory = null;
 
-  private Class<? extends ThreadFactory> threadFactoryClass = null;
+  private String threadFactoryClass = null;
   private String parallelBenchmarkCount = null;
   private Long warmUpMillisecondsSpentLimit = null;
   private Long warmUpSecondsSpentLimit = null;
@@ -534,11 +535,11 @@ public class PlannerBenchmarkConfig {
   }
 
   public @Nullable Class<? extends ThreadFactory> getThreadFactoryClass() {
-    return threadFactoryClass;
+    return ConfigUtils.resolveClass(threadFactoryClass, "threadFactoryClass", this);
   }
 
   public void setThreadFactoryClass(@Nullable Class<? extends ThreadFactory> threadFactoryClass) {
-    this.threadFactoryClass = threadFactoryClass;
+    this.threadFactoryClass = threadFactoryClass == null ? null : threadFactoryClass.getName();
   }
 
   /**
@@ -653,7 +654,7 @@ public class PlannerBenchmarkConfig {
 
   public @NonNull PlannerBenchmarkConfig withThreadFactoryClass(
       @NonNull Class<? extends ThreadFactory> threadFactoryClass) {
-    this.setThreadFactoryClass(threadFactoryClass);
+    this.threadFactoryClass = threadFactoryClass.getName();
     return this;
   }
 

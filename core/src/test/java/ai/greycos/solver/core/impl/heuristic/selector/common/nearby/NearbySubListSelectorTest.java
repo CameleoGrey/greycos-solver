@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -24,6 +25,56 @@ import org.junit.jupiter.api.Test;
 
 @SuppressWarnings({"unchecked", "rawtypes"})
 class NearbySubListSelectorTest {
+
+  @Test
+  void unassignedDestinationIsNotTreatedAsIndexZero() {
+    TestdataListValue v1 = new TestdataListValue("10");
+    TestdataListValue v2 = new TestdataListValue("20");
+    TestdataListValue v3 = new TestdataListValue("30");
+    TestdataListEntity entity = TestdataListEntity.createWithValues("A", v1, v2, v3);
+
+    EntityDescriptor<TestdataSolution> entityDescriptor =
+        SelectorTestUtils.mockEntityDescriptor(TestdataListEntity.class);
+    ListVariableDescriptor<TestdataSolution> variableDescriptor =
+        (ListVariableDescriptor) TestdataListEntity.buildVariableDescriptorForValueList();
+    var childValueSelector =
+        SelectorTestUtils.mockIterableValueSelector(variableDescriptor, v1, v2, v3);
+    var entitySelector = SelectorTestUtils.mockEntitySelector(entityDescriptor, entity);
+    var childSubListSelector =
+        new RandomSubListSelector<>(entitySelector, childValueSelector, 1, 3);
+    var originSubListSelector =
+        SelectorTestUtils.mockReplayingSubListSelector(
+            variableDescriptor, new SubList(entity, 0, 1));
+
+    NearbySubListSelector<TestdataSolution> nearbySubListSelector =
+        new NearbySubListSelector<>(
+            childSubListSelector,
+            originSubListSelector,
+            (origin, destination) -> 0.0,
+            null,
+            false,
+            Integer.MAX_VALUE,
+            false);
+
+    InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    var listVariableStateSupply =
+        mock(ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply.class);
+    when(listVariableStateSupply.getInverseSingleton(any())).thenReturn(entity);
+    when(listVariableStateSupply.getIndexOrElse(any(), eq(-1))).thenReturn(-1);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableStateSupply);
+
+    SolverScope<TestdataSolution> solverScope =
+        SelectorTestUtils.solvingStarted(nearbySubListSelector, scoreDirector, new TestRandom(0));
+    AbstractPhaseScope<TestdataSolution> phaseScope =
+        PlannerTestUtils.delegatingPhaseScope(solverScope);
+    nearbySubListSelector.phaseStarted(phaseScope);
+
+    assertThat(nearbySubListSelector.iterator().hasNext()).isFalse();
+
+    nearbySubListSelector.phaseEnded(phaseScope);
+    nearbySubListSelector.solvingEnded(solverScope);
+  }
+
   @Test
   void iteratorShouldBeEmptyIfChildSubListSelectorIsEmpty() {
     // Test that iterator is empty when no sublists satisfy minimum size constraint
@@ -71,12 +122,9 @@ class NearbySubListSelectorTest {
     TestRandom testRandom = new TestRandom(new double[0]);
 
     InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    var supplyManager =
-        mock(ai.greycos.solver.core.impl.cotwin.variable.supply.SupplyManager.class);
     var listVariableStateSupply =
         mock(ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply.class);
-    when(scoreDirector.getSupplyManager()).thenReturn(supplyManager);
-    when(supplyManager.demand(any())).thenReturn(listVariableStateSupply);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableStateSupply);
 
     SolverScope<TestdataSolution> solverScope =
         SelectorTestUtils.solvingStarted(nearbySubListSelector, scoreDirector, testRandom);

@@ -20,7 +20,7 @@ public enum SolverProperty {
       "environment-mode",
       SolverProperties::setEnvironmentMode,
       value -> EnvironmentMode.valueOf(value.toString())),
-  DAEMON("daemon", SolverProperties::setDaemon, value -> Boolean.valueOf(value.toString())),
+  DAEMON("daemon", SolverProperties::setDaemon, SolverProperty::toBoolean),
   MOVE_THREAD_COUNT("move-thread-count", SolverProperties::setMoveThreadCount, Object::toString),
   ENABLED_PREVIEW_FEATURES(
       "enabled-preview-features",
@@ -50,7 +50,7 @@ public enum SolverProperty {
   CONSTRAINT_STREAM_AUTOMATIC_NODE_SHARING(
       "constraint-stream-automatic-node-sharing",
       SolverProperties::setConstraintStreamAutomaticNodeSharing,
-      value -> Boolean.valueOf(value.toString())),
+      SolverProperty::toBoolean),
   RANDOM_SEED(
       "random-seed", SolverProperties::setRandomSeed, value -> Long.parseLong(value.toString())),
   TERMINATION(
@@ -111,5 +111,20 @@ public enum SolverProperty {
     throw new IllegalArgumentException(
         "No property with the name (%s). Valid properties are %s."
             .formatted(propertyName, PROPERTY_NAMES));
+  }
+
+  private static Boolean toBoolean(Object value) {
+    if (value instanceof Boolean booleanValue) {
+      return booleanValue;
+    }
+    if (value instanceof String stringValue) {
+      if ("true".equalsIgnoreCase(stringValue)) {
+        return true;
+      }
+      if ("false".equalsIgnoreCase(stringValue)) {
+        return false;
+      }
+    }
+    throw new IllegalArgumentException("Cannot convert (%s) to Boolean".formatted(value));
   }
 }

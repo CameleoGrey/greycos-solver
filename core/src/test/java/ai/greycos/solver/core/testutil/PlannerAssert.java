@@ -312,7 +312,6 @@ public final class PlannerAssert {
     var iterator = selector.iterator();
     assertAllCodesOfIterator(iterator, codes);
     assertThat(iterator).isExhausted();
-    assertThat(selector.isCountable()).isTrue();
     assertThat(selector.isNeverEnding()).isFalse();
     if (size != DO_NOT_ASSERT_SIZE) {
       assertThat(selector.getSize()).isEqualTo(size);
@@ -325,7 +324,6 @@ public final class PlannerAssert {
     assertCodesOfNeverEndingIterator(iterator, codes);
     if (codes.length > 0) {
       assertThat(iterator).hasNext();
-      assertThat(selector.isCountable()).isTrue();
       assertThat(selector.isNeverEnding()).isTrue();
     }
     if (size != DO_NOT_ASSERT_SIZE) {
@@ -336,7 +334,6 @@ public final class PlannerAssert {
   public static void assertEmptyNeverEndingIterableSelector(
       IterableSelector<?, ?> selector, long size) {
     assertThat(selector.iterator()).isExhausted();
-    assertThat(selector.isCountable()).isTrue();
     assertThat(selector.isNeverEnding()).isTrue();
     if (size != DO_NOT_ASSERT_SIZE) {
       assertThat(selector.getSize()).isZero();
@@ -414,7 +411,6 @@ public final class PlannerAssert {
     ListIterator<?> listIterator = entitySelector.listIterator();
     assertAllCodesOfIterator(listIterator, codes);
     assertAllReverseCodesOfIterator(listIterator, codes);
-    assertThat(entitySelector.isCountable()).isTrue();
     assertThat(entitySelector.isNeverEnding()).isFalse();
     if (size != DO_NOT_ASSERT_SIZE) {
       assertThat(entitySelector.getSize()).isEqualTo(size);
@@ -461,7 +457,6 @@ public final class PlannerAssert {
   public static void assertAllCodesOfValueSelectorForEntity(
       ValueSelector<?> valueSelector, Object entity, long size, String... codes) {
     assertAllCodesOfIterator(valueSelector.iterator(entity), codes);
-    assertThat(valueSelector.isCountable()).isTrue();
     assertThat(valueSelector.isNeverEnding()).isFalse();
     if (size != DO_NOT_ASSERT_SIZE) {
       assertThat(valueSelector.getSize(entity)).isEqualTo(size);
@@ -473,7 +468,6 @@ public final class PlannerAssert {
     Iterator<?> iterator = valueSelector.iterator(entity);
     assertCodesOfNeverEndingIterator(iterator, codes);
     assertThat(iterator).hasNext();
-    assertThat(valueSelector.isCountable()).isTrue();
     assertThat(valueSelector.isNeverEnding()).isTrue();
     if (size != DO_NOT_ASSERT_SIZE) {
       assertThat(valueSelector.getSize(entity)).isEqualTo(size);

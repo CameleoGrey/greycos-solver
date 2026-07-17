@@ -86,7 +86,8 @@ public final class ValueRangeManager<Solution_> {
   public SolutionInitializationStatistics getInitializationStatistics() {
     if (cachedWorkingSolution == null) {
       throw new IllegalStateException(
-          "Impossible state: initialization statistics requested before the working solution is known.");
+          "Impossible state: initialization statistics requested before the working solution is"
+              + " known.");
     }
     return getInitializationStatistics(null);
   }
@@ -95,7 +96,8 @@ public final class ValueRangeManager<Solution_> {
       @Nullable Consumer<Object> finisher) {
     if (cachedWorkingSolution == null) {
       throw new IllegalStateException(
-          "Impossible state: initialization statistics requested before the working solution is known.");
+          "Impossible state: initialization statistics requested before the working solution is"
+              + " known.");
     }
     return ensureStatisticsInitialized(cachedWorkingSolution)
         .computeInitializationStatistics(finisher, true);
@@ -132,10 +134,10 @@ public final class ValueRangeManager<Solution_> {
   }
 
   /**
-   * As {@link #getFromSolution(ValueRangeDescriptor, Object)}, but the solution is taken from the
-   * cached working solution. This requires {@link #reset(Object)} to be called before the first
-   * call to this method, and therefore this method will throw an exception if called before the
-   * score director is instantiated.
+   * As defined by {@link #getFromSolution(ValueRangeDescriptor, Object)}, but the solution is taken
+   * from the cached working solution. This requires {@link #reset(Object)} to be called before the
+   * first call to this method, and therefore this method will throw an exception if called before
+   * the score director is instantiated.
    *
    * @throws IllegalStateException if called before {@link #reset(Object)} is called
    */
@@ -189,8 +191,7 @@ public final class ValueRangeManager<Solution_> {
       Entity_ entity,
       @Nullable SelectionSorter<Solution_, Value_> sorter) {
     ValueRangeState<Solution_, Entity_, Value_> descriptor = fromDescriptor(valueRangeDescriptor);
-    return descriptor.getFromEntity(
-        entity, getInitializationStatistics().genuineEntityCount(), sorter);
+    return descriptor.getFromEntity(entity, sorter);
   }
 
   public long countOnSolution(

@@ -1,5 +1,7 @@
 package ai.greycos.solver.core.preview.api.neighborhood.stream.sampling;
 
+import ai.greycos.solver.core.preview.api.neighborhood.UniMoveConstructor;
+import ai.greycos.solver.core.preview.api.neighborhood.stream.MoveStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
 import ai.greycos.solver.core.preview.api.neighborhood.stream.joiner.BiNeighborhoodsJoiner;
 
@@ -40,4 +42,6 @@ public interface UniSamplingStream<Solution_, A> extends SamplingStream {
   <B> BiSamplingStream<Solution_, A, B> pick(
       UniEnumeratingStream<Solution_, B> uniEnumeratingStream,
       BiNeighborhoodsJoiner<A, B>... joiners);
+
+  MoveStream<Solution_> asMove(UniMoveConstructor<Solution_, A> moveConstructor);
 }

@@ -81,14 +81,15 @@ public final class NeighborhoodsBasedMoveRepository<Solution_>
 
   @Override
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
-    workingRandom = phaseScope.getWorkingRandom();
+    workingRandom = phaseScope.getWorkingRandom().moveIteratorUsage();
     phaseScope.getScoreDirector().setMoveRepository(this);
   }
 
   @Override
   public void stepStarted(AbstractStepScope<Solution_> stepScope) {
     neighborhoodSession
-        .settle(); // Tests may enumerate multiple times without always calling stepEnded().
+        .settle(); // In tests, the stepEnded() might not have been called. Do it here as well, just
+    // in case.
   }
 
   @Override

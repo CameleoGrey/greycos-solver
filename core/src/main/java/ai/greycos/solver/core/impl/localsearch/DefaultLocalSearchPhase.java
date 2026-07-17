@@ -7,7 +7,6 @@ import java.util.function.IntFunction;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.api.solver.event.EventProducerId;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.config.solver.monitoring.SolverMetric;
@@ -17,6 +16,7 @@ import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import ai.greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import ai.greycos.solver.core.impl.phase.AbstractPhase;
 import ai.greycos.solver.core.impl.phase.PhaseType;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.solver.monitoring.ScoreLevels;
@@ -256,16 +256,10 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
       boolean stepMetricEnabled) {
     var constraintRef = constraintMatchTotal.getConstraintRef();
     return constraintIdToMetricHandleMap.computeIfAbsent(
-        constraintRef.constraintId(),
+        constraintRef.id(),
         ignored ->
             new ConstraintMatchMetricHandle(
-                solverScope
-                    .getMonitoringTags()
-                    .and(
-                        "constraint.package",
-                        constraintRef.packageName(),
-                        "constraint.name",
-                        constraintRef.constraintName()),
+                solverScope.getMonitoringTags().and("constraint.id", constraintRef.id()),
                 bestMetricEnabled,
                 stepMetricEnabled));
   }

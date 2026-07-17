@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 public abstract sealed class AbstractExhaustiveSearchDecider<
         Solution_, Score_ extends Score<Score_>>
     implements ExhaustiveSearchPhaseLifecycleListener<Solution_>
-    permits BasicExhaustiveSearchDecider,
+    permits BasicVariableExhaustiveSearchDecider,
         ListVariableExhaustiveSearchDecider,
         MixedVariableExhaustiveSearchDecider {
 
@@ -41,6 +41,7 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
   protected final boolean scoreBounderEnabled;
   private final ScoreBounder<?> scoreBounder;
 
+  // Flag that allows to accept partially initialized solutions
   protected boolean acceptUninitializedSolutions = false;
   private boolean assertMoveScoreFromScratch = false;
   private boolean assertExpectedUndoMoveScore = false;
@@ -81,9 +82,13 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
     acceptUninitializedSolutions = true;
   }
 
+  // ************************************************************************
+  // Worker methods
+  // ************************************************************************
+
   public abstract void expandNode(ExhaustiveSearchStepScope<Solution_> stepScope);
 
-  public abstract boolean isSolutionComplete(ExhaustiveSearchNode expandingNode);
+  public abstract boolean isSolutionComplete(ExhaustiveSearchNode<Solution_> expandingNode);
 
   public abstract void restoreWorkingSolution(
       ExhaustiveSearchStepScope<Solution_> stepScope,
@@ -94,12 +99,12 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
 
   protected void expandNode(
       ExhaustiveSearchStepScope<Solution_> stepScope,
-      ExhaustiveSearchNode expandingNode,
+      ExhaustiveSearchNode<Solution_> expandingNode,
       ExhaustiveSearchLayer moveLayer,
       MutableInt moveIndex) {
     var phaseScope = stepScope.getPhaseScope();
     for (var move : moveRepository) {
-      var moveNode = new ExhaustiveSearchNode(moveLayer, expandingNode);
+      var moveNode = new ExhaustiveSearchNode<>(moveLayer, expandingNode);
       moveIndex.increment();
       moveNode.setMove(move);
       doMove(stepScope, moveNode, isSolutionComplete(moveNode), false);
@@ -113,7 +118,7 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
 
   protected void doMove(
       ExhaustiveSearchStepScope<Solution_> stepScope,
-      ExhaustiveSearchNode moveNode,
+      ExhaustiveSearchNode<Solution_> moveNode,
       boolean isSolutionComplete,
       boolean skipMoveExecution) {
     var scoreDirector = stepScope.<Score_>getScoreDirector();
@@ -133,23 +138,23 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
     var executionPoint = SolverLifecyclePoint.of(stepScope, moveNode.getTreeId());
     if (assertExpectedUndoMoveScore) {
       var startingStepScore = stepScope.<Score_>getStartingStepScore();
+      // In BRUTE_FORCE a stepScore can be null because it was not calculated
       if (startingStepScore != null) {
         scoreDirector.assertExpectedUndoMoveScore(move, startingStepScore, executionPoint);
       }
     }
     var nodeScore = moveNode.getScore();
     LOGGER.trace(
-        "{}        Move treeId ({}), score ({}), expandable ({}), move ({}).",
+        "{}        Move treeId ({}), score ({}), move ({}).",
         logIndentation,
         executionPoint.treeId(),
         nodeScore == null ? "null" : nodeScore,
-        moveNode.isExpandable(),
         moveNode.getMove());
   }
 
   private void processMove(
       ExhaustiveSearchStepScope<Solution_> stepScope,
-      ExhaustiveSearchNode moveNode,
+      ExhaustiveSearchNode<Solution_> moveNode,
       boolean isSolutionComplete,
       InnerScore<Score_> score) {
     if (!scoreBounderEnabled) {
@@ -161,7 +166,7 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
 
   private void processMoverWithoutBounder(
       ExhaustiveSearchStepScope<Solution_> stepScope,
-      ExhaustiveSearchNode moveNode,
+      ExhaustiveSearchNode<Solution_> moveNode,
       InnerScore<Score_> score,
       boolean isSolutionComplete) {
     var phaseScope = stepScope.getPhaseScope();
@@ -178,7 +183,7 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
 
   private void processMoverWithBounder(
       ExhaustiveSearchStepScope<Solution_> stepScope,
-      ExhaustiveSearchNode moveNode,
+      ExhaustiveSearchNode<Solution_> moveNode,
       InnerScore<Score_> score,
       boolean isSolutionComplete) {
     var phaseScope = stepScope.getPhaseScope();
@@ -187,15 +192,17 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
       phaseScope.assertWorkingScoreFromScratch(score, moveNode.getMove());
     }
     if (isSolutionComplete) {
+      // There is no point in bounding a fully initialized score
       phaseScope.registerPessimisticBound(score);
       bestSolutionRecaller.processWorkingSolutionDuringMove(score, stepScope);
     } else {
       var scoreDirector = phaseScope.<Score_>getScoreDirector();
-      var castScoreBounder = getScoreBounder();
+      var castScoreBounder = this.getScoreBounder();
       var optimisticBound = castScoreBounder.calculateOptimisticBound(scoreDirector, score);
       moveNode.setOptimisticBound(optimisticBound);
       var bestPessimisticBound = (InnerScore<Score_>) phaseScope.getBestPessimisticBound();
       if (optimisticBound.compareTo(bestPessimisticBound) > 0) {
+        // It's still worth investigating this node further (no need to prune it)
         phaseScope.addExpandableNode(moveNode);
         var pessimisticBound = castScoreBounder.calculatePessimisticBound(scoreDirector, score);
         phaseScope.registerPessimisticBound(pessimisticBound);
@@ -230,14 +237,14 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
 
   protected void initStartNode(
       ExhaustiveSearchPhaseScope<Solution_> phaseScope, ExhaustiveSearchLayer layer) {
-    var startLayer = layer == null ? phaseScope.getLayerList().get(0) : layer;
-    var startNode = new ExhaustiveSearchNode(startLayer, null);
+    var startLayer = layer == null ? phaseScope.getLayerList().getFirst() : layer;
+    var startNode = new ExhaustiveSearchNode<Solution_>(startLayer, null);
 
     if (scoreBounderEnabled) {
       var scoreDirector = phaseScope.<Score_>getScoreDirector();
       var score = scoreDirector.calculateScore();
       startNode.setScore(score);
-      var bounder = getScoreBounder();
+      ScoreBounder<Score_> bounder = getScoreBounder();
       phaseScope.setBestPessimisticBound(
           startLayer.isLastLayer()
               ? score
@@ -252,6 +259,10 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
     }
     phaseScope.getLastCompletedStepScope().setExpandingNode(startNode);
   }
+
+  // ************************************************************************
+  // Lifecycle methods
+  // ************************************************************************
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {

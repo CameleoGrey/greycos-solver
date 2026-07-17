@@ -3,12 +3,16 @@ package ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import ai.greycos.solver.core.impl.bavet.common.AbstractNode;
 import ai.greycos.solver.core.impl.bavet.common.AbstractNodeBuildHelper;
+import ai.greycos.solver.core.impl.bavet.common.AbstractRootNode;
 import ai.greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import ai.greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import ai.greycos.solver.core.impl.neighborhood.NeighborhoodsBavetNodeNetwork;
 import ai.greycos.solver.core.impl.score.director.SessionContext;
 
 import org.jspecify.annotations.NullMarked;
@@ -23,7 +27,7 @@ public final class DataNodeBuildHelper<Solution_>
   public DataNodeBuildHelper(
       SessionContext<Solution_> sessionContext,
       Set<AbstractEnumeratingStream<Solution_>> activeStreamSet) {
-    super(activeStreamSet, null);
+    super(activeStreamSet);
     this.sessionContext = Objects.requireNonNull(sessionContext);
   }
 
@@ -43,5 +47,11 @@ public final class DataNodeBuildHelper<Solution_>
 
   public List<AbstractDatasetInstance<Solution_, ?>> getDatasetInstanceList() {
     return Collections.unmodifiableList(datasetInstanceList);
+  }
+
+  public static NeighborhoodsBavetNodeNetwork buildNodeNetwork(
+      List<AbstractNode> nodeList,
+      Map<Class<?>, List<AbstractRootNode<?>>> declaredClassToNodeMap) {
+    return NeighborhoodsBavetNodeNetwork.of(nodeList, declaredClassToNodeMap);
   }
 }

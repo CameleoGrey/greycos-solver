@@ -1,8 +1,8 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.generic;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
@@ -78,12 +78,12 @@ public class ChangeMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<?> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     return Collections.singletonList(entity);
   }
 
   @Override
-  public Collection<?> getPlanningValues() {
+  public SequencedCollection<Object> getPlanningValues() {
     return Collections.singletonList(toPlanningValue);
   }
 

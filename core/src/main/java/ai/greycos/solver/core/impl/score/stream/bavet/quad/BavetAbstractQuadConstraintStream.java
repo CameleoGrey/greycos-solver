@@ -1,17 +1,14 @@
 package ai.greycos.solver.core.impl.score.stream.bavet.quad;
 
-import static ai.greycos.solver.core.impl.score.stream.common.quad.InnerQuadConstraintStream.createDefaultIndictedObjectsMapping;
 import static ai.greycos.solver.core.impl.score.stream.common.quad.InnerQuadConstraintStream.createDefaultJustificationMapping;
 
 import java.math.BigDecimal;
-import java.util.Collection;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import ai.greycos.solver.core.api.function.PentaFunction;
 import ai.greycos.solver.core.api.function.QuadFunction;
 import ai.greycos.solver.core.api.function.QuadPredicate;
-import ai.greycos.solver.core.api.function.ToIntQuadFunction;
 import ai.greycos.solver.core.api.function.ToLongQuadFunction;
 import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.score.Score;
@@ -519,7 +516,7 @@ public abstract class BavetAbstractQuadConstraintStream<Solution_, A, B, C, D>
   @Override
   public <Score_ extends Score<Score_>> QuadConstraintBuilder<A, B, C, D, Score_> innerImpact(
       Score_ constraintWeight,
-      ToIntQuadFunction<A, B, C, D> matchWeigher,
+      ToLongQuadFunction<A, B, C, D> matchWeigher,
       ScoreImpactType scoreImpactType) {
     var stream =
         shareAndAddChild(
@@ -533,37 +530,11 @@ public abstract class BavetAbstractQuadConstraintStream<Solution_, A, B, C, D>
           Score_ constraintWeight,
           ScoreImpactType impactType) {
     return new QuadConstraintBuilderImpl<>(
-        (constraintPackage,
-            constraintName,
-            constraintDescription,
-            constraintGroup,
-            constraintWeight_,
-            impactType_,
-            justificationMapping,
-            indictedObjectsMapping) ->
+        (description, constraintWeight_, impactType_, justificationMapping) ->
             buildConstraint(
-                constraintPackage,
-                constraintName,
-                constraintDescription,
-                constraintGroup,
-                constraintWeight_,
-                impactType_,
-                justificationMapping,
-                indictedObjectsMapping,
-                stream),
+                description, constraintWeight_, impactType_, justificationMapping, stream),
         impactType,
         constraintWeight);
-  }
-
-  @Override
-  public <Score_ extends Score<Score_>> QuadConstraintBuilder<A, B, C, D, Score_> innerImpact(
-      Score_ constraintWeight,
-      ToLongQuadFunction<A, B, C, D> matchWeigher,
-      ScoreImpactType scoreImpactType) {
-    var stream =
-        shareAndAddChild(
-            new BavetScoringQuadConstraintStream<>(constraintFactory, this, matchWeigher));
-    return newTerminator(stream, constraintWeight, scoreImpactType);
   }
 
   @Override
@@ -581,10 +552,5 @@ public abstract class BavetAbstractQuadConstraintStream<Solution_, A, B, C, D>
   protected final PentaFunction<A, B, C, D, Score<?>, DefaultConstraintJustification>
       getDefaultJustificationMapping() {
     return createDefaultJustificationMapping();
-  }
-
-  @Override
-  protected final QuadFunction<A, B, C, D, Collection<?>> getDefaultIndictedObjectsMapping() {
-    return createDefaultIndictedObjectsMapping();
   }
 }

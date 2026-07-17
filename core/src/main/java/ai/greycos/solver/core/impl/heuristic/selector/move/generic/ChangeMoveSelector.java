@@ -3,12 +3,12 @@ package ai.greycos.solver.core.impl.heuristic.selector.move.generic;
 import java.util.Iterator;
 
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.IterableSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractOriginalChangeIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractRandomChangeIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public class ChangeMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
 
@@ -35,11 +35,6 @@ public class ChangeMoveSelector<Solution_> extends GenericMoveSelector<Solution_
   // ************************************************************************
   // Worker methods
   // ************************************************************************
-
-  @Override
-  public boolean isCountable() {
-    return entitySelector.isCountable() && valueSelector.isCountable();
-  }
 
   @Override
   public boolean isNeverEnding() {

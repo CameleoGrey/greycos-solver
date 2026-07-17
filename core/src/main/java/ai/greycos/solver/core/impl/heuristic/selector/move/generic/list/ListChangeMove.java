@@ -1,10 +1,9 @@
 package ai.greycos.solver.core.impl.heuristic.selector.move.generic.list;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
-import java.util.Set;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
@@ -195,17 +194,17 @@ public class ListChangeMove<Solution_> extends AbstractMove<Solution_> {
   }
 
   @Override
-  public Collection<Object> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     // Use LinkedHashSet for predictable iteration order.
-    Set<Object> entities = new LinkedHashSet<>(2);
+    var entities = LinkedHashSet.<Object>newLinkedHashSet(2);
     entities.add(sourceEntity);
     entities.add(destinationEntity);
     return entities;
   }
 
   @Override
-  public Collection<Object> getPlanningValues() {
-    return Collections.singleton(planningValue);
+  public SequencedCollection<Object> getPlanningValues() {
+    return List.of(planningValue);
   }
 
   @Override

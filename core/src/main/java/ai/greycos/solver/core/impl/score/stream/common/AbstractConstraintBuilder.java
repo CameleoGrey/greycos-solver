@@ -5,6 +5,7 @@ import java.util.Objects;
 import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.stream.Constraint;
 import ai.greycos.solver.core.api.score.stream.ConstraintBuilder;
+import ai.greycos.solver.core.api.score.stream.ConstraintMetadata;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -13,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 @NullMarked
 public abstract class AbstractConstraintBuilder<Score_ extends Score<Score_>>
     implements ConstraintBuilder {
+
   private final ConstraintConstructor constraintConstructor;
   private final ScoreImpactType impactType;
   private final Score_ constraintWeight;
@@ -29,22 +31,11 @@ public abstract class AbstractConstraintBuilder<Score_ extends Score<Score_>>
   protected abstract <JustificationMapping_>
       @Nullable JustificationMapping_ getJustificationMapping();
 
-  protected abstract <IndictedObjectsMapping_>
-      @Nullable IndictedObjectsMapping_ getIndictedObjectsMapping();
-
   @SuppressWarnings("unchecked")
   @Override
-  public final Constraint asConstraintDescribed(
-      String constraintName, String constraintDescription, String constraintGroup) {
+  public final Constraint asConstraint(ConstraintMetadata metadata) {
     return constraintConstructor.apply(
-        null,
-        sanitize("constraintName", constraintName),
-        constraintDescription,
-        sanitize("constraintGroup", constraintGroup),
-        constraintWeight,
-        impactType,
-        getJustificationMapping(),
-        getIndictedObjectsMapping());
+        metadata, constraintWeight, impactType, getJustificationMapping());
   }
 
   public static String sanitize(String fieldName, String fieldValue) {
@@ -57,10 +48,11 @@ public abstract class AbstractConstraintBuilder<Score_ extends Score<Score_>>
     if (!fieldValue.matches("^[a-zA-Z0-9]+[a-zA-Z0-9 _.'()-]*$")) {
       throw new IllegalArgumentException(
           """
-                    The %s (%s) must only contain alphanumeric characters, spaces, underscores, hyphens, \
-                    apostrophes ("'"), parentheses ("(", ")") or full stops (".").
-                    It must start with an alphanumeric character.
-                    Names "null" and "nil" are not allowed."""
+          The %s (%s) must only contain alphanumeric characters, spaces, underscores, hyphens, \
+          apostrophes ("'"), parentheses ("(", ")") or full stops (".").
+          It must start with an alphanumeric character.
+          Names "null" and "nil" are not allowed.\
+          """
               .formatted(fieldName, fieldValue));
     }
     var trimmed = fieldValue.trim();
@@ -70,19 +62,5 @@ public abstract class AbstractConstraintBuilder<Score_ extends Score<Score_>>
               .formatted(fieldName, fieldName));
     }
     return trimmed;
-  }
-
-  @SuppressWarnings("unchecked")
-  @Override
-  public final Constraint asConstraint(String constraintPackage, String constraintName) {
-    return constraintConstructor.apply(
-        constraintPackage,
-        constraintName,
-        "",
-        Constraint.DEFAULT_CONSTRAINT_GROUP,
-        constraintWeight,
-        impactType,
-        getJustificationMapping(),
-        getIndictedObjectsMapping());
   }
 }

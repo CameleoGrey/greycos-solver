@@ -6,8 +6,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Random;
 import java.util.function.Consumer;
+import java.util.random.RandomGenerator;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -130,7 +130,7 @@ public final class ElementAwareLinkedList<T> implements Iterable<T> {
     while (entry != null) {
       // Extract next before processing it, in case the entry is removed and entry.next becomes null
       Entry<T> next = entry.next;
-      tupleConsumer.accept(entry.getElement());
+      tupleConsumer.accept(entry.element());
       entry = next;
     }
   }
@@ -173,15 +173,15 @@ public final class ElementAwareLinkedList<T> implements Iterable<T> {
    * @param random The random instance to use for shuffling.
    * @return never null
    */
-  public Iterator<T> randomizedIterator(Random random) {
+  public Iterator<T> randomizedIterator(RandomGenerator random) {
     return switch (size) {
       case 0 -> Collections.emptyIterator();
-      case 1 -> Collections.singleton(first.getElement()).iterator();
+      case 1 -> Collections.singleton(first.element()).iterator();
       case 2 -> {
         var list =
             random.nextBoolean()
-                ? List.of(first.getElement(), last.getElement())
-                : List.of(last.getElement(), first.getElement());
+                ? List.of(first.element(), last.element())
+                : List.of(last.element(), first.element());
         yield list.iterator();
       }
       default -> {
@@ -204,7 +204,7 @@ public final class ElementAwareLinkedList<T> implements Iterable<T> {
         return "[]";
       }
       case 1 -> {
-        return "[" + first.getElement() + "]";
+        return "[" + first.element() + "]";
       }
       default -> {
         StringBuilder builder = new StringBuilder("[");
@@ -235,7 +235,7 @@ public final class ElementAwareLinkedList<T> implements Iterable<T> {
       if (!hasNext()) {
         throw new NoSuchElementException();
       }
-      T element = nextEntry.getElement();
+      T element = nextEntry.element();
       nextEntry = nextEntry.next;
       return element;
     }
@@ -253,10 +253,10 @@ public final class ElementAwareLinkedList<T> implements Iterable<T> {
 
     private final List<T> elementList;
     private final List<Integer> unusedIndexList;
-    private final Random random;
+    private final RandomGenerator random;
 
     public RandomElementAwareListIterator(
-        List<T> copiedList, List<Integer> unusedIndexList, Random random) {
+        List<T> copiedList, List<Integer> unusedIndexList, RandomGenerator random) {
       this.random = random;
       this.elementList = copiedList;
       this.unusedIndexList = unusedIndexList;
@@ -302,7 +302,7 @@ public final class ElementAwareLinkedList<T> implements Iterable<T> {
     }
 
     public void remove() {
-      if (isRemoved()) {
+      if (list == null) {
         throw new IllegalStateException("The element (" + element + ") was already removed.");
       }
       list.remove(this);
@@ -310,11 +310,7 @@ public final class ElementAwareLinkedList<T> implements Iterable<T> {
     }
 
     @Override
-    public boolean isRemoved() {
-      return list == null;
-    }
-
-    public T getElement() {
+    public T element() {
       return element;
     }
 

@@ -3,6 +3,7 @@ package ai.greycos.solver.core.impl.heuristic.selector.entity.decorator;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfEntitySelector;
 import static ai.greycos.solver.core.testutil.PlannerAssert.assertAllCodesOfIterator;
 import static ai.greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
+import static ai.greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -33,7 +34,7 @@ class SelectedCountLimitEntitySelectorTest {
     EntitySelector entitySelector =
         new SelectedCountLimitEntitySelector(childEntitySelector, true, 3L);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    SolverScope solverScope = mockSolverScope();
     entitySelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
@@ -96,7 +97,7 @@ class SelectedCountLimitEntitySelectorTest {
     EntitySelector entitySelector =
         new SelectedCountLimitEntitySelector(childEntitySelector, true, 5L);
 
-    SolverScope solverScope = mock(SolverScope.class);
+    SolverScope solverScope = mockSolverScope();
     entitySelector.solvingStarted(solverScope);
 
     AbstractPhaseScope phaseScopeA = mock(AbstractPhaseScope.class);
@@ -146,14 +147,6 @@ class SelectedCountLimitEntitySelectorTest {
     verifyPhaseLifecycle(childEntitySelector, 1, 2, 5);
     verify(childEntitySelector, times(5)).iterator();
     verify(childEntitySelector, times(5)).getSize();
-  }
-
-  @Test
-  void isCountable() {
-    EntitySelector childEntitySelector = SelectorTestUtils.mockEntitySelector(TestdataEntity.class);
-    EntitySelector entitySelector =
-        new SelectedCountLimitEntitySelector(childEntitySelector, true, 5L);
-    assertThat(entitySelector.isCountable()).isTrue();
   }
 
   @Test

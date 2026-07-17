@@ -1,6 +1,7 @@
 package ai.greycos.solver.jackson.api.score.stream.common;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import ai.greycos.solver.core.api.score.stream.common.Break;
@@ -51,7 +52,7 @@ record DeserializableSequence<Value_, Difference_ extends Comparable<Difference_
 
   @Override
   public @NonNull Collection<Value_> getItems() {
-    return items();
+    return Collections.unmodifiableCollection(items());
   }
 
   @Override

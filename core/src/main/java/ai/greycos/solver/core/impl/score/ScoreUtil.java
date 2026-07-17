@@ -21,8 +21,9 @@ public final class ScoreUtil {
     if (suffixedScoreTokens.length != levelSuffixes.length) {
       throw new IllegalArgumentException(
           """
-                    The scoreString (%s) for the scoreClass (%s) doesn't follow the correct pattern (%s): \
-                    the suffixedScoreTokens length (%d) differs from the levelSuffixes length (%d or %d)."""
+          The scoreString (%s) for the scoreClass (%s) doesn't follow the correct pattern (%s): \
+          the suffixedScoreTokens length (%d) differs from the levelSuffixes length (%d or %d).\
+          """
               .formatted(
                   scoreString,
                   scoreClass.getSimpleName(),
@@ -37,8 +38,9 @@ public final class ScoreUtil {
       if (!suffixedScoreToken.endsWith(levelSuffix)) {
         throw new IllegalArgumentException(
             """
-                        The scoreString (%s) for the scoreClass (%s) doesn't follow the correct pattern (%s): \
-                        the suffixedScoreToken (%s) does not end with levelSuffix (%s)."""
+            The scoreString (%s) for the scoreClass (%s) doesn't follow the correct pattern (%s): \
+            the suffixedScoreToken (%s) does not end with levelSuffix (%s).\
+            """
                 .formatted(
                     scoreString,
                     scoreClass.getSimpleName(),
@@ -50,21 +52,6 @@ public final class ScoreUtil {
           suffixedScoreToken.substring(0, suffixedScoreToken.length() - levelSuffix.length());
     }
     return scoreTokens;
-  }
-
-  public static int parseLevelAsInt(
-      Class<? extends Score<?>> scoreClass, String scoreString, String levelString) {
-    if (levelString.equals("*")) {
-      return Integer.MIN_VALUE;
-    }
-    try {
-      return Integer.parseInt(levelString);
-    } catch (NumberFormatException e) {
-      throw new IllegalArgumentException(
-          "The scoreString (%s) for the scoreClass (%s) has a levelString (%s) which is not a valid integer."
-              .formatted(scoreString, scoreClass.getSimpleName(), levelString),
-          e);
-    }
   }
 
   public static long parseLevelAsLong(
@@ -87,8 +74,9 @@ public final class ScoreUtil {
     if (levelString.equals("*")) {
       throw new IllegalArgumentException(
           """
-                    The scoreString (%s) for the scoreClass (%s) has a wildcard (*) as levelString (%s) \
-                    which is not supported for BigDecimal score values, because there is no general MIN_VALUE for BigDecimal."""
+          The scoreString (%s) for the scoreClass (%s) has a wildcard (*) as levelString (%s) \
+          which is not supported for BigDecimal score values, because there is no general MIN_VALUE for BigDecimal.\
+          """
               .formatted(scoreString, scoreClass.getSimpleName(), levelString));
     }
     try {
@@ -151,8 +139,9 @@ public final class ScoreUtil {
       if (endIndex < 0) {
         throw new IllegalArgumentException(
             """
-                        The scoreString (%s) for the scoreClass (%s) doesn't follow the correct pattern (%s): \
-                        the levelSuffix (%s) isn't in the scoreSubstring (%s)."""
+            The scoreString (%s) for the scoreClass (%s) doesn't follow the correct pattern (%s): \
+            the levelSuffix (%s) isn't in the scoreSubstring (%s).\
+            """
                 .formatted(
                     scoreString,
                     scoreClass.getSimpleName(),
@@ -164,8 +153,9 @@ public final class ScoreUtil {
       if (!scoreSubString.startsWith("[") || !scoreSubString.endsWith("]")) {
         throw new IllegalArgumentException(
             """
-                        The scoreString (%s) for the scoreClass (%s) doesn't follow the correct pattern (%s): \
-                        the scoreSubString (%s) does not start and end with "[" and "]"."""
+            The scoreString (%s) for the scoreClass (%s) doesn't follow the correct pattern (%s): \
+            the scoreSubString (%s) does not start and end with "[" and "]".\
+            """
                 .formatted(
                     scoreString,
                     scoreClass.getSimpleName(),
@@ -181,8 +171,9 @@ public final class ScoreUtil {
     if (startIndex != scoreString.length() + "/".length()) {
       throw new IllegalArgumentException(
           """
-                    The scoreString (%s) for the scoreClass (%s) doesn't follow the correct pattern (%s): \
-                    the suffix (%s) is unsupported."""
+          The scoreString (%s) for the scoreClass (%s) doesn't follow the correct pattern (%s): \
+          the suffix (%s) is unsupported.\
+          """
               .formatted(
                   scoreString,
                   scoreClass.getSimpleName(),

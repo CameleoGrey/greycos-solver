@@ -4,11 +4,11 @@ import java.util.Iterator;
 
 import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import ai.greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import ai.greycos.solver.core.impl.heuristic.selector.list.DestinationSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import ai.greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 /**
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation

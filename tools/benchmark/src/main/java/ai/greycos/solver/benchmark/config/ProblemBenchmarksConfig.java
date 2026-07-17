@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
     })
 public class ProblemBenchmarksConfig extends AbstractConfig<ProblemBenchmarksConfig> {
 
-  private Class<? extends SolutionFileIO<?>> solutionFileIOClass = null;
+  private String solutionFileIOClass = null;
 
   private Boolean writeOutputSolutionEnabled = null;
 
@@ -49,12 +49,12 @@ public class ProblemBenchmarksConfig extends AbstractConfig<ProblemBenchmarksCon
   // ************************************************************************
 
   public @Nullable Class<? extends SolutionFileIO<?>> getSolutionFileIOClass() {
-    return solutionFileIOClass;
+    return ConfigUtils.resolveClass(solutionFileIOClass, "solutionFileIOClass", this);
   }
 
   public void setSolutionFileIOClass(
       @Nullable Class<? extends SolutionFileIO<?>> solutionFileIOClass) {
-    this.solutionFileIOClass = solutionFileIOClass;
+    this.solutionFileIOClass = solutionFileIOClass == null ? null : solutionFileIOClass.getName();
   }
 
   public @Nullable Boolean getWriteOutputSolutionEnabled() {
@@ -105,7 +105,7 @@ public class ProblemBenchmarksConfig extends AbstractConfig<ProblemBenchmarksCon
 
   public @NonNull ProblemBenchmarksConfig withSolutionFileIOClass(
       @NonNull Class<? extends SolutionFileIO<?>> solutionFileIOClass) {
-    this.setSolutionFileIOClass(solutionFileIOClass);
+    this.solutionFileIOClass = solutionFileIOClass.getName();
     return this;
   }
 
@@ -188,7 +188,7 @@ public class ProblemBenchmarksConfig extends AbstractConfig<ProblemBenchmarksCon
       @NonNull ProblemBenchmarksConfig inheritedConfig) {
     solutionFileIOClass =
         ConfigUtils.inheritOverwritableProperty(
-            solutionFileIOClass, inheritedConfig.getSolutionFileIOClass());
+            solutionFileIOClass, inheritedConfig.solutionFileIOClass);
     writeOutputSolutionEnabled =
         ConfigUtils.inheritOverwritableProperty(
             writeOutputSolutionEnabled, inheritedConfig.getWriteOutputSolutionEnabled());
@@ -214,6 +214,6 @@ public class ProblemBenchmarksConfig extends AbstractConfig<ProblemBenchmarksCon
 
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
-    classVisitor.accept(solutionFileIOClass);
+    classVisitor.accept(getSolutionFileIOClass());
   }
 }

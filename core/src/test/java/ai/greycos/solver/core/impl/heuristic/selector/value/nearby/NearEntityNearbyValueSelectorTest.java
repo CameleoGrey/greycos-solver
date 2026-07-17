@@ -10,6 +10,7 @@ import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import ai.greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
+import ai.greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyTestUtils;
 import ai.greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import ai.greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import ai.greycos.solver.core.impl.score.director.InnerScoreDirector;
@@ -78,6 +79,7 @@ class NearEntityNearbyValueSelectorTest {
     TestRandom workingRandom = new TestRandom(3, 0, 2, 1);
 
     InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, null);
     SolverScope<TestdataSolution> solverScope =
         SelectorTestUtils.solvingStarted(valueSelector, scoreDirector, workingRandom);
     AbstractPhaseScope<TestdataSolution> phaseScopeA =
@@ -152,6 +154,7 @@ class NearEntityNearbyValueSelectorTest {
     TestRandom workingRandom = new TestRandom(0);
 
     InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, null);
     SolverScope<TestdataSolution> solverScope =
         SelectorTestUtils.solvingStarted(valueSelector, scoreDirector, workingRandom);
 
@@ -243,6 +246,7 @@ class NearEntityNearbyValueSelectorTest {
     TestRandom workingRandom = new TestRandom(0);
 
     InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, null);
     SolverScope<TestdataSolution> solverScope =
         SelectorTestUtils.solvingStarted(valueSelector, scoreDirector, workingRandom);
     AbstractPhaseScope<TestdataSolution> phaseScopeA =

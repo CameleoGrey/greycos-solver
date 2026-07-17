@@ -1,6 +1,6 @@
 package ai.greycos.solver.quarkus.jackson.deployment;
 
-import ai.greycos.solver.jackson.api.GreyCOSJacksonModule;
+import ai.greycos.solver.quarkus.jackson.GreyCOSJacksonModule;
 
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.builditem.FeatureBuildItem;

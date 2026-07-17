@@ -10,8 +10,9 @@ import ai.greycos.solver.core.api.score.stream.tri.TriJoiner;
 import ai.greycos.solver.core.impl.bavet.common.joiner.AbstractJoiner;
 import ai.greycos.solver.core.impl.bavet.common.joiner.JoinerType;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public final class DefaultTriJoiner<A, B, C> extends AbstractJoiner<C>
     implements TriJoiner<A, B, C> {
 
@@ -36,26 +37,50 @@ public final class DefaultTriJoiner<A, B, C> extends AbstractJoiner<C>
 
   public static <A, B, C> DefaultTriJoiner<A, B, C> merge(
       List<DefaultTriJoiner<A, B, C>> joinerList) {
-    if (joinerList.size() == 1) {
-      return joinerList.get(0);
-    }
-    return joinerList.stream().reduce(NONE, DefaultTriJoiner::and);
+    return switch (joinerList.size()) {
+      case 0 -> NONE;
+      case 1 -> joinerList.getFirst();
+      default -> joinerList.stream().reduce(NONE, DefaultTriJoiner::and);
+    };
   }
 
   @Override
-  public @NonNull DefaultTriJoiner<A, B, C> and(@NonNull TriJoiner<A, B, C> otherJoiner) {
-    DefaultTriJoiner<A, B, C> castJoiner = (DefaultTriJoiner<A, B, C>) otherJoiner;
-    int joinerCount = getJoinerCount();
-    int castJoinerCount = castJoiner.getJoinerCount();
-    int newJoinerCount = joinerCount + castJoinerCount;
-    JoinerType[] newJoinerTypes = Arrays.copyOf(this.joinerTypes, newJoinerCount);
-    BiFunction[] newLeftMappings = Arrays.copyOf(this.leftMappings, newJoinerCount);
-    Function[] newRightMappings = Arrays.copyOf(this.rightMappings, newJoinerCount);
-    for (int i = 0; i < castJoinerCount; i++) {
-      int newJoinerIndex = i + joinerCount;
+  public DefaultTriJoiner<A, B, C> and(TriJoiner<A, B, C> otherJoiner) {
+    var castJoiner = (DefaultTriJoiner<A, B, C>) otherJoiner;
+    var joinerCount = getJoinerCount();
+    var castJoinerCount = castJoiner.getJoinerCount();
+    var newJoinerCount = joinerCount + castJoinerCount;
+    var newJoinerTypes = Arrays.copyOf(this.joinerTypes, newJoinerCount);
+    var newLeftMappings = Arrays.copyOf(this.leftMappings, newJoinerCount);
+    var newRightMappings = Arrays.copyOf(this.rightMappings, newJoinerCount);
+    for (var i = 0; i < castJoinerCount; i++) {
+      var newJoinerIndex = i + joinerCount;
       newJoinerTypes[newJoinerIndex] = castJoiner.getJoinerType(i);
       newLeftMappings[newJoinerIndex] = castJoiner.getLeftMapping(i);
       newRightMappings[newJoinerIndex] = castJoiner.getRightMapping(i);
+    }
+    return new DefaultTriJoiner<>(newLeftMappings, newJoinerTypes, newRightMappings);
+  }
+
+  /**
+   * @return this if already equal-first (or single joiner); otherwise a copy with all {@link
+   *     JoinerType#EQUAL} joiners moved to the front (stable, see {@link
+   *     AbstractJoiner#equalsFirstSortedPositions}).
+   */
+  DefaultTriJoiner<A, B, C> reorderedEqualsFirst() {
+    var order = equalsFirstSortedPositions(joinerTypes);
+    if (order == null) {
+      return this;
+    }
+    var count = order.length;
+    var newLeftMappings = new BiFunction[count];
+    var newJoinerTypes = new JoinerType[count];
+    var newRightMappings = new Function[count];
+    for (var i = 0; i < count; i++) {
+      var from = order[i];
+      newLeftMappings[i] = leftMappings[from];
+      newJoinerTypes[i] = joinerTypes[from];
+      newRightMappings[i] = rightMappings[from];
     }
     return new DefaultTriJoiner<>(newLeftMappings, newJoinerTypes, newRightMappings);
   }
@@ -65,11 +90,11 @@ public final class DefaultTriJoiner<A, B, C> extends AbstractJoiner<C>
   }
 
   public boolean matches(A a, B b, C c) {
-    int joinerCount = getJoinerCount();
-    for (int i = 0; i < joinerCount; i++) {
-      JoinerType joinerType = getJoinerType(i);
-      Object leftMapping = getLeftMapping(i).apply(a, b);
-      Object rightMapping = getRightMapping(i).apply(c);
+    var joinerCount = getJoinerCount();
+    for (var i = 0; i < joinerCount; i++) {
+      var joinerType = getJoinerType(i);
+      var leftMapping = getLeftMapping(i).apply(a, b);
+      var rightMapping = getRightMapping(i).apply(c);
       if (!joinerType.matches(leftMapping, rightMapping)) {
         return false;
       }

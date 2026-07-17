@@ -614,10 +614,6 @@
     "allDeclaredFields": true
   },
   {
-    "name": "ai.greycos.solver.core.config.solver.random.RandomType",
-    "allDeclaredFields": true
-  },
-  {
     "name": "ai.greycos.solver.core.config.solver.termination.TerminationCompositionStyle",
     "allDeclaredFields": true
   },

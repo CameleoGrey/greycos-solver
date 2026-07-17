@@ -1,6 +1,5 @@
 package ai.greycos.solver.jackson.api.score.analysis;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,19 +9,20 @@ import ai.greycos.solver.core.api.score.Score;
 import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
 
 public final class ScoreAnalysisJacksonSerializer<Score_ extends Score<Score_>>
-    extends JsonSerializer<ScoreAnalysis<Score_>> {
+    extends ValueSerializer<ScoreAnalysis<Score_>> {
   @Override
   public void serialize(
-      ScoreAnalysis<Score_> value, JsonGenerator gen, SerializerProvider serializers)
-      throws IOException {
+      ScoreAnalysis<Score_> value, JsonGenerator gen, SerializationContext serializers)
+      throws JacksonException {
     gen.writeStartObject();
-    gen.writeStringField("score", value.score().toString());
-    gen.writeBooleanField("initialized", value.isSolutionInitialized());
+    gen.writeStringProperty("score", value.score().toString());
+    gen.writeBooleanProperty("initialized", value.isSolutionInitialized());
 
     List<Map<String, Object>> result = new ArrayList<>();
     value
@@ -30,7 +30,7 @@ public final class ScoreAnalysisJacksonSerializer<Score_ extends Score<Score_>>
         .forEach(
             (constraintRef, constraintAnalysis) -> {
               Map<String, Object> constraintAnalysisMap = new LinkedHashMap<>();
-              constraintAnalysisMap.put("name", constraintRef.constraintName());
+              constraintAnalysisMap.put("id", constraintRef.id());
               constraintAnalysisMap.put("weight", constraintAnalysis.weight().toString());
               constraintAnalysisMap.put("score", constraintAnalysis.score().toString());
               if (constraintAnalysis.matches() != null) {
@@ -52,12 +52,12 @@ public final class ScoreAnalysisJacksonSerializer<Score_ extends Score<Score_>>
                         });
                 constraintAnalysisMap.put("matches", matchAnalysis);
               }
-              if (constraintAnalysis.matchCount() != -1) {
+              if (constraintAnalysis.matches() != null || constraintAnalysis.matchCount() != -1) {
                 constraintAnalysisMap.put("matchCount", constraintAnalysis.matchCount());
               }
               result.add(constraintAnalysisMap);
             });
-    gen.writeObjectField("constraints", result);
+    gen.writePOJOProperty("constraints", result);
     gen.writeEndObject();
   }
 }

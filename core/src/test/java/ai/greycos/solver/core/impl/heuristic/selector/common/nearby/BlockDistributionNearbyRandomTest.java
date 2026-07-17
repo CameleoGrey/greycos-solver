@@ -12,8 +12,8 @@ class BlockDistributionNearbyRandomTest {
   @Test
   void validConstruction() {
     BlockDistributionNearbyRandom random = new BlockDistributionNearbyRandom(5, 50, 0.1, 0.2);
-    // With uniformDistributionProbability > 0.0 but < 1.0, should return sizeMaximum
-    assertEquals(50, random.getOverallSizeMaximum());
+    // Any non-zero uniform probability may select from the entire destination range.
+    assertEquals(Integer.MAX_VALUE, random.getOverallSizeMaximum());
   }
 
   @Test

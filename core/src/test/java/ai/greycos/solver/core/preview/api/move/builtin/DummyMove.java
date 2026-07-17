@@ -1,8 +1,8 @@
 package ai.greycos.solver.core.preview.api.move.builtin;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.SequencedCollection;
 
 import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.preview.api.move.Move;
@@ -44,12 +44,12 @@ public final class DummyMove implements Move<TestdataSolution>, CodeAssertable {
   }
 
   @Override
-  public Collection<? extends TestdataSolution> getPlanningEntities() {
+  public SequencedCollection<Object> getPlanningEntities() {
     return Collections.emptyList();
   }
 
   @Override
-  public Collection<? extends TestdataSolution> getPlanningValues() {
+  public SequencedCollection<Object> getPlanningValues() {
     return Collections.emptyList();
   }
 

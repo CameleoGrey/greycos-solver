@@ -22,14 +22,14 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @XmlType(propOrder = {"entityClass", "valueSelectorConfig", "moveSelectorConfig"})
-public class QueuedValuePlacerConfig extends EntityPlacerConfig<QueuedValuePlacerConfig> {
+public final class QueuedValuePlacerConfig extends EntityPlacerConfig<QueuedValuePlacerConfig> {
 
   public static final String XML_ELEMENT_NAME = "queuedValuePlacer";
 
-  protected Class<?> entityClass = null;
+  private String entityClass = null;
 
   @XmlElement(name = "valueSelector")
-  protected ValueSelectorConfig valueSelectorConfig = null;
+  private ValueSelectorConfig valueSelectorConfig = null;
 
   @XmlElements({
     @XmlElement(
@@ -58,11 +58,11 @@ public class QueuedValuePlacerConfig extends EntityPlacerConfig<QueuedValuePlace
   private MoveSelectorConfig moveSelectorConfig = null;
 
   public @Nullable Class<?> getEntityClass() {
-    return entityClass;
+    return ConfigUtils.resolveClass(entityClass, "entityClass", this);
   }
 
   public void setEntityClass(@Nullable Class<?> entityClass) {
-    this.entityClass = entityClass;
+    this.entityClass = entityClass == null ? null : entityClass.getName();
   }
 
   public @Nullable ValueSelectorConfig getValueSelectorConfig() {
@@ -86,7 +86,7 @@ public class QueuedValuePlacerConfig extends EntityPlacerConfig<QueuedValuePlace
   // ************************************************************************
 
   public @NonNull QueuedValuePlacerConfig withEntityClass(@NonNull Class<?> entityClass) {
-    this.setEntityClass(entityClass);
+    this.entityClass = entityClass.getName();
     return this;
   }
 
@@ -109,8 +109,7 @@ public class QueuedValuePlacerConfig extends EntityPlacerConfig<QueuedValuePlace
   @Override
   public @NonNull QueuedValuePlacerConfig inherit(
       @NonNull QueuedValuePlacerConfig inheritedConfig) {
-    entityClass =
-        ConfigUtils.inheritOverwritableProperty(entityClass, inheritedConfig.getEntityClass());
+    entityClass = ConfigUtils.inheritOverwritableProperty(entityClass, inheritedConfig.entityClass);
     valueSelectorConfig =
         ConfigUtils.inheritConfig(valueSelectorConfig, inheritedConfig.getValueSelectorConfig());
     setMoveSelectorConfig(
@@ -126,7 +125,7 @@ public class QueuedValuePlacerConfig extends EntityPlacerConfig<QueuedValuePlace
 
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
-    classVisitor.accept(entityClass);
+    classVisitor.accept(getEntityClass());
     if (valueSelectorConfig != null) {
       valueSelectorConfig.visitReferencedClasses(classVisitor);
     }

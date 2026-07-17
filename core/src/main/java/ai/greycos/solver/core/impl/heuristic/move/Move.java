@@ -1,7 +1,5 @@
 package ai.greycos.solver.core.impl.heuristic.move;
 
-import java.util.Iterator;
-
 import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import ai.greycos.solver.core.api.cotwin.lookup.Lookup;
 import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
@@ -53,9 +51,6 @@ import ai.greycos.solver.core.preview.api.move.MutableSolutionView;
  * <p>This entire interface exists to provide interoperability with move selectors and will
  * eventually be phased out in favor of the Neighborhoods API. It will be marked as deprecated for
  * removal in a future release.
- *
- * <p>To avoid having to implement this interface and instead use the new Move API directly, you can
- * use {@link MoveAdapters#toLegacyMoveIterator(Iterator)} in your move selectors.
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  * @see AbstractMove

@@ -37,17 +37,13 @@ public class RandomSubListSelector<Solution_> extends AbstractSelector<Solution_
     this.listVariableDescriptor =
         (ListVariableDescriptor<Solution_>) valueSelector.getVariableDescriptor();
     if (minimumSubListSize < 1) {
-      // TODO raise this to 2 in GreyCOS Solver 2.0
       throw new IllegalArgumentException(
-          "The minimumSubListSize (" + minimumSubListSize + ") must be greater than 0.");
+          "The minimumSubListSize (%d) must be greater than 0.".formatted(minimumSubListSize));
     }
     if (minimumSubListSize > maximumSubListSize) {
       throw new IllegalArgumentException(
-          "The minimumSubListSize ("
-              + minimumSubListSize
-              + ") must be less than or equal to the maximumSubListSize ("
-              + maximumSubListSize
-              + ").");
+          "The minimumSubListSize (%d) must be less than or equal to the maximumSubListSize (%d)."
+              .formatted(minimumSubListSize, maximumSubListSize));
     }
     this.minimumSubListSize = minimumSubListSize;
     this.maximumSubListSize = maximumSubListSize;
@@ -83,20 +79,15 @@ public class RandomSubListSelector<Solution_> extends AbstractSelector<Solution_
   }
 
   @Override
-  public boolean isCountable() {
-    return true;
-  }
-
-  @Override
   public boolean isNeverEnding() {
     return true;
   }
 
   @Override
   public long getSize() {
-    long subListCount = 0;
-    for (Object entity : ((Iterable<Object>) entitySelector::endingIterator)) {
-      int listSize = listVariableDescriptor.getUnpinnedSubListSize(entity);
+    var subListCount = 0L;
+    for (var entity : ((Iterable<Object>) entitySelector::endingIterator)) {
+      var listSize = listVariableDescriptor.getUnpinnedSubListSize(entity);
       // Add subLists bigger than minimum subList size.
       if (listSize >= minimumSubListSize) {
         subListCount += TriangularNumbers.nthTriangle(listSize - minimumSubListSize + 1);
@@ -122,9 +113,8 @@ public class RandomSubListSelector<Solution_> extends AbstractSelector<Solution_
 
   @Override
   public Iterator<SubList> iterator() {
-    // TODO make this incremental https://issues.redhat.com/browse/PLANNER-2507
-    int biggestListSize = 0;
-    for (Object entity : ((Iterable<Object>) entitySelector::endingIterator)) {
+    var biggestListSize = 0;
+    for (var entity : ((Iterable<Object>) entitySelector::endingIterator)) {
       biggestListSize =
           Math.max(biggestListSize, listVariableDescriptor.getUnpinnedSubListSize(entity));
     }
@@ -150,13 +140,13 @@ public class RandomSubListSelector<Solution_> extends AbstractSelector<Solution_
     @Override
     protected SubList createUpcomingSelection() {
       Object sourceEntity = null;
-      int listSize = 0;
+      var listSize = 0;
 
       var firstUnpinnedIndex = 0;
       while (listSize < minimumSubListSize) {
         if (!valueIterator.hasNext()) {
           throw new IllegalStateException(
-              "The valueIterator (" + valueIterator + ") should never end.");
+              "The valueIterator (%s) should never end.".formatted(valueIterator));
         }
         // Using valueSelector instead of entitySelector is fairer
         // because entities with bigger list variables will be selected more often.
@@ -169,15 +159,14 @@ public class RandomSubListSelector<Solution_> extends AbstractSelector<Solution_
         listSize = listVariableDescriptor.getListSize(sourceEntity) - firstUnpinnedIndex;
       }
 
-      TriangleElementFactory.TriangleElement triangleElement =
-          triangleElementFactory.nextElement(listSize);
-      int subListLength = listSize - triangleElement.level() + 1;
+      var triangleElement = triangleElementFactory.nextElement(listSize);
+      var subListLength = listSize - triangleElement.level() + 1;
       if (subListLength < 1) {
         throw new IllegalStateException(
             "Impossible state: The subListLength (%s) must be greater than 0."
                 .formatted(subListLength));
       }
-      int sourceIndex = triangleElement.indexOnLevel() - 1 + firstUnpinnedIndex;
+      var sourceIndex = triangleElement.indexOnLevel() - 1 + firstUnpinnedIndex;
       return new SubList(sourceEntity, sourceIndex, subListLength);
     }
   }

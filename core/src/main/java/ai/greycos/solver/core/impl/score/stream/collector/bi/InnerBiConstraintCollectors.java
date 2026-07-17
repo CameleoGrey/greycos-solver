@@ -15,7 +15,6 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
-import java.util.function.ToIntBiFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongBiFunction;
 
@@ -25,38 +24,33 @@ import ai.greycos.solver.core.api.score.stream.bi.BiConstraintCollector;
 import ai.greycos.solver.core.api.score.stream.common.ConnectedRangeChain;
 import ai.greycos.solver.core.api.score.stream.common.LoadBalance;
 import ai.greycos.solver.core.api.score.stream.common.SequenceChain;
-import ai.greycos.solver.core.impl.score.stream.collector.ReferenceAverageCalculator;
+import ai.greycos.solver.core.impl.score.stream.collector.AbstractReferenceAverageSlot;
 
-public class InnerBiConstraintCollectors {
-  public static <A, B> BiConstraintCollector<A, B, ?, Double> average(
-      ToIntBiFunction<? super A, ? super B> mapper) {
-    return new AverageIntBiCollector<>(mapper);
-  }
-
+public final class InnerBiConstraintCollectors {
   public static <A, B> BiConstraintCollector<A, B, ?, Double> average(
       ToLongBiFunction<? super A, ? super B> mapper) {
-    return new AverageLongBiCollector<>(mapper);
+    return new AverageBiCollector<>(mapper);
   }
 
   static <A, B, Mapped_, Average_> BiConstraintCollector<A, B, ?, Average_> average(
       BiFunction<? super A, ? super B, ? extends Mapped_> mapper,
-      Supplier<ReferenceAverageCalculator<Mapped_, Average_>> calculatorSupplier) {
-    return new AverageReferenceBiCollector<>(mapper, calculatorSupplier);
+      Supplier<AbstractReferenceAverageSlot.State<Mapped_, Average_>> stateSupplier) {
+    return new AverageReferenceBiCollector<>(mapper, stateSupplier);
   }
 
   public static <A, B> BiConstraintCollector<A, B, ?, BigDecimal> averageBigDecimal(
       BiFunction<? super A, ? super B, ? extends BigDecimal> mapper) {
-    return average(mapper, ReferenceAverageCalculator.bigDecimal());
+    return average(mapper, AbstractReferenceAverageSlot.bigDecimalState());
   }
 
   public static <A, B> BiConstraintCollector<A, B, ?, Duration> averageDuration(
       BiFunction<? super A, ? super B, ? extends Duration> mapper) {
-    return average(mapper, ReferenceAverageCalculator.duration());
+    return average(mapper, AbstractReferenceAverageSlot.durationState());
   }
 
   public static <A, B> BiConstraintCollector<A, B, ?, BigDecimal> averageBigInteger(
       BiFunction<? super A, ? super B, ? extends BigInteger> mapper) {
-    return average(mapper, ReferenceAverageCalculator.bigInteger());
+    return average(mapper, AbstractReferenceAverageSlot.bigIntegerState());
   }
 
   public static <
@@ -113,34 +107,19 @@ public class InnerBiConstraintCollectors {
     return new ConditionalBiCollector<>(predicate, delegate);
   }
 
-  public static <A, B> BiConstraintCollector<A, B, ?, Integer> count() {
-    return CountIntBiCollector.getInstance();
+  public static <A, B> BiConstraintCollector<A, B, ?, Long> count() {
+    return CountBiCollector.getInstance();
   }
 
-  public static <A, B, Mapped_> BiConstraintCollector<A, B, ?, Integer> countDistinct(
+  public static <A, B, Mapped_> BiConstraintCollector<A, B, ?, Long> countDistinct(
       BiFunction<? super A, ? super B, ? extends Mapped_> mapper) {
-    return new CountDistinctIntBiCollector<>(mapper);
-  }
-
-  public static <A, B, Mapped_> BiConstraintCollector<A, B, ?, Long> countDistinctLong(
-      BiFunction<? super A, ? super B, ? extends Mapped_> mapper) {
-    return new CountDistinctLongBiCollector<>(mapper);
-  }
-
-  public static <A, B> BiConstraintCollector<A, B, ?, Long> countLong() {
-    return CountLongBiCollector.getInstance();
+    return new CountDistinctBiCollector<>(mapper);
   }
 
   public static <A, B, Result_ extends Comparable<? super Result_>>
       BiConstraintCollector<A, B, ?, Result_> max(
           BiFunction<? super A, ? super B, ? extends Result_> mapper) {
     return new MaxComparableBiCollector<>(mapper);
-  }
-
-  public static <A, B, Result_> BiConstraintCollector<A, B, ?, Result_> max(
-      BiFunction<? super A, ? super B, ? extends Result_> mapper,
-      Comparator<? super Result_> comparator) {
-    return new MaxComparatorBiCollector<>(mapper, comparator);
   }
 
   public static <A, B, Result_, Property_ extends Comparable<? super Property_>>
@@ -156,12 +135,6 @@ public class InnerBiConstraintCollectors {
     return new MinComparableBiCollector<>(mapper);
   }
 
-  public static <A, B, Result_> BiConstraintCollector<A, B, ?, Result_> min(
-      BiFunction<? super A, ? super B, ? extends Result_> mapper,
-      Comparator<? super Result_> comparator) {
-    return new MinComparatorBiCollector<>(mapper, comparator);
-  }
-
   public static <A, B, Result_, Property_ extends Comparable<? super Property_>>
       BiConstraintCollector<A, B, ?, Result_> min(
           BiFunction<? super A, ? super B, ? extends Result_> mapper,
@@ -169,14 +142,9 @@ public class InnerBiConstraintCollectors {
     return new MinPropertyBiCollector<>(mapper, propertyMapper);
   }
 
-  public static <A, B> BiConstraintCollector<A, B, ?, Integer> sum(
-      ToIntBiFunction<? super A, ? super B> mapper) {
-    return new SumIntBiCollector<>(mapper);
-  }
-
   public static <A, B> BiConstraintCollector<A, B, ?, Long> sum(
       ToLongBiFunction<? super A, ? super B> mapper) {
-    return new SumLongBiCollector<>(mapper);
+    return new SumBiCollector<>(mapper);
   }
 
   public static <A, B, Result_> BiConstraintCollector<A, B, ?, Result_> sum(

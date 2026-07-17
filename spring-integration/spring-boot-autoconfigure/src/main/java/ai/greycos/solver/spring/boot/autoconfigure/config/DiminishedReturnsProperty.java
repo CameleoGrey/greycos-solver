@@ -1,5 +1,6 @@
 package ai.greycos.solver.spring.boot.autoconfigure.config;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
@@ -14,15 +15,44 @@ public enum DiminishedReturnsProperty {
   ENABLED(
       "enabled",
       DiminishedReturnsProperties::setEnabled,
-      value -> Boolean.parseBoolean((String) value)),
+      value -> {
+        if (value instanceof Boolean booleanValue) {
+          return booleanValue;
+        }
+        if (value instanceof String stringValue) {
+          if ("true".equalsIgnoreCase(stringValue)) {
+            return true;
+          }
+          if ("false".equalsIgnoreCase(stringValue)) {
+            return false;
+          }
+        }
+        throw new IllegalArgumentException("Cannot convert (%s) to Boolean".formatted(value));
+      }),
   SLIDING_WINDOW_DURATION(
       "sliding-window-duration",
       DiminishedReturnsProperties::setSlidingWindowDuration,
-      value -> DurationStyle.detectAndParse((String) value)),
+      value -> {
+        if (value instanceof Duration duration) {
+          return duration;
+        }
+        if (value instanceof String stringValue) {
+          return DurationStyle.detectAndParse(stringValue);
+        }
+        throw new IllegalArgumentException("Cannot convert (%s) to Duration".formatted(value));
+      }),
   MINIMUM_IMPROVEMENT_RATIO(
       "minimum-improvement-ratio",
       DiminishedReturnsProperties::setMinimumImprovementRatio,
-      value -> Double.valueOf((String) value)),
+      value -> {
+        if (value instanceof Number number) {
+          return number.doubleValue();
+        }
+        if (value instanceof String stringValue) {
+          return Double.valueOf(stringValue);
+        }
+        throw new IllegalArgumentException("Cannot convert (%s) to Double".formatted(value));
+      }),
   ;
 
   private final String propertyName;

@@ -1,8 +1,6 @@
 package ai.greycos.solver.core.impl.score.stream.common.bi;
 
-import java.util.Collection;
 import java.util.Objects;
-import java.util.function.BiFunction;
 
 import ai.greycos.solver.core.api.function.TriFunction;
 import ai.greycos.solver.core.api.score.Score;
@@ -19,7 +17,6 @@ public final class BiConstraintBuilderImpl<A, B, Score_ extends Score<Score_>>
     extends AbstractConstraintBuilder<Score_> implements BiConstraintBuilder<A, B, Score_> {
 
   private @Nullable TriFunction<A, B, Score_, ConstraintJustification> justificationMapping;
-  private @Nullable BiFunction<A, B, Collection<Object>> indictedObjectsMapping;
 
   public BiConstraintBuilderImpl(
       BiConstraintConstructor<A, B, Score_> constraintConstructor,
@@ -40,32 +37,14 @@ public final class BiConstraintBuilderImpl<A, B, Score_ extends Score<Score_>>
     if (this.justificationMapping != null) {
       throw new IllegalStateException(
           """
-                    Justification mapping already set (%s).
-                    Maybe the constraint calls justifyWith() twice?"""
+          Justification mapping already set (%s).
+          Maybe the constraint calls justifyWith() twice?\
+          """
               .formatted(justificationMapping));
     }
     this.justificationMapping =
         (TriFunction<A, B, Score_, ConstraintJustification>)
             Objects.requireNonNull(justificationMapping);
-    return this;
-  }
-
-  @Override
-  protected @Nullable BiFunction<A, B, Collection<Object>> getIndictedObjectsMapping() {
-    return indictedObjectsMapping;
-  }
-
-  @Override
-  public BiConstraintBuilder<A, B, Score_> indictWith(
-      BiFunction<A, B, Collection<Object>> indictedObjectsMapping) {
-    if (this.indictedObjectsMapping != null) {
-      throw new IllegalStateException(
-          """
-                    Indicted objects' mapping already set (%s).
-                    Maybe the constraint calls indictWith() twice?"""
-              .formatted(indictedObjectsMapping));
-    }
-    this.indictedObjectsMapping = Objects.requireNonNull(indictedObjectsMapping);
     return this;
   }
 }

@@ -13,15 +13,64 @@
   <name>GreyCOS Solver Quarkus Jackson - Runtime</name>
   <description>Activate Jackson bindings for GreyCOS's Score classes</description>
   <url>https://github.com/CameleoGrey/greycos-solver</url>
+
   <dependencies>
+    <!-- Internal dependencies -->
+    <dependency>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ai.greycos.solver</groupId>
+      <artifactId>greycos-solver-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <!-- External dependencies -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-jackson</artifactId>
     </dependency>
+    <!-- Logging -->
     <dependency>
-      <groupId>ai.greycos.solver</groupId>
-      <artifactId>greycos-solver-jackson</artifactId>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <scope>test</scope>
     </dependency>
+    <!-- XML and JSON -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <!-- Testing -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+   </dependency>
+   <!-- standardized nullness annotations  -->
+   <dependency>
+     <groupId>org.jspecify</groupId>
+     <artifactId>jspecify</artifactId>
+   </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -34,11 +83,6 @@
               <goal>extension-descriptor</goal>
             </goals>
             <phase>compile</phase>
-            <configuration>
-              <capabilities>
-                <provides>ai.greycos.solver.greycos-quarkus-jackson</provides>
-              </capabilities>
-            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -58,7 +102,6 @@
         <artifactId>maven-dependency-plugin</artifactId>
         <configuration>
           <ignoredUnusedDeclaredDependencies>
-            <dependency>ai.greycos.solver:greycos-solver-jackson</dependency>
             <dependency>io.quarkus:quarkus-jackson</dependency>
           </ignoredUnusedDeclaredDependencies>
         </configuration>

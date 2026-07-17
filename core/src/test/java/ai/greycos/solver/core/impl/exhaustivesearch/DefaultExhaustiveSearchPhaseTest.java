@@ -12,10 +12,11 @@ import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import ai.greycos.solver.core.api.score.SimpleScore;
 import ai.greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
-import ai.greycos.solver.core.impl.exhaustivesearch.decider.BasicExhaustiveSearchDecider;
+import ai.greycos.solver.core.impl.exhaustivesearch.decider.BasicVariableExhaustiveSearchDecider;
 import ai.greycos.solver.core.impl.exhaustivesearch.decider.ListVariableExhaustiveSearchDecider;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.ExhaustiveSearchLayer;
 import ai.greycos.solver.core.impl.exhaustivesearch.node.ExhaustiveSearchNode;
@@ -48,8 +49,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 @Execution(ExecutionMode.CONCURRENT)
 class DefaultExhaustiveSearchPhaseTest {
 
+  @SuppressWarnings({"unchecked"})
   @Test
-  @SuppressWarnings("unchecked")
   void restoreWorkingSolutionForBasicVariable() {
     var phaseScope = mock(ExhaustiveSearchPhaseScope.class);
     var lastCompletedStepScope = mock(ExhaustiveSearchStepScope.class);
@@ -82,16 +83,16 @@ class DefaultExhaustiveSearchPhaseTest {
     var node0 = createNode(layer0, null, true);
     var node1 = createNode(layer1, node0, true);
     var node2A = createNode(layer2, node1, true);
-    var node3A = createNode(layer3, node2A, true);
+    var node3A = createNode(layer3, node2A, true); // oldNode
     var node2B = createNode(layer2, node1, true);
     var node3B = createNode(layer3, node2B, true);
-    var node4B = createNode(layer4, node3B, true);
+    var node4B = createNode(layer4, node3B, true); // newNode
     node4B.setScore(InnerScore.withUnassignedCount(SimpleScore.of(7), 96));
     when(lastCompletedStepScope.getExpandingNode()).thenReturn(node3A);
     when(stepScope.getExpandingNode()).thenReturn(node4B);
 
     var decider =
-        new BasicExhaustiveSearchDecider<TestdataSolution, SimpleScore>(
+        new BasicVariableExhaustiveSearchDecider<TestdataSolution, SimpleScore>(
             "", null, null, mock(EntitySelector.class), null, null, false, null);
     decider.restoreWorkingSolution(stepScope, false, false);
 
@@ -111,15 +112,15 @@ class DefaultExhaustiveSearchPhaseTest {
     verify(node4B.getUndoMove(), times(0)).execute(any(MutableSolutionView.class));
   }
 
+  @SuppressWarnings({"unchecked"})
   @Test
-  @SuppressWarnings("unchecked")
   void restoreWorkingSolutionForListVariable() {
     var phaseScope = mock(ExhaustiveSearchPhaseScope.class);
     var lastCompletedStepScope = mock(ExhaustiveSearchStepScope.class);
     when(phaseScope.getLastCompletedStepScope()).thenReturn(lastCompletedStepScope);
     var stepScope = mock(ExhaustiveSearchStepScope.class);
     when(stepScope.getPhaseScope()).thenReturn(phaseScope);
-    var workingSolution = new TestdataListSolution();
+    var workingSolution = new TestdataSolution();
     when(phaseScope.getWorkingSolution()).thenReturn(workingSolution);
     InnerScoreDirector<TestdataListSolution, SimpleScore> scoreDirector =
         mock(InnerScoreDirector.class);
@@ -136,7 +137,7 @@ class DefaultExhaustiveSearchPhaseTest {
     when(phaseScope.calculateScore())
         .thenReturn(InnerScore.withUnassignedCount(SimpleScore.of(7), 96));
 
-    var solutionDescriptor = TestdataListSolution.buildSolutionDescriptor();
+    var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
     when(phaseScope.getSolutionDescriptor()).thenReturn(solutionDescriptor);
 
     var layer0 = new ExhaustiveSearchLayer(0, mock(Object.class));
@@ -175,7 +176,7 @@ class DefaultExhaustiveSearchPhaseTest {
     verify(node4B.getUndoMove(), times(0)).execute(any(MutableSolutionView.class));
   }
 
-  private <Solution_> ExhaustiveSearchNode<Solution_> createNode(
+  <Solution_> ExhaustiveSearchNode<Solution_> createNode(
       ExhaustiveSearchLayer layer, ExhaustiveSearchNode<Solution_> parentNode, boolean addMoves) {
     var node = new ExhaustiveSearchNode<>(layer, parentNode);
     if (addMoves) {
@@ -294,14 +295,16 @@ class DefaultExhaustiveSearchPhaseTest {
     var v3 = new TestdataValue("v3");
     var v4 = new TestdataValue("v4");
     var v5 = new TestdataValue("v5");
-    var e1 = new TestdataListPinnedEntityProvidingEntity("e1", Arrays.asList(v1, v2, v3));
-    e1.setValueList(Arrays.asList(v2, v1));
+    var e1 = new TestdataListPinnedEntityProvidingEntity("e1", List.of(v1, v2, v3));
+    e1.setValueList(List.of(v2, v1));
+    // Pin entire entity
     e1.setPinned(true);
-    var e2 = new TestdataListPinnedEntityProvidingEntity("e2", Arrays.asList(v1, v4, v5));
-    e2.setValueList(Arrays.asList(v5, v4));
-    e2.setPlanningPinToIndex(2);
-    var e3 = new TestdataListPinnedEntityProvidingEntity("e3", Arrays.asList(v3, v4, v5));
-    solution.setEntityList(Arrays.asList(e1, e2, e3));
+    var e2 = new TestdataListPinnedEntityProvidingEntity("e2", List.of(v1, v4, v5));
+    e2.setValueList(List.of(v5, v4));
+    // Pin the two first elements
+    e2.setPinIndex(2);
+    var e3 = new TestdataListPinnedEntityProvidingEntity("e3", List.of(v3, v4, v5));
+    solution.setEntityList(List.of(e1, e2, e3));
 
     solution = PlannerTestUtils.solve(solverConfig, solution);
     assertThat(solution).isNotNull();
@@ -309,15 +312,20 @@ class DefaultExhaustiveSearchPhaseTest {
     var solvedV1 = solvedE1.getValueRange().get(0);
     var solvedV2 = solvedE1.getValueRange().get(1);
     assertCode("e1", solvedE1);
+    // No new value added
     assertThat(solvedE1.getValueList()).hasSize(2).contains(solvedV2, solvedV1);
+    // The unassigned value is not reachable by e2 and the two first elements are pinned
     var solvedE2 = solution.getEntityList().get(1);
     var solvedV4 = solvedE2.getValueRange().get(1);
     var solvedV5 = solvedE2.getValueRange().get(2);
     assertCode("e2", solvedE2);
+    // No new value added
     assertThat(solvedE2.getValueList()).hasSize(2).contains(solvedV5, solvedV4);
+    // v3 can only be assigned to e3
     var solvedE3 = solution.getEntityList().get(2);
     var solvedV3 = solvedE3.getValueRange().get(0);
     assertCode("e3", solvedE3);
+    // No new value added
     assertThat(solvedE3.getValueList()).hasSize(1).contains(solvedV3);
   }
 

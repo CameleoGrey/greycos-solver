@@ -13,11 +13,10 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.Indictment;
 import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.api.score.stream.test.SingleConstraintAssertion;
-import ai.greycos.solver.core.impl.score.DefaultScoreExplanation;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.definition.ScoreDefinition;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
 import ai.greycos.solver.core.impl.score.stream.common.AbstractConstraint;
@@ -38,7 +37,6 @@ public abstract sealed class AbstractSingleConstraintAssertion<
   private InnerScore<Score_> actualScore;
   private Collection<ConstraintMatchTotal<Score_>> constraintMatchTotalCollection;
   private Collection<ConstraintJustification> justificationCollection;
-  private Collection<Indictment<Score_>> indictmentCollection;
 
   @SuppressWarnings("unchecked")
   AbstractSingleConstraintAssertion(
@@ -56,14 +54,12 @@ public abstract sealed class AbstractSingleConstraintAssertion<
   @Override
   final void update(
       InnerScore<Score_> innerScore,
-      Map<String, ConstraintMatchTotal<Score_>> constraintMatchTotalMap,
-      Map<Object, Indictment<Score_>> indictmentMap) {
+      Map<ConstraintRef, ConstraintMatchTotal<Score_>> constraintMatchTotalMap) {
     this.actualScore =
         InnerScore.fullyAssigned(
             requireNonNull(innerScore).raw()); // Strip initialization information.
     this.constraintMatchTotalCollection =
         new ArrayList<>(requireNonNull(constraintMatchTotalMap).values());
-    this.indictmentCollection = new ArrayList<>(requireNonNull(indictmentMap).values());
     this.justificationCollection =
         this.constraintMatchTotalCollection.stream()
             .flatMap(c -> c.getConstraintMatchSet().stream())
@@ -82,26 +78,10 @@ public abstract sealed class AbstractSingleConstraintAssertion<
   }
 
   @Override
-  public @NonNull SingleConstraintAssertion indictsWith(
-      @Nullable String message, @NonNull Object @NonNull ... indictments) {
-    ensureInitialized();
-    assertIndictments(message, false, indictments);
-    return this;
-  }
-
-  @Override
   public @NonNull SingleConstraintAssertion justifiesWithExactly(
       @Nullable String message, @NonNull ConstraintJustification @NonNull ... justifications) {
     ensureInitialized();
     assertJustification(message, true, justifications);
-    return this;
-  }
-
-  @Override
-  public @NonNull SingleConstraintAssertion indictsWithExactly(
-      @Nullable String message, @NonNull Object @NonNull ... indictments) {
-    ensureInitialized();
-    assertIndictments(message, true, indictments);
     return this;
   }
 
@@ -282,6 +262,19 @@ public abstract sealed class AbstractSingleConstraintAssertion<
   }
 
   @Override
+  @SuppressWarnings("unchecked")
+  public <S extends Score<S>> S getScore() {
+    ensureInitialized();
+    return (S) actualScore.raw();
+  }
+
+  @Override
+  public Number getImpact() {
+    ensureInitialized();
+    return deduceImpact().key();
+  }
+
+  @Override
   public void hasNoImpact(@Nullable String message) {
     ensureInitialized();
     assertNoImpact(message);
@@ -331,14 +324,13 @@ public abstract sealed class AbstractSingleConstraintAssertion<
       // Reward and positive or penalty and negative means all is OK.
       return;
     }
-    var constraintId = constraint.getConstraintRef().constraintName();
     var assertionMessage =
         buildAssertionErrorMessage(
             scoreImpactType,
             matchWeightTotal,
             actualScoreImpactType,
             impact,
-            constraintId,
+            constraint.getConstraintRef().id(),
             message);
     throw new AssertionError(assertionMessage);
   }
@@ -365,14 +357,13 @@ public abstract sealed class AbstractSingleConstraintAssertion<
       // Reward and positive or penalty and negative means all is OK.
       return;
     }
-    var constraintId = constraint.getConstraintRef().constraintName();
     var assertionMessage =
         buildMoreThanAssertionErrorMessage(
             scoreImpactType,
             matchWeightTotal,
             actualScoreImpactType,
             impact,
-            constraintId,
+            constraint.getConstraintRef().id(),
             message);
     throw new AssertionError(assertionMessage);
   }
@@ -399,14 +390,13 @@ public abstract sealed class AbstractSingleConstraintAssertion<
       // Reward and positive or penalty and negative means all is OK.
       return;
     }
-    var constraintId = constraint.getConstraintRef().constraintName();
     var assertionMessage =
         buildLessThanAssertionErrorMessage(
             scoreImpactType,
             matchWeightTotal,
             actualScoreImpactType,
             impact,
-            constraintId,
+            constraint.getConstraintRef().id(),
             message);
     throw new AssertionError(assertionMessage);
   }
@@ -424,8 +414,8 @@ public abstract sealed class AbstractSingleConstraintAssertion<
       return;
     }
 
-    var constraintId = constraint.getConstraintRef().constraintName();
-    var assertionMessage = buildNoImpactAssertionErrorMessage(impact, constraintId, message);
+    var assertionMessage =
+        buildNoImpactAssertionErrorMessage(impact, constraint.getConstraintRef().id(), message);
     throw new AssertionError(assertionMessage);
   }
 
@@ -442,7 +432,7 @@ public abstract sealed class AbstractSingleConstraintAssertion<
       var assertionMessage =
           buildAssertionErrorMessage(
               "Justification",
-              constraint.getConstraintRef().constraintName(),
+              constraint.getConstraintRef().id(),
               justificationCollection,
               emptyList(),
               emptyList(),
@@ -456,7 +446,7 @@ public abstract sealed class AbstractSingleConstraintAssertion<
       var assertionMessage =
           buildAssertionErrorMessage(
               "Justification",
-              constraint.getConstraintRef().constraintName(),
+              constraint.getConstraintRef().id(),
               emptyList(),
               Arrays.asList(justifications),
               Arrays.asList(justifications),
@@ -485,78 +475,11 @@ public abstract sealed class AbstractSingleConstraintAssertion<
     var assertionMessage =
         buildAssertionErrorMessage(
             "Justification",
-            constraint.getConstraintRef().constraintName(),
+            constraint.getConstraintRef().id(),
             unexpectedFound,
             expectedNotFound,
             Arrays.asList(justifications),
             justificationCollection,
-            message);
-    throw new AssertionError(assertionMessage);
-  }
-
-  private void assertIndictments(
-      String message, boolean completeValidation, Object... indictments) {
-    var emptyIndictments = indictments == null || indictments.length == 0;
-    // Valid empty comparison
-    if (emptyIndictments && indictmentCollection.isEmpty()) {
-      return;
-    }
-
-    // No indictments
-    var indictmentObjectList =
-        indictmentCollection.stream().map(Indictment::getIndictedObject).toList();
-    if (emptyIndictments && !indictmentObjectList.isEmpty()) {
-      var assertionMessage =
-          buildAssertionErrorMessage(
-              "Indictment",
-              constraint.getConstraintRef().constraintName(),
-              indictmentObjectList,
-              emptyList(),
-              emptyList(),
-              indictmentObjectList,
-              message);
-      throw new AssertionError(assertionMessage);
-    }
-
-    // Empty indictments
-    if (indictmentObjectList.isEmpty()) {
-      var assertionMessage =
-          buildAssertionErrorMessage(
-              "Indictment",
-              constraint.getConstraintRef().constraintName(),
-              emptyList(),
-              Arrays.asList(indictments),
-              Arrays.asList(indictments),
-              emptyList(),
-              message);
-      throw new AssertionError(assertionMessage);
-    }
-
-    var expectedNotFound = new ArrayList<>(indictmentObjectList.size());
-    for (var indictment : indictments) {
-      // Test invalid match
-      if (indictmentObjectList.stream().noneMatch(indictment::equals)) {
-        expectedNotFound.add(indictment);
-      }
-    }
-    var unexpectedFound = emptyList();
-    if (completeValidation) {
-      unexpectedFound =
-          indictmentObjectList.stream()
-              .filter(indictment -> Arrays.stream(indictments).noneMatch(indictment::equals))
-              .toList();
-    }
-    if (expectedNotFound.isEmpty() && unexpectedFound.isEmpty()) {
-      return;
-    }
-    var assertionMessage =
-        buildAssertionErrorMessage(
-            "Indictment",
-            constraint.getConstraintRef().constraintName(),
-            unexpectedFound,
-            expectedNotFound,
-            Arrays.asList(indictments),
-            indictmentObjectList,
             message);
     throw new AssertionError(assertionMessage);
   }
@@ -617,10 +540,13 @@ public abstract sealed class AbstractSingleConstraintAssertion<
     if (actualMatchCount == expectedMatchCount) {
       return;
     }
-    var constraintId = constraint.getConstraintRef().constraintName();
     var assertionMessage =
         buildAssertionErrorMessage(
-            scoreImpactType, expectedMatchCount, actualMatchCount, constraintId, message);
+            scoreImpactType,
+            expectedMatchCount,
+            actualMatchCount,
+            constraint.getConstraintRef().id(),
+            message);
     throw new AssertionError(assertionMessage);
   }
 
@@ -630,10 +556,13 @@ public abstract sealed class AbstractSingleConstraintAssertion<
     if (actualMatchCount > expectedMatchCount) {
       return;
     }
-    var constraintId = constraint.getConstraintRef().constraintName();
     var assertionMessage =
         buildMoreThanAssertionErrorMessage(
-            scoreImpactType, expectedMatchCount, actualMatchCount, constraintId, message);
+            scoreImpactType,
+            expectedMatchCount,
+            actualMatchCount,
+            constraint.getConstraintRef().id(),
+            message);
     throw new AssertionError(assertionMessage);
   }
 
@@ -643,10 +572,13 @@ public abstract sealed class AbstractSingleConstraintAssertion<
     if (actualMatchCount < expectedMatchCount) {
       return;
     }
-    var constraintId = constraint.getConstraintRef().constraintName();
     var assertionMessage =
         buildLessThanAssertionErrorMessage(
-            scoreImpactType, expectedMatchCount, actualMatchCount, constraintId, message);
+            scoreImpactType,
+            expectedMatchCount,
+            actualMatchCount,
+            constraint.getConstraintRef().id(),
+            message);
     throw new AssertionError(assertionMessage);
   }
 
@@ -654,8 +586,8 @@ public abstract sealed class AbstractSingleConstraintAssertion<
     if (determineMatchCount(scoreImpactType) > 0) {
       return;
     }
-    var constraintId = constraint.getConstraintRef().constraintName();
-    var assertionMessage = buildAssertionErrorMessage(scoreImpactType, constraintId, message);
+    var assertionMessage =
+        buildAssertionErrorMessage(scoreImpactType, constraint.getConstraintRef().id(), message);
     throw new AssertionError(assertionMessage);
   }
 
@@ -711,8 +643,7 @@ public abstract sealed class AbstractSingleConstraintAssertion<
         actualImpactLabel,
         actualImpact,
         actualImpact.getClass(),
-        DefaultScoreExplanation.explainScore(
-            actualScore, constraintMatchTotalCollection, indictmentCollection));
+        explainScore(actualScore, constraintMatchTotalCollection));
   }
 
   private String buildMoreThanAssertionErrorMessage(
@@ -773,8 +704,7 @@ public abstract sealed class AbstractSingleConstraintAssertion<
         actualImpactLabel,
         actualImpact,
         actualImpact.getClass(),
-        DefaultScoreExplanation.explainScore(
-            actualScore, constraintMatchTotalCollection, indictmentCollection));
+        explainScore(actualScore, constraintMatchTotalCollection));
   }
 
   private String buildAssertionErrorMessage(
@@ -796,8 +726,7 @@ public abstract sealed class AbstractSingleConstraintAssertion<
         expectedTimes,
         actualImpactLabel,
         actualTimes,
-        DefaultScoreExplanation.explainScore(
-            actualScore, constraintMatchTotalCollection, indictmentCollection));
+        explainScore(actualScore, constraintMatchTotalCollection));
   }
 
   private String buildMoreThanAssertionErrorMessage(
@@ -840,8 +769,7 @@ public abstract sealed class AbstractSingleConstraintAssertion<
         expectedTimes,
         actualImpactLabel,
         actualTimes,
-        DefaultScoreExplanation.explainScore(
-            actualScore, constraintMatchTotalCollection, indictmentCollection));
+        explainScore(actualScore, constraintMatchTotalCollection));
   }
 
   private String buildAssertionErrorMessage(
@@ -855,8 +783,7 @@ public abstract sealed class AbstractSingleConstraintAssertion<
         "Constraint",
         constraintId,
         expectedImpactLabel,
-        DefaultScoreExplanation.explainScore(
-            actualScore, constraintMatchTotalCollection, indictmentCollection));
+        explainScore(actualScore, constraintMatchTotalCollection));
   }
 
   private static String buildAssertionErrorMessage(
@@ -939,17 +866,14 @@ public abstract sealed class AbstractSingleConstraintAssertion<
             constraintId,
             actualImpact,
             actualImpact.getClass(),
-            DefaultScoreExplanation.explainScore(
-                actualScore, constraintMatchTotalCollection, indictmentCollection));
+            explainScore(actualScore, constraintMatchTotalCollection));
   }
 
   private static String getImpactTypeLabel(ScoreImpactType scoreImpactType) {
-    if (scoreImpactType == ScoreImpactType.PENALTY) {
-      return "penalty";
-    } else if (scoreImpactType == ScoreImpactType.REWARD) {
-      return "reward";
-    } else { // Needs to work with null.
-      return "impact";
-    }
+    return switch (scoreImpactType) {
+      case PENALTY -> "penalty";
+      case REWARD -> "reward";
+      case MIXED -> "impact";
+    };
   }
 }

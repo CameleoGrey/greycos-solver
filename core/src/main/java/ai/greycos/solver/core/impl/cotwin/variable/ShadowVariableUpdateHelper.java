@@ -2,6 +2,7 @@ package ai.greycos.solver.core.impl.cotwin.variable;
 
 import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.BASIC;
 import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.CASCADING_UPDATE;
+import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.CUSTOM_LISTENER;
 import static ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.DECLARATIVE;
 import static ai.greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy.DISABLED;
 
@@ -22,8 +23,7 @@ import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
 import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
 import ai.greycos.solver.core.api.score.Score;
-import ai.greycos.solver.core.api.score.constraint.ConstraintMatchTotal;
-import ai.greycos.solver.core.api.score.constraint.Indictment;
+import ai.greycos.solver.core.api.score.stream.ConstraintRef;
 import ai.greycos.solver.core.config.solver.EnvironmentMode;
 import ai.greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import ai.greycos.solver.core.impl.cotwin.solution.descriptor.DefaultShadowVariableMetaModel;
@@ -39,6 +39,7 @@ import ai.greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariab
 import ai.greycos.solver.core.impl.cotwin.variable.listener.support.VariableListenerSupport;
 import ai.greycos.solver.core.impl.cotwin.variable.nextprev.NextElementShadowVariableDescriptor;
 import ai.greycos.solver.core.impl.cotwin.variable.nextprev.PreviousElementShadowVariableDescriptor;
+import ai.greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirector;
 import ai.greycos.solver.core.impl.score.director.AbstractScoreDirectorFactory;
 import ai.greycos.solver.core.impl.score.director.InnerScore;
@@ -52,7 +53,7 @@ import org.jspecify.annotations.Nullable;
 public final class ShadowVariableUpdateHelper<Solution_> {
 
   private static final EnumSet<ShadowVariableType> SUPPORTED_TYPES =
-      EnumSet.of(BASIC, CASCADING_UPDATE, DECLARATIVE);
+      EnumSet.of(BASIC, CUSTOM_LISTENER, CASCADING_UPDATE, DECLARATIVE);
 
   public static <Solution_> ShadowVariableUpdateHelper<Solution_> create() {
     return new ShadowVariableUpdateHelper<>(SUPPORTED_TYPES);
@@ -358,6 +359,7 @@ public final class ShadowVariableUpdateHelper<Solution_> {
     }
   }
 
+  @NullMarked
   private static class InternalScoreDirector<Solution_, Score_ extends Score<Score_>>
       extends AbstractScoreDirector<
           Solution_, Score_, InternalScoreDirectorFactory<Solution_, Score_>> {
@@ -377,12 +379,7 @@ public final class ShadowVariableUpdateHelper<Solution_> {
     }
 
     @Override
-    public Map<String, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Map<Object, Indictment<Score_>> getIndictmentMap() {
+    public Map<ConstraintRef, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap() {
       throw new UnsupportedOperationException();
     }
 

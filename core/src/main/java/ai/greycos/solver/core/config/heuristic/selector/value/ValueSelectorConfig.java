@@ -42,35 +42,32 @@ import org.jspecify.annotations.Nullable;
       "selectedCountLimit"
     })
 @NullMarked
-public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
+public final class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
 
-  @XmlAttribute @Nullable protected String id = null;
-  @XmlAttribute @Nullable protected String mimicSelectorRef = null;
+  @XmlAttribute @Nullable private String id = null;
+  @XmlAttribute @Nullable private String mimicSelectorRef = null;
 
-  @Nullable protected Class<?> downcastEntityClass = null;
-  @XmlAttribute @Nullable protected String variableName = null;
+  @Nullable private String downcastEntityClass = null;
+  @XmlAttribute @Nullable private String variableName = null;
 
-  @Nullable protected SelectionCacheType cacheType = null;
-  @Nullable protected SelectionOrder selectionOrder = null;
+  @Nullable private SelectionCacheType cacheType = null;
+  @Nullable private SelectionOrder selectionOrder = null;
 
   @XmlElement(name = "nearbySelection")
   @Nullable
-  protected NearbySelectionConfig nearbySelectionConfig = null;
+  private NearbySelectionConfig nearbySelectionConfig = null;
 
-  @Nullable protected Class<? extends SelectionFilter> filterClass = null;
+  @Nullable private String filterClass = null;
 
-  @Nullable protected ValueSorterManner sorterManner = null;
+  @Nullable private ValueSorterManner sorterManner = null;
+  @Nullable private String comparatorClass = null;
+  @Nullable private String comparatorFactoryClass = null;
+  @Nullable private SelectionSorterOrder sorterOrder = null;
+  @Nullable private String sorterClass = null;
 
-  @Nullable protected Class<? extends Comparator> comparatorClass = null;
+  @Nullable private String probabilityWeightFactoryClass = null;
 
-  @Nullable protected Class<? extends ComparatorFactory> comparatorFactoryClass = null;
-  @Nullable protected SelectionSorterOrder sorterOrder = null;
-  @Nullable protected Class<? extends SelectionSorter> sorterClass = null;
-
-  @Nullable
-  protected Class<? extends SelectionProbabilityWeightFactory> probabilityWeightFactoryClass = null;
-
-  @Nullable protected Long selectedCountLimit = null;
+  @Nullable private Long selectedCountLimit = null;
 
   public ValueSelectorConfig() {}
 
@@ -101,11 +98,11 @@ public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
   }
 
   public @Nullable Class<?> getDowncastEntityClass() {
-    return downcastEntityClass;
+    return ConfigUtils.resolveClass(downcastEntityClass, "downcastEntityClass", this);
   }
 
   public void setDowncastEntityClass(@Nullable Class<?> downcastEntityClass) {
-    this.downcastEntityClass = downcastEntityClass;
+    this.downcastEntityClass = downcastEntityClass == null ? null : downcastEntityClass.getName();
   }
 
   public @Nullable String getVariableName() {
@@ -141,11 +138,11 @@ public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
   }
 
   public @Nullable Class<? extends SelectionFilter> getFilterClass() {
-    return filterClass;
+    return ConfigUtils.resolveClass(filterClass, "filterClass", this);
   }
 
   public void setFilterClass(@Nullable Class<? extends SelectionFilter> filterClass) {
-    this.filterClass = filterClass;
+    this.filterClass = filterClass == null ? null : filterClass.getName();
   }
 
   public @Nullable ValueSorterManner getSorterManner() {
@@ -157,20 +154,21 @@ public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
   }
 
   public @Nullable Class<? extends Comparator> getComparatorClass() {
-    return comparatorClass;
+    return ConfigUtils.resolveClass(comparatorClass, "comparatorClass", this);
   }
 
   public void setComparatorClass(@Nullable Class<? extends Comparator> comparatorClass) {
-    this.comparatorClass = comparatorClass;
+    this.comparatorClass = comparatorClass == null ? null : comparatorClass.getName();
   }
 
   public @Nullable Class<? extends ComparatorFactory> getComparatorFactoryClass() {
-    return comparatorFactoryClass;
+    return ConfigUtils.resolveClass(comparatorFactoryClass, "comparatorFactoryClass", this);
   }
 
   public void setComparatorFactoryClass(
       @Nullable Class<? extends ComparatorFactory> comparatorFactoryClass) {
-    this.comparatorFactoryClass = comparatorFactoryClass;
+    this.comparatorFactoryClass =
+        comparatorFactoryClass == null ? null : comparatorFactoryClass.getName();
   }
 
   public @Nullable SelectionSorterOrder getSorterOrder() {
@@ -182,21 +180,23 @@ public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
   }
 
   public @Nullable Class<? extends SelectionSorter> getSorterClass() {
-    return sorterClass;
+    return ConfigUtils.resolveClass(sorterClass, "sorterClass", this);
   }
 
   public void setSorterClass(@Nullable Class<? extends SelectionSorter> sorterClass) {
-    this.sorterClass = sorterClass;
+    this.sorterClass = sorterClass == null ? null : sorterClass.getName();
   }
 
   public @Nullable Class<? extends SelectionProbabilityWeightFactory>
       getProbabilityWeightFactoryClass() {
-    return probabilityWeightFactoryClass;
+    return ConfigUtils.resolveClass(
+        probabilityWeightFactoryClass, "probabilityWeightFactoryClass", this);
   }
 
   public void setProbabilityWeightFactoryClass(
       @Nullable Class<? extends SelectionProbabilityWeightFactory> probabilityWeightFactoryClass) {
-    this.probabilityWeightFactoryClass = probabilityWeightFactoryClass;
+    this.probabilityWeightFactoryClass =
+        probabilityWeightFactoryClass == null ? null : probabilityWeightFactoryClass.getName();
   }
 
   public @Nullable Long getSelectedCountLimit() {
@@ -222,7 +222,7 @@ public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
   }
 
   public ValueSelectorConfig withDowncastEntityClass(Class<?> entityClass) {
-    this.setDowncastEntityClass(entityClass);
+    this.downcastEntityClass = entityClass.getName();
     return this;
   }
 
@@ -248,7 +248,7 @@ public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
   }
 
   public ValueSelectorConfig withFilterClass(Class<? extends SelectionFilter> filterClass) {
-    this.setFilterClass(filterClass);
+    this.filterClass = filterClass.getName();
     return this;
   }
 
@@ -258,13 +258,13 @@ public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
   }
 
   public ValueSelectorConfig withComparatorClass(Class<? extends Comparator> comparatorClass) {
-    this.setComparatorClass(comparatorClass);
+    this.comparatorClass = comparatorClass.getName();
     return this;
   }
 
   public ValueSelectorConfig withComparatorFactoryClass(
       Class<? extends ComparatorFactory> comparatorFactoryClass) {
-    this.setComparatorFactoryClass(comparatorFactoryClass);
+    this.comparatorFactoryClass = comparatorFactoryClass.getName();
     return this;
   }
 
@@ -274,13 +274,13 @@ public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
   }
 
   public ValueSelectorConfig withSorterClass(Class<? extends SelectionSorter> sorterClass) {
-    this.setSorterClass(sorterClass);
+    this.sorterClass = sorterClass.getName();
     return this;
   }
 
   public ValueSelectorConfig withProbabilityWeightFactoryClass(
       Class<? extends SelectionProbabilityWeightFactory> factoryClass) {
-    this.setProbabilityWeightFactoryClass(factoryClass);
+    this.probabilityWeightFactoryClass = factoryClass.getName();
     return this;
   }
 
@@ -301,14 +301,13 @@ public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
             mimicSelectorRef, inheritedConfig.getMimicSelectorRef());
     downcastEntityClass =
         ConfigUtils.inheritOverwritableProperty(
-            downcastEntityClass, inheritedConfig.getDowncastEntityClass());
+            downcastEntityClass, inheritedConfig.downcastEntityClass);
     variableName =
         ConfigUtils.inheritOverwritableProperty(variableName, inheritedConfig.getVariableName());
     nearbySelectionConfig =
         ConfigUtils.inheritConfig(
             nearbySelectionConfig, inheritedConfig.getNearbySelectionConfig());
-    filterClass =
-        ConfigUtils.inheritOverwritableProperty(filterClass, inheritedConfig.getFilterClass());
+    filterClass = ConfigUtils.inheritOverwritableProperty(filterClass, inheritedConfig.filterClass);
     cacheType = ConfigUtils.inheritOverwritableProperty(cacheType, inheritedConfig.getCacheType());
     selectionOrder =
         ConfigUtils.inheritOverwritableProperty(
@@ -316,18 +315,16 @@ public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
     sorterManner =
         ConfigUtils.inheritOverwritableProperty(sorterManner, inheritedConfig.getSorterManner());
     comparatorClass =
-        ConfigUtils.inheritOverwritableProperty(
-            comparatorClass, inheritedConfig.getComparatorClass());
+        ConfigUtils.inheritOverwritableProperty(comparatorClass, inheritedConfig.comparatorClass);
     comparatorFactoryClass =
         ConfigUtils.inheritOverwritableProperty(
-            comparatorFactoryClass, inheritedConfig.getComparatorFactoryClass());
+            comparatorFactoryClass, inheritedConfig.comparatorFactoryClass);
     sorterOrder =
         ConfigUtils.inheritOverwritableProperty(sorterOrder, inheritedConfig.getSorterOrder());
-    sorterClass =
-        ConfigUtils.inheritOverwritableProperty(sorterClass, inheritedConfig.getSorterClass());
+    sorterClass = ConfigUtils.inheritOverwritableProperty(sorterClass, inheritedConfig.sorterClass);
     probabilityWeightFactoryClass =
         ConfigUtils.inheritOverwritableProperty(
-            probabilityWeightFactoryClass, inheritedConfig.getProbabilityWeightFactoryClass());
+            probabilityWeightFactoryClass, inheritedConfig.probabilityWeightFactoryClass);
     selectedCountLimit =
         ConfigUtils.inheritOverwritableProperty(
             selectedCountLimit, inheritedConfig.getSelectedCountLimit());
@@ -341,15 +338,15 @@ public class ValueSelectorConfig extends SelectorConfig<ValueSelectorConfig> {
 
   @Override
   public void visitReferencedClasses(Consumer<Class<?>> classVisitor) {
-    classVisitor.accept(downcastEntityClass);
+    classVisitor.accept(getDowncastEntityClass());
     if (nearbySelectionConfig != null) {
       nearbySelectionConfig.visitReferencedClasses(classVisitor);
     }
-    classVisitor.accept(filterClass);
-    classVisitor.accept(comparatorClass);
-    classVisitor.accept(comparatorFactoryClass);
-    classVisitor.accept(sorterClass);
-    classVisitor.accept(probabilityWeightFactoryClass);
+    classVisitor.accept(getFilterClass());
+    classVisitor.accept(getComparatorClass());
+    classVisitor.accept(getComparatorFactoryClass());
+    classVisitor.accept(getSorterClass());
+    classVisitor.accept(getProbabilityWeightFactoryClass());
   }
 
   @Override

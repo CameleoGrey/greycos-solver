@@ -43,6 +43,7 @@ import ai.greycos.solver.core.impl.solver.exception.UndoScoreCorruptionException
 import ai.greycos.solver.core.impl.solver.exception.VariableCorruptionException;
 import ai.greycos.solver.core.impl.solver.thread.ChildThreadType;
 import ai.greycos.solver.core.preview.api.move.Move;
+import ai.greycos.solver.core.preview.api.move.SolutionView;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
@@ -75,6 +76,7 @@ public abstract class AbstractScoreDirector<
   private final LookUpManager lookUpManager;
   protected final ConstraintMatchPolicy constraintMatchPolicy;
   protected final Factory_ scoreDirectorFactory;
+  private final NeighborhoodNotifier<Solution_> neighborhoodsElementUpdateNotifier;
   private final VariableDescriptorCache<Solution_> variableDescriptorCache;
   protected final VariableListenerSupport<Solution_> variableListenerSupport;
 
@@ -106,6 +108,7 @@ public abstract class AbstractScoreDirector<
   protected AbstractScoreDirector(
       AbstractScoreDirectorBuilder<Solution_, Score_, Factory_, ?> builder) {
     this.scoreDirectorFactory = builder.scoreDirectorFactory;
+    this.neighborhoodsElementUpdateNotifier = new NeighborhoodNotifier<>();
     var solutionDescriptor = this.scoreDirectorFactory.getSolutionDescriptor();
     this.lookUpEnabled = builder.lookUpEnabled;
     this.lookUpManager =
@@ -127,6 +130,7 @@ public abstract class AbstractScoreDirector<
       this.listVariableStateSupply =
           getSupplyManager().demand(listVariableDescriptor.getStateDemand());
     }
+    setAllChangesWillBeUndoneBeforeStepEnds(false);
   }
 
   @Override
@@ -198,6 +202,7 @@ public abstract class AbstractScoreDirector<
   public void setAllChangesWillBeUndoneBeforeStepEnds(
       boolean allChangesWillBeUndoneBeforeStepEnds) {
     this.allChangesWillBeUndoneBeforeStepEnds = allChangesWillBeUndoneBeforeStepEnds;
+    neighborhoodsElementUpdateNotifier.setTracking(!allChangesWillBeUndoneBeforeStepEnds);
   }
 
   @Override
@@ -228,6 +233,11 @@ public abstract class AbstractScoreDirector<
   @Override
   public MoveDirector<Solution_, Score_> getMoveDirector() {
     return moveDirector;
+  }
+
+  @Override
+  public NeighborhoodNotifier<Solution_> getNeighborhoodNotifier() {
+    return neighborhoodsElementUpdateNotifier;
   }
 
   // ************************************************************************
@@ -334,6 +344,12 @@ public abstract class AbstractScoreDirector<
     if (moveRepository != null) {
       moveRepository.initialize(new SessionContext<>(this));
     }
+    neighborhoodsElementUpdateNotifier.setMoveRepository(
+        moveRepository
+                instanceof
+                NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository
+            ? neighborhoodsBasedMoveRepository
+            : null);
   }
 
   private void assertInitScoreZeroOrLess() {
@@ -354,7 +370,9 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public InnerScore<Score_> executeTemporaryMove(
-      Move<Solution_> move, boolean assertMoveScoreFromScratch) {
+      Move<Solution_> move,
+      @Nullable Consumer<SolutionView<Solution_>> consumer,
+      boolean assertMoveScoreFromScratch) {
     // This change and resulting before/after events will not be propagated to a neighborhood
     // session,
     // as they will be immediately undone.
@@ -364,31 +382,30 @@ public abstract class AbstractScoreDirector<
     if (solutionTracker != null) {
       solutionTracker.setBeforeMoveSolution(workingSolution);
     }
-    var moveScore =
-        assertMoveScoreFromScratch
-            ? Objects.requireNonNull(
-                moveDirector.executeTemporary(
-                    move,
-                    (score, undoMove) -> {
-                      if (solutionTracker != null) {
-                        solutionTracker.setAfterMoveSolution(workingSolution);
-                      }
-                      assertWorkingScoreFromScratch(score, move);
-                      return score;
-                    }))
-            : moveDirector.executeTemporary(move);
-    allChangesWillBeUndoneBeforeStepEnds = false;
-    return moveScore;
+    try {
+      return Objects.requireNonNull(
+          moveDirector.executeTemporary(
+              move,
+              (score, undoMove) -> {
+                if (solutionTracker != null) {
+                  solutionTracker.setAfterMoveSolution(workingSolution);
+                }
+                if (assertMoveScoreFromScratch) {
+                  assertWorkingScoreFromScratch(score, move);
+                }
+                if (consumer != null) {
+                  consumer.accept(moveDirector);
+                }
+                return score;
+              }));
+    } finally {
+      allChangesWillBeUndoneBeforeStepEnds = false;
+    }
   }
 
   @Override
   public boolean isWorkingEntityListDirty(long expectedWorkingEntityListRevision) {
     return workingEntityListRevision != expectedWorkingEntityListRevision;
-  }
-
-  @Override
-  public boolean isWorkingSolutionInitialized() {
-    return workingInitScore == 0;
   }
 
   private void setWorkingEntityListDirty(@Nullable Solution_ solution) {
@@ -549,11 +566,8 @@ public abstract class AbstractScoreDirector<
     if (variableDescriptor.isGenuineAndUninitialized(entity)) {
       workingInitScore--;
     }
-    if (moveRepository
-        instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {
-      neighborhoodsBasedMoveRepository.update(entity);
-    }
     variableListenerSupport.afterVariableChanged(variableDescriptor, entity);
+    neighborhoodsElementUpdateNotifier.accept(entity);
     if (isStepAssertOrMore()) {
       assertValueRangeForBasicVariables(entity);
     }
@@ -571,10 +585,7 @@ public abstract class AbstractScoreDirector<
       workingInitScore++;
       assertInitScoreZeroOrLess();
     }
-    if (moveRepository
-        instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {
-      neighborhoodsBasedMoveRepository.update(element);
-    }
+    neighborhoodsElementUpdateNotifier.accept(element);
   }
 
   @Override
@@ -591,10 +602,7 @@ public abstract class AbstractScoreDirector<
       workingInitScore--;
     }
     variableListenerSupport.afterElementUnassigned(variableDescriptor, element);
-    if (moveRepository
-        instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {
-      neighborhoodsBasedMoveRepository.update(element);
-    }
+    neighborhoodsElementUpdateNotifier.accept(element);
   }
 
   @Override
@@ -627,10 +635,7 @@ public abstract class AbstractScoreDirector<
       int toIndex) {
     variableListenerSupport.afterListVariableChanged(
         variableDescriptor, entity, fromIndex, toIndex);
-    if (moveRepository
-        instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {
-      neighborhoodsBasedMoveRepository.update(entity);
-    }
+    neighborhoodsElementUpdateNotifier.accept(entity);
     if (isStepAssertOrMore()) {
       var valueList = variableDescriptor.getValue(entity).subList(fromIndex, toIndex);
       assertValueRangeForListVariable(entity, valueList);
@@ -694,10 +699,7 @@ public abstract class AbstractScoreDirector<
           workingSolution); // Nuke everything and recalculate, constraint weights have changed.
     } else {
       variableListenerSupport.resetWorkingSolution(); // TODO do not nuke the variable listeners
-      if (moveRepository
-          instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {
-        neighborhoodsBasedMoveRepository.update(problemFactOrEntity);
-      }
+      neighborhoodsElementUpdateNotifier.accept(problemFactOrEntity);
     }
   }
 
@@ -1214,9 +1216,7 @@ public abstract class AbstractScoreDirector<
                                 %s/%s=%s
                             """
                           .formatted(
-                              match.constraintRef().constraintName(),
-                              match.justification(),
-                              match.score())));
+                              match.constraintRef().id(), match.justification(), match.score())));
       if (matches.size() >= CONSTRAINT_MATCH_DISPLAY_LIMIT) {
         analysis.append(
             """

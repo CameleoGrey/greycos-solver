@@ -70,13 +70,13 @@ jobs:
     steps:
       - name: Checkout frontend
         id: checkout-frontend
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: CameleoGrey/frontend
           token: ${{ secrets.JRELEASER_GITHUB_TOKEN }}
           fetch-depth: 0
       - name: Install pnpm
-        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
       - name: Use Aikido Sec Safe Chain
         run: |
           pnpm install -g @aikidosec/safe-chain@1.1.7
@@ -87,12 +87,14 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Checkout greycos-solver
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "${{ github.event.pull_request.head.repo.owner.login || 'CameleoGrey' }}/greycos-solver"
           ref: ${{ github.event.pull_request.head.sha || 'main' }}
           path: "./greycos-solver"
           fetch-depth: 0
+          # The approval gate above ensures this pull request is trusted.
+          allow-unsafe-pr-checkout: true
 
       - name: Updating Antora configuration
         working-directory: "./greycos-solver"

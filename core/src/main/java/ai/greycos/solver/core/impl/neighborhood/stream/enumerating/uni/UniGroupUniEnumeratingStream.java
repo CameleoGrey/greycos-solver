@@ -2,10 +2,10 @@ package ai.greycos.solver.core.impl.neighborhood.stream.enumerating.uni;
 
 import java.util.Objects;
 
-import ai.greycos.solver.core.impl.bavet.common.GroupNodeConstructor;
 import ai.greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.DataNodeBuildHelper;
+import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.NeighborhoodsGroupNodeConstructor;
 import ai.greycos.solver.core.impl.neighborhood.stream.enumerating.common.bridge.AftBridgeUniEnumeratingStream;
 
 import org.jspecify.annotations.NullMarked;
@@ -15,40 +15,38 @@ import org.jspecify.annotations.Nullable;
 final class UniGroupUniEnumeratingStream<Solution_, A, NewA>
     extends AbstractUniEnumeratingStream<Solution_, A> {
 
-  private final GroupNodeConstructor<UniTuple<NewA>> nodeConstructor;
+  private final NeighborhoodsGroupNodeConstructor<Solution_, UniTuple<NewA>> nodeConstructor;
   private @Nullable AftBridgeUniEnumeratingStream<Solution_, NewA> aftStream;
 
-  public UniGroupUniEnumeratingStream(
+  UniGroupUniEnumeratingStream(
       EnumeratingStreamFactory<Solution_> enumeratingStreamFactory,
       AbstractUniEnumeratingStream<Solution_, A> parent,
-      GroupNodeConstructor<UniTuple<NewA>> nodeConstructor) {
+      NeighborhoodsGroupNodeConstructor<Solution_, UniTuple<NewA>> nodeConstructor) {
     super(enumeratingStreamFactory, parent);
-    this.nodeConstructor = nodeConstructor;
+    this.nodeConstructor = Objects.requireNonNull(nodeConstructor);
   }
 
-  public void setAftBridge(AftBridgeUniEnumeratingStream<Solution_, NewA> aftStream) {
+  void setAftBridge(AftBridgeUniEnumeratingStream<Solution_, NewA> aftStream) {
     this.aftStream = aftStream;
   }
 
-  // ************************************************************************
-  // Node creation
-  // ************************************************************************
+  @Override
+  public boolean guaranteesDistinct() {
+    return true;
+  }
 
   @Override
   public void buildNode(DataNodeBuildHelper<Solution_> buildHelper) {
-    var aftStreamChildList = aftStream.getChildStreamList();
+    var view = buildHelper.getSessionContext().solutionView();
     nodeConstructor.build(
         buildHelper,
         parent.getTupleSource(),
         aftStream,
-        aftStreamChildList,
+        aftStream.getChildStreamList(),
         this,
-        enumeratingStreamFactory.getEnvironmentMode());
+        enumeratingStreamFactory.getEnvironmentMode(),
+        view);
   }
-
-  // ************************************************************************
-  // Equality for node sharing
-  // ************************************************************************
 
   @Override
   public boolean equals(Object object) {
@@ -66,6 +64,6 @@ final class UniGroupUniEnumeratingStream<Solution_, A, NewA>
 
   @Override
   public String toString() {
-    return "UniGroup()";
+    return "UniGroupUni()";
   }
 }

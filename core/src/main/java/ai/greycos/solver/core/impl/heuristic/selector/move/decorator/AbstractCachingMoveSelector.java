@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ai.greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import ai.greycos.solver.core.impl.heuristic.move.Move;
 import ai.greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
 import ai.greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleListener;
 import ai.greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
 import ai.greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import ai.greycos.solver.core.impl.solver.scope.SolverScope;
+import ai.greycos.solver.core.preview.api.move.Move;
 
 public abstract class AbstractCachingMoveSelector<Solution_> extends AbstractMoveSelector<Solution_>
     implements SelectionCacheLifecycleListener<Solution_> {
@@ -76,11 +76,6 @@ public abstract class AbstractCachingMoveSelector<Solution_> extends AbstractMov
   @Override
   public void disposeCache(SolverScope<Solution_> solverScope) {
     cachedMoveList = null;
-  }
-
-  @Override
-  public boolean isCountable() {
-    return true;
   }
 
   @Override

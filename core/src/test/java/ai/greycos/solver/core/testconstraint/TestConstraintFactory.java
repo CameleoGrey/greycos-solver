@@ -27,11 +27,6 @@ public final class TestConstraintFactory<Solution_, Score_ extends Score<Score_>
   }
 
   @Override
-  public @NonNull String getDefaultConstraintPackage() {
-    return "constraintPackage";
-  }
-
-  @Override
   public <A> @NonNull UniConstraintStream<A> forEach(@NonNull Class<A> sourceClass) {
     throw new UnsupportedOperationException();
   }
@@ -50,16 +45,6 @@ public final class TestConstraintFactory<Solution_, Score_ extends Score<Score_>
   @Override
   public @NonNull <Stream_ extends @NonNull ConstraintStream> Stream_ precompute(
       @NonNull Function<@NonNull PrecomputeFactory, @NonNull Stream_> stream) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public <A> @NonNull UniConstraintStream<A> from(@NonNull Class<A> fromClass) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public <A> @NonNull UniConstraintStream<A> fromUnfiltered(@NonNull Class<A> fromClass) {
     throw new UnsupportedOperationException();
   }
 }

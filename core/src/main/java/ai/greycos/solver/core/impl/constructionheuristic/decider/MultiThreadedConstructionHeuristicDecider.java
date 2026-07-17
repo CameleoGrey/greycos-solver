@@ -19,7 +19,7 @@ import ai.greycos.solver.core.impl.constructionheuristic.decider.forager.Constru
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicMoveScope;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import ai.greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
-import ai.greycos.solver.core.impl.heuristic.move.MoveAdapters;
+import ai.greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
 import ai.greycos.solver.core.impl.heuristic.thread.ApplyStepOperation;
 import ai.greycos.solver.core.impl.heuristic.thread.DestroyOperation;
 import ai.greycos.solver.core.impl.heuristic.thread.MoveEvaluationOperation;
@@ -148,7 +148,7 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     int movesInPlay = 0;
     Deque<Move<Solution_>> inFlightMoveQueue = new ArrayDeque<>(selectedMoveBufferSize);
 
-    do {
+    while (moveIterator.hasNext() || movesInPlay > 0) {
       boolean hasNextMove = moveIterator.hasNext();
       if (movesInPlay > 0 && (selectMoveIndex >= selectedMoveBufferSize || !hasNextMove)) {
         if (forageResult(stepScope, stepIndex, nextForagingMoveIndex, inFlightMoveQueue)) {
@@ -159,13 +159,17 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
       }
       if (hasNextMove) {
         var move = moveIterator.next();
+        if (!isAllowedNonDoableMove(move)
+            && move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove
+            && !selectorBasedMove.isMoveDoable(stepScope.getScoreDirector())) {
+          continue;
+        }
         inFlightMoveQueue.addLast(move);
-        var legacyMove = MoveAdapters.toLegacyMove(move);
-        operationQueue.add(new MoveEvaluationOperation<>(stepIndex, selectMoveIndex, legacyMove));
+        operationQueue.add(new MoveEvaluationOperation<>(stepIndex, selectMoveIndex, move));
         selectMoveIndex++;
         movesInPlay++;
       }
-    } while (movesInPlay > 0);
+    }
 
     operationQueue.clear();
     inFlightMoveQueue.clear();
@@ -178,9 +182,8 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
         // Flush delayed score director state periodically to avoid unbounded buildup.
         scoreDirector.calculateScore();
       }
-      var legacyStep = MoveAdapters.toLegacyMove(stepScope.getStep());
       var stepOperation =
-          new ApplyStepOperation<>(stepIndex + 1, legacyStep, stepScope.getScore().raw());
+          new ApplyStepOperation<>(stepIndex + 1, stepScope.getStep(), stepScope.getScore().raw());
 
       for (int i = 0; i < moveThreadCount; i++) {
         operationQueue.add(stepOperation);
@@ -221,7 +224,8 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     int foragingMoveIndex = result.getMoveIndex();
     Move<Solution_> foragingMove = inFlightMoveQueue.pollFirst();
     if (foragingMove == null) {
-      foragingMove = result.getMove().rebase(stepScope.getScoreDirector().getMoveDirector());
+      throw new IllegalStateException(
+          "Impossible situation: no in-flight move for move index (" + foragingMoveIndex + ").");
     }
 
     ConstructionHeuristicMoveScope<Solution_> moveScope =
