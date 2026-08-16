@@ -1,0 +1,37 @@
+package greycos.solver.core.impl.bavet.tri;
+
+import java.util.Objects;
+
+import greycos.solver.core.api.function.TriFunction;
+import greycos.solver.core.impl.bavet.common.AbstractFlattenNode;
+import greycos.solver.core.impl.bavet.common.tuple.QuadTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TriTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+
+public final class FlattenTriNode<A, B, C, NewD>
+    extends AbstractFlattenNode<TriTuple<A, B, C>, QuadTuple<A, B, C, NewD>, NewD> {
+
+  private final TriFunction<A, B, C, Iterable<NewD>> mappingFunction;
+  private final int outputStoreSize;
+
+  public FlattenTriNode(
+      int flattenStoreIndex,
+      TriFunction<A, B, C, Iterable<NewD>> mappingFunction,
+      TupleLifecycle<QuadTuple<A, B, C, NewD>> nextNodesTupleLifecycle,
+      int outputStoreSize) {
+    super(flattenStoreIndex, nextNodesTupleLifecycle);
+    this.mappingFunction = Objects.requireNonNull(mappingFunction);
+    this.outputStoreSize = outputStoreSize;
+  }
+
+  @Override
+  protected QuadTuple<A, B, C, NewD> createTuple(TriTuple<A, B, C> originalTuple, NewD newD) {
+    return QuadTuple.of(
+        originalTuple.getA(), originalTuple.getB(), originalTuple.getC(), newD, outputStoreSize);
+  }
+
+  @Override
+  protected Iterable<NewD> extractIterable(TriTuple<A, B, C> tuple) {
+    return mappingFunction.apply(tuple.getA(), tuple.getB(), tuple.getC());
+  }
+}

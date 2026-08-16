@@ -1,0 +1,40 @@
+package greycos.solver.core.impl.neighborhood.stream.enumerating.uni;
+
+import greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.common.DataNodeBuildHelper;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.common.TerminalEnumeratingStream;
+
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
+final class LeftTerminalUniEnumeratingStream<Solution_, A>
+    extends AbstractUniEnumeratingStream<Solution_, A>
+    implements TerminalEnumeratingStream<Solution_, UniLeftDataset<Solution_, A>> {
+
+  private final UniLeftDataset<Solution_, A> dataset;
+
+  public LeftTerminalUniEnumeratingStream(
+      EnumeratingStreamFactory<Solution_> enumeratingStreamFactory,
+      AbstractUniEnumeratingStream<Solution_, A> parent) {
+    super(enumeratingStreamFactory, parent);
+    this.dataset = new UniLeftDataset<>(this);
+  }
+
+  @Override
+  public void buildNode(DataNodeBuildHelper<Solution_> buildHelper) {
+    assertEmptyChildStreamList();
+    var datasetInstance =
+        dataset.instantiate(buildHelper.reserveTupleStoreIndex(parent.getTupleSource()));
+    buildHelper.putInsertUpdateRetract(this, datasetInstance);
+  }
+
+  @Override
+  public UniLeftDataset<Solution_, A> getDataset() {
+    return dataset;
+  }
+
+  @Override
+  public String toString() {
+    return "Terminal node";
+  }
+}

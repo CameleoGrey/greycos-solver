@@ -47,7 +47,7 @@ Use <<scoreAnalysis,score analysis>> instead.
 In the string above, there are some previously unexplained concepts.
 
 * A _Constraint match_ is created every time a constraint causes a change to the score.
-* _Justifications_ are user-defined objects that implement the `ai.greycos.solver.core.api.score.stream.ConstraintJustification` interface, which carry meaningful information about a constraint match, such as its name and any metadata that the user chooses to expose.
+* _Justifications_ are user-defined objects that implement the `greycos.solver.core.api.score.stream.ConstraintJustification` interface, which carry meaningful information about a constraint match, such as its name and any metadata that the user chooses to expose.
 Justifications are most easily available via <<scoreAnalysis,score analysis>>.
 [NOTE]
 ====

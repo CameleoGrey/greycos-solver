@@ -1,0 +1,7 @@
+<solver>
+  <solutionClass>greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+  <entityClass>greycos.solver.core.testcotwin.TestdataEntity</entityClass>
+  <scoreDirectorFactory>
+    <easyScoreCalculatorClass>greycos.solver.core.testcotwin.TestdataEasyScoreCalculator</easyScoreCalculatorClass>
+  </scoreDirectorFactory>
+</solver>

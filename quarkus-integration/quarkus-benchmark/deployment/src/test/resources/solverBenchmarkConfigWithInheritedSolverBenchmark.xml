@@ -3,7 +3,7 @@
                   xsi:schemaLocation="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark https://github.com/CameleoGrey/greycos-solver/xsd/benchmark/benchmark.xsd">
     <inheritedSolverBenchmark>
         <solver>
-            <entityClass>ai.greycos.solver.benchmark.quarkus.testcotwin.normal.cotwin.TestdataQuarkusEntity</entityClass>
+            <entityClass>greycos.solver.benchmark.quarkus.testcotwin.normal.cotwin.TestdataQuarkusEntity</entityClass>
             <termination>
                 <millisecondsSpentLimit>5</millisecondsSpentLimit>
             </termination>
@@ -24,7 +24,7 @@
         <name>Does Not Inherit Solution Class</name>
         <solver>
             <!-- Using a Constraint Provider class since if there was two planning solution class, autocomplete cannot be used -->
-            <solutionClass>ai.greycos.solver.benchmark.quarkus.testcotwin.normal.constraints.TestdataQuarkusConstraintProvider</solutionClass>
+            <solutionClass>greycos.solver.benchmark.quarkus.testcotwin.normal.constraints.TestdataQuarkusConstraintProvider</solutionClass>
             <constructionHeuristic>
                 <constructionHeuristicType>FIRST_FIT</constructionHeuristicType>
             </constructionHeuristic>

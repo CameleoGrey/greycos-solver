@@ -1,0 +1,291 @@
+package greycos.solver.core.impl.constructionheuristic.decider;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.score.Score;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.constructionheuristic.decider.forager.ConstructionHeuristicForager;
+import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicMoveScope;
+import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
+import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
+import greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
+import greycos.solver.core.impl.heuristic.thread.ApplyStepOperation;
+import greycos.solver.core.impl.heuristic.thread.DestroyOperation;
+import greycos.solver.core.impl.heuristic.thread.MoveEvaluationOperation;
+import greycos.solver.core.impl.heuristic.thread.MoveThreadOperation;
+import greycos.solver.core.impl.heuristic.thread.MoveThreadRunner;
+import greycos.solver.core.impl.heuristic.thread.OrderByMoveIndexBlockingQueue;
+import greycos.solver.core.impl.heuristic.thread.SetupOperation;
+import greycos.solver.core.impl.score.director.InnerScore;
+import greycos.solver.core.impl.solver.scope.SolverScope;
+import greycos.solver.core.impl.solver.termination.PhaseTermination;
+import greycos.solver.core.impl.solver.thread.ThreadUtils;
+import greycos.solver.core.preview.api.move.Move;
+
+/**
+ * Multithreaded implementation of ConstructionHeuristicDecider that evaluates moves in parallel
+ * using multiple worker threads. This decider coordinates move evaluation across threads while
+ * maintaining the correct order of operations and proper synchronization.
+ *
+ * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
+ */
+public class MultiThreadedConstructionHeuristicDecider<Solution_>
+    extends ConstructionHeuristicDecider<Solution_> {
+
+  protected final ThreadFactory threadFactory;
+  protected final int moveThreadCount;
+  protected final int selectedMoveBufferSize;
+
+  protected boolean assertStepScoreFromScratch = false;
+  protected boolean assertExpectedStepScore = false;
+  protected boolean assertShadowVariablesAreNotStaleAfterStep = false;
+
+  protected BlockingQueue<MoveThreadOperation<Solution_>> operationQueue;
+  protected OrderByMoveIndexBlockingQueue<Solution_> resultQueue;
+  protected CyclicBarrier moveThreadBarrier;
+  protected ExecutorService executor;
+  protected List<MoveThreadRunner<Solution_, ?>> moveThreadRunnerList;
+
+  public MultiThreadedConstructionHeuristicDecider(
+      String logIndentation,
+      PhaseTermination<Solution_> termination,
+      ConstructionHeuristicForager<Solution_> forager,
+      ThreadFactory threadFactory,
+      int moveThreadCount,
+      int selectedMoveBufferSize) {
+    super(logIndentation, termination, forager);
+    this.threadFactory = threadFactory;
+    this.moveThreadCount = moveThreadCount;
+    this.selectedMoveBufferSize = selectedMoveBufferSize;
+  }
+
+  @Override
+  public void phaseStarted(ConstructionHeuristicPhaseScope<Solution_> phaseScope) {
+    super.phaseStarted(phaseScope);
+
+    operationQueue =
+        new ArrayBlockingQueue<>(selectedMoveBufferSize + moveThreadCount + moveThreadCount);
+    resultQueue = new OrderByMoveIndexBlockingQueue<>(selectedMoveBufferSize + moveThreadCount);
+    moveThreadBarrier = new CyclicBarrier(moveThreadCount);
+
+    var scoreDirector = phaseScope.getScoreDirector();
+    executor = createThreadPoolExecutor();
+    moveThreadRunnerList = new ArrayList<>(moveThreadCount);
+
+    for (int moveThreadIndex = 0; moveThreadIndex < moveThreadCount; moveThreadIndex++) {
+      MoveThreadRunner<Solution_, ?> moveThreadRunner =
+          new MoveThreadRunner<>(
+              logIndentation,
+              moveThreadIndex,
+              false,
+              operationQueue,
+              resultQueue,
+              moveThreadBarrier,
+              assertMoveScoreFromScratch,
+              assertExpectedUndoMoveScore,
+              assertStepScoreFromScratch,
+              assertExpectedStepScore,
+              assertShadowVariablesAreNotStaleAfterStep);
+      moveThreadRunnerList.add(moveThreadRunner);
+      executor.submit(moveThreadRunner);
+      operationQueue.add(new SetupOperation<>(scoreDirector));
+    }
+  }
+
+  @Override
+  public void phaseEnded(ConstructionHeuristicPhaseScope<Solution_> phaseScope) {
+    super.phaseEnded(phaseScope);
+
+    DestroyOperation<Solution_> destroyOperation = new DestroyOperation<>();
+    for (int i = 0; i < moveThreadCount; i++) {
+      operationQueue.add(destroyOperation);
+    }
+
+    shutdownMoveThreads();
+
+    long childThreadsScoreCalculationCount = 0;
+    for (MoveThreadRunner<Solution_, ?> moveThreadRunner : moveThreadRunnerList) {
+      childThreadsScoreCalculationCount += moveThreadRunner.getCalculationCount();
+    }
+    phaseScope.addChildThreadsScoreCalculationCount(childThreadsScoreCalculationCount);
+
+    operationQueue = null;
+    resultQueue = null;
+    moveThreadRunnerList = null;
+  }
+
+  @Override
+  public void solvingError(SolverScope<Solution_> solverScope, Exception exception) {
+    super.solvingError(solverScope, exception);
+    shutdownMoveThreads();
+  }
+
+  protected ExecutorService createThreadPoolExecutor() {
+    ExecutorService threadPoolExecutor =
+        Executors.newFixedThreadPool(moveThreadCount, threadFactory);
+    return threadPoolExecutor;
+  }
+
+  @Override
+  public void decideNextStep(
+      ConstructionHeuristicStepScope<Solution_> stepScope, Iterator<Move<Solution_>> moveIterator) {
+    int stepIndex = stepScope.getStepIndex();
+    resultQueue.startNextStep(stepIndex);
+
+    int selectMoveIndex = 0;
+    int nextForagingMoveIndex = 0;
+    int movesInPlay = 0;
+    Deque<Move<Solution_>> inFlightMoveQueue = new ArrayDeque<>(selectedMoveBufferSize);
+
+    while (moveIterator.hasNext() || movesInPlay > 0) {
+      boolean hasNextMove = moveIterator.hasNext();
+      if (movesInPlay > 0 && (selectMoveIndex >= selectedMoveBufferSize || !hasNextMove)) {
+        if (forageResult(stepScope, stepIndex, nextForagingMoveIndex, inFlightMoveQueue)) {
+          break;
+        }
+        nextForagingMoveIndex++;
+        movesInPlay--;
+      }
+      if (hasNextMove) {
+        var move = moveIterator.next();
+        if (!isAllowedNonDoableMove(move)
+            && move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove
+            && !selectorBasedMove.isMoveDoable(stepScope.getScoreDirector())) {
+          continue;
+        }
+        inFlightMoveQueue.addLast(move);
+        operationQueue.add(new MoveEvaluationOperation<>(stepIndex, selectMoveIndex, move));
+        selectMoveIndex++;
+        movesInPlay++;
+      }
+    }
+
+    operationQueue.clear();
+    inFlightMoveQueue.clear();
+
+    pickMove(stepScope);
+
+    if (stepScope.getStep() != null) {
+      var scoreDirector = stepScope.getScoreDirector();
+      if (scoreDirector.requiresFlushing() && stepIndex % 100 == 99) {
+        // Flush delayed score director state periodically to avoid unbounded buildup.
+        scoreDirector.calculateScore();
+      }
+      var stepOperation =
+          new ApplyStepOperation<>(stepIndex + 1, stepScope.getStep(), stepScope.getScore().raw());
+
+      for (int i = 0; i < moveThreadCount; i++) {
+        operationQueue.add(stepOperation);
+      }
+    }
+  }
+
+  private boolean forageResult(
+      ConstructionHeuristicStepScope<Solution_> stepScope,
+      int stepIndex,
+      int expectedMoveIndex,
+      Deque<Move<Solution_>> inFlightMoveQueue) {
+    OrderByMoveIndexBlockingQueue.MoveResult<Solution_> result;
+    try {
+      result = resultQueue.take();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return true;
+    }
+
+    if (stepIndex != result.getStepIndex()) {
+      throw new IllegalStateException(
+          "Impossible situation: solverThread's stepIndex ("
+              + stepIndex
+              + ") differs from the result's stepIndex ("
+              + result.getStepIndex()
+              + ").");
+    }
+    if (expectedMoveIndex != result.getMoveIndex()) {
+      throw new IllegalStateException(
+          "Impossible situation: expected moveIndex ("
+              + expectedMoveIndex
+              + ") differs from result moveIndex ("
+              + result.getMoveIndex()
+              + ").");
+    }
+
+    int foragingMoveIndex = result.getMoveIndex();
+    Move<Solution_> foragingMove = inFlightMoveQueue.pollFirst();
+    if (foragingMove == null) {
+      throw new IllegalStateException(
+          "Impossible situation: no in-flight move for move index (" + foragingMoveIndex + ").");
+    }
+
+    ConstructionHeuristicMoveScope<Solution_> moveScope =
+        new ConstructionHeuristicMoveScope<>(stepScope, foragingMoveIndex, foragingMove);
+
+    if (!result.isMoveDoable()) {
+      throw new IllegalStateException(
+          "Impossible situation: Construction Heuristics move is not doable.");
+    } else {
+      @SuppressWarnings("unchecked")
+      var score = (Score<?>) result.getScore();
+      moveScope.setScore(InnerScore.fullyAssigned((Score) score));
+      moveScope.getScoreDirector().incrementCalculationCount();
+      forager.addMove(moveScope);
+      if (forager.isQuitEarly()) {
+        return true;
+      }
+    }
+
+    stepScope.getPhaseScope().getSolverScope().checkYielding();
+    return termination.isPhaseTerminated(stepScope.getPhaseScope());
+  }
+
+  private void shutdownMoveThreads() {
+    if (executor != null && !executor.isShutdown()) {
+      ThreadUtils.shutdownAwaitOrKill(
+          executor, logIndentation, "Multi-threaded Construction Heuristic");
+    }
+  }
+
+  @Override
+  public void enableAssertions(EnvironmentMode environmentMode) {
+    super.enableAssertions(environmentMode);
+    assertStepScoreFromScratch = environmentMode.isFullyAsserted();
+    if (environmentMode.isIntrusivelyAsserted()) {
+      assertExpectedStepScore = true;
+      assertShadowVariablesAreNotStaleAfterStep = true;
+    } else {
+      assertExpectedStepScore = false;
+      assertShadowVariablesAreNotStaleAfterStep = false;
+    }
+  }
+
+  public int getMoveThreadCount() {
+    return moveThreadCount;
+  }
+
+  public int getSelectedMoveBufferSize() {
+    return selectedMoveBufferSize;
+  }
+
+  public boolean isAssertStepScoreFromScratch() {
+    return assertStepScoreFromScratch;
+  }
+
+  public boolean isAssertExpectedStepScore() {
+    return assertExpectedStepScore;
+  }
+
+  public boolean isAssertShadowVariablesAreNotStaleAfterStep() {
+    return assertShadowVariablesAreNotStaleAfterStep;
+  }
+}

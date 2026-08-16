@@ -1,0 +1,130 @@
+package greycos.solver.core.config.heuristic.selector.move.generic.list;
+
+import java.util.function.Consumer;
+
+import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlType;
+
+import greycos.solver.core.config.heuristic.selector.list.DestinationSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
+import greycos.solver.core.config.util.ConfigUtils;
+
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
+@XmlType(
+    propOrder = {"selectReversingMoveToo", "subListSelectorConfig", "destinationSelectorConfig"})
+public class SubListChangeMoveSelectorConfig
+    extends MoveSelectorConfig<SubListChangeMoveSelectorConfig> {
+
+  public static final String XML_ELEMENT_NAME = "subListChangeMoveSelector";
+
+  @XmlElement(name = "selectReversingMoveToo")
+  private Boolean selectReversingMoveToo = null;
+
+  @XmlElement(name = "subListSelector")
+  private SubListSelectorConfig subListSelectorConfig = null;
+
+  @XmlElement(name = "destinationSelector")
+  private DestinationSelectorConfig destinationSelectorConfig = null;
+
+  public @Nullable Boolean getSelectReversingMoveToo() {
+    return selectReversingMoveToo;
+  }
+
+  public void setSelectReversingMoveToo(@Nullable Boolean selectReversingMoveToo) {
+    this.selectReversingMoveToo = selectReversingMoveToo;
+  }
+
+  public @Nullable SubListSelectorConfig getSubListSelectorConfig() {
+    return subListSelectorConfig;
+  }
+
+  public void setSubListSelectorConfig(@Nullable SubListSelectorConfig subListSelectorConfig) {
+    this.subListSelectorConfig = subListSelectorConfig;
+  }
+
+  public @Nullable DestinationSelectorConfig getDestinationSelectorConfig() {
+    return destinationSelectorConfig;
+  }
+
+  public void setDestinationSelectorConfig(
+      @Nullable DestinationSelectorConfig destinationSelectorConfig) {
+    this.destinationSelectorConfig = destinationSelectorConfig;
+  }
+
+  // ************************************************************************
+  // With methods
+  // ************************************************************************
+
+  public @NonNull SubListChangeMoveSelectorConfig withSelectReversingMoveToo(
+      @NonNull Boolean selectReversingMoveToo) {
+    this.setSelectReversingMoveToo(selectReversingMoveToo);
+    return this;
+  }
+
+  public @NonNull SubListChangeMoveSelectorConfig withSubListSelectorConfig(
+      @NonNull SubListSelectorConfig subListSelectorConfig) {
+    this.setSubListSelectorConfig(subListSelectorConfig);
+    return this;
+  }
+
+  public @NonNull SubListChangeMoveSelectorConfig withDestinationSelectorConfig(
+      @NonNull DestinationSelectorConfig destinationSelectorConfig) {
+    this.setDestinationSelectorConfig(destinationSelectorConfig);
+    return this;
+  }
+
+  // ************************************************************************
+  // Builder methods
+  // ************************************************************************
+
+  @Override
+  public @NonNull SubListChangeMoveSelectorConfig inherit(
+      @NonNull SubListChangeMoveSelectorConfig inheritedConfig) {
+    super.inherit(inheritedConfig);
+    this.selectReversingMoveToo =
+        ConfigUtils.inheritOverwritableProperty(
+            selectReversingMoveToo, inheritedConfig.selectReversingMoveToo);
+    this.subListSelectorConfig =
+        ConfigUtils.inheritConfig(subListSelectorConfig, inheritedConfig.subListSelectorConfig);
+    this.destinationSelectorConfig =
+        ConfigUtils.inheritConfig(
+            destinationSelectorConfig, inheritedConfig.destinationSelectorConfig);
+    return this;
+  }
+
+  @Override
+  public @NonNull SubListChangeMoveSelectorConfig copyConfig() {
+    return new SubListChangeMoveSelectorConfig().inherit(this);
+  }
+
+  @Override
+  public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
+    visitCommonReferencedClasses(classVisitor);
+    if (subListSelectorConfig != null) {
+      subListSelectorConfig.visitReferencedClasses(classVisitor);
+    }
+    if (destinationSelectorConfig != null) {
+      destinationSelectorConfig.visitReferencedClasses(classVisitor);
+    }
+  }
+
+  @Override
+  public boolean hasNearbySelectionConfig() {
+    return (subListSelectorConfig != null && subListSelectorConfig.hasNearbySelectionConfig())
+        || (destinationSelectorConfig != null
+            && destinationSelectorConfig.hasNearbySelectionConfig());
+  }
+
+  @Override
+  public String toString() {
+    return getClass().getSimpleName()
+        + "("
+        + subListSelectorConfig
+        + ", "
+        + destinationSelectorConfig
+        + ")";
+  }
+}

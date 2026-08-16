@@ -1,0 +1,159 @@
+package greycos.solver.spring.boot.autoconfigure.config;
+
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
+
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.config.solver.PreviewFeature;
+import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
+
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
+
+public class SolverProperties {
+  /**
+   * A classpath resource to read the specific solver configuration XML. If this property isn't
+   * specified, that solverConfig.xml is optional.
+   */
+  private String solverConfigXml;
+
+  /**
+   * Enable runtime assertions to detect common bugs in your implementation during development.
+   * Defaults to {@link EnvironmentMode#PHASE_ASSERT}.
+   */
+  private EnvironmentMode environmentMode;
+
+  /**
+   * Enable daemon mode. In daemon mode, non-early termination pauses the solver instead of stopping
+   * it, until the next problem fact change arrives. This is often useful for real-time planning.
+   * Defaults to "false".
+   */
+  private Boolean daemon;
+
+  /**
+   * Enable multithreaded solving for a single problem, which increases CPU consumption. Defaults to
+   * "NONE". Other options include "AUTO", a number or formula based on the available processor
+   * count.
+   */
+  private String moveThreadCount;
+
+  private List<PreviewFeature> enabledPreviewFeatures;
+
+  /** Enable the Nearby Selection quick configuration. */
+  private Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass;
+
+  /**
+   * Enable rewriting the {@link greycos.solver.core.api.score.stream.ConstraintProvider} class so
+   * nodes share lambdas when possible, improving performance. When enabled, breakpoints placed in
+   * the {@link greycos.solver.core.api.score.stream.ConstraintProvider} will no longer be
+   * triggered. Defaults to "false".
+   */
+  private Boolean constraintStreamAutomaticNodeSharing;
+
+  /** Configuration of the random seed. */
+  private Long randomSeed;
+
+  @NestedConfigurationProperty private TerminationProperties termination;
+
+  // ************************************************************************
+  // Getters/setters
+  // ************************************************************************
+
+  public String getSolverConfigXml() {
+    return solverConfigXml;
+  }
+
+  public void setSolverConfigXml(String solverConfigXml) {
+    this.solverConfigXml = solverConfigXml;
+  }
+
+  public EnvironmentMode getEnvironmentMode() {
+    return environmentMode;
+  }
+
+  public void setEnvironmentMode(EnvironmentMode environmentMode) {
+    this.environmentMode = environmentMode;
+  }
+
+  public Boolean getDaemon() {
+    return daemon;
+  }
+
+  public void setDaemon(Boolean daemon) {
+    this.daemon = daemon;
+  }
+
+  public String getMoveThreadCount() {
+    return moveThreadCount;
+  }
+
+  public void setMoveThreadCount(String moveThreadCount) {
+    this.moveThreadCount = moveThreadCount;
+  }
+
+  public List<PreviewFeature> getEnabledPreviewFeatures() {
+    return enabledPreviewFeatures;
+  }
+
+  public void setEnabledPreviewFeatures(List<PreviewFeature> enabledPreviewFeatures) {
+    this.enabledPreviewFeatures = enabledPreviewFeatures;
+  }
+
+  public Class<? extends NearbyDistanceMeter<?, ?>> getNearbyDistanceMeterClass() {
+    return nearbyDistanceMeterClass;
+  }
+
+  public void setNearbyDistanceMeterClass(
+      Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass) {
+    this.nearbyDistanceMeterClass = nearbyDistanceMeterClass;
+  }
+
+  public Boolean getConstraintStreamAutomaticNodeSharing() {
+    return constraintStreamAutomaticNodeSharing;
+  }
+
+  public void setConstraintStreamAutomaticNodeSharing(
+      Boolean constraintStreamAutomaticNodeSharing) {
+    this.constraintStreamAutomaticNodeSharing = constraintStreamAutomaticNodeSharing;
+  }
+
+  public Long getRandomSeed() {
+    return randomSeed;
+  }
+
+  public void setRandomSeed(Long randomSeed) {
+    this.randomSeed = randomSeed;
+  }
+
+  public TerminationProperties getTermination() {
+    return termination;
+  }
+
+  public void setTermination(TerminationProperties termination) {
+    this.termination = termination;
+  }
+
+  public void loadProperties(Map<String, Object> properties) {
+    // Check if the keys are valid
+    var invalidKeySet = new TreeSet<>(properties.keySet());
+    invalidKeySet.removeAll(SolverProperty.getValidPropertyNames());
+
+    if (!invalidKeySet.isEmpty()) {
+      throw new IllegalStateException(
+          """
+                    The properties [%s] are not valid.
+                    Maybe try changing the property name to kebab-case.
+                    Here is the list of valid properties: %s"""
+              .formatted(invalidKeySet, String.join(", ", SolverProperty.getValidPropertyNames())));
+    }
+    properties.forEach(this::loadProperty);
+  }
+
+  private void loadProperty(String key, Object value) {
+    if (value == null) {
+      return;
+    }
+    SolverProperty property = SolverProperty.forPropertyName(key);
+    property.update(this, value);
+  }
+}

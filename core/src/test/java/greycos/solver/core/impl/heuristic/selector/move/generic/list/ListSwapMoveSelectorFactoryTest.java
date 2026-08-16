@@ -1,0 +1,97 @@
+package greycos.solver.core.impl.heuristic.selector.move.generic.list;
+
+import static greycos.solver.core.impl.heuristic.HeuristicConfigPolicyTestUtils.buildHeuristicConfigPolicy;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+
+import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
+import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
+import greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory;
+import greycos.solver.core.testcotwin.TestdataSolution;
+import greycos.solver.core.testcotwin.list.TestdataListSolution;
+
+import org.junit.jupiter.api.Test;
+
+class ListSwapMoveSelectorFactoryTest {
+
+  @Test
+  void noUnfolding() {
+    SolutionDescriptor<TestdataListSolution> solutionDescriptor =
+        TestdataListSolution.buildSolutionDescriptor();
+    ListSwapMoveSelectorConfig moveSelectorConfig =
+        new ListSwapMoveSelectorConfig()
+            .withValueSelectorConfig(new ValueSelectorConfig("valueList"));
+    MoveSelector<TestdataListSolution> moveSelector =
+        MoveSelectorFactory.<TestdataListSolution>create(moveSelectorConfig)
+            .buildMoveSelector(
+                buildHeuristicConfigPolicy(solutionDescriptor),
+                SelectionCacheType.JUST_IN_TIME,
+                SelectionOrder.RANDOM,
+                false);
+    assertThat(moveSelector).isInstanceOf(ListSwapMoveSelector.class);
+  }
+
+  @Test
+  void unfoldedSingleListVariable() {
+    SolutionDescriptor<TestdataListSolution> solutionDescriptor =
+        TestdataListSolution.buildSolutionDescriptor();
+    ListSwapMoveSelectorConfig moveSelectorConfig = new ListSwapMoveSelectorConfig();
+    MoveSelector<TestdataListSolution> moveSelector =
+        MoveSelectorFactory.<TestdataListSolution>create(moveSelectorConfig)
+            .buildMoveSelector(
+                buildHeuristicConfigPolicy(solutionDescriptor),
+                SelectionCacheType.JUST_IN_TIME,
+                SelectionOrder.RANDOM,
+                false);
+    assertThat(moveSelector).isInstanceOf(ListSwapMoveSelector.class);
+  }
+
+  @Test
+  void unfoldingFailsIfThereIsNoListVariable() {
+    ListSwapMoveSelectorConfig config = new ListSwapMoveSelectorConfig();
+    ListSwapMoveSelectorFactory<TestdataSolution> moveSelectorFactory =
+        new ListSwapMoveSelectorFactory<>(config);
+
+    HeuristicConfigPolicy<TestdataSolution> heuristicConfigPolicy =
+        buildHeuristicConfigPolicy(TestdataSolution.buildSolutionDescriptor());
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                moveSelectorFactory.buildMoveSelector(
+                    heuristicConfigPolicy,
+                    SelectionCacheType.JUST_IN_TIME,
+                    SelectionOrder.RANDOM,
+                    false))
+        .withMessageContaining("it cannot be deduced automatically");
+  }
+
+  @Test
+  void explicitConfigMustUseListVariable() {
+    ListSwapMoveSelectorConfig config =
+        new ListSwapMoveSelectorConfig().withValueSelectorConfig(new ValueSelectorConfig("value"));
+
+    ListSwapMoveSelectorFactory<TestdataSolution> moveSelectorFactory =
+        new ListSwapMoveSelectorFactory<>(config);
+
+    HeuristicConfigPolicy<TestdataSolution> heuristicConfigPolicy =
+        buildHeuristicConfigPolicy(TestdataSolution.buildSolutionDescriptor());
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                moveSelectorFactory.buildMoveSelector(
+                    heuristicConfigPolicy,
+                    SelectionCacheType.JUST_IN_TIME,
+                    SelectionOrder.RANDOM,
+                    false))
+        .withMessageContaining("it cannot be deduced automatically");
+  }
+
+  // TODO test or remove secondary value selector config
+}

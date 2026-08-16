@@ -34,7 +34,7 @@ If you use Maven, add a dependency in your `pom.xml` file:
 [source,xml,options="nowrap"]
 ----
     <dependency>
-      <groupId>ai.greycos.solver</groupId>
+      <groupId>greycos.solver</groupId>
       <artifactId>greycos-solver-benchmark</artifactId>
     </dependency>
 ----

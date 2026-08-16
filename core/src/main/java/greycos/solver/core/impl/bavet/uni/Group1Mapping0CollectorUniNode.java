@@ -1,0 +1,41 @@
+package greycos.solver.core.impl.bavet.uni;
+
+import java.util.function.Function;
+
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+
+public final class Group1Mapping0CollectorUniNode<OldA, A>
+    extends AbstractGroupUniNode<OldA, UniTuple<A>, A, Void, Void> {
+
+  private final int outputStoreSize;
+
+  public Group1Mapping0CollectorUniNode(
+      Function<OldA, A> groupKeyMapping,
+      int groupStoreIndex,
+      TupleLifecycle<UniTuple<A>> nextNodesTupleLifecycle,
+      int outputStoreSize,
+      EnvironmentMode environmentMode) {
+    super(
+        groupStoreIndex,
+        tuple -> createGroupKey(groupKeyMapping, tuple),
+        nextNodesTupleLifecycle,
+        environmentMode);
+    this.outputStoreSize = outputStoreSize;
+  }
+
+  static <A, OldA> A createGroupKey(Function<OldA, A> groupKeyMapping, UniTuple<OldA> tuple) {
+    return groupKeyMapping.apply(tuple.getA());
+  }
+
+  @Override
+  protected UniTuple<A> createOutTuple(A a) {
+    return UniTuple.of(a, outputStoreSize);
+  }
+
+  @Override
+  protected void updateOutTupleToResult(UniTuple<A> aUniTuple, Void unused) {
+    throw new IllegalStateException("Impossible state: collector is null.");
+  }
+}

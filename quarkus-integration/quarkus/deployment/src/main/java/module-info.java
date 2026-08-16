@@ -1,8 +1,8 @@
-module ai.greycos.solver.quarkus.deployment {
-  exports ai.greycos.solver.quarkus.deployment.api to
-      ai.greycos.solver.quarkus.benchmark.deployment;
+module greycos.solver.quarkus.deployment {
+  exports greycos.solver.quarkus.deployment.api to
+      greycos.solver.quarkus.benchmark.deployment;
 
-  requires transitive ai.greycos.solver.quarkus;
+  requires transitive greycos.solver.quarkus;
   requires arc.processor;
   requires io.quarkus.core;
   requires io.quarkus.gizmo;

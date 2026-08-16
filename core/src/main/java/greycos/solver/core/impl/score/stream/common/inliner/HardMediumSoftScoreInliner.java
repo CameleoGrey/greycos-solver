@@ -1,0 +1,53 @@
+package greycos.solver.core.impl.score.stream.common.inliner;
+
+import java.util.Map;
+
+import greycos.solver.core.api.score.HardMediumSoftScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
+import greycos.solver.core.impl.score.stream.common.AbstractConstraint;
+
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
+final class HardMediumSoftScoreInliner extends AbstractScoreInliner<HardMediumSoftScore> {
+
+  long hardScore;
+  long mediumScore;
+  long softScore;
+
+  HardMediumSoftScoreInliner(
+      Map<Constraint, HardMediumSoftScore> constraintWeightMap,
+      ConstraintMatchPolicy constraintMatchPolicy) {
+    super(constraintWeightMap, constraintMatchPolicy);
+  }
+
+  @Override
+  public WeightedScoreImpacter<HardMediumSoftScore, ?> buildWeightedScoreImpacter(
+      AbstractConstraint<?, ?, ?> constraint) {
+    var constraintWeight = constraintWeightMap.get(constraint);
+    var softConstraintWeight = constraintWeight.softScore();
+    var mediumConstraintWeight = constraintWeight.mediumScore();
+    var hardConstraintWeight = constraintWeight.hardScore();
+    var context = new HardMediumSoftScoreContext(this, constraint, constraintWeight);
+    if (mediumConstraintWeight == 0 && softConstraintWeight == 0) {
+      return WeightedScoreImpacter.of(context, HardMediumSoftScoreContext::changeHardScoreBy);
+    } else if (hardConstraintWeight == 0 && softConstraintWeight == 0) {
+      return WeightedScoreImpacter.of(context, HardMediumSoftScoreContext::changeMediumScoreBy);
+    } else if (hardConstraintWeight == 0 && mediumConstraintWeight == 0) {
+      return WeightedScoreImpacter.of(context, HardMediumSoftScoreContext::changeSoftScoreBy);
+    } else {
+      return WeightedScoreImpacter.of(context, HardMediumSoftScoreContext::changeScoreBy);
+    }
+  }
+
+  @Override
+  public HardMediumSoftScore extractScore() {
+    return HardMediumSoftScore.of(hardScore, mediumScore, softScore);
+  }
+
+  @Override
+  public String toString() {
+    return HardMediumSoftScore.class.getSimpleName() + " inliner";
+  }
+}

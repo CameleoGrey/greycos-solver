@@ -21,10 +21,10 @@ allprojects {
         }
     }
     dependencies {
-        rewrite("ai.greycos.solver:greycos-solver-migration:${greycosSolverVersion}")
+        rewrite("greycos.solver:greycos-solver-migration:${greycosSolverVersion}")
     }
     rewrite {
-        activeRecipe("ai.greycos.solver.migration.ToLatest")
+        activeRecipe("greycos.solver.migration.ToLatest")
     }
 }
 

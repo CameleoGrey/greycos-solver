@@ -1,0 +1,25 @@
+package greycos.solver.core.impl.move;
+
+import greycos.solver.core.api.cotwin.lookup.Lookup;
+import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
+import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
+
+record VariableChangeAction<Solution_, Entity_, Value_>(
+    Entity_ entity, Value_ oldValue, VariableDescriptor<Solution_> variableDescriptor)
+    implements ChangeAction<Solution_> {
+
+  @Override
+  public void undo(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
+    scoreDirector.beforeVariableChanged(variableDescriptor, entity);
+    variableDescriptor.setValue(entity, oldValue);
+    scoreDirector.afterVariableChanged(variableDescriptor, entity);
+  }
+
+  @Override
+  public ChangeAction<Solution_> rebase(Lookup lookup) {
+    return new VariableChangeAction<>(
+        lookup.lookUpWorkingObject(entity),
+        lookup.lookUpWorkingObject(oldValue),
+        variableDescriptor);
+  }
+}

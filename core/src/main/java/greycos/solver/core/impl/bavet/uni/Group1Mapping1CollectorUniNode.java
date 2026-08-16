@@ -1,0 +1,44 @@
+package greycos.solver.core.impl.bavet.uni;
+
+import static greycos.solver.core.impl.bavet.uni.Group1Mapping0CollectorUniNode.createGroupKey;
+
+import java.util.function.Function;
+
+import greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.tuple.BiTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+
+public final class Group1Mapping1CollectorUniNode<OldA, A, B, ResultContainer_>
+    extends AbstractGroupUniNode<OldA, BiTuple<A, B>, A, ResultContainer_, B> {
+
+  private final int outputStoreSize;
+
+  public Group1Mapping1CollectorUniNode(
+      Function<OldA, A> groupKeyMapping,
+      int groupStoreIndex,
+      int undoStoreIndex,
+      UniConstraintCollector<OldA, ResultContainer_, B> collector,
+      TupleLifecycle<BiTuple<A, B>> nextNodesTupleLifecycle,
+      int outputStoreSize,
+      EnvironmentMode environmentMode) {
+    super(
+        groupStoreIndex,
+        undoStoreIndex,
+        tuple -> createGroupKey(groupKeyMapping, tuple),
+        collector,
+        nextNodesTupleLifecycle,
+        environmentMode);
+    this.outputStoreSize = outputStoreSize;
+  }
+
+  @Override
+  protected BiTuple<A, B> createOutTuple(A a) {
+    return BiTuple.of(a, outputStoreSize);
+  }
+
+  @Override
+  protected void updateOutTupleToResult(BiTuple<A, B> outTuple, B b) {
+    outTuple.setB(b);
+  }
+}

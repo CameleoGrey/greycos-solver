@@ -1,0 +1,31 @@
+package greycos.solver.core.impl.localsearch.decider.acceptor.tabu;
+
+import java.util.Collection;
+import java.util.Collections;
+
+import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
+public final class MoveTabuAcceptor<Solution_> extends AbstractTabuAcceptor<Solution_> {
+
+  public MoveTabuAcceptor(String logIndentation) {
+    super(logIndentation);
+  }
+
+  // ************************************************************************
+  // Worker methods
+  // ************************************************************************
+
+  @Override
+  protected Collection<Object> findTabu(LocalSearchMoveScope<Solution_> moveScope) {
+    return Collections.singletonList(moveScope.getMove());
+  }
+
+  @Override
+  protected Collection<Object> findNewTabu(LocalSearchStepScope<Solution_> stepScope) {
+    return Collections.singletonList(stepScope.getStep());
+  }
+}

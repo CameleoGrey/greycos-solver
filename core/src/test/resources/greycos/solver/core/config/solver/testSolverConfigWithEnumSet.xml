@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
+  <enablePreviewFeature>NEIGHBORHOODS</enablePreviewFeature>
+  <environmentMode>FULL_ASSERT</environmentMode>
+  <moveThreadCount>AUTO</moveThreadCount>
+  <solutionClass>greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+  <entityClass>greycos.solver.core.testcotwin.TestdataEntity</entityClass>
+  <scoreDirectorFactory>
+    <constraintProviderClass>greycos.solver.core.config.solver.SolverConfigTest$DummyConstraintProvider</constraintProviderClass>
+    <initializingScoreTrend>ONLY_DOWN</initializingScoreTrend>
+  </scoreDirectorFactory>
+  <constructionHeuristic>
+    <constructionHeuristicType>FIRST_FIT_DECREASING</constructionHeuristicType>
+  </constructionHeuristic>
+  <localSearch>
+    <localSearchType>TABU_SEARCH</localSearchType>
+  </localSearch>
+</solver>

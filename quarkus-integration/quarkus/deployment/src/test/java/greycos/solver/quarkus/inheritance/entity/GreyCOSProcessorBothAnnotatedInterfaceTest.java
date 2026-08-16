@@ -1,0 +1,50 @@
+package greycos.solver.quarkus.inheritance.entity;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import jakarta.inject.Inject;
+
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.interfaces.childtoo.TestBothAnnotatedInterfaceConstraintProvider;
+import greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.interfaces.childtoo.TestdataBaseEntity;
+import greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.interfaces.childtoo.TestdataBothAnnotatedInterfaceChildEntity;
+import greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.interfaces.childtoo.TestdataBothAnnotatedInterfaceSolution;
+
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.quarkus.test.QuarkusUnitTest;
+
+class GreyCOSProcessorBothAnnotatedInterfaceTest {
+
+  @RegisterExtension
+  static final QuarkusUnitTest config =
+      new QuarkusUnitTest()
+          .overrideConfigKey("quarkus.greycos.solver.termination.best-score-limit", "0")
+          .setArchiveProducer(
+              () ->
+                  ShrinkWrap.create(JavaArchive.class)
+                      .addClasses(
+                          TestBothAnnotatedInterfaceConstraintProvider.class,
+                          TestdataBothAnnotatedInterfaceSolution.class,
+                          TestdataBothAnnotatedInterfaceChildEntity.class,
+                          TestdataBaseEntity.class));
+
+  @Inject SolverFactory<TestdataBothAnnotatedInterfaceSolution> solverFactory;
+
+  /**
+   * This test validates the behavior of the solver when both child and parent classes are annotated
+   * with {@code @PlanningEntity} and the base entity is an interface.
+   */
+  @Test
+  void testBothClassesAnnotatedBaseIsInterface() {
+    var problem = TestdataBothAnnotatedInterfaceSolution.generateSolution(3, 2, false);
+    var solution = solverFactory.buildSolver().solve(problem);
+    assertNotNull(solution);
+    assertThat(solution.getScore()).isEqualTo(SimpleScore.of(2));
+  }
+}

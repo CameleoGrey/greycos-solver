@@ -1,0 +1,64 @@
+package greycos.solver.core.testcotwin.mixed.singleentity;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
+import greycos.solver.core.api.cotwin.variable.ShadowSources;
+import greycos.solver.core.api.cotwin.variable.ShadowVariable;
+import greycos.solver.core.testcotwin.TestdataObject;
+
+@PlanningEntity
+public class TestdataMixedOtherValue extends TestdataObject {
+
+  @InverseRelationShadowVariable(sourceVariableName = "basicValue")
+  private List<TestdataMixedEntity> entityList;
+
+  @ShadowVariable(supplierName = "updateDeclarativeShadowValue")
+  private Integer declarativeShadowVariableValue;
+
+  private int strength;
+
+  public TestdataMixedOtherValue() {
+    // Required for cloner
+  }
+
+  public TestdataMixedOtherValue(String code, int strength) {
+    super(code);
+    this.strength = strength;
+    entityList = new ArrayList<>();
+  }
+
+  public List<TestdataMixedEntity> getEntityList() {
+    return entityList;
+  }
+
+  public void setEntityList(List<TestdataMixedEntity> entityList) {
+    this.entityList = entityList;
+  }
+
+  public int getStrength() {
+    return strength;
+  }
+
+  public void setStrength(int strength) {
+    this.strength = strength;
+  }
+
+  public Integer getDeclarativeShadowVariableValue() {
+    return declarativeShadowVariableValue;
+  }
+
+  public void setDeclarativeShadowVariableValue(Integer declarativeShadowVariableValue) {
+    this.declarativeShadowVariableValue = declarativeShadowVariableValue;
+  }
+
+  @ShadowSources("entityList")
+  public Integer updateDeclarativeShadowValue() {
+    if (entityList != null) {
+      return entityList.size() + 2;
+    }
+    return null;
+  }
+}

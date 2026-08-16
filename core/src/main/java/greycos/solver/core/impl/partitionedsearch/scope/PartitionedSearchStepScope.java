@@ -1,0 +1,41 @@
+package greycos.solver.core.impl.partitionedsearch.scope;
+
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.impl.phase.scope.AbstractStepScope;
+
+/**
+ * Scope for partitioned search step execution.
+ *
+ * <p>Tracks partition change move applied during a single step.
+ *
+ * @param <Solution_> solution type, class with {@link PlanningSolution} annotation
+ */
+public final class PartitionedSearchStepScope<Solution_> extends AbstractStepScope<Solution_> {
+
+  private final PartitionedSearchPhaseScope<Solution_> phaseScope;
+  private PartitionChangeMove<Solution_> step = null;
+
+  public PartitionedSearchStepScope(PartitionedSearchPhaseScope<Solution_> phaseScope) {
+    super(phaseScope.getNextStepIndex());
+    this.phaseScope = phaseScope;
+  }
+
+  public PartitionedSearchStepScope(
+      PartitionedSearchPhaseScope<Solution_> phaseScope, int stepIndex) {
+    super(stepIndex);
+    this.phaseScope = phaseScope;
+  }
+
+  @Override
+  public PartitionedSearchPhaseScope<Solution_> getPhaseScope() {
+    return phaseScope;
+  }
+
+  public PartitionChangeMove<Solution_> getStep() {
+    return step;
+  }
+
+  public void setStep(PartitionChangeMove<Solution_> step) {
+    this.step = step;
+  }
+}

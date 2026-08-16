@@ -1,0 +1,12 @@
+package greycos.solver.jaxb.api.score;
+
+import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+
+public class HardMediumSoftBigDecimalScoreJaxbAdapter
+    extends AbstractScoreJaxbAdapter<HardMediumSoftBigDecimalScore> {
+
+  @Override
+  public HardMediumSoftBigDecimalScore unmarshal(String scoreString) {
+    return HardMediumSoftBigDecimalScore.parseScore(scoreString);
+  }
+}

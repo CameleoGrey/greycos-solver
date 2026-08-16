@@ -27,12 +27,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Stream;
 
-import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
-import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
-import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.score.HardSoftScore;
-import ai.greycos.solver.core.api.solver.SolverStatus;
+import greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
+import greycos.solver.core.api.cotwin.solution.PlanningScore;
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.solver.SolverStatus;
 
 import org.acme.vehiclerouting.domain.geo.DrivingTimeCalculator;
 import org.acme.vehiclerouting.domain.geo.HaversineDrivingTimeCalculator;
@@ -88,12 +88,12 @@ package org.acme.vehiclerouting.domain;
 import java.time.LocalDateTime
 import java.util.stream.Stream
 
-import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty
-import ai.greycos.solver.core.api.cotwin.solution.PlanningScore
-import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution
-import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider
-import ai.greycos.solver.core.api.score.HardSoftScore
-import ai.greycos.solver.core.api.solver.SolverStatus
+import greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty
+import greycos.solver.core.api.cotwin.solution.PlanningScore
+import greycos.solver.core.api.cotwin.solution.PlanningSolution
+import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider
+import greycos.solver.core.api.score.HardSoftScore
+import greycos.solver.core.api.solver.SolverStatus
 
 import org.acme.vehiclerouting.domain.geo.DrivingTimeCalculator
 import org.acme.vehiclerouting.domain.geo.HaversineDrivingTimeCalculator

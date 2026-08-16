@@ -1,0 +1,61 @@
+package greycos.solver.quarkus;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.Duration;
+
+import jakarta.inject.Inject;
+
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.config.solver.SolverConfig;
+import greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
+import greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
+import greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
+
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.quarkus.test.QuarkusUnitTest;
+
+class GreyCOSProcessorSolverYamlTest {
+
+  @RegisterExtension
+  static final QuarkusUnitTest config =
+      new QuarkusUnitTest()
+          .setArchiveProducer(
+              () ->
+                  ShrinkWrap.create(JavaArchive.class)
+                      .addClasses(
+                          TestdataQuarkusEntity.class,
+                          TestdataQuarkusSolution.class,
+                          TestdataQuarkusConstraintProvider.class)
+                      .addAsResource(
+                          "greycos/solver/quarkus/single-solver/application.yaml",
+                          "application.yaml"));
+
+  @Inject SolverConfig solverConfig;
+  @Inject SolverFactory<TestdataQuarkusSolution> solverFactory;
+
+  @Test
+  void solverProperties() {
+    assertEquals(EnvironmentMode.FULL_ASSERT, solverConfig.getEnvironmentMode());
+    assertTrue(solverConfig.getDaemon());
+    assertEquals("2", solverConfig.getMoveThreadCount());
+    assertNotNull(solverFactory);
+  }
+
+  @Test
+  void terminationProperties() {
+    assertEquals(Duration.ofHours(4), solverConfig.getTerminationConfig().getSpentLimit());
+    assertEquals(
+        Duration.ofHours(5), solverConfig.getTerminationConfig().getUnimprovedSpentLimit());
+    assertEquals(
+        SimpleScore.of(0).toString(), solverConfig.getTerminationConfig().getBestScoreLimit());
+  }
+}

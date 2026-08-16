@@ -1,0 +1,45 @@
+package greycos.solver.core.impl.bavet.tri;
+
+import greycos.solver.core.api.function.TriFunction;
+import greycos.solver.core.api.score.stream.tri.TriConstraintCollector;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.tuple.TriTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.util.Pair;
+
+public final class Group1Mapping2CollectorTriNode<
+        OldA, OldB, OldC, A, B, C, ResultContainerB_, ResultContainerC_>
+    extends AbstractGroupTriNode<OldA, OldB, OldC, TriTuple<A, B, C>, A, Object, Pair<B, C>> {
+
+  private final int outputStoreSize;
+
+  public Group1Mapping2CollectorTriNode(
+      TriFunction<OldA, OldB, OldC, A> groupKeyMapping,
+      int groupStoreIndex,
+      int undoStoreIndex,
+      TriConstraintCollector<OldA, OldB, OldC, ResultContainerB_, B> collectorB,
+      TriConstraintCollector<OldA, OldB, OldC, ResultContainerC_, C> collectorC,
+      TupleLifecycle<TriTuple<A, B, C>> nextNodesTupleLifecycle,
+      int outputStoreSize,
+      EnvironmentMode environmentMode) {
+    super(
+        groupStoreIndex,
+        undoStoreIndex,
+        tuple -> Group1Mapping0CollectorTriNode.createGroupKey(groupKeyMapping, tuple),
+        Group0Mapping2CollectorTriNode.mergeCollectors(collectorB, collectorC),
+        nextNodesTupleLifecycle,
+        environmentMode);
+    this.outputStoreSize = outputStoreSize;
+  }
+
+  @Override
+  protected TriTuple<A, B, C> createOutTuple(A a) {
+    return TriTuple.of(a, outputStoreSize);
+  }
+
+  @Override
+  protected void updateOutTupleToResult(TriTuple<A, B, C> outTuple, Pair<B, C> result) {
+    outTuple.setB(result.key());
+    outTuple.setC(result.value());
+  }
+}

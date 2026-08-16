@@ -1,0 +1,52 @@
+package greycos.solver.quarkus;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+
+import greycos.solver.core.api.solver.SolverManager;
+import greycos.solver.quarkus.rest.TestdataQuarkusSolutionConfigResource;
+import greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
+import greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
+import greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
+
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.quarkus.test.QuarkusUnitTest;
+import io.restassured.RestAssured;
+
+class GreyCOSProcessorMultipleSolversYamlTest {
+
+  @RegisterExtension
+  static final QuarkusUnitTest config =
+      new QuarkusUnitTest()
+          .setArchiveProducer(
+              () ->
+                  ShrinkWrap.create(JavaArchive.class)
+                      .addClasses(
+                          TestdataQuarkusEntity.class,
+                          TestdataQuarkusSolution.class,
+                          TestdataQuarkusConstraintProvider.class,
+                          TestdataQuarkusSolutionConfigResource.class)
+                      .addAsResource(
+                          "greycos/solver/quarkus/multiple-solvers/application.yaml",
+                          "application.yaml"));
+
+  @Inject
+  @Named("solver1")
+  SolverManager<?> solverManager1;
+
+  @Inject
+  @Named("solver2")
+  SolverManager<?> solverManager2;
+
+  @Test
+  void solverProperties() {
+    String resp = RestAssured.get("/solver-config/seconds-spent-limit").asString();
+    assertEquals("secondsSpentLimit=0.06;secondsSpentLimit=0.12", resp);
+  }
+}

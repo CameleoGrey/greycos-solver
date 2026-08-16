@@ -1,0 +1,114 @@
+package greycos.solver.core.impl.heuristic.selector.move;
+
+import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
+import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.composite.CartesianProductMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.factory.MoveIteratorFactoryConfig;
+import greycos.solver.core.config.heuristic.selector.move.factory.MoveListFactoryConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.PillarChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.SubListSwapMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
+import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.heuristic.selector.move.composite.CartesianProductMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.composite.UnionMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorFactoryFactory;
+import greycos.solver.core.impl.heuristic.selector.move.factory.MoveListFactoryFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.PillarChangeMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.PillarSwapMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.SwapMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListSwapMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListChangeMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListSwapMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.ruin.ListRuinRecreateMoveSelectorFactory;
+
+public interface MoveSelectorFactory<Solution_> {
+
+  static <Solution_> AbstractMoveSelectorFactory<Solution_, ?> create(
+      MoveSelectorConfig<?> moveSelectorConfig) {
+    if (moveSelectorConfig instanceof ChangeMoveSelectorConfig changeMoveSelectorConfig) {
+      return new ChangeMoveSelectorFactory<>(changeMoveSelectorConfig);
+    } else if (moveSelectorConfig
+        instanceof ListChangeMoveSelectorConfig listChangeMoveSelectorConfig) {
+      return new ListChangeMoveSelectorFactory<>(listChangeMoveSelectorConfig);
+    } else if (moveSelectorConfig instanceof SwapMoveSelectorConfig swapMoveSelectorConfig) {
+      return new SwapMoveSelectorFactory<>(swapMoveSelectorConfig);
+    } else if (moveSelectorConfig
+        instanceof ListSwapMoveSelectorConfig listSwapMoveSelectorConfig) {
+      return new ListSwapMoveSelectorFactory<>(listSwapMoveSelectorConfig);
+    } else if (moveSelectorConfig
+        instanceof PillarChangeMoveSelectorConfig pillarChangeMoveSelectorConfig) {
+      return new PillarChangeMoveSelectorFactory<>(pillarChangeMoveSelectorConfig);
+    } else if (moveSelectorConfig
+        instanceof PillarSwapMoveSelectorConfig pillarSwapMoveSelectorConfig) {
+      return new PillarSwapMoveSelectorFactory<>(pillarSwapMoveSelectorConfig);
+    } else if (moveSelectorConfig
+        instanceof SubListChangeMoveSelectorConfig subListChangeMoveSelectorConfig) {
+      return new SubListChangeMoveSelectorFactory<>(subListChangeMoveSelectorConfig);
+    } else if (moveSelectorConfig
+        instanceof SubListSwapMoveSelectorConfig subListSwapMoveSelectorConfig) {
+      return new SubListSwapMoveSelectorFactory<>(subListSwapMoveSelectorConfig);
+    } else if (KOptListMoveSelectorConfig.class.isAssignableFrom(moveSelectorConfig.getClass())) {
+      return new KOptListMoveSelectorFactory<>((KOptListMoveSelectorConfig) moveSelectorConfig);
+    } else if (moveSelectorConfig
+        instanceof RuinRecreateMoveSelectorConfig ruinRecreateMoveSelectorConfig) {
+      return new RuinRecreateMoveSelectorFactory<>(ruinRecreateMoveSelectorConfig);
+    } else if (moveSelectorConfig
+        instanceof ListRuinRecreateMoveSelectorConfig listRuinRecreateMoveSelectorConfig) {
+      return new ListRuinRecreateMoveSelectorFactory<>(listRuinRecreateMoveSelectorConfig);
+    } else if (moveSelectorConfig instanceof MoveIteratorFactoryConfig moveIteratorFactoryConfig) {
+      return new MoveIteratorFactoryFactory<>(moveIteratorFactoryConfig);
+    } else if (moveSelectorConfig instanceof MoveListFactoryConfig moveListFactoryConfig) {
+      return new MoveListFactoryFactory<>(moveListFactoryConfig);
+    } else if (moveSelectorConfig instanceof UnionMoveSelectorConfig unionMoveSelectorConfig) {
+      return new UnionMoveSelectorFactory<>(unionMoveSelectorConfig);
+    } else if (moveSelectorConfig
+        instanceof CartesianProductMoveSelectorConfig cartesianProductMoveSelectorConfig) {
+      return new CartesianProductMoveSelectorFactory<>(cartesianProductMoveSelectorConfig);
+    } else {
+      throw new IllegalArgumentException(
+          String.format(
+              "Unknown %s type: (%s).",
+              MoveSelectorConfig.class.getSimpleName(), moveSelectorConfig.getClass().getName()));
+    }
+  }
+
+  static <Solution_> AbstractMoveSelectorFactory<Solution_, ?> createForExhaustiveSearch(
+      MoveSelectorConfig<?> moveSelectorConfig) {
+    if (moveSelectorConfig instanceof ListChangeMoveSelectorConfig listChangeMoveSelectorConfig) {
+      return new ListChangeMoveSelectorFactory<>(listChangeMoveSelectorConfig, true);
+    }
+    return create(moveSelectorConfig);
+  }
+
+  /**
+   * Builds {@link MoveSelector} from the {@link MoveSelectorConfig} and provided parameters.
+   *
+   * @param configPolicy never null
+   * @param minimumCacheType never null, If caching is used (different from {@link
+   *     SelectionCacheType#JUST_IN_TIME}), then it should be at least this {@link
+   *     SelectionCacheType} because an ancestor already uses such caching and less would be
+   *     pointless.
+   * @param inheritedSelectionOrder never null
+   * @param skipNonDoableMoves
+   * @return never null
+   */
+  MoveSelector<Solution_> buildMoveSelector(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      SelectionCacheType minimumCacheType,
+      SelectionOrder inheritedSelectionOrder,
+      boolean skipNonDoableMoves);
+}

@@ -120,9 +120,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
-import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
-import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.lookup.PlanningId;
+import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 
 @PlanningEntity
 public class Vehicle {
@@ -195,9 +195,9 @@ package org.acme.vehiclerouting.domain
 import java.time.LocalDateTime
 import java.util.ArrayList
 
-import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity
-import ai.greycos.solver.core.api.cotwin.lookup.PlanningId
-import ai.greycos.solver.core.api.cotwin.variable.PlanningListVariable
+import greycos.solver.core.api.cotwin.entity.PlanningEntity
+import greycos.solver.core.api.cotwin.lookup.PlanningId
+import greycos.solver.core.api.cotwin.variable.PlanningListVariable
 
 @PlanningEntity
 class Vehicle {
@@ -291,12 +291,12 @@ package org.acme.vehiclerouting.domain;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
-import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
-import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
-import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable;
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.lookup.PlanningId;
+import greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
+import greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
+import greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
+import greycos.solver.core.api.cotwin.variable.ShadowVariable;
 
 import org.acme.vehiclerouting.solver.ArrivalTimeUpdatingVariableListener;
 
@@ -403,12 +403,12 @@ package org.acme.vehiclerouting.domain
 import java.time.Duration
 import java.time.LocalDateTime
 
-import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity
-import ai.greycos.solver.core.api.cotwin.lookup.PlanningId
-import ai.greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable
-import ai.greycos.solver.core.api.cotwin.variable.NextElementShadowVariable
-import ai.greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable
-import ai.greycos.solver.core.api.cotwin.variable.ShadowVariable
+import greycos.solver.core.api.cotwin.entity.PlanningEntity
+import greycos.solver.core.api.cotwin.lookup.PlanningId
+import greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable
+import greycos.solver.core.api.cotwin.variable.NextElementShadowVariable
+import greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable
+import greycos.solver.core.api.cotwin.variable.ShadowVariable
 
 import org.acme.vehiclerouting.solver.ArrivalTimeUpdatingVariableListener
 

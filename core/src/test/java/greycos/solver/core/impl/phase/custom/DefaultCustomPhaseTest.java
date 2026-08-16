@@ -1,0 +1,74 @@
+package greycos.solver.core.impl.phase.custom;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.Duration;
+
+import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.api.solver.phase.PhaseCommand;
+import greycos.solver.core.api.solver.phase.PhaseCommandContext;
+import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
+import greycos.solver.core.config.solver.SolverConfig;
+import greycos.solver.core.config.solver.termination.TerminationConfig;
+import greycos.solver.core.testcotwin.TestdataConstraintProvider;
+import greycos.solver.core.testcotwin.TestdataEntity;
+import greycos.solver.core.testcotwin.TestdataSolution;
+
+import org.jspecify.annotations.NullMarked;
+import org.junit.jupiter.api.Test;
+
+class DefaultCustomPhaseTest {
+
+  private static final Duration RUN_TIME = Duration.ofMillis(10L);
+
+  @Test
+  void solverTermination() {
+    var solverConfig =
+        new SolverConfig()
+            .withTerminationConfig(new TerminationConfig().withSpentLimit(RUN_TIME))
+            .withPhases(new CustomPhaseConfig().withCustomPhaseCommands(new LoopingPhaseCommand()))
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withConstraintProviderClass(TestdataConstraintProvider.class);
+    var solver = SolverFactory.create(solverConfig).buildSolver();
+    var solution = TestdataSolution.generateSolution(2, 2);
+    var duration = measure(() -> solver.solve(solution));
+    assertThat(duration).isGreaterThanOrEqualTo(RUN_TIME);
+  }
+
+  @Test
+  void phaseTermination() {
+    var solverConfig =
+        new SolverConfig()
+            .withPhases(
+                new CustomPhaseConfig()
+                    .withTerminationConfig(new TerminationConfig().withSpentLimit(RUN_TIME))
+                    .withCustomPhaseCommands(new LoopingPhaseCommand()))
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withConstraintProviderClass(TestdataConstraintProvider.class);
+    var solver = SolverFactory.create(solverConfig).buildSolver();
+    var solution = TestdataSolution.generateSolution(2, 2);
+    var duration = measure(() -> solver.solve(solution));
+    assertThat(duration).isGreaterThanOrEqualTo(RUN_TIME);
+  }
+
+  private static Duration measure(Runnable runnable) {
+    var milliTime = System.currentTimeMillis();
+    runnable.run();
+    return Duration.ofMillis(System.currentTimeMillis() - milliTime);
+  }
+
+  @NullMarked
+  private static final class LoopingPhaseCommand implements PhaseCommand<TestdataSolution> {
+
+    @Override
+    public void changeWorkingSolution(PhaseCommandContext<TestdataSolution> context) {
+      while (true) {
+        if (context.isPhaseTerminated()) { // Terminate when signal received.
+          return;
+        }
+      }
+    }
+  }
+}

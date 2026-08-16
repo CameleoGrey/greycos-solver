@@ -1093,7 +1093,7 @@ To give each individual `Move` the same selection chance (as opposed to each ``M
     <unionMoveSelector>
       <changeMoveSelector/>
       <swapMoveSelector/>
-      <selectorProbabilityWeightFactoryClass>ai.greycos.solver.core.impl.heuristic.selector.common.decorator.FairSelectorProbabilityWeightFactory</selectorProbabilityWeightFactoryClass>
+      <selectorProbabilityWeightFactoryClass>greycos.solver.core.impl.heuristic.selector.common.decorator.FairSelectorProbabilityWeightFactory</selectorProbabilityWeightFactoryClass>
     </unionMoveSelector>
 ----
 

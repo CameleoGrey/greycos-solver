@@ -1,0 +1,48 @@
+package greycos.solver.core.impl.score.stream.common.inliner;
+
+import java.math.BigDecimal;
+import java.util.Map;
+
+import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
+import greycos.solver.core.impl.score.stream.common.AbstractConstraint;
+
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
+final class HardSoftBigDecimalScoreInliner extends AbstractScoreInliner<HardSoftBigDecimalScore> {
+
+  BigDecimal hardScore = BigDecimal.ZERO;
+  BigDecimal softScore = BigDecimal.ZERO;
+
+  HardSoftBigDecimalScoreInliner(
+      Map<Constraint, HardSoftBigDecimalScore> constraintWeightMap,
+      ConstraintMatchPolicy constraintMatchPolicy) {
+    super(constraintWeightMap, constraintMatchPolicy);
+  }
+
+  @Override
+  public WeightedScoreImpacter<HardSoftBigDecimalScore, ?> buildWeightedScoreImpacter(
+      AbstractConstraint<?, ?, ?> constraint) {
+    var constraintWeight = constraintWeightMap.get(constraint);
+    var context = new HardSoftBigDecimalScoreContext(this, constraint, constraintWeight);
+    if (constraintWeight.softScore().equals(BigDecimal.ZERO)) {
+      return WeightedScoreImpacter.of(context, HardSoftBigDecimalScoreContext::changeHardScoreBy);
+    } else if (constraintWeight.hardScore().equals(BigDecimal.ZERO)) {
+      return WeightedScoreImpacter.of(context, HardSoftBigDecimalScoreContext::changeSoftScoreBy);
+    } else {
+      return WeightedScoreImpacter.of(context, HardSoftBigDecimalScoreContext::changeScoreBy);
+    }
+  }
+
+  @Override
+  public HardSoftBigDecimalScore extractScore() {
+    return HardSoftBigDecimalScore.of(hardScore, softScore);
+  }
+
+  @Override
+  public String toString() {
+    return HardSoftBigDecimalScore.class.getSimpleName() + " inliner";
+  }
+}

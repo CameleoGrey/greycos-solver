@@ -1,0 +1,50 @@
+package greycos.solver.core.impl.score.stream.common.bi;
+
+import java.util.Objects;
+
+import greycos.solver.core.api.function.TriFunction;
+import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.stream.ConstraintJustification;
+import greycos.solver.core.api.score.stream.bi.BiConstraintBuilder;
+import greycos.solver.core.impl.score.stream.common.AbstractConstraintBuilder;
+import greycos.solver.core.impl.score.stream.common.ScoreImpactType;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
+public final class BiConstraintBuilderImpl<A, B, Score_ extends Score<Score_>>
+    extends AbstractConstraintBuilder<Score_> implements BiConstraintBuilder<A, B, Score_> {
+
+  private @Nullable TriFunction<A, B, Score_, ConstraintJustification> justificationMapping;
+
+  public BiConstraintBuilderImpl(
+      BiConstraintConstructor<A, B, Score_> constraintConstructor,
+      ScoreImpactType impactType,
+      Score_ constraintWeight) {
+    super(constraintConstructor, impactType, constraintWeight);
+  }
+
+  @Override
+  protected @Nullable TriFunction<A, B, Score_, ConstraintJustification> getJustificationMapping() {
+    return justificationMapping;
+  }
+
+  @Override
+  public <ConstraintJustification_ extends ConstraintJustification>
+      BiConstraintBuilder<A, B, Score_> justifyWith(
+          TriFunction<A, B, Score_, ConstraintJustification_> justificationMapping) {
+    if (this.justificationMapping != null) {
+      throw new IllegalStateException(
+          """
+          Justification mapping already set (%s).
+          Maybe the constraint calls justifyWith() twice?\
+          """
+              .formatted(justificationMapping));
+    }
+    this.justificationMapping =
+        (TriFunction<A, B, Score_, ConstraintJustification>)
+            Objects.requireNonNull(justificationMapping);
+    return this;
+  }
+}

@@ -1,0 +1,28 @@
+package greycos.solver.core.testcotwin.clone.lookup;
+
+import greycos.solver.core.api.cotwin.lookup.PlanningId;
+
+public class TestdataObjectMultipleIds {
+
+  @PlanningId private final Integer id;
+  @PlanningId private final String name;
+  @PlanningId private final Boolean bool;
+
+  public TestdataObjectMultipleIds() {
+    this.id = 0;
+    this.name = "";
+    this.bool = false;
+  }
+
+  public Integer getId() {
+    return id;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public Boolean getBool() {
+    return bool;
+  }
+}

@@ -34,10 +34,10 @@ Create a `src/main/java/org/acme/vehiclerouting/solver/VehicleRoutingConstraintP
 ----
 package org.acme.vehiclerouting.solver;
 
-import ai.greycos.solver.core.api.score.HardSoftScore;
-import ai.greycos.solver.core.api.score.stream.Constraint;
-import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
-import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintFactory;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
 
 import org.acme.vehiclerouting.domain.Visit;
 import org.acme.vehiclerouting.domain.Vehicle;
@@ -93,10 +93,10 @@ Create a `src/main/kotlin/org/acme/vehiclerouting/solver/VehicleRoutingConstrain
 ----
 package org.acme.vehiclerouting.solver
 
-import ai.greycos.solver.core.api.score.HardSoftScore
-import ai.greycos.solver.core.api.score.stream.Constraint
-import ai.greycos.solver.core.api.score.stream.ConstraintFactory
-import ai.greycos.solver.core.api.score.stream.ConstraintProvider
+import greycos.solver.core.api.score.HardSoftScore
+import greycos.solver.core.api.score.stream.Constraint
+import greycos.solver.core.api.score.stream.ConstraintFactory
+import greycos.solver.core.api.score.stream.ConstraintProvider
 
 import org.acme.vehiclerouting.domain.Visit
 import org.acme.vehiclerouting.domain.Vehicle

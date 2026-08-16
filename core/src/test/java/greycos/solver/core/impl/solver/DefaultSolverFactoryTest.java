@@ -1,0 +1,186 @@
+package greycos.solver.core.impl.solver;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.solver.SolverConfigOverride;
+import greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.config.solver.SolverConfig;
+import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
+import greycos.solver.core.impl.solver.DefaultSolverTest.DummyEasyScoreCalculator;
+import greycos.solver.core.impl.solver.random.DelegatingSplittableRandomGenerator;
+import greycos.solver.core.impl.solver.random.RandomSource;
+import greycos.solver.core.testcotwin.TestdataConstraintProvider;
+import greycos.solver.core.testcotwin.TestdataEntity;
+import greycos.solver.core.testcotwin.TestdataSolution;
+import greycos.solver.core.testcotwin.invalid.noentity.TestdataNoEntitySolution;
+
+import org.assertj.core.api.SoftAssertions;
+import org.junit.jupiter.api.Test;
+
+class DefaultSolverFactoryTest {
+
+  @Test
+  void moveThreadCountAutoIsCorrectlyResolvedWhenCpuCountIsPositive() {
+    assertThat(mockMoveThreadCountResolverAuto(1)).isNull();
+    assertThat(mockMoveThreadCountResolverAuto(2)).isNull();
+    assertThat(mockMoveThreadCountResolverAuto(4)).isEqualTo(2);
+    assertThat(mockMoveThreadCountResolverAuto(5)).isEqualTo(3);
+    assertThat(mockMoveThreadCountResolverAuto(6)).isEqualTo(4);
+    assertThat(mockMoveThreadCountResolverAuto(100)).isEqualTo(4);
+  }
+
+  @Test
+  void moveThreadCountAutoIsResolvedToNullWhenCpuCountIsNegative() {
+    assertThat(mockMoveThreadCountResolverAuto(-1)).isNull();
+  }
+
+  private Integer mockMoveThreadCountResolverAuto(int mockCpuCount) {
+    DefaultSolverFactory.MoveThreadCountResolver moveThreadCountResolverMock =
+        new DefaultSolverFactory.MoveThreadCountResolver() {
+          @Override
+          protected int getAvailableProcessors() {
+            return mockCpuCount;
+          }
+        };
+    var maybeCount =
+        moveThreadCountResolverMock.resolveMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_AUTO);
+    if (maybeCount.isPresent()) {
+      return maybeCount.getAsInt();
+    } else {
+      return null;
+    }
+  }
+
+  @Test
+  void moveThreadCountIsCorrectlyResolvedWhenValueIsPositive() {
+    assertThat(resolveMoveThreadCount("2")).isEqualTo(2);
+  }
+
+  @Test
+  void moveThreadCountThrowsExceptionWhenValueIsNegative() {
+    assertThatIllegalArgumentException().isThrownBy(() -> resolveMoveThreadCount("-1"));
+  }
+
+  @Test
+  void moveThreadCountIsResolvedToNullWhenValueIsNone() {
+    assertThat(resolveMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_NONE)).isNull();
+  }
+
+  private Integer resolveMoveThreadCount(String moveThreadCountString) {
+    DefaultSolverFactory.MoveThreadCountResolver moveThreadCountResolver =
+        new DefaultSolverFactory.MoveThreadCountResolver();
+    var maybeCount = moveThreadCountResolver.resolveMoveThreadCount(moveThreadCountString);
+    if (maybeCount.isPresent()) {
+      return maybeCount.getAsInt();
+    } else {
+      return null;
+    }
+  }
+
+  @Test
+  void cachesScoreDirectorFactory() {
+    SolverConfig solverConfig =
+        SolverConfig.createFromXmlResource(
+            "greycos/solver/core/config/solver/testdataSolverConfig.xml");
+    DefaultSolverFactory<TestdataSolution> defaultSolverFactory =
+        new DefaultSolverFactory<>(solverConfig);
+
+    SolutionDescriptor<TestdataSolution> solutionDescriptor1 =
+        defaultSolverFactory.getSolutionDescriptor();
+    ScoreDirectorFactory<TestdataSolution, SimpleScore> scoreDirectorFactory1 =
+        defaultSolverFactory.getScoreDirectorFactory();
+    SoftAssertions.assertSoftly(
+        softly -> {
+          softly.assertThat(solutionDescriptor1).isNotNull();
+          softly.assertThat(scoreDirectorFactory1).isNotNull();
+          softly
+              .assertThat(scoreDirectorFactory1.getSolutionDescriptor())
+              .isSameAs(solutionDescriptor1);
+        });
+
+    SolutionDescriptor<TestdataSolution> solutionDescriptor2 =
+        defaultSolverFactory.getSolutionDescriptor();
+    ScoreDirectorFactory<TestdataSolution, SimpleScore> scoreDirectorFactory2 =
+        defaultSolverFactory.getScoreDirectorFactory();
+    SoftAssertions.assertSoftly(
+        softly -> {
+          softly.assertThat(solutionDescriptor2).isSameAs(solutionDescriptor1);
+          softly.assertThat(scoreDirectorFactory2).isSameAs(scoreDirectorFactory1);
+        });
+  }
+
+  @Test
+  void useCorrectRandomSeed() {
+    // Reproducible
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(DummyEasyScoreCalculator.class)
+            .withRandomSeed(123456L);
+    var defaultSolverFactory = new DefaultSolverFactory<TestdataSolution>(solverConfig);
+    var randomGenerator =
+        (DelegatingSplittableRandomGenerator)
+            defaultSolverFactory
+                .buildRandomSupplier(EnvironmentMode.PHASE_ASSERT)
+                .get()
+                .moveIteratorUsage();
+    var otherRandomGenerator =
+        (DelegatingSplittableRandomGenerator)
+            RandomSource.seeded(solverConfig.getRandomSeed()).moveIteratorUsage();
+    assertThat(randomGenerator.getSeed()).isEqualTo(otherRandomGenerator.getSeed());
+    assertThat(otherRandomGenerator.nextLong()).isEqualTo(randomGenerator.nextLong());
+  }
+
+  @Test
+  void testNoSolutionConfiguration() {
+    SolverConfig solverConfig = new SolverConfig();
+    assertThatCode(() -> new DefaultSolverFactory<>(solverConfig))
+        .hasMessageContaining("The solver configuration must have a solutionClass")
+        .hasMessageContaining(
+            "If you're using the Quarkus extension or Spring Boot starter, it should have been filled in already.");
+  }
+
+  @Test
+  void testNoEntityConfiguration() {
+    SolverConfig solverConfig = new SolverConfig();
+    solverConfig.setSolutionClass(TestdataNoEntitySolution.class);
+    assertThatCode(() -> new DefaultSolverFactory<>(solverConfig))
+        .hasMessageContaining("The solver configuration must have at least 1 entityClass")
+        .hasMessageContaining(
+            "If you're using the Quarkus extension or Spring Boot starter, it should have been filled in already.");
+  }
+
+  @Test
+  void testInvalidMoveThreadCountConfiguration() {
+    SolverConfig solverConfig =
+        SolverConfig.createFromXmlResource(
+                "greycos/solver/core/config/solver/testdataSolverConfig.xml")
+            .withMoveThreadCount("-1");
+    assertThatCode(
+            () -> new DefaultSolverFactory<>(solverConfig).buildSolver(new SolverConfigOverride()))
+        .hasMessageContaining("The moveThreadCount")
+        .hasMessageContaining("resulted in a resolvedMoveThreadCount")
+        .hasMessageContaining("that is lower than 1.");
+  }
+
+  @Test
+  void testConstraintProfilingSupportedInSingleThreadedMode() {
+    SolverConfig solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withScoreDirectorFactory(
+                new ScoreDirectorFactoryConfig()
+                    .withConstraintProviderClass(TestdataConstraintProvider.class)
+                    .withConstraintStreamProfilingEnabled(true));
+    assertThatCode(
+            () -> new DefaultSolverFactory<>(solverConfig).buildSolver(new SolverConfigOverride()))
+        .doesNotThrowAnyException();
+  }
+}

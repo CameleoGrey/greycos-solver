@@ -1,0 +1,51 @@
+package greycos.solver.core.impl.bavet.bi;
+
+import java.util.function.BiPredicate;
+
+import greycos.solver.core.impl.bavet.common.AbstractIndexedJoinNode;
+import greycos.solver.core.impl.bavet.common.index.IndexerFactory;
+import greycos.solver.core.impl.bavet.common.tuple.BiTuple;
+import greycos.solver.core.impl.bavet.common.tuple.InOutTupleStorePositionTracker;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+
+public final class IndexedJoinBiNode<A, B>
+    extends AbstractIndexedJoinNode<UniTuple<A>, B, BiTuple<A, B>> {
+
+  private final BiPredicate<A, B> filtering;
+
+  public IndexedJoinBiNode(
+      IndexerFactory<B> indexerFactory,
+      TupleLifecycle<BiTuple<A, B>> nextNodesTupleLifecycle,
+      BiPredicate<A, B> filtering,
+      InOutTupleStorePositionTracker tupleStorePositionTracker) {
+    super(
+        indexerFactory.buildUniLeftKeysExtractor(),
+        indexerFactory,
+        nextNodesTupleLifecycle,
+        filtering != null,
+        tupleStorePositionTracker);
+    this.filtering = filtering;
+  }
+
+  @Override
+  protected BiTuple<A, B> createOutTuple(UniTuple<A> leftTuple, UniTuple<B> rightTuple) {
+    return BiTuple.of(
+        leftTuple.getA(), rightTuple.getA(), outputStoreSizeTracker.computeStoreSize());
+  }
+
+  @Override
+  protected void setOutTupleLeftFacts(BiTuple<A, B> outTuple, UniTuple<A> leftTuple) {
+    outTuple.setA(leftTuple.getA());
+  }
+
+  @Override
+  protected void setOutTupleRightFact(BiTuple<A, B> outTuple, UniTuple<B> rightTuple) {
+    outTuple.setB(rightTuple.getA());
+  }
+
+  @Override
+  protected boolean testFiltering(UniTuple<A> leftTuple, UniTuple<B> rightTuple) {
+    return filtering.test(leftTuple.getA(), rightTuple.getA());
+  }
+}

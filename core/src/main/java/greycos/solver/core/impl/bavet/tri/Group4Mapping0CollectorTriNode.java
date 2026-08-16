@@ -1,0 +1,60 @@
+package greycos.solver.core.impl.bavet.tri;
+
+import greycos.solver.core.api.function.TriFunction;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.tuple.QuadTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TriTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.util.Quadruple;
+
+public final class Group4Mapping0CollectorTriNode<OldA, OldB, OldC, A, B, C, D>
+    extends AbstractGroupTriNode<
+        OldA, OldB, OldC, QuadTuple<A, B, C, D>, Quadruple<A, B, C, D>, Void, Void> {
+
+  private final int outputStoreSize;
+
+  public Group4Mapping0CollectorTriNode(
+      TriFunction<OldA, OldB, OldC, A> groupKeyMappingA,
+      TriFunction<OldA, OldB, OldC, B> groupKeyMappingB,
+      TriFunction<OldA, OldB, OldC, C> groupKeyMappingC,
+      TriFunction<OldA, OldB, OldC, D> groupKeyMappingD,
+      int groupStoreIndex,
+      TupleLifecycle<QuadTuple<A, B, C, D>> nextNodesTupleLifecycle,
+      int outputStoreSize,
+      EnvironmentMode environmentMode) {
+    super(
+        groupStoreIndex,
+        tuple ->
+            createGroupKey(
+                groupKeyMappingA, groupKeyMappingB, groupKeyMappingC, groupKeyMappingD, tuple),
+        nextNodesTupleLifecycle,
+        environmentMode);
+    this.outputStoreSize = outputStoreSize;
+  }
+
+  private static <A, B, C, D, OldA, OldB, OldC> Quadruple<A, B, C, D> createGroupKey(
+      TriFunction<OldA, OldB, OldC, A> groupKeyMappingA,
+      TriFunction<OldA, OldB, OldC, B> groupKeyMappingB,
+      TriFunction<OldA, OldB, OldC, C> groupKeyMappingC,
+      TriFunction<OldA, OldB, OldC, D> groupKeyMappingD,
+      TriTuple<OldA, OldB, OldC> tuple) {
+    var oldA = tuple.getA();
+    var oldB = tuple.getB();
+    var oldC = tuple.getC();
+    return new Quadruple<>(
+        groupKeyMappingA.apply(oldA, oldB, oldC),
+        groupKeyMappingB.apply(oldA, oldB, oldC),
+        groupKeyMappingC.apply(oldA, oldB, oldC),
+        groupKeyMappingD.apply(oldA, oldB, oldC));
+  }
+
+  @Override
+  protected QuadTuple<A, B, C, D> createOutTuple(Quadruple<A, B, C, D> groupKey) {
+    return QuadTuple.of(groupKey.a(), groupKey.b(), groupKey.c(), groupKey.d(), outputStoreSize);
+  }
+
+  @Override
+  protected void updateOutTupleToResult(QuadTuple<A, B, C, D> outTuple, Void unused) {
+    throw new IllegalStateException("Impossible state: collector is null.");
+  }
+}

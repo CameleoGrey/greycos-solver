@@ -1,0 +1,23 @@
+package greycos.solver.core.impl.heuristic.selector.move.composite;
+
+import java.util.Map;
+
+import greycos.solver.core.impl.heuristic.selector.Selector;
+import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
+import greycos.solver.core.impl.score.director.ScoreDirector;
+
+final class FixedSelectorProbabilityWeightFactory<Solution_, Selector_ extends Selector>
+    implements SelectionProbabilityWeightFactory<Solution_, Selector_> {
+
+  private final Map<Selector_, Double> fixedProbabilityWeightMap;
+
+  public FixedSelectorProbabilityWeightFactory(Map<Selector_, Double> fixedProbabilityWeightMap) {
+    this.fixedProbabilityWeightMap = fixedProbabilityWeightMap;
+  }
+
+  @Override
+  public double createProbabilityWeight(
+      ScoreDirector<Solution_> scoreDirector, Selector_ selector) {
+    return fixedProbabilityWeightMap.getOrDefault(selector, 1.0);
+  }
+}

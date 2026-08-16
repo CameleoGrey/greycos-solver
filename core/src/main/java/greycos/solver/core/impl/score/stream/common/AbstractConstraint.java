@@ -1,0 +1,191 @@
+package greycos.solver.core.impl.score.stream.common;
+
+import java.math.BigDecimal;
+import java.util.Objects;
+
+import greycos.solver.core.api.score.IBendableScore;
+import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintMetadata;
+import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.impl.score.definition.AbstractBendableScoreDefinition;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
+public abstract class AbstractConstraint<
+        Solution_,
+        Constraint_ extends AbstractConstraint<Solution_, Constraint_, ConstraintFactory_>,
+        ConstraintFactory_ extends InnerConstraintFactory<Solution_, Constraint_>>
+    implements Constraint {
+
+  private final ConstraintFactory_ constraintFactory;
+  private final ConstraintRef constraintRef;
+  private final ConstraintMetadata constraintMetadata;
+  private final Score<?> defaultConstraintWeight;
+  private final ScoreImpactType scoreImpactType;
+  // Constraint is not generic in uni/bi/..., therefore these can not be typed.
+  private final @Nullable Object justificationMapping;
+
+  /**
+   * @param constraintFactory never null
+   * @param constraintMetadata never null
+   * @param scoreImpactType never null
+   * @param justificationMapping never null
+   */
+  protected AbstractConstraint(
+      ConstraintFactory_ constraintFactory,
+      ConstraintMetadata constraintMetadata,
+      Score<?> defaultConstraintWeight,
+      ScoreImpactType scoreImpactType,
+      @Nullable Object justificationMapping) {
+    this.constraintFactory = Objects.requireNonNull(constraintFactory);
+    this.constraintMetadata = Objects.requireNonNull(constraintMetadata);
+    this.constraintRef = ConstraintRef.of(constraintMetadata.id());
+    this.defaultConstraintWeight = defaultConstraintWeight;
+    this.scoreImpactType = Objects.requireNonNull(scoreImpactType);
+    this.justificationMapping = justificationMapping; // May be omitted in test code.
+  }
+
+  @SuppressWarnings("unchecked")
+  public final <Score_ extends Score<Score_>> Score_ extractConstraintWeight(Solution_ solution) {
+    return adjustConstraintWeight((Score_) determineConstraintWeight(solution));
+  }
+
+  private <Score_ extends Score<Score_>> Score_ adjustConstraintWeight(Score_ constraintWeight) {
+    return switch (scoreImpactType) {
+      case PENALTY -> constraintWeight.negate();
+      case REWARD, MIXED -> constraintWeight;
+    };
+  }
+
+  @SuppressWarnings("unchecked")
+  private <Score_ extends Score<Score_>> Score_ determineConstraintWeight(Solution_ solution) {
+    var solutionDescriptor = constraintFactory.getSolutionDescriptor();
+    var constraintWeightSupplier = solutionDescriptor.<Score_>getConstraintWeightSupplier();
+    if (constraintWeightSupplier != null) {
+      var weight = constraintWeightSupplier.getConstraintWeight(constraintRef, solution);
+      if (weight != null) {
+        return weight;
+      }
+    }
+    AbstractConstraint.validateWeight(
+        solutionDescriptor, constraintRef, (Score_) defaultConstraintWeight);
+    return (Score_) defaultConstraintWeight;
+  }
+
+  public final void assertCorrectImpact(long impact) {
+    if (impact >= 0L) {
+      return;
+    }
+    if (scoreImpactType != ScoreImpactType.MIXED) {
+      throw new IllegalStateException(
+          "Negative match weight ("
+              + impact
+              + ") for constraint ("
+              + getConstraintRef()
+              + "). "
+              + "Check constraint provider implementation.");
+    }
+  }
+
+  public final void assertCorrectImpact(BigDecimal impact) {
+    if (impact.signum() >= 0) {
+      return;
+    }
+    if (scoreImpactType != ScoreImpactType.MIXED) {
+      throw new IllegalStateException(
+          "Negative match weight ("
+              + impact
+              + ") for constraint ("
+              + getConstraintRef()
+              + "). "
+              + "Check constraint provider implementation.");
+    }
+  }
+
+  @Override
+  public ConstraintRef getConstraintRef() {
+    return constraintRef;
+  }
+
+  @Override
+  public ConstraintMetadata getConstraintMetadata() {
+    if (!constraintRef.id().equals(constraintMetadata.id())) {
+      throw new IllegalStateException(
+          "Constraint metadata ID changed after the constraint was built (from '%s' to '%s')."
+              .formatted(constraintRef.id(), constraintMetadata.id()));
+    }
+    return constraintMetadata;
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  public <Score_ extends Score<Score_>> Score_ getConstraintWeight() {
+    return adjustConstraintWeight((Score_) defaultConstraintWeight);
+  }
+
+  public final ScoreImpactType getScoreImpactType() {
+    return scoreImpactType;
+  }
+
+  /**
+   * @return maybe null, in test code
+   * @param <JustificationMapping_> user-defined type
+   */
+  @SuppressWarnings("unchecked")
+  public <JustificationMapping_> @Nullable JustificationMapping_ getJustificationMapping() {
+    // It is the job of the code constructing the constraint to ensure that this cast is correct.
+    return (JustificationMapping_) justificationMapping;
+  }
+
+  public static <Solution_, Score_ extends Score<Score_>> void validateWeight(
+      SolutionDescriptor<Solution_> solutionDescriptor,
+      ConstraintRef constraintRef,
+      Score_ constraintWeight) {
+    var scoreDescriptor = solutionDescriptor.<Score_>getScoreDescriptor();
+    if (!constraintWeight.getClass().isAssignableFrom(constraintWeight.getClass())) {
+      throw new IllegalArgumentException(
+          """
+          The constraintWeight (%s) of class (%s) for constraint (%s) must be of the scoreClass (%s).
+          Maybe check your constraint implementation.\
+          """
+              .formatted(
+                  constraintWeight,
+                  constraintWeight.getClass(),
+                  constraintRef,
+                  scoreDescriptor.getScoreDefinition().getScoreClass()));
+    }
+    if (!scoreDescriptor.getScoreDefinition().isPositiveOrZero(constraintWeight)) {
+      throw new IllegalArgumentException(
+          """
+          The constraintWeight (%s) for constraint (%s) must be positive or zero.
+          Maybe check your constraint implementation.\
+          """
+              .formatted(constraintWeight, constraintRef));
+    }
+    if (constraintWeight instanceof IBendableScore<?> bendableConstraintWeight) {
+      var bendableScoreDefinition =
+          (AbstractBendableScoreDefinition<?>) scoreDescriptor.getScoreDefinition();
+      if (bendableConstraintWeight.hardLevelsSize() != bendableScoreDefinition.getHardLevelsSize()
+          || bendableConstraintWeight.softLevelsSize()
+              != bendableScoreDefinition.getSoftLevelsSize()) {
+        throw new IllegalArgumentException(
+            """
+            The bendable constraintWeight (%s) for constraint (%s) has a hardLevelsSize (%d) or a softLevelsSize (%d) \
+            that doesn't match the score definition's hardLevelsSize (%d) or softLevelsSize (%d).
+            Maybe check your constraint implementation.\
+            """
+                .formatted(
+                    constraintWeight,
+                    constraintRef,
+                    bendableConstraintWeight.hardLevelsSize(),
+                    bendableConstraintWeight.softLevelsSize(),
+                    bendableScoreDefinition.getHardLevelsSize(),
+                    bendableScoreDefinition.getSoftLevelsSize()));
+      }
+    }
+  }
+}

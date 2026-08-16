@@ -1,0 +1,51 @@
+package greycos.solver.core.impl.constructionheuristic.placer;
+
+import java.util.Iterator;
+
+import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
+import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
+import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
+import greycos.solver.core.impl.heuristic.selector.move.decorator.FilteringMoveSelector;
+import greycos.solver.core.preview.api.move.Move;
+
+public class PooledEntityPlacer<Solution_> extends AbstractEntityPlacer<Solution_>
+    implements EntityPlacer<Solution_> {
+
+  protected final MoveSelector<Solution_> moveSelector;
+
+  public PooledEntityPlacer(
+      EntityPlacerFactory<Solution_> factory,
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      MoveSelector<Solution_> moveSelector) {
+    super(factory, configPolicy);
+    this.moveSelector = moveSelector;
+    phaseLifecycleSupport.addEventListener(moveSelector);
+  }
+
+  @Override
+  public Iterator<Placement<Solution_>> iterator() {
+    return new PooledEntityPlacingIterator();
+  }
+
+  @Override
+  public EntityPlacer<Solution_> rebuildWithFilter(SelectionFilter<Solution_, Object> filter) {
+    return new PooledEntityPlacer<>(
+        factory, configPolicy, FilteringMoveSelector.of(moveSelector, filter::accept));
+  }
+
+  private class PooledEntityPlacingIterator
+      extends UpcomingSelectionIterator<Placement<Solution_>> {
+
+    private PooledEntityPlacingIterator() {}
+
+    @Override
+    protected Placement<Solution_> createUpcomingSelection() {
+      Iterator<Move<Solution_>> moveIterator = moveSelector.iterator();
+      if (!moveIterator.hasNext()) {
+        return noUpcomingSelection();
+      }
+      return new Placement<>(moveIterator);
+    }
+  }
+}

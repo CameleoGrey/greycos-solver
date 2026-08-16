@@ -1,0 +1,47 @@
+package greycos.solver.core.impl.heuristic.selector.common.decorator;
+
+import static greycos.solver.core.testutil.PlannerAssert.assertCodesOfIterator;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+import greycos.solver.core.api.cotwin.common.ComparatorFactory;
+import greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
+import greycos.solver.core.testcotwin.TestdataEntity;
+import greycos.solver.core.testcotwin.TestdataSolution;
+
+import org.junit.jupiter.api.Test;
+
+class ComparatorFactorySelectionSorterTest {
+
+  @Test
+  void sortAscending() {
+    ComparatorFactory<TestdataSolution, TestdataEntity> comparatorFactory =
+        sol -> Comparator.comparingInt(v -> Integer.valueOf(v.getCode().charAt(0)));
+    ComparatorFactorySelectionSorter<TestdataSolution, TestdataEntity> selectionSorter =
+        new ComparatorFactorySelectionSorter<>(comparatorFactory, SelectionSorterOrder.ASCENDING);
+    List<TestdataEntity> selectionList = new ArrayList<>();
+    selectionList.add(new TestdataEntity("C"));
+    selectionList.add(new TestdataEntity("A"));
+    selectionList.add(new TestdataEntity("D"));
+    selectionList.add(new TestdataEntity("B"));
+    selectionSorter.sort(new TestdataSolution(), selectionList);
+    assertCodesOfIterator(selectionList.iterator(), "A", "B", "C", "D");
+  }
+
+  @Test
+  void sortDescending() {
+    ComparatorFactory<TestdataSolution, TestdataEntity> comparatorFactory =
+        sol -> Comparator.comparingInt(v -> Integer.valueOf(v.getCode().charAt(0)));
+    ComparatorFactorySelectionSorter<TestdataSolution, TestdataEntity> selectionSorter =
+        new ComparatorFactorySelectionSorter<>(comparatorFactory, SelectionSorterOrder.DESCENDING);
+    List<TestdataEntity> selectionList = new ArrayList<>();
+    selectionList.add(new TestdataEntity("C"));
+    selectionList.add(new TestdataEntity("A"));
+    selectionList.add(new TestdataEntity("D"));
+    selectionList.add(new TestdataEntity("B"));
+    selectionSorter.sort(new TestdataSolution(), selectionList);
+    assertCodesOfIterator(selectionList.iterator(), "D", "C", "B", "A");
+  }
+}

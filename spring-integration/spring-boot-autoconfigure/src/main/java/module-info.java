@@ -1,13 +1,13 @@
-module ai.greycos.solver.spring.boot.autoconfigure {
-  exports ai.greycos.solver.spring.boot.autoconfigure;
-  exports ai.greycos.solver.spring.boot.autoconfigure.config;
-  exports ai.greycos.solver.spring.boot.autoconfigure.util;
+module greycos.solver.spring.boot.autoconfigure {
+  exports greycos.solver.spring.boot.autoconfigure;
+  exports greycos.solver.spring.boot.autoconfigure.config;
+  exports greycos.solver.spring.boot.autoconfigure.util;
 
-  opens ai.greycos.solver.spring.boot.autoconfigure;
+  opens greycos.solver.spring.boot.autoconfigure;
 
-  requires static ai.greycos.solver.benchmark;
-  requires transitive ai.greycos.solver.core;
-  requires transitive ai.greycos.solver.jackson;
+  requires static greycos.solver.benchmark;
+  requires transitive greycos.solver.core;
+  requires transitive greycos.solver.jackson;
   requires org.apache.commons.logging;
   requires org.jspecify;
   requires spring.beans;

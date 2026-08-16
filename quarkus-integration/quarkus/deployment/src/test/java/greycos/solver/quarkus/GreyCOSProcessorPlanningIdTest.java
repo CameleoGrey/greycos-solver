@@ -1,0 +1,51 @@
+package greycos.solver.quarkus;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import java.util.stream.IntStream;
+
+import jakarta.inject.Inject;
+
+import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.testconstraint.DummyConstraintProvider;
+import greycos.solver.quarkus.testcotwin.superclass.TestdataEntity;
+import greycos.solver.quarkus.testcotwin.superclass.TestdataSolution;
+
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.quarkus.test.QuarkusUnitTest;
+
+class GreyCOSProcessorPlanningIdTest {
+
+  @RegisterExtension
+  static final QuarkusUnitTest config =
+      new QuarkusUnitTest()
+          .overrideConfigKey("quarkus.greycos.solver.termination.best-score-limit", "0")
+          .setArchiveProducer(
+              () ->
+                  ShrinkWrap.create(JavaArchive.class)
+                      .addPackage(
+                          "greycos.solver.quarkus.testcotwin.superclass") // Cannot reference a
+                      // non-public class.
+                      .deleteClass(
+                          greycos.solver.quarkus.testcotwin.superclass.DummyConstraintProvider
+                              .class) // duplicate class otherwise
+                      .addClasses(
+                          DummyConstraintProvider
+                              .class)); // or is this meant to be the dummy one that was added?
+
+  @Inject SolverFactory<TestdataSolution> solverFactory;
+
+  @Test
+  void buildSolver() {
+    TestdataSolution problem = new TestdataSolution();
+    problem.setValueList(IntStream.range(1, 3).mapToObj(i -> "v" + i).toList());
+    problem.setEntityList(IntStream.range(1, 3).mapToObj(TestdataEntity::new).toList());
+
+    TestdataSolution solution = solverFactory.buildSolver().solve(problem);
+    assertNotNull(solution);
+  }
+}

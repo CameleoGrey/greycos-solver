@@ -31,7 +31,7 @@ include::../shared/_java-prerequisites.adoc[]
 
 == The build file and the dependencies
 
-Use https://code.quarkus.io/?a=greycos-solver-quickstart&j=17&e=rest&e=rest-jackson&e=ai.greycos.solver%3Agreycos-solver-quarkus-jackson&e=ai.greycos.solver%3Agreycos-solver-quarkus[code.quarkus.io] to generate an application
+Use https://code.quarkus.io/?a=greycos-solver-quickstart&j=17&e=rest&e=rest-jackson&e=greycos.solver%3Agreycos-solver-quarkus-jackson&e=greycos.solver%3Agreycos-solver-quarkus[code.quarkus.io] to generate an application
 with the following extensions, for Maven or Gradle:
 
 [NOTE]
@@ -74,8 +74,8 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
 import org.acme.schooltimetabling.domain.Timetable;
-import ai.greycos.solver.core.api.solver.SolverJob;
-import ai.greycos.solver.core.api.solver.SolverManager;
+import greycos.solver.core.api.solver.SolverJob;
+import greycos.solver.core.api.solver.SolverManager;
 
 @Path("/timetables")
 public class TimetableResource {
@@ -110,11 +110,11 @@ Create the `src/main/kotlin/org/acme/schooltimetabling/rest/TimetableResource.kt
 ----
 package org.acme.schooltimetabling.rest
 
-import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis
-import ai.greycos.solver.core.api.score.HardSoftScore
-import ai.greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy
-import ai.greycos.solver.core.api.solver.SolutionManager
-import ai.greycos.solver.core.api.solver.SolverManager
+import greycos.solver.core.api.score.analysis.ScoreAnalysis
+import greycos.solver.core.api.score.HardSoftScore
+import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy
+import greycos.solver.core.api.solver.SolutionManager
+import greycos.solver.core.api.solver.SolverManager
 import jakarta.inject.Inject
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.DELETE
@@ -274,12 +274,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.inject.Singleton;
 
-import ai.greycos.solver.core.api.score.analysis.ScoreAnalysis;
-import ai.greycos.solver.core.api.score.HardSoftScore;
-import ai.greycos.solver.core.api.score.stream.ConstraintRef;
-import ai.greycos.solver.core.api.score.stream.ConstraintJustification;
-import ai.greycos.solver.core.api.solver.SolverStatus;
-import ai.greycos.solver.jackson.api.score.analysis.AbstractScoreAnalysisJacksonDeserializer;
+import greycos.solver.core.api.score.analysis.ScoreAnalysis;
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.api.score.stream.ConstraintJustification;
+import greycos.solver.core.api.solver.SolverStatus;
+import greycos.solver.jackson.api.score.analysis.AbstractScoreAnalysisJacksonDeserializer;
 
 import org.acme.schooltimetabling.domain.Timetable;
 import org.junit.jupiter.api.Test;
@@ -336,7 +336,7 @@ Create the `src/test/kotlin/org/acme/schooltimetabling/rest/TimetableResourceTes
 ----
 package org.acme.schooltimetabling.rest
 
-import ai.greycos.solver.core.api.solver.SolverStatus
+import greycos.solver.core.api.solver.SolverStatus
 import io.quarkus.test.junit.QuarkusTest
 import io.restassured.RestAssured.get
 import io.restassured.RestAssured.given
@@ -417,7 +417,7 @@ change the logging in the `application.properties` file or with a `-D` system pr
 
 [source,properties]
 ----
-quarkus.log.category."ai.greycos.solver".level=debug
+quarkus.log.category."greycos.solver".level=debug
 ----
 
 Use `debug` logging to show every _step_:

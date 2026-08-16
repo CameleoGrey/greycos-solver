@@ -1,3 +1,3 @@
-module ai.greycos.solver.spring.boot.starter {
-  requires transitive ai.greycos.solver.spring.boot.autoconfigure;
+module greycos.solver.spring.boot.starter {
+  requires transitive greycos.solver.spring.boot.autoconfigure;
 }

@@ -1,0 +1,69 @@
+package greycos.solver.core.impl.cotwin.lookup;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import greycos.solver.core.api.cotwin.lookup.PlanningId;
+import greycos.solver.core.impl.score.director.ScoreDirector;
+
+/**
+ * @see PlanningId
+ * @see ScoreDirector#lookUpWorkingObject(Object)
+ */
+public class LookUpManager {
+
+  private final LookUpStrategyResolver lookUpStrategyResolver;
+  private final Map<Object, Object> idToWorkingObjectMap = new HashMap<>();
+
+  public LookUpManager(LookUpStrategyResolver lookUpStrategyResolver) {
+    this.lookUpStrategyResolver = lookUpStrategyResolver;
+  }
+
+  public void reset() {
+    idToWorkingObjectMap.clear();
+  }
+
+  public void addWorkingObject(Object workingObject) {
+    LookUpStrategy lookUpStrategy = lookUpStrategyResolver.determineLookUpStrategy(workingObject);
+    lookUpStrategy.addWorkingObject(idToWorkingObjectMap, workingObject);
+  }
+
+  public void removeWorkingObject(Object workingObject) {
+    LookUpStrategy lookUpStrategy = lookUpStrategyResolver.determineLookUpStrategy(workingObject);
+    lookUpStrategy.removeWorkingObject(idToWorkingObjectMap, workingObject);
+  }
+
+  /**
+   * As defined by {@link ScoreDirector#lookUpWorkingObject(Object)}.
+   *
+   * @return null if externalObject is null
+   * @throws IllegalArgumentException if there is no workingObject for externalObject, if it cannot
+   *     be looked up or if the externalObject's class is not supported
+   * @throws IllegalStateException if it cannot be looked up
+   * @param <E> the object type
+   */
+  public <E> E lookUpWorkingObject(E externalObject) {
+    if (externalObject == null) {
+      return null;
+    }
+    LookUpStrategy lookUpStrategy = lookUpStrategyResolver.determineLookUpStrategy(externalObject);
+    return lookUpStrategy.lookUpWorkingObject(idToWorkingObjectMap, externalObject);
+  }
+
+  /**
+   * As defined by {@link ScoreDirector#lookUpWorkingObjectOrReturnNull(Object)}.
+   *
+   * @return null if externalObject is null, or if there is no workingObject for externalObject
+   * @throws IllegalArgumentException if it cannot be looked up or if the externalObject's class is
+   *     not supported
+   * @throws IllegalStateException if it cannot be looked up
+   * @param <E> the object type
+   */
+  public <E> E lookUpWorkingObjectOrReturnNull(E externalObject) {
+    if (externalObject == null) {
+      return null;
+    }
+    LookUpStrategy lookUpStrategy = lookUpStrategyResolver.determineLookUpStrategy(externalObject);
+    return lookUpStrategy.lookUpWorkingObjectIfExists(idToWorkingObjectMap, externalObject);
+  }
+}

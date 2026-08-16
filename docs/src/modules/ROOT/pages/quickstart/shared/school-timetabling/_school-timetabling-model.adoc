@@ -196,9 +196,9 @@ Create the `src/main/java/org/acme/schooltimetabling/domain/Lesson.java` class:
 ----
 package org.acme.schooltimetabling.domain;
 
-import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity;
-import ai.greycos.solver.core.api.cotwin.lookup.PlanningId;
-import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.lookup.PlanningId;
+import greycos.solver.core.api.cotwin.variable.PlanningVariable;
 
 @PlanningEntity
 public class Lesson {
@@ -282,9 +282,9 @@ Create the `src/main/kotlin/org/acme/schooltimetabling/domain/Lesson.kt` class:
 ----
 package org.acme.schooltimetabling.domain
 
-import ai.greycos.solver.core.api.cotwin.entity.PlanningEntity
-import ai.greycos.solver.core.api.cotwin.lookup.PlanningId
-import ai.greycos.solver.core.api.cotwin.variable.PlanningVariable
+import greycos.solver.core.api.cotwin.entity.PlanningEntity
+import greycos.solver.core.api.cotwin.lookup.PlanningId
+import greycos.solver.core.api.cotwin.variable.PlanningVariable
 
 @PlanningEntity
 data class Lesson (

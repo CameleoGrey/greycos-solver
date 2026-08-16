@@ -1,5 +1,5 @@
-module ai.greycos.solver.spring.boot.integration.test {
-  requires ai.greycos.solver.spring.boot.starter;
+module greycos.solver.spring.boot.integration.test {
+  requires greycos.solver.spring.boot.starter;
   requires org.jspecify;
   requires spring.boot;
   requires spring.boot.autoconfigure;

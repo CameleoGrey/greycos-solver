@@ -1,0 +1,41 @@
+package greycos.solver.core.impl.bavet.uni;
+
+import greycos.solver.core.impl.bavet.common.AbstractConcatNode;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+
+public final class ConcatUniUniNode<A>
+    extends AbstractConcatNode<UniTuple<A>, UniTuple<A>, UniTuple<A>> {
+
+  public ConcatUniUniNode(
+      TupleLifecycle<UniTuple<A>> nextNodesTupleLifecycle,
+      int inputStoreIndexLeftOutTupleList,
+      int inputStoreIndexRightOutTupleList,
+      int outputStoreSize) {
+    super(
+        nextNodesTupleLifecycle,
+        inputStoreIndexLeftOutTupleList,
+        inputStoreIndexRightOutTupleList,
+        outputStoreSize);
+  }
+
+  @Override
+  protected UniTuple<A> getOutTupleFromLeft(UniTuple<A> leftTuple) {
+    return UniTuple.of(leftTuple.getA(), outputStoreSize);
+  }
+
+  @Override
+  protected UniTuple<A> getOutTupleFromRight(UniTuple<A> rightTuple) {
+    return UniTuple.of(rightTuple.getA(), outputStoreSize);
+  }
+
+  @Override
+  protected void updateOutTupleFromLeft(UniTuple<A> leftTuple, UniTuple<A> outTuple) {
+    outTuple.setA(leftTuple.getA());
+  }
+
+  @Override
+  protected void updateOutTupleFromRight(UniTuple<A> rightTuple, UniTuple<A> outTuple) {
+    outTuple.setA(rightTuple.getA());
+  }
+}

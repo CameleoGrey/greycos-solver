@@ -64,7 +64,7 @@ include::../shared/_java-prerequisites.adoc[]
 
 == The build file and the dependencies
 
-Use https://code.quarkus.io/?a=greycos-solver-quickstart&j=17&e=rest&e=rest-jackson&e=ai.greycos.solver%3Agreycos-solver-quarkus-jackson&e=ai.greycos.solver%3Agreycos-solver-quarkus[code.quarkus.io] to generate an application
+Use https://code.quarkus.io/?a=greycos-solver-quickstart&j=17&e=rest&e=rest-jackson&e=greycos.solver%3Agreycos-solver-quarkus-jackson&e=greycos.solver%3Agreycos-solver-quarkus[code.quarkus.io] to generate an application
 with the following extensions, for Maven or Gradle:
 
 [NOTE]
@@ -100,7 +100,7 @@ Java::
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <version.io.quarkus>{quarkus-version}</version.io.quarkus>
-    <version.ai.greycos.solver>{greycos-solver-version}</version.ai.greycos.solver>
+    <version.greycos.solver>{greycos-solver-version}</version.greycos.solver>
   </properties>
 
   <dependencyManagement>
@@ -115,9 +115,9 @@ Java::
         <scope>import</scope>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-bom</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -133,11 +133,11 @@ Java::
       <artifactId>quarkus-rest-jackson</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.greycos.solver</groupId>
+      <groupId>greycos.solver</groupId>
       <artifactId>greycos-solver-quarkus</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.greycos.solver</groupId>
+      <groupId>greycos.solver</groupId>
       <artifactId>greycos-solver-quarkus-jackson</artifactId>
     </dependency>
   </dependencies>
@@ -192,7 +192,7 @@ Kotlin::
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <version.io.quarkus>{quarkus-version}</version.io.quarkus>
-    <version.ai.greycos.solver>{greycos-solver-version}</version.ai.greycos.solver>
+    <version.greycos.solver>{greycos-solver-version}</version.greycos.solver>
   </properties>
 
   <dependencyManagement>
@@ -207,9 +207,9 @@ Kotlin::
         <scope>import</scope>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-bom</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -225,11 +225,11 @@ Kotlin::
       <artifactId>quarkus-rest-jackson</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.greycos.solver</groupId>
+      <groupId>greycos.solver</groupId>
       <artifactId>greycos-solver-quarkus</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.greycos.solver</groupId>
+      <groupId>greycos.solver</groupId>
       <artifactId>greycos-solver-quarkus-jackson</artifactId>
     </dependency>
     <dependency>
@@ -345,8 +345,8 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
-import ai.greycos.solver.core.api.solver.SolverJob;
-import ai.greycos.solver.core.api.solver.SolverManager;
+import greycos.solver.core.api.solver.SolverJob;
+import greycos.solver.core.api.solver.SolverManager;
 
 import org.acme.vehiclerouting.domain.VehicleRoutePlan;
 
@@ -404,7 +404,7 @@ import jakarta.ws.rs.Path
 import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
 
-import ai.greycos.solver.core.api.solver.SolverManager
+import greycos.solver.core.api.solver.SolverManager
 
 import org.acme.vehiclerouting.domain.VehicleRoutePlan
 
@@ -561,7 +561,7 @@ import java.util.Arrays;
 
 import jakarta.inject.Inject;
 
-import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier;
+import greycos.solver.core.api.score.stream.test.ConstraintVerifier;
 
 import org.acme.vehiclerouting.domain.Location;
 import org.acme.vehiclerouting.domain.Vehicle;
@@ -631,8 +631,8 @@ import java.util.Arrays
 
 import jakarta.inject.Inject
 
-import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier
-import ai.greycos.solver.core.api.score.stream.ConstraintFactory
+import greycos.solver.core.api.score.stream.test.ConstraintVerifier
+import greycos.solver.core.api.score.stream.ConstraintFactory
 
 import org.acme.vehiclerouting.domain.Location
 import org.acme.vehiclerouting.domain.Vehicle
@@ -746,7 +746,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 
-import ai.greycos.solver.core.api.solver.SolverStatus;
+import greycos.solver.core.api.solver.SolverStatus;
 
 import org.acme.vehiclerouting.domain.VehicleRoutePlan;
 import org.junit.jupiter.api.Test;
@@ -805,7 +805,7 @@ package org.acme.vehiclerouting.rest
 
 import java.time.Duration
 
-import ai.greycos.solver.core.api.solver.SolverStatus
+import greycos.solver.core.api.solver.SolverStatus
 
 import org.acme.vehiclerouting.domain.VehicleRoutePlan
 import org.junit.jupiter.api.Test
@@ -899,7 +899,7 @@ change the logging in the `application.properties` file or with a `-D` system pr
 
 [source,properties]
 ----
-quarkus.log.category."ai.greycos.solver".level=debug
+quarkus.log.category."greycos.solver".level=debug
 ----
 
 Use `debug` logging to show every _step_:

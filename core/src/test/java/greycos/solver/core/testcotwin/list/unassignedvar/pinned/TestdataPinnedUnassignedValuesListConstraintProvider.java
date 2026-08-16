@@ -1,0 +1,33 @@
+package greycos.solver.core.testcotwin.list.unassignedvar.pinned;
+
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintFactory;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
+
+import org.jspecify.annotations.NonNull;
+
+public final class TestdataPinnedUnassignedValuesListConstraintProvider
+    implements ConstraintProvider {
+  @Override
+  public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+    return new Constraint[] {
+      entityConstraint(constraintFactory), valueConstraint(constraintFactory)
+    };
+  }
+
+  private Constraint entityConstraint(ConstraintFactory constraintFactory) {
+    return constraintFactory
+        .forEach(TestdataPinnedUnassignedValuesListEntity.class)
+        .penalize(SimpleScore.ONE, e -> e.getValueList().size())
+        .asConstraint("Entity list size");
+  }
+
+  private Constraint valueConstraint(ConstraintFactory constraintFactory) {
+    return constraintFactory
+        .forEachIncludingUnassigned(TestdataPinnedUnassignedValuesListValue.class)
+        .filter(value -> value.getEntity() == null)
+        .penalize(SimpleScore.ONE)
+        .asConstraint("Unassigned values");
+  }
+}

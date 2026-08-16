@@ -1,0 +1,6 @@
+greycos:
+  solver:
+    solver1:
+      solverConfigXml: greycos/solver/spring/boot/autoconfigure/customSolver1Config.xml
+      environmentMode: FULL_ASSERT
+      moveThreadCount: 2

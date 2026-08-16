@@ -1,0 +1,72 @@
+package greycos.solver.core.impl.score.stream.common.inliner;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.Collections;
+import java.util.Map;
+
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
+import greycos.solver.core.testcotwin.TestdataSolution;
+
+import org.junit.jupiter.api.Test;
+
+class SimpleScoreInlinerTest extends AbstractScoreInlinerTest<TestdataSolution, SimpleScore> {
+
+  @Test
+  void defaultScore() {
+    var scoreInliner = buildScoreInliner(Collections.emptyMap(), constraintMatchPolicy);
+    assertThat(scoreInliner.extractScore()).isEqualTo(SimpleScore.ZERO);
+  }
+
+  @Test
+  void impact() {
+    var constraintWeight = SimpleScore.of(10);
+    var impacter = buildScoreImpacter(constraintWeight);
+    var scoreInliner = (AbstractScoreInliner<SimpleScore>) impacter.getContext().inliner;
+
+    var impact1 = impacter.impactScore(10, ConstraintMatchSupplier.empty());
+    assertThat(scoreInliner.extractScore()).isEqualTo(SimpleScore.of(100));
+
+    var impact2 = impacter.impactScore(20, ConstraintMatchSupplier.empty());
+    assertThat(scoreInliner.extractScore()).isEqualTo(SimpleScore.of(300));
+
+    impact2.undo();
+    assertThat(scoreInliner.extractScore()).isEqualTo(SimpleScore.of(100));
+
+    impact1.undo();
+    assertThat(scoreInliner.extractScore()).isEqualTo(SimpleScore.of(0));
+  }
+
+  @Test
+  void impactMatchWeightOverflow() {
+    var constraintWeight = SimpleScore.of(10);
+    var impacter = buildScoreImpacter(constraintWeight);
+    assertThatThrownBy(() -> impacter.impactScore(Long.MAX_VALUE, ConstraintMatchSupplier.empty()))
+        .isInstanceOf(ArithmeticException.class);
+  }
+
+  @Test
+  void impactTotalOverflow() {
+    var constraintWeight = SimpleScore.of(Long.MAX_VALUE);
+    var impacter = buildScoreImpacter(constraintWeight);
+    impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    assertThatThrownBy(() -> impacter.impactScore(1, ConstraintMatchSupplier.empty()))
+        .isInstanceOf(ArithmeticException.class);
+  }
+
+  @Override
+  protected SolutionDescriptor<TestdataSolution> buildSolutionDescriptor() {
+    return TestdataSolution.buildSolutionDescriptor();
+  }
+
+  @Override
+  protected AbstractScoreInliner<SimpleScore> buildScoreInliner(
+      Map<Constraint, SimpleScore> constraintWeightMap,
+      ConstraintMatchPolicy constraintMatchPolicy) {
+    return new SimpleScoreInliner(constraintWeightMap, constraintMatchPolicy);
+  }
+}

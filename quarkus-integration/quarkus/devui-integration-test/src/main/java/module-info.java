@@ -1,4 +1,4 @@
-module ai.greycos.solver.quarkus.devui.integration.test {
-  requires ai.greycos.solver.quarkus;
+module greycos.solver.quarkus.devui.integration.test {
+  requires greycos.solver.quarkus;
   requires org.jspecify;
 }

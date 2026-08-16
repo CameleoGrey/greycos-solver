@@ -16,4 +16,4 @@ metadata:
   config:
     - "quarkus.greycos.benchmark."
   extension-dependencies:
-    - "ai.greycos.solver:greycos-solver-quarkus"
+    - "greycos.solver:greycos-solver-quarkus"

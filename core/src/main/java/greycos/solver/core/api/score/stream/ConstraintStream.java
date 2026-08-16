@@ -1,0 +1,70 @@
+package greycos.solver.core.api.score.stream;
+
+import java.util.stream.Stream;
+
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
+import greycos.solver.core.api.cotwin.solution.ProblemFactProperty;
+import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.stream.bi.BiConstraintStream;
+import greycos.solver.core.api.score.stream.bi.BiJoiner;
+import greycos.solver.core.api.score.stream.uni.UniConstraintStream;
+import greycos.solver.core.api.solver.SolutionManager;
+
+import org.jspecify.annotations.NonNull;
+
+/**
+ * A constraint stream is a declaration on how to match {@link UniConstraintStream one}, {@link
+ * BiConstraintStream two} or more objects. Constraint streams are similar to a declaration of a JDK
+ * {@link Stream} or an SQL query, but they support incremental score calculation and {@link
+ * SolutionManager#analyze(Object) score analysis}.
+ *
+ * <p>An object that passes through constraint streams is called a fact. It's either a {@link
+ * ProblemFactCollectionProperty problem fact} or a {@link PlanningEntity planning entity}.
+ *
+ * <p>A constraint stream is typically created with {@link ConstraintFactory#forEach(Class)} or
+ * {@link UniConstraintStream#join(UniConstraintStream, BiJoiner)} by joining another constraint
+ * stream}. Constraint streams form a directed, non-cyclic graph, with multiple start nodes (which
+ * listen to fact changes) and one end node per {@link Constraint} (which affect the {@link Score}).
+ *
+ * <p>Throughout this documentation, we will be using the following terminology:
+ *
+ * <dl>
+ *   <dt>Constraint Stream
+ *   <dd>A chain of different operations, originated by {@link ConstraintFactory#forEach(Class)} (or
+ *       similar methods) and terminated by a penalization or reward operation.
+ *   <dt>Operation
+ *   <dd>Operations (implementations of {@link ConstraintStream}) are parts of a constraint stream
+ *       which mutate it. They may remove tuples from further evaluation, expand or contract
+ *       streams. Every constraint stream has a terminal operation, which is either a penalization
+ *       or a reward.
+ *   <dt>Fact
+ *   <dd>Object instance entering the constraint stream.
+ *   <dt>Genuine Fact
+ *   <dd>Fact that enters the constraint stream either through a from(...) call or through a
+ *       join(...) call. Genuine facts are either planning entities (see {@link PlanningEntity}) or
+ *       problem facts (see {@link ProblemFactProperty} or {@link ProblemFactCollectionProperty}).
+ *   <dt>Inferred Fact
+ *   <dd>Fact that enters the constraint stream through a computation. This would typically happen
+ *       through an operation such as groupBy(...).
+ *   <dt>Tuple
+ *   <dd>A collection of facts that the constraint stream operates on, propagating them from
+ *       operation to operation. For example, {@link UniConstraintStream} operates on single-fact
+ *       tuples {A} and {@link BiConstraintStream} operates on two-fact tuples {A, B}. Putting facts
+ *       into a tuple implies a relationship exists between these facts.
+ *   <dt>Match
+ *   <dd>Match is a tuple that reached the terminal operation of a constraint stream and is
+ *       therefore either penalized or rewarded.
+ *   <dt>Cardinality
+ *   <dd>The number of facts in a tuple. Uni constraint streams have a cardinality of 1, bi
+ *       constraint streams have a cardinality of 2, etc.
+ *   <dt>Conversion
+ *   <dd>An operation that changes the cardinality of a constraint stream. This typically happens
+ *       through join(...) or a groupBy(...) operations.
+ * </dl>
+ */
+public interface ConstraintStream {
+
+  /** The {@link ConstraintFactory} that build this. */
+  @NonNull ConstraintFactory getConstraintFactory();
+}

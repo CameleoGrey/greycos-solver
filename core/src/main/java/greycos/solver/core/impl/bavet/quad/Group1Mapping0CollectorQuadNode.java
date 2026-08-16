@@ -1,0 +1,43 @@
+package greycos.solver.core.impl.bavet.quad;
+
+import greycos.solver.core.api.function.QuadFunction;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.tuple.QuadTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+
+public final class Group1Mapping0CollectorQuadNode<OldA, OldB, OldC, OldD, A>
+    extends AbstractGroupQuadNode<OldA, OldB, OldC, OldD, UniTuple<A>, A, Void, Void> {
+
+  private final int outputStoreSize;
+
+  public Group1Mapping0CollectorQuadNode(
+      QuadFunction<OldA, OldB, OldC, OldD, A> groupKeyMapping,
+      int groupStoreIndex,
+      TupleLifecycle<UniTuple<A>> nextNodesTupleLifecycle,
+      int outputStoreSize,
+      EnvironmentMode environmentMode) {
+    super(
+        groupStoreIndex,
+        tuple -> createGroupKey(groupKeyMapping, tuple),
+        nextNodesTupleLifecycle,
+        environmentMode);
+    this.outputStoreSize = outputStoreSize;
+  }
+
+  static <A, OldA, OldB, OldC, OldD> A createGroupKey(
+      QuadFunction<OldA, OldB, OldC, OldD, A> groupKeyMapping,
+      QuadTuple<OldA, OldB, OldC, OldD> tuple) {
+    return groupKeyMapping.apply(tuple.getA(), tuple.getB(), tuple.getC(), tuple.getD());
+  }
+
+  @Override
+  protected UniTuple<A> createOutTuple(A a) {
+    return UniTuple.of(a, outputStoreSize);
+  }
+
+  @Override
+  protected void updateOutTupleToResult(UniTuple<A> aUniTuple, Void unused) {
+    throw new IllegalStateException("Impossible state: collector is null.");
+  }
+}

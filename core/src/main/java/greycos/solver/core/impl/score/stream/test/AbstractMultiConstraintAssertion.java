@@ -1,0 +1,77 @@
+package greycos.solver.core.impl.score.stream.test;
+
+import static java.util.Objects.requireNonNull;
+
+import java.util.Collection;
+import java.util.Map;
+
+import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
+import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.api.score.stream.test.MultiConstraintAssertion;
+import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
+import greycos.solver.core.impl.score.director.InnerScore;
+import greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamScoreDirectorFactory;
+
+import org.jspecify.annotations.NonNull;
+
+public abstract sealed class AbstractMultiConstraintAssertion<
+        Solution_, Score_ extends Score<Score_>>
+    extends AbstractConstraintAssertion<Solution_, Score_> implements MultiConstraintAssertion
+    permits DefaultMultiConstraintAssertion, DefaultShadowVariableAwareMultiConstraintAssertion {
+
+  private final ConstraintProvider constraintProvider;
+  private InnerScore<Score_> actualScore;
+  private Collection<ConstraintMatchTotal<Score_>> constraintMatchTotalCollection;
+
+  AbstractMultiConstraintAssertion(
+      ConstraintProvider constraintProvider,
+      AbstractConstraintStreamScoreDirectorFactory<Solution_, Score_, ?> scoreDirectorFactory) {
+    super(scoreDirectorFactory);
+    this.constraintProvider = requireNonNull(constraintProvider);
+  }
+
+  @Override
+  final void update(
+      InnerScore<Score_> innerScore,
+      Map<ConstraintRef, ConstraintMatchTotal<Score_>> constraintMatchTotalMap) {
+    this.actualScore =
+        InnerScore.fullyAssigned(
+            requireNonNull(innerScore).raw()); // Strip initialization information.
+    this.constraintMatchTotalCollection = requireNonNull(constraintMatchTotalMap).values();
+    toggleInitialized();
+  }
+
+  @Override
+  public void scores(@NonNull Score<?> score, String message) {
+    ensureInitialized();
+    if (actualScore.raw().equals(score)) {
+      return;
+    }
+    var constraintProviderClass = constraintProvider.getClass();
+    var expectation = message == null ? "Broken expectation." : message;
+    throw new AssertionError(
+        """
+                %s
+                  Constraint provider: %s
+                       Expected score: %s (%s)
+                         Actual score: %s (%s)
+
+                  %s"""
+            .formatted(
+                expectation,
+                constraintProviderClass,
+                score,
+                score.getClass(),
+                actualScore,
+                actualScore.getClass(),
+                explainScore(actualScore, constraintMatchTotalCollection)));
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public <S extends Score<S>> S getScore() {
+    ensureInitialized();
+    return (S) actualScore.raw();
+  }
+}

@@ -1,16 +1,16 @@
 import java.util.ArrayList;
 import java.util.List;
 
-import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
-import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
-import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
-import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.score.SimpleScore;
-import ai.greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
-import ai.greycos.solver.core.testcotwin.TestdataEntity;
-import ai.greycos.solver.core.testcotwin.TestdataObject;
-import ai.greycos.solver.core.testcotwin.TestdataValue;
+import greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
+import greycos.solver.core.api.cotwin.solution.PlanningScore;
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
+import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.testcotwin.TestdataEntity;
+import greycos.solver.core.testcotwin.TestdataObject;
+import greycos.solver.core.testcotwin.TestdataValue;
 
 @PlanningSolution
 public class TestdataInUnnamedPackageSolution extends TestdataObject {

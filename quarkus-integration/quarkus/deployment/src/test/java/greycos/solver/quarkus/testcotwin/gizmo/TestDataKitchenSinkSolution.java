@@ -1,0 +1,82 @@
+package greycos.solver.quarkus.testcotwin.gizmo;
+
+import java.util.List;
+
+import greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
+import greycos.solver.core.api.cotwin.solution.PlanningEntityProperty;
+import greycos.solver.core.api.cotwin.solution.PlanningScore;
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
+import greycos.solver.core.api.cotwin.solution.ProblemFactProperty;
+import greycos.solver.core.api.score.HardSoftScore;
+
+@PlanningSolution
+public class TestDataKitchenSinkSolution {
+
+  @PlanningEntityProperty private TestDataKitchenSinkEntity planningEntityProperty;
+
+  @PlanningEntityCollectionProperty
+  private List<TestDataKitchenSinkEntity> planningEntityListProperty;
+
+  @ProblemFactProperty private String problemFactProperty;
+
+  @ProblemFactCollectionProperty private List<String> problemFactListProperty;
+
+  @PlanningScore private HardSoftScore score;
+
+  public TestDataKitchenSinkSolution() {}
+
+  public TestDataKitchenSinkSolution(
+      TestDataKitchenSinkEntity planningEntityProperty,
+      List<TestDataKitchenSinkEntity> planningEntityListProperty,
+      String problemFactProperty,
+      List<String> problemFactListProperty,
+      HardSoftScore score) {
+    this.planningEntityProperty = planningEntityProperty;
+    this.planningEntityListProperty = planningEntityListProperty;
+    this.problemFactProperty = problemFactProperty;
+    this.problemFactListProperty = problemFactListProperty;
+    this.score = score;
+  }
+
+  public TestDataKitchenSinkEntity getPlanningEntityProperty() {
+    return planningEntityProperty;
+  }
+
+  public void setPlanningEntityProperty(TestDataKitchenSinkEntity planningEntityProperty) {
+    this.planningEntityProperty = planningEntityProperty;
+  }
+
+  public List<TestDataKitchenSinkEntity> getPlanningEntityListProperty() {
+    return planningEntityListProperty;
+  }
+
+  public void setPlanningEntityListProperty(
+      List<TestDataKitchenSinkEntity> planningEntityListProperty) {
+    this.planningEntityListProperty = planningEntityListProperty;
+  }
+
+  public String getProblemFactProperty() {
+    return problemFactProperty;
+  }
+
+  public void setProblemFactProperty(String problemFactProperty) {
+    this.problemFactProperty = problemFactProperty;
+  }
+
+  public List<String> getProblemFactListProperty() {
+    return problemFactListProperty;
+  }
+
+  public void setProblemFactListProperty(List<String> problemFactListProperty) {
+    this.problemFactListProperty = problemFactListProperty;
+  }
+
+  public HardSoftScore getScore() {
+    return score;
+  }
+
+  public void setScore(HardSoftScore score) {
+    this.score = score;
+  }
+}

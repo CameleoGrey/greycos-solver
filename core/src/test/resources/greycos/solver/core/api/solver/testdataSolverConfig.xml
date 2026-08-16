@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver>
+  <solutionClass>greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+  <entityClass>greycos.solver.core.testcotwin.TestdataEntity</entityClass>
+
+  <!-- Score configuration -->
+  <scoreDirectorFactory>
+    <easyScoreCalculatorClass>greycos.solver.core.testcotwin.TestdataEasyScoreCalculator</easyScoreCalculatorClass>
+  </scoreDirectorFactory>
+</solver>

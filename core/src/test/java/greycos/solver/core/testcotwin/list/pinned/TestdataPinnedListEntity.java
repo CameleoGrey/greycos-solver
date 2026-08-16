@@ -1,0 +1,79 @@
+package greycos.solver.core.testcotwin.list.pinned;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.entity.PlanningPin;
+import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.testcotwin.TestdataObject;
+
+@PlanningEntity
+public class TestdataPinnedListEntity extends TestdataObject {
+
+  public static EntityDescriptor<TestdataPinnedListSolution> buildEntityDescriptor() {
+    return TestdataPinnedListSolution.buildSolutionDescriptor()
+        .findEntityDescriptorOrFail(TestdataPinnedListEntity.class);
+  }
+
+  public static ListVariableDescriptor<TestdataPinnedListSolution>
+      buildVariableDescriptorForValueList() {
+    return (ListVariableDescriptor<TestdataPinnedListSolution>)
+        buildEntityDescriptor().getGenuineVariableDescriptor("valueList");
+  }
+
+  public static TestdataPinnedListEntity createWithValues(
+      String code, TestdataPinnedListValue... values) {
+    // Set up shadow variables to preserve consistency.
+    return new TestdataPinnedListEntity(code, values).setUpShadowVariables();
+  }
+
+  TestdataPinnedListEntity setUpShadowVariables() {
+    for (int i = 0; i < valueList.size(); i++) {
+      var testdataListValue = valueList.get(i);
+      testdataListValue.setEntity(this);
+      testdataListValue.setIndex(i);
+    }
+    return this;
+  }
+
+  private List<TestdataPinnedListValue> valueList;
+
+  @PlanningPin private boolean pinned;
+
+  public TestdataPinnedListEntity() {}
+
+  public TestdataPinnedListEntity(String code, List<TestdataPinnedListValue> valueList) {
+    super(code);
+    this.valueList = valueList;
+  }
+
+  public TestdataPinnedListEntity(String code, TestdataPinnedListValue... values) {
+    this(code, new ArrayList<>(Arrays.asList(values)));
+  }
+
+  @PlanningListVariable(valueRangeProviderRefs = "valueRange")
+  public List<TestdataPinnedListValue> getValueList() {
+    if (pinned) {
+      return Collections.unmodifiableList(
+          valueList); // Hard fail when something tries to modify the list.
+    }
+    return valueList;
+  }
+
+  public void setValueList(List<TestdataPinnedListValue> valueList) {
+    this.valueList = valueList;
+  }
+
+  public boolean isPinned() {
+    return pinned;
+  }
+
+  public void setPinned(boolean pinned) {
+    this.pinned = pinned;
+  }
+}

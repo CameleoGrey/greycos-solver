@@ -1,0 +1,40 @@
+package greycos.solver.core.impl.heuristic.selector.move.decorator;
+
+import java.util.Collections;
+import java.util.Iterator;
+
+import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
+import greycos.solver.core.preview.api.move.Move;
+
+public class ShufflingMoveSelector<Solution_> extends AbstractCachingMoveSelector<Solution_> {
+
+  public ShufflingMoveSelector(
+      MoveSelector<Solution_> childMoveSelector, SelectionCacheType cacheType) {
+    super(childMoveSelector, cacheType);
+  }
+
+  // ************************************************************************
+  // Worker methods
+  // ************************************************************************
+
+  @Override
+  public boolean isNeverEnding() {
+    return false;
+  }
+
+  @Override
+  public Iterator<Move<Solution_>> iterator() {
+    Collections.shuffle(cachedMoveList, workingRandom);
+    logger.trace(
+        "    Shuffled cachedMoveList with size ({}) in moveSelector({}).",
+        cachedMoveList.size(),
+        this);
+    return cachedMoveList.iterator();
+  }
+
+  @Override
+  public String toString() {
+    return "Shuffling(" + childMoveSelector + ")";
+  }
+}

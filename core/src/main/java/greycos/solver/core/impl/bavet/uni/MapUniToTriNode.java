@@ -1,0 +1,51 @@
+package greycos.solver.core.impl.bavet.uni;
+
+import java.util.Objects;
+import java.util.function.Function;
+
+import greycos.solver.core.impl.bavet.common.AbstractMapNode;
+import greycos.solver.core.impl.bavet.common.tuple.TriTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+
+public final class MapUniToTriNode<A, NewA, NewB, NewC>
+    extends AbstractMapNode<UniTuple<A>, TriTuple<NewA, NewB, NewC>> {
+
+  private final Function<A, NewA> mappingFunctionA;
+  private final Function<A, NewB> mappingFunctionB;
+  private final Function<A, NewC> mappingFunctionC;
+
+  public MapUniToTriNode(
+      int mapStoreIndex,
+      Function<A, NewA> mappingFunctionA,
+      Function<A, NewB> mappingFunctionB,
+      Function<A, NewC> mappingFunctionC,
+      TupleLifecycle<TriTuple<NewA, NewB, NewC>> nextNodesTupleLifecycle,
+      int outputStoreSize) {
+    super(mapStoreIndex, nextNodesTupleLifecycle, outputStoreSize);
+    this.mappingFunctionA = Objects.requireNonNull(mappingFunctionA);
+    this.mappingFunctionB = Objects.requireNonNull(mappingFunctionB);
+    this.mappingFunctionC = Objects.requireNonNull(mappingFunctionC);
+  }
+
+  @Override
+  protected TriTuple<NewA, NewB, NewC> map(UniTuple<A> tuple) {
+    var factA = tuple.getA();
+    return TriTuple.of(
+        mappingFunctionA.apply(factA),
+        mappingFunctionB.apply(factA),
+        mappingFunctionC.apply(factA),
+        outputStoreSize);
+  }
+
+  @Override
+  protected void remap(UniTuple<A> inTuple, TriTuple<NewA, NewB, NewC> outTuple) {
+    var factA = inTuple.getA();
+    var newA = mappingFunctionA.apply(factA);
+    var newB = mappingFunctionB.apply(factA);
+    var newC = mappingFunctionC.apply(factA);
+    outTuple.setA(newA);
+    outTuple.setB(newB);
+    outTuple.setC(newC);
+  }
+}

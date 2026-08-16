@@ -1,0 +1,36 @@
+package greycos.solver.quarkus.testcotwin.declarative.list;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+
+@PlanningEntity
+public class TestdataQuarkusDeclarativeShadowVariableListEntity {
+  String name;
+
+  @PlanningListVariable List<TestdataQuarkusDeclarativeShadowVariableListValue> values;
+
+  public TestdataQuarkusDeclarativeShadowVariableListEntity() {
+    this.values = new ArrayList<>();
+  }
+
+  public TestdataQuarkusDeclarativeShadowVariableListEntity(String name) {
+    this.name = name;
+    this.values = new ArrayList<>();
+  }
+
+  public List<TestdataQuarkusDeclarativeShadowVariableListValue> getValues() {
+    return values;
+  }
+
+  public void setValues(List<TestdataQuarkusDeclarativeShadowVariableListValue> values) {
+    this.values = values;
+  }
+
+  @Override
+  public String toString() {
+    return name + " " + values;
+  }
+}

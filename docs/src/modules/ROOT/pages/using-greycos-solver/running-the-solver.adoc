@@ -354,13 +354,13 @@ If you are not using any logging framework yet, use Logback by adding this Maven
     </dependency>
 ----
 +
-Configure the logging level on the `ai.greycos.solver` package in your `logback.xml` file:
+Configure the logging level on the `greycos.solver` package in your `logback.xml` file:
 +
 [source,xml,options="nowrap"]
 ----
 <configuration>
 
-  <logger name="ai.greycos.solver" level="debug"/>
+  <logger name="greycos.solver" level="debug"/>
 
   ...
 

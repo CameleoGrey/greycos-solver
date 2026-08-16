@@ -1,7 +1,7 @@
-module ai.greycos.solver.quarkus.jackson.deployment {
-  exports ai.greycos.solver.quarkus.jackson.deployment;
+module greycos.solver.quarkus.jackson.deployment {
+  exports greycos.solver.quarkus.jackson.deployment;
 
-  requires transitive ai.greycos.solver.quarkus.jackson;
+  requires transitive greycos.solver.quarkus.jackson;
   requires io.quarkus.core;
   requires quarkus.core.deployment;
   requires quarkus.jackson.spi;

@@ -1,0 +1,51 @@
+package greycos.solver.core.testcotwin;
+
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
+
+@PlanningEntity
+public class TestdataEntity extends TestdataObject {
+
+  public static final String VALUE_FIELD = "value";
+
+  public static EntityDescriptor<TestdataSolution> buildEntityDescriptor() {
+    return TestdataSolution.buildSolutionDescriptor()
+        .findEntityDescriptorOrFail(TestdataEntity.class);
+  }
+
+  public static BasicVariableDescriptor<TestdataSolution> buildVariableDescriptorForValue() {
+    return (BasicVariableDescriptor<TestdataSolution>)
+        buildEntityDescriptor().getGenuineVariableDescriptor("value");
+  }
+
+  private TestdataValue value;
+
+  public TestdataEntity() {}
+
+  public TestdataEntity(String code) {
+    super(code);
+  }
+
+  public TestdataEntity(String code, TestdataValue value) {
+    this(code);
+    this.value = value;
+  }
+
+  @PlanningVariable(valueRangeProviderRefs = "valueRange")
+  public TestdataValue getValue() {
+    return value;
+  }
+
+  public void setValue(TestdataValue value) {
+    this.value = value;
+  }
+
+  // ************************************************************************
+  // Complex methods
+  // ************************************************************************
+  public void updateValue() {
+    this.value = new TestdataValue(value.code + "/" + value.code);
+  }
+}

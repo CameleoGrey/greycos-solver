@@ -1,0 +1,57 @@
+package greycos.solver.core.impl.neighborhood.stream.enumerating.common;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+import greycos.solver.core.impl.bavet.common.AbstractNode;
+import greycos.solver.core.impl.bavet.common.AbstractNodeBuildHelper;
+import greycos.solver.core.impl.bavet.common.AbstractRootNode;
+import greycos.solver.core.impl.bavet.common.tuple.Tuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.neighborhood.NeighborhoodsBavetNodeNetwork;
+import greycos.solver.core.impl.score.director.SessionContext;
+
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
+public final class DataNodeBuildHelper<Solution_>
+    extends AbstractNodeBuildHelper<AbstractEnumeratingStream<Solution_>> {
+
+  private final SessionContext<Solution_> sessionContext;
+  private final List<AbstractDatasetInstance<Solution_, ?>> datasetInstanceList = new ArrayList<>();
+
+  public DataNodeBuildHelper(
+      SessionContext<Solution_> sessionContext,
+      Set<AbstractEnumeratingStream<Solution_>> activeStreamSet) {
+    super(activeStreamSet);
+    this.sessionContext = Objects.requireNonNull(sessionContext);
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  @Override
+  public <Tuple_ extends Tuple> void putInsertUpdateRetract(
+      AbstractEnumeratingStream<Solution_> stream, TupleLifecycle<Tuple_> tupleLifecycle) {
+    super.putInsertUpdateRetract(stream, tupleLifecycle);
+    if (tupleLifecycle instanceof AbstractDatasetInstance datasetInstance) {
+      datasetInstanceList.add(datasetInstance);
+    }
+  }
+
+  public SessionContext<Solution_> getSessionContext() {
+    return sessionContext;
+  }
+
+  public List<AbstractDatasetInstance<Solution_, ?>> getDatasetInstanceList() {
+    return Collections.unmodifiableList(datasetInstanceList);
+  }
+
+  public static NeighborhoodsBavetNodeNetwork buildNodeNetwork(
+      List<AbstractNode> nodeList,
+      Map<Class<?>, List<AbstractRootNode<?>>> declaredClassToNodeMap) {
+    return NeighborhoodsBavetNodeNetwork.of(nodeList, declaredClassToNodeMap);
+  }
+}

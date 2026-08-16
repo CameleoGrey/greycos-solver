@@ -1,6 +1,6 @@
-module ai.greycos.solver.quarkus.benchmark.deployment {
-  requires ai.greycos.solver.quarkus.benchmark;
-  requires ai.greycos.solver.quarkus.deployment;
+module greycos.solver.quarkus.benchmark.deployment {
+  requires greycos.solver.quarkus.benchmark;
+  requires greycos.solver.quarkus.deployment;
   requires io.quarkus.core;
   requires io.smallrye.config;
   requires org.jboss.logging;

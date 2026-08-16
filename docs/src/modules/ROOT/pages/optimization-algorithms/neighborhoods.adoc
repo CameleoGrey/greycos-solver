@@ -67,7 +67,7 @@ For example, in a vehicle routing problem,
 a move might involve changing the assignment of a delivery to a different vehicle
 or swapping the routes of two vehicles.
 
-In technical terms, a move is an implementation of the `ai.greycos.solver.core.preview.api.move.Move` interface.
+In technical terms, a move is an implementation of the `greycos.solver.core.preview.api.move.Move` interface.
 Let's explore that interface in detail.
 
 [#neighborhoodsMoveAnatomy]
@@ -265,7 +265,7 @@ public final class ChangeMove implements Move<Timetable> {
 
 GreyCOS Solver provides several built-in move implementations
 that cover the most common use cases.
-These moves are available through the `ai.greycos.solver.core.preview.api.move.builtin.Moves` class.
+These moves are available through the `greycos.solver.core.preview.api.move.builtin.Moves` class.
 
 For example, here's how you can obtain a `ChangeMove` instance using the built-in implementation:
 
@@ -284,7 +284,7 @@ The built-in moves include, among others:
 `ListChangeMove`:: Changes the position of a value in the xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[list variable] of a planning entity.
 `ListSwapMove`:: Swaps xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[list variable] elements between planning entities.
 
-We encourage you to explore the `ai.greycos.solver.core.preview.api.move.builtin.Moves` API
+We encourage you to explore the `greycos.solver.core.preview.api.move.builtin.Moves` API
 to discover all the available built-in move implementations.
 Over time, we expect to add all commonly used move types to this collection,
 reducing the need for custom move implementations in most scenarios.
@@ -336,7 +336,7 @@ For example, having picked an entity and a value,
 you'd generate a change move to assign the value to that entity's variable.
 
 All three of these layers are defined together
-in an implementation of the `ai.greycos.solver.core.preview.api.neighborhood.MoveProvider` interface.
+in an implementation of the `greycos.solver.core.preview.api.neighborhood.MoveProvider` interface.
 Each such move provider is expected to describe a single type of move -
 for example, a move which tries different timeslot assignments in a school lesson.
 
@@ -475,7 +475,7 @@ This pair of picked items is then passed to the move generation phase,
 and the process of sampling is repeated each time the solver requests a new move to be generated.
 
 The sampling phase currently only supports applying filtering and a limited selection of joiners,
-found in the `ai.greycos.solver.core.preview.api.neighborhood.stream.joiner.NeighborhoodsJoiners` class.
+found in the `greycos.solver.core.preview.api.neighborhood.stream.joiner.NeighborhoodsJoiners` class.
 More advanced selection strategies,
 such as xref:advanced-features/advanced-features.adoc#nearbySelection[nearby selection],
 are likely to materialize here in the future as well.
@@ -524,7 +524,7 @@ which will be expanded over time to cover more use cases.
 == Configuring the solver to use Neighborhoods
 
 To use the Neighborhoods API,
-you need to implement the `ai.greycos.solver.core.preview.api.neighborhood.NeighborhoodProvider` interface
+you need to implement the `greycos.solver.core.preview.api.neighborhood.NeighborhoodProvider` interface
 and reference the implementation class in the solver configuration like so:
 
 [source,xml]

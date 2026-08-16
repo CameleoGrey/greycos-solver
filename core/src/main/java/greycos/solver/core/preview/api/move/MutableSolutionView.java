@@ -1,0 +1,334 @@
+package greycos.solver.core.preview.api.move;
+
+import java.util.List;
+
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
+import greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
+import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Contains all reading and mutating methods available to a {@link Move} in order to change the
+ * state of a {@link PlanningSolution planning solution}.
+ *
+ * <p><strong>This package and all of its contents are part of the Neighborhoods API, which is under
+ * development and is only offered as a preview feature.</strong> There are no guarantees for
+ * backward compatibility; any class, method, or field may change or be removed without prior
+ * notice, although we will strive to avoid this as much as possible.
+ *
+ * <p>We encourage you to try the API and give us feedback on your experience with it, before we
+ * finalize the API. Please direct your feedback to the <a
+ * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver GitHub
+ * discussions</a>.
+ *
+ * @param <Solution_>
+ */
+@NullMarked
+public interface MutableSolutionView<Solution_> extends SolutionView<Solution_> {
+
+  /**
+   * Puts a given value at a particular index in a given entity's {@link PlanningListVariable
+   * planning list variable}. Moves all values at or after the index to the right, much like {@link
+   * List#add(int, Object)}.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param value The value to be assigned to a list variable.
+   * @param destinationEntity The entity whose list variable is to be changed.
+   * @param destinationIndex The index in the list variable at which the value is to be assigned,
+   *     moving the pre-existing value at that index and all subsequent values to the right.
+   * @throws IllegalStateException if the value is already assigned to a list variable
+   */
+  <Entity_, Value_> void assignValueAndAdd(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Value_ value,
+      Entity_ destinationEntity,
+      int destinationIndex);
+
+  default <Entity_, Value_> void assignValueAndAdd(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Value_ value,
+      PositionInList destination) {
+    assignValueAndAdd(variableMetaModel, value, destination.entity(), destination.index());
+  }
+
+  /**
+   * Puts given sequence of values at a particular index in a given entity's {@link
+   * PlanningListVariable planning list variable}. Moves all values at or after the index to the
+   * right, much like {@link List#addAll(int, java.util.Collection)}.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param values The sequence of values to be assigned to a list variable.
+   * @param destinationEntity The entity whose list variable is to be changed.
+   * @param destinationIndex The index in the list variable at which the value is to be assigned,
+   *     moving the pre-existing value at that index and all subsequent values to the right.
+   * @throws IllegalStateException if any of the values is already assigned to a list variable
+   */
+  <Entity_, Value_> void assignValuesAndAdd(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      List<Value_> values,
+      Entity_ destinationEntity,
+      int destinationIndex);
+
+  default <Entity_, Value_> void assignValuesAndAdd(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      List<Value_> values,
+      PositionInList destination) {
+    assignValuesAndAdd(variableMetaModel, values, destination.entity(), destination.index());
+  }
+
+  /**
+   * Puts a given value at a particular index in a given entity's {@link PlanningListVariable
+   * planning list variable}. The original value at that index becomes unassigned. If the
+   * destination index is equal to the list size, the value is appended to the end of the list
+   * without unassigning any value.
+   *
+   * @throws IllegalStateException if the value is already assigned to a list variable
+   */
+  <Entity_, Value_> void assignValueAndSet(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Value_ value,
+      Entity_ destinationEntity,
+      int destinationIndex);
+
+  default <Entity_, Value_> void assignValueAndSet(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Value_ value,
+      PositionInList destination) {
+    assignValueAndSet(variableMetaModel, value, destination.entity(), destination.index());
+  }
+
+  /**
+   * Removes a given value from the {@link PlanningListVariable planning list variable} that it's
+   * part of. Shifts any later values to the left.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param value The value to be removed from a list variable.
+   * @throws IllegalStateException if the value is not assigned to a list variable
+   */
+  <Entity_, Value_> void unassignValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel, Value_ value);
+
+  /**
+   * Removes a value from a given entity's {@link PlanningListVariable planning list variable} at a
+   * given index. Shifts any later values to the left.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param entity The entity whose element is to be removed from a list variable.
+   * @param index The index in entity's list variable which contains the value to be removed;
+   *     Acceptable values range from zero to one less than list size. All values after the index
+   *     are shifted to the left.
+   * @return the removed value
+   */
+  <Entity_, Value_> Value_ unassignValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ entity,
+      int index);
+
+  default <Entity_, Value_> Value_ unassignValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      PositionInList destination) {
+    return unassignValue(variableMetaModel, destination.entity(), destination.index());
+  }
+
+  /**
+   * Changes the value of a @{@link PlanningVariable basic planning variable} of a given entity.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param entity The entity whose variable value is to be changed.
+   * @param newValue maybe null, if unassigning the variable
+   */
+  <Entity_, Value_> void changeVariable(
+      PlanningVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ entity,
+      @Nullable Value_ newValue);
+
+  /**
+   * Moves a value from one entity's {@link PlanningListVariable planning list variable} to another.
+   * To move values within the same entity, use {@link
+   * #moveValueInList(PlanningListVariableMetaModel, Object, int, int)} instead.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param sourceEntity The entity from which the value will be removed.
+   * @param sourceIndex The index in the source entity's list variable which contains the value to
+   *     be moved; Acceptable values range from zero to one less than list size. All values after
+   *     the index are shifted to the left.
+   * @param destinationEntity The entity to which the value will be added.
+   * @param destinationIndex The index in the destination entity's list variable to which the value
+   *     will be moved; acceptable values range from zero to equal to list size. All values at or
+   *     after the index are shifted to the right. To append to the end of the list, use the list
+   *     size as index.
+   * @return the value that was moved
+   */
+  <Entity_, Value_> Value_ moveValueBetweenLists(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ sourceEntity,
+      int sourceIndex,
+      Entity_ destinationEntity,
+      int destinationIndex);
+
+  /**
+   * Replaces a value in one entity's {@link PlanningListVariable planning list variable} with a
+   * value taken from another. The value is removed from {@code sourceEntity} at {@code
+   * sourceIndex}, shifting all later values to the left. The removed value is then assigned to
+   * {@code destinationEntity} at {@code destinationIndex}, overwriting the pre-existing value and
+   * unassigning it. This means that the sourceEntity's list will be one item shorter after the
+   * move, while the destinationEntity's list size remains unchanged.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param sourceEntity The entity from which the replacement value will be taken and removed.
+   * @param sourceIndex The index in the sourceEntity's list variable which contains the value to be
+   *     moved and removed; Acceptable values range from zero to one less than the source list size.
+   *     All values at or after the index are shifted to the left.
+   * @param destinationEntity The entity in which the value at {@code destinationIndex} will be
+   *     replaced (overwritten).
+   * @param destinationIndex The index in the destinationEntity's list variable whose current value
+   *     will be overwritten; Acceptable values range from zero to one less than the destination
+   *     list size.
+   * @return the value that was replaced
+   * @see #moveValueBetweenLists(PlanningListVariableMetaModel, Object, int, Object, int) Similar
+   *     operation that moves the value to the destination without removing the pre-existing value.
+   */
+  <Entity_, Value_> Value_ replaceValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ sourceEntity,
+      int sourceIndex,
+      Entity_ destinationEntity,
+      int destinationIndex);
+
+  /**
+   * As defined by {@link #replaceValue(PlanningListVariableMetaModel, Object, int, Object, int)},
+   * but using {@link PositionInList} to specify the positions.
+   */
+  default <Entity_, Value_> Value_ replaceValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      PositionInList source,
+      PositionInList destination) {
+    return replaceValue(
+        variableMetaModel,
+        source.entity(),
+        source.index(),
+        destination.entity(),
+        destination.index());
+  }
+
+  default <Entity_, Value_> Value_ moveValueBetweenLists(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      PositionInList source,
+      PositionInList destination) {
+    return moveValueBetweenLists(
+        variableMetaModel,
+        source.entity(),
+        source.index(),
+        destination.entity(),
+        destination.index());
+  }
+
+  /**
+   * Moves a value within one entity's {@link PlanningListVariable planning list variable}.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param sourceEntity The entity whose variable value is to be changed.
+   * @param sourceIndex The index in the source entity's list variable which contains the value to
+   *     be moved; Acceptable values range from zero to one less than list size. All values after
+   *     the index are shifted to the left.
+   * @param destinationIndex The index in the source entity's list variable to which the value will
+   *     be moved; Acceptable values range from zero to one less than list size. All values at or
+   *     after the index are shifted to the right.
+   * @return the value that was moved
+   * @see #replaceValue(PlanningListVariableMetaModel, Object, int, int) Similar operation that
+   *     replaces the value at the destination index instead.
+   */
+  <Entity_, Value_> Value_ moveValueInList(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ sourceEntity,
+      int sourceIndex,
+      int destinationIndex);
+
+  /**
+   * Moves a value within one entity's {@link PlanningListVariable planning list variable}. Behaves
+   * as if the value is first put in the destinationIndex, and then removed from the sourceIndex,
+   * shifting all later values to the left. The value previously at the destinationIndex is
+   * unassigned.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param entity The entity in which the value at {@code destinationIndex} will be replaced
+   *     (overwritten).
+   * @param sourceIndex The index in the entity's list variable which contains the value to be moved
+   *     and removed; Acceptable values range from zero to one less than the list size. All values
+   *     at or after the index are shifted to the left.
+   * @param destinationIndex The index in the entity's list variable whose current value will be
+   *     overwritten; Acceptable values range from zero to one less than the list size.
+   * @return the value that was replaced
+   * @throws IllegalArgumentException if sourceIndex == destinationIndex
+   * @see #moveValueInList(PlanningListVariableMetaModel, Object, int, int) Similar operation that
+   *     moves the value to the destination index instead.
+   */
+  <Entity_, Value_> Value_ replaceValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ entity,
+      int sourceIndex,
+      int destinationIndex);
+
+  /**
+   * As defined by {@link #replaceValue(PlanningListVariableMetaModel, Object, int, int)}, but using
+   * {@link PositionInList} to specify the source position.
+   */
+  default <Entity_, Value_> Value_ replaceValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      PositionInList source,
+      int destinationIndex) {
+    return replaceValue(variableMetaModel, source.entity(), source.index(), destinationIndex);
+  }
+
+  <Entity_, Value_> Value_ shiftValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ sourceEntity,
+      int sourceIndex,
+      int offset);
+
+  default <Entity_, Value_> Value_ shiftValue(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      PositionInList positionInList,
+      int offset) {
+    return shiftValue(variableMetaModel, positionInList.entity(), positionInList.index(), offset);
+  }
+
+  /**
+   * Swaps two values between two entities' {@link PlanningListVariable planning list variable}.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param leftEntity The first entity whose variable value is to be swapped.
+   * @param leftIndex The index in the left entity's list variable which contains the value to be
+   *     swapped; Acceptable values range from zero to one less than list size.
+   * @param rightEntity The second entity whose variable value is to be swapped.
+   * @param rightIndex The index in the right entity's list variable which contains the other value
+   *     to be swapped; Acceptable values range from zero to one less than list size.
+   */
+  <Entity_, Value_> void swapValuesBetweenLists(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ leftEntity,
+      int leftIndex,
+      Entity_ rightEntity,
+      int rightIndex);
+
+  /**
+   * Swaps two values within one entity's {@link PlanningListVariable planning list variable}.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param entity The entity whose variable values are to be swapped.
+   * @param leftIndex The index in the entity's list variable which contains the value to be
+   *     swapped; Acceptable values range from zero to one less than list size.
+   * @param rightIndex The index in the entity's list variable which contains the other value to be
+   *     swapped; Acceptable values range from zero to one less than list size.
+   */
+  <Entity_, Value_> void swapValuesInList(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ entity,
+      int leftIndex,
+      int rightIndex);
+}

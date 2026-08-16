@@ -1,0 +1,33 @@
+package greycos.solver.core.impl.localsearch.scope;
+
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import greycos.solver.core.impl.solver.scope.SolverScope;
+
+/**
+ * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
+ */
+public final class LocalSearchPhaseScope<Solution_> extends AbstractPhaseScope<Solution_> {
+
+  private LocalSearchStepScope<Solution_> lastCompletedStepScope;
+
+  public LocalSearchPhaseScope(SolverScope<Solution_> solverScope, int phaseIndex) {
+    super(solverScope, phaseIndex);
+    lastCompletedStepScope = new LocalSearchStepScope<>(this, -1);
+    lastCompletedStepScope.setTimeGradient(0.0);
+  }
+
+  @Override
+  public LocalSearchStepScope<Solution_> getLastCompletedStepScope() {
+    return lastCompletedStepScope;
+  }
+
+  public void setLastCompletedStepScope(LocalSearchStepScope<Solution_> lastCompletedStepScope) {
+    this.lastCompletedStepScope = lastCompletedStepScope;
+  }
+
+  // ************************************************************************
+  // Calculated methods
+  // ************************************************************************
+
+}

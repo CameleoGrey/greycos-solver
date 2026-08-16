@@ -1,0 +1,10 @@
+package greycos.solver.spring.boot.autoconfigure.inheritance.entity;
+
+import greycos.solver.core.testcotwin.inheritance.entity.single.baseannotated.classes.childnot.TestdataChildNotAnnotatedSolution;
+
+import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@AutoConfigurationPackage(basePackageClasses = {TestdataChildNotAnnotatedSolution.class})
+public class OnlyBaseAnnotatedSpringTestConfiguration {}

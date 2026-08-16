@@ -1,0 +1,147 @@
+package greycos.solver.core.testcotwin.shadow.multi_entity;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
+import greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
+import greycos.solver.core.api.cotwin.variable.ShadowSources;
+import greycos.solver.core.api.cotwin.variable.ShadowVariable;
+import greycos.solver.core.api.cotwin.variable.ShadowVariablesInconsistent;
+
+import org.apache.commons.lang3.ObjectUtils;
+
+@PlanningEntity
+public class TestdataMultiEntityDependencyValue {
+  String id;
+  List<TestdataMultiEntityDependencyValue> dependencies;
+
+  @PreviousElementShadowVariable(sourceVariableName = "values")
+  TestdataMultiEntityDependencyValue previousValue;
+
+  @ShadowVariable(supplierName = "calculateStartTime")
+  LocalDateTime startTime;
+
+  @ShadowVariable(supplierName = "calculateEndTime")
+  LocalDateTime endTime;
+
+  @ShadowVariablesInconsistent boolean invalid;
+
+  @InverseRelationShadowVariable(sourceVariableName = "values")
+  TestdataMultiEntityDependencyEntity entity;
+
+  Duration duration;
+
+  public TestdataMultiEntityDependencyValue() {}
+
+  public TestdataMultiEntityDependencyValue(String id, Duration duration) {
+    this(id, duration, null);
+  }
+
+  public TestdataMultiEntityDependencyValue(
+      String id, Duration duration, List<TestdataMultiEntityDependencyValue> dependencies) {
+    this.id = id;
+    this.duration = duration;
+    this.dependencies = dependencies;
+  }
+
+  public String getId() {
+    return id;
+  }
+
+  public List<TestdataMultiEntityDependencyValue> getDependencies() {
+    return dependencies;
+  }
+
+  public void setDependencies(List<TestdataMultiEntityDependencyValue> dependencies) {
+    this.dependencies = dependencies;
+  }
+
+  public LocalDateTime getStartTime() {
+    return startTime;
+  }
+
+  public void setStartTime(LocalDateTime startTime) {
+    this.startTime = startTime;
+  }
+
+  public TestdataMultiEntityDependencyValue getPreviousValue() {
+    return previousValue;
+  }
+
+  public void setPreviousValue(TestdataMultiEntityDependencyValue previousValue) {
+    this.previousValue = previousValue;
+  }
+
+  @ShadowSources({"dependencies[].endTime", "previousValue.endTime", "entity.readyTime"})
+  public LocalDateTime calculateStartTime() {
+    LocalDateTime readyTime;
+    if (previousValue != null) {
+      readyTime = previousValue.endTime;
+    } else if (entity != null) {
+      readyTime = entity.readyTime;
+      if (readyTime == null) {
+        return null;
+      }
+    } else {
+      return null;
+    }
+
+    if (dependencies != null) {
+      for (var dependency : dependencies) {
+        if (dependency.endTime == null) {
+          return null;
+        }
+        readyTime = ObjectUtils.max(readyTime, dependency.endTime);
+      }
+    }
+    return readyTime;
+  }
+
+  public LocalDateTime getEndTime() {
+    return endTime;
+  }
+
+  public void setEndTime(LocalDateTime endTime) {
+    this.endTime = endTime;
+  }
+
+  @ShadowSources({"startTime"})
+  public LocalDateTime calculateEndTime() {
+    if (startTime == null) {
+      return null;
+    }
+    return startTime.plus(duration);
+  }
+
+  public Duration getDuration() {
+    return duration;
+  }
+
+  public void setDuration(Duration duration) {
+    this.duration = duration;
+  }
+
+  public boolean isInvalid() {
+    return invalid;
+  }
+
+  public void setInvalid(boolean invalid) {
+    this.invalid = invalid;
+  }
+
+  public TestdataMultiEntityDependencyEntity getEntity() {
+    return entity;
+  }
+
+  public void setEntity(TestdataMultiEntityDependencyEntity entity) {
+    this.entity = entity;
+  }
+
+  @Override
+  public String toString() {
+    return id + "{" + "endTime=" + endTime + '}';
+  }
+}

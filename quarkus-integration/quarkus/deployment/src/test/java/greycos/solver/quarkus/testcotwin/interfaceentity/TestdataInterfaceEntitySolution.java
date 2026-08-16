@@ -1,0 +1,52 @@
+package greycos.solver.quarkus.testcotwin.interfaceentity;
+
+import java.util.List;
+
+import greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
+import greycos.solver.core.api.cotwin.solution.PlanningScore;
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
+import greycos.solver.core.api.score.SimpleScore;
+
+@PlanningSolution
+public class TestdataInterfaceEntitySolution {
+
+  @PlanningEntityCollectionProperty List<TestdataInterfaceEntity> entityList;
+
+  @ValueRangeProvider(id = "valueRange")
+  List<Integer> valueList;
+
+  @PlanningScore SimpleScore score;
+
+  public TestdataInterfaceEntitySolution() {}
+
+  public TestdataInterfaceEntitySolution(
+      List<TestdataInterfaceEntity> entityList, List<Integer> valueList) {
+    this.entityList = entityList;
+    this.valueList = valueList;
+  }
+
+  public List<TestdataInterfaceEntity> getEntityList() {
+    return entityList;
+  }
+
+  public void setEntityList(List<TestdataInterfaceEntity> entityList) {
+    this.entityList = entityList;
+  }
+
+  public List<Integer> getValueList() {
+    return valueList;
+  }
+
+  public void setValueList(List<Integer> valueList) {
+    this.valueList = valueList;
+  }
+
+  public SimpleScore getScore() {
+    return score;
+  }
+
+  public void setScore(SimpleScore score) {
+    this.score = score;
+  }
+}

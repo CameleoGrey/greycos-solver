@@ -1,0 +1,111 @@
+package greycos.solver.core.impl.score.director.easy;
+
+import java.util.Map;
+import java.util.Objects;
+
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.analysis.ScoreAnalysis;
+import greycos.solver.core.api.score.calculator.EasyScoreCalculator;
+import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.impl.score.constraint.ConstraintMatch;
+import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
+import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
+import greycos.solver.core.impl.score.director.AbstractScoreDirector;
+import greycos.solver.core.impl.score.director.InnerScore;
+import greycos.solver.core.impl.score.director.ScoreDirector;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Easy java implementation of {@link ScoreDirector}, which recalculates the {@link Score} of the
+ * {@link PlanningSolution working solution} every time. This is non-incremental calculation, which
+ * is slow. This score director implementation does not support {@link ScoreAnalysis}.
+ *
+ * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
+ * @param <Score_> the score type to go with the solution
+ * @see ScoreDirector
+ */
+@NullMarked
+public final class EasyScoreDirector<Solution_, Score_ extends Score<Score_>>
+    extends AbstractScoreDirector<Solution_, Score_, EasyScoreDirectorFactory<Solution_, Score_>> {
+
+  private final EasyScoreCalculator<Solution_, Score_> easyScoreCalculator;
+
+  private EasyScoreDirector(Builder<Solution_, Score_> builder) {
+    super(builder);
+    this.easyScoreCalculator =
+        Objects.requireNonNull(
+            builder.easyScoreCalculator, "The easyScoreCalculator must not be null.");
+  }
+
+  public EasyScoreCalculator<Solution_, Score_> getEasyScoreCalculator() {
+    return easyScoreCalculator;
+  }
+
+  @Override
+  public InnerScore<Score_> calculateScore() {
+    variableListenerSupport.assertNotificationQueuesAreEmpty();
+    var score = easyScoreCalculator.calculateScore(workingSolution);
+    setCalculatedScore(score);
+    return new InnerScore<>(score, -getWorkingInitScore());
+  }
+
+  @Override
+  public void setWorkingSolutionWithoutUpdatingShadows(Solution_ workingSolution) {
+    super.setWorkingSolutionWithoutUpdatingShadows(workingSolution, null);
+  }
+
+  /**
+   * {@link ConstraintMatch}s are not supported by this {@link ScoreDirector} implementation.
+   *
+   * @return throws {@link IllegalStateException}
+   * @throws IllegalStateException always
+   */
+  @Override
+  public Map<ConstraintRef, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap() {
+    throw new IllegalStateException(
+        "%s is not supported by %s."
+            .formatted(
+                ConstraintMatch.class.getSimpleName(), EasyScoreDirector.class.getSimpleName()));
+  }
+
+  @Override
+  public boolean requiresFlushing() {
+    return false; // Every score calculation starts from scratch; nothing is saved.
+  }
+
+  @NullMarked
+  public static final class Builder<Solution_, Score_ extends Score<Score_>>
+      extends AbstractScoreDirectorBuilder<
+          Solution_,
+          Score_,
+          EasyScoreDirectorFactory<Solution_, Score_>,
+          Builder<Solution_, Score_>> {
+
+    private @Nullable EasyScoreCalculator<Solution_, Score_> easyScoreCalculator;
+
+    public Builder(EasyScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory) {
+      super(scoreDirectorFactory);
+    }
+
+    @Override
+    public Builder<Solution_, Score_> withConstraintMatchPolicy(
+        ConstraintMatchPolicy constraintMatchPolicy) {
+      // Override; easy can never support constraint matches.
+      return super.withConstraintMatchPolicy(ConstraintMatchPolicy.DISABLED);
+    }
+
+    public Builder<Solution_, Score_> withEasyScoreCalculator(
+        EasyScoreCalculator<Solution_, Score_> easyScoreCalculator) {
+      this.easyScoreCalculator = easyScoreCalculator;
+      return this;
+    }
+
+    @Override
+    public EasyScoreDirector<Solution_, Score_> build() {
+      return new EasyScoreDirector<>(this);
+    }
+  }
+}

@@ -390,7 +390,7 @@ accessing metadata after its ID changes fails immediately instead of exposing in
 
 One of important GreyCOS Solver features is its ability to xref:constraints-and-score/understanding-the-score.adoc[explain the score] of solutions it produced
 through justifications.
-By default, each constraint is justified with `ai.greycos.solver.core.api.score.stream.DefaultConstraintJustification`,
+By default, each constraint is justified with `greycos.solver.core.api.score.stream.DefaultConstraintJustification`,
 which captures the matched tuple and its score impact.
 For example:
 
@@ -443,7 +443,7 @@ Java::
 You have complete control over the type, its name or methods exposed.
 If you choose to decorate it with the proper annotations,
 you will be able to send it over HTTP or store it in a database.
-The only limitation is that it must implement the `ai.greycos.solver.core.api.score.stream.ConstraintJustification` marker interface.
+The only limitation is that it must implement the `greycos.solver.core.api.score.stream.ConstraintJustification` marker interface.
 
 
 [#constraintStreamsFilter]
@@ -509,8 +509,8 @@ The following functions are required for filtering constraint streams of differe
 |Cardinality|Filtering Predicate
 |1          |`java.util.function.Predicate<A>`
 |2          |`java.util.function.BiPredicate<A, B>`
-|3          |`ai.greycos.solver.core.api.function.TriPredicate<A, B, C>`
-|4          |`ai.greycos.solver.core.api.function.QuadPredicate<A, B, C, D>`
+|3          |`greycos.solver.core.api.function.TriPredicate<A, B, C>`
+|4          |`greycos.solver.core.api.function.QuadPredicate<A, B, C, D>`
 |===
 
 
@@ -538,7 +538,7 @@ Java::
 +
 [source,java,options="nowrap"]
 ----
-    import static ai.greycos.solver.core.api.score.stream.Joiners.*;
+    import static greycos.solver.core.api.score.stream.Joiners.*;
 
     ...
 
@@ -686,7 +686,7 @@ Java::
 +
 [source,java,options="nowrap"]
 ----
-import static ai.greycos.solver.core.api.score.stream.ConstraintCollectors.*;
+import static greycos.solver.core.api.score.stream.ConstraintCollectors.*;
 
 ...
 
@@ -712,7 +712,7 @@ In the previous example,
 
 There are many collectors available out of the box.
 You can also provide your own collectors by implementing the
-`ai.greycos.solver.core.api.score.stream.uni.UniConstraintCollector` interface,
+`greycos.solver.core.api.score.stream.uni.UniConstraintCollector` interface,
 or its `Bi...`, `Tri...` and `Quad...` counterparts.
 
 

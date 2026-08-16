@@ -1,0 +1,195 @@
+package greycos.solver.core.impl.heuristic.selector.list;
+
+import java.util.Objects;
+
+import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
+import greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
+import greycos.solver.core.impl.AbstractFromConfigFactory;
+import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandomFactory;
+import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySelectionTuning;
+import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySubListSelector;
+import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
+import greycos.solver.core.impl.heuristic.selector.list.mimic.MimicRecordingSubListSelector;
+import greycos.solver.core.impl.heuristic.selector.list.mimic.MimicReplayingSubListSelector;
+import greycos.solver.core.impl.heuristic.selector.list.mimic.SubListMimicRecorder;
+import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
+import greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
+import greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory;
+
+public final class SubListSelectorFactory<Solution_>
+    extends AbstractFromConfigFactory<Solution_, SubListSelectorConfig> {
+
+  private static final int DEFAULT_MINIMUM_SUB_LIST_SIZE = 2;
+  private static final int DEFAULT_MAXIMUM_SUB_LIST_SIZE = Integer.MAX_VALUE;
+
+  private SubListSelectorFactory(SubListSelectorConfig config) {
+    super(config);
+  }
+
+  public static <Solution_> SubListSelectorFactory<Solution_> create(
+      SubListSelectorConfig subListSelectorConfig) {
+    return new SubListSelectorFactory<>(subListSelectorConfig);
+  }
+
+  public SubListSelector<Solution_> buildSubListSelector(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      EntitySelector<Solution_> entitySelector,
+      SelectionCacheType minimumCacheType,
+      SelectionOrder inheritedSelectionOrder) {
+    if (config.getMimicSelectorRef() != null) {
+      return buildMimicReplaying(configPolicy);
+    }
+    if (inheritedSelectionOrder != SelectionOrder.RANDOM) {
+      throw new IllegalArgumentException(
+          "The subListSelector (%s) has an inheritedSelectionOrder(%s) which is not supported. SubListSelector only supports random selection order."
+              .formatted(config, inheritedSelectionOrder));
+    }
+
+    var valueSelector =
+        buildIterableValueSelector(
+            configPolicy,
+            entitySelector.getEntityDescriptor(),
+            minimumCacheType,
+            inheritedSelectionOrder);
+
+    var minimumSubListSize =
+        Objects.requireNonNullElse(config.getMinimumSubListSize(), DEFAULT_MINIMUM_SUB_LIST_SIZE);
+    var maximumSubListSize =
+        Objects.requireNonNullElse(config.getMaximumSubListSize(), DEFAULT_MAXIMUM_SUB_LIST_SIZE);
+    var baseSubListSelector =
+        new RandomSubListSelector<>(
+            entitySelector, valueSelector, minimumSubListSize, maximumSubListSize);
+
+    var subListSelector =
+        applyNearbySelection(
+            configPolicy,
+            entitySelector,
+            minimumCacheType,
+            inheritedSelectionOrder,
+            baseSubListSelector);
+
+    subListSelector = applyMimicRecording(configPolicy, subListSelector);
+
+    return subListSelector;
+  }
+
+  SubListSelector<Solution_> buildMimicReplaying(HeuristicConfigPolicy<Solution_> configPolicy) {
+    if (config.getId() != null
+        || config.getMinimumSubListSize() != null
+        || config.getMaximumSubListSize() != null
+        || config.getValueSelectorConfig() != null
+        || config.getNearbySelectionConfig() != null) {
+      throw new IllegalArgumentException(
+          "The subListSelectorConfig (%s) with mimicSelectorRef (%s) has another property that is not null."
+              .formatted(config, config.getMimicSelectorRef()));
+    }
+    SubListMimicRecorder<Solution_> subListMimicRecorder =
+        configPolicy.getSubListMimicRecorder(config.getMimicSelectorRef());
+    if (subListMimicRecorder == null) {
+      throw new IllegalArgumentException(
+          "The subListSelectorConfig (%s) has a mimicSelectorRef (%s) for which no subListSelector with that id exists (in its solver phase)."
+              .formatted(config, config.getMimicSelectorRef()));
+    }
+    return new MimicReplayingSubListSelector<>(subListMimicRecorder);
+  }
+
+  private SubListSelector<Solution_> applyMimicRecording(
+      HeuristicConfigPolicy<Solution_> configPolicy, SubListSelector<Solution_> subListSelector) {
+    var id = config.getId();
+    if (id != null) {
+      if (id.isEmpty()) {
+        throw new IllegalArgumentException(
+            "The subListSelectorConfig (%s) has an empty id (%s).".formatted(config, id));
+      }
+      var mimicRecordingSubListSelector = new MimicRecordingSubListSelector<>(subListSelector);
+      configPolicy.addSubListMimicRecorder(id, mimicRecordingSubListSelector);
+      subListSelector = mimicRecordingSubListSelector;
+    }
+    return subListSelector;
+  }
+
+  private SubListSelector<Solution_> applyNearbySelection(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      EntitySelector<Solution_> entitySelector,
+      SelectionCacheType minimumCacheType,
+      SelectionOrder resolvedSelectionOrder,
+      RandomSubListSelector<Solution_> subListSelector) {
+    var nearbySelectionConfig = config.getNearbySelectionConfig();
+    if (nearbySelectionConfig == null) {
+      return subListSelector;
+    }
+    if (NearbySelectionTuning.hasRandomDistributionLimit(nearbySelectionConfig)
+        && config.getMinimumSubListSize() != null
+        && config.getMinimumSubListSize() > 1) {
+      throw new IllegalArgumentException(
+          "Using minimumSubListSize (%s) is not allowed together with a nearby distribution limit."
+              .formatted(config.getMinimumSubListSize()));
+    }
+
+    nearbySelectionConfig.validateNearby(minimumCacheType, resolvedSelectionOrder);
+
+    var randomSelection = resolvedSelectionOrder.toRandomSelectionBoolean();
+    var nearbyDistanceMeter =
+        configPolicy
+            .getClassInstanceCache()
+            .newInstance(
+                nearbySelectionConfig,
+                "nearbyDistanceMeterClass",
+                nearbySelectionConfig.getNearbyDistanceMeterClass());
+    var nearbyRandom =
+        NearbyRandomFactory.create(nearbySelectionConfig).buildNearbyRandom(randomSelection);
+    int maxNearbySortSize =
+        randomSelection
+            ? NearbySelectionTuning.calculateMaxNearbySortSize(nearbySelectionConfig)
+            : Integer.MAX_VALUE;
+    boolean eagerInitialization =
+        NearbySelectionTuning.isEagerInitialization(nearbySelectionConfig);
+
+    if (nearbySelectionConfig.getOriginSubListSelectorConfig() == null) {
+      throw new IllegalArgumentException(
+          "The subListSelector (%s)'s nearbySelectionConfig (%s) requires an originSubListSelector."
+              .formatted(config, nearbySelectionConfig));
+    }
+    var originSubListSelector =
+        SubListSelectorFactory.<Solution_>create(
+                nearbySelectionConfig.getOriginSubListSelectorConfig())
+            .buildSubListSelector(
+                configPolicy, entitySelector, minimumCacheType, resolvedSelectionOrder);
+
+    return new NearbySubListSelector<>(
+        subListSelector,
+        originSubListSelector,
+        nearbyDistanceMeter,
+        nearbyRandom,
+        randomSelection,
+        maxNearbySortSize,
+        eagerInitialization);
+  }
+
+  private IterableValueSelector<Solution_> buildIterableValueSelector(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      EntityDescriptor<Solution_> entityDescriptor,
+      SelectionCacheType minimumCacheType,
+      SelectionOrder inheritedSelectionOrder) {
+    ValueSelectorConfig valueSelectorConfig =
+        config != null ? config.getValueSelectorConfig() : null;
+    if (valueSelectorConfig == null) {
+      valueSelectorConfig = new ValueSelectorConfig();
+    }
+    // Mixed models require that the variable name be set
+    if (configPolicy.getSolutionDescriptor().hasBothBasicAndListVariables()
+        && valueSelectorConfig.getVariableName() == null) {
+      var variableName = entityDescriptor.getGenuineListVariableDescriptor().getVariableName();
+      valueSelectorConfig.setVariableName(variableName);
+    }
+    ValueSelector<Solution_> valueSelector =
+        ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
+            .buildValueSelector(
+                configPolicy, entityDescriptor, minimumCacheType, inheritedSelectionOrder);
+    return (IterableValueSelector<Solution_>) valueSelector;
+  }
+}

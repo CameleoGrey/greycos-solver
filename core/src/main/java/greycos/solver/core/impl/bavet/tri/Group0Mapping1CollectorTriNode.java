@@ -1,0 +1,34 @@
+package greycos.solver.core.impl.bavet.tri;
+
+import greycos.solver.core.api.score.stream.tri.TriConstraintCollector;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+
+public final class Group0Mapping1CollectorTriNode<OldA, OldB, OldC, A, ResultContainer_>
+    extends AbstractGroupTriNode<OldA, OldB, OldC, UniTuple<A>, Void, ResultContainer_, A> {
+
+  private final int outputStoreSize;
+
+  public Group0Mapping1CollectorTriNode(
+      int groupStoreIndex,
+      int undoStoreIndex,
+      TriConstraintCollector<OldA, OldB, OldC, ResultContainer_, A> collector,
+      TupleLifecycle<UniTuple<A>> nextNodesTupleLifecycle,
+      int outputStoreSize,
+      EnvironmentMode environmentMode) {
+    super(
+        groupStoreIndex, undoStoreIndex, null, collector, nextNodesTupleLifecycle, environmentMode);
+    this.outputStoreSize = outputStoreSize;
+  }
+
+  @Override
+  protected UniTuple<A> createOutTuple(Void groupKey) {
+    return UniTuple.of(outputStoreSize);
+  }
+
+  @Override
+  protected void updateOutTupleToResult(UniTuple<A> outTuple, A a) {
+    outTuple.setA(a);
+  }
+}

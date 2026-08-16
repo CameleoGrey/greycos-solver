@@ -1,0 +1,32 @@
+package greycos.solver.core.testcotwin.shadow.multiplelistener;
+
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintFactory;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
+
+import org.jspecify.annotations.NonNull;
+
+public final class TestdataListMultipleShadowVariableConstraintProvider
+    implements ConstraintProvider {
+  @Override
+  public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+    return new Constraint[] {
+      penalizeCascadingUpdate(constraintFactory), rewardCascadingUpdate(constraintFactory),
+    };
+  }
+
+  public Constraint penalizeCascadingUpdate(ConstraintFactory constraintFactory) {
+    return constraintFactory
+        .forEach(TestdataListMultipleShadowVariableValue.class)
+        .penalize(SimpleScore.ONE, TestdataListMultipleShadowVariableValue::getCascadeValue)
+        .asConstraint("Penalize by cascade values");
+  }
+
+  public Constraint rewardCascadingUpdate(ConstraintFactory constraintFactory) {
+    return constraintFactory
+        .forEach(TestdataListMultipleShadowVariableValue.class)
+        .reward(SimpleScore.ONE, v -> v.getCascadeValue() * 2)
+        .asConstraint("Reward by cascade values");
+  }
+}

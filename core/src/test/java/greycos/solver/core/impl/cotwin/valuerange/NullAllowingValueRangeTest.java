@@ -1,0 +1,210 @@
+package greycos.solver.core.impl.cotwin.valuerange;
+
+import static greycos.solver.core.testutil.PlannerAssert.assertAllElementsOfIterator;
+import static greycos.solver.core.testutil.PlannerAssert.assertElementsOfIterator;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+
+import greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
+import greycos.solver.core.impl.cotwin.valuerange.buildin.collection.ListValueRange;
+import greycos.solver.core.impl.cotwin.valuerange.sort.SelectionSorterAdapter;
+import greycos.solver.core.impl.heuristic.selector.common.decorator.ComparatorFactorySelectionSorter;
+import greycos.solver.core.impl.heuristic.selector.common.decorator.ComparatorSelectionSorter;
+import greycos.solver.core.testutil.TestRandom;
+
+import org.junit.jupiter.api.Test;
+
+class NullAllowingValueRangeTest {
+
+  @Test
+  void getSize() {
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(0, 2, 5, 10)))
+                .getSize())
+        .isEqualTo(5L);
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(100, 120, 5, 7, 8)))
+                .getSize())
+        .isEqualTo(6L);
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(-15, 25, 0))).getSize())
+        .isEqualTo(4L);
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList("b", "z", "a")))
+                .getSize())
+        .isEqualTo(4L);
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Collections.emptyList())).getSize())
+        .isEqualTo(1L);
+  }
+
+  @Test
+  void get() {
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(0, 2, 5, 10))).get(0L))
+        .isNull();
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(0, 2, 5, 10))).get(2L))
+        .isEqualTo(2);
+    assertThat(
+            new NullAllowingValueRange<>(
+                    new ListValueRange<>(Arrays.asList("b", "z", "a", "c", "g", "d")))
+                .get(3L))
+        .isEqualTo("a");
+    assertThat(
+            new NullAllowingValueRange<>(
+                    new ListValueRange<>(Arrays.asList("b", "z", "a", "c", "g", "d")))
+                .get(6L))
+        .isEqualTo("d");
+  }
+
+  @Test
+  void contains() {
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(0, 2, 5, 10)))
+                .contains(5))
+        .isTrue();
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(0, 2, 5, 10)))
+                .contains(4))
+        .isFalse();
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(0, 2, 5, 10)))
+                .contains(null))
+        .isTrue();
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList("b", "z", "a")))
+                .contains("a"))
+        .isTrue();
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList("b", "z", "a")))
+                .contains("n"))
+        .isFalse();
+    assertThat(
+            new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList("b", "z", "a")))
+                .contains(null))
+        .isTrue();
+  }
+
+  @Test
+  void createOriginalIterator() {
+    assertAllElementsOfIterator(
+        new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(0, 2, 5, 10)))
+            .createOriginalIterator(),
+        null,
+        0,
+        2,
+        5,
+        10);
+    assertAllElementsOfIterator(
+        new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(100, 120, 5, 7, 8)))
+            .createOriginalIterator(),
+        null,
+        100,
+        120,
+        5,
+        7,
+        8);
+    assertAllElementsOfIterator(
+        new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(-15, 25, 0)))
+            .createOriginalIterator(),
+        null,
+        -15,
+        25,
+        0);
+    assertAllElementsOfIterator(
+        new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList("b", "z", "a")))
+            .createOriginalIterator(),
+        null,
+        "b",
+        "z",
+        "a");
+    assertAllElementsOfIterator(
+        new NullAllowingValueRange<>(new ListValueRange<>(Collections.emptyList()))
+            .createOriginalIterator(),
+        new String[] {null});
+  }
+
+  @Test
+  void createRandomIterator() {
+    assertElementsOfIterator(
+        new NullAllowingValueRange<>(new ListValueRange<>(Arrays.asList(0, 2, 5)))
+            .createRandomIterator(new TestRandom(3, 2, 1, 0)),
+        5,
+        2,
+        0,
+        null);
+    assertElementsOfIterator(
+        new NullAllowingValueRange<>(new ListValueRange<>(Collections.emptyList()))
+            .createRandomIterator(new TestRandom(0)),
+        new String[] {null});
+  }
+
+  @Test
+  void sort() {
+    var ascComparatorSorter =
+        new SelectionSorterAdapter<>(
+            null,
+            new ComparatorSelectionSorter<>(
+                Comparator.comparingInt(Integer::intValue), SelectionSorterOrder.ASCENDING));
+    Comparator<Integer> integerComparator = Integer::compareTo;
+    var ascComparatorFactorySorter =
+        new SelectionSorterAdapter<>(
+            null,
+            new ComparatorFactorySelectionSorter<>(
+                solution -> integerComparator, SelectionSorterOrder.ASCENDING));
+    var descComparatorSorter =
+        new SelectionSorterAdapter<>(
+            null,
+            new ComparatorSelectionSorter<>(
+                Comparator.comparingInt(Integer::intValue), SelectionSorterOrder.DESCENDING));
+    var descComparatorFactorySorter =
+        new SelectionSorterAdapter<>(
+            null,
+            new ComparatorFactorySelectionSorter<>(
+                solution -> integerComparator, SelectionSorterOrder.DESCENDING));
+    assertAllElementsOfIterator(
+        new NullAllowingValueRange<>((new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1))))
+            .sort(ascComparatorSorter)
+            .createOriginalIterator(),
+        null,
+        -15,
+        -1,
+        0,
+        1,
+        25);
+    assertAllElementsOfIterator(
+        new NullAllowingValueRange<>((new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1))))
+            .sort(ascComparatorFactorySorter)
+            .createOriginalIterator(),
+        null,
+        -15,
+        -1,
+        0,
+        1,
+        25);
+    assertAllElementsOfIterator(
+        new NullAllowingValueRange<>((new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1))))
+            .sort(descComparatorSorter)
+            .createOriginalIterator(),
+        null,
+        25,
+        1,
+        0,
+        -1,
+        -15);
+    assertAllElementsOfIterator(
+        new NullAllowingValueRange<>((new ListValueRange<>(Arrays.asList(-15, 25, 0, 1, -1))))
+            .sort(descComparatorFactorySorter)
+            .createOriginalIterator(),
+        null,
+        25,
+        1,
+        0,
+        -1,
+        -15);
+  }
+}

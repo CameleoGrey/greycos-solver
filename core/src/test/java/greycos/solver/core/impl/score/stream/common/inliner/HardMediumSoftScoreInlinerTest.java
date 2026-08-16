@@ -1,0 +1,130 @@
+package greycos.solver.core.impl.score.stream.common.inliner;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.Collections;
+import java.util.Map;
+
+import greycos.solver.core.api.score.HardMediumSoftScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
+import greycos.solver.core.testcotwin.score.TestdataHardMediumSoftScoreSolution;
+
+import org.junit.jupiter.api.Test;
+
+class HardMediumSoftScoreInlinerTest
+    extends AbstractScoreInlinerTest<TestdataHardMediumSoftScoreSolution, HardMediumSoftScore> {
+
+  @Test
+  void defaultScore() {
+    var scoreInliner = buildScoreInliner(Collections.emptyMap(), constraintMatchPolicy);
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.ZERO);
+  }
+
+  @Test
+  void impactHard() {
+    var constraintWeight = HardMediumSoftScore.ofHard(90);
+    var impacter = buildScoreImpacter(constraintWeight);
+    var scoreInliner = (AbstractScoreInliner<HardMediumSoftScore>) impacter.getContext().inliner;
+
+    var impact1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(90, 0, 0));
+
+    var impact2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(270, 0, 0));
+
+    impact2.undo();
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(90, 0, 0));
+
+    impact1.undo();
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(0, 0, 0));
+  }
+
+  @Test
+  void impactMedium() {
+    var constraintWeight = HardMediumSoftScore.ofMedium(90);
+    var impacter = buildScoreImpacter(constraintWeight);
+    var scoreInliner = (AbstractScoreInliner<HardMediumSoftScore>) impacter.getContext().inliner;
+
+    var impact1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(0, 90, 0));
+
+    var impact2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(0, 270, 0));
+
+    impact2.undo();
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(0, 90, 0));
+
+    impact1.undo();
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(0, 0, 0));
+  }
+
+  @Test
+  void impactSoft() {
+    var constraintWeight = HardMediumSoftScore.ofSoft(90);
+    var impacter = buildScoreImpacter(constraintWeight);
+    var scoreInliner = (AbstractScoreInliner<HardMediumSoftScore>) impacter.getContext().inliner;
+
+    var impact1 = impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(0, 0, 90));
+
+    var impact2 = impacter.impactScore(2, ConstraintMatchSupplier.empty());
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(0, 0, 270));
+
+    impact2.undo();
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(0, 0, 90));
+
+    impact1.undo();
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(0, 0, 0));
+  }
+
+  @Test
+  void impactAll() {
+    var constraintWeight = HardMediumSoftScore.of(10, 100, 1_000);
+    var impacter = buildScoreImpacter(constraintWeight);
+    var scoreInliner = (AbstractScoreInliner<HardMediumSoftScore>) impacter.getContext().inliner;
+
+    var impact1 = impacter.impactScore(10, ConstraintMatchSupplier.empty());
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(100, 1_000, 10_000));
+
+    var impact2 = impacter.impactScore(20, ConstraintMatchSupplier.empty());
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(300, 3_000, 30_000));
+
+    impact2.undo();
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(100, 1_000, 10_000));
+
+    impact1.undo();
+    assertThat(scoreInliner.extractScore()).isEqualTo(HardMediumSoftScore.of(0, 0, 0));
+  }
+
+  @Test
+  void impactAllMatchWeightOverflow() {
+    var constraintWeight = HardMediumSoftScore.of(10, 100, 1_000);
+    var impacter = buildScoreImpacter(constraintWeight);
+    assertThatThrownBy(() -> impacter.impactScore(Long.MAX_VALUE, ConstraintMatchSupplier.empty()))
+        .isInstanceOf(ArithmeticException.class);
+  }
+
+  @Test
+  void impactAllTotalOverflow() {
+    var constraintWeight = HardMediumSoftScore.of(Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE);
+    var impacter = buildScoreImpacter(constraintWeight);
+    impacter.impactScore(1, ConstraintMatchSupplier.empty());
+    assertThatThrownBy(() -> impacter.impactScore(1, ConstraintMatchSupplier.empty()))
+        .isInstanceOf(ArithmeticException.class);
+  }
+
+  @Override
+  protected SolutionDescriptor<TestdataHardMediumSoftScoreSolution> buildSolutionDescriptor() {
+    return TestdataHardMediumSoftScoreSolution.buildSolutionDescriptor();
+  }
+
+  @Override
+  protected AbstractScoreInliner<HardMediumSoftScore> buildScoreInliner(
+      Map<Constraint, HardMediumSoftScore> constraintWeightMap,
+      ConstraintMatchPolicy constraintMatchPolicy) {
+    return new HardMediumSoftScoreInliner(constraintWeightMap, constraintMatchPolicy);
+  }
+}

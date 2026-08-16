@@ -124,7 +124,7 @@ Your `pom.xml` file has the following content:
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-bom</artifactId>
         <version>{greycos-solver-version}</version>
         <type>pom</type>
@@ -140,7 +140,7 @@ Your `pom.xml` file has the following content:
 
   <dependencies>
     <dependency>
-      <groupId>ai.greycos.solver</groupId>
+      <groupId>greycos.solver</groupId>
       <artifactId>greycos-solver-core</artifactId>
     </dependency>
     <dependency>
@@ -189,8 +189,8 @@ repositories {
 }
 
 dependencies {
-    implementation platform("ai.greycos.solver:greycos-solver-bom:${greycosSolverVersion}")
-    implementation "ai.greycos.solver:greycos-solver-core"
+    implementation platform("greycos.solver:greycos-solver-bom:${greycosSolverVersion}")
+    implementation "greycos.solver:greycos-solver-core"
 
     runtimeOnly "ch.qos.logback:logback-classic:${logbackVersion}"
 }
@@ -264,9 +264,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import ai.greycos.solver.core.api.solver.Solver;
-import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.core.config.solver.SolverConfig;
+import greycos.solver.core.api.solver.Solver;
+import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.config.solver.SolverConfig;
 import org.acme.schooltimetabling.domain.Lesson;
 import org.acme.schooltimetabling.domain.Room;
 import org.acme.schooltimetabling.domain.Timeslot;
@@ -409,8 +409,8 @@ Create the `src/main/kotlin/org/acme/schooltimetabling/TimetableApp.kt` class:
 ----
 package org.acme.schooltimetabling
 
-import ai.greycos.solver.core.api.solver.SolverFactory
-import ai.greycos.solver.core.config.solver.SolverConfig
+import greycos.solver.core.api.solver.SolverFactory
+import greycos.solver.core.config.solver.SolverConfig
 import org.acme.schooltimetabling.domain.Lesson
 import org.acme.schooltimetabling.domain.Room
 import org.acme.schooltimetabling.domain.Timeslot
@@ -746,7 +746,7 @@ import org.acme.schooltimetabling.domain.Room;
 import org.acme.schooltimetabling.domain.Timetable;
 import org.acme.schooltimetabling.domain.Timeslot;
 import org.junit.jupiter.api.Test;
-import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier;
+import greycos.solver.core.api.score.stream.test.ConstraintVerifier;
 
 class TimetableConstraintProviderTest {
 
@@ -781,8 +781,8 @@ Create the `src/test/kotlin/org/acme/schooltimetabling/solver/TimetableConstrain
 ----
 package org.acme.schooltimetabling.solver
 
-import ai.greycos.solver.core.api.score.stream.ConstraintFactory
-import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier
+import greycos.solver.core.api.score.stream.ConstraintFactory
+import greycos.solver.core.api.score.stream.test.ConstraintVerifier
 import org.acme.schooltimetabling.domain.Lesson
 import org.acme.schooltimetabling.domain.Room
 import org.acme.schooltimetabling.domain.Timeslot
@@ -853,7 +853,7 @@ Change the logging in the `logback.xml` file:
 
 [source,xml]
 ----
-  <logger name="ai.greycos.solver" level="debug"/>
+  <logger name="greycos.solver" level="debug"/>
 ----
 --
 ====

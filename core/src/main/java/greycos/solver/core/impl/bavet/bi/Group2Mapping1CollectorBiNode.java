@@ -1,0 +1,45 @@
+package greycos.solver.core.impl.bavet.bi;
+
+import java.util.function.BiFunction;
+
+import greycos.solver.core.api.score.stream.bi.BiConstraintCollector;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.tuple.TriTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.util.Pair;
+
+public final class Group2Mapping1CollectorBiNode<OldA, OldB, A, B, C, ResultContainer_>
+    extends AbstractGroupBiNode<OldA, OldB, TriTuple<A, B, C>, Pair<A, B>, ResultContainer_, C> {
+
+  private final int outputStoreSize;
+
+  public Group2Mapping1CollectorBiNode(
+      BiFunction<OldA, OldB, A> groupKeyMappingA,
+      BiFunction<OldA, OldB, B> groupKeyMappingB,
+      int groupStoreIndex,
+      int undoStoreIndex,
+      BiConstraintCollector<OldA, OldB, ResultContainer_, C> collector,
+      TupleLifecycle<TriTuple<A, B, C>> nextNodesTupleLifecycle,
+      int outputStoreSize,
+      EnvironmentMode environmentMode) {
+    super(
+        groupStoreIndex,
+        undoStoreIndex,
+        tuple ->
+            Group2Mapping0CollectorBiNode.createGroupKey(groupKeyMappingA, groupKeyMappingB, tuple),
+        collector,
+        nextNodesTupleLifecycle,
+        environmentMode);
+    this.outputStoreSize = outputStoreSize;
+  }
+
+  @Override
+  protected TriTuple<A, B, C> createOutTuple(Pair<A, B> groupKey) {
+    return TriTuple.of(groupKey.key(), groupKey.value(), outputStoreSize);
+  }
+
+  @Override
+  protected void updateOutTupleToResult(TriTuple<A, B, C> outTuple, C c) {
+    outTuple.setC(c);
+  }
+}

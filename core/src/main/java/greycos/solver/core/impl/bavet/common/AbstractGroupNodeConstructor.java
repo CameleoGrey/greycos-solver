@@ -1,0 +1,28 @@
+package greycos.solver.core.impl.bavet.common;
+
+import java.util.Objects;
+
+import greycos.solver.core.impl.bavet.common.tuple.Tuple;
+
+abstract sealed class AbstractGroupNodeConstructor<Tuple_ extends Tuple>
+    implements GroupNodeConstructor<Tuple_>
+    permits GroupNodeConstructorWithAccumulate, GroupNodeConstructorWithoutAccumulate {
+
+  private final Object equalityKey;
+
+  protected AbstractGroupNodeConstructor(Object equalityKey) {
+    this.equalityKey = equalityKey;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof AbstractGroupNodeConstructor<?> that
+        && Objects.equals(getClass(), that.getClass())
+        && Objects.equals(equalityKey, that.equalityKey);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(equalityKey);
+  }
+}

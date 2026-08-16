@@ -1,0 +1,57 @@
+package greycos.solver.core.testcotwin.shadow.follower_set;
+
+import java.util.List;
+
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.variable.ShadowSources;
+import greycos.solver.core.api.cotwin.variable.ShadowVariable;
+import greycos.solver.core.testcotwin.TestdataObject;
+import greycos.solver.core.testcotwin.TestdataValue;
+import greycos.solver.core.testcotwin.shadow.follower.TestdataHasValue;
+import greycos.solver.core.testcotwin.shadow.follower.TestdataLeaderEntity;
+
+@PlanningEntity
+public class TestdataFollowerSetEntity extends TestdataObject implements TestdataHasValue {
+  List<TestdataLeaderEntity> leaders;
+
+  @ShadowVariable(supplierName = "valueSupplier")
+  TestdataValue value;
+
+  public TestdataFollowerSetEntity() {}
+
+  public TestdataFollowerSetEntity(String code, List<TestdataLeaderEntity> leaders) {
+    super(code);
+    this.leaders = leaders;
+  }
+
+  public List<TestdataLeaderEntity> getLeaders() {
+    return leaders;
+  }
+
+  public void setLeaders(List<TestdataLeaderEntity> leaders) {
+    this.leaders = leaders;
+  }
+
+  @Override
+  public TestdataValue getValue() {
+    return value;
+  }
+
+  public void setValue(TestdataValue value) {
+    this.value = value;
+  }
+
+  @ShadowSources("leaders[].value")
+  public TestdataValue valueSupplier() {
+    var min = leaders.get(0).getValue();
+    for (int i = 1; i < leaders.size(); i++) {
+      var leader = leaders.get(i);
+      var leaderValue = leader.getValue();
+      if (min == null
+          || (leaderValue != null && leaderValue.getCode().compareTo(min.getCode()) < 0)) {
+        min = leaderValue;
+      }
+    }
+    return min;
+  }
+}

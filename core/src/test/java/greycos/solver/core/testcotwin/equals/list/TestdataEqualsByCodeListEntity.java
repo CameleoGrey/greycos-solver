@@ -1,0 +1,79 @@
+package greycos.solver.core.testcotwin.equals.list;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+
+@PlanningEntity
+public class TestdataEqualsByCodeListEntity extends TestdataEqualsByCodeListObject {
+
+  public static EntityDescriptor<TestdataEqualsByCodeListSolution> buildEntityDescriptor() {
+    return TestdataEqualsByCodeListSolution.buildSolutionDescriptor()
+        .findEntityDescriptorOrFail(TestdataEqualsByCodeListEntity.class);
+  }
+
+  public static ListVariableDescriptor<TestdataEqualsByCodeListSolution>
+      buildVariableDescriptorForValueList() {
+    return (ListVariableDescriptor<TestdataEqualsByCodeListSolution>)
+        buildEntityDescriptor().getGenuineVariableDescriptor("valueList");
+  }
+
+  public static TestdataEqualsByCodeListEntity createWithValues(
+      String code, TestdataEqualsByCodeListValue... values) {
+    // Set up shadow variables to preserve consistency.
+    return new TestdataEqualsByCodeListEntity(code, values).setUpShadowVariables();
+  }
+
+  TestdataEqualsByCodeListEntity setUpShadowVariables() {
+    if (valueList == null) {
+      return this;
+    }
+    for (int i = 0; i < valueList.size(); i++) {
+      var testdataEqualsByCodeListValue = valueList.get(i);
+      testdataEqualsByCodeListValue.setEntity(this);
+      testdataEqualsByCodeListValue.setIndex(i);
+    }
+    return this;
+  }
+
+  @PlanningListVariable(valueRangeProviderRefs = "valueRange")
+  private List<TestdataEqualsByCodeListValue> valueList;
+
+  public TestdataEqualsByCodeListEntity(
+      String code, List<TestdataEqualsByCodeListValue> valueList) {
+    super(code);
+    this.valueList = valueList;
+  }
+
+  public TestdataEqualsByCodeListEntity(String code, TestdataEqualsByCodeListValue... values) {
+    this(code, new ArrayList<>(Arrays.asList(values)));
+  }
+
+  public List<TestdataEqualsByCodeListValue> getValueList() {
+    return valueList;
+  }
+
+  public void setValueList(List<TestdataEqualsByCodeListValue> valueList) {
+    this.valueList = valueList;
+  }
+
+  public void addValue(TestdataEqualsByCodeListValue value) {
+    addValueAt(valueList.size(), value);
+  }
+
+  public void addValueAt(int pos, TestdataEqualsByCodeListValue value) {
+    List<TestdataEqualsByCodeListValue> newValueList = new ArrayList<>(valueList);
+    newValueList.add(pos, value);
+    this.valueList = newValueList;
+  }
+
+  public void removeValue(TestdataEqualsByCodeListValue value) {
+    this.valueList = valueList.stream().filter(v -> !Objects.equals(v, value)).toList();
+  }
+}

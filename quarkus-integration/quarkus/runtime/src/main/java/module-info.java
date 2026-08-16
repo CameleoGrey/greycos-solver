@@ -1,11 +1,11 @@
-module ai.greycos.solver.quarkus {
-  exports ai.greycos.solver.quarkus;
-  exports ai.greycos.solver.quarkus.bean;
-  exports ai.greycos.solver.quarkus.config;
-  exports ai.greycos.solver.quarkus.devui;
-  exports ai.greycos.solver.quarkus.gizmo;
+module greycos.solver.quarkus {
+  exports greycos.solver.quarkus;
+  exports greycos.solver.quarkus.bean;
+  exports greycos.solver.quarkus.config;
+  exports greycos.solver.quarkus.devui;
+  exports greycos.solver.quarkus.gizmo;
 
-  requires transitive ai.greycos.solver.core;
+  requires transitive greycos.solver.core;
   requires io.quarkus.arc;
   requires io.quarkus.core;
   requires io.smallrye.config;

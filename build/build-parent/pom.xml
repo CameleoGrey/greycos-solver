@@ -4,7 +4,7 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>ai.greycos.solver</groupId>
+    <groupId>greycos.solver</groupId>
     <artifactId>greycos-solver-parent</artifactId>
     <version>999-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
@@ -51,7 +51,6 @@
     <version.jacoco.plugin>0.8.15</version.jacoco.plugin>
     <version.jar.plugin>3.5.0</version.jar.plugin>
     <version.jaxb2.plugin>4.1.0</version.jaxb2.plugin>
-    <version.revapi.plugin>0.15.1</version.revapi.plugin>
     <version.sonar.plugin>5.7.0.6970</version.sonar.plugin>
     <version.source.plugin>3.4.0</version.source.plugin>
     <version.spotless.plugin>3.8.0</version.spotless.plugin>
@@ -67,8 +66,6 @@
     <jacoco.exec.file>${project.root.dir}/target/jacoco.exec</jacoco.exec.file>
     <jacoco.agent.argLine/>
     <enforcer.failOnDuplicatedClasses>true</enforcer.failOnDuplicatedClasses>
-    <!-- Latest release to be used by api-compatibility-check to check backwards compatibility of the API. -->
-    <revapi.oldGreyCOSVersion>0.9.38</revapi.oldGreyCOSVersion>
     <!--suppress UnresolvedMavenProperty-->
     <project.root.dir>${maven.multiModuleProjectDirectory}</project.root.dir>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -84,7 +81,7 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-bom</artifactId>
         <version>${project.version}</version>
         <type>pom</type>
@@ -326,40 +323,6 @@
             </execution>
           </executions>
         </plugin>
-        <plugin>
-          <groupId>org.revapi</groupId>
-          <artifactId>revapi-maven-plugin</artifactId>
-          <version>${version.revapi.plugin}</version>
-          <dependencies>
-            <dependency>
-              <groupId>org.revapi</groupId>
-              <artifactId>revapi-java</artifactId>
-              <version>0.28.4</version>
-            </dependency>
-          </dependencies>
-          <configuration>
-            <checkDependencies>false</checkDependencies>
-            <oldArtifacts>
-              <artifact>${project.groupId}:${project.artifactId}:${revapi.oldGreyCOSVersion}</artifact>
-            </oldArtifacts>
-            <newArtifacts>
-              <artifact>${project.groupId}:${project.artifactId}:${project.version}</artifact>
-            </newArtifacts>
-            <analysisConfigurationFiles>
-              <file>${project.basedir}/src/build/revapi-filter.json</file>
-              <file>${project.basedir}/src/build/revapi-differences.json</file>
-            </analysisConfigurationFiles>
-          </configuration>
-          <executions>
-            <execution>
-              <id>check</id>
-              <goals>
-                <goal>check</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
-
         <!-- Packaging -->
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
@@ -489,7 +452,7 @@
           <version>${version.spotless.plugin}</version>
           <dependencies>
             <dependency>
-              <groupId>ai.greycos.solver</groupId>
+              <groupId>greycos.solver</groupId>
               <artifactId>greycos-solver-ide-config</artifactId>
               <version>${project.version}</version>
             </dependency>
@@ -761,7 +724,6 @@
       </activation>
       <properties>
         <enforcer.skip>true</enforcer.skip>
-        <revapi.skip>true</revapi.skip>
         <skipTests>true</skipTests>
         <skipITs>true</skipITs>
         <spotless.skip>true</spotless.skip>

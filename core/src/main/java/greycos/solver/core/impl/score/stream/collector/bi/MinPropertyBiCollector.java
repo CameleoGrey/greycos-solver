@@ -1,0 +1,76 @@
+package greycos.solver.core.impl.score.stream.collector.bi;
+
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import greycos.solver.core.api.score.stream.bi.BiConstraintCollectorValueHandle;
+import greycos.solver.core.impl.score.stream.collector.AbstractMinMaxSlot;
+
+import org.jspecify.annotations.NonNull;
+
+final class MinPropertyBiCollector<A, B, Result_, Property_ extends Comparable<? super Property_>>
+    extends AbstractReferenceBasedBiCollector<
+        A, B, Result_, Result_, AbstractMinMaxSlot.State<Result_, Property_>> {
+  private final Function<? super Result_, ? extends Property_> propertyMapper;
+
+  MinPropertyBiCollector(
+      BiFunction<? super A, ? super B, ? extends Result_> mapper,
+      Function<? super Result_, ? extends Property_> propertyMapper) {
+    super(mapper);
+    this.propertyMapper = propertyMapper;
+  }
+
+  @Override
+  public @NonNull Supplier<AbstractMinMaxSlot.State<Result_, Property_>> supplier() {
+    return () -> AbstractMinMaxSlot.minState(propertyMapper);
+  }
+
+  @Override
+  public @NonNull Function<AbstractMinMaxSlot.State<Result_, Property_>, Result_> finisher() {
+    return AbstractMinMaxSlot.State::result;
+  }
+
+  @Override
+  protected BiConstraintCollectorValueHandle<A, B> newAccumulatedValue(
+      AbstractMinMaxSlot.State<Result_, Property_> state) {
+    return new Slot(state);
+  }
+
+  private final class Slot extends AbstractMinMaxSlot<Result_, Property_>
+      implements BiConstraintCollectorValueHandle<A, B> {
+    Slot(AbstractMinMaxSlot.State<Result_, Property_> state) {
+      super(state);
+    }
+
+    @Override
+    public void add(A a, B b) {
+      addMapped(mapper.apply(a, b));
+    }
+
+    @Override
+    public void replaceWith(A a, B b) {
+      replaceWithMapped(mapper.apply(a, b));
+    }
+
+    @Override
+    public void remove() {
+      removeMapped();
+    }
+  }
+
+  @Override
+  public boolean equals(Object object) {
+    if (this == object) return true;
+    if (object == null || getClass() != object.getClass()) return false;
+    if (!super.equals(object)) return false;
+    MinPropertyBiCollector<?, ?, ?, ?> that = (MinPropertyBiCollector<?, ?, ?, ?>) object;
+    return Objects.equals(propertyMapper, that.propertyMapper);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), propertyMapper);
+  }
+}

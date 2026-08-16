@@ -1,0 +1,24 @@
+package greycos.solver.core.config.heuristic.selector.move;
+
+import java.util.random.RandomGenerator;
+
+import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
+
+import org.jspecify.annotations.NonNull;
+
+/** For move selectors that support Nearby Selection autoconfiguration. */
+public interface NearbyAutoConfigurationEnabled<Config_ extends MoveSelectorConfig<Config_>> {
+
+  /**
+   * @return true if it can enable the nearby setting for the given move configuration; otherwise,
+   *     it returns false.
+   */
+  boolean canEnableNearbyInMixedModels();
+
+  /**
+   * @return new instance with the Nearby Selection settings properly configured
+   */
+  @NonNull Config_ enableNearbySelection(
+      @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
+      @NonNull RandomGenerator random);
+}

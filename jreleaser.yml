@@ -1,7 +1,7 @@
 project:
   languages:
     java:
-      groupId: "ai.greycos.solver"
+      groupId: "greycos.solver"
 
 signing:
   pgp:
@@ -46,11 +46,11 @@ deploy:
         stagingRepositories:
           - "target/staging-deploy"
         artifactOverrides:
-          - groupId: ai.greycos.solver
+          - groupId: greycos.solver
             artifactId: greycos-solver-ide-config
             sourceJar: true
             javadocJar: false
-          - groupId: ai.greycos.solver
+          - groupId: greycos.solver
             artifactId: greycos-solver-webui
             sourceJar: true
             javadocJar: false

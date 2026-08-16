@@ -35,7 +35,7 @@ Use one of the following ways to build this project:
 and configure a _Run/Debug configuration_ like this:
 +
 * Type: Application
-* Main class: `ai.greycos.solver.examples.app.GreyCOSExamplesApp`
+* Main class: `greycos.solver.examples.app.GreyCOSExamplesApp`
 * VM options: `-Xmx2G` (memory only needed when using the big datasets in the examples)
 * Program arguments: (none)
 * Working directory: `$MODULE_DIR$` (must resolve to `examples` directory)

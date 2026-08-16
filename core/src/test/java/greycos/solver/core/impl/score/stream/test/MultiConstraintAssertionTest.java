@@ -1,0 +1,289 @@
+package greycos.solver.core.impl.score.stream.test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+
+import java.util.Collections;
+import java.util.List;
+
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintFactory;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
+import greycos.solver.core.api.score.stream.test.ConstraintVerifier;
+import greycos.solver.core.testcotwin.TestdataValue;
+import greycos.solver.core.testcotwin.constraintverifier.TestdataConstraintVerifierConstraintProvider;
+import greycos.solver.core.testcotwin.constraintverifier.TestdataConstraintVerifierExtendedSolution;
+import greycos.solver.core.testcotwin.constraintverifier.TestdataConstraintVerifierFirstEntity;
+import greycos.solver.core.testcotwin.constraintverifier.TestdataConstraintVerifierSecondEntity;
+import greycos.solver.core.testcotwin.list.TestdataListEntity;
+import greycos.solver.core.testcotwin.list.TestdataListSolution;
+import greycos.solver.core.testcotwin.list.TestdataListValue;
+import greycos.solver.core.testcotwin.list.pinned.noshadows.TestdataPinnedNoShadowsListEntity;
+import greycos.solver.core.testcotwin.list.pinned.noshadows.TestdataPinnedNoShadowsListSolution;
+import greycos.solver.core.testcotwin.list.pinned.noshadows.TestdataPinnedNoShadowsListValue;
+import greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
+import greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
+import greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
+import greycos.solver.core.testcotwin.shadow.multiplelistener.TestdataListMultipleShadowVariableConstraintProvider;
+import greycos.solver.core.testcotwin.shadow.multiplelistener.TestdataListMultipleShadowVariableEntity;
+import greycos.solver.core.testcotwin.shadow.multiplelistener.TestdataListMultipleShadowVariableSolution;
+import greycos.solver.core.testcotwin.shadow.multiplelistener.TestdataListMultipleShadowVariableValue;
+
+import org.jspecify.annotations.NonNull;
+import org.junit.jupiter.api.Test;
+
+class MultiConstraintAssertionTest {
+
+  @Test
+  void triggerVariableListenersListSingleSolution() {
+    var constraintVerifier =
+        ConstraintVerifier.build(
+            new TestdataListMultipleShadowVariableConstraintProvider(),
+            TestdataListMultipleShadowVariableSolution.class,
+            TestdataListMultipleShadowVariableEntity.class,
+            TestdataListMultipleShadowVariableValue.class);
+
+    var solution = TestdataListMultipleShadowVariableSolution.generateSolution(1, 1);
+    assertThatCode(
+            () ->
+                constraintVerifier
+                    .verifyThat()
+                    .givenSolution(solution)
+                    .settingAllShadowVariables()
+                    .scores(SimpleScore.of(10))) // -10 + 20
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void checksScore() {
+    var constraintVerifier =
+        ConstraintVerifier.build(
+            new TestdataConstraintVerifierConstraintProvider(),
+            TestdataConstraintVerifierExtendedSolution.class,
+            TestdataConstraintVerifierFirstEntity.class,
+            TestdataConstraintVerifierSecondEntity.class);
+
+    var solution = TestdataConstraintVerifierExtendedSolution.generateSolution(4, 5);
+
+    assertThatCode(
+            () ->
+                constraintVerifier
+                    .verifyThat()
+                    .givenSolution(solution)
+                    .scores(HardSoftScore.of(-15, 3), "There should be no penalties"))
+        .doesNotThrowAnyException();
+    assertThatCode(
+            () ->
+                constraintVerifier
+                    .verifyThat()
+                    .givenSolution(solution)
+                    .scores(HardSoftScore.of(1, 1), "There should be penalties"))
+        .hasMessageContaining("There should be penalties");
+  }
+
+  @Test
+  void getScoreReturnsTypedScoreWithGivenFacts() {
+    var constraintVerifier =
+        ConstraintVerifier.build(
+            new TestdataConstraintVerifierConstraintProvider(),
+            TestdataConstraintVerifierExtendedSolution.class,
+            TestdataConstraintVerifierFirstEntity.class,
+            TestdataConstraintVerifierSecondEntity.class);
+    var entity = new TestdataConstraintVerifierFirstEntity("entity1", new TestdataValue());
+
+    HardSoftScore score = constraintVerifier.verifyThat().given(entity).getScore();
+
+    assertThat(score).isNotNull();
+    assertThat(score).isInstanceOf(HardSoftScore.class);
+
+    assertThat(score.hardScore()).isEqualTo(-5);
+    assertThat(score.softScore()).isEqualTo(2);
+  }
+
+  @Test
+  void getScoreEnablesRelativeComparisonWithGivenFacts() {
+    var constraintVerifier =
+        ConstraintVerifier.build(
+            new TestdataConstraintVerifierConstraintProvider(),
+            TestdataConstraintVerifierExtendedSolution.class,
+            TestdataConstraintVerifierFirstEntity.class,
+            TestdataConstraintVerifierSecondEntity.class);
+    // Scenario A: 1 entity
+    var entityA = new TestdataConstraintVerifierFirstEntity("A", new TestdataValue());
+
+    // Scenario B: 2 entities
+    var entityB1 = new TestdataConstraintVerifierFirstEntity("B1", new TestdataValue());
+    var entityB2 = new TestdataConstraintVerifierFirstEntity("B2", new TestdataValue());
+
+    HardSoftScore scoreA = constraintVerifier.verifyThat().given(entityA).getScore();
+    HardSoftScore scoreB = constraintVerifier.verifyThat().given(entityB1, entityB2).getScore();
+
+    assertThat(scoreA).isGreaterThan(scoreB);
+  }
+
+  @Test
+  void listVarUnassignedWhileAllowsUnassigned() {
+    var constraintVerifier =
+        ConstraintVerifier.build(
+            new TestdataAllowsUnassignedListConstraintProvider(),
+            TestdataAllowsUnassignedValuesListSolution.class,
+            TestdataAllowsUnassignedValuesListEntity.class,
+            TestdataAllowsUnassignedValuesListValue.class);
+
+    var value1 = new TestdataAllowsUnassignedValuesListValue("v1");
+    var value2 = new TestdataAllowsUnassignedValuesListValue("v2");
+    var entity = new TestdataAllowsUnassignedValuesListEntity("eA");
+    entity.setValueList(Collections.singletonList(value1));
+    value1.setIndex(0);
+    value1.setEntity(entity);
+    var solution = new TestdataAllowsUnassignedValuesListSolution();
+    solution.setEntityList(List.of(entity));
+    solution.setValueList(List.of(value1, value2));
+
+    assertThatCode(
+            () ->
+                constraintVerifier
+                    .verifyThat()
+                    .givenSolution(solution)
+                    .scores(SimpleScore.of(-3), "There should be no penalties"))
+        .doesNotThrowAnyException();
+    assertThatCode(
+            () ->
+                constraintVerifier
+                    .verifyThat()
+                    .givenSolution(solution)
+                    .scores(SimpleScore.of(-2), "There should be penalties"))
+        .hasMessageContaining("There should be penalties");
+  }
+
+  private static final class TestdataAllowsUnassignedListConstraintProvider
+      implements ConstraintProvider {
+
+    @Override
+    public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+      return new Constraint[] {
+        penalizeEveryAssignedValue(constraintFactory), penalizeEveryValue(constraintFactory)
+      };
+    }
+
+    private Constraint penalizeEveryAssignedValue(ConstraintFactory constraintFactory) {
+      return constraintFactory
+          .forEach(TestdataAllowsUnassignedValuesListValue.class)
+          .penalize(SimpleScore.ONE)
+          .asConstraint("Penalize every unassigned value");
+    }
+
+    private Constraint penalizeEveryValue(ConstraintFactory constraintFactory) {
+      return constraintFactory
+          .forEachIncludingUnassigned(TestdataAllowsUnassignedValuesListValue.class)
+          .penalize(SimpleScore.ONE)
+          .asConstraint("Penalize every value");
+    }
+  }
+
+  @Test
+  void listVarUnassignedWhileDisallowsUnassigned() {
+    var constraintVerifier =
+        ConstraintVerifier.build(
+            new TestdataDisallowsUnassignedListConstraintProvider(),
+            TestdataListSolution.class,
+            TestdataListEntity.class,
+            TestdataListValue.class);
+
+    var value1 = new TestdataListValue("v1");
+    var value2 = new TestdataListValue("v2");
+    var entity = new TestdataListEntity("eA", value1);
+    value1.setIndex(0);
+    value1.setEntity(entity);
+    var solution = new TestdataListSolution();
+    solution.setEntityList(List.of(entity));
+    solution.setValueList(List.of(value1, value2));
+
+    assertThatCode(
+            () ->
+                constraintVerifier
+                    .verifyThat()
+                    .givenSolution(solution)
+                    .scores(SimpleScore.of(-3), "There should be no penalties"))
+        .doesNotThrowAnyException();
+  }
+
+  private static final class TestdataDisallowsUnassignedListConstraintProvider
+      implements ConstraintProvider {
+
+    @Override
+    public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+      return new Constraint[] {
+        penalizeEveryAssignedValue(constraintFactory), penalizeEveryValue(constraintFactory)
+      };
+    }
+
+    private Constraint penalizeEveryAssignedValue(ConstraintFactory constraintFactory) {
+      return constraintFactory
+          .forEach(TestdataListValue.class)
+          .penalize(SimpleScore.ONE)
+          .asConstraint("Penalize every unassigned value");
+    }
+
+    private Constraint penalizeEveryValue(ConstraintFactory constraintFactory) {
+      return constraintFactory
+          .forEachIncludingUnassigned(TestdataListValue.class)
+          .penalize(SimpleScore.ONE)
+          .asConstraint("Penalize every value");
+    }
+  }
+
+  @Test
+  void listVarUnassignedWhileDisallowsUnassigned_noInverseRelationShadowVar() {
+    var constraintVerifier =
+        ConstraintVerifier.build(
+            new TestdataDisallowsUnassignedListWithoutInverseShadowVarConstraintProvider(),
+            TestdataPinnedNoShadowsListSolution.class,
+            TestdataPinnedNoShadowsListEntity.class,
+            TestdataPinnedNoShadowsListValue.class);
+
+    var value1 = new TestdataPinnedNoShadowsListValue("v1");
+    var value2 = new TestdataPinnedNoShadowsListValue("v2");
+    var entity = new TestdataPinnedNoShadowsListEntity("eA", value1);
+    value1.setIndex(0);
+    var solution = new TestdataPinnedNoShadowsListSolution();
+    solution.setEntityList(List.of(entity));
+    solution.setValueList(List.of(value1, value2));
+
+    assertThatCode(
+            () ->
+                constraintVerifier
+                    .verifyThat()
+                    .givenSolution(solution)
+                    .scores(SimpleScore.of(-3), "There should be no penalties"))
+        .doesNotThrowAnyException();
+  }
+
+  private static final
+  class TestdataDisallowsUnassignedListWithoutInverseShadowVarConstraintProvider
+      implements ConstraintProvider {
+
+    @Override
+    public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+      return new Constraint[] {
+        penalizeEveryAssignedValue(constraintFactory), penalizeEveryValue(constraintFactory)
+      };
+    }
+
+    private Constraint penalizeEveryAssignedValue(ConstraintFactory constraintFactory) {
+      return constraintFactory
+          .forEach(TestdataPinnedNoShadowsListValue.class)
+          .penalize(SimpleScore.ONE)
+          .asConstraint("Penalize every unassigned value");
+    }
+
+    private Constraint penalizeEveryValue(ConstraintFactory constraintFactory) {
+      return constraintFactory
+          .forEachIncludingUnassigned(TestdataPinnedNoShadowsListValue.class)
+          .penalize(SimpleScore.ONE)
+          .asConstraint("Penalize every value");
+    }
+  }
+}

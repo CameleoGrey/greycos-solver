@@ -91,9 +91,9 @@ Java::
 ====
 
 Every element in the solver configuration XML is available as a `$$*$$Config` class
-or a property on a `$$*$$Config` class in the package namespace ``ai.greycos.solver.core.config``.
+or a property on a `$$*$$Config` class in the package namespace ``greycos.solver.core.config``.
 These `$$*$$Config` classes are the Java representation of the XML format.
-They build the runtime components (of the package namespace ``ai.greycos.solver.core.impl``)
+They build the runtime components (of the package namespace ``greycos.solver.core.impl``)
 and assemble them into an efficient ``Solver``.
 
 [NOTE]

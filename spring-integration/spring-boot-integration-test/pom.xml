@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>ai.greycos.solver</groupId>
+    <groupId>greycos.solver</groupId>
     <artifactId>greycos-solver-spring-integration</artifactId>
     <version>999-SNAPSHOT</version>
   </parent>
@@ -26,7 +26,7 @@
       <artifactId>spring-boot-starter-webmvc</artifactId>
     </dependency>
     <dependency>
-      <groupId>ai.greycos.solver</groupId>
+      <groupId>greycos.solver</groupId>
       <artifactId>greycos-solver-spring-boot-starter</artifactId>
     </dependency>
     <dependency>

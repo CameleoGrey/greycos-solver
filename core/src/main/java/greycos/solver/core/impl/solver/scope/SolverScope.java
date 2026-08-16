@@ -1,0 +1,512 @@
+package greycos.solver.core.impl.solver.scope;
+
+import static greycos.solver.core.impl.util.MathUtils.getSpeed;
+
+import java.time.Clock;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.solver.ProblemSizeStatistics;
+import greycos.solver.core.api.solver.Solver;
+import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import greycos.solver.core.impl.score.definition.ScoreDefinition;
+import greycos.solver.core.impl.score.director.InnerScore;
+import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.solver.AbstractSolver;
+import greycos.solver.core.impl.solver.change.DefaultProblemChangeDirector;
+import greycos.solver.core.impl.solver.monitoring.ScoreLevels;
+import greycos.solver.core.impl.solver.random.DefaultRandomSource;
+import greycos.solver.core.impl.solver.random.RandomSource;
+import greycos.solver.core.impl.solver.termination.PhaseTermination;
+import greycos.solver.core.impl.solver.thread.ChildThreadType;
+import greycos.solver.core.preview.api.move.Move;
+
+import io.micrometer.core.instrument.Tags;
+
+/**
+ * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
+ */
+public class SolverScope<Solution_> {
+
+  private final Clock clock;
+
+  // Solution-derived fields have the potential for race conditions.
+  private final AtomicReference<ProblemSizeStatistics> problemSizeStatistics =
+      new AtomicReference<>();
+  private final AtomicReference<Solution_> bestSolution = new AtomicReference<>();
+  private final AtomicReference<InnerScore<?>> bestScore = new AtomicReference<>();
+  private final AtomicLong startingSystemTimeMillis = resetAtomicLongTimeMillis(new AtomicLong());
+  private final AtomicLong endingSystemTimeMillis = resetAtomicLongTimeMillis(new AtomicLong());
+
+  private Set<SolverMetric> solverMetricSet = Collections.emptySet();
+  private int constraintMatchMetricSampleInterval = 1;
+  private Tags monitoringTags;
+  private int startingSolverCount;
+  private RandomSource workingRandom;
+  private InnerScoreDirector<Solution_, ?> scoreDirector;
+  private AbstractSolver<Solution_> solver;
+  private DefaultProblemChangeDirector<Solution_> problemChangeDirector;
+  private final AtomicReference<PendingMove<Solution_>> pendingMove = new AtomicReference<>();
+
+  /** Used for capping CPU power usage in multithreaded scenarios. */
+  private Semaphore runnableThreadSemaphore = null;
+
+  private long childThreadsScoreCalculationCount = 0L;
+
+  private long moveEvaluationCount = 0L;
+
+  private Score<?> startingInitializedScore;
+
+  private Long bestSolutionTimeMillis;
+
+  /** Used for tracking step score */
+  private final Map<Tags, ScoreLevels> stepScoreMap = new ConcurrentHashMap<>();
+
+  /** Used for tracking move count per move type */
+  private final Map<String, Long> moveEvaluationCountPerTypeMap = new ConcurrentHashMap<>();
+
+  private static AtomicLong resetAtomicLongTimeMillis(AtomicLong atomicLong) {
+    atomicLong.set(-1);
+    return atomicLong;
+  }
+
+  private static Long readAtomicLongTimeMillis(AtomicLong atomicLong) {
+    var value = atomicLong.get();
+    return value == -1 ? null : value;
+  }
+
+  public SolverScope() {
+    this.clock = Clock.systemDefaultZone();
+  }
+
+  public SolverScope(Clock clock) {
+    this.clock = Objects.requireNonNull(clock);
+  }
+
+  public Clock getClock() {
+    return clock;
+  }
+
+  public AbstractSolver<Solution_> getSolver() {
+    return solver;
+  }
+
+  public void setSolver(AbstractSolver<Solution_> solver) {
+    this.solver = solver;
+  }
+
+  public DefaultProblemChangeDirector<Solution_> getProblemChangeDirector() {
+    return problemChangeDirector;
+  }
+
+  public void setProblemChangeDirector(
+      DefaultProblemChangeDirector<Solution_> problemChangeDirector) {
+    this.problemChangeDirector = problemChangeDirector;
+  }
+
+  public void setPendingMove(Move<Solution_> move) {
+    setPendingMove(move, false);
+  }
+
+  public void setPendingMove(Move<Solution_> move, boolean requiresReset) {
+    pendingMove.set(new PendingMove<>(move, requiresReset, null));
+  }
+
+  public void setPendingMoveIfBetter(
+      Move<Solution_> move, InnerScore<?> score, boolean requiresReset) {
+    Objects.requireNonNull(move, "The pending move must not be null.");
+    Objects.requireNonNull(score, "The pending move score must not be null.");
+    var candidate = new PendingMove<>(move, requiresReset, score);
+    while (true) {
+      var current = pendingMove.get();
+      if (current != null && current.score() != null) {
+        var comparison = compareInnerScores(score, current.score());
+        if (comparison <= 0) {
+          return;
+        }
+      }
+      if (pendingMove.compareAndSet(current, candidate)) {
+        return;
+      }
+    }
+  }
+
+  public PendingMove<Solution_> consumePendingMove() {
+    return pendingMove.getAndSet(null);
+  }
+
+  public Tags getMonitoringTags() {
+    return monitoringTags;
+  }
+
+  public void setMonitoringTags(Tags monitoringTags) {
+    this.monitoringTags = monitoringTags;
+  }
+
+  public Map<Tags, ScoreLevels> getStepScoreMap() {
+    return stepScoreMap;
+  }
+
+  public Set<SolverMetric> getSolverMetricSet() {
+    return solverMetricSet;
+  }
+
+  public void setSolverMetricSet(EnumSet<SolverMetric> solverMetricSet) {
+    this.solverMetricSet = solverMetricSet;
+  }
+
+  public int getConstraintMatchMetricSampleInterval() {
+    return constraintMatchMetricSampleInterval;
+  }
+
+  public void setConstraintMatchMetricSampleInterval(int constraintMatchMetricSampleInterval) {
+    if (constraintMatchMetricSampleInterval < 1) {
+      throw new IllegalArgumentException(
+          "The constraintMatchMetricSampleInterval ("
+              + constraintMatchMetricSampleInterval
+              + ") must be at least 1.");
+    }
+    this.constraintMatchMetricSampleInterval = constraintMatchMetricSampleInterval;
+  }
+
+  public int getStartingSolverCount() {
+    return startingSolverCount;
+  }
+
+  public void setStartingSolverCount(int startingSolverCount) {
+    this.startingSolverCount = startingSolverCount;
+  }
+
+  public RandomSource getWorkingRandom() {
+    return workingRandom;
+  }
+
+  public void setWorkingRandom(RandomSource workingRandom) {
+    this.workingRandom = workingRandom;
+  }
+
+  @SuppressWarnings("unchecked")
+  public <Score_ extends Score<Score_>> InnerScoreDirector<Solution_, Score_> getScoreDirector() {
+    return (InnerScoreDirector<Solution_, Score_>) scoreDirector;
+  }
+
+  public void setScoreDirector(InnerScoreDirector<Solution_, ?> scoreDirector) {
+    this.scoreDirector = scoreDirector;
+  }
+
+  public void setRunnableThreadSemaphore(Semaphore runnableThreadSemaphore) {
+    this.runnableThreadSemaphore = runnableThreadSemaphore;
+  }
+
+  public Long getStartingSystemTimeMillis() {
+    return readAtomicLongTimeMillis(startingSystemTimeMillis);
+  }
+
+  public Long getEndingSystemTimeMillis() {
+    return readAtomicLongTimeMillis(endingSystemTimeMillis);
+  }
+
+  public SolutionDescriptor<Solution_> getSolutionDescriptor() {
+    return scoreDirector.getSolutionDescriptor();
+  }
+
+  public ScoreDefinition getScoreDefinition() {
+    return scoreDirector.getScoreDefinition();
+  }
+
+  public Solution_ getWorkingSolution() {
+    return scoreDirector.getWorkingSolution();
+  }
+
+  public int getWorkingEntityCount() {
+    return scoreDirector.getWorkingGenuineEntityCount();
+  }
+
+  public <Score_ extends Score<Score_>> InnerScore<Score_> calculateScore() {
+    return this.<Score_>getScoreDirector().calculateScore();
+  }
+
+  public void assertScoreFromScratch(Solution_ solution) {
+    scoreDirector.getScoreDirectorFactory().assertScoreFromScratch(solution);
+  }
+
+  @SuppressWarnings("unchecked")
+  public <Score_ extends Score<Score_>> Score_ getStartingInitializedScore() {
+    return (Score_) startingInitializedScore;
+  }
+
+  public void setStartingInitializedScore(Score<?> startingInitializedScore) {
+    this.startingInitializedScore = startingInitializedScore;
+  }
+
+  public void addChildThreadsScoreCalculationCount(long addition) {
+    childThreadsScoreCalculationCount += addition;
+  }
+
+  public long getScoreCalculationCount() {
+    return scoreDirector.getCalculationCount() + childThreadsScoreCalculationCount;
+  }
+
+  public void addMoveEvaluationCount(long addition) {
+    moveEvaluationCount += addition;
+  }
+
+  public long getMoveEvaluationCount() {
+    return moveEvaluationCount;
+  }
+
+  public Solution_ getBestSolution() {
+    return bestSolution.get();
+  }
+
+  /**
+   * The {@link PlanningSolution best solution} must never be the same instance as the {@link
+   * PlanningSolution working solution}, it should be a (un)changed clone.
+   *
+   * @param bestSolution never null
+   */
+  public void setBestSolution(Solution_ bestSolution) {
+    this.bestSolution.set(bestSolution);
+  }
+
+  @SuppressWarnings("unchecked")
+  public <Score_ extends Score<Score_>> InnerScore<Score_> getBestScore() {
+    return (InnerScore<Score_>) bestScore.get();
+  }
+
+  public <Score_ extends Score<Score_>> void setInitializedBestScore(Score_ bestScore) {
+    setBestScore(InnerScore.fullyAssigned(bestScore));
+  }
+
+  public <Score_ extends Score<Score_>> void setBestScore(InnerScore<Score_> bestScore) {
+    this.bestScore.set(bestScore);
+  }
+
+  public Long getBestSolutionTimeMillis() {
+    return bestSolutionTimeMillis;
+  }
+
+  public void setBestSolutionTimeMillis(Long bestSolutionTimeMillis) {
+    this.bestSolutionTimeMillis = bestSolutionTimeMillis;
+  }
+
+  public Set<String> getMoveCountTypes() {
+    return moveEvaluationCountPerTypeMap.keySet();
+  }
+
+  public Map<String, Long> getMoveEvaluationCountPerType() {
+    return moveEvaluationCountPerTypeMap;
+  }
+
+  // ************************************************************************
+  // Calculated methods
+  // ************************************************************************
+
+  public boolean isMetricEnabled(SolverMetric solverMetric) {
+    return solverMetricSet.contains(solverMetric);
+  }
+
+  public void startingNow() {
+    startingSystemTimeMillis.set(getClock().millis());
+    resetAtomicLongTimeMillis(endingSystemTimeMillis);
+    this.moveEvaluationCount = 0L;
+  }
+
+  public Long getBestSolutionTimeMillisSpent() {
+    return getBestSolutionTimeMillis() - getStartingSystemTimeMillis();
+  }
+
+  public void endingNow() {
+    endingSystemTimeMillis.set(getClock().millis());
+  }
+
+  public boolean isBestSolutionInitialized() {
+    var bestScore = getBestScore();
+    return bestScore != null && bestScore.isFullyAssigned();
+  }
+
+  public long calculateTimeMillisSpentUpToNow() {
+    var now = getClock().millis();
+    return now - getStartingSystemTimeMillis();
+  }
+
+  public long getTimeMillisSpent() {
+    var startingMillis = getStartingSystemTimeMillis();
+    if (startingMillis == null) { // The solver hasn't started yet.
+      return 0L;
+    }
+    var endingMillis = getEndingSystemTimeMillis();
+    if (endingMillis == null) { // The solver hasn't ended yet.
+      endingMillis = getClock().millis();
+    }
+    return endingMillis - startingMillis;
+  }
+
+  public ProblemSizeStatistics getProblemSizeStatistics() {
+    return problemSizeStatistics.get();
+  }
+
+  public void setProblemSizeStatistics(ProblemSizeStatistics problemSizeStatistics) {
+    this.problemSizeStatistics.set(problemSizeStatistics);
+  }
+
+  /**
+   * @return at least 0, per second
+   */
+  public long getScoreCalculationSpeed() {
+    long timeMillisSpent = getTimeMillisSpent();
+    return getSpeed(getScoreCalculationCount(), timeMillisSpent);
+  }
+
+  /**
+   * @return at least 0, per second
+   */
+  public long getMoveEvaluationSpeed() {
+    long timeMillisSpent = getTimeMillisSpent();
+    return getSpeed(getMoveEvaluationCount(), timeMillisSpent);
+  }
+
+  public void setWorkingSolutionFromBestSolution() {
+    // The workingSolution must never be the same instance as the bestSolution.
+    // Since we are doing a planning clone, we need to update consistency shadows
+    // that are inside identity hash map.
+    scoreDirector.setWorkingSolution(scoreDirector.cloneSolution(getBestSolution()));
+  }
+
+  public void setInitialSolution(Solution_ initialSolution) {
+    // The workingSolution must never be the same instance as the bestSolution.
+    scoreDirector.setWorkingSolution(scoreDirector.cloneSolution(initialSolution));
+
+    // Set the best solution to the solution with shadow variable updated.
+    setBestSolution(scoreDirector.cloneSolution(scoreDirector.getWorkingSolution()));
+  }
+
+  public SolverScope<Solution_> createChildThreadSolverScope(ChildThreadType childThreadType) {
+    SolverScope<Solution_> childThreadSolverScope = new SolverScope<>(clock);
+    childThreadSolverScope.bestSolution.set(null);
+    childThreadSolverScope.bestScore.set(null);
+    childThreadSolverScope.monitoringTags = monitoringTags;
+    childThreadSolverScope.solverMetricSet = solverMetricSet;
+    childThreadSolverScope.constraintMatchMetricSampleInterval =
+        constraintMatchMetricSampleInterval;
+    childThreadSolverScope.startingSolverCount = startingSolverCount;
+    childThreadSolverScope.solver = solver; // Inherit solver reference
+    if (!(workingRandom instanceof DefaultRandomSource delegatingRandom)) {
+      throw new IllegalStateException(
+          "A child solver scope requires a DefaultRandomSource, but got (%s)."
+              .formatted(workingRandom));
+    }
+    childThreadSolverScope.workingRandom = delegatingRandom.splitForChildThread();
+    childThreadSolverScope.scoreDirector =
+        scoreDirector.createChildThreadScoreDirector(childThreadType);
+    childThreadSolverScope.startingSystemTimeMillis.set(startingSystemTimeMillis.get());
+    resetAtomicLongTimeMillis(childThreadSolverScope.endingSystemTimeMillis);
+    childThreadSolverScope.startingInitializedScore = null;
+    childThreadSolverScope.bestSolutionTimeMillis = null;
+    childThreadSolverScope.problemSizeStatistics.set(problemSizeStatistics.get());
+    return childThreadSolverScope;
+  }
+
+  /** Claims this child scope's random source for the solver thread that will use it. */
+  public void transferWorkingRandomOwnershipToCurrentThread() {
+    if (!(workingRandom instanceof DefaultRandomSource defaultRandomSource)) {
+      throw new IllegalStateException(
+          "A child solver scope requires a DefaultRandomSource, but got (%s)."
+              .formatted(workingRandom));
+    }
+    defaultRandomSource.transferOwnershipToCurrentThread();
+  }
+
+  public void initializeYielding() {
+    if (runnableThreadSemaphore != null) {
+      try {
+        runnableThreadSemaphore.acquire();
+      } catch (InterruptedException e) {
+        // TODO it will take a while before the BasicPlumbingTermination is called
+        // The BasicPlumbingTermination will terminate the solver.
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  /**
+   * Similar to {@link Thread#yield()}, but allows capping the number of active solver threads at
+   * less than the CPU processor count, so other threads (for example servlet threads that handle
+   * REST calls) and other processes (such as SSH) have access to uncontested CPUs and don't suffer
+   * any latency.
+   *
+   * <p>Needs to be called <b>before</b> {@link
+   * PhaseTermination#isPhaseTerminated(AbstractPhaseScope)}, so the decision to start a new
+   * iteration is after any yield waiting time has been consumed (so {@link Solver#terminateEarly()}
+   * reacts immediately).
+   */
+  public void checkYielding() {
+    if (runnableThreadSemaphore != null) {
+      runnableThreadSemaphore.release();
+      try {
+        runnableThreadSemaphore.acquire();
+      } catch (InterruptedException e) {
+        // The BasicPlumbingTermination will terminate the solver.
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  public void destroyYielding() {
+    if (runnableThreadSemaphore != null) {
+      runnableThreadSemaphore.release();
+    }
+  }
+
+  public void addMoveEvaluationCountPerType(String moveType, long count) {
+    moveEvaluationCountPerTypeMap.compute(
+        moveType,
+        (key, counter) -> {
+          if (counter == null) {
+            counter = 0L;
+          }
+          counter += count;
+          return counter;
+        });
+  }
+
+  public static final class PendingMove<Solution_> {
+    private final Move<Solution_> move;
+    private final boolean requiresReset;
+    private final InnerScore<?> score;
+
+    private PendingMove(Move<Solution_> move, boolean requiresReset, InnerScore<?> score) {
+      this.move = move;
+      this.requiresReset = requiresReset;
+      this.score = score;
+    }
+
+    public Move<Solution_> move() {
+      return move;
+    }
+
+    public boolean requiresReset() {
+      return requiresReset;
+    }
+
+    public InnerScore<?> score() {
+      return score;
+    }
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static int compareInnerScores(InnerScore<?> left, InnerScore<?> right) {
+    return ((InnerScore) left).compareTo((InnerScore) right);
+  }
+}

@@ -1,9 +1,9 @@
-module ai.greycos.solver.quarkus.benchmark {
-  exports ai.greycos.solver.benchmark.quarkus;
-  exports ai.greycos.solver.benchmark.quarkus.config;
+module greycos.solver.quarkus.benchmark {
+  exports greycos.solver.benchmark.quarkus;
+  exports greycos.solver.benchmark.quarkus.config;
 
-  requires transitive ai.greycos.solver.benchmark;
-  requires transitive ai.greycos.solver.quarkus;
+  requires transitive greycos.solver.benchmark;
+  requires transitive greycos.solver.quarkus;
   requires io.quarkus.arc;
   requires io.quarkus.core;
   requires io.smallrye.config;

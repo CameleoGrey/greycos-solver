@@ -1,0 +1,174 @@
+package greycos.solver.core.api.solver;
+
+import java.time.Duration;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.solver.event.FinalBestSolutionEvent;
+import greycos.solver.core.api.solver.event.FirstInitializedSolutionEvent;
+import greycos.solver.core.api.solver.event.NewBestSolutionEvent;
+import greycos.solver.core.api.solver.event.SolverJobStartedEvent;
+import greycos.solver.core.impl.solver.ThrottlingBestSolutionEventConsumer;
+
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+
+/**
+ * Provides a fluent contract that allows customization and submission of planning problems to
+ * solve.
+ *
+ * <p>A {@link SolverManager} can solve multiple planning problems and can be used across different
+ * threads.
+ *
+ * <p>Hence, it is possible to have multiple distinct build configurations that are scheduled to run
+ * by the {@link SolverManager} instance.
+ *
+ * <p>To solve a planning problem, set the problem configuration: {@link #withProblemId(Object)},
+ * {@link #withProblemFinder(Function)} and {@link #withProblem(Object)}.
+ *
+ * <p>Then solve it by calling {@link #run()}.
+ *
+ * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
+ */
+@NullMarked
+public interface SolverJobBuilder<Solution_> {
+
+  /**
+   * Sets the problem id.
+   *
+   * @param problemId a ID for each planning problem. This must be unique.
+   * @return this
+   */
+  SolverJobBuilder<Solution_> withProblemId(Object problemId);
+
+  /**
+   * Sets the problem definition.
+   *
+   * @param problem a {@link PlanningSolution} usually with uninitialized planning variables
+   * @return this
+   */
+  default SolverJobBuilder<Solution_> withProblem(Solution_ problem) {
+    return withProblemFinder(id -> problem);
+  }
+
+  /**
+   * Sets the mapping function to the problem definition.
+   *
+   * @param problemFinder a function that returns a {@link PlanningSolution}, usually with
+   *     uninitialized planning variables
+   * @return this
+   */
+  SolverJobBuilder<Solution_> withProblemFinder(
+      Function<? super Object, ? extends Solution_> problemFinder);
+
+  /**
+   * Sets the best solution consumer, which may be called multiple times during the solving process.
+   *
+   * <p>Don't apply any changes to the solution instance while the solver runs. The solver's best
+   * solution instance is the same as the one in the event, and any modifications may lead to solver
+   * corruption due to its internal reuse.
+   *
+   * @param bestSolutionEventConsumer called multiple times for each new best solution on a consumer
+   *     thread
+   * @return this
+   */
+  SolverJobBuilder<Solution_> withBestSolutionEventConsumer(
+      Consumer<NewBestSolutionEvent<Solution_>> bestSolutionEventConsumer);
+
+  /**
+   * Sets a throttled best solution consumer.
+   *
+   * <p>The delegate consumer will receive at most one event per {@code throttleDuration}. If
+   * multiple events arrive during the interval, only the last one seen so far is delivered. Under a
+   * sustained stream of rapid best solution updates, the latest event is delivered once per
+   * throttle interval until the stream subsides. The final best solution is always delivered
+   * regardless of throttle.
+   *
+   * <p>This is useful to prevent system overload during rapid solution improvement phases, where
+   * hundreds of best solution events may arrive within seconds.
+   *
+   * <p>Example:
+   *
+   * <pre>{@code
+   * solverManager.solveBuilder()
+   *     .withProblemId(1L)
+   *     .withProblem(problem)
+   *     .withThrottledBestSolutionEventConsumer(
+   *         event -> handleBestSolution(event),
+   *         Duration.ofMillis(500)
+   *     )
+   *     .run();
+   * }</pre>
+   *
+   * @param delegate the actual consumer to call with throttled events
+   * @param throttleDuration minimum time between event deliveries; must be positive
+   * @return this
+   */
+  @NonNull
+  default SolverJobBuilder<Solution_> withThrottledBestSolutionEventConsumer(
+      @NonNull Consumer<NewBestSolutionEvent<Solution_>> delegate,
+      @NonNull Duration throttleDuration) {
+    ThrottlingBestSolutionEventConsumer<Solution_> throttledConsumer =
+        ThrottlingBestSolutionEventConsumer.of(delegate, throttleDuration);
+    return withBestSolutionEventConsumer(throttledConsumer);
+  }
+
+  /**
+   * Sets the final best solution consumer, which is called at the end of the solving process and
+   * returns the final best solution.
+   *
+   * @param finalBestSolutionEventConsumer called only once at the end of the solving process on a
+   *     consumer thread
+   * @return this
+   */
+  SolverJobBuilder<Solution_> withFinalBestSolutionEventConsumer(
+      Consumer<FinalBestSolutionEvent<Solution_>> finalBestSolutionEventConsumer);
+
+  /**
+   * Sets the consumer of the first initialized solution, the beginning of the actual optimization
+   * process. First initialized solution is the solution at the end of the last phase that
+   * immediately precedes the first local search phase.
+   *
+   * @param firstInitializedSolutionEventConsumer called only once before starting the first Local
+   *     Search phase
+   * @return this
+   */
+  SolverJobBuilder<Solution_> withFirstInitializedSolutionEventConsumer(
+      Consumer<FirstInitializedSolutionEvent<Solution_>> firstInitializedSolutionEventConsumer);
+
+  /**
+   * Sets the consumer for when the solver starts its solving process.
+   *
+   * @param solverJobStartedConsumer never null, called only once when the solver is starting the
+   *     solving process
+   * @return this, never null
+   */
+  SolverJobBuilder<Solution_> withSolverJobStartedEventConsumer(
+      Consumer<SolverJobStartedEvent<Solution_>> solverJobStartedConsumer);
+
+  /**
+   * Sets the custom exception handler.
+   *
+   * @param exceptionHandler called if an exception or error occurs. If null it defaults to logging
+   *     the exception as an error.
+   * @return this
+   */
+  SolverJobBuilder<Solution_> withExceptionHandler(
+      BiConsumer<? super Object, ? super Throwable> exceptionHandler);
+
+  /**
+   * Sets the solver config override.
+   *
+   * @param solverConfigOverride allows overriding the default behavior of {@link Solver}
+   * @return this
+   */
+  SolverJobBuilder<Solution_> withConfigOverride(SolverConfigOverride solverConfigOverride);
+
+  /**
+   * Submits a planning problem to solve and returns immediately. The planning problem is solved on
+   * a solver {@link Thread}, as soon as one is available.
+   */
+  SolverJob<Solution_> run();
+}

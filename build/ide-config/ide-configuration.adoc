@@ -59,7 +59,7 @@ touch .vscode/settings.json
         "java",
         "jakarta",
         "javax",
-        "ai.greycos",
+        "greycos",
         "org",
         "com"
     ]

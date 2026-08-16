@@ -1,0 +1,131 @@
+package greycos.solver.core.impl.heuristic.selector.value;
+
+import java.util.Iterator;
+import java.util.Objects;
+
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.cotwin.valuerange.ValueRange;
+import greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
+import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import greycos.solver.core.impl.score.director.InnerScoreDirector;
+
+/**
+ * This is the common {@link ValueSelector} implementation.
+ *
+ * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
+ */
+public final class FromEntityPropertyValueSelector<Solution_>
+    extends AbstractDemandEnabledSelector<Solution_> implements ValueSelector<Solution_> {
+
+  private final ValueRangeDescriptor<Solution_> valueRangeDescriptor;
+  private final SelectionSorter<Solution_, Object> selectionSorter;
+  private final boolean randomSelection;
+
+  private ValueRange<Object> valueRange;
+  private InnerScoreDirector<Solution_, ?> scoreDirector;
+
+  public FromEntityPropertyValueSelector(
+      ValueRangeDescriptor<Solution_> valueRangeDescriptor,
+      SelectionSorter<Solution_, Object> selectionSorter,
+      boolean randomSelection) {
+    this.valueRangeDescriptor = valueRangeDescriptor;
+    this.selectionSorter = selectionSorter;
+    this.randomSelection = randomSelection;
+  }
+
+  // ************************************************************************
+  // Lifecycle methods
+  // ************************************************************************
+
+  @Override
+  public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
+    super.phaseStarted(phaseScope);
+    this.scoreDirector = phaseScope.getScoreDirector();
+    this.valueRange =
+        scoreDirector.getValueRangeManager().getFromSolution(valueRangeDescriptor, selectionSorter);
+  }
+
+  @Override
+  public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
+    super.phaseEnded(phaseScope);
+    this.scoreDirector = null;
+    this.valueRange = null;
+  }
+
+  // ************************************************************************
+  // Worker methods
+  // ************************************************************************
+
+  @Override
+  public SelectionSorter<Solution_, Object> getSelectionSorter() {
+    return selectionSorter;
+  }
+
+  @Override
+  public GenuineVariableDescriptor<Solution_> getVariableDescriptor() {
+    return valueRangeDescriptor.getVariableDescriptor();
+  }
+
+  @Override
+  public boolean isNeverEnding() {
+    return randomSelection;
+  }
+
+  @Override
+  public long getSize(Object entity) {
+    if (entity == null) {
+      // When the entity is null, the size of the complete list of values is returned
+      return Objects.requireNonNull(valueRange).getSize();
+    } else {
+      return scoreDirector.getValueRangeManager().countOnEntity(valueRangeDescriptor, entity);
+    }
+  }
+
+  @Override
+  public Iterator<Object> iterator(Object entity) {
+    var valueRange =
+        scoreDirector
+            .getValueRangeManager()
+            .getFromEntity(valueRangeDescriptor, entity, selectionSorter);
+    if (!randomSelection) {
+      return valueRange.createOriginalIterator();
+    } else {
+      return valueRange.createRandomIterator(workingRandom);
+    }
+  }
+
+  @Override
+  public Iterator<Object> endingIterator(Object entity) {
+    if (entity == null) {
+      // When the entity is null, the complete list of values is returned
+      return valueRange.createOriginalIterator();
+    } else {
+      var valueRange =
+          scoreDirector
+              .getValueRangeManager()
+              .getFromEntity(valueRangeDescriptor, entity, selectionSorter);
+      return valueRange.createOriginalIterator();
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof FromEntityPropertyValueSelector<?> that)) return false;
+    return Objects.equals(valueRangeDescriptor, that.valueRangeDescriptor)
+        && Objects.equals(selectionSorter, that.selectionSorter)
+        && randomSelection == that.randomSelection;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(valueRangeDescriptor, selectionSorter, randomSelection);
+  }
+
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + "(" + getVariableDescriptor().getVariableName() + ")";
+  }
+}

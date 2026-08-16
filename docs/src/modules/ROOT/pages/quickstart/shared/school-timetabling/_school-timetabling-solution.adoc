@@ -24,12 +24,12 @@ package org.acme.schooltimetabling.domain;
 
 import java.util.List;
 
-import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
-import ai.greycos.solver.core.api.cotwin.solution.PlanningScore;
-import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
-import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
-import ai.greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
+import greycos.solver.core.api.cotwin.solution.PlanningScore;
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
+import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
+import greycos.solver.core.api.score.HardSoftScore;
 
 @PlanningSolution
 public class Timetable {
@@ -84,13 +84,13 @@ Create the `src/main/kotlin/org/acme/schooltimetabling/TimetableApp.kt` class:
 ----
 package org.acme.schooltimetabling.domain
 
-import ai.greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty
-import ai.greycos.solver.core.api.cotwin.solution.PlanningScore
-import ai.greycos.solver.core.api.cotwin.solution.PlanningSolution
-import ai.greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty
-import ai.greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider
-import ai.greycos.solver.core.api.score.HardSoftScore
-import ai.greycos.solver.core.api.solver.SolverStatus
+import greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty
+import greycos.solver.core.api.cotwin.solution.PlanningScore
+import greycos.solver.core.api.cotwin.solution.PlanningSolution
+import greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty
+import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider
+import greycos.solver.core.api.score.HardSoftScore
+import greycos.solver.core.api.solver.SolverStatus
 
 @PlanningSolution
 data class Timetable (

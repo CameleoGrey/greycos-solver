@@ -1,0 +1,70 @@
+package greycos.solver.core.config.phase;
+
+import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlSeeAlso;
+import jakarta.xml.bind.annotation.XmlType;
+
+import greycos.solver.core.config.AbstractConfig;
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
+import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
+import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
+import greycos.solver.core.config.solver.termination.TerminationConfig;
+import greycos.solver.core.config.util.ConfigUtils;
+
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
+@XmlSeeAlso({
+  ConstructionHeuristicPhaseConfig.class,
+  CustomPhaseConfig.class,
+  ExhaustiveSearchPhaseConfig.class,
+  IslandModelPhaseConfig.class,
+  LocalSearchPhaseConfig.class,
+  PartitionedSearchPhaseConfig.class
+})
+@XmlType(propOrder = {"terminationConfig"})
+public abstract class PhaseConfig<Config_ extends PhaseConfig<Config_>>
+    extends AbstractConfig<Config_> {
+
+  // Warning: all fields are null (and not defaulted) because they can be inherited
+  // and also because the input config file should match the output config file
+
+  @XmlElement(name = "termination")
+  protected TerminationConfig terminationConfig = null;
+
+  // ************************************************************************
+  // Constructors and simple getters/setters
+  // ************************************************************************
+
+  public @Nullable TerminationConfig getTerminationConfig() {
+    return terminationConfig;
+  }
+
+  public void setTerminationConfig(@Nullable TerminationConfig terminationConfig) {
+    this.terminationConfig = terminationConfig;
+  }
+
+  // ************************************************************************
+  // With methods
+  // ************************************************************************
+
+  public @NonNull Config_ withTerminationConfig(@NonNull TerminationConfig terminationConfig) {
+    this.setTerminationConfig(terminationConfig);
+    return (Config_) this;
+  }
+
+  @Override
+  public @NonNull Config_ inherit(@NonNull Config_ inheritedConfig) {
+    terminationConfig =
+        ConfigUtils.inheritConfig(terminationConfig, inheritedConfig.getTerminationConfig());
+    return (Config_) this;
+  }
+
+  @Override
+  public String toString() {
+    return getClass().getSimpleName();
+  }
+}

@@ -1,0 +1,17 @@
+package greycos.solver.spring.boot.autoconfigure.missingsuppliervariable;
+
+import greycos.solver.spring.boot.autoconfigure.missingsuppliervariable.constraints.TestdataSpringMissingSupplierVariableConstraintProvider;
+import greycos.solver.spring.boot.autoconfigure.missingsuppliervariable.cotwin.TestdataSpringMissingSupplierVariableSolution;
+
+import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EntityScan(
+    basePackageClasses = {
+      TestdataSpringMissingSupplierVariableSolution.class,
+      TestdataSpringMissingSupplierVariableConstraintProvider.class
+    })
+@AutoConfigurationPackage
+public class MissingSupplierVariableSpringTestConfiguration {}

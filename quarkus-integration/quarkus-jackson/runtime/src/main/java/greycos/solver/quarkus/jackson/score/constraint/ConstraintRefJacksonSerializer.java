@@ -1,0 +1,19 @@
+package greycos.solver.quarkus.jackson.score.constraint;
+
+import java.io.IOException;
+
+import greycos.solver.core.api.score.stream.ConstraintRef;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+
+public final class ConstraintRefJacksonSerializer extends JsonSerializer<ConstraintRef> {
+
+  @Override
+  public void serialize(
+      ConstraintRef constraintRef, JsonGenerator generator, SerializerProvider serializers)
+      throws IOException {
+    generator.writeString(constraintRef.id());
+  }
+}

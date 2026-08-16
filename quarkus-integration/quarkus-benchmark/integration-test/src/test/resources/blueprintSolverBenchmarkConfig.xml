@@ -6,11 +6,11 @@
 
     <inheritedSolverBenchmark>
         <solver>
-            <solutionClass>ai.greycos.solver.quarkus.benchmark.it.cotwin.TestdataStringLengthShadowSolution</solutionClass>
-            <entityClass>ai.greycos.solver.quarkus.benchmark.it.cotwin.TestdataStringLengthShadowEntity</entityClass>
-            <entityClass>ai.greycos.solver.quarkus.benchmark.it.cotwin.TestdataListValueShadowEntity</entityClass>
+            <solutionClass>greycos.solver.quarkus.benchmark.it.cotwin.TestdataStringLengthShadowSolution</solutionClass>
+            <entityClass>greycos.solver.quarkus.benchmark.it.cotwin.TestdataStringLengthShadowEntity</entityClass>
+            <entityClass>greycos.solver.quarkus.benchmark.it.cotwin.TestdataListValueShadowEntity</entityClass>
             <scoreDirectorFactory>
-                <constraintProviderClass>ai.greycos.solver.quarkus.benchmark.it.solver.TestdataStringLengthConstraintProvider</constraintProviderClass>
+                <constraintProviderClass>greycos.solver.quarkus.benchmark.it.solver.TestdataStringLengthConstraintProvider</constraintProviderClass>
             </scoreDirectorFactory>
             <termination>
                 <secondsSpentLimit>5</secondsSpentLimit>

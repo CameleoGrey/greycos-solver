@@ -4,7 +4,7 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>ai.greycos.solver</groupId>
+    <groupId>greycos.solver</groupId>
     <artifactId>greycos-solver-parent</artifactId>
     <version>999-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
@@ -14,7 +14,7 @@
   <packaging>pom</packaging>
 
   <properties>
-    <version.ai.greycos.solver>${project.version}</version.ai.greycos.solver>
+    <version.greycos.solver>${project.version}</version.greycos.solver>
   </properties>
 
   <name>GreyCOS Solver BOM (Bill Of Materials)</name>
@@ -26,278 +26,278 @@
   <dependencyManagement>
     <dependencies>
       <!--
-        IMPORTANT: Only declare modules of groupId ai.greycos.solver.
+        IMPORTANT: Only declare modules of groupId greycos.solver.
         Do not declare external dependencies, this is not a platform bom.
         Do not declare <scope> or <optional>.
         Always declare the sources jar and the test-jar too.
       -->
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-core</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-core</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-core</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-jaxb</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-jaxb</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-jaxb</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-jackson</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-jackson</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-jackson</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-jpa</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-jpa</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-jpa</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-webui</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-webui</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-benchmark</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-benchmark</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-benchmark</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-benchmark-aggregator</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-benchmark-aggregator</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-benchmark-aggregator</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <!-- quarkus-integration -->
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-deployment</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-deployment</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-deployment</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-jackson</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-jackson</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-jackson</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-jackson-deployment</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-jackson-deployment</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-jackson-deployment</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-jackson-integration-test</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-jackson-integration-test</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-jackson-integration-test</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-benchmark</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-benchmark</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-benchmark</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-benchmark-deployment</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-benchmark-deployment</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-quarkus-benchmark-deployment</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <!-- spring-integration -->
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-spring-boot-autoconfigure</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-spring-boot-autoconfigure</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-spring-boot-autoconfigure</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-spring-boot-starter</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-spring-boot-starter</artifactId>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>ai.greycos.solver</groupId>
+        <groupId>greycos.solver</groupId>
         <artifactId>greycos-solver-spring-boot-starter</artifactId>
         <type>test-jar</type>
-        <version>${version.ai.greycos.solver}</version>
+        <version>${version.greycos.solver}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

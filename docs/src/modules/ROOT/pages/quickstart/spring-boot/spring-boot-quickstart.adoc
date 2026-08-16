@@ -60,8 +60,8 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 import org.acme.schooltimetabling.domain.Timetable;
-import ai.greycos.solver.core.api.solver.SolverJob;
-import ai.greycos.solver.core.api.solver.SolverManager;
+import greycos.solver.core.api.solver.SolverJob;
+import greycos.solver.core.api.solver.SolverManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -101,7 +101,7 @@ Create the `src/main/kotlin/org/acme/schooltimetabling/rest/TimetableController.
 ----
 package org.acme.schooltimetabling.rest
 
-import ai.greycos.solver.core.api.solver.SolverManager
+import greycos.solver.core.api.solver.SolverManager
 import org.acme.schooltimetabling.domain.Timetable
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.PostMapping
@@ -284,7 +284,7 @@ Java::
 ----
 package org.acme.schooltimetabling.config;
 
-import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier;
+import greycos.solver.core.api.score.stream.test.ConstraintVerifier;
 import org.acme.schooltimetabling.domain.Lesson;
 import org.acme.schooltimetabling.domain.Timetable;
 import org.acme.schooltimetabling.solver.TimetableConstraintProvider;
@@ -308,7 +308,7 @@ Kotlin::
 ----
 package org.acme.schooltimetabling.config
 
-import ai.greycos.solver.core.api.score.stream.test.ConstraintVerifier
+import greycos.solver.core.api.score.stream.test.ConstraintVerifier
 import org.acme.schooltimetabling.domain.Lesson
 import org.acme.schooltimetabling.domain.Timetable
 import org.acme.schooltimetabling.solver.TimetableConstraintProvider
@@ -347,7 +347,7 @@ Create the `src/test/java/org/acme/schooltimetabling/rest/TimetableControllerTes
 ----
 package org.acme.schooltimetabling.rest;
 
-import ai.greycos.solver.core.api.solver.SolverStatus;
+import greycos.solver.core.api.solver.SolverStatus;
 import io.restassured.http.ContentType;
 import org.acme.schooltimetabling.domain.Timetable;
 import org.junit.jupiter.api.Test;
@@ -400,7 +400,7 @@ Create the `src/test/kotlin/org/acme/schooltimetabling/rest/TimetableControllerT
 ----
 package org.acme.schooltimetabling.rest
 
-import ai.greycos.solver.core.api.solver.SolverStatus
+import greycos.solver.core.api.solver.SolverStatus
 import io.restassured.RestAssured
 import io.restassured.http.ContentType
 import org.acme.schooltimetabling.domain.Timetable
@@ -470,7 +470,7 @@ change the logging in the `application.properties` file or with a `-D` system pr
 
 [source,properties]
 ----
-logging.level.ai.greycos.solver=debug
+logging.level.greycos.solver=debug
 ----
 
 Use `debug` logging to show every _step_:

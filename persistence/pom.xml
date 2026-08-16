@@ -4,7 +4,7 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>ai.greycos.solver</groupId>
+    <groupId>greycos.solver</groupId>
     <artifactId>greycos-solver-build-parent</artifactId>
     <version>999-SNAPSHOT</version>
     <relativePath>../build/build-parent/pom.xml</relativePath>

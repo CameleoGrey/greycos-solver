@@ -1,0 +1,109 @@
+package greycos.solver.core.impl.neighborhood.stream.enumerating.bi;
+
+import java.util.Objects;
+import java.util.Set;
+
+import greycos.solver.core.impl.bavet.bi.IndexedJoinBiNode;
+import greycos.solver.core.impl.bavet.bi.UnindexedJoinBiNode;
+import greycos.solver.core.impl.bavet.common.index.IndexerFactory;
+import greycos.solver.core.impl.bavet.common.tuple.BiTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractEnumeratingStream;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.common.DataNodeBuildHelper;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.common.JoinEnumeratingStream;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.common.bridge.ForeBridgeUniEnumeratingStream;
+import greycos.solver.core.impl.neighborhood.stream.joiner.DefaultBiNeighborhoodsJoiner;
+import greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsPredicate;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
+public final class JoinBiEnumeratingStream<Solution_, A, B>
+    extends AbstractBiEnumeratingStream<Solution_, A, B>
+    implements JoinEnumeratingStream<Solution_> {
+
+  private final ForeBridgeUniEnumeratingStream<Solution_, A> leftParent;
+  private final ForeBridgeUniEnumeratingStream<Solution_, B> rightParent;
+  private final DefaultBiNeighborhoodsJoiner<A, B> joiner;
+  private final @Nullable BiNeighborhoodsPredicate<Solution_, A, B> filtering;
+
+  public JoinBiEnumeratingStream(
+      EnumeratingStreamFactory<Solution_> enumeratingStreamFactory,
+      ForeBridgeUniEnumeratingStream<Solution_, A> leftParent,
+      ForeBridgeUniEnumeratingStream<Solution_, B> rightParent,
+      DefaultBiNeighborhoodsJoiner<A, B> joiner,
+      @Nullable BiNeighborhoodsPredicate<Solution_, A, B> filtering) {
+    super(enumeratingStreamFactory);
+    this.leftParent = leftParent;
+    this.rightParent = rightParent;
+    this.joiner = joiner;
+    this.filtering = filtering;
+  }
+
+  @Override
+  public void collectActiveEnumeratingStreams(
+      Set<AbstractEnumeratingStream<Solution_>> enumeratingStreamSet) {
+    leftParent.collectActiveEnumeratingStreams(enumeratingStreamSet);
+    rightParent.collectActiveEnumeratingStreams(enumeratingStreamSet);
+    enumeratingStreamSet.add(this);
+  }
+
+  @Override
+  public void buildNode(DataNodeBuildHelper<Solution_> buildHelper) {
+    var solutionView = buildHelper.getSessionContext().solutionView();
+    var filteringDataJoiner =
+        this.filtering == null ? null : this.filtering.toBiPredicate(solutionView);
+    TupleLifecycle<BiTuple<A, B>> downstream =
+        buildHelper.getAggregatedTupleLifecycle(childStreamList);
+    var indexerFactory = new IndexerFactory<>(joiner.toBiJoiner());
+    var positionTracker =
+        buildHelper.getTupleStorePositionTracker(
+            this, leftParent.getTupleSource(), rightParent.getTupleSource());
+    var node =
+        indexerFactory.hasJoiners()
+            ? new IndexedJoinBiNode<>(
+                indexerFactory, downstream, filteringDataJoiner, positionTracker)
+            : new UnindexedJoinBiNode<>(downstream, filteringDataJoiner, positionTracker);
+    buildHelper.addNode(node, this, leftParent, rightParent);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    /*
+     * Bridge streams do not implement equality because their equals() would have to point back to this stream,
+     * resulting in StackOverflowError.
+     * Therefore we need to check bridge parents to see where this join node comes from.
+     */
+    return o instanceof JoinBiEnumeratingStream<?, ?, ?> other
+        && Objects.equals(leftParent.getParent(), other.leftParent.getParent())
+        && Objects.equals(rightParent.getParent(), other.rightParent.getParent())
+        && Objects.equals(joiner, other.joiner)
+        && Objects.equals(filtering, other.filtering);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(leftParent.getParent(), rightParent.getParent(), joiner, filtering);
+  }
+
+  @Override
+  public String toString() {
+    return "BiJoin() with " + childStreamList.size() + " children";
+  }
+
+  // ************************************************************************
+  // Getters/setters
+  // ************************************************************************
+
+  @Override
+  public AbstractEnumeratingStream<Solution_> getLeftParent() {
+    return leftParent;
+  }
+
+  @Override
+  public AbstractEnumeratingStream<Solution_> getRightParent() {
+    return rightParent;
+  }
+}

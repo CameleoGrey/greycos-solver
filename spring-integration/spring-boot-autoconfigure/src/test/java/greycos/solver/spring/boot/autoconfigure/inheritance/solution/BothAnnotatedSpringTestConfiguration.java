@@ -1,0 +1,12 @@
+package greycos.solver.spring.boot.autoconfigure.inheritance.solution;
+
+import greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childtoo.TestdataBothAnnotatedExtendedSolution;
+
+import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@AutoConfigurationPackage
+@EntityScan(basePackageClasses = {TestdataBothAnnotatedExtendedSolution.class})
+public class BothAnnotatedSpringTestConfiguration {}

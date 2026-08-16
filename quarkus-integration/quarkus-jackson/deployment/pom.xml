@@ -4,7 +4,7 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>ai.greycos.solver</groupId>
+    <groupId>greycos.solver</groupId>
     <artifactId>greycos-solver-quarkus-jackson-parent</artifactId>
     <version>999-SNAPSHOT</version>
   </parent>
@@ -16,7 +16,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>ai.greycos.solver</groupId>
+      <groupId>greycos.solver</groupId>
       <artifactId>greycos-solver-quarkus-jackson</artifactId>
     </dependency>
     <dependency>
@@ -52,7 +52,7 @@
         <artifactId>maven-dependency-plugin</artifactId>
         <configuration>
           <ignoredUnusedDeclaredDependencies>
-            <dependency>ai.greycos.solver:greycos-solver-quarkus-jackson:jar</dependency>
+            <dependency>greycos.solver:greycos-solver-quarkus-jackson:jar</dependency>
           </ignoredUnusedDeclaredDependencies>
         </configuration>
       </plugin>

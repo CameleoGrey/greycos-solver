@@ -1,0 +1,77 @@
+package greycos.solver.core.impl.bavet.uni;
+
+import greycos.solver.core.api.score.stream.ConstraintCollectors;
+import greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.tuple.QuadTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.util.Quadruple;
+
+public final class Group0Mapping4CollectorUniNode<
+        OldA,
+        A,
+        B,
+        C,
+        D,
+        ResultContainerA_,
+        ResultContainerB_,
+        ResultContainerC_,
+        ResultContainerD_>
+    extends AbstractGroupUniNode<OldA, QuadTuple<A, B, C, D>, Void, Object, Quadruple<A, B, C, D>> {
+
+  private final int outputStoreSize;
+
+  public Group0Mapping4CollectorUniNode(
+      int groupStoreIndex,
+      int undoStoreIndex,
+      UniConstraintCollector<OldA, ResultContainerA_, A> collectorA,
+      UniConstraintCollector<OldA, ResultContainerB_, B> collectorB,
+      UniConstraintCollector<OldA, ResultContainerC_, C> collectorC,
+      UniConstraintCollector<OldA, ResultContainerD_, D> collectorD,
+      TupleLifecycle<QuadTuple<A, B, C, D>> nextNodesTupleLifecycle,
+      int outputStoreSize,
+      EnvironmentMode environmentMode) {
+    super(
+        groupStoreIndex,
+        undoStoreIndex,
+        null,
+        mergeCollectors(collectorA, collectorB, collectorC, collectorD),
+        nextNodesTupleLifecycle,
+        environmentMode);
+    this.outputStoreSize = outputStoreSize;
+  }
+
+  private static <
+          OldA,
+          A,
+          B,
+          C,
+          D,
+          ResultContainerA_,
+          ResultContainerB_,
+          ResultContainerC_,
+          ResultContainerD_>
+      UniConstraintCollector<OldA, Object, Quadruple<A, B, C, D>> mergeCollectors(
+          UniConstraintCollector<OldA, ResultContainerA_, A> collectorA,
+          UniConstraintCollector<OldA, ResultContainerB_, B> collectorB,
+          UniConstraintCollector<OldA, ResultContainerC_, C> collectorC,
+          UniConstraintCollector<OldA, ResultContainerD_, D> collectorD) {
+    return (UniConstraintCollector<OldA, Object, Quadruple<A, B, C, D>>)
+        ConstraintCollectors.compose(
+            collectorA, collectorB, collectorC, collectorD, Quadruple::new);
+  }
+
+  @Override
+  protected QuadTuple<A, B, C, D> createOutTuple(Void groupKey) {
+    return QuadTuple.of(outputStoreSize);
+  }
+
+  @Override
+  protected void updateOutTupleToResult(
+      QuadTuple<A, B, C, D> outTuple, Quadruple<A, B, C, D> result) {
+    outTuple.setA(result.a());
+    outTuple.setB(result.b());
+    outTuple.setC(result.c());
+    outTuple.setD(result.d());
+  }
+}

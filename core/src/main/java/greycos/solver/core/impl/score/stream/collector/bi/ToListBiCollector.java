@@ -1,0 +1,57 @@
+package greycos.solver.core.impl.score.stream.collector.bi;
+
+import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import greycos.solver.core.api.score.stream.bi.BiConstraintCollectorValueHandle;
+import greycos.solver.core.impl.score.stream.collector.AbstractToListSlot;
+
+import org.jspecify.annotations.NonNull;
+
+final class ToListBiCollector<A, B, Mapped_>
+    extends AbstractReferenceBasedBiCollector<
+        A, B, Mapped_, List<Mapped_>, AbstractToListSlot.State<Mapped_>> {
+  ToListBiCollector(BiFunction<? super A, ? super B, ? extends Mapped_> mapper) {
+    super(mapper);
+  }
+
+  @Override
+  public @NonNull Supplier<AbstractToListSlot.State<Mapped_>> supplier() {
+    return AbstractToListSlot.State::new;
+  }
+
+  @Override
+  public @NonNull Function<AbstractToListSlot.State<Mapped_>, List<Mapped_>> finisher() {
+    return AbstractToListSlot.State::result;
+  }
+
+  @Override
+  protected BiConstraintCollectorValueHandle<A, B> newAccumulatedValue(
+      AbstractToListSlot.State<Mapped_> state) {
+    return new Slot(state);
+  }
+
+  private final class Slot extends AbstractToListSlot<Mapped_>
+      implements BiConstraintCollectorValueHandle<A, B> {
+    Slot(AbstractToListSlot.State<Mapped_> state) {
+      super(state);
+    }
+
+    @Override
+    public void add(A a, B b) {
+      addMapped(mapper.apply(a, b));
+    }
+
+    @Override
+    public void replaceWith(A a, B b) {
+      replaceWithMapped(mapper.apply(a, b));
+    }
+
+    @Override
+    public void remove() {
+      removeMapped();
+    }
+  }
+}

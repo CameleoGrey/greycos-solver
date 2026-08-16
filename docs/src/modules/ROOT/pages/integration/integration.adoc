@@ -392,9 +392,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Default;
 import jakarta.ws.rs.Produces;
 
-import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.core.config.solver.SolverManagerConfig;
+import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.api.solver.SolverManager;
+import greycos.solver.core.config.solver.SolverManagerConfig;
 
 import org.acme.employeescheduling.domain.EmployeeSchedule;
 
@@ -417,9 +417,9 @@ Kotlin::
 ----
 package org.acme.employeescheduling.rest
 
-import ai.greycos.solver.core.api.solver.SolverFactory
-import ai.greycos.solver.core.api.solver.SolverManager
-import ai.greycos.solver.core.config.solver.SolverManagerConfig
+import greycos.solver.core.api.solver.SolverFactory
+import greycos.solver.core.api.solver.SolverManager
+import greycos.solver.core.config.solver.SolverManagerConfig
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Default
 import jakarta.ws.rs.Produces
@@ -746,10 +746,10 @@ Java::
 ----
 package org.acme.schooltimetabling.rest;
 
-import ai.greycos.solver.core.api.solver.SolverFactory;
-import ai.greycos.solver.core.api.solver.SolverManager;
-import ai.greycos.solver.core.config.solver.SolverManagerConfig;
-import ai.greycos.solver.spring.boot.autoconfigure.GreyCOSAutoConfiguration;
+import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.api.solver.SolverManager;
+import greycos.solver.core.config.solver.SolverManagerConfig;
+import greycos.solver.spring.boot.autoconfigure.GreyCOSAutoConfiguration;
 
 import org.acme.schooltimetabling.domain.Timetable;
 import org.springframework.context.annotation.Bean;
@@ -777,10 +777,10 @@ Kotlin::
 ----
 package org.acme.schooltimetabling.rest
 
-import ai.greycos.solver.core.api.solver.SolverFactory
-import ai.greycos.solver.core.api.solver.SolverManager
-import ai.greycos.solver.core.config.solver.SolverManagerConfig
-import ai.greycos.solver.spring.boot.autoconfigure.GreyCOSAutoConfiguration
+import greycos.solver.core.api.solver.SolverFactory
+import greycos.solver.core.api.solver.SolverManager
+import greycos.solver.core.config.solver.SolverManagerConfig
+import greycos.solver.spring.boot.autoconfigure.GreyCOSAutoConfiguration
 import org.acme.schooltimetabling.domain.Timetable
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -1014,14 +1014,14 @@ _open_ them to the GreyCOS Solver module(s) in your `module-info.java` file:
 [source,java,options="nowrap"]
 ----
 module org.acme.vehiclerouting {
-    requires ai.greycos.solver.core;
+    requires greycos.solver.core;
     ...
 
     exports org.acme.vehiclerouting.domain; // Domain classes
     exports org.acme.vehiclerouting.solver; // Constraints
 
-    opens org.acme.vehiclerouting.domain to ai.greycos.solver.core; // Domain classes
-    opens org.acme.vehiclerouting.solver to ai.greycos.solver.core; // Constraints
+    opens org.acme.vehiclerouting.domain to greycos.solver.core; // Domain classes
+    opens org.acme.vehiclerouting.solver to greycos.solver.core; // Constraints
     ...
 }
 ----
@@ -1129,7 +1129,7 @@ Your mileage may vary.
 ** Version: Our benchmarks have consistently shown improvements in performance when comparing new JDK releases with their predecessors. It is therefore recommended using the latest available JDK. If you're interested in the performance comparisons of GreyCOS Solver running of different JDK releases, you can find them in the form of blog posts in https://github.com/CameleoGrey/greycos-solver[our blog archive].
 ** Garbage Collector: ParallelGC can be potentially between 5% and 35% faster than G1GC (the default). Unlike web servers, GreyCOS Solver needs a GC focused on throughput, not latency. Use `-XX:+UseParallelGC` to turn on ParallelGC.
 * Logging can have a severe impact on performance.
-** Debug logging `ai.greycos.solver` can be between 0% and 15% slower than info logging. Trace logging can be between 5% and 70% slower than info logging.
+** Debug logging `greycos.solver` can be between 0% and 15% slower than info logging. Trace logging can be between 5% and 70% slower than info logging.
 ** Synchronous logging to a file has an additional significant impact for debug and trace logging (but not for info logging).
 * Avoid a cloud environment in which you share your CPU core(s) with other virtual machines or containers. Performance (and therefore solution quality) can be unreliable when the available CPU power varies greatly.
 

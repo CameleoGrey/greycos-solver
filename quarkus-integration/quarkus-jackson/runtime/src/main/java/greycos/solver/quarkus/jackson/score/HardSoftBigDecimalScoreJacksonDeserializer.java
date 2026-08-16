@@ -1,0 +1,18 @@
+package greycos.solver.quarkus.jackson.score;
+
+import java.io.IOException;
+
+import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+
+public class HardSoftBigDecimalScoreJacksonDeserializer
+    extends AbstractScoreJacksonDeserializer<HardSoftBigDecimalScore> {
+
+  @Override
+  public HardSoftBigDecimalScore deserialize(JsonParser parser, DeserializationContext context)
+      throws IOException {
+    return HardSoftBigDecimalScore.parseScore(parser.getValueAsString());
+  }
+}

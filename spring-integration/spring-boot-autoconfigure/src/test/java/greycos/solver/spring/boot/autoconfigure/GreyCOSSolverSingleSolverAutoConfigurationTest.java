@@ -1,0 +1,314 @@
+package greycos.solver.spring.boot.autoconfigure;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.IntStream;
+
+import greycos.solver.benchmark.api.PlannerBenchmarkFactory;
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.solver.SolverConfigOverride;
+import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.api.solver.SolverManager;
+import greycos.solver.core.config.solver.SolverConfig;
+import greycos.solver.core.config.solver.termination.TerminationConfig;
+import greycos.solver.core.impl.solver.DefaultSolverJob;
+import greycos.solver.core.impl.solver.scope.SolverScope;
+import greycos.solver.spring.boot.autoconfigure.config.GreyCOSProperties;
+import greycos.solver.spring.boot.autoconfigure.declarative.SupplierVariableSpringTestConfiguration;
+import greycos.solver.spring.boot.autoconfigure.declarative.cotwin.TestdataSpringSupplierVariableEntity;
+import greycos.solver.spring.boot.autoconfigure.declarative.cotwin.TestdataSpringSupplierVariableSolution;
+import greycos.solver.spring.boot.autoconfigure.missingsuppliervariable.MissingSupplierVariableSpringTestConfiguration;
+import greycos.solver.spring.boot.autoconfigure.multimodule.MultiModuleSpringTestConfiguration;
+import greycos.solver.spring.boot.autoconfigure.normal.NormalSpringTestConfiguration;
+import greycos.solver.spring.boot.autoconfigure.normal.constraints.TestdataSpringConstraintProvider;
+import greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringEntity;
+import greycos.solver.spring.boot.autoconfigure.normal.cotwin.TestdataSpringSolution;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.FilteredClassLoader;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.test.context.TestExecutionListeners;
+
+@TestExecutionListeners
+@Execution(ExecutionMode.CONCURRENT)
+class GreyCOSSolverSingleSolverAutoConfigurationTest {
+
+  private final ApplicationContextRunner contextRunner;
+  private final ApplicationContextRunner supplierVariableContextRunner;
+  private final ApplicationContextRunner missingSupplierVariableContextRunner;
+  private final ApplicationContextRunner multimoduleRunner;
+  private final ApplicationContextRunner benchmarkContextRunner;
+  private final FilteredClassLoader allDefaultsFilteredClassLoader;
+
+  public GreyCOSSolverSingleSolverAutoConfigurationTest() {
+    contextRunner =
+        new ApplicationContextRunner()
+            .withConfiguration(
+                AutoConfigurations.of(
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
+            .withUserConfiguration(NormalSpringTestConfiguration.class);
+    supplierVariableContextRunner =
+        new ApplicationContextRunner()
+            .withConfiguration(
+                AutoConfigurations.of(
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
+            .withUserConfiguration(SupplierVariableSpringTestConfiguration.class);
+    missingSupplierVariableContextRunner =
+        new ApplicationContextRunner()
+            .withConfiguration(
+                AutoConfigurations.of(
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
+            .withUserConfiguration(MissingSupplierVariableSpringTestConfiguration.class);
+    multimoduleRunner =
+        new ApplicationContextRunner()
+            .withConfiguration(
+                AutoConfigurations.of(
+                    GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
+            .withUserConfiguration(MultiModuleSpringTestConfiguration.class);
+    benchmarkContextRunner =
+        new ApplicationContextRunner()
+            .withConfiguration(
+                AutoConfigurations.of(
+                    GreyCOSSolverAutoConfiguration.class,
+                    GreyCOSSolverBeanFactory.class,
+                    GreyCOSBenchmarkAutoConfiguration.class))
+            .withUserConfiguration(NormalSpringTestConfiguration.class);
+    allDefaultsFilteredClassLoader =
+        new FilteredClassLoader(
+            FilteredClassLoader.PackageFilter.of("greycos.solver.test"),
+            FilteredClassLoader.ClassPathResourceFilter.of(
+                new ClassPathResource(GreyCOSProperties.DEFAULT_SOLVER_CONFIG_URL)));
+  }
+
+  @Test
+  void solverConfigXml_none() {
+    contextRunner
+        .withClassLoader(allDefaultsFilteredClassLoader)
+        .run(
+            context -> {
+              var solverConfig = context.getBean(SolverConfig.class);
+              assertThat(solverConfig).isNotNull();
+              assertThat(solverConfig.getSolutionClass()).isEqualTo(TestdataSpringSolution.class);
+              assertThat(solverConfig.getEntityClassList())
+                  .isEqualTo(Collections.singletonList(TestdataSpringEntity.class));
+              assertThat(solverConfig.getScoreDirectorFactoryConfig().getConstraintProviderClass())
+                  .isEqualTo(TestdataSpringConstraintProvider.class);
+              // No termination defined
+              assertThat(solverConfig.getTerminationConfig()).isNull();
+              var solverFactory = context.getBean(SolverFactory.class);
+              assertThat(solverFactory).isNotNull();
+              assertThat(solverFactory.buildSolver()).isNotNull();
+            });
+  }
+
+  @Test
+  void solve() {
+    contextRunner
+        .withClassLoader(allDefaultsFilteredClassLoader)
+        .withPropertyValues("greycos.solver.termination.best-score-limit=0")
+        .run(
+            context -> {
+              SolverManager<TestdataSpringSolution> solverManager =
+                  context.getBean(SolverManager.class);
+              var problem = new TestdataSpringSolution();
+              problem.setValueList(IntStream.range(1, 3).mapToObj(i -> "v" + i).toList());
+              problem.setEntityList(
+                  IntStream.range(1, 3).mapToObj(i -> new TestdataSpringEntity()).toList());
+              var solverJob = solverManager.solve(1L, problem);
+              var solution = solverJob.getFinalBestSolution();
+              assertThat(solution).isNotNull();
+              assertThat(solution.getScore().score()).isNotNegative();
+            });
+  }
+
+  @Test
+  void solveWithParallelSolverCount() {
+    contextRunner
+        .withClassLoader(allDefaultsFilteredClassLoader)
+        .withPropertyValues("greycos.solver-manager.parallel-solver-count=2")
+        .run(
+            context -> {
+              var solverManager = context.getBean(SolverManager.class);
+              assertThat(solverManager).isNotNull();
+            });
+  }
+
+  @Test
+  void solveWithTimeOverride() {
+    contextRunner
+        .withClassLoader(allDefaultsFilteredClassLoader)
+        .withPropertyValues(
+            "greycos.solver.termination.best-score-limit=0",
+            "greycos.solver.termination.spent-limit=30s")
+        .run(
+            context -> {
+              var solverManager = context.getBean(SolverManager.class);
+              var problem = new TestdataSpringSolution();
+              problem.setValueList(IntStream.range(1, 3).mapToObj(i -> "v" + i).toList());
+              problem.setEntityList(
+                  IntStream.range(1, 3).mapToObj(i -> new TestdataSpringEntity()).toList());
+              var solverJob =
+                  (DefaultSolverJob<TestdataSpringSolution>)
+                      solverManager
+                          .solveBuilder()
+                          .withProblemId(1L)
+                          .withProblem(problem)
+                          .withConfigOverride(
+                              new SolverConfigOverride()
+                                  .withTerminationConfig(
+                                      new TerminationConfig()
+                                          .withSpentLimit(Duration.ofSeconds(2L))))
+                          .run();
+              SolverScope<TestdataSpringSolution> customScope =
+                  new SolverScope<>() {
+                    @Override
+                    public long calculateTimeMillisSpentUpToNow() {
+                      // Return one second to make the time gradient predictable
+                      return 1000L;
+                    }
+                  };
+              // We ensure the best-score limit won't take priority
+              customScope.setStartingInitializedScore(HardSoftScore.of(-1, -1));
+              customScope.setInitializedBestScore(HardSoftScore.of(-1, -1));
+              var gradientTime =
+                  solverJob.getSolverTermination().calculateSolverTimeGradient(customScope);
+              var solution = solverJob.getFinalBestSolution();
+              assertThat(solution).isNotNull();
+              assertThat(solution.getScore().score()).isNotNegative();
+              // Spent-time is 30s by default, but it is overridden with 2. The gradient time must
+              // be 50%
+              assertThat(gradientTime).isEqualTo(0.5);
+            });
+  }
+
+  @Test
+  void multimoduleSolve() {
+    multimoduleRunner
+        .withClassLoader(allDefaultsFilteredClassLoader)
+        .withPropertyValues("greycos.solver.termination.best-score-limit=0")
+        .run(
+            context -> {
+              SolverManager<TestdataSpringSolution> solverManager =
+                  context.getBean(SolverManager.class);
+              var problem = new TestdataSpringSolution();
+              problem.setValueList(IntStream.range(1, 3).mapToObj(i -> "v" + i).toList());
+              problem.setEntityList(
+                  IntStream.range(1, 3).mapToObj(i -> new TestdataSpringEntity()).toList());
+              var solverJob = solverManager.solve(1L, problem);
+              var solution = solverJob.getFinalBestSolution();
+              assertThat(solution).isNotNull();
+              assertThat(solution.getScore().score()).isNotNegative();
+            });
+  }
+
+  @Test
+  void solveSupplierVariables() {
+    supplierVariableContextRunner
+        .withClassLoader(allDefaultsFilteredClassLoader)
+        .withPropertyValues("greycos.solver.termination.best-score-limit=0")
+        .run(
+            context -> {
+              SolverManager<TestdataSpringSupplierVariableSolution> solverManager =
+                  context.getBean(SolverManager.class);
+              var problem = new TestdataSpringSupplierVariableSolution();
+              problem.setValueList(List.of("a", "b"));
+              problem.setEntityList(List.of(new TestdataSpringSupplierVariableEntity()));
+              var solverJob = solverManager.solve(1L, problem);
+              var solution = solverJob.getFinalBestSolution();
+              assertThat(solution).isNotNull();
+              assertThat(solution.getScore().score()).isNotNegative();
+            });
+  }
+
+  @Test
+  void missingSupplierVariables() {
+    assertThatCode(
+            () ->
+                missingSupplierVariableContextRunner
+                    .withClassLoader(allDefaultsFilteredClassLoader)
+                    .withPropertyValues("greycos.solver.termination.best-score-limit=0")
+                    .run(context -> context.getBean(SolverFactory.class)))
+        .hasMessageContainingAll(
+            "@ShadowVariable (value1AndValue2)",
+            "supplierName (value1AndValue2Supplier) that does not exist",
+            "inside its declaring class (greycos.solver.spring.boot.autoconfigure.missingsuppliervariable.cotwin.TestdataSpringMissingSupplierVariableEntity).",
+            "Maybe you misspelled the supplierName name?");
+  }
+
+  @Test
+  void benchmarkWithSpentLimit() {
+    benchmarkContextRunner
+        .withClassLoader(allDefaultsFilteredClassLoader)
+        .withPropertyValues("greycos.benchmark.solver.termination.spent-limit=1s")
+        .run(
+            context -> {
+              var benchmarkFactory = context.getBean(PlannerBenchmarkFactory.class);
+              var problem = new TestdataSpringSolution();
+              problem.setValueList(IntStream.range(1, 3).mapToObj(i -> "v" + i).toList());
+              problem.setEntityList(
+                  IntStream.range(1, 3).mapToObj(i -> new TestdataSpringEntity()).toList());
+              assertThat(benchmarkFactory.buildPlannerBenchmark(problem).benchmark())
+                  .isNotEmptyDirectory();
+            });
+  }
+
+  @Test
+  void benchmark() {
+    benchmarkContextRunner
+        .withClassLoader(allDefaultsFilteredClassLoader)
+        .withPropertyValues("greycos.solver.termination.best-score-limit=0")
+        .run(
+            context -> {
+              var benchmarkFactory = context.getBean(PlannerBenchmarkFactory.class);
+              var problem = new TestdataSpringSolution();
+              problem.setValueList(IntStream.range(1, 3).mapToObj(i -> "v" + i).toList());
+              problem.setEntityList(
+                  IntStream.range(1, 3).mapToObj(i -> new TestdataSpringEntity()).toList());
+              assertThat(benchmarkFactory.buildPlannerBenchmark(problem).benchmark())
+                  .isNotEmptyDirectory();
+            });
+  }
+
+  @Test
+  void benchmarkWithXml() {
+    benchmarkContextRunner
+        .withClassLoader(allDefaultsFilteredClassLoader)
+        .withPropertyValues("greycos.benchmark.solver.termination.spent-limit=100ms")
+        .withPropertyValues(
+            "greycos.benchmark.solver-benchmark-config-xml=greycos/solver/spring/boot/autoconfigure/solverBenchmarkConfig.xml")
+        .run(
+            context -> {
+              var benchmarkFactory = context.getBean(PlannerBenchmarkFactory.class);
+              var problem = new TestdataSpringSolution();
+              problem.setValueList(IntStream.range(1, 3).mapToObj(i -> "v" + i).toList());
+              problem.setEntityList(
+                  IntStream.range(1, 3).mapToObj(i -> new TestdataSpringEntity()).toList());
+              assertThat(benchmarkFactory.buildPlannerBenchmark(problem).benchmark())
+                  .isNotEmptyDirectory();
+            });
+  }
+
+  @Test
+  void resoucesInjectionFailure() {
+    assertThatCode(
+            () ->
+                benchmarkContextRunner
+                    .withClassLoader(allDefaultsFilteredClassLoader)
+                    .withPropertyValues("greycos.solver.solver1.termination.best-score-limit=0")
+                    .withPropertyValues("greycos.solver.solver2.termination.best-score-limit=0")
+                    .withPropertyValues("greycos.benchmark.solver.termination.spent-limit=1s")
+                    .run(context -> context.getBean(PlannerBenchmarkFactory.class)))
+        .hasRootCauseMessage(
+            """
+                        When defining multiple solvers, the benchmark feature is not enabled.
+                        Consider using separate <solverBenchmark> instances for evaluating different solver configurations.""");
+  }
+}

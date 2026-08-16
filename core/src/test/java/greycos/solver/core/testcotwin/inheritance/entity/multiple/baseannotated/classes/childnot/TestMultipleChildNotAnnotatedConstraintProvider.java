@@ -1,0 +1,23 @@
+package greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.childnot;
+
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintFactory;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
+import greycos.solver.core.testcotwin.inheritance.entity.multiple.baseannotated.classes.childtoo.TestdataMultipleBothAnnotatedChildEntity;
+
+import org.jspecify.annotations.NonNull;
+
+public class TestMultipleChildNotAnnotatedConstraintProvider implements ConstraintProvider {
+
+  @Override
+  public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory factory) {
+    return new Constraint[] {
+      factory
+          .forEach(TestdataMultipleBothAnnotatedChildEntity.class)
+          .filter(e -> e.getValue() != null)
+          .reward(SimpleScore.ONE, value -> 1)
+          .asConstraint("Constraint")
+    };
+  }
+}

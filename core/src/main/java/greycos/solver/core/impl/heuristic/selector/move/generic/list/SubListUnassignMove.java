@@ -1,0 +1,133 @@
+package greycos.solver.core.impl.heuristic.selector.move.generic.list;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.SequencedCollection;
+
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.heuristic.move.AbstractMove;
+import greycos.solver.core.impl.heuristic.selector.list.SubList;
+import greycos.solver.core.impl.score.director.ScoreDirector;
+import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
+
+/**
+ * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
+ */
+public class SubListUnassignMove<Solution_> extends AbstractMove<Solution_> {
+
+  private final ListVariableDescriptor<Solution_> variableDescriptor;
+  private final Object sourceEntity;
+  private final int sourceIndex;
+  private final int length;
+
+  private List<Object> planningValues;
+
+  public SubListUnassignMove(
+      ListVariableDescriptor<Solution_> variableDescriptor, SubList subList) {
+    this(variableDescriptor, subList.entity(), subList.fromIndex(), subList.length());
+  }
+
+  private SubListUnassignMove(
+      ListVariableDescriptor<Solution_> variableDescriptor,
+      Object sourceEntity,
+      int sourceIndex,
+      int length) {
+    this.variableDescriptor = variableDescriptor;
+    this.sourceEntity = sourceEntity;
+    this.sourceIndex = sourceIndex;
+    this.length = length;
+  }
+
+  public Object getSourceEntity() {
+    return sourceEntity;
+  }
+
+  public int getFromIndex() {
+    return sourceIndex;
+  }
+
+  public int getSubListSize() {
+    return length;
+  }
+
+  public int getToIndex() {
+    return sourceIndex + length;
+  }
+
+  @Override
+  public boolean isMoveDoable(ScoreDirector<Solution_> scoreDirector) {
+    if (sourceIndex < 0) {
+      return false;
+    }
+    return variableDescriptor.getListSize(sourceEntity) >= getToIndex();
+  }
+
+  @Override
+  protected void doMoveOnGenuineVariables(ScoreDirector<Solution_> scoreDirector) {
+    var castScoreDirector = (VariableDescriptorAwareScoreDirector<Solution_>) scoreDirector;
+
+    var sourceList = variableDescriptor.getValue(sourceEntity);
+    var subList = sourceList.subList(sourceIndex, getToIndex());
+    planningValues = List.copyOf(subList);
+
+    for (var element : subList) {
+      castScoreDirector.beforeListVariableElementUnassigned(variableDescriptor, element);
+      castScoreDirector.afterListVariableElementUnassigned(variableDescriptor, element);
+    }
+    castScoreDirector.beforeListVariableChanged(
+        variableDescriptor, sourceEntity, sourceIndex, getToIndex());
+    subList.clear();
+    castScoreDirector.afterListVariableChanged(
+        variableDescriptor, sourceEntity, sourceIndex, sourceIndex);
+  }
+
+  @Override
+  public SubListUnassignMove<Solution_> rebase(ScoreDirector<Solution_> destinationScoreDirector) {
+    return new SubListUnassignMove<>(
+        variableDescriptor,
+        destinationScoreDirector.lookUpWorkingObject(sourceEntity),
+        sourceIndex,
+        length);
+  }
+
+  @Override
+  public String getSimpleMoveTypeDescription() {
+    return getClass().getSimpleName()
+        + "("
+        + variableDescriptor.getSimpleEntityAndVariableName()
+        + ")";
+  }
+
+  @Override
+  public SequencedCollection<Object> getPlanningEntities() {
+    return List.of(sourceEntity);
+  }
+
+  @Override
+  public SequencedCollection<Object> getPlanningValues() {
+    return planningValues;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o instanceof SubListUnassignMove<?> other) {
+      return sourceIndex == other.sourceIndex
+          && length == other.length
+          && variableDescriptor.equals(other.variableDescriptor)
+          && sourceEntity.equals(other.sourceEntity);
+    }
+    return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(variableDescriptor, sourceEntity, sourceIndex, length);
+  }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "|%d| {%s[%d..%d] -> null}", length, sourceEntity, sourceIndex, getToIndex());
+  }
+}

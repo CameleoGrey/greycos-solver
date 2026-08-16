@@ -1,0 +1,83 @@
+package greycos.solver.core.testcotwin.cascade.multiple;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.testcotwin.TestdataObject;
+
+@PlanningEntity
+public class TestdataMultipleCascadingEntity extends TestdataObject {
+
+  public static EntityDescriptor<TestdataMultipleCascadingSolution> buildEntityDescriptor() {
+    return TestdataMultipleCascadingSolution.buildSolutionDescriptor()
+        .findEntityDescriptorOrFail(TestdataMultipleCascadingEntity.class);
+  }
+
+  public static ListVariableDescriptor<TestdataMultipleCascadingSolution>
+      buildVariableDescriptorForValueList() {
+    return (ListVariableDescriptor<TestdataMultipleCascadingSolution>)
+        buildEntityDescriptor().getGenuineVariableDescriptor("valueList");
+  }
+
+  public static TestdataMultipleCascadingEntity createWithValues(
+      String code, TestdataMultipleCascadingValue... values) {
+    // Set up shadow variables to preserve consistency.
+    return new TestdataMultipleCascadingEntity(code, new ArrayList<>(Arrays.asList(values)))
+        .setUpShadowVariables();
+  }
+
+  TestdataMultipleCascadingEntity setUpShadowVariables() {
+    if (valueList != null && !valueList.isEmpty()) {
+      TestdataMultipleCascadingValue previous = null;
+      for (var current : valueList) {
+        current.setEntity(this);
+        current.setPrevious(previous);
+        current.setNext(null);
+        if (previous != null) {
+          previous.setNext(current);
+        }
+        previous = current;
+      }
+      for (var v : valueList) {
+        v.updateCascadeValue();
+      }
+    }
+    return this;
+  }
+
+  @PlanningListVariable(valueRangeProviderRefs = "valueRange")
+  private List<TestdataMultipleCascadingValue> valueList;
+
+  public TestdataMultipleCascadingEntity() {}
+
+  public TestdataMultipleCascadingEntity(String code) {
+    super(code);
+    this.valueList = new LinkedList<>();
+  }
+
+  public TestdataMultipleCascadingEntity(
+      String code, List<TestdataMultipleCascadingValue> valueList) {
+    super(code);
+    this.valueList = valueList;
+  }
+
+  @SuppressWarnings("rawtypes")
+  public void setValueList(List valueList) {
+    this.valueList = valueList;
+  }
+
+  public List<TestdataMultipleCascadingValue> getValueList() {
+    return valueList;
+  }
+
+  @Override
+  public String toString() {
+    return "TestdataMultipleCascadingEntity{" + "code='" + code + '\'' + '}';
+  }
+}

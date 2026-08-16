@@ -1,0 +1,54 @@
+package greycos.solver.core.impl.bavet.bi;
+
+import java.util.function.BiFunction;
+
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.tuple.BiTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TriTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.util.Triple;
+
+public final class Group3Mapping0CollectorBiNode<OldA, OldB, A, B, C>
+    extends AbstractGroupBiNode<OldA, OldB, TriTuple<A, B, C>, Triple<A, B, C>, Void, Void> {
+
+  private final int outputStoreSize;
+
+  public Group3Mapping0CollectorBiNode(
+      BiFunction<OldA, OldB, A> groupKeyMappingA,
+      BiFunction<OldA, OldB, B> groupKeyMappingB,
+      BiFunction<OldA, OldB, C> groupKeyMappingC,
+      int groupStoreIndex,
+      TupleLifecycle<TriTuple<A, B, C>> nextNodesTupleLifecycle,
+      int outputStoreSize,
+      EnvironmentMode environmentMode) {
+    super(
+        groupStoreIndex,
+        tuple -> createGroupKey(groupKeyMappingA, groupKeyMappingB, groupKeyMappingC, tuple),
+        nextNodesTupleLifecycle,
+        environmentMode);
+    this.outputStoreSize = outputStoreSize;
+  }
+
+  static <A, B, C, OldA, OldB> Triple<A, B, C> createGroupKey(
+      BiFunction<OldA, OldB, A> groupKeyMappingA,
+      BiFunction<OldA, OldB, B> groupKeyMappingB,
+      BiFunction<OldA, OldB, C> groupKeyMappingC,
+      BiTuple<OldA, OldB> tuple) {
+    var oldA = tuple.getA();
+    var oldB = tuple.getB();
+    return new Triple<>(
+        groupKeyMappingA.apply(oldA, oldB),
+        groupKeyMappingB.apply(oldA, oldB),
+        groupKeyMappingC.apply(oldA, oldB));
+  }
+
+  @Override
+  protected TriTuple<A, B, C> createOutTuple(Triple<A, B, C> groupKey) {
+    return TriTuple.of(groupKey.a(), groupKey.b(), groupKey.c(), outputStoreSize);
+  }
+
+  @Override
+  protected void updateOutTupleToResult(TriTuple<A, B, C> outTuple, Void unused) {
+    throw new IllegalStateException("Impossible state: collector is null.");
+  }
+}

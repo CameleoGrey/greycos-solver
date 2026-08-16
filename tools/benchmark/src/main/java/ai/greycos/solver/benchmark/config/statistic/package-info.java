@@ -1,9 +1,0 @@
-@XmlSchema(
-    namespace = PlannerBenchmarkConfig.XML_NAMESPACE,
-    elementFormDefault = XmlNsForm.QUALIFIED)
-package ai.greycos.solver.benchmark.config.statistic;
-
-import jakarta.xml.bind.annotation.XmlNsForm;
-import jakarta.xml.bind.annotation.XmlSchema;
-
-import ai.greycos.solver.benchmark.config.PlannerBenchmarkConfig;

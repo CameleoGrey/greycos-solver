@@ -1,0 +1,22 @@
+package greycos.solver.core.testcotwin.list.pinned;
+
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintFactory;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
+
+import org.jspecify.annotations.NonNull;
+
+public final class TestdataPinnedListConstraintProvider implements ConstraintProvider {
+  @Override
+  public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+    return new Constraint[] {onlyConstraint(constraintFactory)};
+  }
+
+  private Constraint onlyConstraint(ConstraintFactory constraintFactory) {
+    return constraintFactory
+        .forEach(TestdataPinnedListEntity.class)
+        .penalize(SimpleScore.ONE)
+        .asConstraint("First weight");
+  }
+}

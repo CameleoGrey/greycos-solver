@@ -1,0 +1,56 @@
+package greycos.solver.jaxb.api.score;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.StringReader;
+
+import jakarta.xml.bind.annotation.XmlRootElement;
+import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.impl.io.jaxb.GenericJaxbIO;
+
+import org.junit.jupiter.api.Test;
+
+class PolymorphicScoreJaxbAdapterTest {
+
+  private final PolymorphicScoreJaxbAdapter scoreJaxbAdapter = new PolymorphicScoreJaxbAdapter();
+
+  @Test
+  void marshall() {
+    Score<?> score = SimpleScore.of(1);
+    PolymorphicScoreJaxbAdapter.JaxbAdaptedScore adaptedScore = scoreJaxbAdapter.marshal(score);
+    assertThat(adaptedScore.getScoreClassName()).isEqualTo(SimpleScore.class.getName());
+    assertThat(adaptedScore.getScoreString()).isEqualTo(score.toString());
+  }
+
+  @Test
+  void unmarshall() {
+    String xmlString =
+        "<dummy>"
+            + "<score class=\"greycos.solver.core.api.score.HardSoftScore\">-1hard/-10soft</score>"
+            + "</dummy>";
+
+    GenericJaxbIO<DummyRootElement> xmlIO = new GenericJaxbIO<>(DummyRootElement.class);
+    DummyRootElement dummyRootElement = xmlIO.read(new StringReader(xmlString));
+
+    assertThat(dummyRootElement.score).isEqualTo(HardSoftScore.of(-1, -10));
+  }
+
+  @XmlRootElement(name = "dummy")
+  private static class DummyRootElement {
+
+    @XmlJavaTypeAdapter(PolymorphicScoreJaxbAdapter.class)
+    private Score<?> score;
+
+    private DummyRootElement() {
+      // Required by JAXB
+    }
+
+    private DummyRootElement(Score<?> score) {
+      this.score = score;
+    }
+  }
+}

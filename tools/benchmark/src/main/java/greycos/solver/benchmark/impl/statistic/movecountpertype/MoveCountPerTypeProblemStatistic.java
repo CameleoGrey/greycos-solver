@@ -1,0 +1,55 @@
+package greycos.solver.benchmark.impl.statistic.movecountpertype;
+
+import static java.util.Collections.singletonList;
+
+import java.util.List;
+
+import greycos.solver.benchmark.config.statistic.ProblemStatisticType;
+import greycos.solver.benchmark.impl.report.BarChart;
+import greycos.solver.benchmark.impl.report.BenchmarkReport;
+import greycos.solver.benchmark.impl.result.ProblemBenchmarkResult;
+import greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
+import greycos.solver.benchmark.impl.statistic.ProblemStatistic;
+import greycos.solver.benchmark.impl.statistic.SubSingleStatistic;
+
+public class MoveCountPerTypeProblemStatistic extends ProblemStatistic<BarChart<Long>> {
+  private MoveCountPerTypeProblemStatistic() {
+    // Required by JAXB
+  }
+
+  @SuppressWarnings("rawtypes")
+  public MoveCountPerTypeProblemStatistic(ProblemBenchmarkResult problemBenchmarkResult) {
+    super(problemBenchmarkResult, ProblemStatisticType.MOVE_COUNT_PER_TYPE);
+  }
+
+  @SuppressWarnings({"rawtypes"})
+  @Override
+  public SubSingleStatistic createSubSingleStatistic(
+      SubSingleBenchmarkResult subSingleBenchmarkResult) {
+    return new MoveCountPerTypeSubSingleStatistic(subSingleBenchmarkResult);
+  }
+
+  @Override
+  protected List<BarChart<Long>> generateCharts(BenchmarkReport benchmarkReport) {
+    var builder = new BarChart.Builder<Long>();
+    for (var singleBenchmarkResult : problemBenchmarkResult.getSingleBenchmarkResultList()) {
+      // No direct ascending lines between 2 points, but a stepping line instead
+      if (singleBenchmarkResult.hasAllSuccess()) {
+        var solverLabel =
+            singleBenchmarkResult.getSolverBenchmarkResult().getNameWithFavoriteSuffix();
+        var subSingleStatistic = singleBenchmarkResult.getSubSingleStatistic(problemStatisticType);
+        List<MoveCountPerTypeStatisticPoint> points = subSingleStatistic.getPointList();
+        for (var point : points) {
+          builder.add(solverLabel, point.getMoveType(), point.getCount());
+        }
+      }
+    }
+    return singletonList(
+        builder.build(
+            "moveCountPerTypeProblemStatisticChart",
+            problemBenchmarkResult.getName() + " move count per type statistic",
+            "Type",
+            "Count",
+            false));
+  }
+}

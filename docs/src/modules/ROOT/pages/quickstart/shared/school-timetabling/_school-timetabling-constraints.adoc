@@ -119,11 +119,11 @@ Create a `src/main/java/org/acme/schooltimetabling/solver/TimetableConstraintPro
 package org.acme.schooltimetabling.solver;
 
 import org.acme.schooltimetabling.domain.Lesson;
-import ai.greycos.solver.core.api.score.HardSoftScore;
-import ai.greycos.solver.core.api.score.stream.Constraint;
-import ai.greycos.solver.core.api.score.stream.ConstraintFactory;
-import ai.greycos.solver.core.api.score.stream.ConstraintProvider;
-import ai.greycos.solver.core.api.score.stream.Joiners;
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintFactory;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
+import greycos.solver.core.api.score.stream.Joiners;
 
 public class TimetableConstraintProvider implements ConstraintProvider {
 
@@ -185,11 +185,11 @@ Create a `src/main/kotlin/org/acme/schooltimetabling/solver/TimetableConstraintP
 ----
 package org.acme.kotlin.schooltimetabling.solver
 
-import ai.greycos.solver.core.api.score.HardSoftScore
-import ai.greycos.solver.core.api.score.stream.Constraint
-import ai.greycos.solver.core.api.score.stream.ConstraintFactory
-import ai.greycos.solver.core.api.score.stream.ConstraintProvider
-import ai.greycos.solver.core.api.score.stream.Joiners
+import greycos.solver.core.api.score.HardSoftScore
+import greycos.solver.core.api.score.stream.Constraint
+import greycos.solver.core.api.score.stream.ConstraintFactory
+import greycos.solver.core.api.score.stream.ConstraintProvider
+import greycos.solver.core.api.score.stream.Joiners
 import org.acme.kotlin.schooltimetabling.domain.Lesson
 import org.acme.kotlin.schooltimetabling.solver.justifications.*
 import java.time.Duration

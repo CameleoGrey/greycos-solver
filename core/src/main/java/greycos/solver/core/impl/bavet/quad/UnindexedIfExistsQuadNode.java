@@ -1,0 +1,36 @@
+package greycos.solver.core.impl.bavet.quad;
+
+import greycos.solver.core.api.function.PentaPredicate;
+import greycos.solver.core.impl.bavet.common.AbstractUnindexedIfExistsNode;
+import greycos.solver.core.impl.bavet.common.tuple.InTupleStorePositionTracker;
+import greycos.solver.core.impl.bavet.common.tuple.QuadTuple;
+import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+
+public final class UnindexedIfExistsQuadNode<A, B, C, D, E>
+    extends AbstractUnindexedIfExistsNode<QuadTuple<A, B, C, D>, E> {
+
+  private final PentaPredicate<A, B, C, D, E> filtering;
+
+  public UnindexedIfExistsQuadNode(
+      boolean shouldExist,
+      TupleLifecycle<QuadTuple<A, B, C, D>> nextNodesTupleLifecycle,
+      InTupleStorePositionTracker tupleStorePositionTracker) {
+    this(shouldExist, nextNodesTupleLifecycle, null, tupleStorePositionTracker);
+  }
+
+  public UnindexedIfExistsQuadNode(
+      boolean shouldExist,
+      TupleLifecycle<QuadTuple<A, B, C, D>> nextNodesTupleLifecycle,
+      PentaPredicate<A, B, C, D, E> filtering,
+      InTupleStorePositionTracker tupleStorePositionTracker) {
+    super(shouldExist, nextNodesTupleLifecycle, filtering != null, tupleStorePositionTracker);
+    this.filtering = filtering;
+  }
+
+  @Override
+  protected boolean testFiltering(QuadTuple<A, B, C, D> leftTuple, UniTuple<E> rightTuple) {
+    return filtering.test(
+        leftTuple.getA(), leftTuple.getB(), leftTuple.getC(), leftTuple.getD(), rightTuple.getA());
+  }
+}

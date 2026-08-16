@@ -1,0 +1,58 @@
+package greycos.solver.core.testcotwin.list.valuerange.sort.comparator;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.solution.PlanningEntityCollectionProperty;
+import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
+import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
+import greycos.solver.core.testcotwin.TestdataObject;
+import greycos.solver.core.testcotwin.common.TestSortableObject;
+import greycos.solver.core.testcotwin.common.TestSortableObjectComparator;
+import greycos.solver.core.testcotwin.common.TestdataSortableValue;
+
+@PlanningEntity(comparatorClass = TestSortableObjectComparator.class)
+public class TestdataListSortableEntityProvidingEntity extends TestdataObject
+    implements TestSortableObject {
+
+  @PlanningListVariable(
+      valueRangeProviderRefs = "valueRange",
+      comparatorClass = TestSortableObjectComparator.class)
+  private List<TestdataSortableValue> valueList;
+
+  @ValueRangeProvider(id = "valueRange")
+  @PlanningEntityCollectionProperty
+  private List<TestdataSortableValue> valueRange;
+
+  private int difficulty;
+
+  public TestdataListSortableEntityProvidingEntity() {}
+
+  public TestdataListSortableEntityProvidingEntity(String code, int difficulty) {
+    super(code);
+    this.difficulty = difficulty;
+    this.valueList = new ArrayList<>();
+  }
+
+  public List<TestdataSortableValue> getValueList() {
+    return valueList;
+  }
+
+  public void setValueList(List<TestdataSortableValue> valueList) {
+    this.valueList = valueList;
+  }
+
+  public List<TestdataSortableValue> getValueRange() {
+    return valueRange;
+  }
+
+  public void setValueRange(List<TestdataSortableValue> valueRange) {
+    this.valueRange = valueRange;
+  }
+
+  @Override
+  public int getComparatorValue() {
+    return difficulty;
+  }
+}
