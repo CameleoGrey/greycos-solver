@@ -4,7 +4,7 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>greycos.solver</groupId>
+    <groupId>io.github.cameleogrey</groupId>
     <artifactId>greycos-solver-build-parent</artifactId>
     <version>999-SNAPSHOT</version>
     <relativePath>../../build/build-parent/pom.xml</relativePath>
@@ -25,11 +25,11 @@
   <url>https://github.com/CameleoGrey/greycos-solver</url>
   <dependencies>
     <dependency>
-      <groupId>greycos.solver</groupId>
+      <groupId>io.github.cameleogrey</groupId>
       <artifactId>greycos-solver-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>greycos.solver</groupId>
+      <groupId>io.github.cameleogrey</groupId>
       <artifactId>greycos-solver-benchmark</artifactId>
     </dependency>
     <dependency>
@@ -37,7 +37,7 @@
       <artifactId>slf4j-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>greycos.solver</groupId>
+      <groupId>io.github.cameleogrey</groupId>
       <artifactId>greycos-solver-core</artifactId>
       <type>test-jar</type>
       <scope>test</scope>

@@ -4,7 +4,7 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>greycos.solver</groupId>
+    <groupId>io.github.cameleogrey</groupId>
     <artifactId>greycos-solver-parent</artifactId>
     <version>999-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
@@ -26,275 +26,275 @@
   <dependencyManagement>
     <dependencies>
       <!--
-        IMPORTANT: Only declare modules of groupId greycos.solver.
+        IMPORTANT: Only declare modules of groupId io.github.cameleogrey.
         Do not declare external dependencies, this is not a platform bom.
         Do not declare <scope> or <optional>.
         Always declare the sources jar and the test-jar too.
       -->
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-core</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-core</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-core</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-jaxb</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-jaxb</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-jaxb</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-jackson</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-jackson</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-jackson</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-jpa</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-jpa</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-jpa</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-webui</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-webui</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-benchmark</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-benchmark</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-benchmark</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-benchmark-aggregator</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-benchmark-aggregator</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-benchmark-aggregator</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <!-- quarkus-integration -->
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-deployment</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-deployment</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-deployment</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-jackson</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-jackson</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-jackson</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-jackson-deployment</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-jackson-deployment</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-jackson-deployment</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-jackson-integration-test</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-jackson-integration-test</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-jackson-integration-test</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-benchmark</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-benchmark</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-benchmark</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-benchmark-deployment</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-benchmark-deployment</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-quarkus-benchmark-deployment</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <!-- spring-integration -->
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-spring-boot-autoconfigure</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-spring-boot-autoconfigure</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-spring-boot-autoconfigure</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-spring-boot-starter</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-spring-boot-starter</artifactId>
         <version>${version.greycos.solver}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-spring-boot-starter</artifactId>
         <type>test-jar</type>
         <version>${version.greycos.solver}</version>

@@ -124,7 +124,7 @@ Your `pom.xml` file has the following content:
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-bom</artifactId>
         <version>{greycos-solver-version}</version>
         <type>pom</type>
@@ -140,7 +140,7 @@ Your `pom.xml` file has the following content:
 
   <dependencies>
     <dependency>
-      <groupId>greycos.solver</groupId>
+      <groupId>io.github.cameleogrey</groupId>
       <artifactId>greycos-solver-core</artifactId>
     </dependency>
     <dependency>
@@ -189,8 +189,8 @@ repositories {
 }
 
 dependencies {
-    implementation platform("greycos.solver:greycos-solver-bom:${greycosSolverVersion}")
-    implementation "greycos.solver:greycos-solver-core"
+    implementation platform("io.github.cameleogrey:greycos-solver-bom:${greycosSolverVersion}")
+    implementation "io.github.cameleogrey:greycos-solver-core"
 
     runtimeOnly "ch.qos.logback:logback-classic:${logbackVersion}"
 }

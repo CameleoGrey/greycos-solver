@@ -4,7 +4,7 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>greycos.solver</groupId>
+    <groupId>io.github.cameleogrey</groupId>
     <artifactId>greycos-solver-parent</artifactId>
     <version>999-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
@@ -14,6 +14,7 @@
   <packaging>pom</packaging>
 
   <name>GreyCOS Solver build parent</name>
+  <description>Maven build configuration shared by GreyCOS Solver modules.</description>
   <url>https://github.com/CameleoGrey/greycos-solver</url>
 
   <properties>
@@ -81,7 +82,7 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>greycos.solver</groupId>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-bom</artifactId>
         <version>${project.version}</version>
         <type>pom</type>
@@ -452,7 +453,7 @@
           <version>${version.spotless.plugin}</version>
           <dependencies>
             <dependency>
-              <groupId>greycos.solver</groupId>
+              <groupId>io.github.cameleogrey</groupId>
               <artifactId>greycos-solver-ide-config</artifactId>
               <version>${project.version}</version>
             </dependency>

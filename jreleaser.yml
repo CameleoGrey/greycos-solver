@@ -1,7 +1,8 @@
 project:
+  name: greycos-solver
   languages:
     java:
-      groupId: "greycos.solver"
+      groupId: "io.github.cameleogrey"
 
 signing:
   pgp:
@@ -14,6 +15,7 @@ release:
       name: "GreyCOS Release Bot"
       email: "cameleogrey@yandex.ru"
     releaseName: "GreyCOS Solver {{projectVersion}}"
+    tagName: "v{{projectVersion}}"
     draft: true
     overwrite: false
     sign: true
@@ -37,20 +39,25 @@ deploy:
   maven:
     mavenCentral:
       greycos-solver:
-        active: ALWAYS
+        active: RELEASE
         url: https://central.sonatype.com/api/v1/publisher
-        authorization: BASIC
-        # TODO Remove verifyPom tag, hack for https://github.com/jreleaser/jreleaser/issues/1397
-        verifyPom: false
-        maxRetries: 180 # the timeout for Maven state verification is now 30 minutes: 180 retries * 10-second delay
+        authorization: BEARER
+        namespace: io.github.cameleogrey
+        applyMavenCentralRules: true
+        retryDelay: 10
+        maxRetries: 180 # 30 minutes for Maven Central state verification
         stagingRepositories:
           - "target/staging-deploy"
         artifactOverrides:
-          - groupId: greycos.solver
+          - groupId: io.github.cameleogrey
             artifactId: greycos-solver-ide-config
+            jar: true
             sourceJar: true
             javadocJar: false
-          - groupId: greycos.solver
+            verifyPom: true
+          - groupId: io.github.cameleogrey
             artifactId: greycos-solver-webui
+            jar: true
             sourceJar: true
             javadocJar: false
+            verifyPom: true

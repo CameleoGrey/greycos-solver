@@ -4,7 +4,7 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>greycos.solver</groupId>
+    <groupId>io.github.cameleogrey</groupId>
     <artifactId>greycos-solver-spring-integration</artifactId>
     <version>999-SNAPSHOT</version>
   </parent>
@@ -23,19 +23,19 @@
   <dependencies>
     <!-- Internal dependencies -->
     <dependency>
-      <groupId>greycos.solver</groupId>
+      <groupId>io.github.cameleogrey</groupId>
       <artifactId>greycos-solver-core</artifactId>
     </dependency>
 
     <!-- Need this so we can @Autowire Benchmark -->
     <dependency>
-      <groupId>greycos.solver</groupId>
+      <groupId>io.github.cameleogrey</groupId>
       <artifactId>greycos-solver-benchmark</artifactId>
       <optional>true</optional>
     </dependency>
 
     <dependency>
-      <groupId>greycos.solver</groupId>
+      <groupId>io.github.cameleogrey</groupId>
       <artifactId>greycos-solver-jackson</artifactId>
     </dependency>
     <dependency>
@@ -87,7 +87,7 @@
     </dependency>
     <!-- Testing -->
     <dependency>
-      <groupId>greycos.solver</groupId>
+      <groupId>io.github.cameleogrey</groupId>
       <artifactId>greycos-solver-core</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
@@ -156,7 +156,7 @@
           </ignoredUsedUndeclaredDependencies>
           <ignoredUnusedDeclaredDependencies>
             <dependency>org.springframework.boot:*</dependency>
-            <dependency>greycos.solver:greycos-solver-core</dependency>
+            <dependency>io.github.cameleogrey:greycos-solver-core</dependency>
           </ignoredUnusedDeclaredDependencies>
         </configuration>
       </plugin>

@@ -12,4 +12,4 @@ metadata:
   guide: "https://github.com/CameleoGrey/greycos-solver/tree/main/quarkus-integration"
   status: "stable"
   extension-dependencies:
-    - "greycos.solver:greycos-solver-quarkus"
+    - "io.github.cameleogrey:greycos-solver-quarkus"

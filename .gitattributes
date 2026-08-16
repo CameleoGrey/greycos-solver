@@ -7,6 +7,10 @@
 *.sh eol=lf
 *.bat eol=crlf
 
+# The JAXB/DOM schema generator preserves indentation on otherwise blank lines.
+core/src/main/resources/solver.xsd whitespace=-blank-at-eol
+tools/benchmark/src/main/resources/benchmark.xsd whitespace=-blank-at-eol
+
 # Binary files
 ##############
 

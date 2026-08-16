@@ -4,53 +4,111 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: greycos-solver-finish-release
+  cancel-in-progress: false
+
 jobs:
   build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
     env:
       RELEASE_BRANCH_NAME: "__greycos_release_branch__"
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write  # IMPORTANT: required for action to delete release branch
-    timeout-minutes: 120
+
     steps:
       - name: Checkout greycos-solver
         uses: actions/checkout@v7
         with:
           ref: main
-          fetch-depth: 0 # Otherwise merge will fail on account of not having history.
+          fetch-depth: 0
 
-      - name: Put back the 999-SNAPSHOT version on the release branch
-        run: |
-          git config user.name "GreyCOS Release Bot"
-          git config user.email "cameleogrey@yandex.ru"
-          git checkout $RELEASE_BRANCH_NAME
-          ./mvnw -Dfull versions:set -DnewVersion=999-SNAPSHOT
-          git commit -am "build: move back to 999-SNAPSHOT"
-          git push origin $RELEASE_BRANCH_NAME          
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
 
-      - name: Update release branch
+      - name: Validate published release
         shell: bash
         env:
-          TAG_REF: ${{ github.ref }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          tag="$TAG_REF"
-          tag_version=${tag##*/}
-          version=${tag_version%.*}
-          version="${version:1}.x"
-          echo $version
-          exists="$(git branch -a | grep -w $version || true)"
-          echo "branch $exists"
-          if [ -n "$exists" ]; then
-            git config user.name "GreyCOS Release Bot"
-            git config user.email "cameleogrey@yandex.ru"
-            git checkout $RELEASE_BRANCH_NAME
-            git checkout $version
-            git merge -Xtheirs --no-edit --squash -m "build: release version $tag_version" $RELEASE_BRANCH_NAME
-            git push origin $version
-            git push -d origin $RELEASE_BRANCH_NAME
-          else
-            git checkout $RELEASE_BRANCH_NAME
-            git branch -m $RELEASE_BRANCH_NAME $version
-            git push origin -u $version
-            git push -d origin $RELEASE_BRANCH_NAME
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Published tag '$RELEASE_TAG' is not a GreyCOS release tag."
+            exit 1
           fi
+
+          release_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+          series_branch="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.x"
+          if ! remote_release_commit="$(git ls-remote --exit-code origin "refs/heads/$RELEASE_BRANCH_NAME" | awk '{print $1}')"; then
+            echo "Remote release branch '$RELEASE_BRANCH_NAME' does not exist."
+            exit 1
+          fi
+
+          git fetch --force origin \
+            "refs/heads/$RELEASE_BRANCH_NAME:refs/remotes/origin/$RELEASE_BRANCH_NAME" \
+            "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          tag_commit="$(git rev-list -n 1 "$RELEASE_TAG")"
+          if [[ "$tag_commit" != "$remote_release_commit" ]]; then
+            echo "Tag '$RELEASE_TAG' does not point to the release branch tip."
+            exit 1
+          fi
+
+          printf 'RELEASE_VERSION=%s\n' "$release_version" >> "$GITHUB_ENV"
+          printf 'RELEASE_TAG=%s\n' "$RELEASE_TAG" >> "$GITHUB_ENV"
+          printf 'SERIES_BRANCH=%s\n' "$series_branch" >> "$GITHUB_ENV"
+
+      - name: Restore the development version locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "GreyCOS Release Bot"
+          git config user.email "cameleogrey@yandex.ru"
+          git switch -C "$RELEASE_BRANCH_NAME" "origin/$RELEASE_BRANCH_NAME"
+
+          current_version="$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)"
+          if [[ "$current_version" != "$RELEASE_VERSION" ]]; then
+            echo "Release branch version '$current_version' does not match '$RELEASE_VERSION'."
+            exit 1
+          fi
+
+          ./mvnw -Dfull versions:set -DnewVersion=999-SNAPSHOT -DgenerateBackupPoms=false
+          while IFS= read -r changed_file; do
+            case "$changed_file" in
+              pom.xml|*/pom.xml) ;;
+              *)
+                echo "Unexpected file changed while restoring 999-SNAPSHOT: $changed_file"
+                exit 1
+                ;;
+            esac
+          done < <(git diff --name-only)
+          if [[ -z "$(git diff --name-only)" ]]; then
+            echo "No POM changed while restoring 999-SNAPSHOT."
+            exit 1
+          fi
+
+          git ls-files -z -- pom.xml ':(glob)**/pom.xml' | xargs -0 git add --
+          git diff --exit-code
+          git commit -m "build: move back to 999-SNAPSHOT"
+
+      - name: Update the release series branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code origin "refs/heads/$SERIES_BRANCH" >/dev/null 2>&1; then
+            git fetch --force origin "refs/heads/$SERIES_BRANCH:refs/remotes/origin/$SERIES_BRANCH"
+            git switch -C "$SERIES_BRANCH" "origin/$SERIES_BRANCH"
+            git merge --squash "$RELEASE_BRANCH_NAME"
+            git commit -m "build: release version $RELEASE_TAG"
+            git push origin "$SERIES_BRANCH"
+          else
+            git switch "$RELEASE_BRANCH_NAME"
+            git branch -m "$SERIES_BRANCH"
+            git push --set-upstream origin "$SERIES_BRANCH"
+          fi
+
+          git push origin --delete "$RELEASE_BRANCH_NAME"

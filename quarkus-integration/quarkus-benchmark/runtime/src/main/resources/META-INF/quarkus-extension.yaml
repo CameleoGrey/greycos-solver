@@ -16,4 +16,4 @@ metadata:
   config:
     - "quarkus.greycos.benchmark."
   extension-dependencies:
-    - "greycos.solver:greycos-solver-quarkus"
+    - "io.github.cameleogrey:greycos-solver-quarkus"

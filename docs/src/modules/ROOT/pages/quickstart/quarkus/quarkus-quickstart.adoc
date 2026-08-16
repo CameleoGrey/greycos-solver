@@ -31,7 +31,7 @@ include::../shared/_java-prerequisites.adoc[]
 
 == The build file and the dependencies
 
-Use https://code.quarkus.io/?a=greycos-solver-quickstart&j=17&e=rest&e=rest-jackson&e=greycos.solver%3Agreycos-solver-quarkus-jackson&e=greycos.solver%3Agreycos-solver-quarkus[code.quarkus.io] to generate an application
+Use https://code.quarkus.io/?a=greycos-solver-quickstart&j=17&e=rest&e=rest-jackson&e=io.github.cameleogrey%3Agreycos-solver-quarkus-jackson&e=io.github.cameleogrey%3Agreycos-solver-quarkus[code.quarkus.io] to generate an application
 with the following extensions, for Maven or Gradle:
 
 [NOTE]

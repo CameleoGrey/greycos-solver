@@ -134,7 +134,7 @@ class GreyCOSProcessor {
   @BuildStep
   IndexDependencyBuildItem indexDependencyBuildItem() {
     // Add @PlanningEntity and other annotations in the Jandex index for Gizmo
-    return new IndexDependencyBuildItem("greycos.solver", "greycos-solver-core");
+    return new IndexDependencyBuildItem("io.github.cameleogrey", "greycos-solver-core");
   }
 
   @BuildStep(onlyIf = NativeBuild.class)

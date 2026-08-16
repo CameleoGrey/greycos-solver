@@ -21,7 +21,7 @@ allprojects {
         }
     }
     dependencies {
-        rewrite("greycos.solver:greycos-solver-migration:${greycosSolverVersion}")
+        rewrite("io.github.cameleogrey:greycos-solver-migration:${greycosSolverVersion}")
     }
     rewrite {
         activeRecipe("greycos.solver.migration.ToLatest")
