@@ -34,7 +34,7 @@ class GreyCOSBenchmarkBlueprintTest extends GreyCOSBenchmarkAbstract {
   void benchmark() throws Exception {
     RestAssuredConfig timeoutConfig =
         RestAssured.config()
-            .httpClient(HttpClientConfig.httpClientConfig().setParam(SO_TIMEOUT, 10000));
+            .httpClient(HttpClientConfig.httpClientConfig().setParam(SO_TIMEOUT, 120_000));
     String benchmarkResultDirectory =
         RestAssured.given()
             .config(timeoutConfig)

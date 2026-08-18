@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (MAJOR.MINOR.PATCH, e.g. 0.11.14)'
+        description: 'Release version (MAJOR.MINOR.PATCH, e.g. 0.11.15)'
         required: true
       sourceBranch:
         description: 'Branch to cut the release from'
@@ -119,7 +119,7 @@ jobs:
         run: |
           set -euo pipefail
           ./mvnw -Dfull versions:set -DnewVersion="$RELEASE_VERSION" -DgenerateBackupPoms=false
-          ./mvnw -Dfull clean deploy -DskipTests="$DRY_RUN" \
+          ./mvnw -Dfull clean deploy \
             -DaltDeploymentRepository="local::file://$GITHUB_WORKSPACE/target/staging-deploy"
           cp docs/target/antora.yml docs/src/antora.yml
 
