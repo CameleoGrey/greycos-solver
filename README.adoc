@@ -3,9 +3,9 @@ image::logos/GreyCOS_logo_2.png[link="https://github.com/CameleoGrey/greycos-sol
 
 == Main idea of this project
 
-Integrate back several advanced features from OptaPlanner (Apache 2.0) into fork of GreyCOS Solver Community Edition (Apache 2.0).
+Integrate back several advanced features from OptaPlanner (Apache 2.0) into fork of Timefold Solver Community Edition (Apache 2.0).
 
-Reinvent (create my own) implementations of advanced GreyCOS Solver features based on publicly available information (common public description without
+Reinvent (create my own DIY) implementations (OSS alternatives) of advanced Timefold Solver features based on publicly available information (common public description without
 access to the proprietary codebase or bytecode).
 
 Implement some good ideas from my own GreyJack Solver (Apache 2.0).
