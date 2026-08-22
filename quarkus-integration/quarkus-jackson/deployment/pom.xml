@@ -6,7 +6,7 @@
   <parent>
     <groupId>io.github.cameleogrey</groupId>
     <artifactId>greycos-solver-quarkus-jackson-parent</artifactId>
-    <version>0.11.15</version>
+    <version>999-SNAPSHOT</version>
   </parent>
 
   <artifactId>greycos-solver-quarkus-jackson-deployment</artifactId>

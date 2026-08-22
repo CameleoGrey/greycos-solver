@@ -6,7 +6,7 @@
   <groupId>io.github.cameleogrey</groupId>
   <artifactId>greycos-solver-parent</artifactId>
   <packaging>pom</packaging>
-  <version>0.11.15</version>
+  <version>999-SNAPSHOT</version>
 
   <name>GreyCOS Solver multiproject parent</name>
   <description>
