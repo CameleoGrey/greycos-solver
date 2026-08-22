@@ -32,7 +32,8 @@ import org.junit.jupiter.api.Test;
 class ThrottlingSolverEventListenerTest {
 
   private static final Duration THROTTLE_DURATION = Duration.ofMillis(100);
-  private static final Duration WAIT_TOLERANCE = Duration.ofMillis(50);
+  private static final Duration LONG_THROTTLE_DURATION = Duration.ofDays(1);
+  private static final Duration TEST_TIMEOUT = Duration.ofSeconds(10);
 
   @Test
   void of_createsValidInstance() {
@@ -95,43 +96,34 @@ class ThrottlingSolverEventListenerTest {
     var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
     listener.bestSolutionChanged(event);
 
-    boolean deliveredBeforeTimeout =
-        delivered.await(
-            THROTTLE_DURATION.toMillis() + WAIT_TOLERANCE.toMillis(), TimeUnit.MILLISECONDS);
-    assertThat(deliveredBeforeTimeout).isTrue();
+    assertReleased(delivered);
 
     verify(delegate).bestSolutionChanged(event);
     listener.close();
   }
 
   @Test
-  void multipleRapidEvents_onlyLastDelivered() throws InterruptedException {
+  void multipleRapidEvents_onlyLastDelivered() {
     SolverEventListener<String> delegate = mock(SolverEventListener.class);
     var event1 = createEvent("solution1");
     var event2 = createEvent("solution2");
     var event3 = createEvent("solution3");
     var deliveredEvent = new AtomicReference<BestSolutionChangedEvent<String>>();
-    var delivered = new CountDownLatch(1);
 
     doAnswer(
             invocation -> {
               deliveredEvent.set(invocation.getArgument(0));
-              delivered.countDown();
               return null;
             })
         .when(delegate)
         .bestSolutionChanged(any());
 
-    var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
+    var listener = ThrottlingSolverEventListener.of(delegate, LONG_THROTTLE_DURATION);
 
     listener.bestSolutionChanged(event1);
-    Thread.sleep(20); // Less than throttle duration
     listener.bestSolutionChanged(event2);
-    Thread.sleep(20); // Less than throttle duration
     listener.bestSolutionChanged(event3);
-
-    delivered.await(
-        THROTTLE_DURATION.toMillis() + WAIT_TOLERANCE.toMillis(), TimeUnit.MILLISECONDS);
+    listener.terminateAndDeliverPending();
 
     verify(delegate).bestSolutionChanged(event3);
     verify(delegate, never()).bestSolutionChanged(event1);
@@ -145,11 +137,19 @@ class ThrottlingSolverEventListenerTest {
     SolverEventListener<String> delegate = mock(SolverEventListener.class);
     var deliveryCount = new AtomicInteger(0);
     var lastDeliveredEvent = new AtomicReference<BestSolutionChangedEvent<String>>();
+    var firstEventDelivered = new CountDownLatch(1);
+    var lastEventDelivered = new CountDownLatch(1);
 
     doAnswer(
             invocation -> {
+              var event = invocation.<BestSolutionChangedEvent<String>>getArgument(0);
               deliveryCount.incrementAndGet();
-              lastDeliveredEvent.set(invocation.getArgument(0));
+              lastDeliveredEvent.set(event);
+              if (event.getNewBestSolution().equals("solution0")) {
+                firstEventDelivered.countDown();
+              } else if (event.getNewBestSolution().equals("solution9")) {
+                lastEventDelivered.countDown();
+              }
               return null;
             })
         .when(delegate)
@@ -157,11 +157,13 @@ class ThrottlingSolverEventListenerTest {
 
     var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
 
-    for (int i = 0; i < 10; i++) {
+    listener.bestSolutionChanged(createEvent("solution0"));
+    assertReleased(firstEventDelivered);
+
+    for (int i = 1; i < 10; i++) {
       listener.bestSolutionChanged(createEvent("solution" + i));
-      Thread.sleep(40);
     }
-    Thread.sleep(THROTTLE_DURATION.toMillis() + WAIT_TOLERANCE.toMillis());
+    assertReleased(lastEventDelivered);
 
     assertThat(deliveryCount.get()).isGreaterThanOrEqualTo(2);
     assertThat(lastDeliveredEvent.get().getNewBestSolution()).isEqualTo("solution9");
@@ -169,7 +171,7 @@ class ThrottlingSolverEventListenerTest {
   }
 
   @Test
-  void eventNotDeliveredImmediately() throws InterruptedException {
+  void eventNotDeliveredImmediately() {
     SolverEventListener<String> delegate = mock(SolverEventListener.class);
     var event = createEvent("solution1");
     var delivered = new AtomicBoolean(false);
@@ -182,17 +184,16 @@ class ThrottlingSolverEventListenerTest {
         .when(delegate)
         .bestSolutionChanged(event);
 
-    var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
+    var listener = ThrottlingSolverEventListener.of(delegate, LONG_THROTTLE_DURATION);
     listener.bestSolutionChanged(event);
 
-    Thread.sleep(THROTTLE_DURATION.toMillis() / 2);
     assertThat(delivered.get()).isFalse();
 
     listener.close();
   }
 
   @Test
-  void terminateAndDeliverPending_deliversImmediately() throws InterruptedException {
+  void terminateAndDeliverPending_deliversImmediately() {
     SolverEventListener<String> delegate = mock(SolverEventListener.class);
     var event = createEvent("solution1");
     var delivered = new CountDownLatch(1);
@@ -205,16 +206,14 @@ class ThrottlingSolverEventListenerTest {
         .when(delegate)
         .bestSolutionChanged(event);
 
-    var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
+    var listener = ThrottlingSolverEventListener.of(delegate, LONG_THROTTLE_DURATION);
     listener.bestSolutionChanged(event);
 
-    boolean deliveredImmediately = delivered.await(10, TimeUnit.MILLISECONDS);
-    assertThat(deliveredImmediately).isFalse();
+    assertThat(delivered.getCount()).isEqualTo(1L);
 
     listener.terminateAndDeliverPending();
 
-    boolean deliveredAfterTerminate = delivered.await(10, TimeUnit.MILLISECONDS);
-    assertThat(deliveredAfterTerminate).isTrue();
+    assertThat(delivered.getCount()).isZero();
 
     verify(delegate).bestSolutionChanged(event);
     listener.close();
@@ -225,7 +224,7 @@ class ThrottlingSolverEventListenerTest {
     SolverEventListener<String> delegate = mock(SolverEventListener.class);
     var event = createEvent("solution1");
 
-    var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
+    var listener = ThrottlingSolverEventListener.of(delegate, LONG_THROTTLE_DURATION);
     listener.bestSolutionChanged(event);
 
     listener.terminateAndDeliverPending();
@@ -237,7 +236,7 @@ class ThrottlingSolverEventListenerTest {
   }
 
   @Test
-  void eventAfterTermination_deliveredImmediately() throws InterruptedException {
+  void eventAfterTermination_deliveredImmediately() {
     SolverEventListener<String> delegate = mock(SolverEventListener.class);
     var event = createEvent("solution1");
     var delivered = new CountDownLatch(1);
@@ -255,15 +254,14 @@ class ThrottlingSolverEventListenerTest {
 
     listener.bestSolutionChanged(event);
 
-    boolean deliveredImmediately = delivered.await(10, TimeUnit.MILLISECONDS);
-    assertThat(deliveredImmediately).isTrue();
+    assertThat(delivered.getCount()).isZero();
 
     verify(delegate).bestSolutionChanged(event);
     listener.close();
   }
 
   @Test
-  void close_terminatesAndDeliversPending() throws InterruptedException {
+  void close_terminatesAndDeliversPending() {
     SolverEventListener<String> delegate = mock(SolverEventListener.class);
     var event = createEvent("solution1");
     var delivered = new CountDownLatch(1);
@@ -276,12 +274,11 @@ class ThrottlingSolverEventListenerTest {
         .when(delegate)
         .bestSolutionChanged(event);
 
-    var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
+    var listener = ThrottlingSolverEventListener.of(delegate, LONG_THROTTLE_DURATION);
     listener.bestSolutionChanged(event);
     listener.close();
 
-    boolean deliveredAfterClose = delivered.await(50, TimeUnit.MILLISECONDS);
-    assertThat(deliveredAfterClose).isTrue();
+    assertThat(delivered.getCount()).isZero();
 
     verify(delegate).bestSolutionChanged(event);
   }
@@ -292,15 +289,16 @@ class ThrottlingSolverEventListenerTest {
     var event1 = createEvent("solution1");
     var event2 = createEvent("solution2");
     var deliveryCount = new AtomicInteger(0);
-    var delivered = new CountDownLatch(1);
+    var firstDeliveryAttempted = new CountDownLatch(1);
+    var secondEventDelivered = new CountDownLatch(1);
 
     doAnswer(
             invocation -> {
-              deliveryCount.incrementAndGet();
-              if (deliveryCount.get() == 1) {
+              if (deliveryCount.incrementAndGet() == 1) {
+                firstDeliveryAttempted.countDown();
                 throw new RuntimeException("Test exception");
               }
-              delivered.countDown();
+              secondEventDelivered.countDown();
               return null;
             })
         .when(delegate)
@@ -309,13 +307,12 @@ class ThrottlingSolverEventListenerTest {
     var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
 
     listener.bestSolutionChanged(event1);
-    Thread.sleep(THROTTLE_DURATION.toMillis() + WAIT_TOLERANCE.toMillis());
+    assertReleased(firstDeliveryAttempted);
 
     listener.bestSolutionChanged(event2);
-    delivered.await(
-        THROTTLE_DURATION.toMillis() + WAIT_TOLERANCE.toMillis(), TimeUnit.MILLISECONDS);
+    assertReleased(secondEventDelivered);
 
-    assertThat(deliveryCount.get()).isGreaterThanOrEqualTo(2);
+    assertThat(deliveryCount.get()).isEqualTo(2);
     listener.close();
   }
 
@@ -335,7 +332,8 @@ class ThrottlingSolverEventListenerTest {
   void concurrentBestSolutionChanged_isThreadSafe() throws InterruptedException {
     SolverEventListener<String> delegate = mock(SolverEventListener.class);
     var deliveryCount = new AtomicInteger(0);
-    var allThreadsStarted = new CountDownLatch(10);
+    var allThreadsReady = new CountDownLatch(10);
+    var startThreads = new CountDownLatch(1);
     var allThreadsFinished = new CountDownLatch(10);
 
     doAnswer(
@@ -346,7 +344,7 @@ class ThrottlingSolverEventListenerTest {
         .when(delegate)
         .bestSolutionChanged(any());
 
-    var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
+    var listener = ThrottlingSolverEventListener.of(delegate, LONG_THROTTLE_DURATION);
 
     ExecutorService executor = Executors.newFixedThreadPool(10);
     try {
@@ -354,26 +352,29 @@ class ThrottlingSolverEventListenerTest {
         final int index = i;
         executor.submit(
             () -> {
-              allThreadsStarted.countDown();
+              allThreadsReady.countDown();
               try {
-                allThreadsStarted.await();
+                startThreads.await();
+                var event = createEvent("solution" + index);
+                listener.bestSolutionChanged(event);
               } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+              } finally {
+                allThreadsFinished.countDown();
               }
-              var event = createEvent("solution" + index);
-              listener.bestSolutionChanged(event);
-              allThreadsFinished.countDown();
             });
       }
 
-      allThreadsFinished.await();
-      Thread.sleep(THROTTLE_DURATION.toMillis() + WAIT_TOLERANCE.toMillis());
+      assertReleased(allThreadsReady);
+      startThreads.countDown();
+      assertReleased(allThreadsFinished);
+      listener.terminateAndDeliverPending();
 
-      assertThat(deliveryCount.get()).isGreaterThan(0);
-      assertThat(deliveryCount.get()).isLessThanOrEqualTo(10);
+      assertThat(deliveryCount.get()).isEqualTo(1);
     } finally {
-      executor.shutdown();
-      executor.awaitTermination(1, TimeUnit.SECONDS);
+      startThreads.countDown();
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(TEST_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
       listener.close();
     }
   }
@@ -383,7 +384,11 @@ class ThrottlingSolverEventListenerTest {
     SolverEventListener<String> delegate = mock(SolverEventListener.class);
     var deliveryCount = new AtomicInteger(0);
     var deliveredEvent = new AtomicReference<BestSolutionChangedEvent<String>>();
+    var allThreadsReady = new CountDownLatch(10);
+    var startThreads = new CountDownLatch(1);
     var allThreadsFinished = new CountDownLatch(10);
+    var terminationReady = new CountDownLatch(1);
+    var terminationFinished = new CountDownLatch(1);
 
     doAnswer(
             invocation -> {
@@ -394,29 +399,56 @@ class ThrottlingSolverEventListenerTest {
         .when(delegate)
         .bestSolutionChanged(any());
 
-    var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
+    var listener = ThrottlingSolverEventListener.of(delegate, LONG_THROTTLE_DURATION);
 
     ExecutorService executor = Executors.newFixedThreadPool(10);
+    var terminationThread =
+        new Thread(
+            () -> {
+              terminationReady.countDown();
+              try {
+                startThreads.await();
+                listener.terminateAndDeliverPending();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              } finally {
+                terminationFinished.countDown();
+              }
+            });
     try {
       for (int i = 0; i < 10; i++) {
         final int index = i;
         executor.submit(
             () -> {
-              var event = createEvent("solution" + index);
-              listener.bestSolutionChanged(event);
-              allThreadsFinished.countDown();
+              allThreadsReady.countDown();
+              try {
+                startThreads.await();
+                var event = createEvent("solution" + index);
+                listener.bestSolutionChanged(event);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              } finally {
+                allThreadsFinished.countDown();
+              }
             });
       }
+      terminationThread.start();
 
-      allThreadsFinished.await(50, TimeUnit.MILLISECONDS);
-      listener.terminateAndDeliverPending();
-      Thread.sleep(50);
+      assertReleased(allThreadsReady);
+      assertReleased(terminationReady);
+      startThreads.countDown();
+      assertReleased(allThreadsFinished);
+      assertReleased(terminationFinished);
 
-      assertThat(deliveryCount.get()).isGreaterThan(0);
+      assertThat(deliveryCount.get()).isBetween(1, 10);
       assertThat(deliveredEvent.get()).isNotNull();
     } finally {
-      executor.shutdown();
-      executor.awaitTermination(1, TimeUnit.SECONDS);
+      startThreads.countDown();
+      terminationThread.interrupt();
+      terminationThread.join(TEST_TIMEOUT.toMillis());
+      assertThat(terminationThread.isAlive()).isFalse();
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(TEST_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
       listener.close();
     }
   }
@@ -446,16 +478,13 @@ class ThrottlingSolverEventListenerTest {
     var listener = ThrottlingSolverEventListener.of(delegate, THROTTLE_DURATION);
     listener.bestSolutionChanged(createEvent("solution1"));
 
-    assertThat(
-            firstDeliveryStarted.await(
-                THROTTLE_DURATION.toMillis() + WAIT_TOLERANCE.toMillis(), TimeUnit.MILLISECONDS))
-        .isTrue();
+    assertReleased(firstDeliveryStarted);
 
     listener.bestSolutionChanged(createEvent("solution2"));
     var terminationThread = new Thread(listener::terminateAndDeliverPending);
     terminationThread.start();
     allowFirstDeliveryToFinish.countDown();
-    terminationThread.join(TimeUnit.SECONDS.toMillis(1));
+    terminationThread.join(TEST_TIMEOUT.toMillis());
 
     assertThat(terminationThread.isAlive()).isFalse();
     assertThat(deliveredSolutions).containsExactly("solution1", "solution2");
@@ -479,8 +508,12 @@ class ThrottlingSolverEventListenerTest {
     var listener = ThrottlingSolverEventListener.of(delegate, Duration.ofNanos(1));
     listener.bestSolutionChanged(event);
 
-    assertThat(delivered.await(1, TimeUnit.SECONDS)).isTrue();
+    assertReleased(delivered);
     listener.close();
+  }
+
+  private static void assertReleased(CountDownLatch latch) throws InterruptedException {
+    assertThat(latch.await(TEST_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
   }
 
   private BestSolutionChangedEvent<String> createEvent(String solution) {
