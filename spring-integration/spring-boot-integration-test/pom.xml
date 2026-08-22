@@ -6,7 +6,7 @@
   <parent>
     <groupId>io.github.cameleogrey</groupId>
     <artifactId>greycos-solver-spring-integration</artifactId>
-    <version>999-SNAPSHOT</version>
+    <version>0.11.15</version>
   </parent>
 
   <artifactId>spring-boot-integration-test</artifactId>
