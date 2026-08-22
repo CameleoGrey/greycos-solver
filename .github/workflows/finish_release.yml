@@ -3,6 +3,12 @@ name: Finish Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      releaseTag:
+        description: 'Published release tag (MAJOR.MINOR.PATCH prefixed with v, e.g. v0.11.15)'
+        required: true
+        type: string
 
 concurrency:
   group: greycos-solver-finish-release
@@ -34,16 +40,31 @@ jobs:
       - name: Validate published release
         shell: bash
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.releaseTag }}
         run: |
           set -euo pipefail
           if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "Published tag '$RELEASE_TAG' is not a GreyCOS release tag."
             exit 1
           fi
-
           release_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
           series_branch="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.x"
+
+          if ! release_state="$(
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+              --jq '[.draft, .prerelease, .published_at] | @tsv'
+          )"; then
+            echo "GitHub release '$RELEASE_TAG' does not exist or is inaccessible."
+            exit 1
+          fi
+          IFS=$'\t' read -r release_draft release_prerelease published_at <<< "$release_state"
+          if [[ "$release_draft" != "false" || "$release_prerelease" != "false" ||
+                -z "$published_at" || "$published_at" == "null" ]]; then
+            echo "GitHub release '$RELEASE_TAG' is not a published stable release."
+            exit 1
+          fi
+
           if ! remote_release_commit="$(git ls-remote --exit-code origin "refs/heads/$RELEASE_BRANCH_NAME" | awk '{print $1}')"; then
             echo "Remote release branch '$RELEASE_BRANCH_NAME' does not exist."
             exit 1

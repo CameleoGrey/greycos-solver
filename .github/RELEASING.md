@@ -184,7 +184,10 @@ A separate GitHub token is not required; the workflow uses its scoped `github.to
    checksums under `io/github/cameleogrey`.
 7. Publish the existing GitHub draft release only after Central reports `PUBLISHED`. Publishing the
    draft triggers **Finish Release**, which validates the tag, creates or updates `0.11.x`, restores
-   `999-SNAPSHOT` on that series branch, and removes the temporary branch.
+   `999-SNAPSHOT` on that series branch, and removes the temporary branch. If GitHub does not create
+   the event-triggered run, open **Actions** -> **Finish Release** -> **Run workflow**, enter
+   `releaseTag=v0.11.15`, and run the guarded manual fallback. It verifies that the GitHub release is
+   already published before changing either branch.
 8. Confirm:
 
    ```bash
