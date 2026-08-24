@@ -10,6 +10,7 @@ import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.move.AbstractMove;
 import greycos.solver.core.impl.score.director.ScoreDirector;
+import greycos.solver.core.impl.score.director.ValueRangeManager;
 import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 
 /**
@@ -119,7 +120,18 @@ public class ListSwapMove<Solution_> extends AbstractMove<Solution_> {
     // Object#equals
     // opens the opportunity to shoot themselves in the foot if different entities can be equal.
     var sameEntity = leftEntity == rightEntity;
-    return !(sameEntity && leftIndex == rightIndex);
+    var doable = !(sameEntity && leftIndex == rightIndex);
+    if (!doable || sameEntity || variableDescriptor.canExtractValueRangeFromSolution()) {
+      return doable;
+    }
+    // Entity-provided list value ranges may differ. Both entities must accept the exchanged value.
+    ValueRangeManager<Solution_> valueRangeManager =
+        ((VariableDescriptorAwareScoreDirector<Solution_>) scoreDirector).getValueRangeManager();
+    var leftValueRange =
+        valueRangeManager.getFromEntity(variableDescriptor.getValueRangeDescriptor(), leftEntity);
+    var rightValueRange =
+        valueRangeManager.getFromEntity(variableDescriptor.getValueRangeDescriptor(), rightEntity);
+    return leftValueRange.contains(getRightValue()) && rightValueRange.contains(getLeftValue());
   }
 
   @Override

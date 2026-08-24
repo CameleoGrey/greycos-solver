@@ -26,7 +26,6 @@ import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidin
 import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingValue;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -49,13 +48,12 @@ class ListChangeMoveTest {
   private final ListVariableDescriptor<TestdataListEntityProvidingSolution>
       otherVariableDescriptor =
           TestdataListEntityProvidingEntity.buildVariableDescriptorForValueList();
+  private final ValueRangeManager<TestdataListEntityProvidingSolution> otherValueRangeManager =
+      new ValueRangeManager<>(TestdataListEntityProvidingSolution.buildSolutionDescriptor());
 
   @BeforeEach
   void setUp() {
-    when(otherInnerScoreDirector.getValueRangeManager())
-        .thenReturn(
-            new ValueRangeManager<>(
-                otherVariableDescriptor.getEntityDescriptor().getSolutionDescriptor()));
+    when(otherInnerScoreDirector.getValueRangeManager()).thenReturn(otherValueRangeManager);
   }
 
   @Test
@@ -78,7 +76,6 @@ class ListChangeMoveTest {
         .isTrue();
   }
 
-  @Disabled("Temporarily disabled")
   @Test
   void isMoveDoableValueRangeProviderOnEntity() {
     var value1 = new TestdataListEntityProvidingValue("1");
@@ -89,6 +86,9 @@ class ListChangeMoveTest {
             "e1", List.of(value1, value2), List.of(value1, value2));
     var entity2 =
         new TestdataListEntityProvidingEntity("e2", List.of(value1, value3), List.of(value3));
+    var solution = new TestdataListEntityProvidingSolution();
+    solution.setEntityList(List.of(entity1, entity2));
+    otherValueRangeManager.reset(solution);
     // different entity => valid value
     assertThat(
             new ListChangeMove<>(otherVariableDescriptor, entity1, 0, entity2, 0)

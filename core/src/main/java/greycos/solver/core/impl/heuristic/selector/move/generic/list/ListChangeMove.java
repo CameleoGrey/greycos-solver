@@ -10,6 +10,7 @@ import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.move.AbstractMove;
 import greycos.solver.core.impl.score.director.ScoreDirector;
+import greycos.solver.core.impl.score.director.ValueRangeManager;
 import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 
 /**
@@ -136,9 +137,20 @@ public class ListChangeMove<Solution_> extends AbstractMove<Solution_> {
     // Object#equals
     // opens the opportunity to shoot themselves in the foot if different entities can be equal.
     var sameEntity = destinationEntity == sourceEntity;
-    return !sameEntity
-        || (destinationIndex != sourceIndex
-            && destinationIndex != variableDescriptor.getListSize(sourceEntity));
+    var doable =
+        !sameEntity
+            || (destinationIndex != sourceIndex
+                && destinationIndex != variableDescriptor.getListSize(sourceEntity));
+    if (!doable || sameEntity || variableDescriptor.canExtractValueRangeFromSolution()) {
+      return doable;
+    }
+    // Entity-provided list value ranges may differ. The destination must accept the moved value.
+    ValueRangeManager<Solution_> valueRangeManager =
+        ((VariableDescriptorAwareScoreDirector<Solution_>) scoreDirector).getValueRangeManager();
+    var destinationValueRange =
+        valueRangeManager.getFromEntity(
+            variableDescriptor.getValueRangeDescriptor(), destinationEntity);
+    return destinationValueRange.contains(getMovedValue());
   }
 
   @Override

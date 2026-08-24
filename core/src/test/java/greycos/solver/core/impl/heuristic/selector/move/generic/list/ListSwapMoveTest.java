@@ -88,6 +88,21 @@ class ListSwapMoveTest {
             new ListSwapMove<>(otherVariableDescriptor, entity1, 0, entity2, 0)
                 .isMoveDoable(otherInnerScoreDirector))
         .isTrue();
+    // different entity => only the right entity rejects the incoming value
+    assertThat(
+            new ListSwapMove<>(otherVariableDescriptor, entity1, 1, entity2, 0)
+                .isMoveDoable(otherInnerScoreDirector))
+        .isFalse();
+    // different entity => only the left entity rejects the incoming value
+    assertThat(
+            new ListSwapMove<>(otherVariableDescriptor, entity1, 0, entity2, 1)
+                .isMoveDoable(otherInnerScoreDirector))
+        .isFalse();
+    // different entity => both entities reject the incoming value
+    assertThat(
+            new ListSwapMove<>(otherVariableDescriptor, entity1, 1, entity2, 1)
+                .isMoveDoable(otherInnerScoreDirector))
+        .isFalse();
   }
 
   @Test
