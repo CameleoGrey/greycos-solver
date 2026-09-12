@@ -474,6 +474,26 @@ is still reproducible, unless the `moveThreadCount` is set to `AUTO` or a functi
 
 ===== Advanced configuration
 
+Move workers retain separate incremental working solutions and evaluate candidates concurrently.
+The solver thread consumes results in selection order and makes all acceptance decisions.
+Workers apply each selected step exactly once before evaluating candidates for that step.
+Two bounded generations of work allow ready workers to continue while others finish the preceding step;
+the solver waits for acknowledgements before reusing the older generation.
+
+The candidate window is `moveThreadCount * moveThreadBufferSize`, with a default buffer of ten per worker.
+A larger window can keep workers busy when evaluation times vary, but also increases serial move generation
+and candidates discarded when foraging stops early.
+Compare useful move evaluations, completed steps and solution quality when tuning the worker count and buffer.
+The score-calculation count also includes worker setup, speculative calculations and coordinator accounting,
+and therefore is not a count of useful evaluated moves.
+
+For separate diagnostic runs, `-Dgreycos.solver.moveThreadDiagnostics=true` enables sampled worker timings
+and coordinator wait timings. The internal deciders expose final pipeline counters after the phase ends;
+these counters distinguish generated, evaluated, scored, consumed and discarded candidates.
+Discarded counts include completed evaluations that were not consumed, but exclude cancelled candidates
+that were never evaluated. Result-retrieval timings include ready-result handling as well as waiting.
+Leave diagnostic timing disabled for throughput comparisons.
+
 There are additional parameters you can supply to your `solverConfig.xml`:
 
 [source,xml,options="nowrap"]

@@ -12,11 +12,12 @@ import greycos.solver.core.testcotwin.TestdataValue;
 import greycos.solver.core.testutil.MockThreadFactory;
 import greycos.solver.core.testutil.PlannerTestUtils;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.parallel.Isolated;
 
 /** Tests for multithreaded solving functionality with various thread count configurations. */
+@Isolated("Creates large worker pools and uses the shared PlannerTestUtils solve lock.")
 class SolverConfigMultiThreadedTest {
 
   @Test
@@ -25,7 +26,6 @@ class SolverConfigMultiThreadedTest {
     runSolvingAndVerifySolution(10, 20, "256");
   }
 
-  @Disabled("Similar to PLANNER-1180: Multithreading with very small problems can cause issues")
   @Test
   @Timeout(5)
   void solvingOfVerySmallProblemFinishes() {
