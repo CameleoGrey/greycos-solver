@@ -7,8 +7,8 @@ import greycos.solver.core.impl.score.director.InnerScoreDirector;
  * need to happen:
  *
  * <ul>
- *   <li>Variable listeners need to run, reading the state of all entities and computing values for
- *       their shadow variables.
+ *   <li>Shadow variable updates need to run, reading the state of all entities and computing values
+ *       for their shadow variables.
  *   <li>Score needs to be calculated and stored on the planning solution.
  * </ul>
  *
@@ -34,9 +34,9 @@ public enum SolutionUpdatePolicy {
    */
   UPDATE_SCORE_ONLY(true, false),
   /**
-   * Runs variable listeners on all planning entities and problem facts, updates shadow variables.
-   * Does not update score; the solution will keep the current score, even if it is stale or null.
-   * To avoid this, use {@link #UPDATE_ALL} instead.
+   * Updates shadow variables on all planning entities and problem facts. Does not update score; the
+   * solution will keep the current score, even if it is stale or null. To avoid this, use {@link
+   * #UPDATE_ALL} instead.
    */
   UPDATE_SHADOW_VARIABLES_ONLY(false, true),
   /**
@@ -59,7 +59,7 @@ public enum SolutionUpdatePolicy {
   }
 
   /**
-   * If this is true, variable listeners will ignore certain fail-fasts. See {@link
+   * If this is true, shadow variable updates will ignore certain fail-fasts. See {@link
    * InnerScoreDirector#expectShadowVariablesInCorrectState()}.
    *
    * @return true if shadow variables should be updated

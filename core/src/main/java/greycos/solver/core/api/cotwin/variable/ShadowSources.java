@@ -16,11 +16,11 @@ public @interface ShadowSources {
    * The paths to variables the method uses to compute the value of a {@link
    * ShadowVariable#supplierName() declarative shadow variable}.
    *
-   * <p>Each path is a {@link String} that is one of the following three forms:
+   * <p>Each path is a {@link String} that is one of the following four forms:
    *
    * <ul>
    *   <li>"variableName", for referring any variable on the same planning entity, except a {@link
-   *       PlanningListVariable}, which cannot be used as a source.
+   *       PlanningListVariable}, which can only be used with the "[]" suffix described below.
    *   <li>A list of names seperated by ".", such as "variableOrFact.fact.entity.variable", for
    *       referencing a variable accessible from the planning entity. The first property may be a
    *       fact or any non-declarative variable; the remaining properties before the end must be
@@ -33,6 +33,12 @@ public @interface ShadowSources {
    *       java.util.Collection} on the planning entity, and the annotated method uses the
    *       "previous" variable of each element in the collection. The collection must not change
    *       during solving and may be null.
+   *   <li>The name of a {@link PlanningListVariable} on the planning entity suffixed by "[].",
+   *       followed by a declarative shadow variable on the list variable's elements (optionally
+   *       accessed via a fact). For example, "values[].endTime". In this case, the annotated method
+   *       uses the "endTime" declarative shadow variable of each element currently assigned to the
+   *       "values" list variable, and is recomputed whenever the list variable or any of its
+   *       elements' "endTime" changes.
    * </ul>
    *
    * For example, for this method

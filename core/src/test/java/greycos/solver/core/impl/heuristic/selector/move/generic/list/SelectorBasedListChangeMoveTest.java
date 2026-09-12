@@ -117,7 +117,7 @@ class SelectorBasedListChangeMoveTest {
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 1, 1);
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e2, 1, 1);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e2, 1, 2);
-    verify(scoreDirector, atLeastOnce()).triggerVariableListeners();
+    verify(scoreDirector, atLeastOnce()).updateShadowVariables();
   }
 
   static Stream<Arguments> doAndUndoMoveOnTheSameEntity() {
@@ -154,7 +154,7 @@ class SelectorBasedListChangeMoveTest {
 
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e, fromIndex, toIndex);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e, fromIndex, toIndex);
-    verify(scoreDirector, atLeastOnce()).triggerVariableListeners();
+    verify(scoreDirector, atLeastOnce()).updateShadowVariables();
   }
 
   @Test

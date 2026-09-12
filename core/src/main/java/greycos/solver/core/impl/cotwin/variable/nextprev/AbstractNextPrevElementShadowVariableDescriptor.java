@@ -1,6 +1,5 @@
 package greycos.solver.core.impl.cotwin.variable.nextprev;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -121,12 +120,11 @@ abstract class AbstractNextPrevElementShadowVariableDescriptor<Solution_>
               + sourceVariableDescriptor
               + ").");
     }
-    sourceVariableDescriptor.registerSinkVariableDescriptor(this);
   }
 
   @Override
-  public List<VariableDescriptor<Solution_>> getSourceVariableDescriptorList() {
-    return Collections.singletonList(sourceVariableDescriptor);
+  public VariableDescriptor<Solution_> getSourceVariableDescriptor() {
+    return sourceVariableDescriptor;
   }
 
   @Override
@@ -134,10 +132,5 @@ abstract class AbstractNextPrevElementShadowVariableDescriptor<Solution_>
     throw new UnsupportedOperationException(
         "Impossible state: Handled by %s."
             .formatted(ListVariableStateSupply.class.getSimpleName()));
-  }
-
-  @Override
-  public boolean isListVariableSource() {
-    return true;
   }
 }

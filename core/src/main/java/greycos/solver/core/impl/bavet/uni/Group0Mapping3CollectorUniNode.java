@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.bavet.uni;
 
+import java.util.function.IntSupplier;
+
 import greycos.solver.core.api.score.stream.ConstraintCollectors;
 import greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
 import greycos.solver.core.config.solver.EnvironmentMode;
@@ -14,8 +16,7 @@ public final class Group0Mapping3CollectorUniNode<
   private final int outputStoreSize;
 
   public Group0Mapping3CollectorUniNode(
-      int groupStoreIndex,
-      int undoStoreIndex,
+      IntSupplier storeIndexReserver,
       UniConstraintCollector<OldA, ResultContainerA_, A> collectorA,
       UniConstraintCollector<OldA, ResultContainerB_, B> collectorB,
       UniConstraintCollector<OldA, ResultContainerC_, C> collectorC,
@@ -23,8 +24,7 @@ public final class Group0Mapping3CollectorUniNode<
       int outputStoreSize,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
-        undoStoreIndex,
+        storeIndexReserver,
         null,
         mergeCollectors(collectorA, collectorB, collectorC),
         nextNodesTupleLifecycle,

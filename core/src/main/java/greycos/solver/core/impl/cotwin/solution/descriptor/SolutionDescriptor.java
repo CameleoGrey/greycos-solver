@@ -16,7 +16,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -64,13 +63,11 @@ import greycos.solver.core.impl.cotwin.variable.declarative.DeclarativeShadowVar
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.util.MutableInt;
 import greycos.solver.core.impl.util.MutableLong;
-import greycos.solver.core.impl.util.MutablePair;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 import greycos.solver.core.preview.api.cotwin.solution.diff.PlanningSolutionDiff;
 
@@ -662,7 +659,7 @@ public final class SolutionDescriptor<Solution_> {
     for (var entityDescriptor : entityDescriptorMap.values()) {
       entityDescriptor.linkVariableDescriptors(descriptorPolicy);
     }
-    determineGlobalShadowOrder();
+
     problemFactOrEntityClassSet = collectEntityAndProblemFactClasses();
     listVariableDescriptorList = findListVariableDescriptors();
     validateListVariableDescriptors();
@@ -683,56 +680,6 @@ public final class SolutionDescriptor<Solution_> {
       }
     }
     initSolutionCloner(descriptorPolicy);
-  }
-
-  private void determineGlobalShadowOrder() {
-    // Topological sorting with Kahn's algorithm
-    var pairList = new ArrayList<MutablePair<ShadowVariableDescriptor<Solution_>, Integer>>();
-    var shadowToPairMap =
-        new HashMap<
-            ShadowVariableDescriptor<Solution_>,
-            MutablePair<ShadowVariableDescriptor<Solution_>, Integer>>();
-    for (var entityDescriptor : entityDescriptorMap.values()) {
-      for (var shadow : entityDescriptor.getDeclaredShadowVariableDescriptors()) {
-        var sourceSize = shadow.getSourceVariableDescriptorList().size();
-        var pair = MutablePair.of(shadow, sourceSize);
-        pairList.add(pair);
-        shadowToPairMap.put(shadow, pair);
-      }
-    }
-    for (var entityDescriptor : entityDescriptorMap.values()) {
-      for (var genuine : entityDescriptor.getDeclaredGenuineVariableDescriptors()) {
-        for (var sink : genuine.getSinkVariableDescriptorList()) {
-          var sinkPair = shadowToPairMap.get(sink);
-          sinkPair.setValue(sinkPair.getValue() - 1);
-        }
-      }
-    }
-    var globalShadowOrder = 0;
-    while (!pairList.isEmpty()) {
-      pairList.sort(Comparator.comparingInt(MutablePair::getValue));
-      var pair = pairList.removeFirst();
-      var shadow = pair.getKey();
-      if (pair.getValue() != 0) {
-        if (pair.getValue() < 0) {
-          throw new IllegalStateException(
-              "Impossible state because the shadowVariable (%s) cannot be used more as a sink than it has sources."
-                  .formatted(shadow.getSimpleEntityAndVariableName()));
-        }
-        throw new IllegalStateException(
-            "There is a cyclic shadow variable path that involves the shadowVariable (%s) because it must be later than its sources (%s) and also earlier than its sinks (%s)."
-                .formatted(
-                    shadow.getSimpleEntityAndVariableName(),
-                    shadow.getSourceVariableDescriptorList(),
-                    shadow.getSinkVariableDescriptorList()));
-      }
-      for (var sink : shadow.getSinkVariableDescriptorList()) {
-        var sinkPair = shadowToPairMap.get(sink);
-        sinkPair.setValue(sinkPair.getValue() - 1);
-      }
-      shadow.setGlobalShadowOrder(globalShadowOrder);
-      globalShadowOrder++;
-    }
   }
 
   private void validateListVariableDescriptors() {
@@ -786,6 +733,7 @@ public final class SolutionDescriptor<Solution_> {
                 e instanceof ListVariableDescriptor<Solution_> listVariableDescriptor
                     ? Stream.of(listVariableDescriptor)
                     : Stream.empty())
+        .distinct()
         .toList();
   }
 
@@ -905,6 +853,7 @@ public final class SolutionDescriptor<Solution_> {
     basicVariableDescriptorList =
         getGenuineEntityDescriptors().stream()
             .flatMap(entityDescriptor -> entityDescriptor.getBasicVariableDescriptorList().stream())
+            .distinct()
             .toList();
     return basicVariableDescriptorList;
   }

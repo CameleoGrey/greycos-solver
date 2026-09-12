@@ -1,6 +1,9 @@
 package greycos.solver.core.impl.score.director;
 
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Objects;
+import java.util.SequencedMap;
 import java.util.function.Consumer;
 
 import greycos.solver.core.api.solver.ProblemSizeStatistics;
@@ -23,11 +26,16 @@ final class ValueRangeStatistics<Solution_> {
   private final ValueRangeManager<Solution_> valueRangeManager;
   private final SolutionDescriptor<Solution_> solutionDescriptor;
   private final Solution_ solution;
+  // Reporting includes inherited-only entity classes; solver selector deduction intentionally
+  // continues using the declared-genuine classes in SolutionDescriptor.
+  private final List<EntityDescriptor<Solution_>> genuineEntityDescriptors;
   private @Nullable SolutionInitializationStatistics cachedInitializationStatistics = null;
   private @Nullable ProblemSizeStatistics cachedProblemSizeStatistics = null;
 
   // Negative if not calculated, non-negative if cached
   private long cachedApproximateValueCount = -1L;
+  private long @Nullable [][] cachedValueCountByEntityAndEffectiveVariableIndex;
+  private long @Nullable [] cachedEntityCountByEntityOrdinal;
   private double cachedProblemScale = -1.0;
 
   ValueRangeStatistics(
@@ -36,11 +44,14 @@ final class ValueRangeStatistics<Solution_> {
       Solution_ solution) {
     this.valueRangeManager = valueRangeManager;
     this.solutionDescriptor = solutionDescriptor;
+    this.genuineEntityDescriptors =
+        solutionDescriptor.getEntityDescriptors().stream()
+            .filter(EntityDescriptor::isGenuine)
+            .toList();
     this.solution =
         Objects.requireNonNull(
             solution,
-            "Impossible state: initialization statistics requested before the working solution is"
-                + " known.");
+            "Impossible state: initialization statistics requested before the working solution is known.");
   }
 
   Solution_ getSolution() {
@@ -66,6 +77,14 @@ final class ValueRangeStatistics<Solution_> {
     var shadowEntityCount = new MutableInt();
     var approximateValueCount = new MutableLong();
     var maxValueRangeSize = new MutableLong(0L);
+
+    cachedEntityCountByEntityOrdinal = new long[solutionDescriptor.getEntityDescriptors().size()];
+    cachedValueCountByEntityAndEffectiveVariableIndex =
+        new long[cachedEntityCountByEntityOrdinal.length][];
+    for (var entityDescriptor : genuineEntityDescriptors) {
+      cachedValueCountByEntityAndEffectiveVariableIndex[entityDescriptor.getOrdinal()] =
+          new long[entityDescriptor.getGenuineVariableDescriptorList().size()];
+    }
 
     var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
     if (listVariableDescriptor != null) {
@@ -96,6 +115,21 @@ final class ValueRangeStatistics<Solution_> {
       }
     }
 
+    // Declared ordinals are local to the declaring class, and may overlap after inheritance.
+    // Use each effective variable's position for the breakdown; shared solution ranges still
+    // contribute only once to the aggregate above.
+    for (var entityDescriptor : genuineEntityDescriptors) {
+      var variables = entityDescriptor.getGenuineVariableDescriptorList();
+      var counts = cachedValueCountByEntityAndEffectiveVariableIndex[entityDescriptor.getOrdinal()];
+      for (int i = 0; i < variables.size(); i++) {
+        var variable = variables.get(i);
+        if (variable.canExtractValueRangeFromSolution()) {
+          counts[i] =
+              valueRangeManager.countOnSolution(variable.getValueRangeDescriptor(), solution);
+        }
+      }
+    }
+
     var logBase = (maxValueRangeSize.longValue() < 2) ? 10 : maxValueRangeSize.longValue();
     var problemScaleTracker =
         new ProblemScaleTracker<>(listVariableDescriptor, valueRangeManager, logBase);
@@ -105,7 +139,9 @@ final class ValueRangeStatistics<Solution_> {
         entity -> {
           var entityDescriptor = solutionDescriptor.findEntityDescriptorOrFail(entity.getClass());
           if (entityDescriptor.isGenuine()) {
+            // This count include immovable entities; problem scale ignores immovable entities
             genuineEntityCount.increment();
+            cachedEntityCountByEntityOrdinal[entityDescriptor.getOrdinal()]++;
             var uninitializedVariableCountForEntity =
                 entityDescriptor.countUninitializedVariables(entity);
             if (uninitializedVariableCountForEntity > 0) {
@@ -120,19 +156,26 @@ final class ValueRangeStatistics<Solution_> {
             finisher.accept(entity);
           }
 
-          for (var genuineVariable : entityDescriptor.getGenuineVariableDescriptorList()) {
+          var genuineVariables = entityDescriptor.getGenuineVariableDescriptorList();
+          for (int variableIndex = 0; variableIndex < genuineVariables.size(); variableIndex++) {
+            var genuineVariable = genuineVariables.get(variableIndex);
             if (genuineVariable
                     instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor
                 && !basicVariableDescriptor.canExtractValueRangeFromSolution()) {
-              approximateValueCount.add(
+              var rangeValueCount =
                   valueRangeManager.countOnEntity(
-                      basicVariableDescriptor.getValueRangeDescriptor(), entity));
+                      basicVariableDescriptor.getValueRangeDescriptor(), entity);
+              approximateValueCount.add(rangeValueCount);
+              cachedValueCountByEntityAndEffectiveVariableIndex[entityDescriptor.getOrdinal()][
+                      variableIndex] +=
+                  rangeValueCount;
             }
           }
           if (!entityDescriptor.hasAnyListVariables()) {
             return;
           }
-          var listVariableEntityDescriptor = listVariableDescriptor.getEntityDescriptor();
+          var listVariableEntityDescriptor =
+              Objects.requireNonNull(listVariableDescriptor).getEntityDescriptor();
           var countOnEntity = listVariableDescriptor.getListSize(entity);
           notInAnyListValueCount.subtract(countOnEntity);
           if (!listVariableDescriptor.allowsUnassignedValues()
@@ -140,9 +183,13 @@ final class ValueRangeStatistics<Solution_> {
             unassignedValueCount.subtract(countOnEntity);
           }
           if (!listVariableDescriptor.canExtractValueRangeFromSolution()) {
-            approximateValueCount.add(
+            var listValueCount =
                 valueRangeManager.countOnEntity(
-                    listVariableDescriptor.getValueRangeDescriptor(), entity));
+                    listVariableDescriptor.getValueRangeDescriptor(), entity);
+            approximateValueCount.add(listValueCount);
+            cachedValueCountByEntityAndEffectiveVariableIndex[entityDescriptor.getOrdinal()][
+                    genuineVariables.indexOf(listVariableDescriptor)] +=
+                listValueCount;
           }
           // TODO maybe detect duplicates and elements that are outside the value range
         });
@@ -175,14 +222,46 @@ final class ValueRangeStatistics<Solution_> {
       computeInitializationStatistics(null, false);
     }
     if (cachedProblemSizeStatistics == null) {
+      var result = getEntityAndValueCounts();
       cachedProblemSizeStatistics =
           new ProblemSizeStatistics(
               solutionDescriptor.getGenuineEntityCount(solution),
+              result.entityClassToEntityCount(),
               solutionDescriptor.getGenuineVariableCount(solution),
               cachedApproximateValueCount,
+              result.entityClassToVariableToValueCount(),
               cachedProblemScale);
     }
     return cachedProblemSizeStatistics;
+  }
+
+  private record EntityAndValueCounts(
+      LinkedHashMap<Class<?>, Long> entityClassToEntityCount,
+      LinkedHashMap<Class<?>, SequencedMap<String, Long>> entityClassToVariableToValueCount) {}
+
+  private EntityAndValueCounts getEntityAndValueCounts() {
+    var entityClassToEntityCount = new LinkedHashMap<Class<?>, Long>();
+    var entityClassToVariableToValueCount =
+        new LinkedHashMap<Class<?>, SequencedMap<String, Long>>();
+    for (var entityDescriptor : genuineEntityDescriptors) {
+      entityClassToEntityCount.put(
+          entityDescriptor.getEntityClass(),
+          cachedEntityCountByEntityOrdinal[entityDescriptor.getOrdinal()]);
+      entityClassToVariableToValueCount.put(
+          entityDescriptor.getEntityClass(), getVariableToValueCount(entityDescriptor));
+    }
+    return new EntityAndValueCounts(entityClassToEntityCount, entityClassToVariableToValueCount);
+  }
+
+  private LinkedHashMap<String, Long> getVariableToValueCount(
+      EntityDescriptor<Solution_> entityDescriptor) {
+    var variableToValueCount = new LinkedHashMap<String, Long>();
+    var variables = entityDescriptor.getGenuineVariableDescriptorList();
+    var counts = cachedValueCountByEntityAndEffectiveVariableIndex[entityDescriptor.getOrdinal()];
+    for (int i = 0; i < variables.size(); i++) {
+      variableToValueCount.put(variables.get(i).getVariableName(), counts[i]);
+    }
+    return variableToValueCount;
   }
 
   long getApproximateValueCount() {

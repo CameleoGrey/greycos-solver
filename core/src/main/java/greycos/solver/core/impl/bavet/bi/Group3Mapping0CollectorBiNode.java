@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.bavet.bi;
 
 import java.util.function.BiFunction;
+import java.util.function.IntSupplier;
 
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.bavet.common.tuple.BiTuple;
@@ -17,12 +18,12 @@ public final class Group3Mapping0CollectorBiNode<OldA, OldB, A, B, C>
       BiFunction<OldA, OldB, A> groupKeyMappingA,
       BiFunction<OldA, OldB, B> groupKeyMappingB,
       BiFunction<OldA, OldB, C> groupKeyMappingC,
-      int groupStoreIndex,
+      IntSupplier storeIndexReserver,
       TupleLifecycle<TriTuple<A, B, C>> nextNodesTupleLifecycle,
       int outputStoreSize,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
+        storeIndexReserver,
         tuple -> createGroupKey(groupKeyMappingA, groupKeyMappingB, groupKeyMappingC, tuple),
         nextNodesTupleLifecycle,
         environmentMode);

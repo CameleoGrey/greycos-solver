@@ -6,14 +6,14 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public record ConstraintNodeProfileId(
-    long key,
+    int key,
     StreamKind streamKind,
     Qualifier qualifier,
     SortedSet<ConstraintNodeLocation> locationSet)
     implements Comparable<ConstraintNodeProfileId> {
 
   public ConstraintNodeProfileId(
-      long key, StreamKind streamKind, SortedSet<ConstraintNodeLocation> locationSet) {
+      int key, StreamKind streamKind, SortedSet<ConstraintNodeLocation> locationSet) {
     this(key, streamKind, Qualifier.NONE, locationSet);
   }
 
@@ -24,12 +24,12 @@ public record ConstraintNodeProfileId(
 
   @Override
   public int hashCode() {
-    return Long.hashCode(key);
+    return Integer.hashCode(key);
   }
 
   @Override
   public int compareTo(ConstraintNodeProfileId other) {
-    return Long.compare(key, other.key);
+    return Integer.compare(key, other.key);
   }
 
   @Override
@@ -50,7 +50,8 @@ public record ConstraintNodeProfileId(
   public String toVerboseString() {
     var toString = toString();
     if (locationSet.size() == 1) {
-      return "%s defined at location %s".formatted(toString, locationSet.first());
+      var location = locationSet.first();
+      return "%s defined at location %s".formatted(toString, location);
     }
     return "%s shared at locations %s".formatted(toString, locationSet);
   }

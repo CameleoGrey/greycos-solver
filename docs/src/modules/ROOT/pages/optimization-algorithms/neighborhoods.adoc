@@ -366,6 +366,37 @@ public class TimeslotChangeMoveProvider
 
 We will explore each of these concepts in more detail below.
 
+[#neighborhoodsEnumerateVsSample]
+==== When to enumerate and when to sample?
+
+Operations such as `join()` are available both on <<#neighborhoodsEnumeration,enumerating stream>> and <<#neighborhoodsSampling,sampling streams>>.
+The decision between enumeration and sampling is effectively
+a trade-off between what is more important to you –
+solver speed or memory consumption:
+
+- Enumerating streams will result in data structures which are fully expanded in memory,
+and efficiently incrementally updated by the solver.
+- Sampling streams, on the other hand,
+will be expanded just-in-time when the solver first needs to access them
+and will not be cached in any way.
+
+It follows that you should prefer doing most of your work in enumerated streams,
+unless that work creates a lot of data –
+such as joins over large datasets, nested joins, or pillars.
+With such data structures, you run the risk of consuming so much memory
+that full enumeration may no longer be practically possible.
+In those cases,
+just-in-time capabilities provided by sampling streams are the way to go,
+even if they result in comparatively slower solver performance;
+a slower optimization beats no optimization at all.
+
+Some capabilities (such as pillars) may only be provided as sampling streams,
+with the explicit assumption that every non-trivial dataset will already produce too many combinations.
+In cases where the API does give you a choice,
+you do not need to decide right away.
+See if your problem can handle being implemented mostly with enumerating streams,
+and convert to sampling if/when you see the solver exceeding available memory.
+
 
 [#neighborhoodsEnumeration]
 === Dataset enumeration
@@ -377,6 +408,12 @@ which operates much like the xref:constraints-and-score/score-calculation.adoc#c
 By default, `forEach` will exclude pinned items, as generating moves for pinned items is typically undesirable.
 Additionally, it allows to specify whether it should include `null` in the resulting dataset or not;
 this is useful when generating moves for nullable planning variables.
+
+Every enumerating stream is terminated one of two ways: `MoveStreamFactory.pick()`, handing the rows
+to the <<neighborhoodsSampling,sampling layer>> below, or `asCachedDataset()`, handing you the dataset handle to resolve and
+sample yourself. Both terminal operations keep the dataset in memory and up to date;
+they are not a choice between a cached and an uncached path,
+only between who reads the cached rows.
 
 From there, many of the same building blocks are available,
 such as xref:constraints-and-score/score-calculation.adoc#constraintStreamsFilter[`filter()`],
@@ -480,6 +517,11 @@ More advanced selection strategies,
 such as xref:advanced-features/advanced-features.adoc#nearbySelection[nearby selection],
 are likely to materialize here in the future as well.
 
+Should these methods of sampling be too restrictive for you,
+refer to <<neighborhoodsIteratorBased,iterator-based neighborhoods>>
+which give you full control over what is sampled and how,
+making your move providers more powerful but also more complex.
+
 [#neighborhoodsMoveGeneration]
 === Move Generation
 
@@ -518,6 +560,174 @@ The move generation function can create any type of move -
 see the <<neighborhoodsMove,section on moves>> for more details.
 However, we expect that most move providers will eventually be able to use built-in moves,
 which will be expanded over time to cover more use cases.
+
+[#neighborhoodsIteratorBased]
+=== Building moves from a custom iterator
+
+Some neighborhoods need combining logic that isn't a join at all -
+randomly picking pillars, windowed/greedy pairing,
+or combining three or more datasets by hand.
+For those cases, terminate your enumerating streams with `asCachedDataset()` instead of `pick()`,
+then supply your own `Iterator<Move>` that combines the resulting dataset handles however you need.
+
+[source,java,options="nowrap"]
+----
+public class BestShiftMoveProvider implements MoveProvider<Roster> {
+
+    private final PlanningVariableMetaModel<Roster, Shift, Employee> variableMetaModel;
+
+    public BestShiftMoveProvider(PlanningVariableMetaModel<Roster, Shift, Employee> variableMetaModel) {
+        this.variableMetaModel = variableMetaModel;
+    }
+
+    @Override
+    public MoveStream<Roster> build(MoveStreamFactory<Roster> factory) {
+        var employees = factory.forEach(Employee.class, false).asCachedDataset();
+        var shifts = factory.forEach(Shift.class, false).asCachedDataset();
+
+        return factory.buildMoveStream((session, random) -> {
+            var employeeInstance = session.getInstance(employees);
+            var shiftInstance = session.getInstance(shifts);
+            var solutionView = session.getSolutionView();
+            return new Iterator<Move<Roster>>() {
+                private final Iterator<Employee> employeeIterator = employeeInstance.iterator(random);
+
+                @Override
+                public boolean hasNext() {
+                    return employeeIterator.hasNext();
+                }
+
+                @Override
+                public Move<Roster> next() {
+                    var employee = employeeIterator.next();
+                    var bestShift = pickBestShift(employee, shiftInstance, solutionView); // Your own logic.
+                    return Moves.change(variableMetaModel, bestShift, employee);
+                }
+            };
+        });
+    }
+
+}
+----
+
+`UniEnumeratingStream#asCachedDataset()` and `BiEnumeratingStream#asCachedDataset()` turn a stream into a `UniDataset`/`BiDataset` handle,
+mirroring `pick()` but without committing to the declarative sampling approach.
+Call `UniDataset#join(...)` to correlate a cached dataset with another stream,
+using the same joiners as `pick()`.
+This will have the same effect as joining inside of a `pick()` -
+the join will be materialized just-in-time when needed by the solver,
+as opposed to fully expanded and persisted in memory.
+
+Inside `buildMoveStream(...)`, the `MoveIteratorSession` resolves each dataset handle
+to a `UniDatasetInstance` or `BiDatasetInstance`,
+which exposes `size()`, `iterator(RandomGenerator)` and `exhaustiveIterator(RandomGenerator)` -
+ the same random-walk sampling used throughout Move Streams.
+ A `BiDatasetInstance` additionally exposes the same three operations keyed by a left-side value,
+for datasets produced by a join.
+
+IMPORTANT: The order in which the iterator yields moves is never part of the API's contract,
+and application code must not rely on an exact move sequence.
+This does not remove solver reproducibility with fixed seeds, identical inputs and configuration,
+and count-based termination; sampling changes between versions may change the resulting trajectory.
+This is why `MoveIteratorProvider` only ever produces a single, random-order iterator -
+there is no original/deterministic-order variant.
+
+[#neighborhoodsMoveStreamsTesting]
+=== Testing move generation with `NeighborhoodTester`
+
+Having created a custom `MoveProvider`, it is essential to verify that it correctly generates moves
+and interacts properly with the solver's infrastructure.
+The `NeighborhoodTester` API provides a simple testing utility
+to enumerate and sample moves from a move provider in isolation,
+making it easy to write unit tests for your move providers.
+
+IMPORTANT: The `NeighborhoodTester` API is designed exclusively for testing purposes.
+It should not be used in production code or during normal solver operation.
+It is not thread-safe and not fine-tuned for performance.
+
+[#neighborhoodsMoveStreamsTestingBasics]
+==== Basic usage
+
+The `NeighborhoodTester` API follows a fluent builder pattern:
+
+[source,java,options="nowrap"]
+----
+// Timetable is the solution class, Lesson is a planning entity class.
+var solutionMetaModel = PlanningSolutionMetaModel.of(Timetable.class, Lesson.class);
+var entityMetaModel = solutionMetaModel.genuineEntity(Lesson.class);
+var evaluator = NeighborhoodTester.build(new SwapMoveProvider<>(entityMetaModel), solutionMetaModel);
+var context = evaluator.using(solution);
+context.producesAllOf(Moves.swap(entityMetaModel.basicVariable(), lessonA, lessonB)); // Assert a specific move exists.
+context.producesNoneOf(Moves.swap(entityMetaModel.basicVariable(), lessonA, lessonA)); // Assert a move never exists.
+----
+
+The API requires:
+
+1. **Move provider**: An implementation of `greycos.solver.core.preview.api.neighborhood.MoveProvider`
+2. **Solution class**: The class annotated with `@PlanningSolution`
+3. **Entity classes**: One or more classes annotated with `@PlanningEntity`
+4. **Solution instance**: The working solution to execute the move on
+
+Because the order in which a move provider generates moves is never part of the API contract,
+`NeighborhoodTester` never exposes an exact move sequence to assert against.
+Instead, `producesAllOf(Move...)` and `producesNoneOf(Move...)` repeatedly draw moves
+(up to an iteration limit) and compare them to the given moves via `equals()`:
+`producesAllOf` fails if the limit is reached before all given moves were seen;
+`producesNoneOf` fails as soon as any given move is seen.
+A custom `Move` implementation used with these assertions must implement `equals()`/`hashCode()`.
+
+Use `.within(iterationLimit)` to override the default iteration limit for a single assertion;
+it returns a new, independently configured context and never mutates the one it was called on:
+
+[source,java,options="nowrap"]
+----
+context.within(10_000).producesAllOf(Moves.swap(entityMetaModel.basicVariable(), lessonA, lessonB));
+----
+
+If you need to inspect a move's fields directly rather than compare it via `equals()`,
+`getMovesAsStream()`/`getMovesAsIterator()` expose random sampling which may never end.
+Bound stream consumption with `limit(...)`, or stop an iterator after a chosen number of draws.
+Use the membership assertions to check expected moves within a sampling budget;
+failure to observe a move does not prove that it is impossible.
+
+[#neighborhoodsMoveStreamsTestingRunningMoves]
+==== Running the generated moves
+
+The moves generated by the `NeighborhoodTester` can be executed
+using <<neighborhoodsMoveTesterBasics,the MoveTester API>>,
+and an initialized `MoveTestContext` can be obtained directly from the `NeighborhoodTestContext` instance.
+
+[source,java,options="nowrap"]
+----
+var tester = NeighborhoodTester.build(new SwapMoveProvider<>(entityMetaModel), solutionMetaModel);
+var testerContext = tester.using(solution);
+var moveTestContext = testerContext.getMoveTestContext();
+----
+
+Temporary execution with automatic undo is particularly useful for testing move correctness,
+and can be combined with using `getMovesAsIterator()` to grab a move without loading them all into memory:
+
+[source,java,options="nowrap"]
+----
+var tester = NeighborhoodTester.build(new SwapMoveProvider<>(entityMetaModel), solutionMetaModel);
+var testContext = tester.using(solution);
+var moveIterator = testContext.getMovesAsIterator();
+
+assertThat(moveIterator).hasNext();
+var firstMove = moveIterator.next();
+
+var moveTestContext = testContext.getMoveTestContext();
+moveTestContext.executeTemporarily(firstMove, solutionView -> assertThat(firstEntity.getValue())
+                .isEqualTo(firstValue)); // Check that the move did what was expected.
+assertThat(firstEntity.getValue()).isNull(); // Check that the move's effect was correctly undone.
+----
+
+Permanent execution can also be used when appropriate.
+However, permanent execution will place all move iterators in an undefined state,
+and it is therefore recommended to only use permanent execution
+when you no longer need to iterate over more moves.
+To continue iterating after permanent execution,
+you must re-obtain the move iterator from the `NeighborhoodTestContext` instance.
 
 
 [#neighborhoodsConfiguration]
@@ -576,18 +786,33 @@ public class MyNeighborhoodProvider implements NeighborhoodProvider<MySolution> 
 Use the `add` method to include every single move provider you want to use in the neighborhood.
 Finally, call the `build` method to create the `Neighborhood` instance.
 
+GreyCOS enables neighborhood generation only when `neighborhoodProviderClass` is configured.
+Enabling the preview feature alone preserves the existing move selectors.
+A provider without an explicit move selector configuration supplies all Local Search moves;
+configuring both combines the provider with those move selectors.
+The combined selector weights each side by its number of neighborhood providers or leaf move selectors,
+then draws within the selected side.
+
+Sampling can repeatedly produce the same move. Empty datasets, pairs rejected by every filter,
+and exhausted finite custom iterators stop producing moves;
+active sampling must be bounded by the solver's termination and forager settings.
+Indexed pairs without an additional filter are sampled uniformly.
+Additional filters and overlapping `containingAnyOf` keys may retain selection bias;
+filtered sampling also uses bounded retries and therefore cannot prove exhaustive coverage.
+
 [#neighborhoodsRuntimeLimitations]
 === Runtime limitations
 
 As the Neighborhoods API is still in an early stage of development,
-it has some limitations which we will address in future releases:
+it has some limitations which we will address in future releases,
+such as:
 
-- When `neighborhoodProviderClass` is used, it is not yet possible to disable move selector-based neighborhoods.
-You should therefore only include moves which are not included by the solver by default.
+- Solver integration currently supports one genuine entity class with one genuine variable.
+- The Neighborhoods API is not compatible with `LocalSearchType.VARIABLE_NEIGHBORHOOD_DESCENT`;
+configuring both together throws an exception at solver build time.
 - The Neighborhoods API does not yet support move probability weighting.
 All move providers included in the neighborhood have the same probability of being selected to generate a move.
-- The Neighborhoods API also has the same probability of selection as the move-selector based neighborhood.
-This means that the solver will first pick whether to use the Neighborhoods API or the move selectors to generate the next move, and only then use that particular method to generate the move.
 
-The coexistence of Move Selectors and Neighborhoods is an issue we are actively working on,
-as Neighborhoods is still far from being a full replacement of Move Selectors.
+We are actively working on adding more advanced moves in the default neighborhood,
+such as 2-opt, 3-opt and xref:optimization-algorithms/move-selector-reference.adoc#nearbySelection[nearby selection].
+The Neighborhoods API is still far from being a full replacement of Move Selectors.

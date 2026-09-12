@@ -64,6 +64,13 @@ The following `MoveSelector` implementations are available out of the box:
 These moves are applicable to planning variables that aren’t part of a list or a chain,
 also called xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariable[basic variables].
 
+[NOTE]
+====
+By default, the solver uses the moves
+xref:optimization-algorithms/move-selector-reference.adoc#changeMoveSelector[Change] and
+xref:optimization-algorithms/move-selector-reference.adoc#swapMoveSelector[Swap].
+====
+
 [#changeMoveSelector]
 === `ChangeMoveSelector`
 
@@ -429,6 +436,14 @@ As always, benchmarking is recommended to find the optimal value for your use ca
 == Move selectors for list variables
 
 These moves are applicable to xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[list planning variables].
+
+[NOTE]
+====
+By default, the solver uses the moves
+xref:optimization-algorithms/move-selector-reference.adoc#listChangeMoveSelector[Change],
+xref:optimization-algorithms/move-selector-reference.adoc#listSwapMoveSelector[Swap], and
+xref:optimization-algorithms/move-selector-reference.adoc#kOptListMoveSelector[K-OPT].
+====
 
 [#listChangeMoveSelector]
 === `ListChangeMoveSelector`

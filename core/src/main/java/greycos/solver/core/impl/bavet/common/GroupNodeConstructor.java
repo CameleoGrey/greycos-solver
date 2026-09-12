@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.bavet.common;
 
 import java.util.List;
+import java.util.function.IntSupplier;
 
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
@@ -9,46 +10,42 @@ import greycos.solver.core.impl.util.Pair;
 import greycos.solver.core.impl.util.Quadruple;
 import greycos.solver.core.impl.util.Triple;
 
+/**
+ * Each Group...Node with at least one collector have a constructor with the following signature:
+ * {@code Group...Node(<keyMappings>, IntSupplier storeIndexReserver, <collectors>,
+ * TupleLifecycle<Tuple_> nextNodesTupleLifecycle, int outputStoreSize, Environment
+ * environmentMode)}
+ *
+ * <p>The Group...Nodes with no collectors have a constructor with the following signature: {@code
+ * Group...Node(<keyMappings>, IntSupplier storeIndexReserver, TupleLifecycle<Tuple_>
+ * nextNodesTupleLifecycle, int outputStoreSize, Environment environmentMode)}
+ *
+ * <p>storeIndexReserver allows the node to reserve everything it needs itself, from a shared,
+ * order-independent, monotonic per-stream counter (see
+ * AbstractNodeBuildHelper#reserveTupleStoreIndex), the same way {@link AbstractJoinNode} reserves
+ * its own store indices from the tracker it receives.
+ *
+ * <p>The interfaces in this file correspond to each of the possible signatures of the Group...Node
+ * constructor. These interfaces are thus covariant with a particular GroupXMappingYCollector...Node
+ * signature, allowing a method reference to be used. To reduce the number of interfaces, we use
+ * Collector..._ and Key..._ generics instead of the classes UniConstraintCollector/Function,
+ * BiConstraintCollector/BiFunction, ....
+ *
+ * @param <Tuple_> Although unused here, it is used in its two implementations: {@link
+ *     GroupNodeConstructorWithAccumulate} and {@link GroupNodeConstructorWithoutAccumulate}. Serves
+ *     here as a type hint for the compiler, allowing it to correctly infer the types to use in the
+ *     lambda being passed to their constructors.
+ */
 public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
     permits AbstractGroupNodeConstructor {
-  // Although Tuple_ is unused in GroupNodeConstructor,
-  // it is used in its two implementations: GroupNodeConstructorWithAccumulate
-  // and GroupNodeConstructorWithoutAccumulate. The Tuple_ here serves as a type hint
-  // for the compiler, allowing it to correctly infer the types to use in the lambda
-  // being passed to GroupNodeConstructorWithAccumulate's and
-  // GroupNodeConstructorWithoutAccumulate's constructor.
 
-  // Each Group...Node with at least one collector have a constructor with the following signature:
-  // Group...Node(<keyMappings>, int groupStoreIndex, int undoStoreIndex, <collectors>,
-  // TupleLifecycle<Tuple_> nextNodesTupleLifecycle, int outputStoreSize,
-  // Environment environmentMode)
-  //
-  // The Group...Nodes with no collectors have a constructor with the following signature:
-  // Group...Node(<keyMappings>, int groupStoreIndex, TupleLifecycle<Tuple_>
-  // nextNodesTupleLifecycle,
-  // int outputStoreSize, Environment environmentMode)
-  //
-  // TupleLifecycle<Tuple_> in the constructor is the reason why having Tuple_ in the
-  // generic signature of this interface is useful.
-  //
-  // The interfaces in this file correspond to each of the possible signatures of the
-  // Group...Node constructor. These interfaces are thus covariant with a particular
-  // GroupXMappingYCollector...Node signature, allowing a method reference to be used.
-  // To reduce the number of interfaces, we use Collector..._ and Key..._ generics
-  // (instead of the classes UniConstraintCollector/Function, BiConstraintCollector/BiFunction,
-  // ...).
   static <CollectorA_, Tuple_ extends Tuple> GroupNodeConstructor<Tuple_> zeroKeysGroupBy(
       CollectorA_ collector, GroupBy0Mapping1CollectorNodeBuilder<CollectorA_, Tuple_> builder) {
     return new GroupNodeConstructorWithAccumulate<>(
         collector,
-        (groupStoreIndex,
-            undoStoreIndex,
-            nextNodesTupleLifecycle,
-            outputStoreSize,
-            environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
-                groupStoreIndex,
-                undoStoreIndex,
+                storeIndexReserver,
                 collector,
                 nextNodesTupleLifecycle,
                 outputStoreSize,
@@ -62,14 +59,9 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
           GroupBy0Mapping2CollectorNodeBuilder<CollectorA_, CollectorB_, Tuple_> builder) {
     return new GroupNodeConstructorWithAccumulate<>(
         new Pair<>(collectorA, collectorB),
-        (groupStoreIndex,
-            undoStoreIndex,
-            nextNodesTupleLifecycle,
-            outputStoreSize,
-            environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
-                groupStoreIndex,
-                undoStoreIndex,
+                storeIndexReserver,
                 collectorA,
                 collectorB,
                 nextNodesTupleLifecycle,
@@ -86,14 +78,9 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
               builder) {
     return new GroupNodeConstructorWithAccumulate<>(
         new Triple<>(collectorA, collectorB, collectorC),
-        (groupStoreIndex,
-            undoStoreIndex,
-            nextNodesTupleLifecycle,
-            outputStoreSize,
-            environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
-                groupStoreIndex,
-                undoStoreIndex,
+                storeIndexReserver,
                 collectorA,
                 collectorB,
                 collectorC,
@@ -113,14 +100,9 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
               builder) {
     return new GroupNodeConstructorWithAccumulate<>(
         new Quadruple<>(collectorA, collectorB, collectorC, collectorD),
-        (groupStoreIndex,
-            undoStoreIndex,
-            nextNodesTupleLifecycle,
-            outputStoreSize,
-            environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
-                groupStoreIndex,
-                undoStoreIndex,
+                storeIndexReserver,
                 collectorA,
                 collectorB,
                 collectorC,
@@ -134,10 +116,10 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
       KeyA_ keyMapping, GroupBy1Mapping0CollectorNodeBuilder<KeyA_, Tuple_> builder) {
     return new GroupNodeConstructorWithoutAccumulate<>(
         keyMapping,
-        (groupStoreIndex, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
                 keyMapping,
-                groupStoreIndex,
+                storeIndexReserver,
                 nextNodesTupleLifecycle,
                 outputStoreSize,
                 environmentMode));
@@ -149,15 +131,10 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
       GroupBy1Mapping1CollectorNodeBuilder<KeyA_, CollectorB_, Tuple_> builder) {
     return new GroupNodeConstructorWithAccumulate<>(
         new Pair<>(keyMappingA, collectorB),
-        (groupStoreIndex,
-            undoStoreIndex,
-            nextNodesTupleLifecycle,
-            outputStoreSize,
-            environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
                 keyMappingA,
-                groupStoreIndex,
-                undoStoreIndex,
+                storeIndexReserver,
                 collectorB,
                 nextNodesTupleLifecycle,
                 outputStoreSize,
@@ -172,15 +149,10 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
           GroupBy1Mapping2CollectorNodeBuilder<KeyA_, CollectorB_, CollectorC_, Tuple_> builder) {
     return new GroupNodeConstructorWithAccumulate<>(
         new Triple<>(keyMappingA, collectorB, collectorC),
-        (groupStoreIndex,
-            undoStoreIndex,
-            nextNodesTupleLifecycle,
-            outputStoreSize,
-            environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
                 keyMappingA,
-                groupStoreIndex,
-                undoStoreIndex,
+                storeIndexReserver,
                 collectorB,
                 collectorC,
                 nextNodesTupleLifecycle,
@@ -198,15 +170,10 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
               builder) {
     return new GroupNodeConstructorWithAccumulate<>(
         new Quadruple<>(keyMappingA, collectorB, collectorC, collectorD),
-        (groupStoreIndex,
-            undoStoreIndex,
-            nextNodesTupleLifecycle,
-            outputStoreSize,
-            environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
                 keyMappingA,
-                groupStoreIndex,
-                undoStoreIndex,
+                storeIndexReserver,
                 collectorB,
                 collectorC,
                 collectorD,
@@ -221,11 +188,11 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
       GroupBy2Mapping0CollectorNodeBuilder<KeyA_, KeyB_, Tuple_> builder) {
     return new GroupNodeConstructorWithoutAccumulate<>(
         new Pair<>(keyMappingA, keyMappingB),
-        (groupStoreIndex, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
                 keyMappingA,
                 keyMappingB,
-                groupStoreIndex,
+                storeIndexReserver,
                 nextNodesTupleLifecycle,
                 outputStoreSize,
                 environmentMode));
@@ -239,16 +206,11 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
           GroupBy2Mapping1CollectorNodeBuilder<KeyA_, KeyB_, CollectorC_, Tuple_> builder) {
     return new GroupNodeConstructorWithAccumulate<>(
         new Triple<>(keyMappingA, keyMappingB, collectorC),
-        (groupStoreIndex,
-            undoStoreIndex,
-            nextNodesTupleLifecycle,
-            outputStoreSize,
-            environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
                 keyMappingA,
                 keyMappingB,
-                groupStoreIndex,
-                undoStoreIndex,
+                storeIndexReserver,
                 collectorC,
                 nextNodesTupleLifecycle,
                 outputStoreSize,
@@ -265,16 +227,11 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
               builder) {
     return new GroupNodeConstructorWithAccumulate<>(
         new Quadruple<>(keyMappingA, keyMappingB, collectorC, collectorD),
-        (groupStoreIndex,
-            undoStoreIndex,
-            nextNodesTupleLifecycle,
-            outputStoreSize,
-            environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
                 keyMappingA,
                 keyMappingB,
-                groupStoreIndex,
-                undoStoreIndex,
+                storeIndexReserver,
                 collectorC,
                 collectorD,
                 nextNodesTupleLifecycle,
@@ -289,12 +246,12 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
       GroupBy3Mapping0CollectorNodeBuilder<KeyA_, KeyB_, KeyC_, Tuple_> builder) {
     return new GroupNodeConstructorWithoutAccumulate<>(
         new Triple<>(keyMappingA, keyMappingB, keyMappingC),
-        (groupStoreIndex, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
                 keyMappingA,
                 keyMappingB,
                 keyMappingC,
-                groupStoreIndex,
+                storeIndexReserver,
                 nextNodesTupleLifecycle,
                 outputStoreSize,
                 environmentMode));
@@ -309,17 +266,12 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
           GroupBy3Mapping1CollectorNodeBuilder<KeyA_, KeyB_, KeyC_, CollectorD_, Tuple_> builder) {
     return new GroupNodeConstructorWithAccumulate<>(
         new Quadruple<>(keyMappingA, keyMappingB, keyMappingC, collectorD),
-        (groupStoreIndex,
-            undoStoreIndex,
-            nextNodesTupleLifecycle,
-            outputStoreSize,
-            environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
                 keyMappingA,
                 keyMappingB,
                 keyMappingC,
-                groupStoreIndex,
-                undoStoreIndex,
+                storeIndexReserver,
                 collectorD,
                 nextNodesTupleLifecycle,
                 outputStoreSize,
@@ -335,13 +287,13 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
           GroupBy4Mapping0CollectorNodeBuilder<KeyA_, KeyB_, KeyC_, KeyD_, Tuple_> builder) {
     return new GroupNodeConstructorWithoutAccumulate<>(
         new Quadruple<>(keyMappingA, keyMappingB, keyMappingC, keyMappingD),
-        (groupStoreIndex, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
+        (storeIndexReserver, nextNodesTupleLifecycle, outputStoreSize, environmentMode) ->
             builder.build(
                 keyMappingA,
                 keyMappingB,
                 keyMappingC,
                 keyMappingD,
-                groupStoreIndex,
+                storeIndexReserver,
                 nextNodesTupleLifecycle,
                 outputStoreSize,
                 environmentMode));
@@ -351,8 +303,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
   interface NodeConstructorWithAccumulate<Tuple_ extends Tuple> {
 
     AbstractNode apply(
-        int groupStoreIndex,
-        int undoStoreIndex,
+        IntSupplier storeIndexReserver,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
         int outputStoreSize,
         EnvironmentMode environmentMode);
@@ -362,7 +313,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
   interface NodeConstructorWithoutAccumulate<Tuple_ extends Tuple> {
 
     AbstractNode apply(
-        int groupStoreIndex,
+        IntSupplier storeIndexReserver,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
         int outputStoreSize,
         EnvironmentMode environmentMode);
@@ -371,8 +322,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
   @FunctionalInterface
   interface GroupBy0Mapping1CollectorNodeBuilder<CollectorA_, Tuple_ extends Tuple> {
     AbstractNode build(
-        int groupStoreIndex,
-        int undoStoreIndex,
+        IntSupplier storeIndexReserver,
         CollectorA_ collector,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
         int outputStoreSize,
@@ -382,8 +332,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
   @FunctionalInterface
   interface GroupBy0Mapping2CollectorNodeBuilder<CollectorA_, CollectorB_, Tuple_ extends Tuple> {
     AbstractNode build(
-        int groupStoreIndex,
-        int undoStoreIndex,
+        IntSupplier storeIndexReserver,
         CollectorA_ collectorA,
         CollectorB_ collectorB,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
@@ -395,8 +344,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
   interface GroupBy0Mapping3CollectorNodeBuilder<
       CollectorA_, CollectorB_, CollectorC_, Tuple_ extends Tuple> {
     AbstractNode build(
-        int groupStoreIndex,
-        int undoStoreIndex,
+        IntSupplier storeIndexReserver,
         CollectorA_ collectorA,
         CollectorB_ collectorB,
         CollectorC_ collectorC,
@@ -409,8 +357,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
   interface GroupBy0Mapping4CollectorNodeBuilder<
       CollectorA_, CollectorB_, CollectorC_, CollectorD_, Tuple_ extends Tuple> {
     AbstractNode build(
-        int groupStoreIndex,
-        int undoStoreIndex,
+        IntSupplier storeIndexReserver,
         CollectorA_ collectorA,
         CollectorB_ collectorB,
         CollectorC_ collectorC,
@@ -424,7 +371,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
   interface GroupBy1Mapping0CollectorNodeBuilder<KeyA_, Tuple_ extends Tuple> {
     AbstractNode build(
         KeyA_ keyMapping,
-        int groupStoreIndex,
+        IntSupplier storeIndexReserver,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
         int outputStoreSize,
         EnvironmentMode environmentMode);
@@ -435,7 +382,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
     AbstractNode build(
         KeyA_ keyMappingA,
         KeyB_ keyMappingB,
-        int groupStoreIndex,
+        IntSupplier storeIndexReserver,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
         int outputStoreSize,
         EnvironmentMode environmentMode);
@@ -447,7 +394,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
         KeyA_ keyMappingA,
         KeyB_ keyMappingB,
         KeyC_ keyMappingC,
-        int groupStoreIndex,
+        IntSupplier storeIndexReserver,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
         int outputStoreSize,
         EnvironmentMode environmentMode);
@@ -460,7 +407,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
         KeyB_ keyMappingB,
         KeyC_ keyMappingC,
         KeyD_ keyMappingD,
-        int groupStoreIndex,
+        IntSupplier storeIndexReserver,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
         int outputStoreSize,
         EnvironmentMode environmentMode);
@@ -470,8 +417,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
   interface GroupBy1Mapping1CollectorNodeBuilder<KeyA_, CollectorB_, Tuple_ extends Tuple> {
     AbstractNode build(
         KeyA_ keyMapping,
-        int groupStoreIndex,
-        int undoStoreIndex,
+        IntSupplier storeIndexReserver,
         CollectorB_ collector,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
         int outputStoreSize,
@@ -483,8 +429,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
       KeyA_, CollectorB_, CollectorC_, Tuple_ extends Tuple> {
     AbstractNode build(
         KeyA_ keyMapping,
-        int groupStoreIndex,
-        int undoStoreIndex,
+        IntSupplier storeIndexReserver,
         CollectorB_ collectorA,
         CollectorC_ collectorB,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
@@ -497,8 +442,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
       KeyA_, CollectorB_, CollectorC_, CollectorD_, Tuple_ extends Tuple> {
     AbstractNode build(
         KeyA_ keyMapping,
-        int groupStoreIndex,
-        int undoStoreIndex,
+        IntSupplier storeIndexReserver,
         CollectorB_ collectorA,
         CollectorC_ collectorB,
         CollectorD_ collectorC,
@@ -512,8 +456,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
     AbstractNode build(
         KeyA_ keyMappingA,
         KeyB_ keyMappingB,
-        int groupStoreIndex,
-        int undoStoreIndex,
+        IntSupplier storeIndexReserver,
         CollectorC_ collectorC,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
         int outputStoreSize,
@@ -526,8 +469,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
     AbstractNode build(
         KeyA_ keyMappingA,
         KeyB_ keyMappingB,
-        int groupStoreIndex,
-        int undoStoreIndex,
+        IntSupplier storeIndexReserver,
         CollectorC_ collectorC,
         CollectorD_ collectorD,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
@@ -542,8 +484,7 @@ public sealed interface GroupNodeConstructor<Tuple_ extends Tuple>
         KeyA_ keyMappingA,
         KeyB_ keyMappingB,
         KeyC_ keyMappingC,
-        int groupStoreIndex,
-        int undoStoreIndex,
+        IntSupplier storeIndexReserver,
         CollectorD_ collectorC,
         TupleLifecycle<Tuple_> nextNodesTupleLifecycle,
         int outputStoreSize,

@@ -82,7 +82,7 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
         moveDirector.execute(new ChangeMove<>(basicVariableDescriptor, clonedElement, null));
       }
     }
-    scoreDirector.triggerVariableListeners();
+    scoreDirector.updateShadowVariables();
 
     // The placers needs to be filtered.
     // If anything else than the cloned element is unassigned, we want to keep it unassigned.

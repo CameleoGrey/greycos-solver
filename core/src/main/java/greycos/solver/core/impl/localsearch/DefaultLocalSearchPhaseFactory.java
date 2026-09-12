@@ -27,7 +27,6 @@ import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory;
-import greycos.solver.core.impl.heuristic.selector.move.composite.UnionMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.composite.UnionMoveSelectorFactory;
 import greycos.solver.core.impl.localsearch.decider.LocalSearchDecider;
 import greycos.solver.core.impl.localsearch.decider.MultiThreadedLocalSearchDecider;
@@ -35,6 +34,7 @@ import greycos.solver.core.impl.localsearch.decider.acceptor.Acceptor;
 import greycos.solver.core.impl.localsearch.decider.acceptor.AcceptorFactory;
 import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForagerFactory;
+import greycos.solver.core.impl.neighborhood.MixedMoveSelector;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.neighborhood.MoveSelectorBasedMoveRepository;
 import greycos.solver.core.impl.neighborhood.NeighborhoodsBasedMoveRepository;
@@ -115,16 +115,23 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
   private NeighborhoodsBasedMoveRepository<Solution_> buildNeighborhoodsBasedMoveRepository(
       HeuristicConfigPolicy<Solution_> configPolicy,
       Class<? extends NeighborhoodProvider<Solution_>> neighborhoodProviderClass) {
+    if (phaseConfig.getLocalSearchType() == LocalSearchType.VARIABLE_NEIGHBORHOOD_DESCENT) {
+      throw new IllegalArgumentException(
+          "The localSearchType (%s) does not support the Neighborhoods API. Maybe use a different localSearchType."
+              .formatted(phaseConfig.getLocalSearchType()));
+    }
     var solutionDescriptor = configPolicy.getSolutionDescriptor();
     var solutionMetaModel = solutionDescriptor.getMetaModel();
     if (solutionMetaModel.genuineEntities().size() > 1) {
       throw new UnsupportedOperationException(
-          "Neighborhoods API currently only supports solutions with a single entity class, not multiple.");
+          "Neighborhoods API currently only supports solutions with a single entity class, not"
+              + " multiple.");
     }
     var entityMetaModel = solutionMetaModel.genuineEntities().get(0);
     if (entityMetaModel.genuineVariables().size() > 1) {
       throw new UnsupportedOperationException(
-          "Neighborhoods API currently only supports solutions with a single variable class, not multiple.");
+          "Neighborhoods API currently only supports solutions with a single variable class, not"
+              + " multiple.");
     }
 
     if (!NeighborhoodProvider.class.isAssignableFrom(neighborhoodProviderClass)) {
@@ -144,8 +151,7 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
         ((DefaultNeighborhood<Solution_>)
                 neighborhoodProvider.defineNeighborhood(neighborhoodBuilder))
             .getMoveProviderList();
-    return new NeighborhoodsBasedMoveRepository<>(
-        moveStreamFactory, moveDefinitionList, pickSelectionOrder() == SelectionOrder.RANDOM);
+    return new NeighborhoodsBasedMoveRepository<>(moveStreamFactory, moveDefinitionList);
   }
 
   private LocalSearchDecider<Solution_> buildMixedDecider(
@@ -156,29 +162,9 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
         new NeighborhoodsMoveSelector<>(
             buildNeighborhoodsBasedMoveRepository(configPolicy, neighborhoodProviderClass));
     var legacyMoveSelector = buildMoveSelector(configPolicy);
-    if (legacyMoveSelector instanceof UnionMoveSelector<Solution_> unionMoveSelector) {
-      if (unionMoveSelector.getSelectorProbabilityWeightFactory() != null) {
-        throw new UnsupportedOperationException(
-            "Probability-weighted move selectors are not supported together with the Neighborhoods API.");
-      } else {
-        // We do not need to worry about probabilities, and therefore we just crack the union open
-        // and create a new union including the neighborhoods.
-        var moveSelectorList = new ArrayList<>(unionMoveSelector.getChildMoveSelectorList());
-        moveSelectorList.add(neighborhoodsMoveSelector);
-        var finalMoveSelector =
-            new UnionMoveSelector<>(
-                moveSelectorList, pickSelectionOrder() == SelectionOrder.RANDOM);
-        var moveRepository = new MoveSelectorBasedMoveRepository<>(finalMoveSelector);
-        return buildDecider(moveRepository, configPolicy, termination);
-      }
-    } else {
-      var unionMoveSelector =
-          new UnionMoveSelector<>(
-              List.of(neighborhoodsMoveSelector, legacyMoveSelector),
-              pickSelectionOrder() == SelectionOrder.RANDOM);
-      var moveRepository = new MoveSelectorBasedMoveRepository<>(unionMoveSelector);
-      return buildDecider(moveRepository, configPolicy, termination);
-    }
+    var moveSelector = new MixedMoveSelector<>(legacyMoveSelector, neighborhoodsMoveSelector);
+    var moveRepository = new MoveSelectorBasedMoveRepository<>(moveSelector);
+    return buildDecider(moveRepository, configPolicy, termination);
   }
 
   private LocalSearchDecider<Solution_> buildDecider(
@@ -192,8 +178,9 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
     if (moveRepository.isNeverEnding() && !forager.supportsNeverEndingMoveSelector()) {
       throw new IllegalStateException(
           """
-                    The move repository (%s) is neverEnding (%s), but the forager (%s) does not support it.
-                    Maybe configure the <forager> with an <acceptedCountLimit>."""
+          The move repository (%s) is neverEnding (%s), but the forager (%s) does not support it.
+          Maybe configure the <forager> with an <acceptedCountLimit>.\
+          """
               .formatted(moveRepository, moveRepository.isNeverEnding(), forager));
     }
     var moveThreadCount =

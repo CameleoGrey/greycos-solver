@@ -1,15 +1,10 @@
 package greycos.solver.core.impl.cotwin.variable;
 
-import static greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.BASIC;
-import static greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.CASCADING_UPDATE;
-import static greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.CUSTOM_LISTENER;
-import static greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.DECLARATIVE;
 import static greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy.DISABLED;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -35,8 +30,6 @@ import greycos.solver.core.impl.cotwin.variable.declarative.VariableReferenceGra
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType;
-import greycos.solver.core.impl.cotwin.variable.listener.support.VariableListenerSupport;
 import greycos.solver.core.impl.cotwin.variable.nextprev.NextElementShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.nextprev.PreviousElementShadowVariableDescriptor;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
@@ -52,25 +45,8 @@ import org.jspecify.annotations.Nullable;
 @NullMarked
 public final class ShadowVariableUpdateHelper<Solution_> {
 
-  private static final EnumSet<ShadowVariableType> SUPPORTED_TYPES =
-      EnumSet.of(BASIC, CUSTOM_LISTENER, CASCADING_UPDATE, DECLARATIVE);
-
   public static <Solution_> ShadowVariableUpdateHelper<Solution_> create() {
-    return new ShadowVariableUpdateHelper<>(SUPPORTED_TYPES);
-  }
-
-  // Testing purposes
-  static <Solution_> ShadowVariableUpdateHelper<Solution_> create(
-      ShadowVariableType... supportedTypes) {
-    var typesSet = EnumSet.noneOf(ShadowVariableType.class);
-    typesSet.addAll(Arrays.asList(supportedTypes));
-    return new ShadowVariableUpdateHelper<>(typesSet);
-  }
-
-  private final EnumSet<ShadowVariableType> supportedShadowVariableTypes;
-
-  private ShadowVariableUpdateHelper(EnumSet<ShadowVariableType> supportedShadowVariableTypes) {
-    this.supportedShadowVariableTypes = supportedShadowVariableTypes;
+    return new ShadowVariableUpdateHelper<>();
   }
 
   @SuppressWarnings("unchecked")
@@ -84,7 +60,7 @@ public final class ShadowVariableUpdateHelper<Solution_> {
         SolutionDescriptor.buildSolutionDescriptor(
             solutionClass, entityClassSet.toArray(new Class<?>[0]));
     try (var scoreDirector = new InternalScoreDirector.Builder<>(solutionDescriptor).build()) {
-      // When we have a solution, we can reuse the logic from VariableListenerSupport to update all
+      // When we have a solution, we can reuse the logic from ShadowVariableSupport to update all
       // variable types
       scoreDirector.setWorkingSolution(solution);
     }
@@ -100,18 +76,6 @@ public final class ShadowVariableUpdateHelper<Solution_> {
     var solutionDescriptor =
         SolutionDescriptor.buildSolutionDescriptor(
             Objects.requireNonNull(solutionClass), entityClassList.toArray(new Class<?>[0]));
-    var variableListenerSupport =
-        VariableListenerSupport.create(
-            new InternalScoreDirector.Builder<>(solutionDescriptor).build());
-    var missingShadowVariableTypeList =
-        variableListenerSupport.getSupportedShadowVariableTypes().stream()
-            .filter(type -> !supportedShadowVariableTypes.contains(type))
-            .toList();
-    if (!missingShadowVariableTypeList.isEmpty()) {
-      throw new IllegalStateException(
-          "Impossible state: The following shadow variable types are not currently supported (%s)."
-              .formatted(missingShadowVariableTypeList));
-    }
     // No solution, we trigger all supported events manually
     var session = InternalShadowVariableSession.build(solutionDescriptor, entities);
     // Update all built-in shadow variables
@@ -214,7 +178,7 @@ public final class ShadowVariableUpdateHelper<Solution_> {
         if (values.isEmpty()) {
           continue;
         }
-        var entityType = values.get(0).getClass();
+        var entityType = values.getFirst().getClass();
         for (var i = 0; i < values.size(); i++) {
           var shadowEntity = values.get(i);
           // Inverse relation

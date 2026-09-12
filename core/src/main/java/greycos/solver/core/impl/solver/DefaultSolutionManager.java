@@ -15,7 +15,7 @@ import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.api.solver.SolverManager;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.PreviewFeature;
-import greycos.solver.core.impl.cotwin.variable.listener.support.violation.VariableSnapshotTotal;
+import greycos.solver.core.impl.cotwin.variable.violation.VariableSnapshotTotal;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.ScoreDirectorFactory;

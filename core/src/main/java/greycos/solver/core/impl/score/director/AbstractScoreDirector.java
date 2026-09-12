@@ -23,14 +23,13 @@ import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.lookup.LookUpManager;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
-import greycos.solver.core.impl.cotwin.variable.InnerVariableListener;
 import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ShadowVariableSupport;
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.listener.support.VariableListenerSupport;
-import greycos.solver.core.impl.cotwin.variable.listener.support.violation.SolutionTracker;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
+import greycos.solver.core.impl.cotwin.variable.violation.SolutionTracker;
 import greycos.solver.core.impl.move.MoveDirector;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.neighborhood.NeighborhoodsBasedMoveRepository;
@@ -78,7 +77,7 @@ public abstract class AbstractScoreDirector<
   protected final Factory_ scoreDirectorFactory;
   private final NeighborhoodNotifier<Solution_> neighborhoodsElementUpdateNotifier;
   private final VariableDescriptorCache<Solution_> variableDescriptorCache;
-  protected final VariableListenerSupport<Solution_> variableListenerSupport;
+  protected final ShadowVariableSupport<Solution_> shadowVariableSupport;
 
   private boolean expectShadowVariablesInCorrectState;
 
@@ -116,8 +115,8 @@ public abstract class AbstractScoreDirector<
     this.constraintMatchPolicy = builder.constraintMatchPolicy;
     this.expectShadowVariablesInCorrectState = builder.expectShadowVariablesInCorrectState;
     this.variableDescriptorCache = new VariableDescriptorCache<>(solutionDescriptor);
-    this.variableListenerSupport = VariableListenerSupport.create(this);
-    this.variableListenerSupport.linkVariableListeners();
+    this.shadowVariableSupport = ShadowVariableSupport.create(this);
+    this.shadowVariableSupport.linkShadowVariables();
     this.solutionTracker =
         this.scoreDirectorFactory.isTrackingWorkingSolution()
             ? new SolutionTracker<>(getSolutionDescriptor(), getSupplyManager())
@@ -222,7 +221,7 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public SupplyManager getSupplyManager() {
-    return variableListenerSupport;
+    return shadowVariableSupport;
   }
 
   @Override
@@ -247,8 +246,8 @@ public abstract class AbstractScoreDirector<
   /**
    * Note: resetting the working solution does NOT substitute the calls to before/after methods of
    * the {@link ProblemChangeDirector} during {@link ProblemChange problem changes}, as these calls
-   * are propagated to {@link InnerVariableListener variable listeners}, which update shadow
-   * variables in the {@link PlanningSolution working solution} to keep it consistent.
+   * are propagated to shadow variable updaters, which update shadow variables in the {@link
+   * PlanningSolution working solution} to keep it consistent.
    *
    * @param workingSolution the working solution to set
    * @param entityAndFactVisitor maybe null; a function to apply to all problem facts and problem
@@ -306,7 +305,7 @@ public abstract class AbstractScoreDirector<
     assertInitScoreZeroOrLess();
     workingGenuineEntityCount = initializationStatistics.genuineEntityCount();
 
-    variableListenerSupport.resetWorkingSolution();
+    shadowVariableSupport.resetWorkingSolution();
     if (moveRepository != null) {
       moveRepository.initialize(new SessionContext<>(this));
     }
@@ -322,7 +321,7 @@ public abstract class AbstractScoreDirector<
     var originalShouldAssert = expectShadowVariablesInCorrectState;
     expectShadowVariablesInCorrectState = false;
     setWorkingSolutionWithoutUpdatingShadows(workingSolution);
-    forceTriggerVariableListeners();
+    forceUpdateShadowVariables();
     expectShadowVariablesInCorrectState = originalShouldAssert;
     afterSetWorkingSolution();
   }
@@ -447,8 +446,8 @@ public abstract class AbstractScoreDirector<
   }
 
   @Override
-  public void triggerVariableListeners() {
-    variableListenerSupport.triggerVariableListenersInNotificationQueues();
+  public void updateShadowVariables() {
+    shadowVariableSupport.updateShadowVariables();
   }
 
   /**
@@ -457,13 +456,13 @@ public abstract class AbstractScoreDirector<
    * inconsistent states. This occurs when the shadow variables are not updated, causing constraints
    * reliant on these variables to be inaccurately evaluated.
    */
-  protected void clearVariableListenerEvents() {
-    variableListenerSupport.clearAllVariableListenerEvents();
+  protected void clearPendingShadowVariableUpdates() {
+    shadowVariableSupport.clearPendingShadowVariableUpdates();
   }
 
   @Override
-  public void forceTriggerVariableListeners() {
-    variableListenerSupport.forceTriggerAllVariableListeners(getWorkingSolution());
+  public void forceUpdateShadowVariables() {
+    shadowVariableSupport.forceUpdateAllShadowVariables(getWorkingSolution());
   }
 
   protected void setCalculatedScore(Score_ score) {
@@ -521,7 +520,7 @@ public abstract class AbstractScoreDirector<
       getSupplyManager()
           .cancel(listVariableStateSupply.getSourceVariableDescriptor().getStateDemand());
     }
-    variableListenerSupport.close();
+    shadowVariableSupport.close();
   }
 
   // ************************************************************************
@@ -557,7 +556,7 @@ public abstract class AbstractScoreDirector<
       workingInitScore++;
     }
     assertInitScoreZeroOrLess();
-    variableListenerSupport.beforeVariableChanged(variableDescriptor, entity);
+    shadowVariableSupport.beforeVariableChanged(variableDescriptor, entity);
   }
 
   @Override
@@ -566,7 +565,7 @@ public abstract class AbstractScoreDirector<
     if (variableDescriptor.isGenuineAndUninitialized(entity)) {
       workingInitScore--;
     }
-    variableListenerSupport.afterVariableChanged(variableDescriptor, entity);
+    shadowVariableSupport.afterVariableChanged(variableDescriptor, entity);
     neighborhoodsElementUpdateNotifier.accept(entity);
     if (isStepAssertOrMore()) {
       assertValueRangeForBasicVariables(entity);
@@ -601,7 +600,7 @@ public abstract class AbstractScoreDirector<
         .allowsUnassignedValues()) { // Unassigned elements don't count towards the initScore here.
       workingInitScore--;
     }
-    variableListenerSupport.afterElementUnassigned(variableDescriptor, element);
+    shadowVariableSupport.afterElementUnassigned(variableDescriptor, element);
     neighborhoodsElementUpdateNotifier.accept(element);
   }
 
@@ -623,8 +622,7 @@ public abstract class AbstractScoreDirector<
                             Maybe you are using an improperly implemented custom move?"""
               .formatted(variableDescriptor, entity, fromIndex, toIndex));
     }
-    variableListenerSupport.beforeListVariableChanged(
-        variableDescriptor, entity, fromIndex, toIndex);
+    shadowVariableSupport.beforeListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
   }
 
   @Override
@@ -633,8 +631,7 @@ public abstract class AbstractScoreDirector<
       Object entity,
       int fromIndex,
       int toIndex) {
-    variableListenerSupport.afterListVariableChanged(
-        variableDescriptor, entity, fromIndex, toIndex);
+    shadowVariableSupport.afterListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
     neighborhoodsElementUpdateNotifier.accept(entity);
     if (isStepAssertOrMore()) {
       var valueList = variableDescriptor.getValue(entity).subList(fromIndex, toIndex);
@@ -680,7 +677,7 @@ public abstract class AbstractScoreDirector<
     if (lookUpEnabled) {
       lookUpManager.addWorkingObject(problemFact);
     }
-    variableListenerSupport.resetWorkingSolution(); // TODO do not nuke the variable listeners
+    shadowVariableSupport.resetWorkingSolution(); // TODO do not nuke the variable listeners
     if (moveRepository
         instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {
       neighborhoodsBasedMoveRepository.insert(problemFact);
@@ -698,7 +695,7 @@ public abstract class AbstractScoreDirector<
       setWorkingSolution(
           workingSolution); // Nuke everything and recalculate, constraint weights have changed.
     } else {
-      variableListenerSupport.resetWorkingSolution(); // TODO do not nuke the variable listeners
+      shadowVariableSupport.resetWorkingSolution(); // TODO do not nuke the variable listeners
       neighborhoodsElementUpdateNotifier.accept(problemFactOrEntity);
     }
   }
@@ -719,7 +716,7 @@ public abstract class AbstractScoreDirector<
     if (lookUpEnabled) {
       lookUpManager.removeWorkingObject(problemFact);
     }
-    variableListenerSupport.resetWorkingSolution(); // TODO do not nuke the variable listeners
+    shadowVariableSupport.resetWorkingSolution(); // TODO do not nuke the variable listeners
     if (moveRepository
         instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {
       neighborhoodsBasedMoveRepository.retract(problemFact);
@@ -769,7 +766,7 @@ public abstract class AbstractScoreDirector<
   @Override
   public void assertShadowVariablesAreNotStale(
       InnerScore<Score_> expectedWorkingScore, Object completedAction) {
-    var violationMessage = variableListenerSupport.createShadowVariablesViolationMessage();
+    var violationMessage = shadowVariableSupport.createShadowVariablesViolationMessage();
     if (violationMessage != null) {
       throw new VariableCorruptionException(
           """
@@ -810,7 +807,7 @@ public abstract class AbstractScoreDirector<
    * @return never null
    */
   protected String buildShadowVariableAnalysis(boolean predicted) {
-    var violationMessage = variableListenerSupport.createShadowVariablesViolationMessage();
+    var violationMessage = shadowVariableSupport.createShadowVariablesViolationMessage();
     var workingLabel = predicted ? "working" : "corrupted";
     if (violationMessage == null) {
       return """
@@ -988,13 +985,13 @@ public abstract class AbstractScoreDirector<
       // We cannot set all shadow variables to null, since some variable listeners
       // may expect them to be non-null.
       // Instead, we just simulate a change to all genuine variables.
-      variableListenerSupport.forceTriggerAllVariableListeners(workingSolution);
+      shadowVariableSupport.forceUpdateAllShadowVariables(workingSolution);
       solutionTracker.setUndoFromScratchSolution(workingSolution);
 
       // Also calculate from scratch for the before solution, since it might
       // have been corrupted but was only detected now
       solutionTracker.restoreBeforeSolution();
-      variableListenerSupport.forceTriggerAllVariableListeners(workingSolution);
+      shadowVariableSupport.forceUpdateAllShadowVariables(workingSolution);
       solutionTracker.setBeforeFromScratchSolution(workingSolution);
 
       corruptionDiagnosis = solutionTracker.buildScoreCorruptionMessage();
@@ -1010,7 +1007,7 @@ public abstract class AbstractScoreDirector<
                 %s
 
                 1) Enable EnvironmentMode %s (if you haven't already)
-                   to fail-faster in case of a score corruption or variable listener corruption.
+                   to fail-faster in case of a score corruption or shadow variable corruption.
                    Let the solver run until it reaches the same point in its lifecycle (%s),
                    even though it may take a very long time.
                    If the solver throws an exception before reaching that point,
@@ -1063,13 +1060,13 @@ public abstract class AbstractScoreDirector<
       // We cannot set all shadow variables to null, since some variable listeners
       // may expect them to be non-null.
       // Instead, we just simulate a change to all genuine variables.
-      variableListenerSupport.forceTriggerAllVariableListeners(workingSolution);
+      shadowVariableSupport.forceUpdateAllShadowVariables(workingSolution);
       solutionTracker.setUndoFromScratchSolution(workingSolution);
 
       // Also calculate from scratch for the before solution, since it might
       // have been corrupted but was only detected now
       solutionTracker.restoreBeforeSolution();
-      variableListenerSupport.forceTriggerAllVariableListeners(workingSolution);
+      shadowVariableSupport.forceUpdateAllShadowVariables(workingSolution);
       solutionTracker.setBeforeFromScratchSolution(workingSolution);
 
       return solutionTracker.buildSolutionCorruptionResult();

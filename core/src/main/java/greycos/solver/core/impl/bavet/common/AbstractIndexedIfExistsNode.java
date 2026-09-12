@@ -100,24 +100,17 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
     leftTuple.setStore(inputStoreIndexLefCompositeKey, compositeKey);
 
     var counter = new ExistsCounter<>(leftTuple);
-    updateCounterRight(
-        leftTuple, compositeKey, counter, putLeftCounter(leftTuple, compositeKey, counter, false));
-    initCounterLeft(counter);
-  }
-
-  private void updateCounterRight(
-      LeftTuple_ leftTuple,
-      Object compositeKey,
-      ExistsCounter<LeftTuple_> counter,
-      ListEntry<ExistsCounter<LeftTuple_>> counterEntry) {
+    var counterEntry = putLeftCounter(leftTuple, compositeKey, counter, false);
     leftTuple.setStore(inputStoreIndexLeftCounterEntry, counterEntry);
     if (!isFiltering) {
       counter.countRight = rightSize(leftTuple, compositeKey);
+      initCounterLeft(counter);
     } else {
-      // Trackers link themselves into the left tuple's inputStoreIndexLeftTrackerList slot.
-      // No list object is needed; the slot starts null and the first tracker becomes the head.
-      forEachRightFromLeft(
-          leftTuple, compositeKey, rightTuple -> updateCounterFromLeft(counter, rightTuple));
+      // Defer the cross-match (the opposite-side read) to this node's own layer turn instead of
+      // computing it now,
+      // at whatever layer the parent that produced leftTuple happens to be in.
+      // See AbstractIfExistsNode's pendingLeft/pendingRight javadoc.
+      enqueuePendingLeft(leftTuple);
     }
   }
 
@@ -151,32 +144,38 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
       if (!isFiltering) {
         updateUnchangedCounterLeft(counter);
       } else {
-        // Call filtering for the leftTuple and rightTuple combinations again
+        // Eager own-side cleanup (reads only pairs already tracked, so it's eager-safe),
+        // then defer the re-walk of the opposite side to this node's own layer turn.
+        // See AbstractIfExistsNode's pendingLeft/pendingRight javadoc.
         clearLeftTrackerList(leftTuple);
         counter.countRight = 0;
-        forEachRightFromLeft(
-            leftTuple, oldCompositeKey, rightTuple -> updateCounterFromLeft(counter, rightTuple));
-        updateCounterLeft(counter);
+        enqueuePendingLeft(leftTuple);
       }
     } else {
       // sameBucket: equal prefix unchanged ⇒ keep & reuse the cached bucket (no top lookup, no
       // drop/recreate).
       var sameBucket =
           reuseBucketEligible && fusedEqualIndex.isSameBucket(oldCompositeKey, newCompositeKey);
-      updateIndexerLeft(oldCompositeKey, counterEntry, leftTuple, sameBucket);
+      updateIndexerLeft(
+          oldCompositeKey, counterEntry, leftTuple, sameBucket); // Also clears the tracker list.
       counter.countRight = 0;
       leftTuple.setStore(inputStoreIndexLefCompositeKey, newCompositeKey);
-      updateCounterRight(
-          leftTuple,
-          newCompositeKey,
-          counter,
+      leftTuple.setStore(
+          inputStoreIndexLeftCounterEntry,
           putLeftCounter(leftTuple, newCompositeKey, counter, sameBucket));
-      updateCounterLeft(counter);
+      if (isFiltering) {
+        enqueuePendingLeft(leftTuple);
+      } else {
+        counter.countRight = rightSize(leftTuple, newCompositeKey);
+        updateCounterLeft(counter);
+      }
     }
   }
 
   @Override
   public final void retractLeft(LeftTuple_ leftTuple) {
+    clearPendingLeft(
+        leftTuple); // A tuple can be retracted before its turn to reconcile ever comes.
     var compositeKey = leftTuple.removeStore(inputStoreIndexLefCompositeKey);
     if (compositeKey == null) {
       // No fail fast if null because we don't track which tuples made it through the filter
@@ -237,10 +236,11 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
     if (!isFiltering) {
       forEachLeftCounter(rightTuple, compositeKey, this::incrementCounterRight);
     } else {
-      // Trackers link themselves into the right tuple's inputStoreIndexRightTrackerList slot.
-      // No list object is needed; the slot starts null and the first tracker becomes the head.
-      forEachLeftCounter(
-          rightTuple, compositeKey, counter -> updateCounterFromRight(counter, rightTuple));
+      // Defer the cross-match (the opposite-side read) to this node's own layer turn instead of
+      // computing it now,
+      // at whatever layer the parent that produced rightTuple happens to be in.
+      // See AbstractIfExistsNode's pendingLeft/pendingRight javadoc.
+      enqueuePendingRight(rightTuple);
     }
   }
 
@@ -257,9 +257,10 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
     if (oldCompositeKey.equals(newCompositeKey)) {
       // No need for re-indexing because the index keys didn't change
       if (isFiltering) {
+        // Eager own-side cleanup, then defer the re-walk of the opposite side.
+        // See AbstractIfExistsNode's pendingLeft/pendingRight javadoc.
         clearRightTrackerList(rightTuple);
-        forEachLeftCounter(
-            rightTuple, oldCompositeKey, counter -> updateCounterFromRight(counter, rightTuple));
+        enqueuePendingRight(rightTuple);
       }
     } else {
       // sameBucket: equal prefix unchanged ⇒ keep & reuse the cached bucket (no top lookup, no
@@ -292,6 +293,8 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
 
   @Override
   public final void retractRight(UniTuple<Right_> rightTuple) {
+    clearPendingRight(
+        rightTuple); // A tuple can be retracted before its turn to reconcile ever comes.
     var compositeKey = rightTuple.removeStore(inputStoreIndexRightCompositeKey);
     if (compositeKey == null) {
       // No fail fast if null because we don't track which tuples made it through the filter
@@ -329,10 +332,9 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
       ExistsCounter<LeftTuple_> counter,
       boolean reuseCachedBucket) {
     if (useFusedEqualIndex) {
-      // reuseCachedBucket: the equal prefix is unchanged, so the cached bucket is still correct —
-      // no top-level
-      // lookup and no re-cache; otherwise resolve the bucket (the single top-level lookup) and
-      // cache it.
+      // reuseCachedBucket: the equal prefix is unchanged, so the cached bucket is still correct;
+      // no top-level lookup and no re-cache;
+      // otherwise resolve the bucket (the single top-level lookup) and cache it.
       Bucket<ExistsCounter<LeftTuple_>, UniTuple<Right_>> bucket;
       if (reuseCachedBucket) {
         bucket = leftTuple.getStore(inputStoreIndexLeftBucket);
@@ -353,10 +355,9 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
   private ListEntry<UniTuple<Right_>> putRightTuple(
       UniTuple<Right_> rightTuple, Object compositeKey, boolean reuseCachedBucket) {
     if (useFusedEqualIndex) {
-      // reuseCachedBucket: the equal prefix is unchanged, so the cached bucket is still correct —
-      // no top-level
-      // lookup and no re-cache; otherwise resolve the bucket (the single top-level lookup) and
-      // cache it.
+      // reuseCachedBucket: the equal prefix is unchanged, so the cached bucket is still correct;
+      // no top-level lookup and no re-cache;
+      // otherwise resolve the bucket (the single top-level lookup) and cache it.
       Bucket<ExistsCounter<LeftTuple_>, UniTuple<Right_>> bucket;
       if (reuseCachedBucket) {
         bucket = rightTuple.getStore(inputStoreIndexRightBucket);
@@ -400,5 +401,26 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
     } else {
       indexerLeft.forEach(compositeKey, consumer);
     }
+  }
+
+  @Override
+  protected void reconcilePendingLeft(LeftTuple_ leftTuple) {
+    var compositeKey = leftTuple.getStore(inputStoreIndexLefCompositeKey);
+    ListEntry<ExistsCounter<LeftTuple_>> counterEntry =
+        leftTuple.getStore(inputStoreIndexLeftCounterEntry);
+    var counter = counterEntry.element();
+    clearLeftTrackerList(leftTuple);
+    counter.countRight = 0;
+    forEachRightFromLeft(
+        leftTuple, compositeKey, rightTuple -> updateCounterLeft(counter, rightTuple));
+    updateCounterLeft(counter);
+  }
+
+  @Override
+  protected void reconcilePendingRight(UniTuple<Right_> rightTuple) {
+    var compositeKey = rightTuple.getStore(inputStoreIndexRightCompositeKey);
+    clearRightTrackerList(rightTuple);
+    forEachLeftCounter(
+        rightTuple, compositeKey, counter -> updateCounterRight(counter, rightTuple));
   }
 }

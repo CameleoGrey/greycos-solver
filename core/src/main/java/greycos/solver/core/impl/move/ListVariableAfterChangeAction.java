@@ -19,6 +19,10 @@ record ListVariableAfterChangeAction<Solution_, Entity_, Value_>(
     @SuppressWarnings("unchecked")
     var items = (List<Value_>) variableDescriptor.getValue(entity).subList(fromIndex, toIndex);
     items.clear();
+    // The range collapsed to empty once cleared; shadow variable tracking (index, inverse relation,
+    // ...)
+    // must be notified, or it goes stale relative to the now-shorter list.
+    scoreDirector.afterListVariableChanged(variableDescriptor, entity, fromIndex, fromIndex);
   }
 
   @Override

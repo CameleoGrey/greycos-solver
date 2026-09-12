@@ -37,7 +37,7 @@ class ListUnassignMoveTest {
     verify(scoreDirector).beforeListVariableElementUnassigned(variableDescriptor, v3);
     verify(scoreDirector).afterListVariableElementUnassigned(variableDescriptor, v3);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 2, 2);
-    verify(scoreDirector).triggerVariableListeners();
+    verify(scoreDirector).updateShadowVariables();
     verifyNoMoreInteractions(scoreDirector);
 
     // Unassign the rest

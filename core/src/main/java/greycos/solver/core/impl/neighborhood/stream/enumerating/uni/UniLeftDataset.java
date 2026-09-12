@@ -2,15 +2,33 @@ package greycos.solver.core.impl.neighborhood.stream.enumerating.uni;
 
 import java.util.Objects;
 
+import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.bi.JustInTimeBiDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractLeftDataset;
+import greycos.solver.core.impl.neighborhood.stream.joiner.BiNeighborhoodsJoinerComber;
+import greycos.solver.core.preview.api.neighborhood.stream.dataset.BiDataset;
+import greycos.solver.core.preview.api.neighborhood.stream.dataset.UniDataset;
+import greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
+import greycos.solver.core.preview.api.neighborhood.stream.joiner.BiNeighborhoodsJoiner;
 
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-public final class UniLeftDataset<Solution_, A> extends AbstractLeftDataset<Solution_, A> {
+public final class UniLeftDataset<Solution_, A> extends AbstractLeftDataset<Solution_, UniTuple<A>>
+    implements UniDataset<Solution_, A> {
 
   public UniLeftDataset(AbstractUniEnumeratingStream<Solution_, A> parent) {
     super(parent);
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public <B> BiDataset<Solution_, A, B> join(
+      UniEnumeratingStream<Solution_, B> other, BiNeighborhoodsJoiner<A, B>... joiners) {
+    var joinerComber = BiNeighborhoodsJoinerComber.<Solution_, A, B>comb(joiners);
+    var rightDataset =
+        ((AbstractUniEnumeratingStream<Solution_, B>) other).asCachedDataset(joinerComber);
+    return new JustInTimeBiDataset<>(this, rightDataset);
   }
 
   @Override

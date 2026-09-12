@@ -107,9 +107,15 @@ class ListSwapMoveTest {
 
   @Test
   void doMove() {
+    var solution = new TestdataListSolution();
     TestdataListEntity e1 = new TestdataListEntity("e1", v1, v2);
     TestdataListEntity e2 = new TestdataListEntity("e2", v3);
 
+    solution.setEntityList(List.of(e1, e2));
+    solution.setValueList(List.of(v1, v2, v3));
+    when(innerScoreDirector.getWorkingSolution()).thenReturn(solution);
+    when(innerScoreDirector.getSolutionDescriptor())
+        .thenReturn(variableDescriptor.getEntityDescriptor().getSolutionDescriptor());
     var moveDirector = new MoveDirector<>(innerScoreDirector);
     // Swap Move 1: between two entities
     moveDirector.executeTemporary(
@@ -122,7 +128,7 @@ class ListSwapMoveTest {
           verify(innerScoreDirector).afterListVariableChanged(variableDescriptor, e1, 0, 1);
           verify(innerScoreDirector).beforeListVariableChanged(variableDescriptor, e2, 0, 1);
           verify(innerScoreDirector).afterListVariableChanged(variableDescriptor, e2, 0, 1);
-          verify(innerScoreDirector, atLeastOnce()).triggerVariableListeners();
+          verify(innerScoreDirector, atLeastOnce()).updateShadowVariables();
           return null;
         });
 

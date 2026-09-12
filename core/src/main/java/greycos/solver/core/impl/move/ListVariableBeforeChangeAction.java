@@ -82,6 +82,10 @@ final class ListVariableBeforeChangeAction<Solution_, Entity_, Value_>
   @Override
   @SuppressWarnings("unchecked")
   public void undo(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
+    if (oldValueCount == 0) {
+      // The sibling after-change action already notified the collapsed empty range.
+      return;
+    }
     var valueList = (List<Value_>) variableDescriptor.getValue(entity);
     if (oldValueCount == 1) {
       valueList.add(fromIndex, (Value_) oldSingleValue);

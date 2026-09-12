@@ -8,8 +8,9 @@ import org.jspecify.annotations.NullMarked;
 
 /**
  * The ScoreDirector holds the {@link PlanningSolution working solution} and calculates the {@link
- * Score} for it. This is not public API and users should not rely on it or its implementations
- * directly.
+ * Score} for it. This is not public API and the users should refrain from using it or its
+ * implementations directly. There are no backward compatibility guarantees for this API, and it may
+ * change without warning.
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
@@ -40,5 +41,15 @@ public interface ScoreDirector<Solution_> extends Lookup {
 
   void afterListVariableChanged(Object entity, String variableName, int fromIndex, int toIndex);
 
-  void triggerVariableListeners();
+  void updateShadowVariables();
+
+  /**
+   * Exists not to break models.
+   *
+   * @deprecated use {@link #updateShadowVariables()} directly.
+   */
+  @Deprecated(forRemoval = true)
+  default void triggerVariableListeners() {
+    updateShadowVariables();
+  }
 }

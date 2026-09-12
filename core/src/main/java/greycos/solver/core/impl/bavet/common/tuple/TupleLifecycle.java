@@ -73,7 +73,7 @@ public interface TupleLifecycle<Tuple_ extends Tuple> extends ActivitySupport {
 
   static <Stream_ extends BavetStream, Tuple_ extends Tuple> TupleLifecycle<Tuple_> profiling(
       InnerConstraintProfiler constraintProfiler,
-      long lifecycleId,
+      int lifecycleId,
       Stream_ stream,
       TupleLifecycle<Tuple_> delegate) {
     if (delegate instanceof AggregatedTupleLifecycle) {

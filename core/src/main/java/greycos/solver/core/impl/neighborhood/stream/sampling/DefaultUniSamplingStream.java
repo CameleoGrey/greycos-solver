@@ -37,7 +37,7 @@ public final class DefaultUniSamplingStream<Solution_, A>
     return new DefaultBiSamplingStream<>(
         dataset,
         ((AbstractUniEnumeratingStream<Solution_, B>) uniEnumeratingStream)
-            .createRightDataset(comber));
+            .asCachedDataset(comber));
   }
 
   @Override

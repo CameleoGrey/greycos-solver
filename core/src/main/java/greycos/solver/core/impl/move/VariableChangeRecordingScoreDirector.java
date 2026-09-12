@@ -78,7 +78,7 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
       for (var i = changeCount - 1; i >= 0; i--) {
         variableChanges.get(i).undo(backingScoreDirector);
       }
-      Objects.requireNonNull(backingScoreDirector).triggerVariableListeners();
+      Objects.requireNonNull(backingScoreDirector).updateShadowVariables();
     }
     if (variableChangesExposed) {
       variableChanges = new ArrayList<>();
@@ -230,10 +230,10 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
   }
 
   @Override
-  public void triggerVariableListeners() {
-    variableChanges.add(new TriggerVariableListenersAction<>());
+  public void updateShadowVariables() {
+    variableChanges.add(UpdateShadowVariablesAction.instance());
     if (backingScoreDirector != null) {
-      backingScoreDirector.triggerVariableListeners();
+      backingScoreDirector.updateShadowVariables();
     }
   }
 

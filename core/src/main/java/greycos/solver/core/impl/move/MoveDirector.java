@@ -72,7 +72,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     externalScoreDirector.afterListVariableChanged(
         variableDescriptor, destinationEntity, destinationIndex, destinationIndex + 1);
     externalScoreDirector.afterListVariableElementAssigned(variableDescriptor, planningValue);
-    externalScoreDirector.triggerVariableListeners();
+    externalScoreDirector.updateShadowVariables();
   }
 
   @Override
@@ -99,7 +99,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     for (var value : values) {
       externalScoreDirector.afterListVariableElementAssigned(variableDescriptor, value);
     }
-    externalScoreDirector.triggerVariableListeners();
+    externalScoreDirector.updateShadowVariables();
   }
 
   @Override
@@ -136,7 +136,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
         variableDescriptor, destinationEntity, destinationIndex, destinationIndex + 1);
     externalScoreDirector.afterListVariableElementUnassigned(variableDescriptor, oldValue);
     externalScoreDirector.afterListVariableElementAssigned(variableDescriptor, planningValue);
-    externalScoreDirector.triggerVariableListeners();
+    externalScoreDirector.updateShadowVariables();
   }
 
   @Override
@@ -176,7 +176,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     variableDescriptor.getValue(entity).remove(index);
     externalScoreDirector.afterListVariableChanged(variableDescriptor, entity, index, index);
     externalScoreDirector.afterListVariableElementUnassigned(variableDescriptor, movedValue);
-    externalScoreDirector.triggerVariableListeners();
+    externalScoreDirector.updateShadowVariables();
   }
 
   public final <Entity_, Value_> void changeVariable(
@@ -187,7 +187,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     externalScoreDirector.beforeVariableChanged(variableDescriptor, entity);
     variableDescriptor.setValue(entity, newValue);
     externalScoreDirector.afterVariableChanged(variableDescriptor, entity);
-    externalScoreDirector.triggerVariableListeners();
+    externalScoreDirector.updateShadowVariables();
   }
 
   @SuppressWarnings("unchecked")
@@ -214,7 +214,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     variableDescriptor.addElement(destinationEntity, destinationIndex, element);
     externalScoreDirector.afterListVariableChanged(
         variableDescriptor, destinationEntity, destinationIndex, destinationIndex + 1);
-    externalScoreDirector.triggerVariableListeners();
+    externalScoreDirector.updateShadowVariables();
 
     return element;
   }
@@ -244,7 +244,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     externalScoreDirector.afterListVariableChanged(
         variableDescriptor, destinationEntity, destinationIndex, destinationIndex + 1);
     externalScoreDirector.afterListVariableElementUnassigned(variableDescriptor, toReplace);
-    externalScoreDirector.triggerVariableListeners();
+    externalScoreDirector.updateShadowVariables();
     return toReplace;
   }
 
@@ -285,7 +285,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     moveInList(list, sourceIndex, destinationIndex);
     externalScoreDirector.afterListVariableChanged(
         variableDescriptor, sourceEntity, fromIndex, toIndex);
-    externalScoreDirector.triggerVariableListeners();
+    externalScoreDirector.updateShadowVariables();
 
     return (Value_) list.get(destinationIndex);
   }
@@ -323,7 +323,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     externalScoreDirector.afterListVariableChanged(
         variableDescriptor, entity, fromIndex, toIndex - 1);
     externalScoreDirector.afterListVariableElementUnassigned(variableDescriptor, toReplace);
-    externalScoreDirector.triggerVariableListeners();
+    externalScoreDirector.updateShadowVariables();
     return toReplace;
   }
 
@@ -387,7 +387,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
           variableDescriptor, leftEntity, leftIndex, leftIndex + 1);
       externalScoreDirector.afterListVariableChanged(
           variableDescriptor, rightEntity, rightIndex, rightIndex + 1);
-      externalScoreDirector.triggerVariableListeners();
+      externalScoreDirector.updateShadowVariables();
     }
   }
 
@@ -411,7 +411,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     var list = variableDescriptor.getValue(entity);
     Collections.swap(list, leftIndex, rightIndex);
     externalScoreDirector.afterListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
-    externalScoreDirector.triggerVariableListeners();
+    externalScoreDirector.updateShadowVariables();
   }
 
   @Override
@@ -439,10 +439,13 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
   /** Execute a given move and make sure shadow variables are up to date after that. */
   public final void execute(Move<Solution_> move) {
     move.execute(this);
-    externalScoreDirector.triggerVariableListeners();
+    externalScoreDirector.updateShadowVariables();
   }
 
   public final InnerScore<Score_> executeTemporary(Move<Solution_> move) {
+    var solutionDescriptor = backingScoreDirector.getSolutionDescriptor();
+    var workingSolution = backingScoreDirector.getWorkingSolution();
+    var previousScore = solutionDescriptor.<Score_>getScore(workingSolution);
     var ephemeralMoveDirector = borrowEphemeralMoveDirector();
     var moveExecuted = false;
     try {
@@ -455,6 +458,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
           ephemeralMoveDirector.close(); // This undoes the move.
         } finally {
           releaseEphemeralMoveDirector(ephemeralMoveDirector);
+          solutionDescriptor.setScore(workingSolution, previousScore);
         }
       }
     }
@@ -463,6 +467,9 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
   public <Result_> @Nullable Result_ executeTemporary(
       Move<Solution_> move,
       TemporaryMovePostprocessor<Solution_, Score_, @Nullable Result_> postprocessor) {
+    var solutionDescriptor = backingScoreDirector.getSolutionDescriptor();
+    var workingSolution = backingScoreDirector.getWorkingSolution();
+    var previousScore = solutionDescriptor.<Score_>getScore(workingSolution);
     var ephemeralMoveDirector = borrowEphemeralMoveDirector();
     var moveExecuted = false;
     try {
@@ -476,6 +483,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
           ephemeralMoveDirector.close(); // This undoes the move.
         } finally {
           releaseEphemeralMoveDirector(ephemeralMoveDirector);
+          solutionDescriptor.setScore(workingSolution, previousScore);
         }
       }
     }
@@ -484,6 +492,9 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
   /** Evaluate a temporary move without creating an undo move for the postprocessor to retain. */
   public final <Result_> @Nullable Result_ executeTemporaryWithScore(
       Move<Solution_> move, Function<InnerScore<Score_>, @Nullable Result_> postprocessor) {
+    var solutionDescriptor = backingScoreDirector.getSolutionDescriptor();
+    var workingSolution = backingScoreDirector.getWorkingSolution();
+    var previousScore = solutionDescriptor.<Score_>getScore(workingSolution);
     var ephemeralMoveDirector = borrowEphemeralMoveDirector();
     var moveExecuted = false;
     try {
@@ -496,6 +507,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
           ephemeralMoveDirector.close(); // This undoes the move.
         } finally {
           releaseEphemeralMoveDirector(ephemeralMoveDirector);
+          solutionDescriptor.setScore(workingSolution, previousScore);
         }
       }
     }
@@ -505,6 +517,9 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
       Move<Solution_> move,
       Function<Solution_, @Nullable Result_> postprocessor,
       boolean guaranteeFreshScore) {
+    var solutionDescriptor = backingScoreDirector.getSolutionDescriptor();
+    var workingSolution = backingScoreDirector.getWorkingSolution();
+    var previousScore = solutionDescriptor.<Score_>getScore(workingSolution);
     var ephemeralMoveDirector = borrowEphemeralMoveDirector();
     var moveExecuted = false;
     try {
@@ -517,6 +532,7 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
           ephemeralMoveDirector.close(); // This undoes the move.
         } finally {
           releaseEphemeralMoveDirector(ephemeralMoveDirector);
+          solutionDescriptor.setScore(workingSolution, previousScore);
         }
         if (guaranteeFreshScore) {
           backingScoreDirector.calculateScore();

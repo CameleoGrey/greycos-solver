@@ -8,13 +8,13 @@ import java.util.random.RandomGenerator;
 import greycos.solver.core.impl.neighborhood.stream.DefaultMoveStreamFactory;
 import greycos.solver.core.impl.neighborhood.stream.DefaultNeighborhoodSession;
 import greycos.solver.core.impl.neighborhood.stream.InnerMoveStream;
-import greycos.solver.core.impl.neighborhood.stream.MoveIterable;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.director.SessionContext;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.preview.api.neighborhood.MoveProvider;
+import greycos.solver.core.preview.api.neighborhood.stream.MoveIterable;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -25,7 +25,6 @@ public final class NeighborhoodsBasedMoveRepository<Solution_>
 
   private final DefaultMoveStreamFactory<Solution_> moveStreamFactory;
   private final List<InnerMoveStream<Solution_>> moveStreamList;
-  private final boolean random;
 
   private @Nullable DefaultNeighborhoodSession<Solution_> neighborhoodSession;
   private @Nullable List<MoveIterable<Solution_>> moveIterableList;
@@ -33,19 +32,21 @@ public final class NeighborhoodsBasedMoveRepository<Solution_>
 
   public NeighborhoodsBasedMoveRepository(
       DefaultMoveStreamFactory<Solution_> moveStreamFactory,
-      List<MoveProvider<Solution_>> neighborhood,
-      boolean random) {
+      List<MoveProvider<Solution_>> neighborhood) {
     this.moveStreamFactory = Objects.requireNonNull(moveStreamFactory);
     this.moveStreamList =
         Objects.requireNonNull(neighborhood).stream()
             .map(d -> (InnerMoveStream<Solution_>) d.build(moveStreamFactory))
             .toList();
-    this.random = random;
   }
 
   @Override
   public boolean isNeverEnding() {
-    return random;
+    return true;
+  }
+
+  public int getNeighborhoodCount() {
+    return moveStreamList.size();
   }
 
   @Override
@@ -113,11 +114,10 @@ public final class NeighborhoodsBasedMoveRepository<Solution_>
 
   @Override
   public Iterator<Move<Solution_>> iterator() {
-    if (random) {
-      return new RandomOrderNeighborhoodIterator<>(
-          moveIterableList, Objects.requireNonNull(workingRandom));
-    } else {
-      return new OriginalOrderNeighborhoodIterator<>(moveIterableList);
-    }
+    return iterator(Objects.requireNonNull(workingRandom));
+  }
+
+  public Iterator<Move<Solution_>> iterator(RandomGenerator random) { // For testing only.
+    return new RandomOrderNeighborhoodIterator<>(Objects.requireNonNull(moveIterableList), random);
   }
 }

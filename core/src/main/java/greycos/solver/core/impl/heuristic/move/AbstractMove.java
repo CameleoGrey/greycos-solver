@@ -33,7 +33,7 @@ public abstract class AbstractMove<Solution_> extends AbstractSelectorBasedMove<
             ? variableChangeRecordingScoreDirector
             : new VariableChangeRecordingScoreDirector<>(scoreDirector);
     doMoveOnGenuineVariables(recordingScoreDirector);
-    scoreDirector.triggerVariableListeners();
+    scoreDirector.updateShadowVariables();
   }
 
   @Override
@@ -59,8 +59,8 @@ public abstract class AbstractMove<Solution_> extends AbstractSelectorBasedMove<
 
   /**
    * Like {@link #doMoveOnly(ScoreDirector)} but without the {@link
-   * ScoreDirector#triggerVariableListeners()} call (because {@link #doMoveOnly(ScoreDirector)}
-   * already does that).
+   * ScoreDirector#updateShadowVariables()} call (because {@link #doMoveOnly(ScoreDirector)} already
+   * does that).
    *
    * @param scoreDirector never null
    */

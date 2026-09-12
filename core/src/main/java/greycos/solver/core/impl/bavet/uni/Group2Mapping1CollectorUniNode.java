@@ -3,6 +3,7 @@ package greycos.solver.core.impl.bavet.uni;
 import static greycos.solver.core.impl.bavet.uni.Group2Mapping0CollectorUniNode.createGroupKey;
 
 import java.util.function.Function;
+import java.util.function.IntSupplier;
 
 import greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
 import greycos.solver.core.config.solver.EnvironmentMode;
@@ -18,15 +19,13 @@ public final class Group2Mapping1CollectorUniNode<OldA, A, B, C, ResultContainer
   public Group2Mapping1CollectorUniNode(
       Function<OldA, A> groupKeyMappingA,
       Function<OldA, B> groupKeyMappingB,
-      int groupStoreIndex,
-      int undoStoreIndex,
+      IntSupplier storeIndexReserver,
       UniConstraintCollector<OldA, ResultContainer_, C> collector,
       TupleLifecycle<TriTuple<A, B, C>> nextNodesTupleLifecycle,
       int outputStoreSize,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
-        undoStoreIndex,
+        storeIndexReserver,
         tuple -> createGroupKey(groupKeyMappingA, groupKeyMappingB, tuple),
         collector,
         nextNodesTupleLifecycle,

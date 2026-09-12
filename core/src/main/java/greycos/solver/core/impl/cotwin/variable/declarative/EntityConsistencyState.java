@@ -70,7 +70,8 @@ public final class EntityConsistencyState<Solution_, Entity_> {
     // changes from inconsistent to consistent (or vice versa).
     // `forEach` checks consistency, and thus must be notified.
     //
-    // Since declarative shadow variables cannot be used as sources for legacy variable listeners,
+    // Since declarative shadow variables cannot be used as sources for other kinds of shadow
+    // variables,
     // this does not cause any issues/additional recalculation of shadow variables.
     changedVariableNotifier
         .beforeVariableChanged()

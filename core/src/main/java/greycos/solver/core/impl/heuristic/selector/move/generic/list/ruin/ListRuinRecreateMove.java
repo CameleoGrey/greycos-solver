@@ -111,7 +111,7 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
             listVariableDescriptor.getFirstUnpinnedIndex(entity),
             listVariableDescriptor.getListSize(entity));
       }
-      scoreDirector.triggerVariableListeners();
+      scoreDirector.updateShadowVariables();
 
       var constructionHeuristicPhase =
           (RuinRecreateConstructionHeuristicPhase<Solution_>)
@@ -128,7 +128,7 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
       constructionHeuristicPhase.solvingStarted(nestedSolverScope);
       constructionHeuristicPhase.solve(nestedSolverScope);
       constructionHeuristicPhase.solvingEnded(nestedSolverScope);
-      scoreDirector.triggerVariableListeners();
+      scoreDirector.updateShadowVariables();
 
       var entityToInsertedValuesMap = new IdentityHashMap<Object, List<Object>>();
       for (var entity : entityToOriginalPositionMap.keySet()) {
@@ -165,7 +165,10 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
           listVariableDescriptor.getValue(entry.getKey()).clear();
           listVariableDescriptor.getValue(entry.getKey()).addAll(originalElementList);
           onlyRecordingChangesScoreDirector.beforeListVariableChanged(
-              listVariableDescriptor, entry.getKey(), 0, originalElementList.size());
+              listVariableDescriptor,
+              entry.getKey(),
+              listVariableDescriptor.getFirstUnpinnedIndex(entry.getKey()),
+              originalElementList.size());
           listVariableDescriptor.getValue(entry.getKey()).clear();
           listVariableDescriptor.getValue(entry.getKey()).addAll(currentElementList);
         }

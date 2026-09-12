@@ -14,6 +14,7 @@ import greycos.solver.core.api.solver.change.ProblemChange;
 import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
@@ -232,11 +233,36 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
     if (logger.isInfoEnabled()) { // Formatting is expensive here.
       var problemSizeStatistics = solverScope.getProblemSizeStatistics();
       logger.info(
-          "Problem scale: entity count ({}), variable count ({}), approximate value count ({}), approximate problem scale ({}).",
+          "Problem scale: genuine entity count ({}), genuine variable count ({}), approximate value count ({}), approximate problem scale ({}).",
           problemSizeStatistics.entityCount(),
           problemSizeStatistics.variableCount(),
           problemSizeStatistics.approximateValueCount(),
           problemSizeStatistics.approximateProblemScaleAsFormattedString());
+      if (logger.isDebugEnabled()) {
+        var solutionDescriptor = solverScope.getSolutionDescriptor();
+        for (var entityEntry : problemSizeStatistics.genuineEntityClassToEntityCount().entrySet()) {
+          var entityClass = entityEntry.getKey();
+          var entityDescriptor = solutionDescriptor.findEntityDescriptorOrFail(entityClass);
+          logger.debug(
+              "    Entity ({}) count: {}", entityClass.getCanonicalName(), entityEntry.getValue());
+          for (var variableEntry :
+              problemSizeStatistics
+                  .genuineEntityClassToVariableToValueCount()
+                  .get(entityClass)
+                  .entrySet()) {
+            var variableName = variableEntry.getKey();
+            var descriptor = entityDescriptor.getGenuineVariableDescriptor(variableName);
+            logger.debug(
+                "        {} ({}) estimated value ({}) count: {}",
+                descriptor instanceof ListVariableDescriptor ? "List variable" : "Variable",
+                variableName,
+                descriptor instanceof ListVariableDescriptor<?> listDescriptor
+                    ? listDescriptor.getElementType().getCanonicalName()
+                    : descriptor.getVariablePropertyType().getCanonicalName(),
+                variableEntry.getValue());
+          }
+        }
+      }
     }
   }
 
@@ -356,7 +382,7 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
       while (problemChange != null) {
         problemChange.doChange(
             solverScope.getWorkingSolution(), solverScope.getProblemChangeDirector());
-        solverScope.getScoreDirector().triggerVariableListeners();
+        solverScope.getScoreDirector().updateShadowVariables();
         logger.debug("    Real-time problem change applied; step index ({}).", stepIndex);
         stepIndex++;
         problemChange = problemChangeQueue.poll();

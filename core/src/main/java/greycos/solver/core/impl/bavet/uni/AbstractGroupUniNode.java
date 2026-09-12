@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.bavet.uni;
 
 import java.util.function.Function;
+import java.util.function.IntSupplier;
 
 import greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
 import greycos.solver.core.api.score.stream.uni.UniConstraintCollectorAccumulator;
@@ -23,29 +24,28 @@ abstract class AbstractGroupUniNode<
       incrementalAccumulator;
 
   protected AbstractGroupUniNode(
-      int groupStoreIndex,
-      int groupAccumulatorIndex,
+      IntSupplier storeIndexReserver,
       Function<UniTuple<OldA>, GroupKey_> groupKeyFunction,
       @NonNull UniConstraintCollector<OldA, ResultContainer_, Result_> collector,
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
+        storeIndexReserver,
         groupKeyFunction,
         collector.supplier(),
         collector.finisher(),
         nextNodesTupleLifecycle,
         environmentMode);
-    this.groupAccumulatorIndex = groupAccumulatorIndex;
+    this.groupAccumulatorIndex = storeIndexReserver.getAsInt();
     this.incrementalAccumulator = collector.accumulator();
   }
 
   protected AbstractGroupUniNode(
-      int groupStoreIndex,
+      IntSupplier storeIndexReserver,
       Function<UniTuple<OldA>, GroupKey_> groupKeyFunction,
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
-    super(groupStoreIndex, groupKeyFunction, nextNodesTupleLifecycle, environmentMode);
+    super(storeIndexReserver, groupKeyFunction, nextNodesTupleLifecycle, environmentMode);
     this.groupAccumulatorIndex = -1;
     this.incrementalAccumulator = null;
   }

@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.bavet.quad;
 
 import java.util.function.Function;
+import java.util.function.IntSupplier;
 
 import greycos.solver.core.api.score.stream.quad.QuadConstraintCollector;
 import greycos.solver.core.api.score.stream.quad.QuadConstraintCollectorAccumulator;
@@ -25,29 +26,28 @@ abstract class AbstractGroupQuadNode<
       incrementalAccumulator;
 
   protected AbstractGroupQuadNode(
-      int groupStoreIndex,
-      int groupAccumulatorIndex,
+      IntSupplier storeIndexReserver,
       Function<QuadTuple<OldA, OldB, OldC, OldD>, GroupKey_> groupKeyFunction,
       @NonNull QuadConstraintCollector<OldA, OldB, OldC, OldD, ResultContainer_, Result_> collector,
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
+        storeIndexReserver,
         groupKeyFunction,
         collector.supplier(),
         collector.finisher(),
         nextNodesTupleLifecycle,
         environmentMode);
-    this.groupAccumulatorIndex = groupAccumulatorIndex;
+    this.groupAccumulatorIndex = storeIndexReserver.getAsInt();
     this.incrementalAccumulator = collector.accumulator();
   }
 
   protected AbstractGroupQuadNode(
-      int groupStoreIndex,
+      IntSupplier storeIndexReserver,
       Function<QuadTuple<OldA, OldB, OldC, OldD>, GroupKey_> groupKeyFunction,
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
-    super(groupStoreIndex, groupKeyFunction, nextNodesTupleLifecycle, environmentMode);
+    super(storeIndexReserver, groupKeyFunction, nextNodesTupleLifecycle, environmentMode);
     this.groupAccumulatorIndex = -1;
     this.incrementalAccumulator = null;
   }

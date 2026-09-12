@@ -34,6 +34,7 @@ import greycos.solver.core.impl.score.stream.bavet.BavetConstraintSession;
  * corner cases.
  *
  * @see PropagationQueue More information about propagation.
+ * @see DeferredSettleAware Some {@link AbstractTwoInputNode two-input nodes} need special handling.
  */
 public sealed interface Propagator
     permits ProfilingPropagator, PropagationQueue, RecordAndReplayPropagator {

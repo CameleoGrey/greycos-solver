@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.bavet.common;
 
 import java.util.List;
+import java.util.function.IntSupplier;
 
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
@@ -25,13 +26,13 @@ final class GroupNodeConstructorWithoutAccumulate<Tuple_ extends Tuple>
       List<Stream_> aftStreamChildList,
       Stream_ bridgeStream,
       EnvironmentMode environmentMode) {
-    var groupStoreIndex = buildHelper.reserveTupleStoreIndex(parentTupleSource);
+    IntSupplier storeIndexReserver = () -> buildHelper.reserveTupleStoreIndex(parentTupleSource);
     TupleLifecycle<Tuple_> tupleLifecycle =
         buildHelper.getAggregatedTupleLifecycle(aftStreamChildList);
     var outputStoreSize = buildHelper.extractTupleStoreSize(aftStream);
     var node =
         nodeConstructorFunction.apply(
-            groupStoreIndex, tupleLifecycle, outputStoreSize, environmentMode);
+            storeIndexReserver, tupleLifecycle, outputStoreSize, environmentMode);
     buildHelper.addNode(node, bridgeStream);
   }
 }

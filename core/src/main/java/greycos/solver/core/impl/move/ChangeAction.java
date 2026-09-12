@@ -10,7 +10,7 @@ public sealed interface ChangeAction<Solution_>
         ListVariableBeforeAssignmentAction,
         ListVariableBeforeChangeAction,
         ListVariableBeforeUnassignmentAction,
-        TriggerVariableListenersAction,
+        UpdateShadowVariablesAction,
         VariableChangeAction {
 
   void undo(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector);

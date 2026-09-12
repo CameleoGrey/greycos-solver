@@ -70,7 +70,7 @@ class TwoOptListMoveTest {
 
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e1, 2, 5);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 2, 5);
-    verify(scoreDirector).triggerVariableListeners();
+    verify(scoreDirector).updateShadowVariables();
   }
 
   @Test
@@ -198,7 +198,7 @@ class TwoOptListMoveTest {
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 2, 5);
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e2, 2, 5);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e2, 2, 4);
-    verify(scoreDirector).triggerVariableListeners();
+    verify(scoreDirector).updateShadowVariables();
   }
 
   @Test
@@ -226,7 +226,7 @@ class TwoOptListMoveTest {
 
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e1, 0, 8);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 0, 8);
-    verify(scoreDirector).triggerVariableListeners();
+    verify(scoreDirector).updateShadowVariables();
   }
 
   @Test
@@ -252,7 +252,7 @@ class TwoOptListMoveTest {
 
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e1, 0, 7);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 0, 7);
-    verify(scoreDirector).triggerVariableListeners();
+    verify(scoreDirector).updateShadowVariables();
   }
 
   @Test
@@ -278,7 +278,7 @@ class TwoOptListMoveTest {
 
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e1, 0, 7);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 0, 7);
-    verify(scoreDirector).triggerVariableListeners();
+    verify(scoreDirector).updateShadowVariables();
   }
 
   @Test
@@ -315,7 +315,7 @@ class TwoOptListMoveTest {
 
     verify(scoreDirector).beforeListVariableChanged(variableDescriptorSpy, e1, 1, 8);
     verify(scoreDirector).afterListVariableChanged(variableDescriptorSpy, e1, 1, 8);
-    verify(scoreDirector).triggerVariableListeners();
+    verify(scoreDirector).updateShadowVariables();
   }
 
   @Test

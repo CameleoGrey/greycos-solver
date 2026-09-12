@@ -59,6 +59,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOpt
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchType;
 import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
@@ -275,6 +276,45 @@ class DefaultSolverTest {
     Assertions.assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("NEIGHBORHOODS");
+  }
+
+  @Test
+  void neighborhoodsRejectsVariableNeighborhoodDescent() {
+    var phase =
+        new LocalSearchPhaseConfig()
+            .withLocalSearchType(LocalSearchType.VARIABLE_NEIGHBORHOOD_DESCENT);
+    phase.setNeighborhoodProviderClass(TestingNeighborhoodProvider.class);
+    var solverConfig =
+        new SolverConfig()
+            .withPreviewFeature(PreviewFeature.NEIGHBORHOODS)
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(DummyEasyScoreCalculator.class)
+            .withTerminationConfig(new TerminationConfig().withBestScoreLimit("0"))
+            .withPhases(phase);
+
+    var solution = TestdataSolution.generateSolution(3, 2);
+    Assertions.assertThatThrownBy(() -> PlannerTestUtils.solve(solverConfig, solution))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("does not support the Neighborhoods API");
+  }
+
+  @Test
+  void variableNeighborhoodDescentStillWorksWithoutNeighborhoods() {
+    // Preview feature not enabled: plain VND, using legacy move selectors, must remain unaffected.
+    var solverConfig =
+        new SolverConfig()
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(DummyEasyScoreCalculator.class)
+            .withTerminationConfig(new TerminationConfig().withBestScoreLimit("0"))
+            .withPhases(
+                new LocalSearchPhaseConfig()
+                    .withLocalSearchType(LocalSearchType.VARIABLE_NEIGHBORHOOD_DESCENT));
+
+    var solution = TestdataSolution.generateSolution(3, 2);
+    var result = PlannerTestUtils.solve(solverConfig, solution);
+    Assertions.assertThat(result).isNotNull();
   }
 
   @Test
@@ -2165,7 +2205,8 @@ class DefaultSolverTest {
 
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
         .hasMessageContaining(
-            "The value (3) from the planning variable (value) has been assigned to the entity (e1), but it is outside of the related value range [1-2]");
+            "The value (3) from the planning variable (value) has been assigned to the entity (e1),"
+                + " but it is outside of the related value range [1-2]");
   }
 
   @Test
@@ -2195,7 +2236,8 @@ class DefaultSolverTest {
 
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
         .hasMessageContaining(
-            "The value (3) from the planning variable (secondValue) has been assigned to the entity (e1), but it is outside of the related value range [null]∪[1-2]");
+            "The value (3) from the planning variable (secondValue) has been assigned to the entity"
+                + " (e1), but it is outside of the related value range [null]∪[1-2]");
   }
 
   @Test
@@ -2219,7 +2261,8 @@ class DefaultSolverTest {
 
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
         .hasMessageContaining(
-            "The value (3) from the planning variable (valueList) has been assigned to the entity (e1), but it is outside of the related value range [1-2]");
+            "The value (3) from the planning variable (valueList) has been assigned to the entity"
+                + " (e1), but it is outside of the related value range [1-2]");
   }
 
   @Test
@@ -2253,7 +2296,8 @@ class DefaultSolverTest {
 
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
         .hasMessageContaining(
-            "The value (1) from the planning variable (basicValue) has been assigned to the entity (e1), but it is outside of the related value range [2-3]");
+            "The value (1) from the planning variable (basicValue) has been assigned to the entity"
+                + " (e1), but it is outside of the related value range [2-3]");
     e1b.setBasicValue(null);
 
     // 2 - Invalid list variable
@@ -2266,7 +2310,8 @@ class DefaultSolverTest {
 
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
         .hasMessageContaining(
-            "The value (1) from the planning variable (valueList) has been assigned to the entity (e1), but it is outside of the related value range [2-3]");
+            "The value (1) from the planning variable (valueList) has been assigned to the entity"
+                + " (e1), but it is outside of the related value range [2-3]");
   }
 
   @Test
@@ -2284,7 +2329,9 @@ class DefaultSolverTest {
     var problem = TestdataListSolution.generateUninitializedSolution(2, 2);
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
         .hasMessageContaining(
-            "The value (bad value) from the planning variable (valueList) has been assigned to the entity (Generated Entity 0), but it is outside of the related value range [Generated Value 0-Generated Value 1]");
+            "The value (bad value) from the planning variable (valueList) has been assigned to the"
+                + " entity (Generated Entity 0), but it is outside of the related value range"
+                + " [Generated Value 0-Generated Value 1]");
   }
 
   @Test
@@ -2301,7 +2348,9 @@ class DefaultSolverTest {
     var problem = TestdataListSolution.generateUninitializedSolution(2, 2);
     assertThatCode(() -> PlannerTestUtils.solve(solverConfig, problem))
         .hasMessageContaining(
-            "The value (bad value) from the planning variable (valueList) has been assigned to the entity (Generated Entity 0), but it is outside of the related value range [Generated Value 0-Generated Value 1]");
+            "The value (bad value) from the planning variable (valueList) has been assigned to the"
+                + " entity (Generated Entity 0), but it is outside of the related value range"
+                + " [Generated Value 0-Generated Value 1]");
   }
 
   public static final class MinimizeUnusedEntitiesEasyScoreCalculator

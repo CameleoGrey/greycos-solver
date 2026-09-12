@@ -110,9 +110,7 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
                             InverseRelationShadowVariableDescriptor<Solution_>
                                 inverseRelationShadowVariableDescriptor
                         && Objects.equals(
-                            inverseRelationShadowVariableDescriptor
-                                .getSourceVariableDescriptorList()
-                                .get(0),
+                            inverseRelationShadowVariableDescriptor.getSourceVariableDescriptor(),
                             this))
             .toList();
     if (applicableShadowDescriptors.isEmpty()) {

@@ -9,6 +9,7 @@ import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniRightData
 import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.preview.api.neighborhood.BiMoveConstructor;
 import greycos.solver.core.preview.api.neighborhood.NeighborhoodSession;
+import greycos.solver.core.preview.api.neighborhood.stream.MoveIterable;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -18,15 +19,8 @@ import org.jspecify.annotations.NullMarked;
  * those datasets. The merged iterators provide {@link Move moves} constructed by a {@link
  * BiMoveConstructor move constructor}, which accepts instances of type A and B.
  *
- * <p>There are two types of iterators:
- *
- * <ul>
- *   <li>{@link BiOriginalMoveIterator Original order iterators}, which iterate through all possible
- *       combinations of A and B in the original order.
- *   <li>{@link BiRandomMoveIterator Random order iterators}, which pick A and B randomly.
- * </ul>
- *
- * Please refer to the respective iterator classes for documentation on their strategies.
+ * <p>Moves are produced by a {@link BiRandomMoveIterator}, which picks A and B randomly. Move order
+ * is never part of the API's contract.
  *
  * @param <Solution_>
  * @param <A>
@@ -65,11 +59,6 @@ public final class BiMoveStream<Solution_, A, B> implements InnerMoveStream<Solu
 
     private BiMoveIterable(BiMoveStreamContext<Solution_, A, B> context) {
       this.context = Objects.requireNonNull(context);
-    }
-
-    @Override
-    public Iterator<Move<Solution_>> iterator() {
-      return new BiOriginalMoveIterator<>(context);
     }
 
     @Override

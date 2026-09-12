@@ -146,7 +146,7 @@ class SelectorBasedSubListSwapMoveTest {
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 1, 2);
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e2, 0, 1);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e2, 0, 2);
-    verify(scoreDirector, atLeastOnce()).triggerVariableListeners();
+    verify(scoreDirector, atLeastOnce()).updateShadowVariables();
   }
 
   @Test
@@ -165,7 +165,7 @@ class SelectorBasedSubListSwapMoveTest {
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 0, 2);
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e2, 0, 2);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e2, 0, 3);
-    verify(scoreDirector, atLeastOnce()).triggerVariableListeners();
+    verify(scoreDirector, atLeastOnce()).updateShadowVariables();
   }
 
   @Test
@@ -180,7 +180,7 @@ class SelectorBasedSubListSwapMoveTest {
 
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e1, 0, 7);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 0, 7);
-    verify(scoreDirector, atLeastOnce()).triggerVariableListeners();
+    verify(scoreDirector, atLeastOnce()).updateShadowVariables();
   }
 
   @Test

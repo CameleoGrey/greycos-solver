@@ -3,7 +3,6 @@ package greycos.solver.core.impl.cotwin.variable.declarative;
 import java.lang.reflect.Member;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -15,10 +14,7 @@ import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.listener.VariableListenerWithSources;
 import greycos.solver.core.impl.cotwin.variable.supply.Demand;
-import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 
 import org.jspecify.annotations.Nullable;
@@ -115,23 +111,13 @@ public class DeclarativeShadowVariableDescriptor<Solution_>
   }
 
   @Override
-  public List<VariableDescriptor<Solution_>> getSourceVariableDescriptorList() {
-    return Collections.emptyList();
-  }
-
-  @Override
-  public Collection<Class<?>> getVariableListenerClasses() {
+  public Collection<Class<?>> getUpdaterClasses() {
     return Collections.emptyList();
   }
 
   @Override
   public Demand<?> getProvidedDemand() {
     return null;
-  }
-
-  @Override
-  public Iterable<VariableListenerWithSources> buildVariableListeners(SupplyManager supplyManager) {
-    return Collections.emptyList();
   }
 
   @Override
@@ -205,11 +191,6 @@ public class DeclarativeShadowVariableDescriptor<Solution_>
       source.visitAllReferencedEntities(
           entity, referencedEntity -> visitor.accept(source, referencedEntity));
     }
-  }
-
-  @Override
-  public boolean isListVariableSource() {
-    return false;
   }
 
   public MemberAccessor getMemberAccessor() {

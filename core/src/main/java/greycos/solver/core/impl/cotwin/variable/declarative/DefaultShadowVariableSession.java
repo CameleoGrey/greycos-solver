@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.cotwin.variable.declarative;
 
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.Supply;
 import greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
@@ -32,6 +33,32 @@ public final class DefaultShadowVariableSession<Solution_> implements Supply {
   public void afterVariableChanged(
       VariableMetaModel<Solution_, ?, ?> variableMetaModel, Object entity) {
     graph.afterVariableChanged(variableMetaModel, entity);
+  }
+
+  public void beforeListVariableChanged(
+      ListVariableDescriptor<Solution_> variableDescriptor,
+      Object entity,
+      int fromIndex,
+      int toIndex) {
+    graph.beforeListVariableChanged(
+        variableDescriptor.getVariableMetaModel(),
+        entity,
+        variableDescriptor.getValue(entity),
+        fromIndex,
+        toIndex);
+  }
+
+  public void afterListVariableChanged(
+      ListVariableDescriptor<Solution_> variableDescriptor,
+      Object entity,
+      int fromIndex,
+      int toIndex) {
+    graph.afterListVariableChanged(
+        variableDescriptor.getVariableMetaModel(),
+        entity,
+        variableDescriptor.getValue(entity),
+        fromIndex,
+        toIndex);
   }
 
   public void updateVariables() {

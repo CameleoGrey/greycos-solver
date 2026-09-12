@@ -3,7 +3,6 @@ package greycos.solver.core.impl.cotwin.variable.inverserelation;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
@@ -12,15 +11,11 @@ import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
-import greycos.solver.core.impl.cotwin.variable.BasicVariableChangeEvent;
-import greycos.solver.core.impl.cotwin.variable.InnerVariableListener;
+import greycos.solver.core.impl.cotwin.variable.BasicVariableStateDemand;
+import greycos.solver.core.impl.cotwin.variable.ExternalizedBasicVariableStateSupply;
 import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
-import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.listener.VariableListenerWithSources;
-import greycos.solver.core.impl.cotwin.variable.supply.Demand;
-import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 
 /**
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
@@ -142,22 +137,21 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
                     PlanningListVariable.class.getSimpleName()));
       }
     }
-    sourceVariableDescriptor.registerSinkVariableDescriptor(this);
   }
 
   @Override
-  public List<VariableDescriptor<Solution_>> getSourceVariableDescriptorList() {
-    return Collections.singletonList(sourceVariableDescriptor);
+  public VariableDescriptor<Solution_> getSourceVariableDescriptor() {
+    return sourceVariableDescriptor;
   }
 
   @Override
-  public Collection<Class<?>> getVariableListenerClasses() {
+  public Collection<Class<?>> getUpdaterClasses() {
     if (singleton) {
       throw new UnsupportedOperationException(
           "Impossible state: Handled by %s."
               .formatted(ListVariableStateSupply.class.getSimpleName()));
     } else {
-      return Collections.singleton(CollectionInverseVariableListener.class);
+      return Collections.singleton(ExternalizedBasicVariableStateSupply.class);
     }
   }
 
@@ -166,39 +160,17 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
   // ************************************************************************
 
   @Override
-  public Demand<?> getProvidedDemand() {
+  public BasicVariableStateDemand<Solution_> getProvidedDemand() {
     if (singleton) {
       throw new UnsupportedOperationException(
           "Impossible state: Handled by %s."
               .formatted(ListVariableStateSupply.class.getSimpleName()));
     } else {
-      return new CollectionInverseVariableDemand<>(sourceVariableDescriptor);
-    }
-  }
-
-  @Override
-  public Iterable<VariableListenerWithSources> buildVariableListeners(SupplyManager supplyManager) {
-    return new VariableListenerWithSources<>(buildVariableListener(), sourceVariableDescriptor)
-        .toCollection();
-  }
-
-  private InnerVariableListener<Solution_, BasicVariableChangeEvent<Object>>
-      buildVariableListener() {
-    if (singleton) {
-      throw new UnsupportedOperationException(
-          "Impossible state: Handled by %s."
-              .formatted(ListVariableStateSupply.class.getSimpleName()));
-    } else {
-      return new CollectionInverseVariableListener<>(this, sourceVariableDescriptor);
+      return new BasicVariableStateDemand<>(sourceVariableDescriptor);
     }
   }
 
   public boolean isSingleton() {
     return singleton;
-  }
-
-  @Override
-  public boolean isListVariableSource() {
-    return sourceVariableDescriptor instanceof ListVariableDescriptor<Solution_>;
   }
 }

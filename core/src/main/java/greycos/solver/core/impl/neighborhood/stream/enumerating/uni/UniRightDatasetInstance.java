@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.neighborhood.stream.enumerating.uni;
 
+import java.util.function.Function;
+
 import greycos.solver.core.impl.bavet.common.index.IndexerFactory;
 import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractDataset;
@@ -13,7 +15,7 @@ import org.jspecify.annotations.Nullable;
 public final class UniRightDatasetInstance<Solution_, A, B>
     extends AbstractRightDatasetInstance<Solution_, B> {
 
-  private final IndexerFactory.KeysExtractor<UniTuple<A>> leftCompositeKeyExtractor;
+  private final Function<@Nullable A, Object> leftFactCompositeKeyExtractor;
   private final @Nullable BiNeighborhoodsPredicate<Solution_, A, B> filter;
 
   public UniRightDatasetInstance(
@@ -28,12 +30,16 @@ public final class UniRightDatasetInstance<Solution_, A, B>
         compositeKeyStoreIndex,
         rightMostPositionStoreIndex,
         indexerFactory.buildIndexer(false));
-    this.leftCompositeKeyExtractor = indexerFactory.buildUniLeftKeysExtractor();
+    this.leftFactCompositeKeyExtractor = indexerFactory.buildUniLeftFactKeysExtractor();
     this.filter = filter;
   }
 
   public Object produceCompositeKey(UniTuple<A> leftTuple) {
-    return leftCompositeKeyExtractor.apply(leftTuple);
+    return produceCompositeKey(leftTuple.getA());
+  }
+
+  public Object produceCompositeKey(@Nullable A a) {
+    return leftFactCompositeKeyExtractor.apply(a);
   }
 
   public @Nullable BiNeighborhoodsPredicate<Solution_, A, B> getFilter() {

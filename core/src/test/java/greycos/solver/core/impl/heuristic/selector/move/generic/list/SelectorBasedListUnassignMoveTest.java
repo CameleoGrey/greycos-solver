@@ -37,7 +37,7 @@ class SelectorBasedListUnassignMoveTest {
     verify(scoreDirector).beforeListVariableElementUnassigned(variableDescriptor, v3);
     verify(scoreDirector).afterListVariableElementUnassigned(variableDescriptor, v3);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 2, 2);
-    verify(scoreDirector, atLeastOnce()).triggerVariableListeners();
+    verify(scoreDirector, atLeastOnce()).updateShadowVariables();
 
     new SelectorBasedListUnassignMove<>(variableDescriptor, e1, 0).doMoveOnly(scoreDirector);
     new SelectorBasedListUnassignMove<>(variableDescriptor, e1, 0).doMoveOnly(scoreDirector);

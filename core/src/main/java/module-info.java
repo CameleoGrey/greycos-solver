@@ -68,6 +68,7 @@ module greycos.solver.core {
   exports greycos.solver.core.preview.api.move.test;
   exports greycos.solver.core.preview.api.neighborhood;
   exports greycos.solver.core.preview.api.neighborhood.stream;
+  exports greycos.solver.core.preview.api.neighborhood.stream.dataset;
   exports greycos.solver.core.preview.api.neighborhood.stream.enumerating;
   exports greycos.solver.core.preview.api.neighborhood.stream.enumerating.collector;
   exports greycos.solver.core.preview.api.neighborhood.stream.enumerating.function;

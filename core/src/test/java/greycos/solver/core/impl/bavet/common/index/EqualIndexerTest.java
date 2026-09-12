@@ -13,6 +13,7 @@ import java.util.Random;
 import greycos.solver.core.api.score.stream.Joiners;
 import greycos.solver.core.impl.bavet.bi.joiner.DefaultBiJoiner;
 import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
+import greycos.solver.core.impl.neighborhood.stream.FilteringIterator;
 import greycos.solver.core.impl.neighborhood.stream.joiner.DefaultBiNeighborhoodsJoiner;
 import greycos.solver.core.preview.api.neighborhood.stream.joiner.NeighborhoodsJoiners;
 
@@ -125,35 +126,34 @@ class EqualIndexerTest extends AbstractIndexerTest {
   }
 
   @Test
-  void randomIteratorEmpty() {
+  void uniqueRandomIteratorEmpty() {
     Indexer<UniTuple<String>> indexer =
         new IndexerFactory<>(neighborhoodsJoiner).buildIndexer(true);
     var random = new Random(0);
-    var iterator = indexer.randomIterator(CompositeKey.ofMany("F", 40), random);
+    var iterator = indexer.uniqueRandomIterator(CompositeKey.ofMany("F", 40), random);
 
     assertThat(iterator.hasNext()).isFalse();
     assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(iterator::next);
   }
 
   @Test
-  void randomIteratorSingleElement() {
+  void uniqueRandomIteratorSingleElement() {
     Indexer<UniTuple<String>> indexer =
         new IndexerFactory<>(neighborhoodsJoiner).buildIndexer(true);
     var annTuple = newTuple("Ann-F-40");
     indexer.put(CompositeKey.ofMany("F", 40), annTuple);
 
     var random = new Random(0);
-    var iterator = indexer.randomIterator(CompositeKey.ofMany("F", 40), random);
+    var iterator = indexer.uniqueRandomIterator(CompositeKey.ofMany("F", 40), random);
 
     assertThat(iterator).hasNext();
     assertThat(iterator.next()).isEqualTo(annTuple);
 
-    iterator.remove();
-    assertThat(iterator.hasNext()).isFalse();
+    assertThat(iterator).isExhausted();
   }
 
   @Test
-  void randomIteratorMultipleElements() {
+  void uniqueRandomIteratorMultipleElements() {
     Indexer<UniTuple<String>> indexer =
         new IndexerFactory<>(neighborhoodsJoiner).buildIndexer(true);
     var annTuple = newTuple("Ann-F-40");
@@ -164,7 +164,7 @@ class EqualIndexerTest extends AbstractIndexerTest {
     indexer.put(CompositeKey.ofMany("F", 30), bethTuple);
 
     var random = new Random(0);
-    var iterator = indexer.randomIterator(CompositeKey.ofMany("F", 40), random);
+    var iterator = indexer.uniqueRandomIterator(CompositeKey.ofMany("F", 40), random);
 
     assertThat(iterator).hasNext();
     var firstPick = iterator.next();
@@ -172,7 +172,7 @@ class EqualIndexerTest extends AbstractIndexerTest {
   }
 
   @Test
-  void randomIteratorRemoveAllElements() {
+  void uniqueRandomIteratorRemoveAllElements() {
     Indexer<UniTuple<String>> indexer =
         new IndexerFactory<>(neighborhoodsJoiner).buildIndexer(true);
     var annTuple = newTuple("Ann-F-40");
@@ -183,14 +183,13 @@ class EqualIndexerTest extends AbstractIndexerTest {
     indexer.put(CompositeKey.ofMany("F", 40), franceTuple);
 
     var random = new Random(0);
-    var iterator = indexer.randomIterator(CompositeKey.ofMany("F", 40), random);
+    var iterator = indexer.uniqueRandomIterator(CompositeKey.ofMany("F", 40), random);
 
     var clearedElementSet = new HashSet<UniTuple<String>>();
     for (var i = 0; i < 3; i++) {
       assertThat(iterator).hasNext();
       var element = iterator.next();
       clearedElementSet.add(element);
-      iterator.remove();
     }
 
     assertThat(iterator.hasNext()).isFalse();
@@ -199,7 +198,7 @@ class EqualIndexerTest extends AbstractIndexerTest {
   }
 
   @Test
-  void randomIteratorWithFilter() {
+  void uniqueRandomIteratorWithFilter() {
     Indexer<UniTuple<String>> indexer =
         new IndexerFactory<>(neighborhoodsJoiner).buildIndexer(true);
     var annTuple = newTuple("Ann-F-40");
@@ -211,9 +210,8 @@ class EqualIndexerTest extends AbstractIndexerTest {
 
     var random = new Random(0);
     var iterator =
-        indexer.randomIterator(
-            CompositeKey.ofMany("F", 40),
-            random,
+        new FilteringIterator<>(
+            indexer.uniqueRandomIterator(CompositeKey.ofMany("F", 40), random),
             tuple -> {
               var fact = Objects.requireNonNull(tuple.getA());
               return fact.startsWith("A") || fact.startsWith("C");
@@ -222,7 +220,6 @@ class EqualIndexerTest extends AbstractIndexerTest {
     var resultList = new ArrayList<UniTuple<String>>();
     while (iterator.hasNext()) {
       resultList.add(iterator.next());
-      iterator.remove();
     }
 
     assertThat(resultList).containsExactlyInAnyOrder(annTuple, carolTuple);
@@ -230,7 +227,22 @@ class EqualIndexerTest extends AbstractIndexerTest {
   }
 
   @Test
-  void randomIteratorWithFilterEmpty() {
+  void randomIteratorNeverEnds() {
+    Indexer<UniTuple<String>> indexer =
+        new IndexerFactory<>(neighborhoodsJoiner).buildIndexer(true);
+    var annTuple = newTuple("Ann-F-40");
+    indexer.put(CompositeKey.ofMany("F", 40), annTuple);
+    var ednaTuple = newTuple("Edna-F-40");
+    indexer.put(CompositeKey.ofMany("F", 40), ednaTuple);
+
+    assertRepeatingRandomNeverEnds(indexer, CompositeKey.ofMany("F", 40), 30);
+
+    var deadIterator = indexer.randomIterator(CompositeKey.ofMany("F", 20), new Random(0));
+    assertThat(deadIterator.hasNext()).isFalse();
+  }
+
+  @Test
+  void uniqueRandomIteratorWithFilterEmpty() {
     Indexer<UniTuple<String>> indexer =
         new IndexerFactory<>(neighborhoodsJoiner).buildIndexer(true);
     var annTuple = newTuple("Ann-F-40");
@@ -239,7 +251,10 @@ class EqualIndexerTest extends AbstractIndexerTest {
     indexer.put(CompositeKey.ofMany("F", 40), bethTuple);
 
     var random = new Random(0);
-    var iterator = indexer.randomIterator(CompositeKey.ofMany("F", 40), random, tuple -> false);
+    // Filter that matches nothing
+    var iterator =
+        new FilteringIterator<>(
+            indexer.uniqueRandomIterator(CompositeKey.ofMany("F", 40), random), tuple -> false);
 
     assertThat(iterator.hasNext()).isFalse();
   }

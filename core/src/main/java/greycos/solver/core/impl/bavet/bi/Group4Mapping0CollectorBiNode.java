@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.bavet.bi;
 
 import java.util.function.BiFunction;
+import java.util.function.IntSupplier;
 
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.bavet.common.tuple.BiTuple;
@@ -19,12 +20,12 @@ public final class Group4Mapping0CollectorBiNode<OldA, OldB, A, B, C, D>
       BiFunction<OldA, OldB, B> groupKeyMappingB,
       BiFunction<OldA, OldB, C> groupKeyMappingC,
       BiFunction<OldA, OldB, D> groupKeyMappingD,
-      int groupStoreIndex,
+      IntSupplier storeIndexReserver,
       TupleLifecycle<QuadTuple<A, B, C, D>> nextNodesTupleLifecycle,
       int outputStoreSize,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
+        storeIndexReserver,
         tuple ->
             createGroupKey(
                 groupKeyMappingA, groupKeyMappingB, groupKeyMappingC, groupKeyMappingD, tuple),

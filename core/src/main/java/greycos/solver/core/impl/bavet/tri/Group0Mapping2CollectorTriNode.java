@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.bavet.tri;
 
+import java.util.function.IntSupplier;
+
 import greycos.solver.core.api.score.stream.ConstraintCollectors;
 import greycos.solver.core.api.score.stream.tri.TriConstraintCollector;
 import greycos.solver.core.config.solver.EnvironmentMode;
@@ -14,16 +16,14 @@ public final class Group0Mapping2CollectorTriNode<
   private final int outputStoreSize;
 
   public Group0Mapping2CollectorTriNode(
-      int groupStoreIndex,
-      int undoStoreIndex,
+      IntSupplier storeIndexReserver,
       TriConstraintCollector<OldA, OldB, OldC, ResultContainerA_, A> collectorA,
       TriConstraintCollector<OldA, OldB, OldC, ResultContainerB_, B> collectorB,
       TupleLifecycle<BiTuple<A, B>> nextNodesTupleLifecycle,
       int outputStoreSize,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
-        undoStoreIndex,
+        storeIndexReserver,
         null,
         mergeCollectors(collectorA, collectorB),
         nextNodesTupleLifecycle,

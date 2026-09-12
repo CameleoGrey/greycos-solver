@@ -7,12 +7,23 @@ import java.util.Objects;
 import greycos.solver.core.impl.bavet.AbstractSession;
 import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import greycos.solver.core.impl.neighborhood.NeighborhoodsBavetNodeNetwork;
+import greycos.solver.core.impl.neighborhood.stream.dataset.CachedBiDatasetInstance;
+import greycos.solver.core.impl.neighborhood.stream.dataset.DefaultUniDatasetInstance;
+import greycos.solver.core.impl.neighborhood.stream.dataset.JustInTimeBiDatasetInstance;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.bi.BiLeftDataset;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.bi.BiLeftDatasetInstance;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.bi.JustInTimeBiDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractDatasetInstance;
-import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractLeftDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractLeftDatasetInstance;
-import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractRightDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractRightDatasetInstance;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniLeftDataset;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniRightDatasetInstance;
+import greycos.solver.core.preview.api.move.SolutionView;
+import greycos.solver.core.preview.api.neighborhood.stream.dataset.BiDataset;
+import greycos.solver.core.preview.api.neighborhood.stream.dataset.BiDatasetInstance;
+import greycos.solver.core.preview.api.neighborhood.stream.dataset.UniDataset;
+import greycos.solver.core.preview.api.neighborhood.stream.dataset.UniDatasetInstance;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -20,22 +31,18 @@ import org.jspecify.annotations.NullMarked;
 public final class DatasetSession<Solution_>
     extends AbstractSession<NeighborhoodsBavetNodeNetwork> {
 
+  private final SolutionView<Solution_> solutionView;
   private final Map<AbstractDataset<Solution_>, AbstractDatasetInstance<Solution_, ?>>
-      leftDatasetInstanceMap = new IdentityHashMap<>();
-  private final Map<AbstractDataset<Solution_>, AbstractDatasetInstance<Solution_, ?>>
-      rightDatasetInstanceMap = new IdentityHashMap<>();
+      datasetInstanceMap = new IdentityHashMap<>();
 
-  DatasetSession(NeighborhoodsBavetNodeNetwork nodeNetwork) {
+  DatasetSession(NeighborhoodsBavetNodeNetwork nodeNetwork, SolutionView<Solution_> solutionView) {
     super(nodeNetwork);
+    this.solutionView = Objects.requireNonNull(solutionView);
   }
 
   public void registerDatasetInstance(
       AbstractDataset<Solution_> dataset, AbstractDatasetInstance<Solution_, ?> datasetInstance) {
-    var map =
-        datasetInstance instanceof AbstractLeftDatasetInstance
-            ? leftDatasetInstanceMap
-            : rightDatasetInstanceMap;
-    var oldDatasetInstance = map.put(dataset, datasetInstance);
+    var oldDatasetInstance = datasetInstanceMap.put(dataset, datasetInstance);
     if (oldDatasetInstance != null) {
       throw new IllegalStateException(
           "The dataset (%s) has already been registered with session (%s)."
@@ -44,16 +51,28 @@ public final class DatasetSession<Solution_>
   }
 
   @SuppressWarnings("unchecked")
-  public <A> AbstractLeftDatasetInstance<Solution_, UniTuple<A>> getInstance(
-      AbstractLeftDataset<Solution_, A> dataset) {
-    return (AbstractLeftDatasetInstance<Solution_, UniTuple<A>>)
-        Objects.requireNonNull(leftDatasetInstanceMap.get(dataset));
+  public <Instance_> Instance_ getInstance(AbstractDataset<Solution_> dataset) {
+    return (Instance_) Objects.requireNonNull(datasetInstanceMap.get(dataset));
   }
 
-  @SuppressWarnings("unchecked")
-  public <B> AbstractRightDatasetInstance<Solution_, B> getInstance(
-      AbstractRightDataset<Solution_, B> dataset) {
-    return (AbstractRightDatasetInstance<Solution_, B>)
-        Objects.requireNonNull(rightDatasetInstanceMap.get(dataset));
+  public <A> UniDatasetInstance<A> getInstance(UniDataset<Solution_, A> dataset) {
+    var uniLeftDataset = (UniLeftDataset<Solution_, A>) dataset;
+    return new DefaultUniDatasetInstance<>(
+        this.<AbstractLeftDatasetInstance<Solution_, UniTuple<A>>>getInstance(uniLeftDataset));
+  }
+
+  public <A, B> BiDatasetInstance<A, B> getInstance(BiDataset<Solution_, A, B> dataset) {
+    if (dataset
+        instanceof JustInTimeBiDataset<Solution_, A, B>(var leftDataset, var rightDataset)) {
+      var leftInstance =
+          this.<AbstractLeftDatasetInstance<Solution_, UniTuple<A>>>getInstance(leftDataset);
+      var rightInstance =
+          (UniRightDatasetInstance<Solution_, A, B>)
+              this.<AbstractRightDatasetInstance<Solution_, B>>getInstance(rightDataset);
+      return new JustInTimeBiDatasetInstance<>(leftInstance, rightInstance, solutionView);
+    }
+    var biLeftDataset = (BiLeftDataset<Solution_, A, B>) dataset;
+    return new CachedBiDatasetInstance<>(
+        this.<BiLeftDatasetInstance<Solution_, A, B>>getInstance(biLeftDataset));
   }
 }

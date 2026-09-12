@@ -2,18 +2,26 @@ package greycos.solver.core.impl.neighborhood.stream;
 
 import java.util.Objects;
 
+import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.DatasetSession;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractLeftDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniLeftDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniLeftDatasetInstance;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniRightDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniRightDatasetInstance;
 import greycos.solver.core.preview.api.move.SolutionView;
+import greycos.solver.core.preview.api.neighborhood.MoveIteratorSession;
 import greycos.solver.core.preview.api.neighborhood.NeighborhoodSession;
+import greycos.solver.core.preview.api.neighborhood.stream.dataset.BiDataset;
+import greycos.solver.core.preview.api.neighborhood.stream.dataset.BiDatasetInstance;
+import greycos.solver.core.preview.api.neighborhood.stream.dataset.UniDataset;
+import greycos.solver.core.preview.api.neighborhood.stream.dataset.UniDatasetInstance;
 
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-public final class DefaultNeighborhoodSession<Solution_> implements NeighborhoodSession {
+public final class DefaultNeighborhoodSession<Solution_>
+    implements NeighborhoodSession, MoveIteratorSession<Solution_> {
 
   private final DatasetSession<Solution_> datasetSession;
   private final SolutionView<Solution_> solutionView;
@@ -26,12 +34,12 @@ public final class DefaultNeighborhoodSession<Solution_> implements Neighborhood
 
   public <A> UniLeftDatasetInstance<Solution_, A> getLeftDatasetInstance(
       UniLeftDataset<Solution_, A> dataset) {
-    return (UniLeftDatasetInstance<Solution_, A>) datasetSession.getInstance(dataset);
+    return datasetSession.getInstance((AbstractLeftDataset<Solution_, UniTuple<A>>) dataset);
   }
 
   public <A, B> UniRightDatasetInstance<Solution_, A, B> getRightDatasetInstance(
       UniRightDataset<Solution_, A, B> dataset) {
-    return (UniRightDatasetInstance<Solution_, A, B>) datasetSession.getInstance(dataset);
+    return datasetSession.getInstance(dataset);
   }
 
   public void insert(Object fact) {
@@ -50,7 +58,18 @@ public final class DefaultNeighborhoodSession<Solution_> implements Neighborhood
     datasetSession.settle();
   }
 
+  @Override
   public SolutionView<Solution_> getSolutionView() {
     return solutionView;
+  }
+
+  @Override
+  public <A> UniDatasetInstance<A> getInstance(UniDataset<Solution_, A> dataset) {
+    return datasetSession.getInstance(dataset);
+  }
+
+  @Override
+  public <A, B> BiDatasetInstance<A, B> getInstance(BiDataset<Solution_, A, B> dataset) {
+    return datasetSession.getInstance(dataset);
   }
 }

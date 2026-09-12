@@ -20,7 +20,12 @@ public enum ParentVariableType {
   INDIRECT(false, true),
 
   /** Variables accessed from a group. */
-  GROUP(false, true);
+  GROUP(false, true),
+
+  /**
+   * Variables accessed from the elements of a planning list variable declared on the root entity.
+   */
+  LIST_ELEMENT(false, true);
 
   /**
    * True if the parent variable has a well-defined successor function. For instance, the successor

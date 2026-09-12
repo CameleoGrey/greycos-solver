@@ -13,16 +13,6 @@ import org.jspecify.annotations.Nullable;
  * <p>Use this with {@link UniSamplingStream#asMove(UniMoveConstructor)} to build moves from a
  * single pick, without requiring a second pick.
  *
- * <p><strong>This package and all of its contents are part of the Neighborhoods API, which is under
- * development and is only offered as a preview feature.</strong> There are no guarantees for
- * backward compatibility; any class, method, or field may change or be removed without prior
- * notice, although we will strive to avoid this as much as possible.
- *
- * <p>We encourage you to try the API and give us feedback on your experience with it, before we
- * finalize the API. Please direct your feedback to the <a
- * href="https://github.com/CameleoGrey/greycos-solver/discussions">GreyCOS Solver GitHub
- * discussions</a>.
- *
  * @param <Solution_> the solution type
  * @param <A> the type of the picked element
  */

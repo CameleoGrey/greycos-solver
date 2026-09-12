@@ -87,7 +87,7 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
 
   @Override
   public InnerScore<Score_> calculateScore() {
-    variableListenerSupport.assertNotificationQueuesAreEmpty();
+    shadowVariableSupport.assertShadowVariablesAreUpToDate();
     var score =
         Objects.requireNonNull(
             incrementalScoreCalculator.calculateScore(),
@@ -106,7 +106,7 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
               + constraintMatchPolicy
               + ") is disabled in the constructor, this method should not be called.");
     }
-    // Notice that we don't trigger the variable listeners
+    // Notice that we don't update the shadow variables
     return constraintMatchTotalMap;
   }
 

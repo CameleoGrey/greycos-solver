@@ -1,5 +1,6 @@
 package greycos.solver.core.config.solver;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
@@ -103,7 +104,7 @@ class EnvironmentModeTest {
       value = EnvironmentMode.class,
       names = {"FAST_ASSERT", "REPRODUCIBLE"},
       mode = EnumSource.Mode.EXCLUDE)
-  void corruptedUndoShadowVariableListener(EnvironmentMode environmentMode) {
+  void corruptedUndoShadowVariable(EnvironmentMode environmentMode) {
     var solverConfig =
         new SolverConfig()
             .withEnvironmentMode(environmentMode)
@@ -175,13 +176,21 @@ class EnvironmentModeTest {
         e2.setValue(v2);
         e2.setValueClone(v2);
         v2.setEntities(new ArrayList<>(List.of(e2)));
-        assertThatNoException()
-            .isThrownBy(
-                () ->
-                    PlannerTestUtils.solve(
-                        solverConfig,
-                        new CorruptedUndoShadowSolution(List.of(e1, e2), List.of(v1, v2)),
-                        true));
+        var solvedSolution =
+            PlannerTestUtils.solve(
+                solverConfig,
+                new CorruptedUndoShadowSolution(List.of(e1, e2), List.of(v1, v2)),
+                true);
+
+        // The inverse-relation shadow collection must still match the final variable state;
+        // assert-mode solving and its undos must not have corrupted it.
+        for (var value : solvedSolution.getValueList()) {
+          var expectedEntities =
+              solvedSolution.getEntityList().stream()
+                  .filter(entity -> entity.getValue() == value)
+                  .toList();
+          assertThat(value.getEntities()).containsExactlyInAnyOrderElementsOf(expectedEntities);
+        }
       }
     }
   }

@@ -25,7 +25,7 @@ public abstract class AbstractSimplifiedMove<Solution_> implements Move<Solution
             ? variableChangeRecordingScoreDirector
             : new VariableChangeRecordingScoreDirector<>(scoreDirector);
     doMoveOnGenuineVariables(recordingScoreDirector);
-    recordingScoreDirector.triggerVariableListeners();
+    recordingScoreDirector.updateShadowVariables();
   }
 
   protected abstract void doMoveOnGenuineVariables(ScoreDirector<Solution_> scoreDirector);

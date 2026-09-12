@@ -41,7 +41,7 @@ public final class DefaultBiNeighborhoodsJoiner<A, B> extends AbstractJoiner<B>
   public static <A, B> DefaultBiNeighborhoodsJoiner<A, B> merge(
       List<DefaultBiNeighborhoodsJoiner<A, B>> joinerList) {
     if (joinerList.size() == 1) {
-      return joinerList.get(0);
+      return joinerList.getFirst();
     }
     return joinerList.stream().reduce(NONE, DefaultBiNeighborhoodsJoiner::and);
   }
@@ -57,8 +57,8 @@ public final class DefaultBiNeighborhoodsJoiner<A, B> extends AbstractJoiner<B>
     var castJoinerCount = castJoiner.getJoinerCount();
     var newJoinerCount = joinerCount + castJoinerCount;
     var newJoinerTypes = Arrays.copyOf(this.joinerTypes, newJoinerCount);
-    Function[] newLeftMappings = Arrays.copyOf(this.leftMappings, newJoinerCount);
-    Function[] newRightMappings = Arrays.copyOf(this.rightMappings, newJoinerCount);
+    var newLeftMappings = Arrays.copyOf(this.leftMappings, newJoinerCount);
+    var newRightMappings = Arrays.copyOf(this.rightMappings, newJoinerCount);
     for (var i = 0; i < castJoinerCount; i++) {
       var newJoinerIndex = i + joinerCount;
       newJoinerTypes[newJoinerIndex] = castJoiner.getJoinerType(i);
@@ -79,9 +79,9 @@ public final class DefaultBiNeighborhoodsJoiner<A, B> extends AbstractJoiner<B>
       return this;
     }
     var count = order.length;
-    Function[] newLeftMappings = new Function[count];
+    var newLeftMappings = new Function[count];
     var newJoinerTypes = new JoinerType[count];
-    Function[] newRightMappings = new Function[count];
+    var newRightMappings = new Function[count];
     for (var i = 0; i < count; i++) {
       var from = order[i];
       newLeftMappings[i] = leftMappings[from];
@@ -93,6 +93,11 @@ public final class DefaultBiNeighborhoodsJoiner<A, B> extends AbstractJoiner<B>
 
   public Function<A, Object> getLeftMapping(int index) {
     return leftMappings[index];
+  }
+
+  @Override
+  public boolean requiresRandomAccess() {
+    return true;
   }
 
   public boolean matches(A a, B b) {

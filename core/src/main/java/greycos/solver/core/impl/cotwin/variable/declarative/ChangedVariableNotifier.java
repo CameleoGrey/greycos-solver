@@ -3,8 +3,8 @@ package greycos.solver.core.impl.cotwin.variable.declarative;
 import java.util.Collections;
 import java.util.function.BiConsumer;
 
+import greycos.solver.core.impl.cotwin.variable.BasicVariableStateDemand;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.inverserelation.CollectionInverseVariableDemand;
 import greycos.solver.core.impl.cotwin.variable.inverserelation.CollectionInverseVariableSupply;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
@@ -31,7 +31,7 @@ public record ChangedVariableNotifier<Solution_>(
               .getVariableDescriptor(variableMetaModel.name());
       return innerScoreDirector
           .getSupplyManager()
-          .demand(new CollectionInverseVariableDemand<>(variableDescriptor));
+          .demand(new BasicVariableStateDemand<>(variableDescriptor));
     }
   }
 

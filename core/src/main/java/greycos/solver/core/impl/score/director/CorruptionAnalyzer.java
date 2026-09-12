@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import greycos.solver.core.api.score.Score;
-import greycos.solver.core.impl.cotwin.variable.listener.support.VariableListenerSupport;
+import greycos.solver.core.impl.cotwin.variable.ShadowVariableSupport;
 import greycos.solver.core.impl.score.constraint.ConstraintMatch;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
@@ -108,7 +108,7 @@ final class CorruptionAnalyzer<Solution_, Score_ extends Score<Score_>> {
               If multi-threaded solving is active:
                 - the working scoreDirector is probably not the corrupted scoreDirector.
                 - maybe the rebase() method of the move is bugged.
-                - maybe a VariableListener affected the moveThread's workingSolution after doing and undoing a move,
+                - maybe a shadow variable update affected the moveThread's workingSolution after doing and undoing a move,
                   but this didn't happen here on the solverThread, so we can't detect it.
             """
                 .stripTrailing());
@@ -226,7 +226,7 @@ final class CorruptionAnalyzer<Solution_, Score_ extends Score<Score_>> {
   @SuppressWarnings("unchecked")
   public String analyzeShadowVariables(boolean predicted) {
     var violationMessage =
-        ((VariableListenerSupport<Solution_>) scoreDirector.getSupplyManager())
+        ((ShadowVariableSupport<Solution_>) scoreDirector.getSupplyManager())
             .createShadowVariablesViolationMessage();
     var workingLabel = predicted ? "working" : "corrupted";
     if (violationMessage == null) {

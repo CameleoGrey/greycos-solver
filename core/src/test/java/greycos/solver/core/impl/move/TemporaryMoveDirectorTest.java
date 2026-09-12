@@ -63,6 +63,8 @@ class TemporaryMoveDirectorTest {
                         fixture.change(fixture.values.get(2)), Function.identity());
                 assertThat(innerScore.raw()).isEqualTo(SimpleScore.of(2));
                 assertThat(fixture.entity.getValue()).isSameAs(fixture.values.get(1));
+                assertThat(fixture.scoreDirector.getWorkingSolution().getScore())
+                    .isEqualTo(outerScore.raw());
                 assertThat(fixture.scoreDirector.calculateScore()).isEqualTo(outerScore);
                 return outerScore;
               });
@@ -165,6 +167,11 @@ class TemporaryMoveDirectorTest {
     var originalValue = new TestdataValue("original");
     var entity = new TestdataEntity("entity", originalValue);
     var failure = new IllegalStateException("Scoring failed");
+    var solution = new TestdataSolution();
+    solution.setScore(SimpleScore.of(7));
+    when(scoreDirector.getSolutionDescriptor())
+        .thenReturn(TestdataSolution.buildSolutionDescriptor());
+    when(scoreDirector.getWorkingSolution()).thenReturn(solution);
     when(scoreDirector.calculateScore()).thenThrow(failure);
 
     assertThatThrownBy(
@@ -175,6 +182,7 @@ class TemporaryMoveDirectorTest {
                     Function.identity()))
         .isSameAs(failure);
     assertThat(entity.getValue()).isSameAs(originalValue);
+    assertThat(solution.getScore()).isEqualTo(SimpleScore.of(7));
   }
 
   @Test
@@ -197,6 +205,80 @@ class TemporaryMoveDirectorTest {
     }
   }
 
+  @Test
+  void everyTemporaryPathRestoresNullOrStaleStoredScoreWithoutRecalculation() {
+    try (var fixture = new Fixture()) {
+      for (var previousScore : new SimpleScore[] {null, SimpleScore.of(37)}) {
+        for (var path = 0; path < 4; path++) {
+          fixture.scoreDirector.getWorkingSolution().setScore(previousScore);
+          var previousCalculationCount = fixture.scoreDirector.getCalculationCount();
+          var move = fixture.change(fixture.values.get(1));
+          var temporaryScore =
+              switch (path) {
+                case 0 -> fixture.moveDirector.executeTemporary(move).raw();
+                case 1 -> fixture.moveDirector.executeTemporary(move, (score, undo) -> score.raw());
+                case 2 ->
+                    fixture.moveDirector.executeTemporaryWithScore(move, score -> score.raw());
+                default ->
+                    fixture.moveDirector.executeTemporary(
+                        move, solution -> fixture.scoreDirector.calculateScore().raw(), false);
+              };
+          assertThat(temporaryScore).isEqualTo(SimpleScore.ONE);
+          assertThat(fixture.entity.getValue()).isSameAs(fixture.values.getFirst());
+          assertThat(fixture.scoreDirector.getWorkingSolution().getScore())
+              .isEqualTo(previousScore);
+          assertThat(fixture.scoreDirector.getCalculationCount())
+              .isEqualTo(previousCalculationCount + 1);
+        }
+      }
+    }
+  }
+
+  @Test
+  void solutionCallbackFailureRestoresScoreAndFreshScoreContract() {
+    try (var fixture = new Fixture()) {
+      var failure = new IllegalStateException("Callback failed");
+      for (var guaranteeFreshScore : new boolean[] {false, true}) {
+        fixture.scoreDirector.getWorkingSolution().setScore(SimpleScore.of(37));
+        assertThatThrownBy(
+                () ->
+                    fixture.moveDirector.executeTemporary(
+                        fixture.change(fixture.values.get(1)),
+                        solution -> {
+                          fixture.scoreDirector.calculateScore();
+                          throw failure;
+                        },
+                        guaranteeFreshScore))
+            .isSameAs(failure);
+        assertThat(fixture.entity.getValue()).isSameAs(fixture.values.getFirst());
+        assertThat(fixture.scoreDirector.getWorkingSolution().getScore())
+            .isEqualTo(guaranteeFreshScore ? SimpleScore.ZERO : SimpleScore.of(37));
+      }
+    }
+  }
+
+  @Test
+  void retainedCompoundUndoRebasesAndSurvivesRecorderReuse() {
+    try (var fixture = new Fixture();
+        var other = new Fixture(true)) {
+      Move<TestdataSolution> compound =
+          view -> {
+            fixture.change(fixture.values.get(1)).execute(view);
+            fixture.change(fixture.values.get(2)).execute(view);
+          };
+      var undo =
+          fixture.moveDirector.executeTemporary(compound, (score, retainedUndo) -> retainedUndo);
+      fixture.assertOriginalState();
+      fixture.moveDirector.executeTemporaryWithScore(
+          fixture.change(fixture.values.get(1)), Function.identity());
+      fixture.assertOriginalState();
+      other.moveDirector.execute(other.change(other.values.get(1)));
+      other.moveDirector.execute(other.change(other.values.get(2)));
+      other.moveDirector.execute(undo.rebase(other.moveDirector));
+      other.assertOriginalState();
+    }
+  }
+
   private static final class Fixture implements AutoCloseable {
     private final List<TestdataValue> values =
         List.of(new TestdataValue("0"), new TestdataValue("1"), new TestdataValue("2"));
@@ -207,6 +289,10 @@ class TemporaryMoveDirectorTest {
         variableMetaModel;
 
     private Fixture() {
+      this(false);
+    }
+
+    private Fixture(boolean lookUpEnabled) {
       var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
       variableMetaModel =
           (DefaultPlanningVariableMetaModel<TestdataSolution, TestdataEntity, TestdataValue>)
@@ -226,12 +312,13 @@ class TemporaryMoveDirectorTest {
                   },
               EnvironmentMode.NO_ASSERT,
               false);
-      scoreDirector = factory.createScoreDirectorBuilder().build();
+      scoreDirector = factory.createScoreDirectorBuilder().withLookUpEnabled(lookUpEnabled).build();
       var solution = new TestdataSolution();
       solution.setEntityList(List.of(entity));
       solution.setValueList(values);
       scoreDirector.setWorkingSolution(solution);
       moveDirector = scoreDirector.getMoveDirector();
+      scoreDirector.calculateScore();
       assertOriginalState();
     }
 
@@ -245,11 +332,12 @@ class TemporaryMoveDirectorTest {
       recorder.beforeVariableChanged(variableMetaModel.variableDescriptor(), entity);
       entity.setValue(value);
       recorder.afterVariableChanged(variableMetaModel.variableDescriptor(), entity);
-      recorder.triggerVariableListeners();
+      recorder.updateShadowVariables();
     }
 
     private void assertOriginalState() {
       assertThat(entity.getValue()).isSameAs(values.getFirst());
+      assertThat(scoreDirector.getWorkingSolution().getScore()).isEqualTo(SimpleScore.ZERO);
       assertThat(scoreDirector.calculateScore().raw()).isEqualTo(SimpleScore.ZERO);
     }
 

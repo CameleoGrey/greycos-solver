@@ -7,10 +7,13 @@ import greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
+import greycos.solver.core.impl.cotwin.variable.BasicVariableStateDemand;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
 
 public final class BasicVariableDescriptor<Solution_> extends GenuineVariableDescriptor<Solution_> {
 
+  private final BasicVariableStateDemand<Solution_> stateDemand =
+      new BasicVariableStateDemand<>(this);
   private boolean allowsUnassigned;
 
   // ************************************************************************
@@ -22,6 +25,10 @@ public final class BasicVariableDescriptor<Solution_> extends GenuineVariableDes
       EntityDescriptor<Solution_> entityDescriptor,
       MemberAccessor variableMemberAccessor) {
     super(ordinal, entityDescriptor, variableMemberAccessor);
+  }
+
+  public BasicVariableStateDemand<Solution_> getStateDemand() {
+    return stateDemand;
   }
 
   public boolean allowsUnassigned() {

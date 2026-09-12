@@ -1,8 +1,5 @@
 package greycos.solver.core.impl.cotwin.variable.descriptor;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
@@ -21,9 +18,6 @@ public abstract class VariableDescriptor<Solution_> {
   protected final String variableName;
   protected final String simpleEntityAndVariableName;
   protected VariableMetaModel<Solution_, ?, ?> cachedMetamodel = null;
-
-  protected List<ShadowVariableDescriptor<Solution_>> sinkVariableDescriptorList =
-      new ArrayList<>(4);
 
   // ************************************************************************
   // Constructors and simple getters/setters
@@ -95,24 +89,6 @@ public abstract class VariableDescriptor<Solution_> {
 
   public final boolean isListVariable() {
     return this instanceof ListVariableDescriptor;
-  }
-
-  public boolean canBeUsedAsSource() {
-    return true;
-  }
-
-  public void registerSinkVariableDescriptor(
-      ShadowVariableDescriptor<Solution_> shadowVariableDescriptor) {
-    sinkVariableDescriptorList.add(shadowVariableDescriptor);
-  }
-
-  /**
-   * Inverse of {@link ShadowVariableDescriptor#getSourceVariableDescriptorList()}.
-   *
-   * @return never null, only direct shadow variables that are affected by this variable
-   */
-  public List<ShadowVariableDescriptor<Solution_>> getSinkVariableDescriptorList() {
-    return sinkVariableDescriptorList;
   }
 
   /**

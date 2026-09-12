@@ -41,6 +41,10 @@ public final class FilteringMoveSelector<Solution_> extends AbstractMoveSelector
     phaseLifecycleSupport.addEventListener(childMoveSelector);
   }
 
+  public MoveSelector<Solution_> getChildMoveSelector() {
+    return childMoveSelector;
+  }
+
   // ************************************************************************
   // Worker methods
   // ************************************************************************
@@ -91,7 +95,8 @@ public final class FilteringMoveSelector<Solution_> extends AbstractMoveSelector
       // The exception itself is swallowed, as it doesn't bring any useful information.
       long bailOutSize = Short.MAX_VALUE * BAIL_OUT_MULTIPLIER;
       logger.trace(
-          "        Never-ending move selector ({}) failed to provide size, choosing a bail-out size of ({}) attempts.",
+          "        Never-ending move selector ({}) failed to provide size, choosing a bail-out size"
+              + " of ({}) attempts.",
           childMoveSelector,
           bailOutSize);
       return bailOutSize;
@@ -132,7 +137,8 @@ public final class FilteringMoveSelector<Solution_> extends AbstractMoveSelector
           // loop
           if (attemptsBeforeBailOut <= 0L) {
             logger.trace(
-                "Bailing out of neverEnding selector ({}) after ({}) attempts to avoid infinite loop.",
+                "Bailing out of neverEnding selector ({}) after ({}) attempts to avoid infinite"
+                    + " loop.",
                 FilteringMoveSelector.this,
                 bailOutSize);
             return noUpcomingSelection();
@@ -141,7 +147,8 @@ public final class FilteringMoveSelector<Solution_> extends AbstractMoveSelector
             attemptsBeforeCheckTermination = TERMINATION_BAIL_OUT_SIZE;
             if (termination.isPhaseTerminated(phaseScope)) {
               logger.trace(
-                  "Bailing out of neverEnding selector ({}) because the termination setting has been triggered.",
+                  "Bailing out of neverEnding selector ({}) because the termination setting has"
+                      + " been triggered.",
                   FilteringMoveSelector.this);
               return noUpcomingSelection();
             }

@@ -3,7 +3,6 @@ package greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 import java.util.function.ToIntFunction;
 
 import greycos.solver.core.impl.cotwin.variable.IndexShadowVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.ListElementsChangeEvent;
 import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
@@ -108,14 +107,14 @@ record DelegatingListVariableStateSupply<Solution_>(
   }
 
   @Override
-  public void beforeChange(
-      InnerScoreDirector<Solution_, ?> scoreDirector, ListElementsChangeEvent<Object> event) {
-    delegate.beforeChange(scoreDirector, event);
+  public void beforeListVariableChanged(
+      InnerScoreDirector<Solution_, ?> scoreDirector, Object entity, int fromIndex, int toIndex) {
+    delegate.beforeListVariableChanged(scoreDirector, entity, fromIndex, toIndex);
   }
 
   @Override
-  public void afterChange(
-      InnerScoreDirector<Solution_, ?> scoreDirector, ListElementsChangeEvent<Object> event) {
-    delegate.afterChange(scoreDirector, event);
+  public void afterListVariableChanged(
+      InnerScoreDirector<Solution_, ?> scoreDirector, Object entity, int fromIndex, int toIndex) {
+    delegate.afterListVariableChanged(scoreDirector, entity, fromIndex, toIndex);
   }
 }

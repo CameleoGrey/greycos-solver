@@ -9,21 +9,94 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import greycos.solver.benchmark.config.PlannerBenchmarkConfig;
+import greycos.solver.benchmark.config.ProblemBenchmarksConfig;
 import greycos.solver.benchmark.config.SolverBenchmarkConfig;
+import greycos.solver.benchmark.config.statistic.SingleStatisticType;
 import greycos.solver.benchmark.impl.DefaultPlannerBenchmark;
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintFactory;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
+import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.testcotwin.TestdataConstraintProvider;
 import greycos.solver.core.testcotwin.TestdataEntity;
 import greycos.solver.core.testcotwin.TestdataSolution;
 import greycos.solver.core.testcotwin.TestdataValue;
+import greycos.solver.core.testcotwin.score.TestdataHardSoftScoreSolution;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class PlannerBenchmarkTest {
+
+  @Test
+  void singleStatisticScoreLevelTabsAreUniquePerSolver(@TempDir Path benchmarkTestDir)
+      throws IOException {
+    var inheritedSolverConfig =
+        new SolverBenchmarkConfig()
+            .withSolverConfig(
+                new SolverConfig()
+                    .withSolutionClass(TestdataHardSoftScoreSolution.class)
+                    .withEntityClasses(TestdataEntity.class)
+                    .withConstraintProviderClass(HardSoftConstraintProvider.class)
+                    .withPhases(
+                        new LocalSearchPhaseConfig()
+                            .withTerminationConfig(new TerminationConfig().withStepCountLimit(2))))
+            .withProblemBenchmarksConfig(
+                new ProblemBenchmarksConfig()
+                    .withSingleStatisticTypes(
+                        SingleStatisticType.CONSTRAINT_MATCH_TOTAL_STEP_SCORE));
+    var benchmarkConfig =
+        new PlannerBenchmarkConfig()
+            .withBenchmarkDirectory(benchmarkTestDir.toFile())
+            .withWarmUpMillisecondsSpentLimit(0L)
+            .withInheritedSolverBenchmarkConfig(inheritedSolverConfig)
+            .withSolverBenchmarkConfigList(
+                List.of(
+                    new SolverBenchmarkConfig().withName("First solver"),
+                    new SolverBenchmarkConfig().withName("Second solver")));
+    var plannerBenchmark =
+        (DefaultPlannerBenchmark)
+            PlannerBenchmarkFactory.create(benchmarkConfig)
+                .buildPlannerBenchmark(TestdataHardSoftScoreSolution.generateSolution(2, 2));
+    plannerBenchmark.benchmark();
+
+    var html =
+        Files.readString(plannerBenchmark.getBenchmarkReport().getHtmlOverviewFile().toPath());
+    var paneIds =
+        Pattern.compile("id=\"(singleStatistic_[^\"]+_chart_[01]-tab-pane)\"")
+            .matcher(html)
+            .results()
+            .map(match -> match.group(1))
+            .toList();
+    var buttonTargets =
+        Pattern.compile("data-bs-target=\"#(singleStatistic_[^\"]+_chart_[01]-tab-pane)\"")
+            .matcher(html)
+            .results()
+            .map(match -> match.group(1))
+            .toList();
+    // Both solvers need separate hard/soft panes, each selected by exactly one button.
+    assertThat(paneIds).hasSize(4).doesNotHaveDuplicates();
+    assertThat(buttonTargets).containsExactlyInAnyOrderElementsOf(paneIds);
+  }
+
+  public static final class HardSoftConstraintProvider implements ConstraintProvider {
+
+    @Override
+    public Constraint[] defineConstraints(ConstraintFactory constraintFactory) {
+      return new Constraint[] {
+        constraintFactory
+            .forEach(TestdataEntity.class)
+            .penalize(HardSoftScore.of(1, 1))
+            .asConstraint("Both score levels")
+      };
+    }
+  }
 
   @Test
   void runPlannerBenchmark(@TempDir Path benchmarkTestDir) {

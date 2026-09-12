@@ -52,10 +52,11 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
    * ConstraintVerifier} to ignore events related to shadow variables when testing constraints that
    * do not rely on them.
    *
-   * @see AbstractScoreDirector#clearVariableListenerEvents()
+   * @see AbstractScoreDirector#clearPendingShadowVariableUpdates()
    */
-  public void clearShadowVariablesListenerQueue() {
-    clearVariableListenerEvents();
+  @Override
+  public void clearPendingShadowVariableUpdates() {
+    super.clearPendingShadowVariableUpdates();
   }
 
   /**
@@ -71,7 +72,7 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
     var solutionDescriptor = getSolutionDescriptor();
     var entityList = new ArrayList<>();
     solutionDescriptor.visitAllEntities(solution, entityList::add);
-    variableListenerSupport.setConsistencyTracker(
+    shadowVariableSupport.setConsistencyTracker(
         ConsistencyTracker.frozen(getSolutionDescriptor(), entityList.toArray()));
   }
 
@@ -80,7 +81,7 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
     session =
         scoreDirectorFactory.newSession(
             workingSolution,
-            variableListenerSupport.getConsistencyTracker(),
+            shadowVariableSupport.getConsistencyTracker(),
             constraintMatchPolicy,
             derived);
     super.setWorkingSolutionWithoutUpdatingShadows(workingSolution, session::insert);
@@ -95,7 +96,7 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
 
   @Override
   public InnerScore<Score_> calculateScore() {
-    variableListenerSupport.assertNotificationQueuesAreEmpty();
+    shadowVariableSupport.assertShadowVariablesAreUpToDate();
     var score = session.calculateScore();
     setCalculatedScore(score);
     return new InnerScore<>(score, -getWorkingInitScore());

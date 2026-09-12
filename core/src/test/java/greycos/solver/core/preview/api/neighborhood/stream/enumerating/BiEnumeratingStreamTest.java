@@ -8,6 +8,7 @@ import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.DatasetSession;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.DatasetSessionFactory;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractLeftDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.AbstractUniEnumeratingStream;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniLeftDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniLeftDatasetInstance;
@@ -43,7 +44,8 @@ class BiEnumeratingStreamTest {
 
   private static <A> UniLeftDatasetInstance<TestdataSolution, A> getInstance(
       DatasetSession<TestdataSolution> session, UniLeftDataset<TestdataSolution, A> dataset) {
-    return (UniLeftDatasetInstance<TestdataSolution, A>) session.getInstance(dataset);
+    return (UniLeftDatasetInstance<TestdataSolution, A>)
+        session.getInstance((AbstractLeftDataset<TestdataSolution, UniTuple<A>>) dataset);
   }
 
   private static DatasetSession<TestdataSolution> createSession(
@@ -82,7 +84,7 @@ class BiEnumeratingStreamTest {
         (view, entity, value) -> value.getCode();
     var groupedStream =
         (AbstractUniEnumeratingStream<TestdataSolution, String>) biStream.groupBy(byValueCode);
-    var dataset = groupedStream.createLeftDataset();
+    var dataset = groupedStream.asCachedDataset();
 
     var solution = TestdataSolution.generateSolution(2, 4);
     var session = createSession(factory, solution);
@@ -113,7 +115,7 @@ class BiEnumeratingStreamTest {
         (AbstractUniEnumeratingStream<TestdataSolution, String>)
             groupedStream.map(
                 (view, value, entityCodes) -> value.getCode() + "=" + entityCodes.size());
-    var dataset = mappedStream.createLeftDataset();
+    var dataset = mappedStream.asCachedDataset();
 
     var solution = TestdataSolution.generateSolution(2, 4);
     var session = createSession(factory, solution);

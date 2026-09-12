@@ -4,6 +4,7 @@ import static greycos.solver.core.impl.bavet.bi.Group0Mapping3CollectorBiNode.me
 import static greycos.solver.core.impl.bavet.bi.Group1Mapping0CollectorBiNode.createGroupKey;
 
 import java.util.function.BiFunction;
+import java.util.function.IntSupplier;
 
 import greycos.solver.core.api.score.stream.bi.BiConstraintCollector;
 import greycos.solver.core.config.solver.EnvironmentMode;
@@ -19,8 +20,7 @@ public final class Group1Mapping3CollectorBiNode<
 
   public Group1Mapping3CollectorBiNode(
       BiFunction<OldA, OldB, A> groupKeyMapping,
-      int groupStoreIndex,
-      int undoStoreIndex,
+      IntSupplier storeIndexReserver,
       BiConstraintCollector<OldA, OldB, ResultContainerB_, B> collectorB,
       BiConstraintCollector<OldA, OldB, ResultContainerC_, C> collectorC,
       BiConstraintCollector<OldA, OldB, ResultContainerD_, D> collectorD,
@@ -28,8 +28,7 @@ public final class Group1Mapping3CollectorBiNode<
       int outputStoreSize,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
-        undoStoreIndex,
+        storeIndexReserver,
         tuple -> createGroupKey(groupKeyMapping, tuple),
         mergeCollectors(collectorB, collectorC, collectorD),
         nextNodesTupleLifecycle,

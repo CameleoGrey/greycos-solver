@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.bavet.tri;
 
+import java.util.function.IntSupplier;
+
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.bavet.common.tuple.TriTuple;
@@ -13,12 +15,12 @@ public final class Group1Mapping0CollectorTriNode<OldA, OldB, OldC, A>
 
   public Group1Mapping0CollectorTriNode(
       TriFunction<OldA, OldB, OldC, A> groupKeyMapping,
-      int groupStoreIndex,
+      IntSupplier storeIndexReserver,
       TupleLifecycle<UniTuple<A>> nextNodesTupleLifecycle,
       int outputStoreSize,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
+        storeIndexReserver,
         tuple -> createGroupKey(groupKeyMapping, tuple),
         nextNodesTupleLifecycle,
         environmentMode);

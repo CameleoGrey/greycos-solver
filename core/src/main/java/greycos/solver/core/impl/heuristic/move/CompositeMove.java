@@ -79,7 +79,7 @@ public class CompositeMove<Solution_> extends AbstractMove<Solution_> {
       if (!move.isMoveDoable(scoreDirector)) {
         continue;
       }
-      // Calls scoreDirector.triggerVariableListeners() between moves
+      // Calls scoreDirector.updateShadowVariables() between moves
       // because a later move can depend on the shadow variables changed by an earlier move
       move.doMoveOnly(scoreDirector);
     }

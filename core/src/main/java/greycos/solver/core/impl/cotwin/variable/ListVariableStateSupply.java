@@ -7,9 +7,9 @@ import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.listener.SourcedListVariableListener;
 import greycos.solver.core.impl.cotwin.variable.nextprev.NextElementShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.nextprev.PreviousElementShadowVariableDescriptor;
+import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 
 import org.jspecify.annotations.NullMarked;
@@ -18,9 +18,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * Single source of truth for all information about elements inside {@link PlanningListVariable list
  * variables}. Shadow variables can be connected to this class to save on iteration costs that
- * would've been incurred otherwise if using variable listeners for each of them independently. This
- * way, there is only one variable listener for all such shadow variables, and therefore only a
- * single iteration to update all the information.
+ * would've been incurred otherwise if each shadow variable were updated independently. This way, a
+ * single component updates all such shadow variables, and therefore only a single iteration to
+ * update all the information.
  *
  * <p>If a particular shadow variable is externalized, it means that there is a field on an entity
  * holding the value of the shadow variable. In this case, we will attempt to use that value.
@@ -36,7 +36,22 @@ import org.jspecify.annotations.Nullable;
  */
 @NullMarked
 public interface ListVariableStateSupply<Solution_, Entity_, Element_>
-    extends SourcedListVariableListener<Solution_, Entity_, Element_> {
+    extends ListVariableChangeHandler<Solution_> {
+
+  /**
+   * Called when the entire working solution changes. In this event, the other before..()/after...()
+   * methods will not be called. At this point, implementations should clear state, if any.
+   */
+  @Override
+  default void resetWorkingSolution(InnerScoreDirector<Solution_, ?> scoreDirector) {
+    // No need to do anything for stateless implementations.
+  }
+
+  /** Called before this {@link ListVariableStateSupply} is thrown away and not used anymore. */
+  @Override
+  default void close() {
+    // No need to do anything for stateless implementations.
+  }
 
   void externalize(IndexShadowVariableDescriptor<Solution_> shadowVariableDescriptor);
 
@@ -75,7 +90,6 @@ public interface ListVariableStateSupply<Solution_, Entity_, Element_>
    */
   @Nullable Object getInverseSingleton(Object planningValue);
 
-  @Override
   ListVariableDescriptor<Solution_> getSourceVariableDescriptor();
 
   /**

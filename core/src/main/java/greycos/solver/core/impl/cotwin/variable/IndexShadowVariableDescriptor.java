@@ -1,7 +1,6 @@
 package greycos.solver.core.impl.cotwin.variable;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
@@ -12,9 +11,7 @@ import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.listener.VariableListenerWithSources;
 import greycos.solver.core.impl.cotwin.variable.supply.Demand;
-import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 
 public final class IndexShadowVariableDescriptor<Solution_>
     extends ShadowVariableDescriptor<Solution_> {
@@ -107,16 +104,15 @@ public final class IndexShadowVariableDescriptor<Solution_>
                   PlanningListVariable.class.getSimpleName()));
     }
     sourceVariableDescriptor = (ListVariableDescriptor<Solution_>) variableDescriptor;
-    sourceVariableDescriptor.registerSinkVariableDescriptor(this);
   }
 
   @Override
-  public List<VariableDescriptor<Solution_>> getSourceVariableDescriptorList() {
-    return Collections.singletonList(sourceVariableDescriptor);
+  public VariableDescriptor<Solution_> getSourceVariableDescriptor() {
+    return sourceVariableDescriptor;
   }
 
   @Override
-  public Collection<Class<?>> getVariableListenerClasses() {
+  public Collection<Class<?>> getUpdaterClasses() {
     throw new UnsupportedOperationException(
         "Impossible state: Handled by %s."
             .formatted(ListVariableStateSupply.class.getSimpleName()));
@@ -129,21 +125,9 @@ public final class IndexShadowVariableDescriptor<Solution_>
             .formatted(ListVariableStateSupply.class.getSimpleName()));
   }
 
-  @Override
-  public Iterable<VariableListenerWithSources> buildVariableListeners(SupplyManager supplyManager) {
-    throw new UnsupportedOperationException(
-        "Impossible state: Handled by %s."
-            .formatted(ListVariableStateSupply.class.getSimpleName()));
-  }
-
   @SuppressWarnings("unchecked")
   @Override
   public Integer getValue(Object entity) {
     return super.getValue(entity);
-  }
-
-  @Override
-  public boolean isListVariableSource() {
-    return true;
   }
 }

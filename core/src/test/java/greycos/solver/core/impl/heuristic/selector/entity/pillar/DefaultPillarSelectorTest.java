@@ -15,8 +15,8 @@ import java.util.List;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.config.heuristic.selector.entity.pillar.SubPillarConfigPolicy;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.impl.cotwin.variable.ShadowVariableSupport;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.listener.support.VariableListenerSupport;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
@@ -109,7 +109,7 @@ class DefaultPillarSelectorTest {
     InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector =
         mock(InnerScoreDirector.class);
     doReturn(solutionDescriptor).when(scoreDirector).getSolutionDescriptor();
-    doReturn(VariableListenerSupport.create(scoreDirector)).when(scoreDirector).getSupplyManager();
+    doReturn(ShadowVariableSupport.create(scoreDirector)).when(scoreDirector).getSupplyManager();
 
     SolverScope<TestdataSolution> solverScope = PlannerTestUtils.mockSolverScope();
     doReturn(scoreDirector).when(solverScope).getScoreDirector();

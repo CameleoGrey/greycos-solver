@@ -1,23 +1,8 @@
 package greycos.solver.core.preview.api.move.builtin;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.SoftAssertions.assertSoftly;
-
 import java.util.Collections;
-import java.util.stream.StreamSupport;
 
-import greycos.solver.core.api.score.SimpleScore;
-import greycos.solver.core.api.score.stream.Constraint;
-import greycos.solver.core.api.score.stream.ConstraintFactory;
-import greycos.solver.core.api.score.stream.ConstraintProvider;
-import greycos.solver.core.config.solver.EnvironmentMode;
-import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
-import greycos.solver.core.impl.neighborhood.stream.DefaultMoveStreamFactory;
-import greycos.solver.core.impl.score.director.InnerScoreDirector;
-import greycos.solver.core.impl.score.director.SessionContext;
-import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
-import greycos.solver.core.preview.api.move.Move;
-import greycos.solver.core.preview.api.neighborhood.MoveProvider;
+import greycos.solver.core.preview.api.neighborhood.test.NeighborhoodTester;
 import greycos.solver.core.testcotwin.TestdataEntity;
 import greycos.solver.core.testcotwin.TestdataSolution;
 import greycos.solver.core.testcotwin.TestdataValue;
@@ -40,66 +25,34 @@ class ChangeMoveProviderTest {
 
   @Test
   void fromSolution() {
-    var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
-    var variableMetaModel =
-        solutionDescriptor.getMetaModel().genuineEntity(TestdataEntity.class).basicVariable();
+    var solutionMetaModel = TestdataSolution.buildMetaModel();
+    var variableMetaModel = solutionMetaModel.genuineEntity(TestdataEntity.class).basicVariable();
 
     var solution = TestdataSolution.generateSolution(2, 2);
     var firstEntity = solution.getEntityList().get(0);
-    firstEntity.setValue(null);
     var secondEntity = solution.getEntityList().get(1);
-    secondEntity.setValue(null);
     var firstValue = solution.getValueList().get(0);
     var secondValue = solution.getValueList().get(1);
+    secondEntity.setValue(secondValue);
 
-    var moveIterable =
-        createMoveIterable(
-            new ChangeMoveProvider<>(variableMetaModel), solutionDescriptor, solution);
-    assertThat(moveIterable).hasSize(4);
-
-    var moveList =
-        StreamSupport.stream(moveIterable.spliterator(), false)
-            .map(m -> (ChangeMove<TestdataSolution, TestdataEntity, TestdataValue>) m)
-            .toList();
-    assertThat(moveList).hasSize(4);
-
-    var firstMove = moveList.get(0);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(firstMove.getPlanningEntities()).containsExactly(firstEntity);
-          softly.assertThat(firstMove.getPlanningValues()).containsExactly(firstValue);
-        });
-
-    var secondMove = moveList.get(1);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(secondMove.getPlanningEntities()).containsExactly(firstEntity);
-          softly.assertThat(secondMove.getPlanningValues()).containsExactly(secondValue);
-        });
-
-    var thirdMove = moveList.get(2);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(thirdMove.getPlanningEntities()).containsExactly(secondEntity);
-          softly.assertThat(thirdMove.getPlanningValues()).containsExactly(firstValue);
-        });
-
-    var fourthMove = moveList.get(3);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(fourthMove.getPlanningEntities()).containsExactly(secondEntity);
-          softly.assertThat(fourthMove.getPlanningValues()).containsExactly(secondValue);
-        });
+    var context =
+        NeighborhoodTester.build(new ChangeMoveProvider<>(variableMetaModel), solutionMetaModel)
+            .using(solution);
+    context.producesAllOf(
+        Moves.change(variableMetaModel, firstEntity, secondValue),
+        Moves.change(variableMetaModel, secondEntity, firstValue));
+    // Changing an entity to its own current value would be a no-op; the provider does not generate
+    // it.
+    context.producesNoneOf(
+        Moves.change(variableMetaModel, firstEntity, firstValue),
+        Moves.change(variableMetaModel, secondEntity, secondValue));
   }
 
   @Test
   void fromSolutionIncompleteValueRange() {
-    var solutionDescriptor = TestdataIncompleteValueRangeSolution.buildSolutionDescriptor();
+    var solutionMetaModel = TestdataIncompleteValueRangeSolution.buildMetaModel();
     var variableMetaModel =
-        solutionDescriptor
-            .getMetaModel()
-            .genuineEntity(TestdataIncompleteValueRangeEntity.class)
-            .basicVariable();
+        solutionMetaModel.genuineEntity(TestdataIncompleteValueRangeEntity.class).basicVariable();
 
     // The point of this test is to ensure that the move provider skips values that are not in the
     // value range.
@@ -108,251 +61,117 @@ class ChangeMoveProviderTest {
     solution.setValueListNotInValueRange(Collections.singletonList(valueNotInValueRange));
 
     var firstEntity = solution.getEntityList().get(0);
-    firstEntity.setValue(null);
     var secondEntity = solution.getEntityList().get(1);
-    secondEntity.setValue(null);
     var firstValue = solution.getValueList().get(0);
     var secondValue = solution.getValueList().get(1);
+    firstEntity.setValue(firstValue);
+    secondEntity.setValue(secondValue);
 
-    var moveIterable =
-        createMoveIterable(
-            new ChangeMoveProvider<>(variableMetaModel), solutionDescriptor, solution);
-    assertThat(moveIterable).hasSize(4);
-
-    var moveList =
-        StreamSupport.stream(moveIterable.spliterator(), false)
-            .map(
-                m ->
-                    (ChangeMove<
-                            TestdataIncompleteValueRangeSolution,
-                            TestdataIncompleteValueRangeEntity,
-                            TestdataValue>)
-                        m)
-            .toList();
-    assertThat(moveList).hasSize(4);
-
-    var firstMove = moveList.get(0);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(firstMove.getPlanningEntities()).containsExactly(firstEntity);
-          softly.assertThat(firstMove.getPlanningValues()).containsExactly(firstValue);
-        });
-
-    var secondMove = moveList.get(1);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(secondMove.getPlanningEntities()).containsExactly(firstEntity);
-          softly.assertThat(secondMove.getPlanningValues()).containsExactly(secondValue);
-        });
-
-    var thirdMove = moveList.get(2);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(thirdMove.getPlanningEntities()).containsExactly(secondEntity);
-          softly.assertThat(thirdMove.getPlanningValues()).containsExactly(firstValue);
-        });
-
-    var fourthMove = moveList.get(3);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(fourthMove.getPlanningEntities()).containsExactly(secondEntity);
-          softly.assertThat(fourthMove.getPlanningValues()).containsExactly(secondValue);
-        });
+    var context =
+        NeighborhoodTester.build(new ChangeMoveProvider<>(variableMetaModel), solutionMetaModel)
+            .using(solution);
+    context.producesAllOf(
+        Moves.change(variableMetaModel, firstEntity, secondValue),
+        Moves.change(variableMetaModel, secondEntity, firstValue));
+    context.producesNoneOf(
+        Moves.change(variableMetaModel, firstEntity, firstValue), // No-op.
+        Moves.change(variableMetaModel, secondEntity, secondValue), // No-op.
+        Moves.change(variableMetaModel, firstEntity, valueNotInValueRange), // Not in value range.
+        Moves.change(variableMetaModel, secondEntity, valueNotInValueRange)); // Not in value range.
   }
 
   @Test
   void fromEntity() {
-    var solutionDescriptor = TestdataEntityProvidingSolution.buildSolutionDescriptor();
+    var solutionMetaModel =
+        TestdataEntityProvidingSolution.buildSolutionDescriptor().getMetaModel();
     var variableMetaModel =
-        solutionDescriptor
-            .getMetaModel()
-            .genuineEntity(TestdataEntityProvidingEntity.class)
-            .basicVariable();
+        solutionMetaModel.genuineEntity(TestdataEntityProvidingEntity.class).basicVariable();
 
     var solution = TestdataEntityProvidingSolution.generateSolution(2, 2);
     var firstEntity = solution.getEntityList().get(0);
     var secondEntity = solution.getEntityList().get(1);
-    var firstValue = firstEntity.getValueRange().get(0);
+    var firstValue = firstEntity.getValueRange().getFirst();
 
     // One move is expected:
     // - firstEntity is already assigned to firstValue, the only possible value; skip.
     // - Assign secondEntity to firstValue,
     //   as it is currently assigned to secondValue, and the value range only contains firstValue.
-    var moveIterable =
-        createMoveIterable(
-            new ChangeMoveProvider<>(variableMetaModel), solutionDescriptor, solution);
-    assertThat(moveIterable).hasSize(1);
-
-    var moveList =
-        StreamSupport.stream(moveIterable.spliterator(), false)
-            .map(
-                m ->
-                    (ChangeMove<
-                            TestdataEntityProvidingSolution,
-                            TestdataEntityProvidingEntity,
-                            TestdataValue>)
-                        m)
-            .toList();
-    assertThat(moveList).hasSize(1);
-
-    var firstMove = moveList.get(0);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(firstMove.getPlanningEntities()).containsExactly(secondEntity);
-          softly.assertThat(firstMove.getPlanningValues()).hasSize(1).containsExactly(firstValue);
-        });
+    var context =
+        NeighborhoodTester.build(new ChangeMoveProvider<>(variableMetaModel), solutionMetaModel)
+            .using(solution);
+    context.producesAllOf(Moves.change(variableMetaModel, secondEntity, firstValue));
+    context.producesNoneOf(Moves.change(variableMetaModel, firstEntity, firstValue)); // No-op.
   }
 
   @Test
   void fromEntityAllowsUnassigned() {
-    var solutionDescriptor =
-        TestdataAllowsUnassignedEntityProvidingSolution.buildSolutionDescriptor();
+    var solutionMetaModel = TestdataAllowsUnassignedEntityProvidingSolution.buildMetaModel();
     var variableMetaModel =
-        solutionDescriptor
-            .getMetaModel()
+        solutionMetaModel
             .genuineEntity(TestdataAllowsUnassignedEntityProvidingEntity.class)
             .basicVariable();
 
     var solution = TestdataAllowsUnassignedEntityProvidingSolution.generateSolution(2, 2);
+    var firstEntity = solution.getEntityList().get(0);
     var secondEntity = solution.getEntityList().get(1);
-    var firstValue = solution.getEntityList().get(0).getValueRange().get(0);
+    var firstValue = solution.getEntityList().get(0).getValueRange().getFirst();
 
-    // secondEntity is assigned to secondValue and can change to firstValue.
-    // firstEntity already has its only non-null value. Unassign moves are generated separately.
-    var moveIterable =
-        createMoveIterable(
-            new ChangeMoveProvider<>(variableMetaModel), solutionDescriptor, solution);
-    assertThat(moveIterable).hasSize(1);
-
-    var moveList =
-        StreamSupport.stream(moveIterable.spliterator(), false)
-            .map(
-                m ->
-                    (ChangeMove<
-                            TestdataAllowsUnassignedEntityProvidingSolution,
-                            TestdataAllowsUnassignedEntityProvidingEntity,
-                            TestdataValue>)
-                        m)
-            .toList();
-    assertThat(moveList).hasSize(1);
-
-    var firstMove = moveList.get(0);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(firstMove.getPlanningEntities()).containsExactly(secondEntity);
-          softly.assertThat(firstMove.getPlanningValues()).containsExactly(firstValue);
-        });
+    // One move is expected:
+    // - secondEntity is assigned to secondValue, and the value range only contains firstValue;
+    //   so a change to firstValue is generated.
+    // - firstEntity is assigned to firstValue, same as its only possible non-null value; no change.
+    // Null (unassign) moves are not generated by ChangeMoveProvider.
+    var context =
+        NeighborhoodTester.build(new ChangeMoveProvider<>(variableMetaModel), solutionMetaModel)
+            .using(solution);
+    context.producesAllOf(Moves.change(variableMetaModel, secondEntity, firstValue));
+    context.producesNoneOf(Moves.change(variableMetaModel, firstEntity, firstValue)); // No-op.
   }
 
   @Test
   void pinnedEntitySkipped() {
-    var solutionDescriptor = TestdataPinnedSolution.buildSolutionDescriptor();
+    var solutionMetaModel = TestdataPinnedSolution.buildMetaModel();
     var variableMetaModel =
-        solutionDescriptor.getMetaModel().genuineEntity(TestdataPinnedEntity.class).basicVariable();
+        solutionMetaModel.genuineEntity(TestdataPinnedEntity.class).basicVariable();
 
     var solution = TestdataPinnedSolution.generateSolution(2, 2);
     var firstEntity = solution.getEntityList().get(0);
     var secondEntity = solution.getEntityList().get(1);
-    var firstValue = solution.getValueList().get(0);
+    var firstValue = solution.getValueList().getFirst();
+    var secondValue = solution.getValueList().get(1);
     firstEntity.setPinned(true);
 
-    var moveIterable =
-        createMoveIterable(
-            new ChangeMoveProvider<>(variableMetaModel), solutionDescriptor, solution);
-    var moveList =
-        StreamSupport.stream(moveIterable.spliterator(), false)
-            .map(
-                move ->
-                    (ChangeMove<TestdataPinnedSolution, TestdataPinnedEntity, TestdataValue>) move)
-            .toList();
-    assertThat(moveList).hasSize(1);
-
-    var move = moveList.get(0);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(move.getPlanningEntities()).containsExactly(secondEntity);
-          softly.assertThat(move.getPlanningValues()).containsExactly(firstValue);
-        });
+    // firstEntity is pinned; only secondEntity can change to firstValue.
+    var context =
+        NeighborhoodTester.build(new ChangeMoveProvider<>(variableMetaModel), solutionMetaModel)
+            .using(solution);
+    context.producesAllOf(Moves.change(variableMetaModel, secondEntity, firstValue));
+    // secondEntity is already assigned to secondValue; that would be a no-op.
+    // firstEntity is pinned, so no move exists for it at all, to any value.
+    context.producesNoneOf(
+        Moves.change(variableMetaModel, secondEntity, secondValue),
+        Moves.change(variableMetaModel, firstEntity, firstValue),
+        Moves.change(variableMetaModel, firstEntity, secondValue));
   }
 
   @Test
   void fromSolutionAllowsUnassigned() {
-    var solutionDescriptor = TestdataAllowsUnassignedSolution.buildSolutionDescriptor();
+    var solutionMetaModel = TestdataAllowsUnassignedSolution.buildMetaModel();
     var variableMetaModel =
-        solutionDescriptor
-            .getMetaModel()
-            .genuineEntity(TestdataAllowsUnassignedEntity.class)
-            .basicVariable();
+        solutionMetaModel.genuineEntity(TestdataAllowsUnassignedEntity.class).basicVariable();
 
     var solution = TestdataAllowsUnassignedSolution.generateSolution(2, 2);
     var secondEntity = solution.getEntityList().get(1); // Assigned to secondValue.
-    var firstValue = solution.getValueList().get(0); // Not assigned to any entity.
+    var firstValue = solution.getValueList().getFirst(); // Not assigned to any entity.
+    var secondValue = solution.getValueList().get(1);
 
-    // The unassigned first entity is handled by AssignMoveProvider. The second entity can change
-    // from secondValue to firstValue. Unassign moves are generated separately.
-    var moveIterable =
-        createMoveIterable(
-            new ChangeMoveProvider<>(variableMetaModel), solutionDescriptor, solution);
-    var moveList =
-        StreamSupport.stream(moveIterable.spliterator(), false)
-            .map(
-                m ->
-                    (ChangeMove<
-                            TestdataAllowsUnassignedSolution,
-                            TestdataAllowsUnassignedEntity,
-                            TestdataValue>)
-                        m)
-            .toList();
-    assertThat(moveList).hasSize(1);
-
-    var firstMove = moveList.get(0);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(firstMove.getPlanningEntities()).containsExactly(secondEntity);
-          softly.assertThat(firstMove.getPlanningValues()).containsExactly(firstValue);
-        });
-  }
-
-  private <Solution_> Iterable<Move<Solution_>> createMoveIterable(
-      MoveProvider<Solution_> moveProvider,
-      SolutionDescriptor<Solution_> solutionDescriptor,
-      Solution_ solution) {
-    var moveStreamFactory =
-        new DefaultMoveStreamFactory<>(solutionDescriptor, EnvironmentMode.TRACKED_FULL_ASSERT);
-    var moveStream = moveProvider.build(moveStreamFactory);
-    var scoreDirector = createScoreDirector(solutionDescriptor, solution);
-    var neighborhoodSession = moveStreamFactory.createSession(new SessionContext<>(scoreDirector));
-    solutionDescriptor.visitAll(scoreDirector.getWorkingSolution(), neighborhoodSession::insert);
-    neighborhoodSession.settle();
-    return moveStream.getMoveIterable(neighborhoodSession);
-  }
-
-  private <Solution_> InnerScoreDirector<Solution_, ?> createScoreDirector(
-      SolutionDescriptor<Solution_> solutionDescriptor, Solution_ solution) {
-    var firstEntityClass = solutionDescriptor.getMetaModel().genuineEntities().get(0).type();
-    var constraintProvider = new TestingConstraintProvider(firstEntityClass);
-    var scoreDirectorFactory =
-        new BavetConstraintStreamScoreDirectorFactory<>(
-            solutionDescriptor, constraintProvider, EnvironmentMode.TRACKED_FULL_ASSERT, false);
-    var scoreDirector = scoreDirectorFactory.buildScoreDirector();
-    scoreDirector.setWorkingSolution(solution);
-    return scoreDirector;
-  }
-
-  // The specifics of the constraint provider are not important for this test,
-  // as the score will never be calculated.
-  private record TestingConstraintProvider(Class<?> entityClass) implements ConstraintProvider {
-
-    @Override
-    public Constraint[] defineConstraints(ConstraintFactory constraintFactory) {
-      return new Constraint[] {alwaysPenalizingConstraint(constraintFactory)};
-    }
-
-    private Constraint alwaysPenalizingConstraint(ConstraintFactory constraintFactory) {
-      return constraintFactory
-          .forEach(entityClass)
-          .penalize(SimpleScore.ONE)
-          .asConstraint("Always penalize");
-    }
+    // First entity is assigned to null, so it is filtered out by ChangeMoveProvider.
+    // Second entity is assigned to secondValue, so the only applicable move assigns to firstValue.
+    // Null (unassign) moves are not generated by ChangeMoveProvider.
+    var context =
+        NeighborhoodTester.build(new ChangeMoveProvider<>(variableMetaModel), solutionMetaModel)
+            .using(solution);
+    context.producesAllOf(Moves.change(variableMetaModel, secondEntity, firstValue));
+    context.producesNoneOf(Moves.change(variableMetaModel, secondEntity, secondValue)); // No-op.
   }
 }

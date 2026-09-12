@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.neighborhood.stream.enumerating.uni;
 
+import java.util.Objects;
+
 import greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.common.DataNodeBuildHelper;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.common.TerminalEnumeratingStream;
@@ -31,6 +33,16 @@ final class LeftTerminalUniEnumeratingStream<Solution_, A>
   @Override
   public UniLeftDataset<Solution_, A> getDataset() {
     return dataset;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof LeftTerminalUniEnumeratingStream<?, ?> other && parent == other.parent;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(LeftTerminalUniEnumeratingStream.class, parent);
   }
 
   @Override

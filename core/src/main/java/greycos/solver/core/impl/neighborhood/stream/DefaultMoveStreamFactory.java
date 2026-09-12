@@ -19,6 +19,8 @@ import greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMeta
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 import greycos.solver.core.preview.api.cotwin.metamodel.UnassignedElement;
+import greycos.solver.core.preview.api.neighborhood.MoveIteratorProvider;
+import greycos.solver.core.preview.api.neighborhood.stream.MoveStream;
 import greycos.solver.core.preview.api.neighborhood.stream.MoveStreamFactory;
 import greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
 import greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsMapper;
@@ -180,7 +182,12 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
   public <A> UniSamplingStream<Solution_, A> pick(
       UniEnumeratingStream<Solution_, A> enumeratingStream) {
     return new DefaultUniSamplingStream<>(
-        ((AbstractUniEnumeratingStream<Solution_, A>) enumeratingStream).createLeftDataset());
+        ((AbstractUniEnumeratingStream<Solution_, A>) enumeratingStream).asCachedDataset());
+  }
+
+  @Override
+  public MoveStream<Solution_> buildMoveStream(MoveIteratorProvider<Solution_> iteratorProvider) {
+    return new IteratorMoveStream<>(iteratorProvider);
   }
 
   public SolutionDescriptor<Solution_> getSolutionDescriptor() {

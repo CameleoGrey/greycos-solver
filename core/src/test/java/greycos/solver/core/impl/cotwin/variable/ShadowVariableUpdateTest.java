@@ -1,8 +1,6 @@
 package greycos.solver.core.impl.cotwin.variable;
 
-import static greycos.solver.core.impl.cotwin.variable.listener.support.ShadowVariableType.BASIC;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -48,19 +46,6 @@ class ShadowVariableUpdateTest {
             "which has a sourceVariableName variable (entityList) which is null.");
     Assertions.assertThatCode(() -> SolutionManager.updateShadowVariables(solution))
         .isInstanceOf(NullPointerException.class);
-  }
-
-  @Test
-  void unsupportedShadowVariableType() {
-    var shadowVariableHelper = ShadowVariableUpdateHelper.<TestdataBasicVarSolution>create(BASIC);
-    var value1 = new TestdataBasicVarValue("v1", Duration.ofSeconds(10));
-    var entity1 = new TestdataBasicVarEntity("e1", value1);
-    assertThatCode(
-            () ->
-                shadowVariableHelper.updateShadowVariables(
-                    TestdataBasicVarSolution.class, entity1, value1))
-        .hasMessageContaining(
-            "The following shadow variable types are not currently supported ([CASCADING_UPDATE, DECLARATIVE])");
   }
 
   @Test

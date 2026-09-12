@@ -44,6 +44,8 @@ class SelectorBasedListSwapMoveTest {
 
   @BeforeEach
   void setUp() {
+    when(innerScoreDirector.getSolutionDescriptor())
+        .thenReturn(variableDescriptor.getEntityDescriptor().getSolutionDescriptor());
     when(otherInnerScoreDirector.getValueRangeManager()).thenReturn(valueRangeManager);
   }
 
@@ -93,7 +95,13 @@ class SelectorBasedListSwapMoveTest {
     var e1 = new TestdataListEntity("e1", v1, v2);
     var e2 = new TestdataListEntity("e2", v3);
 
+    var solution = new TestdataListSolution();
+    solution.setEntityList(List.of(e1, e2));
+    solution.setValueList(List.of(v1, v2, v3));
+
     var moveDirector = new MoveDirector<>(innerScoreDirector);
+    // Swap Move 1: between two entities
+    when(innerScoreDirector.getWorkingSolution()).thenReturn(solution);
     moveDirector.executeTemporary(
         new SelectorBasedListSwapMove<>(variableDescriptor, e1, 0, e2, 0),
         (__, ___) -> {
@@ -104,7 +112,7 @@ class SelectorBasedListSwapMoveTest {
           verify(innerScoreDirector).afterListVariableChanged(variableDescriptor, e1, 0, 1);
           verify(innerScoreDirector).beforeListVariableChanged(variableDescriptor, e2, 0, 1);
           verify(innerScoreDirector).afterListVariableChanged(variableDescriptor, e2, 0, 1);
-          verify(innerScoreDirector, atLeastOnce()).triggerVariableListeners();
+          verify(innerScoreDirector, atLeastOnce()).updateShadowVariables();
           return null;
         });
 

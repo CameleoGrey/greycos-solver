@@ -17,6 +17,9 @@ import greycos.solver.core.testcotwin.shadow.extended.TestdataDeclarativeExtende
 import greycos.solver.core.testcotwin.shadow.extended.TestdataDeclarativeExtendedSubclassValue;
 import greycos.solver.core.testcotwin.shadow.follower.TestdataFollowerEntity;
 import greycos.solver.core.testcotwin.shadow.follower.TestdataFollowerSolution;
+import greycos.solver.core.testcotwin.shadow.list_element.TestdataListElementEntity;
+import greycos.solver.core.testcotwin.shadow.list_element.TestdataListElementSolution;
+import greycos.solver.core.testcotwin.shadow.list_element.TestdataListElementValue;
 import greycos.solver.core.testcotwin.shadow.multi_directional_parent.TestdataMultiDirectionConcurrentEntity;
 import greycos.solver.core.testcotwin.shadow.multi_directional_parent.TestdataMultiDirectionConcurrentSolution;
 import greycos.solver.core.testcotwin.shadow.multi_directional_parent.TestdataMultiDirectionConcurrentValue;
@@ -131,6 +134,16 @@ class GraphStructureTest {
                 TestdataMultiDirectionConcurrentSolution.buildSolutionDescriptor(), entity, value))
         .hasFieldOrPropertyWithValue("structure", SINGLE_DIRECTIONAL_PARENT)
         .hasFieldOrPropertyWithValue("direction", ParentVariableType.PREVIOUS);
+  }
+
+  @Test
+  void listElementStructure() {
+    var entity = new TestdataListElementEntity("e1");
+    var value = new TestdataListElementValue("v1");
+    assertThat(
+            GraphStructure.determineGraphStructure(
+                TestdataListElementSolution.buildSolutionDescriptor(), entity, value))
+        .hasFieldOrPropertyWithValue("structure", ARBITRARY);
   }
 
   @Test

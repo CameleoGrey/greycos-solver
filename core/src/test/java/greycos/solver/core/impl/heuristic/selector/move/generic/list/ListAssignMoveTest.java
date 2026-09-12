@@ -49,10 +49,14 @@ class ListAssignMoveTest {
 
   @Test
   void doMove() {
+    var solution = new TestdataListSolution();
     var v1 = new TestdataListValue("1");
     var v2 = new TestdataListValue("2");
     var v3 = new TestdataListValue("3");
     var e1 = new TestdataListEntity("e1");
+    solution.setEntityList(List.of(e1));
+    solution.setValueList(List.of(v1, v2, v3));
+    when(innerScoreDirector.getWorkingSolution()).thenReturn(solution);
 
     moveDirector.executeTemporary(
         new ListAssignMove<>(variableDescriptor, v1, e1, 0),
@@ -62,7 +66,7 @@ class ListAssignMoveTest {
           verify(innerScoreDirector).beforeListVariableElementAssigned(variableDescriptor, v1);
           verify(innerScoreDirector).afterListVariableElementAssigned(variableDescriptor, v1);
           verify(innerScoreDirector).afterListVariableChanged(variableDescriptor, e1, 0, 1);
-          verify(innerScoreDirector, atLeastOnce()).triggerVariableListeners();
+          verify(innerScoreDirector, atLeastOnce()).updateShadowVariables();
           return null;
         });
 

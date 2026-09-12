@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.bavet.quad;
 
+import java.util.function.IntSupplier;
+
 import greycos.solver.core.api.function.QuadFunction;
 import greycos.solver.core.api.score.stream.quad.QuadConstraintCollector;
 import greycos.solver.core.config.solver.EnvironmentMode;
@@ -13,15 +15,13 @@ public final class Group1Mapping1CollectorQuadNode<OldA, OldB, OldC, OldD, A, B,
 
   public Group1Mapping1CollectorQuadNode(
       QuadFunction<OldA, OldB, OldC, OldD, A> groupKeyMapping,
-      int groupStoreIndex,
-      int undoStoreIndex,
+      IntSupplier storeIndexReserver,
       QuadConstraintCollector<OldA, OldB, OldC, OldD, ResultContainer_, B> collector,
       TupleLifecycle<BiTuple<A, B>> nextNodesTupleLifecycle,
       int outputStoreSize,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
-        undoStoreIndex,
+        storeIndexReserver,
         tuple -> Group1Mapping0CollectorQuadNode.createGroupKey(groupKeyMapping, tuple),
         collector,
         nextNodesTupleLifecycle,

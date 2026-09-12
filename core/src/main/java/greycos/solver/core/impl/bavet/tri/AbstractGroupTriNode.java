@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.bavet.tri;
 
 import java.util.function.Function;
+import java.util.function.IntSupplier;
 
 import greycos.solver.core.api.score.stream.tri.TriConstraintCollector;
 import greycos.solver.core.api.score.stream.tri.TriConstraintCollectorAccumulator;
@@ -24,29 +25,28 @@ abstract class AbstractGroupTriNode<
       incrementalAccumulator;
 
   protected AbstractGroupTriNode(
-      int groupStoreIndex,
-      int groupAccumulatorIndex,
+      IntSupplier storeIndexReserver,
       Function<TriTuple<OldA, OldB, OldC>, GroupKey_> groupKeyFunction,
       @NonNull TriConstraintCollector<OldA, OldB, OldC, ResultContainer_, Result_> collector,
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
+        storeIndexReserver,
         groupKeyFunction,
         collector.supplier(),
         collector.finisher(),
         nextNodesTupleLifecycle,
         environmentMode);
-    this.groupAccumulatorIndex = groupAccumulatorIndex;
+    this.groupAccumulatorIndex = storeIndexReserver.getAsInt();
     this.incrementalAccumulator = collector.accumulator();
   }
 
   protected AbstractGroupTriNode(
-      int groupStoreIndex,
+      IntSupplier storeIndexReserver,
       Function<TriTuple<OldA, OldB, OldC>, GroupKey_> groupKeyFunction,
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
       EnvironmentMode environmentMode) {
-    super(groupStoreIndex, groupKeyFunction, nextNodesTupleLifecycle, environmentMode);
+    super(storeIndexReserver, groupKeyFunction, nextNodesTupleLifecycle, environmentMode);
     this.groupAccumulatorIndex = -1;
     this.incrementalAccumulator = null;
   }

@@ -38,7 +38,7 @@ public abstract class AbstractSelectorBasedMove<Solution_>
     var moveDirector = (MoveDirector<Solution_, ?>) solutionView;
     var scoreDirector = moveDirector.getScoreDirector();
     execute(solutionView, (VariableDescriptorAwareScoreDirector<Solution_>) scoreDirector);
-    scoreDirector.triggerVariableListeners();
+    scoreDirector.updateShadowVariables();
   }
 
   protected abstract void execute(

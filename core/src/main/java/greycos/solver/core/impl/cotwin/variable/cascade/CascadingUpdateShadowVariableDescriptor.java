@@ -18,9 +18,7 @@ import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.listener.VariableListenerWithSources;
 import greycos.solver.core.impl.cotwin.variable.supply.Demand;
-import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 
 public final class CascadingUpdateShadowVariableDescriptor<Solution_>
@@ -166,12 +164,7 @@ public final class CascadingUpdateShadowVariableDescriptor<Solution_>
   }
 
   @Override
-  public List<VariableDescriptor<Solution_>> getSourceVariableDescriptorList() {
-    return Collections.emptyList();
-  }
-
-  @Override
-  public Collection<Class<?>> getVariableListenerClasses() {
+  public Collection<Class<?>> getUpdaterClasses() {
     return Collections.emptyList();
   }
 
@@ -179,26 +172,6 @@ public final class CascadingUpdateShadowVariableDescriptor<Solution_>
   public Demand<?> getProvidedDemand() {
     throw new UnsupportedOperationException(
         "Cascade update element shadow variable cannot be demanded.");
-  }
-
-  @Override
-  public boolean hasVariableListener() {
-    return false;
-  }
-
-  @Override
-  public boolean canBeUsedAsSource() {
-    return false;
-  }
-
-  @Override
-  public Iterable<VariableListenerWithSources> buildVariableListeners(SupplyManager supplyManager) {
-    throw new UnsupportedOperationException("Cascade update element generates no listeners.");
-  }
-
-  @Override
-  public boolean isListVariableSource() {
-    return false;
   }
 
   private record ShadowVariableTarget<Solution_>(

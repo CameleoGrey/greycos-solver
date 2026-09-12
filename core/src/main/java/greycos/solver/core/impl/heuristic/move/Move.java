@@ -85,7 +85,7 @@ public interface Move<Solution_> extends greycos.solver.core.preview.api.move.Mo
    * {@link ScoreDirector#afterVariableChanged(Object, String)}), otherwise later calculated {@link
    * Score}s will be corrupted.
    *
-   * <p>This method must end with calling {@link ScoreDirector#triggerVariableListeners()} to ensure
+   * <p>This method must end with calling {@link ScoreDirector#updateShadowVariables()} to ensure
    * all shadow variables are updated.
    *
    * <p>This method must return an undo move, so the move can be evaluated and then be undone
@@ -110,7 +110,7 @@ public interface Move<Solution_> extends greycos.solver.core.preview.api.move.Mo
    * {@link ScoreDirector#afterVariableChanged(Object, String)}), otherwise later calculated {@link
    * Score}s will be corrupted, or the move may not be correctly undone.
    *
-   * <p>This method must end with calling {@link ScoreDirector#triggerVariableListeners()} to ensure
+   * <p>This method must end with calling {@link ScoreDirector#updateShadowVariables()} to ensure
    * all shadow variables are updated.
    *
    * @param scoreDirector never null, the {@link ScoreDirector} that needs to get notified of the

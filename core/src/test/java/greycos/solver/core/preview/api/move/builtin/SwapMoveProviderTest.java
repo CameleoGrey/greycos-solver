@@ -1,27 +1,19 @@
 package greycos.solver.core.preview.api.move.builtin;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.SoftAssertions.assertSoftly;
+import java.util.List;
 
-import java.util.stream.StreamSupport;
-
-import greycos.solver.core.api.score.SimpleScore;
-import greycos.solver.core.api.score.stream.Constraint;
-import greycos.solver.core.api.score.stream.ConstraintFactory;
-import greycos.solver.core.api.score.stream.ConstraintProvider;
-import greycos.solver.core.config.solver.EnvironmentMode;
-import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
-import greycos.solver.core.impl.neighborhood.stream.DefaultMoveStreamFactory;
-import greycos.solver.core.impl.score.director.InnerScoreDirector;
-import greycos.solver.core.impl.score.director.SessionContext;
-import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
+import greycos.solver.core.preview.api.cotwin.metamodel.GenuineEntityMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
-import greycos.solver.core.preview.api.move.Move;
-import greycos.solver.core.preview.api.neighborhood.MoveProvider;
+import greycos.solver.core.preview.api.neighborhood.test.NeighborhoodTester;
 import greycos.solver.core.testcotwin.TestdataEntity;
 import greycos.solver.core.testcotwin.TestdataSolution;
+import greycos.solver.core.testcotwin.TestdataValue;
 import greycos.solver.core.testcotwin.multivar.TestdataMultiVarEntity;
 import greycos.solver.core.testcotwin.multivar.TestdataMultiVarSolution;
+import greycos.solver.core.testcotwin.pinned.TestdataPinnedEntity;
+import greycos.solver.core.testcotwin.pinned.TestdataPinnedSolution;
+import greycos.solver.core.testcotwin.valuerange.entityproviding.TestdataEntityProvidingEntity;
+import greycos.solver.core.testcotwin.valuerange.entityproviding.TestdataEntityProvidingSolution;
 
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
@@ -31,119 +23,119 @@ class SwapMoveProviderTest {
 
   @Test
   void univariate() {
-    var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
-    var entityMetaModel = solutionDescriptor.getMetaModel().genuineEntity(TestdataEntity.class);
+    var solutionMetaModel = TestdataSolution.buildMetaModel();
+    var entityMetaModel = solutionMetaModel.genuineEntity(TestdataEntity.class);
+    var variableMetaModel = solutionMetaModel.genuineEntity(TestdataEntity.class).basicVariable();
 
     var solution = TestdataSolution.generateSolution(2, 3);
     var e1 = solution.getEntityList().get(0);
     var e2 = solution.getEntityList().get(1);
     var e3 = solution.getEntityList().get(2);
-    var v1 = solution.getValueList().get(0);
-    var v2 = solution.getValueList().get(1);
 
     // With 3 entities, only 3 swap moves are possible: e1 <-> e2, e1 <-> e3, e2 <-> e3.
-    // But we only have 2 values, guaranteeing that two entities will share a value.
-    // Therefore there will be 4 swap moves, including duplicates.
-    var moveIterable =
-        createMoveIterable(new SwapMoveProvider<>(entityMetaModel), solutionDescriptor, solution);
-    var moveList =
-        StreamSupport.stream(moveIterable.spliterator(), false)
-            .map(m -> (SwapMove<TestdataSolution, TestdataEntity>) m)
-            .toList();
-    assertThat(moveList).hasSize(4);
-
-    var move1 = moveList.get(0);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(move1.getPlanningEntities()).containsOnly(e1, e2);
-          softly.assertThat(move1.getPlanningValues()).containsOnly(v1, v2);
-        });
-
-    var move2 = moveList.get(1);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(move2.getPlanningEntities()).containsOnly(e1, e2);
-          softly.assertThat(move2.getPlanningValues()).containsOnly(v1, v2);
-        });
-
-    var move3 = moveList.get(2);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(move3.getPlanningEntities()).containsOnly(e2, e3);
-          softly.assertThat(move3.getPlanningValues()).containsOnly(v2, v1);
-        });
-
-    var move4 = moveList.get(3);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(move4.getPlanningEntities()).containsOnly(e2, e3);
-          softly.assertThat(move4.getPlanningValues()).containsOnly(v2, v1);
-        });
+    // But we only have 2 values, guaranteeing that two entities (e1 and e3) share a value,
+    // making that swap a no-op. Each remaining pair is produced in both directions,
+    // as swap(a, b) and swap(b, a) are distinct moves.
+    var context =
+        NeighborhoodTester.build(new SwapMoveProvider<>(entityMetaModel), solutionMetaModel)
+            .using(solution);
+    context.producesAllOf(
+        Moves.swap(variableMetaModel, e1, e2),
+        Moves.swap(variableMetaModel, e2, e1),
+        Moves.swap(variableMetaModel, e2, e3),
+        Moves.swap(variableMetaModel, e3, e2));
+    context.producesNoneOf(
+        Moves.swap(variableMetaModel, e1, e3), // No-op: e1 and e3 share a value.
+        Moves.swap(variableMetaModel, e3, e1));
   }
 
   @Test
   void multivariate() {
-    var solutionDescriptor = TestdataMultiVarSolution.buildSolutionDescriptor();
-    var entityMetaModel =
-        solutionDescriptor.getMetaModel().genuineEntity(TestdataMultiVarEntity.class);
+    var solutionMetaModel = TestdataMultiVarSolution.buildMetaModel();
+    var entityMetaModel = solutionMetaModel.genuineEntity(TestdataMultiVarEntity.class);
+    var variableMetaModelList = allVariables(entityMetaModel);
 
     var solution = TestdataMultiVarSolution.generateSolution(3, 2, 2);
     var e1 = solution.getMultiVarEntityList().get(0);
     var e2 = solution.getMultiVarEntityList().get(1);
     var e3 = solution.getMultiVarEntityList().get(2);
-    var v1 = solution.getValueList().get(0);
-    var v2 = solution.getValueList().get(1);
-    var otherV1 = solution.getOtherValueList().get(0);
-    var otherV2 = solution.getOtherValueList().get(1);
 
     // With 3 entities, only 3 swap moves are possible: e1 <-> e2, e1 <-> e3, e2 <-> e3.
-    // But we only have 2 unique combinations of values, guaranteeing that two entities will share
-    // values.
-    // Therefore there will be 4 swap moves, including duplicates.
-    var moveIterable =
-        createMoveIterable(new SwapMoveProvider<>(entityMetaModel), solutionDescriptor, solution);
-    var moveList =
-        StreamSupport.stream(moveIterable.spliterator(), false)
-            .map(m -> (SwapMove<TestdataMultiVarSolution, TestdataMultiVarEntity>) m)
-            .toList();
-    assertThat(moveList).hasSize(4);
+    // But we only have 2 unique combinations of values, guaranteeing that two entities (e1 and e3)
+    // share values, making that swap a no-op. Each remaining pair is produced in both directions.
+    var context =
+        NeighborhoodTester.build(new SwapMoveProvider<>(entityMetaModel), solutionMetaModel)
+            .using(solution);
+    context.producesAllOf(
+        Moves.swap(variableMetaModelList, e1, e2),
+        Moves.swap(variableMetaModelList, e2, e1),
+        Moves.swap(variableMetaModelList, e2, e3),
+        Moves.swap(variableMetaModelList, e3, e2));
+    context.producesNoneOf(
+        Moves.swap(variableMetaModelList, e1, e3), // No-op: e1 and e3 share values.
+        Moves.swap(variableMetaModelList, e3, e1));
+  }
 
-    var move1 = moveList.get(0);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(move1.getPlanningEntities()).containsOnly(e1, e2);
-          softly.assertThat(move1.getPlanningValues()).containsOnly(v1, v2, otherV1, otherV2);
-        });
+  @Test
+  void pinnedEntitySkipped() {
+    var solutionMetaModel = TestdataPinnedSolution.buildMetaModel();
+    var entityMetaModel = solutionMetaModel.genuineEntity(TestdataPinnedEntity.class);
+    var variableMetaModel =
+        solutionMetaModel.genuineEntity(TestdataPinnedEntity.class).basicVariable();
 
-    var move2 = moveList.get(1);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(move2.getPlanningEntities()).containsOnly(e1, e2);
-          softly.assertThat(move2.getPlanningValues()).containsOnly(v1, v2, otherV1, otherV2);
-        });
+    var solution = TestdataPinnedSolution.generateSolution(2, 2);
+    var firstEntity = solution.getEntityList().get(0);
+    var secondEntity = solution.getEntityList().get(1);
+    firstEntity.setPinned(true);
 
-    var move3 = moveList.get(2);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(move3.getPlanningEntities()).containsOnly(e2, e3);
-          softly.assertThat(move3.getPlanningValues()).containsOnly(v2, v1, otherV2, otherV1);
-        });
+    // With only 2 entities and one pinned, there is no valid swap partner.
+    NeighborhoodTester.build(new SwapMoveProvider<>(entityMetaModel), solutionMetaModel)
+        .using(solution)
+        .producesNoneOf(
+            Moves.swap(variableMetaModel, firstEntity, secondEntity),
+            Moves.swap(variableMetaModel, secondEntity, firstEntity));
+  }
 
-    var move4 = moveList.get(3);
-    assertSoftly(
-        softly -> {
-          softly.assertThat(move4.getPlanningEntities()).containsOnly(e2, e3);
-          softly.assertThat(move4.getPlanningValues()).containsOnly(v2, v1, otherV2, otherV1);
-        });
+  @Test
+  void fromEntity() {
+    var solutionMetaModel =
+        TestdataEntityProvidingSolution.buildSolutionDescriptor().getMetaModel();
+    var entityMetaModel = solutionMetaModel.genuineEntity(TestdataEntityProvidingEntity.class);
+    var variableMetaModel =
+        solutionMetaModel.genuineEntity(TestdataEntityProvidingEntity.class).basicVariable();
+
+    var v1 = new TestdataValue("v1");
+    var v2 = new TestdataValue("v2");
+    var v3 = new TestdataValue("v3");
+    var e1 = new TestdataEntityProvidingEntity("e1", List.of(v1, v2));
+    e1.setValue(v1);
+    var e2 = new TestdataEntityProvidingEntity("e2", List.of(v1, v2));
+    e2.setValue(v2);
+    var e3 = new TestdataEntityProvidingEntity("e3", List.of(v3));
+    e3.setValue(v3);
+    var solution = new TestdataEntityProvidingSolution("s1");
+    solution.setEntityList(List.of(e1, e2, e3));
+
+    // e1(v1, range={v1,v2}) <-> e2(v2, range={v1,v2}): valid swap, produced in both directions.
+    // e1 <-> e3, e2 <-> e3: v3 not in e1/e2's range, and v1/v2 not in e3's range -> excluded.
+    var context =
+        NeighborhoodTester.build(new SwapMoveProvider<>(entityMetaModel), solutionMetaModel)
+            .using(solution);
+    context.producesAllOf(
+        Moves.swap(variableMetaModel, e1, e2), Moves.swap(variableMetaModel, e2, e1));
+    context.producesNoneOf(
+        Moves.swap(variableMetaModel, e1, e3),
+        Moves.swap(variableMetaModel, e3, e1),
+        Moves.swap(variableMetaModel, e2, e3),
+        Moves.swap(variableMetaModel, e3, e2));
   }
 
   @Test
   void multivariateWithExclusions() {
-    var solutionDescriptor = TestdataMultiVarSolution.buildSolutionDescriptor();
-    var entityMetaModel =
-        solutionDescriptor.getMetaModel().genuineEntity(TestdataMultiVarEntity.class);
+    var solutionMetaModel = TestdataMultiVarSolution.buildMetaModel();
+    var entityMetaModel = solutionMetaModel.genuineEntity(TestdataMultiVarEntity.class);
     var allowedVariableMetaModels =
-        entityMetaModel.variables().stream()
+        entityMetaModel.genuineVariables().stream()
             .filter(v -> !v.name().contains("tertiary"))
             .map(
                 v ->
@@ -152,60 +144,37 @@ class SwapMoveProviderTest {
                         v)
             .toList();
     var solution = TestdataMultiVarSolution.generateSolution(3, 1, 2);
+    var e1 = solution.getMultiVarEntityList().get(0);
+    var e2 = solution.getMultiVarEntityList().get(1);
+    var e3 = solution.getMultiVarEntityList().get(2);
 
     // With 3 entities, only 3 swap moves are possible: e1 <-> e2, e1 <-> e3, e2 <-> e3.
     // We only have 1 value for primary and secondary variables,
-    // therefore with the tertiary variable excluded, there will be no swap moves.
-    var moveIterable =
-        createMoveIterable(
-            new SwapMoveProvider<>(allowedVariableMetaModels), solutionDescriptor, solution);
-    var moveList =
-        StreamSupport.stream(moveIterable.spliterator(), false)
-            .map(m -> (SwapMove<TestdataMultiVarSolution, TestdataMultiVarEntity>) m)
-            .toList();
-    assertThat(moveList).isEmpty();
+    // therefore with the tertiary variable excluded, there will be no swap moves, in either
+    // direction.
+    NeighborhoodTester.build(new SwapMoveProvider<>(allowedVariableMetaModels), solutionMetaModel)
+        .using(solution)
+        .producesNoneOf(
+            Moves.swap(allowedVariableMetaModels, e1, e2),
+            Moves.swap(allowedVariableMetaModels, e2, e1),
+            Moves.swap(allowedVariableMetaModels, e1, e3),
+            Moves.swap(allowedVariableMetaModels, e3, e1),
+            Moves.swap(allowedVariableMetaModels, e2, e3),
+            Moves.swap(allowedVariableMetaModels, e3, e2));
   }
 
-  private <Solution_> Iterable<Move<Solution_>> createMoveIterable(
-      MoveProvider<Solution_> moveProvider,
-      SolutionDescriptor<Solution_> solutionDescriptor,
-      Solution_ solution) {
-    var moveStreamFactory =
-        new DefaultMoveStreamFactory<>(solutionDescriptor, EnvironmentMode.TRACKED_FULL_ASSERT);
-    var moveStream = moveProvider.build(moveStreamFactory);
-    var scoreDirector = createScoreDirector(solutionDescriptor, solution);
-    var neighborhoodSession = moveStreamFactory.createSession(new SessionContext<>(scoreDirector));
-    solutionDescriptor.visitAll(scoreDirector.getWorkingSolution(), neighborhoodSession::insert);
-    neighborhoodSession.settle();
-    return moveStream.getMoveIterable(neighborhoodSession);
-  }
-
-  private <Solution_> InnerScoreDirector<Solution_, ?> createScoreDirector(
-      SolutionDescriptor<Solution_> solutionDescriptor, Solution_ solution) {
-    var firstEntityClass = solutionDescriptor.getMetaModel().genuineEntities().get(0).type();
-    var constraintProvider = new TestingConstraintProvider(firstEntityClass);
-    var scoreDirectorFactory =
-        new BavetConstraintStreamScoreDirectorFactory<>(
-            solutionDescriptor, constraintProvider, EnvironmentMode.TRACKED_FULL_ASSERT, false);
-    var scoreDirector = scoreDirectorFactory.buildScoreDirector();
-    scoreDirector.setWorkingSolution(solution);
-    return scoreDirector;
-  }
-
-  // The specifics of the constraint provider are not important for this test,
-  // as the score will never be calculated.
-  private record TestingConstraintProvider(Class<?> entityClass) implements ConstraintProvider {
-
-    @Override
-    public Constraint[] defineConstraints(ConstraintFactory constraintFactory) {
-      return new Constraint[] {alwaysPenalizingConstraint(constraintFactory)};
-    }
-
-    private Constraint alwaysPenalizingConstraint(ConstraintFactory constraintFactory) {
-      return constraintFactory
-          .forEach(entityClass)
-          .penalize(SimpleScore.ONE)
-          .asConstraint("Always penalize");
-    }
+  @SuppressWarnings("unchecked")
+  private static List<
+          PlanningVariableMetaModel<TestdataMultiVarSolution, TestdataMultiVarEntity, Object>>
+      allVariables(
+          GenuineEntityMetaModel<TestdataMultiVarSolution, TestdataMultiVarEntity>
+              entityMetaModel) {
+    return entityMetaModel.genuineVariables().stream()
+        .map(
+            v ->
+                (PlanningVariableMetaModel<
+                        TestdataMultiVarSolution, TestdataMultiVarEntity, Object>)
+                    v)
+        .toList();
   }
 }

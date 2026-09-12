@@ -31,13 +31,13 @@ public abstract class AbstractUndoMove<Solution_> implements Move<Solution_> {
   @Override
   public final void doMoveOnly(ScoreDirector<Solution_> scoreDirector) {
     doMoveOnGenuineVariables(scoreDirector);
-    scoreDirector.triggerVariableListeners();
+    scoreDirector.updateShadowVariables();
   }
 
   /**
    * Like {@link #doMoveOnly(ScoreDirector)} but without the {@link
-   * ScoreDirector#triggerVariableListeners()} call (because {@link #doMoveOnly(ScoreDirector)}
-   * already does that).
+   * ScoreDirector#updateShadowVariables()} call (because {@link #doMoveOnly(ScoreDirector)} already
+   * does that).
    *
    * @param scoreDirector never null
    */

@@ -14,6 +14,7 @@ import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.DatasetSession;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.DatasetSessionFactory;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.EnumeratingStreamFactory;
+import greycos.solver.core.impl.neighborhood.stream.enumerating.common.AbstractLeftDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.AbstractUniEnumeratingStream;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniLeftDataset;
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.UniLeftDatasetInstance;
@@ -57,7 +58,8 @@ class UniEnumeratingStreamTest {
 
   private static <Solution_, A> UniLeftDatasetInstance<Solution_, A> getInstance(
       DatasetSession<Solution_> session, UniLeftDataset<Solution_, A> dataset) {
-    return (UniLeftDatasetInstance<Solution_, A>) session.getInstance(dataset);
+    return (UniLeftDatasetInstance<Solution_, A>)
+        session.getInstance((AbstractLeftDataset<Solution_, UniTuple<A>>) dataset);
   }
 
   private static <Solution_> DatasetSession<Solution_> createSession(
@@ -92,7 +94,7 @@ class UniEnumeratingStreamTest {
     var uniDataset =
         ((AbstractUniEnumeratingStream<TestdataSolution, TestdataEntity>)
                 enumeratingStreamFactory.forEachNonDiscriminating(TestdataEntity.class, false))
-            .createLeftDataset();
+            .asCachedDataset();
 
     var solution = TestdataSolution.generateSolution(2, 2);
     var datasetSession = createSession(enumeratingStreamFactory, solution);
@@ -126,7 +128,7 @@ class UniEnumeratingStreamTest {
     var uniDataset =
         ((AbstractUniEnumeratingStream<TestdataSolution, TestdataEntity>)
                 enumeratingStreamFactory.forEachNonDiscriminating(TestdataEntity.class, true))
-            .createLeftDataset();
+            .asCachedDataset();
 
     var solution = TestdataSolution.generateSolution(2, 2);
     var datasetSession = createSession(enumeratingStreamFactory, solution);
@@ -160,7 +162,7 @@ class UniEnumeratingStreamTest {
     var uniDataset =
         ((AbstractUniEnumeratingStream<TestdataListSolution, TestdataListEntity>)
                 enumeratingStreamFactory.forEachNonDiscriminating(TestdataListEntity.class, false))
-            .createLeftDataset();
+            .asCachedDataset();
 
     var solution = TestdataListSolution.generateInitializedSolution(2, 2);
     var datasetSession = createSession(enumeratingStreamFactory, solution);
@@ -194,7 +196,7 @@ class UniEnumeratingStreamTest {
     var uniDataset =
         ((AbstractUniEnumeratingStream<TestdataListSolution, TestdataListEntity>)
                 enumeratingStreamFactory.forEachNonDiscriminating(TestdataListEntity.class, true))
-            .createLeftDataset();
+            .asCachedDataset();
 
     var solution = TestdataListSolution.generateInitializedSolution(2, 2);
     var datasetSession = createSession(enumeratingStreamFactory, solution);
@@ -231,7 +233,7 @@ class UniEnumeratingStreamTest {
                     TestdataPinnedWithIndexListSolution, TestdataPinnedWithIndexListEntity>)
                 enumeratingStreamFactory.forEachNonDiscriminating(
                     TestdataPinnedWithIndexListEntity.class, false))
-            .createLeftDataset();
+            .asCachedDataset();
 
     // Prepare the solution;
     var solution = TestdataPinnedWithIndexListSolution.generateInitializedSolution(5, 3);
@@ -278,7 +280,7 @@ class UniEnumeratingStreamTest {
                     TestdataPinnedWithIndexListSolution, TestdataPinnedWithIndexListEntity>)
                 enumeratingStreamFactory.forEachNonDiscriminating(
                     TestdataPinnedWithIndexListEntity.class, true))
-            .createLeftDataset();
+            .asCachedDataset();
 
     // Prepare the solution;
     var solution = TestdataPinnedWithIndexListSolution.generateInitializedSolution(5, 3);
@@ -325,7 +327,7 @@ class UniEnumeratingStreamTest {
                     TestdataPinnedWithIndexListSolution, TestdataPinnedWithIndexListEntity>)
                 enumeratingStreamFactory.forEachExcludingPinned(
                     TestdataPinnedWithIndexListEntity.class, false))
-            .createLeftDataset();
+            .asCachedDataset();
 
     // Prepare the solution;
     var solution = TestdataPinnedWithIndexListSolution.generateInitializedSolution(5, 3);
@@ -374,7 +376,7 @@ class UniEnumeratingStreamTest {
                     TestdataPinnedWithIndexListSolution, TestdataPinnedWithIndexListEntity>)
                 enumeratingStreamFactory.forEachExcludingPinned(
                     TestdataPinnedWithIndexListEntity.class, true))
-            .createLeftDataset();
+            .asCachedDataset();
 
     // Prepare the solution;
     var solution = TestdataPinnedWithIndexListSolution.generateInitializedSolution(5, 3);
@@ -422,7 +424,7 @@ class UniEnumeratingStreamTest {
                     TestdataPinnedWithIndexListSolution, TestdataPinnedWithIndexListValue>)
                 enumeratingStreamFactory.forEachNonDiscriminating(
                     TestdataPinnedWithIndexListValue.class, false))
-            .createLeftDataset();
+            .asCachedDataset();
 
     // Prepare the solution;
     var solution = TestdataPinnedWithIndexListSolution.generateInitializedSolution(5, 3);
@@ -467,7 +469,7 @@ class UniEnumeratingStreamTest {
                     TestdataPinnedWithIndexListSolution, TestdataPinnedWithIndexListValue>)
                 enumeratingStreamFactory.forEachNonDiscriminating(
                     TestdataPinnedWithIndexListValue.class, true))
-            .createLeftDataset();
+            .asCachedDataset();
 
     // Prepare the solution;
     var solution = TestdataPinnedWithIndexListSolution.generateInitializedSolution(5, 3);
@@ -511,7 +513,7 @@ class UniEnumeratingStreamTest {
                     TestdataPinnedWithIndexListSolution, TestdataPinnedWithIndexListValue>)
                 enumeratingStreamFactory.forEachExcludingPinned(
                     TestdataPinnedWithIndexListValue.class, false))
-            .createLeftDataset();
+            .asCachedDataset();
 
     // Prepare the solution;
     var solution = TestdataPinnedWithIndexListSolution.generateInitializedSolution(5, 3);
@@ -558,7 +560,7 @@ class UniEnumeratingStreamTest {
                     TestdataPinnedWithIndexListSolution, TestdataPinnedWithIndexListValue>)
                 enumeratingStreamFactory.forEachExcludingPinned(
                     TestdataPinnedWithIndexListValue.class, true))
-            .createLeftDataset();
+            .asCachedDataset();
 
     // Prepare the solution;
     var solution = TestdataPinnedWithIndexListSolution.generateInitializedSolution(5, 3);
@@ -605,7 +607,7 @@ class UniEnumeratingStreamTest {
     UniNeighborhoodsMapper<TestdataSolution, TestdataEntity, TestdataValue> byValue =
         (view, entity) -> entity.getValue();
     var groupedStream = entityStream(factory).groupBy(byValue);
-    var dataset = groupedStream.createLeftDataset();
+    var dataset = groupedStream.asCachedDataset();
 
     // generateSolution(2 values, 4 entities): e0→v0, e1→v1, e2→v0, e3→v1
     var solution = TestdataSolution.generateSolution(2, 4);
@@ -649,7 +651,7 @@ class UniEnumeratingStreamTest {
     var mappedStream =
         (AbstractUniEnumeratingStream<TestdataSolution, String>)
             groupedStream.map((view, value, entities) -> value.getCode() + "=" + entities.size());
-    var dataset = mappedStream.createLeftDataset();
+    var dataset = mappedStream.asCachedDataset();
 
     var solution = TestdataSolution.generateSolution(2, 4);
     var session = createSession(factory, solution);
@@ -678,7 +680,7 @@ class UniEnumeratingStreamTest {
     var groupedStream =
         entityStream(factory)
             .groupBy(NeighborhoodsCollectors.<TestdataSolution, TestdataEntity>toList());
-    var dataset = groupedStream.createLeftDataset();
+    var dataset = groupedStream.asCachedDataset();
 
     var solution = TestdataSolution.generateSolution(2, 3);
     var session = createSession(factory, solution);
@@ -701,7 +703,7 @@ class UniEnumeratingStreamTest {
     var mappedStream =
         (AbstractUniEnumeratingStream<TestdataSolution, TestdataValue>)
             entityStream(factory).map((view, entity) -> entity.getValue()).distinct();
-    var dataset = mappedStream.createLeftDataset();
+    var dataset = mappedStream.asCachedDataset();
 
     var solution = TestdataSolution.generateSolution(2, 4);
     var session = createSession(factory, solution);
@@ -727,7 +729,7 @@ class UniEnumeratingStreamTest {
     var mappedStream =
         (AbstractUniEnumeratingStream<TestdataSolution, String>)
             groupedStream.map((view, value, count) -> value.getCode() + "=" + count);
-    var dataset = mappedStream.createLeftDataset();
+    var dataset = mappedStream.asCachedDataset();
 
     var solution = TestdataSolution.generateSolution(2, 4);
     var session = createSession(factory, solution);
@@ -758,7 +760,7 @@ class UniEnumeratingStreamTest {
           return entity.getValue();
         };
     var groupedStream = entityStream(factory).groupBy(mapper);
-    var dataset = groupedStream.createLeftDataset();
+    var dataset = groupedStream.asCachedDataset();
 
     var solution = TestdataSolution.generateSolution(2, 4);
     var session = createSession(factory, solution);

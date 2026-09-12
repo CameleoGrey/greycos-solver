@@ -142,7 +142,7 @@ class SubListChangeMoveTest {
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 1, 1);
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e2, 0, 0);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e2, 0, 2);
-    verify(scoreDirector).triggerVariableListeners();
+    verify(scoreDirector).updateShadowVariables();
     verifyNoMoreInteractions(scoreDirector);
   }
 
@@ -163,7 +163,7 @@ class SubListChangeMoveTest {
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 0, 0);
     verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e2, 1, 1);
     verify(scoreDirector).afterListVariableChanged(variableDescriptor, e2, 1, 4);
-    verify(scoreDirector).triggerVariableListeners();
+    verify(scoreDirector).updateShadowVariables();
     verifyNoMoreInteractions(scoreDirector);
   }
 
@@ -185,7 +185,7 @@ class SubListChangeMoveTest {
     // verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 5, 5);
     // verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e1, 0, 0);
     // verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 0, 2);
-    verify(scoreDirector).triggerVariableListeners();
+    verify(scoreDirector).updateShadowVariables();
     verifyNoMoreInteractions(scoreDirector);
   }
 

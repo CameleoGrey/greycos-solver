@@ -21,7 +21,6 @@ import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import greycos.solver.core.api.solver.SolutionManager;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
-import greycos.solver.core.impl.cotwin.variable.InnerVariableListener;
 import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
@@ -185,10 +184,11 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
   void executeMove(Move<Solution_> move);
 
   /**
-   * Executes a move, finds out its score, and immediately undoes it. If appropriate, consider
-   * setting {@link #setAllChangesWillBeUndoneBeforeStepEnds(boolean)} to true beforehand, and
-   * resetting it to false afterward. There are performance gains to be made if your use case does
-   * not require step-level mechanisms to be aware of the changes.
+   * Executes a move, finds out its score, and immediately undoes it. The undo action also restores
+   * the working solution score to its original value. If appropriate, consider setting {@link
+   * #setAllChangesWillBeUndoneBeforeStepEnds(boolean)} to true beforehand, and resetting it to
+   * false afterward. There are performance gains to be made if your use case does not require
+   * step-level mechanisms to be aware of the changes.
    *
    * @param move never null
    * @param consumer callback to run after move execution but before undo
@@ -321,11 +321,11 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
   void assertExpectedWorkingScore(InnerScore<Score_> expectedWorkingScore, Object completedAction);
 
   /**
-   * Asserts that if all {@link InnerVariableListener}s are forcibly triggered, and therefore all
-   * shadow variables are updated if needed, that none of the shadow variables of the {@link
-   * PlanningSolution working solution} change, Then also asserts that the {@link Score} calculated
-   * for the {@link PlanningSolution working solution} afterwards is equal to the parameter {@link
-   * Score expectedWorkingScore}.
+   * Asserts that if all shadow variables are forcibly updated, and therefore all shadow variables
+   * are updated if needed, that none of the shadow variables of the {@link PlanningSolution working
+   * solution} change, Then also asserts that the {@link Score} calculated for the {@link
+   * PlanningSolution working solution} afterwards is equal to the parameter {@link Score
+   * expectedWorkingScore}.
    *
    * <p>Used to assert that the shadow variables' state is consistent with the genuine variables'
    * state.
@@ -388,15 +388,23 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
   void close();
 
   /**
-   * Unlike {@link #triggerVariableListeners()} which only triggers notifications already in the
-   * queue, this triggers every variable listener on every genuine variable. This is useful in
-   * {@link SolutionManager#update(Object)} to fill in shadow variable values.
+   * Unlike {@link #updateShadowVariables()} which only triggers notifications already in the queue,
+   * this triggers every variable listener on every genuine variable. This is useful in {@link
+   * SolutionManager#update(Object)} to fill in shadow variable values.
    */
-  void forceTriggerVariableListeners();
+  void forceUpdateShadowVariables();
+
+  /**
+   * @deprecated use {@link #forceUpdateShadowVariables()} directly.
+   */
+  @Deprecated(forRemoval = true)
+  default void forceTriggerVariableListeners() {
+    forceUpdateShadowVariables();
+  }
 
   /**
    * A derived score director is created from a root score director. The derived score director can
-   * be used to create separate* instances for use cases like multithreaded solving.
+   * be used to create separate instances for use cases like multithreaded solving.
    */
   default boolean isDerived() {
     return false;

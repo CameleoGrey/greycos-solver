@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.bavet.uni;
 
 import java.util.function.Function;
+import java.util.function.IntSupplier;
 
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
@@ -13,12 +14,12 @@ public final class Group1Mapping0CollectorUniNode<OldA, A>
 
   public Group1Mapping0CollectorUniNode(
       Function<OldA, A> groupKeyMapping,
-      int groupStoreIndex,
+      IntSupplier storeIndexReserver,
       TupleLifecycle<UniTuple<A>> nextNodesTupleLifecycle,
       int outputStoreSize,
       EnvironmentMode environmentMode) {
     super(
-        groupStoreIndex,
+        storeIndexReserver,
         tuple -> createGroupKey(groupKeyMapping, tuple),
         nextNodesTupleLifecycle,
         environmentMode);

@@ -138,9 +138,7 @@ public class SubSingleBenchmarkRunner<Solution_>
       if (isConstraintMatchEnabled) { // Easy calculator fails otherwise.
         var scoreAnalysis =
             solutionManager.analyze(
-                solution,
-                ScoreAnalysisFetchPolicy.FETCH_MATCH_COUNT,
-                SolutionUpdatePolicy.NO_UPDATE);
+                solution, ScoreAnalysisFetchPolicy.FETCH_ALL, SolutionUpdatePolicy.NO_UPDATE);
         subSingleBenchmarkResult.setScoreExplanationSummary(scoreAnalysis.summarize());
       }
 

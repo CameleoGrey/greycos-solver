@@ -27,11 +27,15 @@
   </licenses>
 
   <properties>
+    <version.clean.plugin>3.5.0</version.clean.plugin>
+    <version.deploy.plugin>3.1.4</version.deploy.plugin>
+    <version.install.plugin>3.1.4</version.install.plugin>
     <version.javadoc.plugin>3.12.0</version.javadoc.plugin>
     <version.rewrite.plugin>6.28.1</version.rewrite.plugin>
     <version.source.plugin>3.4.0</version.source.plugin>
     <version.resources.plugin>3.5.0</version.resources.plugin>
-    <version.cyclonedx.plugin>2.9.2</version.cyclonedx.plugin>
+    <version.site.plugin>3.22.0</version.site.plugin>
+    <version.cyclonedx.plugin>2.9.3</version.cyclonedx.plugin>
     <sonar.moduleKey>${project.groupId}:${project.artifactId}</sonar.moduleKey>
     <sonar.sources>.</sonar.sources>
     <sonar.tests>.</sonar.tests>
@@ -70,6 +74,22 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <artifactId>maven-clean-plugin</artifactId>
+          <version>${version.clean.plugin}</version>
+        </plugin>
+        <plugin>
+          <artifactId>maven-deploy-plugin</artifactId>
+          <version>${version.deploy.plugin}</version>
+        </plugin>
+        <plugin>
+          <artifactId>maven-install-plugin</artifactId>
+          <version>${version.install.plugin}</version>
+        </plugin>
+        <plugin>
+          <artifactId>maven-site-plugin</artifactId>
+          <version>${version.site.plugin}</version>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-source-plugin</artifactId>

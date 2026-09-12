@@ -30,13 +30,23 @@ public interface PhaseCommandContext<Solution_> extends Lookup {
 
   <Score_ extends Score<Score_>> Score_ executeAndCalculateScore(Move<Solution_> move);
 
+  /**
+   * Executes the move temporarily and passes the changed solution to the consumer. Afterwards,
+   * restores the original solution state and stored score without recalculating the score.
+   */
   <Result_> @Nullable Result_ executeTemporarily(
       Move<Solution_> move, Function<Solution_, @Nullable Result_> temporarySolutionConsumer);
 
+  /** Returns the temporary score, then restores the original solution state and stored score. */
   <Score_ extends Score<Score_>> Score_ executeTemporarily(Move<Solution_> move);
 
+  /** Like {@link #executeTemporarily(Move)}, also recalculating the score after restoration. */
   <Score_ extends Score<Score_>> Score_ executeTemporarilyAndCalculateScore(Move<Solution_> move);
 
+  /**
+   * Like {@link #executeTemporarily(Move, Function)}, also recalculating the score after
+   * restoration.
+   */
   <Result_> @Nullable Result_ executeTemporarilyAndCalculateScore(
       Move<Solution_> move, Function<Solution_, @Nullable Result_> temporarySolutionConsumer);
 }

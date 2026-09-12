@@ -1,22 +1,19 @@
 package greycos.solver.core.impl.cotwin.variable.descriptor;
 
 import java.util.Collection;
-import java.util.List;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
-import greycos.solver.core.impl.cotwin.variable.listener.VariableListenerWithSources;
 import greycos.solver.core.impl.cotwin.variable.supply.Demand;
-import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
 public abstract class ShadowVariableDescriptor<Solution_> extends VariableDescriptor<Solution_> {
-
-  private int globalShadowOrder = Integer.MAX_VALUE;
 
   // ************************************************************************
   // Constructors and simple getters/setters
@@ -27,14 +24,6 @@ public abstract class ShadowVariableDescriptor<Solution_> extends VariableDescri
       EntityDescriptor<Solution_> entityDescriptor,
       MemberAccessor variableMemberAccessor) {
     super(ordinal, entityDescriptor, variableMemberAccessor, true);
-  }
-
-  public int getGlobalShadowOrder() {
-    return globalShadowOrder;
-  }
-
-  public void setGlobalShadowOrder(int globalShadowOrder) {
-    this.globalShadowOrder = globalShadowOrder;
   }
 
   // ************************************************************************
@@ -48,32 +37,21 @@ public abstract class ShadowVariableDescriptor<Solution_> extends VariableDescri
   // ************************************************************************
 
   /**
-   * Inverse of {@link #getSinkVariableDescriptorList()}.
-   *
-   * @return never null, only variables affect this shadow variable directly
+   * @return if null, there is no source variable
    */
-  public abstract List<VariableDescriptor<Solution_>> getSourceVariableDescriptorList();
+  public @Nullable VariableDescriptor<Solution_> getSourceVariableDescriptor() {
+    return null;
+  }
 
-  public abstract Collection<Class<?>> getVariableListenerClasses();
+  /**
+   * @return never null, the classes responsible for updating this shadow variable
+   */
+  public abstract Collection<Class<?>> getUpdaterClasses();
 
   /**
    * @return never null
    */
   public abstract Demand<?> getProvidedDemand();
-
-  public boolean hasVariableListener() {
-    return true;
-  }
-
-  /** return true if the source variable is a list variable; otherwise, return false. */
-  public abstract boolean isListVariableSource();
-
-  /**
-   * @param supplyManager never null
-   * @return never null
-   */
-  public abstract Iterable<VariableListenerWithSources> buildVariableListeners(
-      SupplyManager supplyManager);
 
   // ************************************************************************
   // Extraction methods
