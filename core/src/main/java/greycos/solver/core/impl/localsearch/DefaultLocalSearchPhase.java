@@ -82,11 +82,13 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
     phaseStarted(phaseScope);
 
     if (solverScope.isMetricEnabled(SolverMetric.MOVE_COUNT_PER_STEP)) {
-      Metrics.gauge(
+      acceptedMoveCountPerStep.set(0L);
+      selectedMoveCountPerStep.set(0L);
+      SolverMetricUtil.rebindGauge(
           SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".accepted",
           solverScope.getMonitoringTags(),
           acceptedMoveCountPerStep);
-      Metrics.gauge(
+      SolverMetricUtil.rebindGauge(
           SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".selected",
           solverScope.getMonitoringTags(),
           selectedMoveCountPerStep);

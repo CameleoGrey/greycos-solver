@@ -24,12 +24,31 @@ import greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.solver.scope.SolverScope;
+import greycos.solver.core.testcotwin.TestdataSolution;
 import greycos.solver.core.testcotwin.TestdataValue;
 import greycos.solver.core.testcotwin.multivar.TestdataMultiVarEntity;
 
 import org.junit.jupiter.api.Test;
 
 class CartesianProductMoveSelectorTest {
+
+  @Test
+  void saturatedProductStillRespectsLaterEmptyChild() {
+    var first = SelectorTestUtils.mockMoveSelector(new DummyMove("a"));
+    var second = SelectorTestUtils.mockMoveSelector(new DummyMove("b"));
+    var empty = SelectorTestUtils.<TestdataSolution>mockMoveSelector();
+    when(first.getSize()).thenReturn(Long.MAX_VALUE);
+    when(second.getSize()).thenReturn(2L);
+    assertThat(new CartesianProductMoveSelector<>(List.of(first, second), false, true).getSize())
+        .isEqualTo(Long.MAX_VALUE);
+    assertThat(
+            new CartesianProductMoveSelector<>(List.of(first, second, empty), false, true)
+                .getSize())
+        .isZero();
+    assertThat(
+            new CartesianProductMoveSelector<>(List.of(first, second, empty), true, true).getSize())
+        .isEqualTo(Long.MAX_VALUE);
+  }
 
   @Test
   void originSelectionNotIgnoringEmpty() {

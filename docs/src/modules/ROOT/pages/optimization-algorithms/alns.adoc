@@ -1,0 +1,250 @@
+[#alns]
+= Adaptive Large Neighborhood Search
+
+Adaptive Large Neighborhood Search (ALNS) is an improvement phase for basic planning variables,
+list variables, and models containing both.
+Each trial chooses a destroy operator and a repair operator, removes a bounded set of assignments,
+and evaluates the repaired candidate using the configured score calculation.
+The acceptance policy either retains that candidate or restores the incumbent.
+Operator selection learns from the outcome of complete trials.
+
+Configure construction heuristics before ALNS unless the input solution is already initialized:
+
+[source,xml]
+----
+<constructionHeuristic/>
+<alns>
+  <termination>
+    <secondsSpentLimit>60</secondsSpentLimit>
+  </termination>
+</alns>
+----
+
+The solver returns the best solution found, even when the acceptance policy temporarily accepts worse solutions.
+ALNS is a heuristic and does not provide an optimality proof.
+
+== Trials, rejection, and termination
+
+One ALNS step is one complete proposal, including a rejected proposal or a failed repair.
+Insertion probes inside a repair contribute score calculations, but do not independently advance the
+acceptance history, cooling schedule, or adaptation statistics.
+A rejected candidate leaves the incumbent unchanged and still advances the trial counter.
+A no-change candidate and a failed repair earn no adaptation reward.
+Cancellation restores the incumbent and earns no selection-policy sample.
+
+This differs from configuring a ruin-and-recreate move in ordinary local search,
+where a forager can evaluate multiple candidates before committing one step.
+Existing ruin-and-recreate selectors remain available independently of the ALNS phase.
+
+Normal solver and phase terminations apply to ALNS.
+The optional `repairScoreCalculationLimit` and `repairSpentLimit` bound work inside one repair:
+
+[source,xml]
+----
+<alns>
+  <termination>
+    <stepCountLimit>1000</stepCountLimit>
+  </termination>
+  <repairScoreCalculationLimit>5000</repairScoreCalculationLimit>
+  <repairSpentLimit>PT0.05S</repairSpentLimit>
+</alns>
+----
+
+Repair limits and outer cancellation are cooperative.
+Built-in operators check them between bounded operations and insertion probes.
+Custom operators must call `AlnsContext.checkTermination()` in long loops.
+A score calculation or custom callback already running must return before it can be interrupted safely.
+Interrupted or failed repairs restore planning variables, list membership, shadow variables, and incremental score state.
+Problem changes are processed through the solver's normal stop-and-restart lifecycle.
+
+== Operators and variable bindings
+
+Destroy operator types are `RANDOM`, `RELATEDNESS`, `WORST_REMOVAL`, and `LIST_BLOCK`.
+`RELATEDNESS` requires a domain-specific `relatednessClass`; smaller distances indicate closer targets.
+`WORST_REMOVAL` can use a `rankingClass`; larger ranks are selected earlier.
+Its built-in alternative estimates removal benefits through score probes.
+Rank-based removal uses `rankExponent=6.0` by default.
+`LIST_BLOCK` removes a contiguous block from an eligible unpinned list region.
+
+Repair operator types are `GREEDY`, `REGRET_2`, `REGRET_3`, and `RANDOMIZED_GREEDY`.
+The randomized greedy operator chooses among the best `topK` placements (default `3`).
+Regret repair compares the best placement with its second or third alternative using score levels.
+All placements respect the model's variable ranges and pinning.
+Unassignment remains eligible only where the model permits it.
+
+An explicit operator may target an `entityClass` and `variableName`.
+This identifies a basic entity/variable binding or the list variable whose values can be moved.
+For example:
+
+[source,xml]
+----
+<alns>
+  <termination>
+    <secondsSpentLimit>60</secondsSpentLimit>
+  </termination>
+  <destroyOperator>
+    <id>random-orders</id>
+    <type>RANDOM</type>
+    <entityClass>com.example.Vehicle</entityClass>
+    <variableName>visits</variableName>
+    <minimumDestroyedCount>5</minimumDestroyedCount>
+    <maximumDestroyedCount>20</maximumDestroyedCount>
+    <initialWeight>1.0</initialWeight>
+  </destroyOperator>
+  <repairOperator>
+    <id>regret-orders</id>
+    <type>REGRET_2</type>
+    <entityClass>com.example.Vehicle</entityClass>
+    <variableName>visits</variableName>
+    <initialWeight>1.0</initialWeight>
+  </repairOperator>
+</alns>
+----
+
+Use count bounds or `minimumDestroyedPercentage`/`maximumDestroyedPercentage` bounds, expressed as fractions.
+Counts are limited by the eligible target population.
+Percentages are rounded down to whole targets, with a minimum of one target for nonempty populations.
+The automatically configured destroy bounds are `5..20` for basic bindings and `5..40` for list bindings.
+An unspecified bound adjusts to respect an explicitly configured bound.
+If both bounds are explicit and their resolved counts conflict, solving fails with a configuration error.
+Already unassigned optional targets can also be considered for recovery; `recoveryCount` controls this separately.
+The default recovery allowance follows the destruction size, with at least one recovery opportunity.
+Coincident coordinates or equal business values do not merge planning targets: target identity follows working-object identity.
+
+== Adaptive selection and acceptance
+
+`SEGMENTED_ROULETTE` is the default selection policy.
+It learns separate destroy and repair weights, choosing among compatible operator pairs.
+Defaults are `segmentLength=100`, `reactionFactor=0.2`, and `minimumWeight=0.01`.
+The default rewards are `5` for a new best solution, `3` for an incumbent improvement,
+`1` for another accepted candidate, and `0` for rejection, failure, or no change.
+The positive weight floor keeps operators eligible for exploration.
+
+`UCB` instead learns compatible destroy/repair pair arms.
+It explores unused arms and balances their normalized reward with an exploration term.
+The default `ucbExploration` is the square root of two.
+`selectionPolicyClass` supplies a custom selection policy when required.
+Its `selectionPolicyCustomProperties` map configures public bean properties on that policy instance.
+
+`LATE_ACCEPTANCE` is the default acceptance policy, with `lateAcceptanceSize=128`.
+`HILL_CLIMBING` accepts improvements and equal scores.
+`SIMULATED_ANNEALING` requires an explicit score-valued `startingTemperature`:
+
+[source,xml]
+----
+<alns>
+  <termination>
+    <stepCountLimit>10000</stepCountLimit>
+  </termination>
+  <acceptanceType>SIMULATED_ANNEALING</acceptanceType>
+  <startingTemperature>0hard/100soft</startingTemperature>
+  <coolingRate>0.999</coolingRate>
+</alns>
+----
+
+Use the score syntax of the domain.
+Temperature components must be nonnegative; a zero component rejects worsening at that level.
+Cooling advances once per completed trial, including rejection.
+The default cooling multiplier is `0.999`.
+`acceptancePolicyClass` supplies a custom acceptance policy.
+Use `acceptancePolicyCustomProperties` to configure that instance.
+
+== Stable custom operator API
+
+The public extension types are in `greycos.solver.core.api.solver.alns`.
+Implement `AlnsDestroyOperator` or `AlnsRepairOperator` and configure its `customClass`.
+Each configured class is instantiated independently for every solver phase or island.
+A custom operator class may receive `customProperties` through the standard configuration property mechanism.
+
+A destroy operator returns unique handles from the context; the framework applies their removal.
+A repair operator examines `assignments(target)`, probes alternatives through `evaluate(...)`,
+and applies selected placements through `execute(...)` or the mutable context methods.
+It returns `false` when mandatory repair cannot be completed.
+These public interfaces do not require internal score-director classes or preview move APIs.
+
+`workingSolution()` provides read access to domain data.
+Apply every mutation through the supplied context, including custom compound changes.
+Do not modify the solution directly, retain working-object handles after the trial,
+or share mutable operator state across solves.
+The context balances notifications and restores temporary probes; acceptance belongs to the outer phase.
+
+== Islands and threads
+
+Place ALNS in the explicit inner phase list of an island model:
+
+[source,xml]
+----
+<constructionHeuristic/>
+<islandModel>
+  <islandCount>2</islandCount>
+  <migrationFrequency>100</migrationFrequency>
+  <alns>
+    <termination>
+      <secondsSpentLimit>60</secondsSpentLimit>
+    </termination>
+  </alns>
+</islandModel>
+----
+
+Each island owns its incumbent, random stream, operator instances, adaptation state, and acceptance state.
+Trials and repair execute sequentially within each island, independently of solver-level move-worker configuration.
+Islands execute concurrently.
+Migration and global-best adoption occur between complete trials.
+Adoption refreshes incumbent-dependent state without rewarding an operator or resetting learned operator weights.
+New solves and problem-change restarts build fresh runtime state.
+Fixed seeds and fixed trial budgets support reproducible single-island runs;
+concurrent island scheduling can change when migrants become available.
+
+== Progress logging
+
+Enable `DEBUG` on `greycos.solver.core.impl.alns.DefaultAlnsPhase` to see one progress message
+after each trial resolves, including rejected, unchanged, failed, and cancelled trials.
+For example, with Logback:
+
+[source,xml]
+----
+<logger name="greycos.solver.core.impl.alns.DefaultAlnsPhase" level="DEBUG"/>
+----
+
+Each message includes the zero-based trial index, phase index, elapsed solver time in milliseconds,
+resulting incumbent score, candidate score, best score with a `new` marker when improved,
+outcome, operator pair, destroyed/recovery counts, evaluation probes, and trial duration in milliseconds.
+Island trials also include the island ID.
+The candidate score is shown as `unavailable` when the trial did not produce one.
+Rejected, failed, and cancelled trials show the restored incumbent score.
+A cancelled trial is logged but does not advance completed-trial counts or adaptation.
+Individual insertion probes do not produce progress messages.
+
+Use `INFO` for the phase-end summary without per-trial output.
+Logging uses existing trial results without additional score calculations or random draws.
+The I/O cost of DEBUG logging can still affect time-limited search results.
+
+== Monitoring and benchmarking
+
+Normal best-score, step-score, score-calculation, and move-evaluation metrics include ALNS.
+One evaluated ALNS proposal contributes one outer move evaluation; insertion probes contribute score calculations.
+The existing picked-move score charts identify proposals by their destroy/repair operator pair.
+A rejected proposal has zero incumbent step-score change.
+Constraint-match step metrics follow the configured sampling interval, with a final sample at phase end;
+new-best constraint values are captured when that best is produced.
+
+Enable `ALNS_STATISTICS` to record trial outcomes, insertion-probe counts, destroyed and recovered counts,
+repair duration, and learned operator weights under `greycos.solver.alns`.
+Metrics identify the operator pair and phase; island metrics also include `island.id`.
+Compare configurations using solution quality at matched wall-clock budgets and multiple seeds.
+Report outer proposal counts and repair work separately: a higher score-calculation rate alone does not establish faster search.
+
+The opt-in synthetic comparison harness runs basic assignment, list routing, and mixed-variable workloads across three seeds,
+rotating ordinary local search, local search with ruin-and-recreate, and ALNS at matched phase time budgets:
+
+[source,shell]
+----
+mvn -pl core -am test -Dtest=AlnsComparisonBenchmarkTest -Dsurefire.failIfNoSpecifiedTests=false \
+  -Dgreycos.alns.benchmark=true -Dgreycos.alns.benchmark.millis=1000 -Dgreycos.alns.benchmark.seeds=3
+----
+
+Its CSV and standalone HTML report are written to `core/target/alns-comparison.csv` and `core/target/alns-comparison.html`.
+It records the observed elapsed time, score, score calculations, outer moves, and post-solve JVM heap use,
+and independently checks each returned score. Heap samples include retained JVM allocations after validation;
+peak heap and process RSS are not measured by this harness.
+These small easy-score workloads validate the comparison procedure; they do not establish production performance.

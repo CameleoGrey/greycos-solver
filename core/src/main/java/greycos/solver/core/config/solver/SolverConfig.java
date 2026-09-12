@@ -33,6 +33,7 @@ import greycos.solver.core.api.score.stream.ConstraintProvider;
 import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.config.AbstractConfig;
+import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
@@ -254,6 +255,7 @@ public final class SolverConfig extends AbstractConfig<SolverConfig> {
   private String nearbyDistanceMeterClass = null;
 
   @XmlElements({
+    @XmlElement(name = AlnsPhaseConfig.XML_ELEMENT_NAME, type = AlnsPhaseConfig.class),
     @XmlElement(
         name = ConstructionHeuristicPhaseConfig.XML_ELEMENT_NAME,
         type = ConstructionHeuristicPhaseConfig.class),

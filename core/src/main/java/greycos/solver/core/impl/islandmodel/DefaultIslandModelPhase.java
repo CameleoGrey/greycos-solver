@@ -185,7 +185,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         var receiver = channels.get(i);
         var sender = channels.get((i + 1) % islandCount);
 
-        var agentScope = createAgentSolverScope(solverScope);
+        var agentScope = createAgentSolverScope(solverScope, i);
         var agentRandom = agentScope.getWorkingRandom();
         var agentConfigPolicy = createAgentConfigPolicy(agentRandom);
         var agentTermination = createAgentTermination(agentScope);
@@ -409,8 +409,11 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         .build();
   }
 
-  private SolverScope<Solution_> createAgentSolverScope(SolverScope<Solution_> parentScope) {
+  private SolverScope<Solution_> createAgentSolverScope(
+      SolverScope<Solution_> parentScope, int agentId) {
     var agentScope = parentScope.createChildThreadSolverScope(ChildThreadType.PART_THREAD);
+    agentScope.setMonitoringTags(
+        parentScope.getMonitoringTags().and("island.id", Integer.toString(agentId)));
     var parentScoreDirector = parentScope.getScoreDirector();
     var scoreDirectorFactory = parentScoreDirector.getScoreDirectorFactory();
     var newScoreDirector =

@@ -3,6 +3,7 @@ package greycos.solver.core.impl.solver.termination;
 import java.util.Objects;
 
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
 
@@ -45,6 +46,13 @@ final class SolverBridgePhaseTermination<Solution_> extends AbstractPhaseTermina
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> phaseScope) {
     return solverTermination.calculateSolverTimeGradient(phaseScope.getSolverScope());
+  }
+
+  @Override
+  public void bestScoreImproved(AbstractStepScope<Solution_> stepScope) {
+    if (solverTermination instanceof PhaseTermination<Solution_> phaseTermination) {
+      phaseTermination.bestScoreImproved(stepScope);
+    }
   }
 
   @Override

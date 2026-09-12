@@ -75,6 +75,13 @@ abstract sealed class AbstractCompositeTermination<Solution_>
   }
 
   @Override
+  public final void bestScoreImproved(AbstractStepScope<Solution_> stepScope) {
+    for (var termination : phaseTerminationList) {
+      termination.bestScoreImproved(stepScope);
+    }
+  }
+
+  @Override
   public final void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
     for (var termination : phaseTerminationList) {
       termination.phaseEnded(phaseScope);

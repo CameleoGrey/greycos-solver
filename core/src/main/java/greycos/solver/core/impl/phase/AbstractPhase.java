@@ -18,6 +18,7 @@ import greycos.solver.core.impl.solver.monitoring.ScoreLevels;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
+import greycos.solver.core.impl.solver.termination.SolverTermination;
 import greycos.solver.core.impl.solver.termination.Termination;
 
 import org.slf4j.Logger;
@@ -86,11 +87,17 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
+    if (phaseTermination instanceof SolverTermination<Solution_> solverTermination) {
+      solverTermination.solvingStarted(solverScope);
+    }
     phaseLifecycleSupport.fireSolvingStarted(solverScope);
   }
 
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
+    if (phaseTermination instanceof SolverTermination<Solution_> solverTermination) {
+      solverTermination.solvingEnded(solverScope);
+    }
     phaseLifecycleSupport.fireSolvingEnded(solverScope);
   }
 

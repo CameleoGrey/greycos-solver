@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.stream.Constraint;
@@ -1937,10 +1939,18 @@ class MoveDirectorTest {
     when(innerScoreDirector.isDerived()).thenReturn(false);
     when(innerScoreDirector.getSupplyManager()).thenReturn(supplyManager);
     when(supplyManager.demand(any())).thenReturn(listVariableStateSupply);
-    // 1 - v1 is on e1 list
-    // 2 - v1 moves to e2 list
+    // Position changes when repair executes, independently of how often preflight reads it.
+    var repaired = new AtomicBoolean();
     when(listVariableStateSupply.getElementPosition(any()))
-        .thenReturn(ElementPosition.of(e1, 0), ElementPosition.of(e2, 1));
+        .thenAnswer(
+            ignored -> repaired.get() ? ElementPosition.of(e2, 1) : ElementPosition.of(e1, 0));
+    doAnswer(
+            ignored -> {
+              repaired.set(true);
+              return null;
+            })
+        .when(constructionHeuristicPhase)
+        .solve(any());
     when(listVariableStateSupply.getSourceVariableDescriptor()).thenReturn(listVariableDescriptor);
     when(listVariableDescriptor.getFirstUnpinnedIndex(any())).thenReturn(0);
     when(listVariableDescriptor.getListSize(any())).thenReturn(1);

@@ -2,6 +2,7 @@ package greycos.solver.core.impl.solver.monitoring;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 import greycos.solver.core.api.score.Score;
@@ -12,6 +13,7 @@ import greycos.solver.core.impl.score.director.InnerScore;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
@@ -21,6 +23,13 @@ public final class SolverMetricUtil {
 
   // Necessary for benchmarker, but otherwise undocumented and not considered public.
   private static final String UNASSIGNED_COUNT_LABEL = "unassigned.count";
+
+  /** Transfers a gauge to the current phase's counter, preserving its exact meter identity. */
+  public static void rebindGauge(String name, Tags tags, AtomicLong value) {
+    Metrics.globalRegistry.removeByPreFilterId(
+        new Meter.Id(name, tags, null, null, Meter.Type.GAUGE));
+    Metrics.gauge(name, tags, value);
+  }
 
   public static <Score_ extends Score<Score_>> void registerScore(
       SolverMetric metric,

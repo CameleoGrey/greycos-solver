@@ -97,7 +97,11 @@ public class UnionMoveSelector<Solution_> extends CompositeMoveSelector<Solution
   public long getSize() {
     long size = 0L;
     for (MoveSelector<Solution_> moveSelector : childMoveSelectorList) {
-      size += moveSelector.getSize();
+      long childSize = moveSelector.getSize();
+      if (size > Long.MAX_VALUE - childSize) {
+        return Long.MAX_VALUE;
+      }
+      size += childSize;
     }
     return size;
   }

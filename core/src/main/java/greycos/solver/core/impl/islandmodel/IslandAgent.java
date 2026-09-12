@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import greycos.solver.core.impl.alns.AlnsPhase;
 import greycos.solver.core.impl.localsearch.LocalSearchPhase;
 import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -80,7 +81,7 @@ public class IslandAgent<Solution_> implements Runnable {
       for (Phase<Solution_> phase : phases) {
         LOGGER.debug("Agent {} running phase: {}", agentId, phase.getClass().getSimpleName());
 
-        if (phase instanceof LocalSearchPhase) {
+        if (phase instanceof LocalSearchPhase || phase instanceof AlnsPhase) {
           MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
           phase.addPhaseLifecycleListener(migrationTrigger);
         }
@@ -89,7 +90,8 @@ public class IslandAgent<Solution_> implements Runnable {
             new GlobalBestUpdater<>(globalState, agentId);
         phase.addPhaseLifecycleListener(globalBestUpdater);
 
-        if (config.isCompareGlobalEnabled() && phase instanceof LocalSearchPhase) {
+        if (config.isCompareGlobalEnabled()
+            && (phase instanceof LocalSearchPhase || phase instanceof AlnsPhase)) {
           GlobalCompareListener<Solution_> globalCompareListener =
               new GlobalCompareListener<>(globalState, config, agentId);
           phase.addPhaseLifecycleListener(globalCompareListener);

@@ -1,12 +1,12 @@
 package greycos.solver.core.impl.heuristic.selector.move.generic;
 
+import java.util.Collections;
 import java.util.Iterator;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.solver.scope.SolverScope;
-import greycos.solver.core.impl.util.MathUtils;
 import greycos.solver.core.preview.api.move.Move;
 
 final class RuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
@@ -38,17 +38,21 @@ final class RuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<Solu
 
   @Override
   public long getSize() {
-    var totalSize = 0L;
-    var entityCount = entitySelector.getSize();
-    var minimumSelectedCount = minimumSelectedCountSupplier.applyAsInt(entityCount);
-    var maximumSelectedCount = maximumSelectedCountSupplier.applyAsInt(entityCount);
-    for (int selectedCount = minimumSelectedCount;
-        selectedCount <= maximumSelectedCount;
-        selectedCount++) {
-      // Order is significant, and each entity can only be picked once
-      totalSize += MathUtils.factorial((int) entityCount) / MathUtils.factorial(selectedCount);
+    var entityCount = getEligibleCount();
+    return RuinRecreateMoveSelectorSize.count(
+        entityCount,
+        minimumSelectedCountSupplier.applyAsInt(entityCount),
+        maximumSelectedCountSupplier.applyAsInt(entityCount));
+  }
+
+  private long getEligibleCount() {
+    long count = 0;
+    var iterator = entitySelector.endingIterator();
+    while (iterator.hasNext()) {
+      iterator.next();
+      count++;
     }
-    return totalSize;
+    return count;
   }
 
   @Override
@@ -70,14 +74,19 @@ final class RuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<Solu
 
   @Override
   public Iterator<Move<Solution_>> iterator() {
-    var entitySelectorSize = entitySelector.getSize();
+    var entitySelectorSize = getEligibleCount();
+    if (entitySelectorSize == 0) {
+      return Collections.emptyIterator();
+    }
     return new RuinRecreateMoveIterator<>(
         entitySelector,
         variableDescriptor,
         constructionHeuristicPhaseBuilder,
         solverScope,
-        minimumSelectedCountSupplier.applyAsInt(entitySelectorSize),
-        maximumSelectedCountSupplier.applyAsInt(entitySelectorSize),
+        RuinRecreateMoveSelectorSize.clampCount(
+            minimumSelectedCountSupplier.applyAsInt(entitySelectorSize), entitySelectorSize),
+        RuinRecreateMoveSelectorSize.clampCount(
+            maximumSelectedCountSupplier.applyAsInt(entitySelectorSize), entitySelectorSize),
         workingRandom);
   }
 }

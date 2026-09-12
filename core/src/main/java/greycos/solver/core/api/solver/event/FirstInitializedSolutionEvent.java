@@ -5,7 +5,7 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 /**
  * Delivered in a consumer thread at the beginning of the actual optimization process. First
  * initialized solution is the solution at the end of the last phase that immediately precedes the
- * first local search phase.
+ * first improvement phase, such as local search, ALNS, or an island model.
  *
  * @param <Solution_>
  */

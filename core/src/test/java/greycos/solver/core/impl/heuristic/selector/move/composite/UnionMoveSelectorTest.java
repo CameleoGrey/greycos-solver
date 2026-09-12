@@ -27,6 +27,20 @@ import org.junit.jupiter.api.Test;
 class UnionMoveSelectorTest {
 
   @Test
+  void sizeSaturatesForLargeChildren() {
+    MoveSelector<TestdataSolution> first = mock(MoveSelector.class);
+    MoveSelector<TestdataSolution> second = mock(MoveSelector.class);
+    when(first.getSize()).thenReturn(Long.MAX_VALUE);
+    when(second.getSize()).thenReturn(Long.MAX_VALUE);
+    assertThat(new UnionMoveSelector<>(List.of(first, second), true).getSize())
+        .isEqualTo(Long.MAX_VALUE);
+    when(first.getSize()).thenReturn(Long.MAX_VALUE - 1);
+    when(second.getSize()).thenReturn(1L);
+    assertThat(new UnionMoveSelector<>(List.of(first, second), false).getSize())
+        .isEqualTo(Long.MAX_VALUE);
+  }
+
+  @Test
   void originSelection() {
     ArrayList<MoveSelector<TestdataSolution>> childMoveSelectorList = new ArrayList<>();
     childMoveSelectorList.add(

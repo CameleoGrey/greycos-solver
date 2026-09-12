@@ -6,7 +6,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.solver.Solver;
+import greycos.solver.core.api.solver.alns.AlnsTrialResult;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.alns.AlnsStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
@@ -73,18 +75,28 @@ public class PickedMoveStepScoreDiffStatistic<Solution_> implements SolverStatis
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void stepEnded(AbstractStepScope<Solution_> stepScope) {
       if (stepScope instanceof LocalSearchStepScope) {
-        localSearchStepEnded((LocalSearchStepScope<Solution_>) stepScope);
+        recordStep(stepScope, ((LocalSearchStepScope<Solution_>) stepScope).getStep().describe());
+      } else if (stepScope instanceof AlnsStepScope<Solution_> alnsStepScope) {
+        var trial = (AlnsTrialResult<Score_>) alnsStepScope.getTrialResult();
+        recordDifference(
+            stepScope,
+            alnsStepScope.getOperatorPairId(),
+            trial.afterScore().subtract(trial.beforeScore()));
       }
     }
 
-    private void localSearchStepEnded(LocalSearchStepScope<Solution_> stepScope) {
-      var moveType = stepScope.getStep().describe();
+    private void recordStep(AbstractStepScope<Solution_> stepScope, String moveType) {
       var newStepScore = stepScope.<Score_>getScore().raw();
       var stepScoreDiff = newStepScore.subtract(oldStepScore);
       oldStepScore = newStepScore;
+      recordDifference(stepScope, moveType, stepScoreDiff);
+    }
 
+    private void recordDifference(
+        AbstractStepScope<Solution_> stepScope, String moveType, Score_ stepScoreDiff) {
       var tags =
           stepScope.getPhaseScope().getSolverScope().getMonitoringTags().and("move.type", moveType);
       SolverMetricUtil.registerScore(

@@ -3,6 +3,7 @@ package greycos.solver.core.impl.phase;
 import java.util.ArrayList;
 import java.util.List;
 
+import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
@@ -12,6 +13,7 @@ import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
+import greycos.solver.core.impl.alns.DefaultAlnsPhaseFactory;
 import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhaseFactory;
 import greycos.solver.core.impl.exhaustivesearch.DefaultExhaustiveSearchPhaseFactory;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
@@ -25,7 +27,9 @@ import greycos.solver.core.impl.solver.termination.SolverTermination;
 public interface PhaseFactory<Solution_> {
 
   static <Solution_> PhaseFactory<Solution_> create(PhaseConfig<?> phaseConfig) {
-    if (IslandModelPhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
+    if (phaseConfig instanceof AlnsPhaseConfig alnsPhaseConfig) {
+      return new DefaultAlnsPhaseFactory<>(alnsPhaseConfig);
+    } else if (IslandModelPhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
       return new DefaultIslandModelPhaseFactory<>((IslandModelPhaseConfig) phaseConfig);
     } else if (LocalSearchPhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
       return new DefaultLocalSearchPhaseFactory<>((LocalSearchPhaseConfig) phaseConfig);
@@ -90,11 +94,10 @@ public interface PhaseFactory<Solution_> {
       // The initialization phase can only be applied to construction heuristics or custom phases
       var isConstructionOrCustomPhase =
           isConstructionPhase || CustomPhaseConfig.class.isAssignableFrom(phaseConfig.getClass());
-      // The next phase must be a local search
+      // Initialization must finish before any phase that improves an initialized solution.
       var isNextPhaseLocalSearch =
           phaseIndex + 1 < phaseConfigList.size()
-              && LocalSearchPhaseConfig.class.isAssignableFrom(
-                  phaseConfigList.get(phaseIndex + 1).getClass());
+              && requiresInitializedSolution(phaseConfigList.get(phaseIndex + 1));
       PhaseFactory<Solution_> phaseFactory = PhaseFactory.create(phaseConfig);
       var phase =
           phaseFactory.buildPhase(
@@ -121,6 +124,12 @@ public interface PhaseFactory<Solution_> {
     }
     TerminationConfig terminationConfig = phaseConfig.getTerminationConfig();
     return (terminationConfig != null && terminationConfig.isConfigured());
+  }
+
+  static boolean requiresInitializedSolution(PhaseConfig<?> phaseConfig) {
+    return phaseConfig instanceof LocalSearchPhaseConfig
+        || phaseConfig instanceof AlnsPhaseConfig
+        || phaseConfig instanceof IslandModelPhaseConfig;
   }
 
   Phase<Solution_> buildPhase(

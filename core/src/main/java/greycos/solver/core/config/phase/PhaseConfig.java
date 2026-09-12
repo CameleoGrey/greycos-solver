@@ -5,6 +5,7 @@ import jakarta.xml.bind.annotation.XmlSeeAlso;
 import jakarta.xml.bind.annotation.XmlType;
 
 import greycos.solver.core.config.AbstractConfig;
+import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
@@ -18,6 +19,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @XmlSeeAlso({
+  AlnsPhaseConfig.class,
   ConstructionHeuristicPhaseConfig.class,
   CustomPhaseConfig.class,
   ExhaustiveSearchPhaseConfig.class,

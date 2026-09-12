@@ -815,5 +815,54 @@
   },
   {
     "name": "org.glassfish.jersey.server.spring.SpringComponentProvider"
+  },
+  {
+    "name": "greycos.solver.core.config.alns.AlnsPhaseConfig",
+    "allDeclaredFields": true,
+    "queryAllDeclaredMethods": true,
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "greycos.solver.core.config.alns.AlnsDestroyOperatorConfig",
+    "allDeclaredFields": true,
+    "queryAllDeclaredMethods": true,
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "greycos.solver.core.config.alns.AlnsRepairOperatorConfig",
+    "allDeclaredFields": true,
+    "queryAllDeclaredMethods": true,
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "greycos.solver.core.config.alns.AlnsDestroyOperatorType",
+    "allDeclaredFields": true
+  },
+  {
+    "name": "greycos.solver.core.config.alns.AlnsRepairOperatorType",
+    "allDeclaredFields": true
+  },
+  {
+    "name": "greycos.solver.core.config.alns.AlnsAcceptanceType",
+    "allDeclaredFields": true
+  },
+  {
+    "name": "greycos.solver.core.config.alns.AlnsSelectionPolicyType",
+    "allDeclaredFields": true
   }
 ]

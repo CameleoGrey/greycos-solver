@@ -52,6 +52,14 @@ public sealed interface PhaseTermination<Solution_> extends Termination<Solution
 
   void stepEnded(AbstractStepScope<Solution_> stepScope);
 
+  /**
+   * Records a best score improvement outside a completed search step, such as an adopted island
+   * solution. This notification must not advance step-based termination state.
+   */
+  default void bestScoreImproved(AbstractStepScope<Solution_> stepScope) {
+    // Only terminations that retain best score history need this notification.
+  }
+
   void phaseEnded(AbstractPhaseScope<Solution_> phaseScope);
 
   static <Solution_> PhaseTermination<Solution_> bridge(SolverTermination<Solution_> termination) {

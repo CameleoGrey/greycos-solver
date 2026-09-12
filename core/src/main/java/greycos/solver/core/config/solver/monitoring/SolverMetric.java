@@ -47,6 +47,7 @@ public enum SolverMetric {
   BEST_SOLUTION_MUTATION(
       "greycos.solver.best.solution.mutation", new BestSolutionMutationCountStatistic<>(), true),
   MOVE_COUNT_PER_STEP("greycos.solver.step.move.count", false),
+  ALNS_STATISTICS("greycos.solver.alns", false),
   MOVE_COUNT_PER_TYPE("greycos.solver.move.type.count", new MoveCountPerTypeStatistic<>(), false),
   MEMORY_USE("jvm.memory.used", new MemoryUseStatistic<>(), false),
   CONSTRAINT_MATCH_TOTAL_BEST_SCORE("greycos.solver.constraint.match.best.score", true, true),

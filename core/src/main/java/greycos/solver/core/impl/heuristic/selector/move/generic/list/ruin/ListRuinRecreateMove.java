@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.heuristic.selector.move.generic.list.ruin;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,7 @@ import java.util.SequencedCollection;
 import java.util.SequencedSet;
 import java.util.TreeSet;
 
+import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.move.AbstractMove;
 import greycos.solver.core.impl.heuristic.move.Move;
@@ -77,6 +79,15 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
             .getBacking()
             .getSupplyManager()
             .demand(listVariableDescriptor.getStateDemand())) {
+      if (!isSelectionValid(
+          variableChangeRecordingScoreDirector.getBacking(), listVariableStateSupply)) {
+        variableChangeRecordingScoreDirector
+            .getBacking()
+            .getSupplyManager()
+            .cancel(listVariableDescriptor.getStateDemand());
+        throw new IllegalStateException(
+            "A list ruin move must select distinct, assigned, unpinned values.");
+      }
       var entityToOriginalPositionMap =
           new IdentityHashMap<Object, NavigableSet<RuinedPosition>>(affectedEntitySet.size());
       for (var valueToRuin : ruinedValueList) {
@@ -209,6 +220,33 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
 
   @Override
   public boolean isMoveDoable(ScoreDirector<Solution_> scoreDirector) {
+    var backing =
+        scoreDirector instanceof VariableChangeRecordingScoreDirector<Solution_, ?> recording
+            ? recording.getBacking()
+            : (InnerScoreDirector<Solution_, ?>) scoreDirector;
+    var supply = backing.getSupplyManager().demand(listVariableDescriptor.getStateDemand());
+    try {
+      return isSelectionValid(backing, supply);
+    } finally {
+      backing.getSupplyManager().cancel(listVariableDescriptor.getStateDemand());
+    }
+  }
+
+  private boolean isSelectionValid(
+      InnerScoreDirector<Solution_, ?> scoreDirector,
+      ListVariableStateSupply<Solution_, Object, Object> supply) {
+    if (ruinedValueList.isEmpty()) {
+      return false;
+    }
+    var seen = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
+    for (var value : ruinedValueList) {
+      if (!seen.add(value)
+          || !(supply.getElementPosition(value) instanceof PositionInList position)
+          || listVariableDescriptor.isElementPinned(
+              scoreDirector.getWorkingSolution(), position.entity(), position.index())) {
+        return false;
+      }
+    }
     return true;
   }
 

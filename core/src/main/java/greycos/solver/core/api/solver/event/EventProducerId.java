@@ -59,6 +59,10 @@ public interface EventProducerId {
     return new PhaseEventProducerId(PhaseType.LOCAL_SEARCH, phaseIndex);
   }
 
+  static EventProducerId alns(int phaseIndex) {
+    return new PhaseEventProducerId(PhaseType.ALNS, phaseIndex);
+  }
+
   static EventProducerId exhaustiveSearch(int phaseIndex) {
     return new PhaseEventProducerId(PhaseType.EXHAUSTIVE_SEARCH, phaseIndex);
   }

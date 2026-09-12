@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.heuristic.selector.move.generic.list.ruin;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Objects;
 
@@ -8,11 +9,12 @@ import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescripto
 import greycos.solver.core.impl.heuristic.selector.move.generic.CountSupplier;
 import greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateConstructionHeuristicPhaseBuilder;
+import greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateMoveSelectorSize;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.solver.scope.SolverScope;
-import greycos.solver.core.impl.util.MathUtils;
 import greycos.solver.core.preview.api.move.Move;
 
 final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
@@ -35,7 +37,9 @@ final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<
       CountSupplier maximumSelectedCountSupplier) {
     super();
     this.valueSelector =
-        FilteringValueSelector.ofAssigned(valueSelector, this::getListVariableStateSupply);
+        ListChangeMoveSelector.filterPinnedListPlanningVariableValuesWithIndex(
+            FilteringValueSelector.ofAssigned(valueSelector, this::getListVariableStateSupply),
+            this::getListVariableStateSupply);
     this.listVariableDescriptor = listVariableDescriptor;
     this.constructionHeuristicPhaseBuilder = constructionHeuristicPhaseBuilder;
     this.minimumSelectedCountSupplier = minimumSelectedCountSupplier;
@@ -52,17 +56,21 @@ final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<
 
   @Override
   public long getSize() {
-    var totalSize = 0L;
-    var valueCount = valueSelector.getSize();
-    var minimumSelectedCount = minimumSelectedCountSupplier.applyAsInt(valueCount);
-    var maximumSelectedCount = maximumSelectedCountSupplier.applyAsInt(valueCount);
-    for (var selectedCount = minimumSelectedCount;
-        selectedCount <= maximumSelectedCount;
-        selectedCount++) {
-      // Order is significant, and each entity can only be picked once
-      totalSize += MathUtils.factorial((int) valueCount) / MathUtils.factorial(selectedCount);
+    var valueCount = getEligibleCount();
+    return RuinRecreateMoveSelectorSize.count(
+        valueCount,
+        minimumSelectedCountSupplier.applyAsInt(valueCount),
+        maximumSelectedCountSupplier.applyAsInt(valueCount));
+  }
+
+  private long getEligibleCount() {
+    long count = 0;
+    var iterator = valueSelector.endingIterator(null);
+    while (iterator.hasNext()) {
+      iterator.next();
+      count++;
     }
-    return totalSize;
+    return count;
   }
 
   @Override
@@ -95,14 +103,19 @@ final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<
 
   @Override
   public Iterator<Move<Solution_>> iterator() {
-    var valueSelectorSize = valueSelector.getSize();
+    var valueSelectorSize = getEligibleCount();
+    if (valueSelectorSize == 0) {
+      return Collections.emptyIterator();
+    }
     return new ListRuinRecreateMoveIterator<>(
         valueSelector,
         constructionHeuristicPhaseBuilder,
         solverScope,
         listVariableStateSupply,
-        minimumSelectedCountSupplier.applyAsInt(valueSelectorSize),
-        maximumSelectedCountSupplier.applyAsInt(valueSelectorSize),
+        RuinRecreateMoveSelectorSize.clampCount(
+            minimumSelectedCountSupplier.applyAsInt(valueSelectorSize), valueSelectorSize),
+        RuinRecreateMoveSelectorSize.clampCount(
+            maximumSelectedCountSupplier.applyAsInt(valueSelectorSize), valueSelectorSize),
         workingRandom);
   }
 }

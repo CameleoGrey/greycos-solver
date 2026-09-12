@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.islandmodel;
 
+import greycos.solver.core.impl.alns.AlnsStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
@@ -39,21 +40,19 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
       return;
     }
 
-    if (!(stepScope instanceof LocalSearchStepScope)) {
+    if (!(stepScope instanceof LocalSearchStepScope) && !(stepScope instanceof AlnsStepScope)) {
       return;
     }
-
-    var localSearchStepScope = (LocalSearchStepScope) stepScope;
 
     stepsUntilNextReceive--;
 
     if (stepsUntilNextReceive <= 0) {
-      checkAndAdoptGlobalBest(localSearchStepScope);
+      checkAndAdoptGlobalBest(stepScope);
       stepsUntilNextReceive = getReceiveFrequency(config);
     }
   }
 
-  private void checkAndAdoptGlobalBest(LocalSearchStepScope<Solution_> stepScope) {
+  private void checkAndAdoptGlobalBest(AbstractStepScope<Solution_> stepScope) {
     var globalSnapshot = globalState.getBestSnapshot();
     if (globalSnapshot == null) {
       return;

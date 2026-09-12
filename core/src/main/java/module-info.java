@@ -21,6 +21,7 @@ module greycos.solver.core {
   exports greycos.solver.core.api.score.stream.tri;
   exports greycos.solver.core.api.score.stream.uni;
   exports greycos.solver.core.api.solver;
+  exports greycos.solver.core.api.solver.alns;
   exports greycos.solver.core.api.solver.change;
   exports greycos.solver.core.api.solver.event;
   exports greycos.solver.core.api.solver.phase;
@@ -46,6 +47,7 @@ module greycos.solver.core {
   exports greycos.solver.core.config.heuristic.selector.move.generic.list.kopt;
   exports greycos.solver.core.config.heuristic.selector.value;
   exports greycos.solver.core.config.islandmodel;
+  exports greycos.solver.core.config.alns;
   exports greycos.solver.core.config.localsearch;
   exports greycos.solver.core.config.localsearch.decider.acceptor;
   exports greycos.solver.core.config.localsearch.decider.acceptor.stepcountinghillclimbing;
@@ -91,6 +93,7 @@ module greycos.solver.core {
   exports greycos.solver.core.impl.heuristic.selector.common.nearby;
   exports greycos.solver.core.impl.io.jaxb;
   exports greycos.solver.core.impl.localsearch.scope;
+  exports greycos.solver.core.impl.alns;
   exports greycos.solver.core.impl.phase.event;
   exports greycos.solver.core.impl.phase.scope;
   exports greycos.solver.core.impl.score.constraint;
@@ -168,6 +171,9 @@ module greycos.solver.core {
       jakarta.xml.bind,
       org.glassfish.jaxb.runtime;
   opens greycos.solver.core.config.islandmodel to
+      jakarta.xml.bind,
+      org.glassfish.jaxb.runtime;
+  opens greycos.solver.core.config.alns to
       jakarta.xml.bind,
       org.glassfish.jaxb.runtime;
   opens greycos.solver.core.config.localsearch to

@@ -68,7 +68,8 @@ public class CartesianProductMoveSelector<Solution_> extends CompositeMoveSelect
           // There must be at least 1 non-empty child to change the size from 0
           size = childSize;
         } else {
-          size *= childSize;
+          // Continue after saturation: a later empty child may still make the product empty.
+          size = size > Long.MAX_VALUE / childSize ? Long.MAX_VALUE : size * childSize;
         }
       }
     }

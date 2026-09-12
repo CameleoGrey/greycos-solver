@@ -6,7 +6,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.solver.Solver;
+import greycos.solver.core.api.solver.alns.AlnsTrialResult;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.alns.AlnsStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
@@ -73,31 +75,40 @@ public class PickedMoveBestScoreDiffStatistic<Solution_, Score_ extends Score<Sc
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void stepEnded(AbstractStepScope<Solution_> stepScope) {
       if (stepScope instanceof LocalSearchStepScope) {
-        localSearchStepEnded((LocalSearchStepScope<Solution_>) stepScope);
+        recordStep(stepScope, ((LocalSearchStepScope<Solution_>) stepScope).getStep().describe());
+      } else if (stepScope instanceof AlnsStepScope<Solution_> alnsStepScope) {
+        var trial = (AlnsTrialResult<Score_>) alnsStepScope.getTrialResult();
+        if (trial.bestAfterScore().compareTo(trial.bestBeforeScore()) > 0) {
+          recordDifference(
+              stepScope,
+              alnsStepScope.getOperatorPairId(),
+              trial.bestAfterScore().subtract(trial.bestBeforeScore()));
+        }
       }
     }
 
-    private void localSearchStepEnded(LocalSearchStepScope<Solution_> stepScope) {
+    private void recordStep(AbstractStepScope<Solution_> stepScope, String moveType) {
       if (stepScope.getBestScoreImproved()) {
-        var moveType = stepScope.getStep().describe();
         var newBestScore = stepScope.<Score_>getScore().raw();
         var bestScoreDiff = newBestScore.subtract(oldBestScore);
         oldBestScore = newBestScore;
-        var tags =
-            stepScope
-                .getPhaseScope()
-                .getSolverScope()
-                .getMonitoringTags()
-                .and("move.type", moveType);
-        SolverMetricUtil.registerScore(
-            SolverMetric.PICKED_MOVE_TYPE_BEST_SCORE_DIFF,
-            tags,
-            scoreDefinition,
-            tagsToMoveScoreMap,
-            InnerScore.fullyAssigned(bestScoreDiff));
+        recordDifference(stepScope, moveType, bestScoreDiff);
       }
+    }
+
+    private void recordDifference(
+        AbstractStepScope<Solution_> stepScope, String moveType, Score_ bestScoreDiff) {
+      var tags =
+          stepScope.getPhaseScope().getSolverScope().getMonitoringTags().and("move.type", moveType);
+      SolverMetricUtil.registerScore(
+          SolverMetric.PICKED_MOVE_TYPE_BEST_SCORE_DIFF,
+          tags,
+          scoreDefinition,
+          tagsToMoveScoreMap,
+          InnerScore.fullyAssigned(bestScoreDiff));
     }
   }
 }

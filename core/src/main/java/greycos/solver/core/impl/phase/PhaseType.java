@@ -10,6 +10,8 @@ import greycos.solver.core.impl.phase.custom.CustomPhase;
 
 /** The type of phase (for example, a Construction Heuristic). */
 public enum PhaseType {
+  /** Adaptive large neighborhood search. */
+  ALNS("Adaptive Large Neighborhood Search"),
   /** The type of phase associated with {@link ConstructionHeuristicPhase}. */
   CONSTRUCTION_HEURISTIC("Construction Heuristic"),
 

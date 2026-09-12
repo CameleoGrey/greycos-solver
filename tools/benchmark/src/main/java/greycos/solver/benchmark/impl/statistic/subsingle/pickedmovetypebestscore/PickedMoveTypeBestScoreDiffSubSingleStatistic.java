@@ -10,6 +10,7 @@ import greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
 import greycos.solver.benchmark.impl.statistic.PureSubSingleStatistic;
 import greycos.solver.benchmark.impl.statistic.StatisticRegistry;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.alns.AlnsStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 
@@ -34,8 +35,11 @@ public class PickedMoveTypeBestScoreDiffSubSingleStatistic<Solution_>
     registry.addListener(
         SolverMetric.PICKED_MOVE_TYPE_BEST_SCORE_DIFF,
         (timeMillisSpent, stepScope) -> {
-          if (stepScope instanceof LocalSearchStepScope) {
-            String moveType = ((LocalSearchStepScope<Solution_>) stepScope).getStep().describe();
+          if (stepScope instanceof LocalSearchStepScope || stepScope instanceof AlnsStepScope) {
+            String moveType =
+                stepScope instanceof AlnsStepScope<Solution_> alnsStepScope
+                    ? alnsStepScope.getOperatorPairId()
+                    : ((LocalSearchStepScope<Solution_>) stepScope).getStep().describe();
             registry.extractScoreFromMeters(
                 SolverMetric.PICKED_MOVE_TYPE_BEST_SCORE_DIFF,
                 runTag.and(Tag.of("move.type", moveType)),

@@ -90,33 +90,38 @@ final class UnimprovedTimeMillisSpentScoreDifferenceThresholdTermination<Solutio
     }
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
   @Override
   public void stepEnded(AbstractStepScope<Solution_> stepScope) {
     if (stepScope.getBestScoreImproved()) {
-      var solverScope = stepScope.getPhaseScope().getSolverScope();
-      var bestSolutionTimeMillis = solverScope.getBestSolutionTimeMillis();
-      var bestScore = solverScope.getBestScore();
-      var bestScoreValue = (Score) bestScore.raw();
-      for (var it = bestScoreImprovementHistoryQueue.iterator(); it.hasNext(); ) {
-        var bestScoreImprovement = it.next();
-        var bestScoreImprovementValue = bestScoreImprovement.value().raw();
-        var scoreDifference = bestScoreValue.subtract(bestScoreImprovementValue);
-        var timeLimitNotYetReached =
-            bestScoreImprovement.key() + unimprovedTimeMillisSpentLimit >= bestSolutionTimeMillis;
-        var scoreImprovedOverThreshold =
-            scoreDifference.compareTo(unimprovedScoreDifferenceThreshold) >= 0;
-        if (scoreImprovedOverThreshold && timeLimitNotYetReached) {
-          it.remove();
-          var safeTimeMillis = bestSolutionTimeMillis + unimprovedTimeMillisSpentLimit;
-          solverSafeTimeMillis = safeTimeMillis;
-          phaseSafeTimeMillis = safeTimeMillis;
-        } else {
-          break;
-        }
-      }
-      bestScoreImprovementHistoryQueue.add(new Pair<>(bestSolutionTimeMillis, bestScore));
+      bestScoreImproved(stepScope);
     }
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  @Override
+  public void bestScoreImproved(AbstractStepScope<Solution_> stepScope) {
+    var solverScope = stepScope.getPhaseScope().getSolverScope();
+    var bestSolutionTimeMillis = solverScope.getBestSolutionTimeMillis();
+    var bestScore = solverScope.getBestScore();
+    var bestScoreValue = (Score) bestScore.raw();
+    for (var it = bestScoreImprovementHistoryQueue.iterator(); it.hasNext(); ) {
+      var bestScoreImprovement = it.next();
+      var bestScoreImprovementValue = bestScoreImprovement.value().raw();
+      var scoreDifference = bestScoreValue.subtract(bestScoreImprovementValue);
+      var timeLimitNotYetReached =
+          bestScoreImprovement.key() + unimprovedTimeMillisSpentLimit >= bestSolutionTimeMillis;
+      var scoreImprovedOverThreshold =
+          scoreDifference.compareTo(unimprovedScoreDifferenceThreshold) >= 0;
+      if (scoreImprovedOverThreshold && timeLimitNotYetReached) {
+        it.remove();
+        var safeTimeMillis = bestSolutionTimeMillis + unimprovedTimeMillisSpentLimit;
+        solverSafeTimeMillis = safeTimeMillis;
+        phaseSafeTimeMillis = safeTimeMillis;
+      } else {
+        break;
+      }
+    }
+    bestScoreImprovementHistoryQueue.add(new Pair<>(bestSolutionTimeMillis, bestScore));
   }
 
   @Override

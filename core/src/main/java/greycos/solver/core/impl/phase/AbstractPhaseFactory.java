@@ -3,6 +3,7 @@ package greycos.solver.core.impl.phase;
 import java.util.Collections;
 import java.util.Objects;
 
+import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
@@ -13,6 +14,7 @@ import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.config.util.ConfigUtils;
+import greycos.solver.core.impl.alns.AlnsPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.exhaustivesearch.scope.ExhaustiveSearchPhaseScope;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
@@ -83,7 +85,9 @@ public abstract class AbstractPhaseFactory<
 
   @SuppressWarnings({"rawtypes", "unchecked"})
   private Class<? extends AbstractPhaseScope> getPhaseScopeClass() {
-    if (phaseConfig instanceof ConstructionHeuristicPhaseConfig) {
+    if (phaseConfig instanceof AlnsPhaseConfig) {
+      return AlnsPhaseScope.class;
+    } else if (phaseConfig instanceof ConstructionHeuristicPhaseConfig) {
       return ConstructionHeuristicPhaseScope.class;
     } else if (phaseConfig instanceof CustomPhaseConfig) {
       return CustomPhaseScope.class;

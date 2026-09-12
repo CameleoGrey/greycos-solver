@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Iterator;
+import java.util.List;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.impl.heuristic.move.DummyMove;
@@ -66,6 +67,19 @@ class FilteringMoveSelectorTest {
     assertThat(filteredMoveSelector.iterator().hasNext()).isFalse();
     // The termination returns true at the second call, and 2000 calls are executed in total
     verify(iterator, times(2000)).next();
+  }
+
+  @Test
+  void saturatedSizeDoesNotOverflowBailOutLimit() {
+    var child = mock(MoveSelector.class);
+    var move = new DummyMove("accepted");
+    when(child.getSize()).thenReturn(Long.MAX_VALUE);
+    when(child.isNeverEnding()).thenReturn(true);
+    when(child.iterator()).thenReturn(List.of(move).iterator());
+    var selector = FilteringMoveSelector.of(child, (scoreDirector, selection) -> true);
+    var iterator = selector.iterator();
+    assertThat(iterator.hasNext()).isTrue();
+    assertThat(iterator.next()).isSameAs(move);
   }
 
   public void filter(SelectionCacheType cacheType, int timesCalled) {
