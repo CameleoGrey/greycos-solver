@@ -209,6 +209,10 @@ public class SolverScope<Solution_> {
     this.runnableThreadSemaphore = runnableThreadSemaphore;
   }
 
+  public boolean isYieldingEnabled() {
+    return runnableThreadSemaphore != null;
+  }
+
   public Long getStartingSystemTimeMillis() {
     return readAtomicLongTimeMillis(startingSystemTimeMillis);
   }

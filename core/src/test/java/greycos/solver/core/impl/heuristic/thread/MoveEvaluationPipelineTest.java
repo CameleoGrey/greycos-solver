@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -46,6 +47,201 @@ class MoveEvaluationPipelineTest {
 
   private static final Duration TIMEOUT = Duration.ofSeconds(10);
   private static final InnerScore<SimpleScore> ZERO = InnerScore.fullyAssigned(SimpleScore.ZERO);
+
+  @Test
+  void rangeClaimsShortenAtPublicationAndKeepIndividualMovesSingle() {
+    var epoch = new MoveEvaluationPipeline.Epoch<Object>(7);
+    var source = source(List.of(move(), move(), move(), move(), move(), move(), move()));
+    for (var slot : epoch.slots) {
+      slot.source = source;
+    }
+    epoch.published = 3;
+    assertThat(epoch.claim(4)).isEqualTo(3L);
+    assertThat(epoch.claim(4)).isEqualTo(-1L);
+    epoch.published = 7;
+    epoch.slots[4].source = null;
+    assertThat(epoch.claim(4)).isEqualTo((3L << 32) | 4L);
+    assertThat(epoch.claim(4)).isEqualTo((4L << 32) | 5L);
+    assertThat(epoch.claim(4)).isEqualTo((5L << 32) | 7L);
+    epoch.closed = true;
+    assertThat(epoch.claim(4)).isEqualTo(-1L);
+  }
+
+  @Test
+  void rangeSubmissionBoundsOutstandingCandidatesAndRebasesSourceOnceAcrossWraparound()
+      throws Exception {
+    var candidates = new ArrayList<Move<Object>>();
+    for (int i = 0; i < 8; i++) {
+      candidates.add(move());
+    }
+    var source = source(candidates);
+    try (var fixture = new Fixture(1, 3)) {
+      fixture.pipeline.setClaimChunkSize(4);
+      fixture.start();
+      assertThat(fixture.pipeline.submitRange(0, source, 0, 8)).isEqualTo(3);
+      assertThat(fixture.pipeline.submitRange(3, source, 3, 5)).isZero();
+      for (int index = 0; index < 8; index++) {
+        assertThat(fixture.pipeline.takeScore(0, index)).isEqualTo(ZERO);
+        if (index < 5) {
+          assertThat(fixture.pipeline.submitRange(index + 3, source, index + 3, 5 - index))
+              .isEqualTo(1);
+        }
+      }
+      verify(source, times(1)).rebase(any());
+      verify(source, never()).move(anyInt());
+      fixture.pipeline.close();
+      assertThat(fixture.pipeline.getDiagnostics().generated()).isEqualTo(8);
+      assertThat(fixture.pipeline.getDiagnostics().consumed()).isEqualTo(8);
+      assertThat(fixture.pipeline.getDiagnostics().discarded()).isZero();
+    }
+  }
+
+  @Test
+  void rangeScoresStayOrderedAndReadyDrainStopsAtItsCallback() throws Exception {
+    var releaseFirst = new CountDownLatch(1);
+    var tailEvaluated = new CountDownLatch(1);
+    var candidates = new ArrayList<Move<Object>>();
+    for (int i = 0; i < 8; i++) {
+      candidates.add(move());
+    }
+    try (var fixture = new Fixture(2, 8)) {
+      fixture.pipeline.setClaimChunkSize(4);
+      for (int i = 0; i < 8; i++) {
+        int index = i;
+        fixture.evaluate(
+            candidates.get(i),
+            () -> {
+              if (index == 0) awaitLatch(releaseFirst);
+              if (index == 7) tailEvaluated.countDown();
+              return InnerScore.withUnassignedCount(SimpleScore.of(-index), index);
+            });
+      }
+      fixture.start();
+      fixture.pipeline.submitRange(0, source(candidates), 0, 8);
+      awaitLatch(tailEvaluated);
+      assertThat(fixture.pipeline.drainScores(8, (step, index, score) -> {})).isZero();
+      releaseFirst.countDown();
+      assertThat(fixture.pipeline.takeScore(0, 0)).isEqualTo(ZERO);
+      fixture.workerThreads.forEach(MoveEvaluationPipelineTest::awaitParked);
+      var stopped = new IllegalStateException("stop at ordered checkpoint");
+      assertThatThrownBy(
+              () ->
+                  fixture.pipeline.drainScores(
+                      8,
+                      (step, index, score) -> {
+                        assertThat(step).isZero();
+                        assertThat(index).isEqualTo(1);
+                        assertThat(score)
+                            .isEqualTo(InnerScore.withUnassignedCount(SimpleScore.of(-1), 1));
+                        throw stopped;
+                      }))
+          .isSameAs(stopped);
+      var indices = new ArrayList<Integer>();
+      assertThat(fixture.pipeline.drainScores(8, (step, index, score) -> indices.add(index)))
+          .isEqualTo(6);
+      assertThat(indices).containsExactly(2, 3, 4, 5, 6, 7);
+    } finally {
+      releaseFirst.countDown();
+    }
+  }
+
+  @Test
+  void cancellationSkipsTheRestOfAClaimedRangeAndRebasesAgainAfterReplay() throws Exception {
+    var started = new CountDownLatch(1);
+    var release = new CountDownLatch(1);
+    var first = move();
+    var second = move();
+    var source = source(List.of(first, second, second, second));
+    try (var fixture = new Fixture(1, 4)) {
+      fixture.pipeline.setClaimChunkSize(4);
+      fixture.evaluate(
+          first,
+          () -> {
+            started.countDown();
+            awaitLatch(release);
+            return ZERO;
+          });
+      fixture.start();
+      fixture.pipeline.submitRange(0, source, 0, 4);
+      awaitLatch(started);
+      fixture.pipeline.cancelStep();
+      fixture.pipeline.applyStep(1, move(), ZERO);
+      fixture.pipeline.submitRange(0, source, 1, 1);
+      release.countDown();
+      assertThat(fixture.pipeline.takeScore(1, 0)).isEqualTo(ZERO);
+      fixture.pipeline.close();
+      verify(source, times(2)).rebase(any());
+      verify(fixture.children.getFirst(), times(1)).executeTemporaryMove(eq(second), anyBoolean());
+      assertThat(fixture.pipeline.getDiagnostics().evaluated()).isEqualTo(2);
+      assertThat(fixture.pipeline.getDiagnostics().discarded()).isEqualTo(1);
+    } finally {
+      release.countDown();
+    }
+  }
+
+  @Test
+  void scoreOnlyConsumptionRejectsDoabilityModeAndUnexpectedPositions() throws Exception {
+    try (var fixture = new Fixture(1, 1, true)) {
+      fixture.start();
+      assertThatThrownBy(() -> fixture.pipeline.takeScore(0, 0))
+          .isInstanceOf(IllegalStateException.class);
+      assertThatThrownBy(() -> fixture.pipeline.drainScores(1, (step, index, score) -> {}))
+          .isInstanceOf(IllegalStateException.class);
+    }
+    try (var fixture = new Fixture(1, 1)) {
+      fixture.start();
+      fixture.pipeline.submit(0, move());
+      assertThatThrownBy(() -> fixture.pipeline.takeScore(1, 0))
+          .isInstanceOf(IllegalStateException.class);
+      assertThatThrownBy(() -> fixture.pipeline.takeScore(0, 1))
+          .isInstanceOf(IllegalStateException.class);
+      assertThat(fixture.pipeline.takeScore(0, 0)).isEqualTo(ZERO);
+    }
+  }
+
+  @Test
+  void scoreDrainStopsWhenItsCallbackCancelsTheEpoch() throws Exception {
+    try (var fixture = new Fixture(1, 3)) {
+      fixture.pipeline.setClaimChunkSize(4);
+      fixture.start();
+      fixture.pipeline.submitRange(0, source(List.of(move(), move(), move())), 0, 3);
+      assertThat(fixture.pipeline.takeScore(0, 0)).isEqualTo(ZERO);
+      fixture.workerThreads.forEach(MoveEvaluationPipelineTest::awaitParked);
+      assertThat(
+              fixture.pipeline.drainScores(
+                  3, (step, index, score) -> fixture.pipeline.cancelStep()))
+          .isEqualTo(1);
+      assertThat(fixture.pipeline.getDiagnostics().consumed()).isEqualTo(2);
+    }
+  }
+
+  @Test
+  void rangeSourceRebaseFailurePropagatesAndClosesWorkers() {
+    var source = source(List.of(move(), move()));
+    var failure = new IllegalArgumentException("invalid prepared working reference");
+    when(source.rebase(any())).thenThrow(failure);
+    try (var fixture = new Fixture(2, 2)) {
+      fixture.pipeline.setClaimChunkSize(4);
+      fixture.start();
+      fixture.pipeline.submitRange(0, source, 0, 2);
+      assertThatThrownBy(() -> fixture.pipeline.takeScore(0, 0))
+          .isInstanceOf(IllegalStateException.class)
+          .hasCause(failure);
+      fixture.pipeline.abort();
+      fixture.assertDirectorsClosed();
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static MoveEvaluationSource<Object> source(List<Move<Object>> candidates) {
+    MoveEvaluationSource<Object> source = mock(MoveEvaluationSource.class);
+    MoveEvaluationSource<Object> rebased = mock(MoveEvaluationSource.class);
+    when(source.size()).thenReturn(candidates.size());
+    when(source.rebase(any())).thenReturn(rebased);
+    when(rebased.move(anyInt()))
+        .thenAnswer(invocation -> candidates.get(invocation.getArgument(0)));
+    return source;
+  }
 
   @Test
   void consumesOutOfOrderCompletionsInSelectionOrderAndPreservesInitialization() throws Exception {

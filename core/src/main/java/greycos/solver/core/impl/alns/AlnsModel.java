@@ -221,6 +221,43 @@ final class AlnsModel<Solution_> {
     return List.copyOf(result);
   }
 
+  /** Framework-only source; the caller owns its baseline revision and invalidation. */
+  AlnsPreparedAssignments<Solution_> prepareAssignments(AlnsTarget<Solution_> target) {
+    var descriptor = descriptor(target);
+    var current = current(target);
+    assertMovable(target, current);
+    var destinations = new ArrayList<AlnsPreparedAssignments.Destination>();
+    var values = new ArrayList<Object>();
+    if (descriptor instanceof ListVariableDescriptor<Solution_> list) {
+      for (var entity : entities.get(descriptor)) {
+        checkpoint.run();
+        if (!movable(descriptor, entity) || !range(descriptor, entity).contains(target.value()))
+          continue;
+        int first = firstUnpinnedIndex(entity);
+        int last = list.getListSize(entity) - (current.entity() == entity ? 1 : 0);
+        if (first <= last)
+          destinations.add(
+              new AlnsPreparedAssignments.Destination(entity, first, last - first + 1));
+      }
+      if (list.allowsUnassignedValues())
+        destinations.add(new AlnsPreparedAssignments.Destination(null, -1, 1));
+    } else {
+      var iterator = range(descriptor, target.entity()).createOriginalIterator();
+      boolean sawNull = false;
+      while (iterator.hasNext()) {
+        checkpoint.run();
+        Object value = iterator.next();
+        if (value == null) {
+          if (!target.variable().allowsUnassigned() || sawNull) continue;
+          sawNull = true;
+        }
+        values.add(value);
+      }
+      if (target.variable().allowsUnassigned() && !sawNull) values.add(null);
+    }
+    return new AlnsPreparedAssignments<>(target, descriptor, current, destinations, values);
+  }
+
   void validateAssignment(AlnsAssignment<Solution_> assignment) {
     var target = assignment.target();
     var descriptor = descriptor(target);

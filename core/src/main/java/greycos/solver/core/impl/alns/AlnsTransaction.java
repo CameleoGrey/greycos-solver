@@ -35,6 +35,15 @@ final class AlnsTransaction<Solution_, Score_ extends Score<Score_>> implements 
   private Runnable recoveryListener = () -> {};
   private Score_ initialScore;
   private boolean active;
+  private long revision;
+
+  long revision() {
+    return revision;
+  }
+
+  void invalidate() {
+    revision++;
+  }
 
   AlnsTransaction(InnerScoreDirector<Solution_, Score_> scoreDirector) {
     this.scoreDirector = Objects.requireNonNull(scoreDirector);
@@ -63,6 +72,7 @@ final class AlnsTransaction<Solution_, Score_ extends Score<Score_>> implements 
     trialPublicationGeneration = publicationGeneration;
     trialReplaySize = unpublishedReplay.size();
     active = true;
+    invalidate();
   }
 
   Score_ initialScore() {
@@ -92,6 +102,7 @@ final class AlnsTransaction<Solution_, Score_ extends Score<Score_>> implements 
       Object entity,
       Consumer<VariableChangeRecordingScoreDirector<Solution_, Score_>> primitive) {
     requireActive();
+    invalidate();
     snapshot(descriptor, entity);
     var recorder = new VariableChangeRecordingScoreDirector<Solution_, Score_>(scoreDirector);
     try {
@@ -184,6 +195,7 @@ final class AlnsTransaction<Solution_, Score_ extends Score<Score_>> implements 
 
   void rollback(Savepoint<Score_> savepoint) {
     requireActive();
+    invalidate();
     if (savepoint.index() < 0 || savepoint.index() > undoMoves.size()) {
       throw new IllegalStateException("Invalid ALNS savepoint.");
     }
@@ -259,6 +271,7 @@ final class AlnsTransaction<Solution_, Score_ extends Score<Score_>> implements 
   }
 
   private void clear() {
+    invalidate();
     undoMoves.clear();
     snapshots.clear();
     snapshotMap.clear();

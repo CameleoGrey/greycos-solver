@@ -51,6 +51,8 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
       director = parent.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
       InnerScore<Score_> workingScore = director.calculateScore();
       var epoch = mailbox;
+      MoveEvaluationSource<Solution_> source = null;
+      MoveEvaluationSource<Solution_> rebasedSource = null;
       appliedStepIndex = epoch.stepIndex;
       pipeline.acknowledge();
       while (!pipeline.aborting) {
@@ -87,6 +89,8 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
             replayNanos += System.nanoTime() - start;
           }
           epoch = next;
+          source = null;
+          rebasedSource = null;
           // No accesses to the previous epoch may occur after this release acknowledgement.
           appliedStepIndex = epoch.stepIndex;
           pipeline.acknowledge();
@@ -98,43 +102,55 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
           }
           break;
         }
-        int moveIndex = epoch.claim();
-        if (moveIndex >= 0) {
-          // Cancellation can race the claim. Never interrupt a partial transaction.
-          if (epoch.closed) {
-            continue;
-          }
-          var slot = epoch.slots[moveIndex % epoch.slots.length];
-          boolean sample = pipeline.diagnosticsEnabled && (evaluated & 1023) == 0;
-          long start = sample ? System.nanoTime() : 0;
-          var move = slot.move.rebase(director.getMoveDirector());
-          if (sample) {
-            rebaseNanos += System.nanoTime() - start;
-            start = System.nanoTime();
-          }
-          InnerScore<Score_> score = null;
-          if (!(pipeline.evaluateDoable
-              && move instanceof AbstractSelectorBasedMove<Solution_> selector
-              && !selector.isMoveDoable(director))) {
-            score = director.executeTemporaryMove(move, pipeline.assertMoveScoreFromScratch);
-            if (pipeline.assertExpectedUndoMoveScore) {
-              director.assertExpectedUndoMoveScore(
-                  move,
-                  workingScore,
-                  SolverLifecyclePoint.of(
-                      workerIndex, pipeline.phaseIndex, epoch.stepIndex, moveIndex));
+        long claim = epoch.claim(pipeline.claimChunkSize());
+        if (claim >= 0) {
+          int end = (int) claim;
+          for (int moveIndex = (int) (claim >>> 32); moveIndex < end; moveIndex++) {
+            // Cancellation can race a chunk claim. Finish only the current balanced transaction.
+            if (epoch.closed || pipeline.aborting || Thread.currentThread().isInterrupted()) {
+              break;
             }
-            scored++;
+            var slot = epoch.slots[moveIndex % epoch.slots.length];
+            boolean sample = pipeline.diagnosticsEnabled && (evaluated & 1023) == 0;
+            long start = sample ? System.nanoTime() : 0;
+            Move<Solution_> move;
+            if (slot.source == null) {
+              move = slot.move.rebase(director.getMoveDirector());
+            } else {
+              if (source != slot.source) {
+                source = slot.source;
+                rebasedSource = source.rebase(director.getMoveDirector());
+              }
+              move = rebasedSource.move(slot.sourceIndex);
+            }
+            if (sample) {
+              rebaseNanos += System.nanoTime() - start;
+              start = System.nanoTime();
+            }
+            InnerScore<Score_> score = null;
+            if (!(pipeline.evaluateDoable
+                && move instanceof AbstractSelectorBasedMove<Solution_> selector
+                && !selector.isMoveDoable(director))) {
+              score = director.executeTemporaryMove(move, pipeline.assertMoveScoreFromScratch);
+              if (pipeline.assertExpectedUndoMoveScore) {
+                director.assertExpectedUndoMoveScore(
+                    move,
+                    workingScore,
+                    SolverLifecyclePoint.of(
+                        workerIndex, pipeline.phaseIndex, epoch.stepIndex, moveIndex));
+              }
+              scored++;
+            }
+            evaluated++;
+            if (sample) {
+              evaluationNanos += System.nanoTime() - start;
+              samples++;
+            }
+            slot.score = score;
+            slot.completedIndex = moveIndex;
+            // Never touch the slot after publishing: the coordinator may immediately reuse it.
+            pipeline.resultPublished(epoch, moveIndex);
           }
-          evaluated++;
-          if (sample) {
-            evaluationNanos += System.nanoTime() - start;
-            samples++;
-          }
-          slot.score = score;
-          slot.completedIndex = moveIndex;
-          // Never touch the slot after publishing: the coordinator may immediately reuse it.
-          pipeline.resultPublished(epoch, moveIndex);
         } else {
           long start = pipeline.diagnosticsEnabled ? System.nanoTime() : 0;
           for (int spin = 0;

@@ -287,7 +287,12 @@ public final class BuiltinAlnsOperators {
         if (choice == null) {
           return false;
         }
-        context.assign(choice.candidate().assignment());
+        if (context instanceof DefaultAlnsContext<S, Score_> framework
+            && choice.candidate().baselineRevision() >= 0) {
+          framework.assignEvaluated(choice.candidate());
+        } else {
+          context.assign(choice.candidate().assignment());
+        }
         pending.remove(choice.target());
       }
       return context.score().isComplete();
@@ -296,6 +301,10 @@ public final class BuiltinAlnsOperators {
 
   private static <S, Score_ extends Score<Score_>> List<Candidate<S, Score_>> alternatives(
       AlnsContext<S, Score_> context, AlnsTarget<S> target, int retainedCount) {
+    if (context instanceof DefaultAlnsContext<S, Score_> framework
+        && framework.usesPreparedProbes()) {
+      return framework.bestAssignments(List.of(target), retainedCount).getFirst();
+    }
     Comparator<OrderedCandidate<S, Score_>> worstFirst =
         (left, right) -> {
           int score = left.candidate().evaluation().compareTo(right.candidate().evaluation());
@@ -337,11 +346,18 @@ public final class BuiltinAlnsOperators {
     // Mandatory and optional decisions are not interchangeable: complete mandatory repairs first.
     boolean mandatoryRemaining =
         pending.stream().anyMatch(target -> !target.variable().allowsUnassigned());
-    for (var target : pending) {
-      if (mandatoryRemaining && target.variable().allowsUnassigned()) {
-        continue;
-      }
-      var alternatives = alternatives(context, target, k);
+    var eligible =
+        pending.stream()
+            .filter(target -> !mandatoryRemaining || !target.variable().allowsUnassigned())
+            .toList();
+    List<List<Candidate<S, Score_>>> prepared =
+        context instanceof DefaultAlnsContext<S, Score_> framework && framework.usesPreparedProbes()
+            ? framework.bestAssignments(eligible, k)
+            : null;
+    for (int targetIndex = 0; targetIndex < eligible.size(); targetIndex++) {
+      var target = eligible.get(targetIndex);
+      var alternatives =
+          prepared == null ? alternatives(context, target, k) : prepared.get(targetIndex);
       if (alternatives.isEmpty()) {
         return null;
       }
@@ -412,8 +428,12 @@ public final class BuiltinAlnsOperators {
 
   private record MarginalTarget<S>(AlnsTarget<S> target, BigDecimal[] improvement) {}
 
-  private record Candidate<S, Score_ extends Score<Score_>>(
-      AlnsAssignment<S> assignment, AlnsEvaluation<Score_> evaluation) {}
+  record Candidate<S, Score_ extends Score<Score_>>(
+      AlnsAssignment<S> assignment, AlnsEvaluation<Score_> evaluation, long baselineRevision) {
+    Candidate(AlnsAssignment<S> assignment, AlnsEvaluation<Score_> evaluation) {
+      this(assignment, evaluation, -1);
+    }
+  }
 
   private record Choice<S, Score_ extends Score<Score_>>(
       AlnsTarget<S> target, Candidate<S, Score_> candidate, BigDecimal[] regret, boolean forced) {}

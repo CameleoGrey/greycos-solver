@@ -7,11 +7,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.ObjIntConsumer;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.solver.alns.AlnsTerminationException;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline;
+import greycos.solver.core.impl.heuristic.thread.MoveEvaluationSource;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.preview.api.move.Move;
@@ -34,6 +36,8 @@ final class AlnsProbeEvaluator<Solution_, Score_ extends Score<Score_>> implemen
   private final int phaseIndex;
   private final EnvironmentMode environmentMode;
   private final BooleanSupplier terminated;
+  private final BooleanSupplier waitTerminated;
+  private final int claimChunkSize;
   private @Nullable MoveEvaluationPipeline<Solution_> pipeline;
   private int epochIndex;
   private int nextMoveIndex;
@@ -50,12 +54,35 @@ final class AlnsProbeEvaluator<Solution_, Score_ extends Score<Score_>> implemen
       int phaseIndex,
       EnvironmentMode environmentMode,
       BooleanSupplier terminated) {
+    this(
+        parent,
+        workerCount,
+        bufferSize,
+        threadFactory,
+        phaseIndex,
+        environmentMode,
+        terminated,
+        terminated);
+  }
+
+  AlnsProbeEvaluator(
+      InnerScoreDirector<Solution_, Score_> parent,
+      @Nullable Integer workerCount,
+      int bufferSize,
+      ThreadFactory threadFactory,
+      int phaseIndex,
+      EnvironmentMode environmentMode,
+      BooleanSupplier terminated,
+      BooleanSupplier waitTerminated) {
     if (workerCount != null && workerCount < 1 || bufferSize < 1) {
       throw new IllegalArgumentException(
           "ALNS worker count and candidate capacity must be positive.");
     }
     this.parent = Objects.requireNonNull(parent);
     this.workerCount = workerCount;
+    // A one-candidate-per-worker window must still expose work to every worker.
+    claimChunkSize =
+        Math.min(bufferSize, Integer.getInteger("greycos.solver.alns.probeChunkSize", 4));
     // The phase option, like the existing move-thread buffer option, is per worker.
     this.bufferSize =
         workerCount == null ? bufferSize : Math.multiplyExact(workerCount, bufferSize);
@@ -63,6 +90,7 @@ final class AlnsProbeEvaluator<Solution_, Score_ extends Score<Score_>> implemen
     this.phaseIndex = phaseIndex;
     this.environmentMode = Objects.requireNonNull(environmentMode);
     this.terminated = Objects.requireNonNull(terminated);
+    this.waitTerminated = Objects.requireNonNull(waitTerminated);
   }
 
   boolean isEnabledFor(int candidateCount) {
@@ -148,6 +176,52 @@ final class AlnsProbeEvaluator<Solution_, Score_ extends Score<Score_>> implemen
     }
   }
 
+  /** Prepared framework sources compile and rebase candidates on the owning worker. */
+  void evaluateSource(
+      MoveEvaluationSource<Solution_> source, ObjIntConsumer<InnerScore<Score_>> onConsumed) {
+    requireOpen();
+    if (!isEnabledFor(source.size()))
+      throw new IllegalStateException("Prepared batch must use sequential evaluation.");
+    checkTermination();
+    startIfNeeded();
+    if (epochClosed || source.size() > Integer.MAX_VALUE - nextMoveIndex)
+      publishReplay(List.of(), null);
+    var activePipeline = Objects.requireNonNull(pipeline);
+    int submitted = 0;
+    int consumed = 0;
+    int firstMoveIndex = nextMoveIndex;
+    try {
+      while (consumed < source.size()) {
+        checkTermination();
+        int room = bufferSize - (submitted - consumed);
+        int refillSize = Math.min(bufferSize, claimChunkSize);
+        if (submitted < source.size()
+            && room > 0
+            && (room >= refillSize || submitted == consumed || source.size() - submitted <= room)) {
+          int count =
+              activePipeline.submitRange(
+                  nextMoveIndex, source, submitted, Math.min(room, source.size() - submitted));
+          submitted += count;
+          nextMoveIndex += count;
+        }
+        @SuppressWarnings("unchecked")
+        var score =
+            (InnerScore<Score_>) activePipeline.takeScore(epochIndex, firstMoveIndex + consumed);
+        if (score == null) throw new AlnsTerminationException();
+        onConsumed.accept(score, consumed);
+        transferredCalculationCount++;
+        consumed++;
+      }
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      cancelEpoch();
+      throw new AlnsTerminationException();
+    } catch (RuntimeException | Error failure) {
+      cancelEpoch();
+      throw failure;
+    }
+  }
+
   /**
    * Replays deltas already applied to the coordinator. Before worker startup these need no journal:
    * the first batch clones the current state. A null score never causes coordinator scoring.
@@ -209,7 +283,8 @@ final class AlnsProbeEvaluator<Solution_, Score_ extends Score<Score_>> implemen
               environmentMode.isFullyAsserted(),
               environmentMode.isIntrusivelyAsserted(),
               environmentMode.isIntrusivelyAsserted());
-      pipeline.setTerminationCheck(terminated);
+      pipeline.setClaimChunkSize(claimChunkSize);
+      pipeline.setTerminationCheck(waitTerminated);
       // start() waits until all clones exist, so subsequent coordinator mutation is safe.
       pipeline.start(parent);
     } catch (RuntimeException | Error failure) {

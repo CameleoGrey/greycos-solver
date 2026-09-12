@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import jakarta.xml.bind.annotation.XmlElement;
@@ -23,11 +24,14 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Adaptive large neighborhood search configuration. Trials execute sequentially on each solver or
- * island. Independent scoring probes may use move workers.
+ * island. Move workers evaluate independent probes or explicitly configured randomized repair
+ * attempts.
  */
 @XmlType(
     propOrder = {
       "moveThreadCount",
+      "moveThreadingMode",
+      "repairAttemptCount",
       "destroyOperatorConfigList",
       "repairOperatorConfigList",
       "selectionPolicyType",
@@ -54,6 +58,8 @@ public final class AlnsPhaseConfig extends PhaseConfig<AlnsPhaseConfig> {
   public static final String XML_ELEMENT_NAME = "alns";
 
   private String moveThreadCount;
+  private AlnsMoveThreadingMode moveThreadingMode;
+  private Integer repairAttemptCount;
 
   @XmlElement(name = "destroyOperator")
   private List<AlnsDestroyOperatorConfig> destroyOperatorConfigList;
@@ -101,6 +107,38 @@ public final class AlnsPhaseConfig extends PhaseConfig<AlnsPhaseConfig> {
 
   public @NonNull AlnsPhaseConfig withMoveThreadCount(@NonNull String moveThreadCount) {
     setMoveThreadCount(moveThreadCount);
+    return this;
+  }
+
+  /** Defaults to {@link AlnsMoveThreadingMode#PROBES} after configuration inheritance. */
+  public @Nullable AlnsMoveThreadingMode getMoveThreadingMode() {
+    return moveThreadingMode;
+  }
+
+  public void setMoveThreadingMode(@Nullable AlnsMoveThreadingMode moveThreadingMode) {
+    this.moveThreadingMode = moveThreadingMode;
+  }
+
+  public @NonNull AlnsPhaseConfig withMoveThreadingMode(
+      @NonNull AlnsMoveThreadingMode moveThreadingMode) {
+    setMoveThreadingMode(moveThreadingMode);
+    return this;
+  }
+
+  /**
+   * Number of randomized repairs per destroyed state, independent of worker count. Required and at
+   * least two in {@link AlnsMoveThreadingMode#REPAIR_ATTEMPTS}; forbidden in probe mode.
+   */
+  public @Nullable Integer getRepairAttemptCount() {
+    return repairAttemptCount;
+  }
+
+  public void setRepairAttemptCount(@Nullable Integer repairAttemptCount) {
+    this.repairAttemptCount = repairAttemptCount;
+  }
+
+  public @NonNull AlnsPhaseConfig withRepairAttemptCount(@NonNull Integer repairAttemptCount) {
+    setRepairAttemptCount(repairAttemptCount);
     return this;
   }
 
@@ -404,6 +442,12 @@ public final class AlnsPhaseConfig extends PhaseConfig<AlnsPhaseConfig> {
     super.inherit(inheritedConfig);
     moveThreadCount =
         ConfigUtils.inheritOverwritableProperty(moveThreadCount, inheritedConfig.moveThreadCount);
+    moveThreadingMode =
+        ConfigUtils.inheritOverwritableProperty(
+            moveThreadingMode, inheritedConfig.moveThreadingMode);
+    repairAttemptCount =
+        ConfigUtils.inheritOverwritableProperty(
+            repairAttemptCount, inheritedConfig.repairAttemptCount);
     if (destroyOperatorConfigList == null && inheritedConfig.destroyOperatorConfigList != null) {
       destroyOperatorConfigList = new ArrayList<>();
       for (var operator : inheritedConfig.destroyOperatorConfigList) {
@@ -471,6 +515,15 @@ public final class AlnsPhaseConfig extends PhaseConfig<AlnsPhaseConfig> {
   @Override
   public @NonNull AlnsPhaseConfig copyConfig() {
     return new AlnsPhaseConfig().inherit(this);
+  }
+
+  @Override
+  public String toString() {
+    return "AlnsPhaseConfig(moveThreadingMode="
+        + Objects.requireNonNullElse(moveThreadingMode, AlnsMoveThreadingMode.PROBES)
+        + ", repairAttemptCount="
+        + repairAttemptCount
+        + ")";
   }
 
   @Override

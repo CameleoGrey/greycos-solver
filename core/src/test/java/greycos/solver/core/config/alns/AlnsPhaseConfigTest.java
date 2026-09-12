@@ -23,6 +23,7 @@ import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.heuristic.thread.MoveThreadingWorkload.BasicWorkload;
+import greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 import greycos.solver.core.impl.io.jaxb.SolverConfigIO;
 import greycos.solver.core.testcotwin.TestdataEntity;
 
@@ -58,6 +59,8 @@ class AlnsPhaseConfigTest {
     var phase =
         new AlnsPhaseConfig()
             .withMoveThreadCount("4")
+            .withMoveThreadingMode(AlnsMoveThreadingMode.REPAIR_ATTEMPTS)
+            .withRepairAttemptCount(6)
             .withTerminationConfig(new TerminationConfig().withStepCountLimit(12))
             .withSelectionPolicyType(AlnsSelectionPolicyType.UCB)
             .withSelectionPolicyCustomProperties(Map.of("exploration", "1.5"))
@@ -77,8 +80,8 @@ class AlnsPhaseConfigTest {
                     .withMaximumDestroyedCount(4))
             .withRepairOperators(
                 new AlnsRepairOperatorConfig()
-                    .withId("regret")
-                    .withType(AlnsRepairOperatorType.REGRET_2)
+                    .withId("randomized")
+                    .withType(AlnsRepairOperatorType.RANDOMIZED_GREEDY)
                     .withInitialWeight(2.0));
     var config =
         new SolverConfig()
@@ -91,7 +94,13 @@ class AlnsPhaseConfigTest {
     var io = new SolverConfigIO();
     var writer = new StringWriter();
     io.write(config, writer);
-    assertThat(writer.toString()).contains("<alns>", "<destroyOperator>", "<repairOperator>");
+    assertThat(writer.toString())
+        .contains(
+            "<alns>",
+            "<destroyOperator>",
+            "<repairOperator>",
+            "<moveThreadingMode>REPAIR_ATTEMPTS</moveThreadingMode>",
+            "<repairAttemptCount>6</repairAttemptCount>");
     assertThat(io.read(new StringReader(writer.toString())))
         .usingRecursiveComparison()
         .isEqualTo(config);
@@ -105,8 +114,10 @@ class AlnsPhaseConfigTest {
           <alns>
             <termination><stepCountLimit>2</stepCountLimit></termination>
             <moveThreadCount>2</moveThreadCount>
+            <moveThreadingMode>REPAIR_ATTEMPTS</moveThreadingMode>
+            <repairAttemptCount>4</repairAttemptCount>
             <destroyOperator><id>random</id><type>RANDOM</type></destroyOperator>
-            <repairOperator><id>greedy</id><type>GREEDY</type></repairOperator>
+            <repairOperator><id>randomized</id><type>RANDOMIZED_GREEDY</type><topK>1</topK></repairOperator>
             <selectionPolicyType>SEGMENTED_ROULETTE</selectionPolicyType>
             <selectionPolicyCustomProperties><property name="selection" value="example"/></selectionPolicyCustomProperties>
             <acceptanceType>LATE_ACCEPTANCE</acceptanceType>
@@ -121,6 +132,10 @@ class AlnsPhaseConfigTest {
     assertThat(config.getPhaseConfigList()).singleElement().isInstanceOf(AlnsPhaseConfig.class);
     assertThat(((AlnsPhaseConfig) config.getPhaseConfigList().getFirst()).getMoveThreadCount())
         .isEqualTo("2");
+    assertThat(((AlnsPhaseConfig) config.getPhaseConfigList().getFirst()).getMoveThreadingMode())
+        .isEqualTo(AlnsMoveThreadingMode.REPAIR_ATTEMPTS);
+    assertThat(((AlnsPhaseConfig) config.getPhaseConfigList().getFirst()).getRepairAttemptCount())
+        .isEqualTo(4);
     assertThat(((AlnsPhaseConfig) config.getPhaseConfigList().getFirst()).getRepairSpentLimit())
         .isEqualTo(Duration.ofMillis(50));
     assertThat(
@@ -179,6 +194,52 @@ class AlnsPhaseConfigTest {
     assertThat(new AlnsPhaseConfig().withSegmentLength(7).inherit(original).getSegmentLength())
         .isEqualTo(7);
     assertThat(new AlnsPhaseConfig().getLateAcceptanceSize()).isNull();
+  }
+
+  @Test
+  void threadingModeAndAttemptCountCopyInheritAndOverrideIndependently() {
+    var original =
+        new AlnsPhaseConfig()
+            .withMoveThreadCount("2")
+            .withMoveThreadingMode(AlnsMoveThreadingMode.REPAIR_ATTEMPTS)
+            .withRepairAttemptCount(8);
+    var copy = original.copyConfig();
+    assertThat(copy.getMoveThreadingMode()).isEqualTo(AlnsMoveThreadingMode.REPAIR_ATTEMPTS);
+    assertThat(copy.getRepairAttemptCount()).isEqualTo(8);
+    copy.setMoveThreadingMode(AlnsMoveThreadingMode.PROBES);
+    copy.setRepairAttemptCount(null);
+    assertThat(original.getMoveThreadingMode()).isEqualTo(AlnsMoveThreadingMode.REPAIR_ATTEMPTS);
+    assertThat(original.getRepairAttemptCount()).isEqualTo(8);
+
+    var inherited = new AlnsPhaseConfig().withMoveThreadCount("NONE").inherit(original);
+    assertThat(inherited.getMoveThreadCount()).isEqualTo("NONE");
+    assertThat(inherited.getMoveThreadingMode()).isEqualTo(AlnsMoveThreadingMode.REPAIR_ATTEMPTS);
+    assertThat(inherited.getRepairAttemptCount()).isEqualTo(8);
+    var overridden =
+        new AlnsPhaseConfig()
+            .withMoveThreadingMode(AlnsMoveThreadingMode.PROBES)
+            .withRepairAttemptCount(4)
+            .inherit(original);
+    assertThat(overridden.getMoveThreadingMode()).isEqualTo(AlnsMoveThreadingMode.PROBES);
+    assertThat(overridden.getRepairAttemptCount()).isEqualTo(4);
+    assertThat(new AlnsPhaseConfig().getMoveThreadingMode()).isNull();
+    assertThat(new AlnsPhaseConfig().getRepairAttemptCount()).isNull();
+    assertThat(new AlnsPhaseConfig().toString()).contains("moveThreadingMode=PROBES");
+    assertThat(original.toString())
+        .contains("moveThreadingMode=REPAIR_ATTEMPTS", "repairAttemptCount=8");
+  }
+
+  @Test
+  void namespacedXmlRejectsUnknownThreadingMode() {
+    var xml =
+        """
+        <solver xmlns="%s">
+          <alns><moveThreadingMode>UNKNOWN</moveThreadingMode></alns>
+        </solver>
+        """
+            .formatted(SolverConfig.XML_NAMESPACE);
+    assertThatThrownBy(() -> new SolverConfigIO().read(new StringReader(xml)))
+        .isInstanceOf(GreyCOSXmlSerializationException.class);
   }
 
   @Test

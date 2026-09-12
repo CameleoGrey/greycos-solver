@@ -58,6 +58,16 @@ A score calculation or custom callback already running must return before it can
 Interrupted or failed repairs restore planning variables, list membership, shadow variables, and incremental score state.
 Problem changes are processed through the solver's normal stop-and-restart lifecycle.
 
+ALNS samples recognized wall-time termination predicates every 32 consumed logical probes and at
+repair and state boundaries. Score-calculation limits, cancellation and problem-change checks remain
+live at the existing per-probe checkpoints. Waiting for an unfinished worker result forces a fresh
+time check, and yielding refreshes time after the solver resumes.
+Loops that poll without consuming probes also refresh time after 32 checks, including custom operators.
+The sampling can delay recognition of a time limit until the next checkpoint; it does not impose
+a hard deadline on an individual score calculation.
+Solver and phase time limits retain their original clock and starting timestamps.
+Custom or stateful termination graphs use the original strict polling path.
+
 The calculation limit counts logical score queries in their sequential order.
 It includes trial initialization, destroy baselines and scratch probes, insertion probes,
 and candidate/completeness queries; it is not a limit on insertion probes alone.
@@ -206,19 +216,32 @@ An ALNS phase inherits the solver's `moveThreadCount` unless the phase specifies
 
 `NONE` selects sequential evaluation, including when it overrides an enabled solver setting.
 `AUTO` uses the existing move-thread resolver; an explicit positive count selects that many workers.
-The solver-level `moveThreadBufferSize` bounds candidates in flight per worker and defaults to ten.
+In `PROBES` mode, the solver-level `moveThreadBufferSize` bounds candidates in flight per worker
+and defaults to ten.
 The usual xref:advanced-features/advanced-features.adoc#multithreadedIncrementalSolving[move-worker rebasing requirements] apply.
 Constraint Stream profiling cannot be combined with enabled ALNS move workers, including a phase override.
+
+`moveThreadingMode` selects the unit of independent work. Its default is `PROBES`.
+`REPAIR_ATTEMPTS` is an explicit alternative that changes the search by considering several randomized
+repairs of each destroyed state. Configure the number of attempts separately from the worker count.
+
+=== Ordered probes
 
 Workers start lazily on the first batch containing multiple candidates.
 Each owns one persistent cloned solution and incremental score director.
 The framework rebases probes onto those solutions and synchronizes committed mutations and rollbacks
 before scoring against the next partial state. Empty and single-candidate batches use the coordinator.
 
-Built-in GREEDY, RANDOMIZED_GREEDY, REGRET_2, and REGRET_3 repairs use batches of alternatives.
+Built-in GREEDY, RANDOMIZED_GREEDY, REGRET_2, and REGRET_3 repairs stream prepared alternatives through
+a bounded candidate window. Assignment metadata and worker references are prepared for the current
+state; full lists of candidate moves and result wrappers are unnecessary on this internal path.
 The score-based WORST_REMOVAL destroy operator also uses batches.
 Repair retains only the best alternatives needed by its decision, preserving the original order of equal scores.
-Regret evaluation remains bounded per target; it does not materialize every target/placement combination together.
+Regret repair can stream all eligible pending targets against one unchanged state before choosing an insertion.
+The stream keeps the original target and assignment order without materializing every placement together.
+GREEDY and RANDOMIZED_GREEDY finish each target before the selected insertion changes that state.
+Known winning evaluations also supply subsequent worker synchronization scores when they still describe
+the current state; unrelated changes invalidate them.
 Outer trials, target selection, random draws, selected insertions, acceptance, and adaptation remain sequential.
 
 Fixed seeds and fixed logical work limits preserve the search trajectory across worker counts for
@@ -226,6 +249,59 @@ deterministic, timing-independent operators and policies.
 Wall-time termination, custom policies that use elapsed time, and concurrent island migration can change that trajectory.
 Extra workers add state memory, rebasing, synchronization and speculative scoring costs.
 Measure useful probes and completed trials on representative problems: cheap probes or small batches may be slower with workers.
+
+=== Randomized repair attempts
+
+Use `REPAIR_ATTEMPTS` to place an entire randomized repair on each move worker:
+
+[source,xml]
+----
+<alns>
+  <termination><secondsSpentLimit>60</secondsSpentLimit></termination>
+  <moveThreadCount>4</moveThreadCount>
+  <moveThreadingMode>REPAIR_ATTEMPTS</moveThreadingMode>
+  <repairAttemptCount>8</repairAttemptCount>
+  <destroyOperator>
+    <id>random</id>
+    <type>RANDOM</type>
+    <minimumDestroyedCount>6</minimumDestroyedCount>
+    <maximumDestroyedCount>6</maximumDestroyedCount>
+  </destroyOperator>
+  <repairOperator>
+    <id>randomized</id>
+    <type>RANDOMIZED_GREEDY</type>
+    <topK>3</topK>
+  </repairOperator>
+</alns>
+----
+
+`repairAttemptCount` is required and must be at least two in this mode.
+It is rejected in `PROBES` mode. Changing `moveThreadCount` changes execution capacity while the
+configured attempt count remains fixed. `NONE` runs the same attempts sequentially on private scratch
+state without creating a worker executor.
+
+The coordinator selects and applies destruction once. Independent attempts start from that same
+destroyed state with their own random streams and private incremental score directors.
+Each worker completes its repair locally without nested probe workers.
+The coordinator considers results in attempt order and chooses the best complete candidate,
+preferring the earlier attempt when scores tie. It then applies the normal acceptance policy once.
+The group contributes one outer trial, one adaptation outcome and one acceptance-history update.
+Cancellation restores the incumbent; worker completion order does not select a winner.
+The trial's repair limits include destruction and the attempt queries credited by the coordinator;
+speculative queries from other workers do not independently consume the logical calculation limit.
+
+Every configured repair must be the built-in `RANDOMIZED_GREEDY` operator.
+The existing positive `topK` range remains valid, including `topK=1`.
+Custom repairs and unrecognized or stateful termination graphs are rejected in this mode.
+Custom destroy callbacks, selection and acceptance remain on the coordinator.
+
+With fixed seeds, fixed attempt count and timing-independent work limits, attempt ordering and random
+streams are independent of worker scheduling. The trajectory differs from `PROBES` because each trial
+selects among several repairs. Compare modes using best-found quality and completed trials at equal
+elapsed budgets, and compare worker counts within the same mode at fixed logical work.
+Whole repairs provide more work between synchronization points, but also perform more total scoring
+per trial and require private state for concurrent attempts. They do not guarantee better throughput
+or solution quality on every problem.
 
 == Islands and threads
 
@@ -246,7 +322,8 @@ Place ALNS in the explicit inner phase list of an island model:
 ----
 
 Each island owns its incumbent, random stream, operator instances, adaptation state, and acceptance state.
-Trials and repair decisions execute sequentially within each island; independent probes can use that island's move workers.
+Outer trials execute sequentially within each island; its move workers evaluate independent probes
+or the configured randomized repair attempts.
 An inner ALNS phase uses its explicit `moveThreadCount` first, then the enclosing island's setting.
 When neither is specified, the inner phase defaults to `NONE`, independently of the solver-level setting.
 Islands execute concurrently.
@@ -300,9 +377,15 @@ They exclude unconsumed speculative worker results.
 Final solver and phase calculation totals include physical worker setup, synchronization and discarded scoring,
 with consumed worker probes counted once.
 Those totals can differ across worker counts even when the logical budget, trial trace and result are identical.
+In `REPAIR_ATTEMPTS`, account for work across the attempt group separately from its single outer proposal;
+more attempted repairs are additional search work, not a speedup by themselves.
 For separate diagnostic runs, `-Dgreycos.solver.moveThreadDiagnostics=true` enables worker timing samples
 and coordinator waiting measurements. The phase exposes final pipeline counters for generated, evaluated,
 consumed and discarded candidates. Leave diagnostic timing disabled for throughput comparisons.
+For a controlled comparison of clock-polling overhead,
+`-Dgreycos.solver.alns.strictTimePolling=true` restores the original termination predicate at every
+checkpoint. It does not change the configured mode or the set of supported repair-attempt configurations.
+Keep this diagnostic setting consistent when comparing throughput and report it with the termination budget.
 
 The opt-in synthetic comparison harness runs basic assignment, list routing, and mixed-variable workloads across three seeds,
 rotating ordinary local search, local search with ruin-and-recreate, and ALNS at matched phase time budgets:

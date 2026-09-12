@@ -2,12 +2,16 @@ package greycos.solver.core.impl.alns;
 
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
 
 import greycos.solver.core.api.score.Score;
@@ -19,9 +23,11 @@ import greycos.solver.core.api.solver.alns.AlnsTarget;
 import greycos.solver.core.api.solver.alns.AlnsTerminationException;
 import greycos.solver.core.api.solver.alns.AlnsVariable;
 import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.cotwin.lookup.LookUpManager;
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline;
+import greycos.solver.core.impl.heuristic.thread.MoveEvaluationSource;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.preview.api.move.Move;
@@ -40,6 +46,19 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   private boolean pendingLocked;
   private long probeCount;
   private boolean closed;
+  private Runnable consumedProbe = () -> {};
+  private Runnable baselineChanged = () -> {};
+  private BooleanSupplier waitTerminated;
+  private int enumerationChecks;
+  private InnerScore<Score_> knownReplayScore;
+  private long knownReplayRevision = -1;
+  private final boolean preparedProbes =
+      Boolean.parseBoolean(System.getProperty("greycos.solver.alns.preparedProbes", "true"));
+  private final boolean replayKnownScores =
+      Boolean.parseBoolean(System.getProperty("greycos.solver.alns.replayKnownScores", "true"));
+  private Consumer<Boolean> queryListener = ignored -> {};
+  private LookUpManager replayLookup;
+  private LongSupplier repairQueryAllowance = () -> Long.MAX_VALUE;
 
   public DefaultAlnsContext(
       InnerScoreDirector<Solution_, Score_> scoreDirector,
@@ -48,8 +67,91 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
     this.scoreDirector = Objects.requireNonNull(scoreDirector);
     this.random = Objects.requireNonNull(random);
     this.terminated = Objects.requireNonNull(terminated);
+    waitTerminated = terminated;
     transaction = new AlnsTransaction<>(scoreDirector);
-    model = new AlnsModel<>(scoreDirector, this::checkTermination);
+    model = new AlnsModel<>(scoreDirector, this::checkEnumerationTermination);
+  }
+
+  void configureTermination(
+      Runnable consumedProbe, Runnable baselineChanged, BooleanSupplier waitTerminated) {
+    this.consumedProbe = Objects.requireNonNull(consumedProbe);
+    this.baselineChanged = Objects.requireNonNull(baselineChanged);
+    this.waitTerminated = Objects.requireNonNull(waitTerminated);
+  }
+
+  private void countProbe() {
+    probeCount++;
+    consumedProbe.run();
+  }
+
+  private void checkEnumerationTermination() {
+    if ((++enumerationChecks & 31) == 0) baselineChanged.run();
+    checkTermination();
+  }
+
+  boolean usesPreparedProbes() {
+    return preparedProbes;
+  }
+
+  void configureQueryListener(Consumer<Boolean> listener) {
+    queryListener = Objects.requireNonNull(listener);
+  }
+
+  void configureRepairQueryAllowance(LongSupplier allowance) {
+    repairQueryAllowance = Objects.requireNonNull(allowance);
+  }
+
+  long remainingRepairQueryAllowance() {
+    return repairQueryAllowance.getAsLong();
+  }
+
+  void creditQuery(boolean probe) {
+    scoreDirector.incrementCalculationCount();
+    if (probe) countProbe();
+  }
+
+  void checkTerminationNow() {
+    requireOpen();
+    if (waitTerminated.getAsBoolean() || Thread.currentThread().isInterrupted())
+      throw new AlnsTerminationException();
+  }
+
+  void invalidateTermination() {
+    baselineChanged.run();
+  }
+
+  void enableReplayRecording() {
+    transaction.enableReplication(() -> {});
+  }
+
+  List<Move<Solution_>> drainReplayJournal() {
+    return transaction.publishReplay();
+  }
+
+  void applyRepairJournal(List<Move<Solution_>> journal, InnerScore<Score_> expected) {
+    requireActive();
+    if (!expected.isFullyAssigned())
+      throw new IllegalArgumentException("Cannot apply an incomplete repair attempt.");
+    if (replayLookup == null) {
+      var descriptor = scoreDirector.getSolutionDescriptor();
+      replayLookup = new LookUpManager(descriptor.getLookUpStrategyResolver());
+      descriptor.visitAll(scoreDirector.getWorkingSolution(), replayLookup::addWorkingObject);
+    }
+    var lookup =
+        new greycos.solver.core.api.cotwin.lookup.Lookup() {
+          @Override
+          public <T> T lookUpWorkingObject(T object) {
+            return replayLookup.lookUpWorkingObject(object);
+          }
+        };
+    baselineChanged.run();
+    for (var move : journal) {
+      checkTermination();
+      AlnsPrimitiveMove.forEachPrimitive(move.rebase(lookup), transaction::apply);
+    }
+    pending.clear();
+    knownReplayScore = expected;
+    knownReplayRevision = transaction.revision();
   }
 
   void configureMoveThreads(
@@ -67,7 +169,8 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
             threadFactory,
             phaseIndex,
             environmentMode,
-            terminated);
+            terminated,
+            waitTerminated);
     transaction.enableReplication(probeEvaluator::abort);
   }
 
@@ -82,6 +185,8 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   private void flushReplay(InnerScore<Score_> score) {
     if (probeEvaluator == null) return;
     var replay = transaction.publishReplay();
+    if (score == null && replayKnownScores && knownReplayRevision == transaction.revision())
+      score = knownReplayScore;
     if (Thread.currentThread().isInterrupted()) {
       probeEvaluator.abort();
     } else {
@@ -92,12 +197,15 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   void incumbentChanged(Move<Solution_> move, InnerScore<Score_> score) {
     if (transaction.isActive()) throw new IllegalStateException("Migration during an ALNS trial.");
     transaction.appendReplay(move);
+    transaction.invalidate();
+    baselineChanged.run();
     flushReplay(score);
   }
 
   public void beginTrial() {
     requireOpen();
     transaction.begin();
+    baselineChanged.run();
     pending.clear();
     repairTargets.clear();
     pendingLocked = false;
@@ -142,6 +250,7 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
       throw new IllegalStateException("Cannot commit an incompletely assigned ALNS candidate.");
     flushReplay(InnerScore.fullyAssigned(evaluation.score()));
     transaction.commit();
+    baselineChanged.run();
     repairTargets.clear();
     pendingLocked = false;
   }
@@ -149,6 +258,7 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   public void rollback() {
     var initialScore = transaction.isActive() ? transaction.initialScore() : null;
     transaction.rollback();
+    baselineChanged.run();
     pending.clear();
     repairTargets.clear();
     pendingLocked = false;
@@ -208,6 +318,7 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   public AlnsEvaluation<Score_> score() {
     requireOpen();
     var score = scoreDirector.calculateScore();
+    queryListener.accept(false);
     return new AlnsEvaluation<>(score.raw(), score.unassignedCount());
   }
 
@@ -221,7 +332,7 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
     try {
       change.apply(this);
       checkTermination();
-      probeCount++;
+      countProbe();
       return score();
     } catch (RuntimeException | Error failure) {
       originalFailure = failure;
@@ -294,7 +405,8 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
           moves,
           score -> {
             scoreDirector.incrementCalculationCount();
-            probeCount++;
+            countProbe();
+            queryListener.accept(true);
             results.add(new AlnsEvaluation<>(score.raw(), score.unassignedCount()));
           });
     } else {
@@ -308,8 +420,168 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   }
 
   private AlnsEvaluation<Score_> evaluateLocally(Move<Solution_> move) {
-    var score = transaction.evaluatePrimitives(move, this::checkTermination, () -> probeCount++);
+    var score = transaction.evaluatePrimitives(move, this::checkTermination, this::countProbe);
+    queryListener.accept(true);
     return new AlnsEvaluation<>(score.raw(), score.unassignedCount());
+  }
+
+  /**
+   * Scores targets against one unchanged baseline, retaining only their ordered best alternatives.
+   */
+  List<List<BuiltinAlnsOperators.Candidate<Solution_, Score_>>> bestAssignments(
+      List<AlnsTarget<Solution_>> targets, int retainedCount) {
+    requireActive();
+    if (retainedCount < 1)
+      throw new IllegalArgumentException("Retained alternative count must be positive.");
+    long revision = transaction.revision();
+    var sources = new ArrayList<AlnsPreparedAssignments<Solution_>>(targets.size());
+    for (var target : targets) {
+      checkTermination();
+      requirePending(target);
+      var source = model.prepareAssignments(target);
+      sources.add(source);
+      // The original regret loop fails when it reaches this target, after scoring earlier ones.
+      if (source.size() == 0) break;
+    }
+    var source = new PreparedBatch<>(sources);
+    Comparator<Retained<Score_>> worstFirst =
+        (a, b) -> {
+          int comparison = a.score().compareTo(b.score());
+          return comparison != 0 ? comparison : Integer.compare(b.ordinal(), a.ordinal());
+        };
+    var heaps = new ArrayList<PriorityQueue<Retained<Score_>>>(sources.size());
+    for (int i = 0; i < sources.size(); i++)
+      heaps.add(new PriorityQueue<>(Math.min(retainedCount, 16), worstFirst));
+    java.util.function.ObjIntConsumer<InnerScore<Score_>> retain =
+        (score, ordinal) -> {
+          if (transaction.revision() != revision)
+            throw new IllegalStateException("ALNS candidate baseline changed during evaluation.");
+          int targetIndex = source.targetIndex(ordinal);
+          var heap = heaps.get(targetIndex);
+          if (heap.size() == retainedCount) {
+            if (score.compareTo(heap.peek().score()) <= 0) return;
+            heap.remove();
+          }
+          heap.add(new Retained<>(ordinal - source.offsets[targetIndex], score));
+        };
+    if (source.size() > 0) {
+      checkTermination();
+      if (probeEvaluator != null && probeEvaluator.isEnabledFor(source.size())) {
+        flushReplay(null);
+        probeEvaluator.evaluateSource(
+            source,
+            (score, ordinal) -> {
+              scoreDirector.incrementCalculationCount();
+              countProbe();
+              queryListener.accept(true);
+              retain.accept(score, ordinal);
+            });
+      } else {
+        for (int i = 0; i < source.size(); i++) {
+          checkTermination();
+          var score =
+              transaction.evaluatePrimitives(
+                  source.move(i), this::checkTermination, this::countProbe);
+          queryListener.accept(true);
+          retain.accept(score, i);
+        }
+      }
+    }
+    var results =
+        new ArrayList<List<BuiltinAlnsOperators.Candidate<Solution_, Score_>>>(sources.size());
+    for (int i = 0; i < sources.size(); i++) {
+      var prepared = sources.get(i);
+      results.add(
+          heaps.get(i).stream()
+              .sorted(worstFirst.reversed())
+              .map(
+                  entry ->
+                      new BuiltinAlnsOperators.Candidate<Solution_, Score_>(
+                          prepared.assignment(entry.ordinal()),
+                          new AlnsEvaluation<>(
+                              entry.score().raw(), entry.score().unassignedCount()),
+                          revision))
+              .toList());
+    }
+    return results;
+  }
+
+  void assignEvaluated(BuiltinAlnsOperators.Candidate<Solution_, Score_> candidate) {
+    if (candidate.baselineRevision() != transaction.revision()) {
+      throw new IllegalStateException("ALNS winning evaluation belongs to a stale baseline.");
+    }
+    assign(candidate.assignment());
+    knownReplayScore =
+        InnerScore.withUnassignedCount(
+            candidate.evaluation().score(), candidate.evaluation().unassignedCount());
+    knownReplayRevision = transaction.revision();
+  }
+
+  private record Retained<Score_ extends Score<Score_>>(int ordinal, InnerScore<Score_> score) {}
+
+  private static final class PreparedBatch<S> implements MoveEvaluationSource<S> {
+    private final List<AlnsPreparedAssignments<S>> sources;
+    private final int[] offsets;
+
+    private PreparedBatch(List<AlnsPreparedAssignments<S>> sources) {
+      this.sources = List.copyOf(sources);
+      offsets = new int[sources.size() + 1];
+      for (int i = 0; i < sources.size(); i++)
+        offsets[i + 1] = Math.addExact(offsets[i], sources.get(i).size());
+    }
+
+    int targetIndex(int ordinal) {
+      Objects.checkIndex(ordinal, size());
+      int index = 0;
+      while (ordinal >= offsets[index + 1]) index++;
+      return index;
+    }
+
+    @Override
+    public int size() {
+      return offsets[offsets.length - 1];
+    }
+
+    @Override
+    public Move<S> move(int ordinal) {
+      int index = targetIndex(ordinal);
+      return sources.get(index).move(ordinal - offsets[index]);
+    }
+
+    @Override
+    public MoveEvaluationSource<S> rebase(greycos.solver.core.api.cotwin.lookup.Lookup lookup) {
+      if (sources.isEmpty() || !sources.getFirst().usesLazyRebasing()) {
+        return new PreparedBatch<>(
+            sources.stream().map(source -> source.rebaseEager(lookup)).toList());
+      }
+      return new MoveEvaluationSource<>() {
+        @SuppressWarnings("unchecked")
+        private final MoveEvaluationSource<S>[] rebasedSources =
+            (MoveEvaluationSource<S>[]) new MoveEvaluationSource<?>[sources.size()];
+
+        @Override
+        public int size() {
+          return PreparedBatch.this.size();
+        }
+
+        @Override
+        public Move<S> move(int ordinal) {
+          int index = targetIndex(ordinal);
+          var rebased = rebasedSources[index];
+          if (rebased == null) {
+            rebased = sources.get(index).rebase(lookup);
+            rebasedSources[index] = rebased;
+          }
+          return rebased.move(ordinal - offsets[index]);
+        }
+
+        @Override
+        public MoveEvaluationSource<S> rebase(
+            greycos.solver.core.api.cotwin.lookup.Lookup otherLookup) {
+          return PreparedBatch.this.rebase(otherLookup);
+        }
+      };
+    }
   }
 
   @Override
@@ -331,6 +603,7 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   @Override
   public void assign(AlnsAssignment<Solution_> assignment) {
     requireActive();
+    baselineChanged.run();
     checkTermination();
     var move = compileAssignment(assignment);
     AlnsPrimitiveMove.forEachPrimitive(
@@ -374,6 +647,7 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   @Override
   public void destroy(AlnsTarget<Solution_> target) {
     requireActive();
+    baselineChanged.run();
     checkTermination();
     var move = compileRemoval(target);
     if (pendingLocked) pending.add(target);

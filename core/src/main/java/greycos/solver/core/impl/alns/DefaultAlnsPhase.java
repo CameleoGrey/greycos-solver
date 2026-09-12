@@ -27,6 +27,7 @@ import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.alns.AlnsAcceptanceType;
 import greycos.solver.core.config.alns.AlnsDestroyOperatorConfig;
 import greycos.solver.core.config.alns.AlnsDestroyOperatorType;
+import greycos.solver.core.config.alns.AlnsMoveThreadingMode;
 import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.alns.AlnsRepairOperatorConfig;
 import greycos.solver.core.config.alns.AlnsRepairOperatorType;
@@ -41,6 +42,7 @@ import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
+import greycos.solver.core.impl.solver.termination.AlnsTerminationPolling;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
 
 /** One candidate construction and one acceptance decision per completed ALNS iteration. */
@@ -54,6 +56,7 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
   private final EnvironmentMode environmentMode;
   private AlnsMetrics<Solution_> metrics;
   private MoveEvaluationPipeline.Diagnostics moveEvaluationDiagnostics;
+  private AlnsRepairAttemptExecutor.Diagnostics repairAttemptDiagnostics;
 
   private DefaultAlnsPhase(Builder<Solution_> builder) {
     super(builder);
@@ -67,6 +70,10 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
 
   public MoveEvaluationPipeline.Diagnostics getMoveEvaluationDiagnostics() {
     return moveEvaluationDiagnostics;
+  }
+
+  public AlnsRepairAttemptExecutor.Diagnostics getRepairAttemptDiagnostics() {
+    return repairAttemptDiagnostics;
   }
 
   @Override
@@ -92,18 +99,48 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
     var random = solverScope.getWorkingRandom().moveIteratorUsage();
     var budget = new TrialBudget(director);
     phaseStarted(scope);
+    var polling = new AlnsTerminationPolling<>(scope, phaseTermination);
     Throwable phaseFailure = null;
     DefaultAlnsContext<Solution_, Score_> context = null;
+    AlnsRepairAttemptExecutor<Solution_, Score_> attempts = null;
     moveEvaluationDiagnostics = null;
+    repairAttemptDiagnostics = null;
     try (var resources = new ResourceScope();
         var ownedContext =
             context =
                 new DefaultAlnsContext<Solution_, Score_>(
+                    director, random, () -> polling.checkProbe() || budget.exhausted())) {
+      context.configureTermination(
+          () -> {
+            polling.logicalProbeConsumed();
+            budget.probeConsumed();
+          },
+          () -> {
+            polling.invalidate();
+            budget.invalidateTime();
+          },
+          () -> {
+            budget.invalidateTime();
+            return polling.checkNow() || budget.exhausted();
+          });
+      context.configureRepairQueryAllowance(budget::remainingCalculations);
+      if (config.getMoveThreadingMode() == AlnsMoveThreadingMode.REPAIR_ATTEMPTS) {
+        if (!polling.supportedForRepairAttempts())
+          throw new IllegalArgumentException(
+              "ALNS REPAIR_ATTEMPTS requires recognized built-in termination predicates.");
+        context.enableReplayRecording();
+        attempts =
+            resources.own(
+                new AlnsRepairAttemptExecutor<>(
                     director,
-                    random,
-                    () -> isPhaseTerminatedAfterYielding(scope) || budget.exhausted())) {
-      context.configureMoveThreads(
-          moveThreadCount, moveThreadBufferSize, threadFactory, phaseIndex, environmentMode);
+                    moveThreadCount,
+                    threadFactory == null ? Thread::new : threadFactory,
+                    environmentMode,
+                    config.getRepairAttemptCount()));
+      } else {
+        context.configureMoveThreads(
+            moveThreadCount, moveThreadBufferSize, threadFactory, phaseIndex, environmentMode);
+      }
       var initial = director.calculateScore();
       if (!initial.isFullyAssigned()) {
         throw new IllegalStateException(
@@ -118,7 +155,7 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
           resources.own(buildSelection(destroys, repairs, resources));
       AlnsAcceptancePolicy<Score_> acceptance = resources.own(buildAcceptance(director, resources));
       acceptance.initialize(initial.raw());
-      while (!isPhaseTerminatedAfterYielding(scope)) {
+      while (!polling.checkNow()) {
         adoptPending(scope, acceptance, context);
         var eligible = eligiblePairs(context, destroys, repairs);
         if (eligible.isEmpty()) {
@@ -166,9 +203,30 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
           pending.addAll(recovery);
           context.setPendingTargets(pending);
           context.destroy(destroyed);
-          boolean repaired = repair.operator().repair(context, List.copyOf(pending));
+          boolean repaired;
+          InnerScore<Score_> attemptScore = null;
+          if (attempts == null) {
+            repaired = repair.operator().repair(context, List.copyOf(pending));
+          } else {
+            long[] attemptSeeds = new long[config.getRepairAttemptCount()];
+            for (int i = 0; i < attemptSeeds.length; i++) attemptSeeds[i] = random.nextLong();
+            context.checkTerminationNow();
+            var attempt =
+                attempts.evaluate(context, List.copyOf(pending), repair.config(), attemptSeeds);
+            repaired = attempt != null;
+            if (repaired) {
+              attemptScore = attempt.score();
+              context.applyRepairJournal(attempt.journal(), attemptScore);
+            }
+          }
           if (repaired) {
             var evaluation = context.score();
+            if (attemptScore != null
+                && (!attemptScore.raw().equals(evaluation.score())
+                    || attemptScore.unassignedCount() != evaluation.unassignedCount())) {
+              throw new IllegalStateException(
+                  "ALNS repair attempt journal did not reproduce its evaluated score.");
+            }
             candidate = evaluation.score();
             if (evaluation.isComplete()) {
               if (!context.isChanged()) {
@@ -262,6 +320,10 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
           logger.debug(
               "{}ALNS move evaluation diagnostics: {}", logIndentation, moveEvaluationDiagnostics);
         }
+      }
+      if (attempts != null) {
+        scope.addChildThreadsScoreCalculationCount(attempts.getAdditionalCalculationCount());
+        repairAttemptDiagnostics = attempts.getDiagnostics();
       }
       finishPhase(scope, phaseFailure);
     }
@@ -679,6 +741,26 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   private void validate() {
+    var mode =
+        Objects.requireNonNullElse(config.getMoveThreadingMode(), AlnsMoveThreadingMode.PROBES);
+    if (mode == AlnsMoveThreadingMode.PROBES && config.getRepairAttemptCount() != null) {
+      throw new IllegalArgumentException("ALNS repairAttemptCount requires REPAIR_ATTEMPTS mode.");
+    }
+    if (mode == AlnsMoveThreadingMode.REPAIR_ATTEMPTS) {
+      if (config.getRepairAttemptCount() == null || config.getRepairAttemptCount() < 2) {
+        throw new IllegalArgumentException(
+            "ALNS REPAIR_ATTEMPTS requires an explicit repairAttemptCount of at least two.");
+      }
+      if (config.getRepairOperatorConfigList() == null
+          || config.getRepairOperatorConfigList().stream()
+              .anyMatch(
+                  repair ->
+                      repair.getCustomClass() != null
+                          || repair.getType() != AlnsRepairOperatorType.RANDOMIZED_GREEDY)) {
+        throw new IllegalArgumentException(
+            "ALNS REPAIR_ATTEMPTS requires built-in RANDOMIZED_GREEDY repair operators.");
+      }
+    }
     if (config.getRecoveryCount() != null && config.getRecoveryCount() < 0
         || config.getRepairScoreCalculationLimit() != null
             && config.getRepairScoreCalculationLimit() < 1
@@ -773,6 +855,12 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
     private long initialTime;
     private long finalElapsed;
     private boolean active;
+    private int probesSinceTimeRefresh;
+    private int checksWithoutProbe;
+    private boolean timeCached;
+    private boolean spentExhausted;
+    private final boolean strictTimePolling =
+        Boolean.getBoolean("greycos.solver.alns.strictTimePolling");
 
     TrialBudget(InnerScoreDirector<Solution_, ?> director) {
       this.director = director;
@@ -782,15 +870,47 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
       initialProbes = director.getCalculationCount();
       initialTime = System.nanoTime();
       active = true;
+      invalidateTime();
+    }
+
+    void probeConsumed() {
+      checksWithoutProbe = 0;
+      if (++probesSinceTimeRefresh >= 32) invalidateTime();
+    }
+
+    void invalidateTime() {
+      probesSinceTimeRefresh = 0;
+      checksWithoutProbe = 0;
+      timeCached = false;
+    }
+
+    long remainingCalculations() {
+      return !active || config.getRepairScoreCalculationLimit() == null
+          ? Long.MAX_VALUE
+          : Math.max(
+              0L,
+              config.getRepairScoreCalculationLimit()
+                  - (director.getCalculationCount() - initialProbes));
+    }
+
+    private boolean spentExhausted() {
+      if (!timeCached || strictTimePolling) {
+        spentExhausted = System.nanoTime() - initialTime >= config.getRepairSpentLimit().toNanos();
+        timeCached = true;
+      }
+      return spentExhausted;
     }
 
     boolean exhausted() {
+      // Custom operators can poll without making score queries. Their time budget must still
+      // progress even though the ordinary 32-probe sampling generation does not advance.
+      if (active && config.getRepairSpentLimit() != null && ++checksWithoutProbe >= 32)
+        invalidateTime();
       return active
           && (config.getRepairScoreCalculationLimit() != null
                   && director.getCalculationCount() - initialProbes
                       >= config.getRepairScoreCalculationLimit()
-              || config.getRepairSpentLimit() != null
-                  && System.nanoTime() - initialTime >= config.getRepairSpentLimit().toNanos());
+              || config.getRepairSpentLimit() != null && spentExhausted());
     }
 
     void stop() {

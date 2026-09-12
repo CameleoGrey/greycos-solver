@@ -245,6 +245,10 @@
                     
           <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
                     
+          <xs:element minOccurs="0" name="moveThreadingMode" type="tns:alnsMoveThreadingMode"/>
+                    
+          <xs:element minOccurs="0" name="repairAttemptCount" type="xs:int"/>
+                    
           <xs:element maxOccurs="unbounded" minOccurs="0" name="destroyOperator" type="tns:alnsDestroyOperatorConfig"/>
                     
           <xs:element maxOccurs="unbounded" minOccurs="0" name="repairOperator" type="tns:alnsRepairOperatorConfig"/>
@@ -1714,6 +1718,18 @@
       <xs:enumeration value="AND"/>
             
       <xs:enumeration value="OR"/>
+          
+    </xs:restriction>
+      
+  </xs:simpleType>
+    
+  <xs:simpleType name="alnsMoveThreadingMode">
+        
+    <xs:restriction base="xs:string">
+            
+      <xs:enumeration value="PROBES"/>
+            
+      <xs:enumeration value="REPAIR_ATTEMPTS"/>
           
     </xs:restriction>
       

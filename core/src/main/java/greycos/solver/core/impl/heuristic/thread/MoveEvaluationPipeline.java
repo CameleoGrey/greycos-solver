@@ -59,9 +59,23 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   private long stepCount;
   private volatile boolean waitingForReplay;
   private BooleanSupplier terminationCheck = () -> false;
+  private int claimChunkSize = 1;
 
   public void setTerminationCheck(BooleanSupplier terminationCheck) {
     this.terminationCheck = Objects.requireNonNull(terminationCheck);
+  }
+
+  /** Configures range claims before startup. Individually submitted moves always claim singly. */
+  public void setClaimChunkSize(int claimChunkSize) {
+    if (started || claimChunkSize < 1) {
+      throw new IllegalArgumentException(
+          "Claim chunk size must be positive and set before startup.");
+    }
+    this.claimChunkSize = claimChunkSize;
+  }
+
+  int claimChunkSize() {
+    return claimChunkSize;
   }
 
   @SuppressWarnings("unchecked")
@@ -136,6 +150,7 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     }
     var slot = epoch.slots[moveIndex % epoch.slots.length];
     slot.move = Objects.requireNonNull(move);
+    slot.source = null;
     slot.score = null;
     slot.completedIndex = -1;
     epoch.published = moveIndex + 1;
@@ -149,10 +164,49 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     }
   }
 
+  /**
+   * Publishes an indexed source range without constructing its moves on the coordinator. The
+   * returned length is shortened to the available candidate capacity, and is zero for a full
+   * window. A source must remain immutable until all of its submitted ranges have finished or been
+   * cancelled.
+   */
+  public int submitRange(
+      int moveIndex, MoveEvaluationSource<Solution_> source, int sourceIndex, int requestedCount) {
+    checkFailure();
+    Objects.requireNonNull(source);
+    Objects.checkFromIndexSize(sourceIndex, requestedCount, source.size());
+    var epoch = current;
+    if (epoch.closed || moveIndex != epoch.published) {
+      throw new IllegalStateException("Invalid candidate range at move (" + moveIndex + ").");
+    }
+    int count = Math.min(requestedCount, epoch.slots.length - (epoch.published - epoch.consumed));
+    int end = Math.addExact(moveIndex, count);
+    for (int index = moveIndex; index < end; index++) {
+      var slot = epoch.slots[index % epoch.slots.length];
+      slot.move = null;
+      slot.source = source;
+      slot.sourceIndex = sourceIndex + index - moveIndex;
+      slot.score = null;
+      slot.completedIndex = -1;
+    }
+    epoch.published = end;
+    generated += count;
+    if (count > 0) {
+      flush();
+    }
+    return count;
+  }
+
   /** Notify idle workers of a partial batch, without generating any additional candidates. */
   public void flush() {
     var epoch = current;
-    int remaining = epoch.closed ? 0 : epoch.published - epoch.claimed.get();
+    int claimed = epoch.claimed.get();
+    int remaining = epoch.closed ? 0 : epoch.published - claimed;
+    if (remaining > 0 && epoch.slots[claimed % epoch.slots.length].source != null) {
+      // One awakened worker claims a range. Waking one worker per probe needlessly schedules
+      // peers which have no range left to claim, especially on wide worker pools.
+      remaining = (remaining + claimChunkSize() - 1) / claimChunkSize();
+    }
     for (var worker : workers) {
       if (remaining <= 0) {
         break;
@@ -169,6 +223,82 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   public Result<Solution_> take() throws InterruptedException {
     var epoch = current;
     int moveIndex = epoch.consumed;
+    var slot = awaitResult(epoch, moveIndex);
+    if (slot == null) {
+      return null;
+    }
+    var move = slot.move == null ? slot.source.move(slot.sourceIndex) : slot.move;
+    var result = new Result<>(epoch.stepIndex, moveIndex, move, slot.score);
+    consume(epoch, slot);
+    return result;
+  }
+
+  /**
+   * Returns the next score without allocating a Result or resolving the coordinator move. Only
+   * pipelines that score every candidate support this method; null exclusively signals termination.
+   */
+  public @Nullable InnerScore<?> takeScore(int expectedStepIndex, int expectedMoveIndex)
+      throws InterruptedException {
+    requireScoreOnly();
+    var epoch = current;
+    if (epoch.stepIndex != expectedStepIndex || epoch.consumed != expectedMoveIndex) {
+      throw new IllegalStateException("Unexpected ordered score position.");
+    }
+    var slot = awaitResult(epoch, expectedMoveIndex);
+    if (slot == null) {
+      return null;
+    }
+    var score = Objects.requireNonNull(slot.score, "A score-only candidate produced no score.");
+    consume(epoch, slot);
+    return score;
+  }
+
+  /**
+   * Consumes at most the requested number of immediately ready scores, in order. The callback owns
+   * logical-budget checkpoints and may stop by throwing; no result after that callback is consumed.
+   */
+  public int drainScores(int maximumCount, ScoreConsumer consumer) throws InterruptedException {
+    requireScoreOnly();
+    Objects.requireNonNull(consumer);
+    if (maximumCount < 0) {
+      throw new IllegalArgumentException("Maximum score count must not be negative.");
+    }
+    var epoch = current;
+    int count = 0;
+    while (count < maximumCount
+        && current == epoch
+        && !epoch.closed
+        && epoch.consumed < epoch.published) {
+      checkFailure();
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Interrupted while draining move scores.");
+      }
+      int moveIndex = epoch.consumed;
+      var slot = epoch.slots[moveIndex % epoch.slots.length];
+      if (slot.completedIndex != moveIndex) {
+        break;
+      }
+      var score = Objects.requireNonNull(slot.score, "A score-only candidate produced no score.");
+      consume(epoch, slot);
+      count++;
+      consumer.accept(epoch.stepIndex, moveIndex, score);
+    }
+    return count;
+  }
+
+  @FunctionalInterface
+  public interface ScoreConsumer {
+    void accept(int stepIndex, int moveIndex, InnerScore<?> score);
+  }
+
+  private void requireScoreOnly() {
+    if (evaluateDoable) {
+      throw new IllegalStateException("Score-only consumption requires scoring every candidate.");
+    }
+  }
+
+  private @Nullable Slot<Solution_> awaitResult(Epoch<Solution_> epoch, int moveIndex)
+      throws InterruptedException {
     if (moveIndex >= epoch.published) {
       throw new IllegalStateException("No submitted result at move (" + moveIndex + ").");
     }
@@ -208,15 +338,19 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
         orderedWaitNanos += System.nanoTime() - waitStart;
       }
     }
-    var result = new Result<>(epoch.stepIndex, moveIndex, slot.move, slot.score);
+    return slot;
+  }
+
+  private void consume(Epoch<Solution_> epoch, Slot<Solution_> slot) {
+    boolean doable = slot.score != null;
     slot.move = null;
+    slot.source = null;
     slot.score = null;
     epoch.consumed++;
     consumed++;
-    if (result.isMoveDoable()) {
+    if (doable) {
       consumedDoable++;
     }
-    return result;
   }
 
   public void cancelStep() {
@@ -477,6 +611,8 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
 
   static final class Slot<Solution_> {
     Move<Solution_> move;
+    MoveEvaluationSource<Solution_> source;
+    int sourceIndex;
     InnerScore<?> score;
     volatile int completedIndex = -1;
   }
@@ -503,6 +639,7 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     void reset(int index, Move<Solution_> step, InnerScore<?> score) {
       for (var slot : slots) {
         slot.move = null;
+        slot.source = null;
         slot.score = null;
         slot.completedIndex = -1;
       }
@@ -516,14 +653,23 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       closed = false;
     }
 
-    int claim() {
+    /** Packs the inclusive start and exclusive end into one allocation-free claim. */
+    long claim(int maximumCount) {
       while (!closed) {
         int index = claimed.get();
-        if (index >= published) {
+        int limit = published;
+        if (index >= limit) {
           return -1;
         }
-        if (claimed.compareAndSet(index, index + 1)) {
-          return index;
+        int end = index + 1;
+        if (slots[index % slots.length].source != null) {
+          int maximumEnd = index + Math.min(maximumCount, limit - index);
+          while (end < maximumEnd && slots[end % slots.length].source != null) {
+            end++;
+          }
+        }
+        if (claimed.compareAndSet(index, end)) {
+          return ((long) index << 32) | (end & 0xffffffffL);
         }
       }
       return -1;

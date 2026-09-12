@@ -4,6 +4,10 @@ import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import greycos.solver.core.api.solver.SolverFactory;
@@ -13,6 +17,7 @@ import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.heuristic.thread.MoveThreadingWorkload;
 import greycos.solver.core.impl.heuristic.thread.MoveThreadingWorkload.Workload;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
+import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.solver.DefaultSolver;
 
@@ -33,6 +38,15 @@ public final class AlnsMoveThreadingBenchmark {
     "idleNanos",
     "orderedWaitNanos",
     "replayWaitNanos"
+  };
+  private static final String[] ATTEMPT_DIAGNOSTIC_NAMES = {
+    "started",
+    "completed",
+    "incomplete",
+    "discarded",
+    "selectedAttemptIndex",
+    "creditedQueries",
+    "workingCopies"
   };
 
   private AlnsMoveThreadingBenchmark() {}
@@ -100,6 +114,7 @@ public final class AlnsMoveThreadingBenchmark {
     long measureMillis = Long.parseLong(args[7]);
     int trials = Integer.parseInt(args[8]);
     boolean trace = Boolean.parseBoolean(args[9]);
+    var options = Options.read();
     if (warmupMillis < 0 || measureMillis < 1 || trials < 0 || destroyed < 1) {
       throw new IllegalArgumentException("Invalid benchmark budget or destruction count.");
     }
@@ -154,10 +169,15 @@ public final class AlnsMoveThreadingBenchmark {
             + Arrays.stream(DIAGNOSTIC_NAMES)
                 .map(namePart -> "pipeline_" + namePart)
                 .collect(Collectors.joining(","))
-            + ",warmup_termination");
+            + ",warmup_termination,termination_mode,phase_ms,gc_boundary,verification_gc_count,"
+            + "verification_gc_ms,repair_attempts_mode,repair_attempt_count,move_thread_buffer_size,"
+            + "external_deadline_fired,termination_requested_ms,"
+            + Arrays.stream(ATTEMPT_DIAGNOSTIC_NAMES)
+                .map(namePart -> "attempt_" + namePart)
+                .collect(Collectors.joining(",")));
     System.out.printf(
         Locale.ROOT,
-        "%s,%s,%d,%d,%d,%s,%d,%d,%d,%d,%d,%.3f,%.3f,%d,%d,%.3f,%d,%d,%d,%s,%s,%d,%d,%d,%.3f,%s,%s,%s,%s,%s%n",
+        "%s,%s,%d,%d,%d,%s,%d,%d,%d,%d,%d,%.3f,%.3f,%d,%d,%.3f,%d,%d,%d,%s,%s,%d,%d,%d,%.3f,%s,%s,%s,%s,%s,%s,%.3f,solve,%d,%d,%s,%d,%d,%s,%.3f,%s%n",
         name,
         threads,
         seed,
@@ -187,7 +207,17 @@ public final class AlnsMoveThreadingBenchmark {
         System.getProperty("java.version"),
         Boolean.getBoolean("greycos.solver.moveThreadDiagnostics"),
         result.diagnostics,
-        warmupMillis == 0 ? "none" : trials > 0 ? "fixed" : "time");
+        warmupMillis == 0 ? "none" : options.termination(trials),
+        options.termination(trials),
+        result.phaseNanos / 1_000_000.0,
+        result.verificationGcCount,
+        result.verificationGcMillis,
+        options.moveThreadingMode,
+        options.repairAttemptCount,
+        options.bufferSize,
+        result.externalDeadlineFired,
+        result.terminationRequestedNanos < 0 ? -1 : result.terminationRequestedNanos / 1_000_000.0,
+        result.attemptDiagnostics);
   }
 
   static <S> Result run(
@@ -202,27 +232,41 @@ public final class AlnsMoveThreadingBenchmark {
       boolean trace,
       EnvironmentMode environment) {
     long setupStart = System.nanoTime();
+    var options = Options.read();
     var problem = workload.createProblem(size);
     long initialScore = workload.recompute(problem).score();
     var termination =
         trials > 0
             ? new TerminationConfig().withStepCountLimit(trials)
-            : new TerminationConfig().withSpentLimit(Duration.ofMillis(millis));
+            : options.externalDeadline
+                ? new TerminationConfig()
+                : new TerminationConfig().withSpentLimit(Duration.ofMillis(millis));
     var config =
         AlnsMoveThreadingWorkload.config(
             workload, threads, seed, destroyed, repair, termination, environment);
+    config.withMoveThreadBufferSize(options.bufferSize);
+    options.configureAttempts(config.getPhaseConfigList().getFirst());
     var solver = (DefaultSolver<S>) SolverFactory.<S>create(config).buildSolver();
-    var recorder = new TrialRecorder<>(workload, trace);
+    var recorder =
+        new TrialRecorder<>(
+            workload, trace, solver, options.externalDeadline && trials == 0, millis);
     solver.addPhaseLifecycleListener(recorder);
     long setupNanos = System.nanoTime() - setupStart;
     long gcCountBefore = gcCount();
     long gcMillisBefore = gcMillis();
     long cpuBefore = processCpuNanos();
     long started = System.nanoTime();
-    var solution = solver.solve(problem);
+    S solution;
+    try {
+      solution = solver.solve(problem);
+    } finally {
+      recorder.closeDeadline();
+    }
     long elapsed = System.nanoTime() - started;
     long cpuNanos = processCpuNanos() - cpuBefore;
     long usedHeap = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+    long gcCountAfterSolve = gcCount();
+    long gcMillisAfterSolve = gcMillis();
     var independentlyComputed = workload.recompute(solution);
     if (!independentlyComputed.equals(workload.score(solution))) {
       throw new IllegalStateException(
@@ -234,6 +278,9 @@ public final class AlnsMoveThreadingBenchmark {
     if (trials > 0 && recorder.trials != trials) {
       throw new IllegalStateException("Expected " + trials + " trials, got " + recorder.trials);
     }
+    String stateFingerprint = MoveThreadingWorkload.fingerprint(workload.state(solution));
+    String traceFingerprint =
+        trace ? MoveThreadingWorkload.fingerprint(recorder.trace.toString()) : "";
     return new Result(
         setupNanos,
         elapsed,
@@ -242,35 +289,99 @@ public final class AlnsMoveThreadingBenchmark {
         solver.getScoreCalculationCount(),
         initialScore,
         independentlyComputed.score(),
-        MoveThreadingWorkload.fingerprint(workload.state(solution)),
-        trace ? MoveThreadingWorkload.fingerprint(recorder.trace.toString()) : "",
-        gcCount() - gcCountBefore,
-        gcMillis() - gcMillisBefore,
+        stateFingerprint,
+        traceFingerprint,
+        gcCountAfterSolve - gcCountBefore,
+        gcMillisAfterSolve - gcMillisBefore,
         usedHeap,
         cpuNanos,
-        diagnostics(solver));
+        diagnostics(solver),
+        recorder.phaseNanos,
+        gcCount() - gcCountAfterSolve,
+        gcMillis() - gcMillisAfterSolve,
+        recorder.externalDeadlineFired,
+        recorder.terminationRequestedNanos,
+        diagnostics(solver, "getRepairAttemptDiagnostics", ATTEMPT_DIAGNOSTIC_NAMES));
+  }
+
+  /** Optional settings keep the original ten positional arguments and old runtimes usable. */
+  private record Options(
+      boolean externalDeadline, String moveThreadingMode, int repairAttemptCount, int bufferSize) {
+    private static final String PREFIX = "greycos.solver.alnsBenchmark.";
+
+    static Options read() {
+      String termination = System.getProperty(PREFIX + "termination", "internal");
+      if (!termination.equals("internal") && !termination.equals("external")) {
+        throw new IllegalArgumentException("Benchmark termination must be internal or external.");
+      }
+      String mode = System.getProperty(PREFIX + "moveThreadingMode", "PROBES");
+      int attempts = Integer.parseInt(System.getProperty(PREFIX + "repairAttemptCount", "1"));
+      int buffer = Integer.parseInt(System.getProperty(PREFIX + "bufferSize", "10"));
+      if ((!mode.equals("PROBES") && !mode.equals("REPAIR_ATTEMPTS"))
+          || buffer < 1
+          || (mode.equals("REPAIR_ATTEMPTS") ? attempts < 2 : attempts != 1)) {
+        throw new IllegalArgumentException(
+            "Use PROBES with one attempt or REPAIR_ATTEMPTS with at least two; buffer must be positive.");
+      }
+      return new Options(termination.equals("external"), mode, attempts, buffer);
+    }
+
+    String termination(int trials) {
+      return trials > 0 ? "fixed" : externalDeadline ? "external" : "time";
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void configureAttempts(Object phase) {
+      if (moveThreadingMode.equals("PROBES")) return;
+      try {
+        Class modeClass = Class.forName("greycos.solver.core.config.alns.AlnsMoveThreadingMode");
+        phase
+            .getClass()
+            .getMethod("setMoveThreadingMode", modeClass)
+            .invoke(phase, Enum.valueOf(modeClass, moveThreadingMode));
+        try {
+          phase
+              .getClass()
+              .getMethod("setRepairAttemptCount", int.class)
+              .invoke(phase, repairAttemptCount);
+        } catch (NoSuchMethodException ignored) {
+          phase
+              .getClass()
+              .getMethod("setRepairAttemptCount", Integer.class)
+              .invoke(phase, repairAttemptCount);
+        }
+      } catch (ReflectiveOperationException exception) {
+        throw new IllegalArgumentException(
+            "This runtime does not support the requested repair-attempt benchmark configuration.",
+            exception);
+      }
+    }
   }
 
   private static String diagnostics(DefaultSolver<?> solver) {
+    return diagnostics(solver, "getMoveEvaluationDiagnostics", DIAGNOSTIC_NAMES);
+  }
+
+  private static String diagnostics(DefaultSolver<?> solver, String accessor, String[] names) {
     try {
       var phase = solver.getPhaseList().getFirst();
-      var snapshot = phase.getClass().getMethod("getMoveEvaluationDiagnostics").invoke(phase);
-      if (snapshot == null) return unavailableDiagnostics();
+      var snapshot = phase.getClass().getMethod(accessor).invoke(phase);
+      if (snapshot == null) return unavailableDiagnostics(names);
       var values = new StringBuilder();
-      for (String name : DIAGNOSTIC_NAMES) {
+      for (String name : names) {
         if (!values.isEmpty()) values.append(',');
         values.append(snapshot.getClass().getMethod(name).invoke(snapshot));
       }
       return values.toString();
     } catch (NoSuchMethodException exception) {
-      return unavailableDiagnostics();
+      return unavailableDiagnostics(names);
     } catch (ReflectiveOperationException exception) {
       throw new IllegalStateException("Unable to read ALNS worker diagnostics.", exception);
     }
   }
 
-  private static String unavailableDiagnostics() {
-    return Arrays.stream(DIAGNOSTIC_NAMES).map(ignored -> "-1").collect(Collectors.joining(","));
+  private static String unavailableDiagnostics(String[] names) {
+    return Arrays.stream(names).map(ignored -> "-1").collect(Collectors.joining(","));
   }
 
   private static long gcCount() {
@@ -296,10 +407,77 @@ public final class AlnsMoveThreadingBenchmark {
     private final StringBuilder trace = new StringBuilder();
     private long trials;
     private long probes;
+    private final DefaultSolver<S> solver;
+    private final long budgetNanos;
+    private final ScheduledExecutorService deadlineExecutor;
+    private ScheduledFuture<?> deadlineTask;
+    private long phaseStartedNanos;
+    private long phaseNanos;
+    private volatile boolean externalDeadlineFired;
+    private volatile long terminationRequestedNanos = -1;
 
-    TrialRecorder(Workload<S> workload, boolean enabled) {
+    TrialRecorder(
+        Workload<S> workload,
+        boolean enabled,
+        DefaultSolver<S> solver,
+        boolean externalDeadline,
+        long millis) {
       this.workload = workload;
       this.enabled = enabled;
+      this.solver = solver;
+      budgetNanos = TimeUnit.MILLISECONDS.toNanos(millis);
+      deadlineExecutor =
+          externalDeadline
+              ? Executors.newSingleThreadScheduledExecutor(
+                  runnable -> {
+                    var thread = new Thread(runnable, "alns-benchmark-deadline");
+                    thread.setDaemon(true);
+                    return thread;
+                  })
+              : null;
+    }
+
+    @Override
+    public void phaseStarted(AbstractPhaseScope<S> phaseScope) {
+      phaseStartedNanos = System.nanoTime();
+      if (deadlineExecutor != null) {
+        // ScheduledExecutorService uses relative monotonic delays; no solver clock is changed.
+        deadlineTask =
+            deadlineExecutor.schedule(
+                () -> {
+                  terminationRequestedNanos = System.nanoTime() - phaseStartedNanos;
+                  externalDeadlineFired = true;
+                  solver.terminateEarly();
+                },
+                Math.max(0, budgetNanos - (System.nanoTime() - phaseStartedNanos)),
+                TimeUnit.NANOSECONDS);
+      }
+    }
+
+    @Override
+    public void phaseEnded(AbstractPhaseScope<S> phaseScope) {
+      phaseNanos = System.nanoTime() - phaseStartedNanos;
+      if (deadlineTask != null) deadlineTask.cancel(false);
+    }
+
+    void closeDeadline() {
+      if (deadlineExecutor == null) return;
+      deadlineExecutor.shutdownNow();
+      boolean interrupted = Thread.interrupted();
+      try {
+        // The timer only calls terminateEarly(); join it before sampling final process metrics.
+        while (!deadlineExecutor.isTerminated()) {
+          try {
+            if (!deadlineExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+              throw new IllegalStateException("Benchmark deadline thread failed to stop.");
+            }
+          } catch (InterruptedException exception) {
+            interrupted = true;
+          }
+        }
+      } finally {
+        if (interrupted) Thread.currentThread().interrupt();
+      }
     }
 
     @Override
@@ -360,5 +538,11 @@ public final class AlnsMoveThreadingBenchmark {
       long gcMillis,
       long usedHeapBytes,
       long cpuNanos,
-      String diagnostics) {}
+      String diagnostics,
+      long phaseNanos,
+      long verificationGcCount,
+      long verificationGcMillis,
+      boolean externalDeadlineFired,
+      long terminationRequestedNanos,
+      String attemptDiagnostics) {}
 }

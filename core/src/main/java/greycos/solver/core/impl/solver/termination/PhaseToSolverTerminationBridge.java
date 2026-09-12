@@ -16,6 +16,10 @@ public class PhaseToSolverTerminationBridge<Solution_> implements Termination<So
     this.solverTermination = solverTermination;
   }
 
+  Termination<Solution_> getSolverTermination() {
+    return solverTermination;
+  }
+
   @Override
   public boolean isSolverTerminated(SolverScope<Solution_> solverScope) {
     return solverTermination.isSolverTerminated(solverScope);
