@@ -22,6 +22,7 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
 
   private final InnerScoreDirector<Solution_, Score_> backingScoreDirector;
   private List<ChangeAction<Solution_>> variableChanges;
+  private boolean variableChangesExposed;
 
   /*
    * The fromIndex of afterListVariableChanged must match the fromIndex of its beforeListVariableChanged call.
@@ -59,27 +60,32 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
       Map<Object, Integer> cache) {
     this.backingScoreDirector = backingScoreDirector;
     this.variableChanges = variableChanges;
+    this.variableChangesExposed = true;
     this.cache = cache;
   }
 
   @Override
   public greycos.solver.core.preview.api.move.Move<Solution_> createUndoMove() {
-    // Keep this off the hot path: the undo move retains the current list, and undoChanges()
-    // replaces our reference instead of mutating the retained list.
+    // The undo move retains the current list; undoChanges() must not clear it.
+    variableChangesExposed = true;
     return new RecordedUndoMove<>(variableChanges);
   }
 
   @Override
   public void undoChanges() {
     var changeCount = variableChanges.size();
-    if (changeCount == 0) {
-      return;
+    if (changeCount > 0) {
+      for (var i = changeCount - 1; i >= 0; i--) {
+        variableChanges.get(i).undo(backingScoreDirector);
+      }
+      Objects.requireNonNull(backingScoreDirector).triggerVariableListeners();
     }
-    for (var i = changeCount - 1; i >= 0; i--) {
-      variableChanges.get(i).undo(backingScoreDirector);
+    if (variableChangesExposed) {
+      variableChanges = new ArrayList<>();
+      variableChangesExposed = false;
+    } else {
+      variableChanges.clear();
     }
-    Objects.requireNonNull(backingScoreDirector).triggerVariableListeners();
-    variableChanges = new ArrayList<>();
     if (cache != null) {
       cache.clear();
     }
@@ -208,6 +214,8 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
    * delegated score director events.
    */
   public VariableChangeRecordingScoreDirector<Solution_, Score_> getNonDelegating() {
+    // Another recorder may retain this list, or create an undo move from it.
+    variableChangesExposed = true;
     return new VariableChangeRecordingScoreDirector<>(null, variableChanges, cache);
   }
 

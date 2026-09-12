@@ -3,14 +3,15 @@ package greycos.solver.core.impl.heuristic.thread;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Field;
-import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.impl.constructionheuristic.decider.MultiThreadedConstructionHeuristicDecider;
@@ -35,10 +36,12 @@ import org.junit.jupiter.api.Test;
 class MoveThreadRunnerConfigurationTest {
 
   @Test
-  void constructionHeuristicMoveThreadsRelyOnOriginSideDoabilityFiltering() throws Exception {
+  void constructionHeuristicMoveThreadsRelyOnOriginSideDoabilityFiltering() {
     var solverScope = new SolverScope<Object>();
     solverScope.setScoreDirector(mock(InnerScoreDirector.class));
     var phaseScope = new ConstructionHeuristicPhaseScope<>(solverScope, 0);
+    var pipeline = mockPipeline();
+    var configuredPipeline = new AtomicReference<MoveEvaluationPipeline<Object>>();
 
     var decider =
         new MultiThreadedConstructionHeuristicDecider<>(
@@ -52,22 +55,26 @@ class MoveThreadRunnerConfigurationTest {
           protected ExecutorService createThreadPoolExecutor() {
             return mock(ExecutorService.class);
           }
+
+          @Override
+          protected MoveEvaluationPipeline<Object> createMoveEvaluationPipeline(int phaseIndex) {
+            configuredPipeline.set(super.createMoveEvaluationPipeline(phaseIndex));
+            return pipeline;
+          }
         };
 
     decider.phaseStarted(phaseScope);
-    var runnerList = readRunnerList(decider);
-
-    assertThat(runnerList).hasSize(2);
-    for (var runner : runnerList) {
-      assertThat(readEvaluateDoable(runner)).isFalse();
-    }
+    assertThat(configuredPipeline.get().evaluateDoable).isFalse();
+    verify(pipeline).start(phaseScope.getScoreDirector());
   }
 
   @Test
-  void localSearchMoveThreadsPreFilterMoveDoability() throws Exception {
+  void localSearchMoveThreadsPreFilterMoveDoability() {
     var solverScope = new SolverScope<Object>();
     solverScope.setScoreDirector(mock(InnerScoreDirector.class));
     var phaseScope = new LocalSearchPhaseScope<>(solverScope, 0);
+    var pipeline = mockPipeline();
+    var configuredPipeline = new AtomicReference<MoveEvaluationPipeline<Object>>();
 
     var decider =
         new MultiThreadedLocalSearchDecider<>(
@@ -83,25 +90,27 @@ class MoveThreadRunnerConfigurationTest {
           protected ExecutorService createThreadPoolExecutor() {
             return mock(ExecutorService.class);
           }
+
+          @Override
+          protected MoveEvaluationPipeline<Object> createMoveEvaluationPipeline(int phaseIndex) {
+            configuredPipeline.set(super.createMoveEvaluationPipeline(phaseIndex));
+            return pipeline;
+          }
         };
 
     decider.phaseStarted(phaseScope);
-    var runnerList = readRunnerList(decider);
-
-    assertThat(runnerList).hasSize(2);
-    for (var runner : runnerList) {
-      assertThat(readEvaluateDoable(runner)).isTrue();
-    }
+    assertThat(configuredPipeline.get().evaluateDoable).isTrue();
+    verify(pipeline).start(phaseScope.getScoreDirector());
   }
 
   @Test
   @SuppressWarnings({"rawtypes", "unchecked"})
-  void localSearchCleanupKeepsNonMoveOperationsForPendingMoveStep() throws Exception {
+  void pendingMoveCancelsCandidatesAndPublishesTheSelectedStep() {
     var scoreDirector = mock(InnerScoreDirector.class);
-    when(scoreDirector.executeTemporaryMove(any(), anyBoolean()))
-        .thenReturn(InnerScore.fullyAssigned(HardSoftScore.ZERO));
-    greycos.solver.core.preview.api.move.Move<Object> pendingMove =
-        mock(greycos.solver.core.preview.api.move.Move.class);
+    var score = InnerScore.fullyAssigned(HardSoftScore.ZERO);
+    when(scoreDirector.executeTemporaryMove(any(), anyBoolean())).thenReturn(score);
+    Move<Object> pendingMove = mock(Move.class);
+    var pipeline = mockPipeline();
 
     var solverScope = new SolverScope<Object>();
     solverScope.setScoreDirector(scoreDirector);
@@ -123,40 +132,32 @@ class MoveThreadRunnerConfigurationTest {
           protected ExecutorService createThreadPoolExecutor() {
             return mock(ExecutorService.class);
           }
+
+          @Override
+          protected MoveEvaluationPipeline<Object> createMoveEvaluationPipeline(int phaseIndex) {
+            return pipeline;
+          }
         };
 
-    BlockingQueue<MoveThreadOperation<Object>> operationQueue = new ArrayBlockingQueue<>(10);
-    Move<Object> move = mock(Move.class);
-    operationQueue.add(new ApplyStepOperation<>(7, move, HardSoftScore.ZERO));
-    operationQueue.add(new MoveEvaluationOperation<>(0, 0, move));
-    operationQueue.add(new DestroyOperation<>());
-
-    var operationQueueField =
-        MultiThreadedLocalSearchDecider.class.getDeclaredField("operationQueue");
-    operationQueueField.setAccessible(true);
-    operationQueueField.set(decider, operationQueue);
-
-    var resultQueueField = MultiThreadedLocalSearchDecider.class.getDeclaredField("resultQueue");
-    resultQueueField.setAccessible(true);
-    resultQueueField.set(decider, new OrderByMoveIndexBlockingQueue<>(10));
-
+    decider.phaseStarted(phaseScope);
     decider.decideNextStep(stepScope);
 
-    assertThat(operationQueue).hasSize(4);
-    assertThat(operationQueue).anyMatch(op -> op instanceof DestroyOperation);
-    assertThat(operationQueue).noneMatch(op -> op instanceof MoveEvaluationOperation);
+    var order = inOrder(pipeline);
+    order.verify(pipeline).start(scoreDirector);
+    order.verify(pipeline).startNextStep(0);
+    order.verify(pipeline).cancelStep();
+    order.verify(pipeline).applyStep(1, pendingMove, score);
+    verify(pipeline, never()).submit(anyInt(), any());
+    verify(pipeline, never()).close();
+    verify(pipeline, never()).abort();
+    assertThat(stepScope.getStep()).isSameAs(pendingMove);
+    assertThat(stepScope.getScore()).isSameAs(score);
+    assertThat(stepScope.getSelectedMoveCount()).isEqualTo(1);
+    assertThat(stepScope.getAcceptedMoveCount()).isEqualTo(1);
   }
 
   @SuppressWarnings("unchecked")
-  private static List<MoveThreadRunner<Object, ?>> readRunnerList(Object decider) throws Exception {
-    var field = decider.getClass().getSuperclass().getDeclaredField("moveThreadRunnerList");
-    field.setAccessible(true);
-    return (List<MoveThreadRunner<Object, ?>>) field.get(decider);
-  }
-
-  private static boolean readEvaluateDoable(MoveThreadRunner<?, ?> runner) throws Exception {
-    Field field = MoveThreadRunner.class.getDeclaredField("evaluateDoable");
-    field.setAccessible(true);
-    return (boolean) field.get(runner);
+  private static MoveEvaluationPipeline<Object> mockPipeline() {
+    return mock(MoveEvaluationPipeline.class);
   }
 }

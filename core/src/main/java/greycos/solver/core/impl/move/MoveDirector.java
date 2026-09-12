@@ -481,6 +481,26 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     }
   }
 
+  /** Evaluate a temporary move without creating an undo move for the postprocessor to retain. */
+  public final <Result_> @Nullable Result_ executeTemporaryWithScore(
+      Move<Solution_> move, Function<InnerScore<Score_>, @Nullable Result_> postprocessor) {
+    var ephemeralMoveDirector = borrowEphemeralMoveDirector();
+    var moveExecuted = false;
+    try {
+      ephemeralMoveDirector.execute(move);
+      moveExecuted = true;
+      return postprocessor.apply(backingScoreDirector.calculateScore());
+    } finally {
+      if (moveExecuted) {
+        try {
+          ephemeralMoveDirector.close(); // This undoes the move.
+        } finally {
+          releaseEphemeralMoveDirector(ephemeralMoveDirector);
+        }
+      }
+    }
+  }
+
   public <Result_> @Nullable Result_ executeTemporary(
       Move<Solution_> move,
       Function<Solution_, @Nullable Result_> postprocessor,

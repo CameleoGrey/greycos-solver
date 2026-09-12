@@ -1,295 +1,178 @@
 package greycos.solver.core.impl.heuristic.thread;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
+import greycos.solver.core.impl.phase.scope.SolverLifecyclePoint;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
-import greycos.solver.core.impl.solver.thread.MemoryMonitor;
-import greycos.solver.core.impl.solver.thread.PerformanceMetrics;
 import greycos.solver.core.preview.api.move.Move;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+/** A persistent owner of one incremental working solution and an addressed step mailbox. */
+final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements Runnable {
 
-/**
- * Core move thread implementation that processes operations from the operation queue. This runner
- * handles setup, move evaluation, step application, and cleanup operations.
- *
- * @param <Solution_> the solution type, class with the {@link
- *     greycos.solver.core.api.cotwin.solution.PlanningSolution} annotation
- * @param <Score_> the score type to go with the solution
- */
-public class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements Runnable {
+  private final MoveEvaluationPipeline<Solution_> pipeline;
+  private final int workerIndex;
+  private final InnerScoreDirector<Solution_, Score_> parent;
+  volatile MoveEvaluationPipeline.Epoch<Solution_> mailbox;
+  volatile int appliedStepIndex = -1;
+  volatile Thread thread;
+  volatile boolean waiting;
+  long calculationCount;
+  long evaluated;
+  long scored;
+  long samples;
+  long rebaseNanos;
+  long evaluationNanos;
+  long replayNanos;
+  long idleNanos;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MoveThreadRunner.class);
-
-  private final String logIndentation;
-  private final int moveThreadIndex;
-  private final boolean evaluateDoable;
-  private final BlockingQueue<MoveThreadOperation<Solution_>> operationQueue;
-  private final OrderByMoveIndexBlockingQueue<Solution_> resultQueue;
-  private final CyclicBarrier moveThreadBarrier;
-  private final boolean assertMoveScoreFromScratch;
-  private final boolean assertExpectedUndoMoveScore;
-  private final boolean assertStepScoreFromScratch;
-  private final boolean assertExpectedStepScore;
-  private final boolean assertShadowVariablesAreNotStaleAfterStep;
-
-  private InnerScoreDirector<Solution_, Score_> scoreDirector = null;
-  private AtomicLong calculationCount = new AtomicLong(-1);
-
-  private final MemoryMonitor memoryMonitor;
-  private final PerformanceMetrics performanceMetrics;
-  private final boolean enableMemoryMonitoring;
-  private final boolean enablePerformanceMetrics;
-
-  public MoveThreadRunner(
-      String logIndentation,
-      int moveThreadIndex,
-      boolean evaluateDoable,
-      BlockingQueue<MoveThreadOperation<Solution_>> operationQueue,
-      OrderByMoveIndexBlockingQueue<Solution_> resultQueue,
-      CyclicBarrier moveThreadBarrier,
-      boolean assertMoveScoreFromScratch,
-      boolean assertExpectedUndoMoveScore,
-      boolean assertStepScoreFromScratch,
-      boolean assertExpectedStepScore,
-      boolean assertShadowVariablesAreNotStaleAfterStep) {
-    this(
-        logIndentation,
-        moveThreadIndex,
-        evaluateDoable,
-        operationQueue,
-        resultQueue,
-        moveThreadBarrier,
-        assertMoveScoreFromScratch,
-        assertExpectedUndoMoveScore,
-        assertStepScoreFromScratch,
-        assertExpectedStepScore,
-        assertShadowVariablesAreNotStaleAfterStep,
-        null,
-        null,
-        false,
-        false);
-  }
-
-  public MoveThreadRunner(
-      String logIndentation,
-      int moveThreadIndex,
-      boolean evaluateDoable,
-      BlockingQueue<MoveThreadOperation<Solution_>> operationQueue,
-      OrderByMoveIndexBlockingQueue<Solution_> resultQueue,
-      CyclicBarrier moveThreadBarrier,
-      boolean assertMoveScoreFromScratch,
-      boolean assertExpectedUndoMoveScore,
-      boolean assertStepScoreFromScratch,
-      boolean assertExpectedStepScore,
-      boolean assertShadowVariablesAreNotStaleAfterStep,
-      MemoryMonitor memoryMonitor,
-      PerformanceMetrics performanceMetrics,
-      boolean enableMemoryMonitoring,
-      boolean enablePerformanceMetrics) {
-    this.logIndentation = logIndentation;
-    this.moveThreadIndex = moveThreadIndex;
-    this.evaluateDoable = evaluateDoable;
-    this.operationQueue = operationQueue;
-    this.resultQueue = resultQueue;
-    this.moveThreadBarrier = moveThreadBarrier;
-    this.assertMoveScoreFromScratch = assertMoveScoreFromScratch;
-    this.assertExpectedUndoMoveScore = assertExpectedUndoMoveScore;
-    this.assertStepScoreFromScratch = assertStepScoreFromScratch;
-    this.assertExpectedStepScore = assertExpectedStepScore;
-    this.assertShadowVariablesAreNotStaleAfterStep = assertShadowVariablesAreNotStaleAfterStep;
-    this.memoryMonitor = memoryMonitor;
-    this.performanceMetrics = performanceMetrics;
-    this.enableMemoryMonitoring = enableMemoryMonitoring;
-    this.enablePerformanceMetrics = enablePerformanceMetrics;
+  MoveThreadRunner(
+      MoveEvaluationPipeline<Solution_> pipeline,
+      int workerIndex,
+      InnerScoreDirector<Solution_, Score_> parent,
+      MoveEvaluationPipeline.Epoch<Solution_> initialEpoch) {
+    this.pipeline = pipeline;
+    this.workerIndex = workerIndex;
+    this.parent = parent;
+    mailbox = initialEpoch;
   }
 
   @Override
   public void run() {
+    thread = Thread.currentThread();
+    InnerScoreDirector<Solution_, Score_> director = null;
     try {
-      int stepIndex = -1;
-      while (true) {
-        MoveThreadOperation<Solution_> operation;
-        try {
-          operation = operationQueue.take();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          break;
-        }
-
-        if (enableMemoryMonitoring && memoryMonitor != null) {
-          MemoryMonitor.MemoryPressureLevel pressure = memoryMonitor.checkMemoryUsage();
-          if (pressure == MemoryMonitor.MemoryPressureLevel.CRITICAL
-              || pressure == MemoryMonitor.MemoryPressureLevel.EMERGENCY) {
-            LOGGER.warn(
-                "{}            Move thread ({}) detected high memory pressure ({}), "
-                    + "consider reducing moveThreadCount or moveThreadBufferSize.",
-                logIndentation,
-                moveThreadIndex,
-                pressure);
-          }
-        }
-
-        if (operation instanceof SetupOperation) {
-          SetupOperation<Solution_, Score_> setupOperation =
-              (SetupOperation<Solution_, Score_>) operation;
-          var parentScoreDirector = setupOperation.getScoreDirector();
-          try {
-            scoreDirector =
-                parentScoreDirector.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
-            stepIndex = 0;
-            scoreDirector.calculateScore();
-            try {
-              moveThreadBarrier.await();
-            } catch (InterruptedException | BrokenBarrierException e) {
-              Thread.currentThread().interrupt();
-              break;
-            }
-          } catch (RuntimeException | Error throwable) {
-            if (scoreDirector != null) {
-              try {
-                scoreDirector.close();
-              } catch (Exception e) {
-                LOGGER.warn(
-                    "{}            Move thread ({}) failed to close score director during setup.",
-                    logIndentation,
-                    moveThreadIndex,
-                    e);
-              }
-            }
-            throw throwable;
-          }
-        } else if (operation instanceof DestroyOperation) {
-          calculationCount.set(scoreDirector.getCalculationCount());
-          break;
-        } else if (operation instanceof ApplyStepOperation) {
-          ApplyStepOperation<Solution_, Score_> applyStepOperation =
-              (ApplyStepOperation<Solution_, Score_>) operation;
-          if (stepIndex + 1 != applyStepOperation.getStepIndex()) {
-            throw new IllegalStateException(
-                "Impossible situation: moveThread's stepIndex ("
-                    + stepIndex
-                    + ") is not followed by operation's stepIndex ("
-                    + applyStepOperation.getStepIndex()
-                    + ").");
-          }
-          stepIndex = applyStepOperation.getStepIndex();
-          Move<Solution_> step =
-              applyStepOperation.getStep().rebase(scoreDirector.getMoveDirector());
-          Score_ score = applyStepOperation.getScore();
-          scoreDirector.getMoveDirector().execute(step);
-          predictWorkingStepScore(step, InnerScore.fullyAssigned(score));
-          try {
-            moveThreadBarrier.await();
-          } catch (InterruptedException | BrokenBarrierException e) {
-            Thread.currentThread().interrupt();
+      if (pipeline.aborting) {
+        return;
+      }
+      director = parent.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
+      InnerScore<Score_> workingScore = director.calculateScore();
+      var epoch = mailbox;
+      appliedStepIndex = epoch.stepIndex;
+      pipeline.acknowledge();
+      while (!pipeline.aborting) {
+        if (Thread.currentThread().isInterrupted()) {
+          if (pipeline.aborting) {
             break;
           }
-        } else if (operation instanceof MoveEvaluationOperation) {
-          MoveEvaluationOperation<Solution_> moveEvaluationOperation =
-              (MoveEvaluationOperation<Solution_>) operation;
-          int moveIndex = moveEvaluationOperation.getMoveIndex();
-          if (stepIndex != moveEvaluationOperation.getStepIndex()) {
-            throw new IllegalStateException(
-                "Impossible situation: moveThread's stepIndex ("
-                    + stepIndex
-                    + ") differs from operation's stepIndex ("
-                    + moveEvaluationOperation.getStepIndex()
-                    + ") with moveIndex ("
-                    + moveIndex
-                    + ").");
+          throw new IllegalStateException("Move worker interrupted outside cancellation.");
+        }
+        var next = mailbox;
+        if (next != epoch) {
+          if (next.stepIndex != epoch.stepIndex + 1) {
+            throw new IllegalStateException("Move worker received a nonconsecutive step update.");
           }
-          Move<Solution_> originalMove = moveEvaluationOperation.getMove();
-          if (originalMove == null) {
-            throw new NullPointerException("Move cannot be null in MoveEvaluationOperation");
+          long start = pipeline.diagnosticsEnabled ? System.nanoTime() : 0;
+          Move<Solution_> step = next.step.rebase(director.getMoveDirector());
+          director.getMoveDirector().execute(step);
+          @SuppressWarnings("unchecked")
+          var expected = (InnerScore<Score_>) next.stepScore;
+          workingScore = expected;
+          director.getSolutionDescriptor().setScore(director.getWorkingSolution(), expected.raw());
+          if (pipeline.assertStepScoreFromScratch) {
+            director.assertPredictedScoreFromScratch(expected, step);
           }
-          Move<Solution_> move = originalMove.rebase(scoreDirector.getMoveDirector());
-
-          long evaluationStartTime = System.nanoTime();
-          boolean accepted = false;
-
-          try {
-            if (evaluateDoable
-                && move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove
-                && !selectorBasedMove.isMoveDoable(scoreDirector)) {
-              resultQueue.addUndoableMove(moveThreadIndex, stepIndex, moveIndex, move);
-            } else {
-              var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
-              if (score == null) {
-                score = scoreDirector.calculateScore();
-              }
-              resultQueue.addMove(moveThreadIndex, stepIndex, moveIndex, move, score.raw());
-              accepted = true;
+          if (pipeline.assertExpectedStepScore) {
+            director.assertExpectedWorkingScore(expected, step);
+          }
+          if (pipeline.assertShadowVariablesAreNotStaleAfterStep) {
+            director.assertShadowVariablesAreNotStale(expected, step);
+          }
+          if (pipeline.diagnosticsEnabled) {
+            replayNanos += System.nanoTime() - start;
+          }
+          epoch = next;
+          // No accesses to the previous epoch may occur after this release acknowledgement.
+          appliedStepIndex = epoch.stepIndex;
+          pipeline.acknowledge();
+        }
+        if (pipeline.stopping) {
+          // Close may have published a final control after the mailbox read above.
+          if (mailbox != epoch) {
+            continue;
+          }
+          break;
+        }
+        int moveIndex = epoch.claim();
+        if (moveIndex >= 0) {
+          // Cancellation can race the claim. Never interrupt a partial transaction.
+          if (epoch.closed) {
+            continue;
+          }
+          var slot = epoch.slots[moveIndex % epoch.slots.length];
+          boolean sample = pipeline.diagnosticsEnabled && (evaluated & 1023) == 0;
+          long start = sample ? System.nanoTime() : 0;
+          var move = slot.move.rebase(director.getMoveDirector());
+          if (sample) {
+            rebaseNanos += System.nanoTime() - start;
+            start = System.nanoTime();
+          }
+          InnerScore<Score_> score = null;
+          if (!(pipeline.evaluateDoable
+              && move instanceof AbstractSelectorBasedMove<Solution_> selector
+              && !selector.isMoveDoable(director))) {
+            score = director.executeTemporaryMove(move, pipeline.assertMoveScoreFromScratch);
+            if (pipeline.assertExpectedUndoMoveScore) {
+              director.assertExpectedUndoMoveScore(
+                  move,
+                  workingScore,
+                  SolverLifecyclePoint.of(
+                      workerIndex, pipeline.phaseIndex, epoch.stepIndex, moveIndex));
             }
-          } finally {
-            long evaluationTime = System.nanoTime() - evaluationStartTime;
-
-            if (enablePerformanceMetrics && performanceMetrics != null) {
-              performanceMetrics.recordMoveEvaluation(moveThreadIndex, evaluationTime, accepted);
-            }
+            scored++;
           }
+          evaluated++;
+          if (sample) {
+            evaluationNanos += System.nanoTime() - start;
+            samples++;
+          }
+          slot.score = score;
+          slot.completedIndex = moveIndex;
+          // Never touch the slot after publishing: the coordinator may immediately reuse it.
+          pipeline.resultPublished(epoch, moveIndex);
         } else {
-          throw new IllegalStateException("Unknown operation (" + operation + ").");
+          long start = pipeline.diagnosticsEnabled ? System.nanoTime() : 0;
+          for (int spin = 0;
+              spin < 1024
+                  && !pipeline.stopping
+                  && mailbox == epoch
+                  && !epoch.closed
+                  && !epoch.hasWork();
+              spin++) {
+            Thread.onSpinWait();
+          }
+          waiting = true;
+          if (!pipeline.stopping && mailbox == epoch && !epoch.hasWork()) {
+            LockSupport.park(pipeline);
+          }
+          waiting = false;
+          if (pipeline.diagnosticsEnabled) {
+            idleNanos += System.nanoTime() - start;
+          }
         }
       }
-    } catch (RuntimeException | Error throwable) {
-      LOGGER.error(
-          "{}            Move thread ({}) exception that will be propagated to the solver thread.",
-          logIndentation,
-          moveThreadIndex,
-          throwable);
-      resultQueue.addExceptionThrown(moveThreadIndex, throwable);
+    } catch (Throwable e) {
+      if (!pipeline.aborting || !(e instanceof InterruptedException)) {
+        pipeline.fail(workerIndex, e);
+      }
     } finally {
-      if (scoreDirector != null) {
+      waiting = false;
+      if (director != null) {
         try {
-          scoreDirector.close();
-        } catch (Exception e) {
-          LOGGER.warn(
-              "{}            Move thread ({}) failed to close score director.",
-              logIndentation,
-              moveThreadIndex,
-              e);
+          calculationCount = director.getCalculationCount();
+        } catch (Throwable e) {
+          pipeline.fail(workerIndex, e);
+        }
+        try {
+          director.close();
+        } catch (Throwable e) {
+          pipeline.fail(workerIndex, e);
         }
       }
+      pipeline.acknowledge();
     }
-  }
-
-  protected void predictWorkingStepScore(Move<Solution_> step, InnerScore<Score_> score) {
-    scoreDirector.getSolutionDescriptor().setScore(scoreDirector.getWorkingSolution(), score.raw());
-    if (assertStepScoreFromScratch) {
-      scoreDirector.assertPredictedScoreFromScratch(score, step);
-    }
-    if (assertExpectedStepScore) {
-      scoreDirector.assertExpectedWorkingScore(score, step);
-    }
-    if (assertShadowVariablesAreNotStaleAfterStep) {
-      scoreDirector.assertShadowVariablesAreNotStale(score, step);
-    }
-  }
-
-  public long getCalculationCount() {
-    long calculationCount = this.calculationCount.get();
-    if (calculationCount == -1L) {
-      LOGGER.info(
-          "{}Score calculation speed will be too low"
-              + " because move thread ({})'s destroy wasn't processed soon enough.",
-          logIndentation,
-          moveThreadIndex);
-      return 0L;
-    }
-    return calculationCount;
-  }
-
-  @Override
-  public String toString() {
-    return getClass().getSimpleName() + "-" + moveThreadIndex;
   }
 }

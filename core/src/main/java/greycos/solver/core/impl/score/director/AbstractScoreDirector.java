@@ -384,9 +384,9 @@ public abstract class AbstractScoreDirector<
     }
     try {
       return Objects.requireNonNull(
-          moveDirector.executeTemporary(
+          moveDirector.executeTemporaryWithScore(
               move,
-              (score, undoMove) -> {
+              score -> {
                 if (solutionTracker != null) {
                   solutionTracker.setAfterMoveSolution(workingSolution);
                 }
