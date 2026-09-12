@@ -1,6 +1,7 @@
 package greycos.solver.core.config.alns;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -10,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.api.solver.alns.AlnsAcceptancePolicy;
 import greycos.solver.core.api.solver.alns.AlnsDestroyOperator;
 import greycos.solver.core.api.solver.alns.AlnsRanking;
@@ -20,6 +22,7 @@ import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
+import greycos.solver.core.impl.heuristic.thread.MoveThreadingWorkload.BasicWorkload;
 import greycos.solver.core.impl.io.jaxb.SolverConfigIO;
 import greycos.solver.core.testcotwin.TestdataEntity;
 
@@ -27,9 +30,34 @@ import org.junit.jupiter.api.Test;
 
 class AlnsPhaseConfigTest {
   @Test
+  void phaseOverrideCannotEnableWorkersDuringConstraintStreamProfiling() {
+    var phase =
+        new AlnsPhaseConfig()
+            .withMoveThreadCount("2")
+            .withTerminationConfig(new TerminationConfig().withStepCountLimit(1));
+    var config =
+        new BasicWorkload()
+            .solverConfig(
+                "NONE",
+                0L,
+                1,
+                new TerminationConfig().withStepCountLimit(1),
+                greycos.solver.core.config.solver.EnvironmentMode.NO_ASSERT)
+            .withPhases(phase);
+    config.getScoreDirectorFactoryConfig().withConstraintStreamProfilingEnabled(true);
+    assertThatThrownBy(() -> SolverFactory.create(config).buildSolver())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("ALNS move workers")
+        .hasMessageContaining("constraintStreamProfilingEnabled");
+    phase.withMoveThreadCount("NONE");
+    assertThat(SolverFactory.create(config).buildSolver()).isNotNull();
+  }
+
+  @Test
   void xmlRoundTripIncludesTopLevelAndNestedPhases() {
     var phase =
         new AlnsPhaseConfig()
+            .withMoveThreadCount("4")
             .withTerminationConfig(new TerminationConfig().withStepCountLimit(12))
             .withSelectionPolicyType(AlnsSelectionPolicyType.UCB)
             .withSelectionPolicyCustomProperties(Map.of("exploration", "1.5"))
@@ -76,6 +104,7 @@ class AlnsPhaseConfigTest {
         <solver xmlns="%s">
           <alns>
             <termination><stepCountLimit>2</stepCountLimit></termination>
+            <moveThreadCount>2</moveThreadCount>
             <destroyOperator><id>random</id><type>RANDOM</type></destroyOperator>
             <repairOperator><id>greedy</id><type>GREEDY</type></repairOperator>
             <selectionPolicyType>SEGMENTED_ROULETTE</selectionPolicyType>
@@ -90,6 +119,8 @@ class AlnsPhaseConfigTest {
             .formatted(SolverConfig.XML_NAMESPACE);
     var config = new SolverConfigIO().read(new StringReader(xml));
     assertThat(config.getPhaseConfigList()).singleElement().isInstanceOf(AlnsPhaseConfig.class);
+    assertThat(((AlnsPhaseConfig) config.getPhaseConfigList().getFirst()).getMoveThreadCount())
+        .isEqualTo("2");
     assertThat(((AlnsPhaseConfig) config.getPhaseConfigList().getFirst()).getRepairSpentLimit())
         .isEqualTo(Duration.ofMillis(50));
     assertThat(
@@ -106,6 +137,7 @@ class AlnsPhaseConfigTest {
   void copyAndInheritanceDoNotShareMutableOperatorConfiguration() {
     var original =
         new AlnsPhaseConfig()
+            .withMoveThreadCount("4")
             .withSegmentLength(100)
             .withSelectionPolicyCustomProperties(
                 new LinkedHashMap<>(Map.of("selection", "original")))
@@ -121,6 +153,16 @@ class AlnsPhaseConfigTest {
                     .withId("repair")
                     .withCustomProperties(new LinkedHashMap<>(Map.of("setting", "original"))));
     var copy = original.copyConfig();
+    assertThat(copy.getMoveThreadCount()).isEqualTo("4");
+    copy.setMoveThreadCount("2");
+    assertThat(original.getMoveThreadCount()).isEqualTo("4");
+    assertThat(
+            new AlnsPhaseConfig()
+                .withMoveThreadCount("NONE")
+                .inherit(original)
+                .getMoveThreadCount())
+        .isEqualTo("NONE");
+    assertThat(new AlnsPhaseConfig().getMoveThreadCount()).isNull();
     copy.getDestroyOperatorConfigList().getFirst().getCustomProperties().put("setting", "changed");
     copy.getRepairOperatorConfigList().getFirst().setId("changed");
     copy.getTerminationConfig().setStepCountLimit(9);

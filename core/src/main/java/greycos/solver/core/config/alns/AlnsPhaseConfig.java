@@ -23,10 +23,11 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Adaptive large neighborhood search configuration. Trials execute sequentially on each solver or
- * island.
+ * island. Independent scoring probes may use move workers.
  */
 @XmlType(
     propOrder = {
+      "moveThreadCount",
       "destroyOperatorConfigList",
       "repairOperatorConfigList",
       "selectionPolicyType",
@@ -51,6 +52,8 @@ import org.jspecify.annotations.Nullable;
     })
 public final class AlnsPhaseConfig extends PhaseConfig<AlnsPhaseConfig> {
   public static final String XML_ELEMENT_NAME = "alns";
+
+  private String moveThreadCount;
 
   @XmlElement(name = "destroyOperator")
   private List<AlnsDestroyOperatorConfig> destroyOperatorConfigList;
@@ -86,6 +89,20 @@ public final class AlnsPhaseConfig extends PhaseConfig<AlnsPhaseConfig> {
   private Duration repairSpentLimit;
 
   private Integer recoveryCount;
+
+  /** Overrides the solver move-thread count for this phase; {@code NONE} disables move workers. */
+  public @Nullable String getMoveThreadCount() {
+    return moveThreadCount;
+  }
+
+  public void setMoveThreadCount(@Nullable String moveThreadCount) {
+    this.moveThreadCount = moveThreadCount;
+  }
+
+  public @NonNull AlnsPhaseConfig withMoveThreadCount(@NonNull String moveThreadCount) {
+    setMoveThreadCount(moveThreadCount);
+    return this;
+  }
 
   public @Nullable List<AlnsDestroyOperatorConfig> getDestroyOperatorConfigList() {
     return destroyOperatorConfigList;
@@ -385,6 +402,8 @@ public final class AlnsPhaseConfig extends PhaseConfig<AlnsPhaseConfig> {
   @Override
   public @NonNull AlnsPhaseConfig inherit(@NonNull AlnsPhaseConfig inheritedConfig) {
     super.inherit(inheritedConfig);
+    moveThreadCount =
+        ConfigUtils.inheritOverwritableProperty(moveThreadCount, inheritedConfig.moveThreadCount);
     if (destroyOperatorConfigList == null && inheritedConfig.destroyOperatorConfigList != null) {
       destroyOperatorConfigList = new ArrayList<>();
       for (var operator : inheritedConfig.destroyOperatorConfigList) {

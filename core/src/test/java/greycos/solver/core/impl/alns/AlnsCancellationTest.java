@@ -186,7 +186,7 @@ class AlnsCancellationTest {
   }
 
   @Test
-  void solverLevelMoveThreadCountDoesNotCreateRepairOrMoveWorkers() throws Exception {
+  void legacyCustomRepairWithoutBatchesDoesNotCreateMoveWorkers() throws Exception {
     CountingThreadFactory.created.set(0);
     try (var run = new SolverRun(Mode.COMPLETE, "2")) {
       run.start();

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -299,6 +300,71 @@ class MoveEvaluationPipelineTest {
   }
 
   @Test
+  void unknownReplayScoreIsCalculatedOnEveryWorkerWithoutScoringTheCoordinator() throws Exception {
+    var partial = InnerScore.withUnassignedCount(SimpleScore.of(-4), 2);
+    var delta = move();
+    try (var fixture = new Fixture(3, 2)) {
+      for (var child : fixture.children) {
+        when(child.calculateScore()).thenReturn(ZERO, partial);
+      }
+      fixture.start();
+      fixture.pipeline.applyState(1, delta, null);
+      fixture.pipeline.submit(0, move());
+      assertThat(fixture.pipeline.take().stepIndex()).isEqualTo(1);
+      fixture.pipeline.close();
+
+      verify(delta, times(3)).execute(any());
+      verify(fixture.parent, never()).calculateScore();
+      for (var child : fixture.children) {
+        verify(child, times(2)).calculateScore();
+        verify(child.getSolutionDescriptor()).setScore(child.getWorkingSolution(), partial.raw());
+      }
+      fixture.assertDirectorsClosed();
+    }
+  }
+
+  @Test
+  void unknownPartialReplayScoreBecomesTheUndoAssertionBaseline() throws Exception {
+    var partial = InnerScore.withUnassignedCount(SimpleScore.of(-4), 2);
+    var destroy = move();
+    var candidate = move();
+    var restore = move();
+    try (var fixture = new Fixture(1, 2, false, true)) {
+      var child = fixture.children.getFirst();
+      when(child.calculateScore()).thenReturn(ZERO, partial);
+      fixture.start();
+      fixture.pipeline.applyState(1, destroy, null);
+      fixture.pipeline.submit(0, candidate);
+      assertThat(fixture.pipeline.take().score()).isEqualTo(ZERO);
+      fixture.pipeline.applyStep(2, restore, ZERO);
+      fixture.pipeline.close();
+
+      verify(child).assertExpectedUndoMoveScore(eq(candidate), eq(partial), any());
+      verify(child).assertPredictedScoreFromScratch(partial, destroy);
+      verify(child).assertExpectedWorkingScore(partial, destroy);
+      verify(child).assertShadowVariablesAreNotStale(partial, destroy);
+      verify(child).assertExpectedWorkingScore(ZERO, restore);
+      verify(child, times(2)).calculateScore();
+      verify(fixture.parent, never()).calculateScore();
+    }
+  }
+
+  @Test
+  void unknownReplayScoreFailureStopsWorkersAndPreservesTheCause() {
+    var failure = new IllegalArgumentException("partial state score failure");
+    try (var fixture = new Fixture(1, 2)) {
+      when(fixture.children.getFirst().calculateScore()).thenReturn(ZERO).thenThrow(failure);
+      fixture.start();
+      fixture.pipeline.applyState(1, move(), null);
+      assertThatThrownBy(fixture.pipeline::close)
+          .isInstanceOf(IllegalStateException.class)
+          .hasCause(failure);
+      fixture.assertDirectorsClosed();
+      verify(fixture.parent, never()).calculateScore();
+    }
+  }
+
+  @Test
   void closeWaitsForTheFinalSelectedStepToBeApplied() throws Exception {
     var stepStarted = new CountDownLatch(1);
     var releaseStep = new CountDownLatch(1);
@@ -583,8 +649,12 @@ class MoveEvaluationPipelineTest {
       this(workers, capacity, false);
     }
 
-    @SuppressWarnings("unchecked")
     private Fixture(int workers, int capacity, boolean evaluateDoable) {
+      this(workers, capacity, evaluateDoable, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Fixture(int workers, int capacity, boolean evaluateDoable, boolean assertions) {
       parent = mock(InnerScoreDirector.class);
       for (int i = 0; i < workers; i++) {
         InnerScoreDirector<Object, SimpleScore> child = mock(InnerScoreDirector.class);
@@ -612,7 +682,16 @@ class MoveEvaluationPipelineTest {
               });
       pipeline =
           new MoveEvaluationPipeline<>(
-              executor, workers, capacity, 0, evaluateDoable, false, false, false, false, false);
+              executor,
+              workers,
+              capacity,
+              0,
+              evaluateDoable,
+              assertions,
+              assertions,
+              assertions,
+              assertions,
+              assertions);
     }
 
     private void evaluate(Move<Object> move, Callable<InnerScore<SimpleScore>> evaluation) {

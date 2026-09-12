@@ -15,6 +15,8 @@ import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.thread.ThreadUtils;
 import greycos.solver.core.preview.api.move.Move;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * A single coordinator publishes candidates; persistent workers claim them individually and publish
  * results directly into bounded slots. Only the coordinator consumes results, in selection order.
@@ -107,7 +109,11 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       }
       awaitApplied(0); // Parent mutation is unsafe until all initial clones exist.
     } catch (RuntimeException | Error e) {
-      abort();
+      try {
+        abort();
+      } catch (RuntimeException | Error cleanupFailure) {
+        if (cleanupFailure != e) e.addSuppressed(cleanupFailure);
+      }
       throw e;
     }
   }
@@ -218,6 +224,15 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   }
 
   public void applyStep(int nextStepIndex, Move<Solution_> move, InnerScore<?> score) {
+    applyState(nextStepIndex, move, Objects.requireNonNull(score));
+  }
+
+  /**
+   * Replays a balanced state delta before evaluating the next epoch. ALNS may not have scored its
+   * partial state on the coordinator; in that case each worker calculates its own replay baseline.
+   * This does not add score calculations to the coordinator's logical termination budget.
+   */
+  public void applyState(int nextStepIndex, Move<Solution_> move, @Nullable InnerScore<?> score) {
     if (nextStepIndex != current.stepIndex + 1) {
       throw new IllegalStateException("Step updates must be consecutive.");
     }
@@ -225,7 +240,7 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     // All workers must have processed the previous mailbox before it can be overwritten.
     awaitApplied(current.stepIndex);
     var next = epochs[nextStepIndex & 1];
-    next.reset(nextStepIndex, Objects.requireNonNull(move), Objects.requireNonNull(score));
+    next.reset(nextStepIndex, Objects.requireNonNull(move), score);
     current = next;
     stepCount++;
     for (var worker : workers) {
@@ -245,7 +260,8 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
           checkFailure();
           if (Thread.currentThread().isInterrupted()) {
             throw new IllegalStateException(
-                "Interrupted while waiting for move worker setup/replay.");
+                "Interrupted while waiting for move worker setup/replay.",
+                new InterruptedException("Move worker setup/replay interrupted."));
           }
           waitingForReplay = true;
           if (worker.appliedStepIndex < stepIndex && failure.get() == null) {

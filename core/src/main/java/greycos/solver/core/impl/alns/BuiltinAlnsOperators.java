@@ -7,6 +7,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.PriorityQueue;
 import java.util.random.RandomGenerator;
 
 import greycos.solver.core.api.score.Score;
@@ -28,6 +29,9 @@ import greycos.solver.core.config.util.ConfigUtils;
  * Generic operators; candidate eligibility, mutations and scratch rollback belong to the context.
  */
 public final class BuiltinAlnsOperators {
+
+  // Bound transient score results while the evaluator independently bounds in-flight work.
+  private static final int SCORING_BATCH_SIZE = 256;
 
   private BuiltinAlnsOperators() {}
 
@@ -206,12 +210,15 @@ public final class BuiltinAlnsOperators {
             } else {
               var baseline = context.score();
               var ranked = new ArrayList<MarginalTarget<S>>(pool.size());
-              for (var target : pool) {
-                context.checkTermination();
-                var removed = context.evaluate(candidate -> candidate.destroy(target));
-                ranked.add(
-                    new MarginalTarget<>(
-                        target, AlnsScoreMath.difference(removed.score(), baseline.score())));
+              for (int start = 0; start < pool.size(); start += SCORING_BATCH_SIZE) {
+                var batch = pool.subList(start, Math.min(pool.size(), start + SCORING_BATCH_SIZE));
+                var evaluations = context.evaluateRemovals(batch);
+                for (int i = 0; i < batch.size(); i++) {
+                  ranked.add(
+                      new MarginalTarget<>(
+                          batch.get(i),
+                          AlnsScoreMath.difference(evaluations.get(i).score(), baseline.score())));
+                }
               }
               ranked.sort(
                   (left, right) -> AlnsScoreMath.compare(right.improvement(), left.improvement()));
@@ -265,7 +272,9 @@ public final class BuiltinAlnsOperators {
           choice = chooseRegret(context, pending, type == AlnsRepairOperatorType.REGRET_2 ? 2 : 3);
         } else {
           var target = pending.get(0);
-          var alternatives = alternatives(context, target);
+          var alternatives =
+              alternatives(
+                  context, target, type == AlnsRepairOperatorType.RANDOMIZED_GREEDY ? topK : 1);
           if (alternatives.isEmpty()) {
             return false;
           }
@@ -286,15 +295,41 @@ public final class BuiltinAlnsOperators {
   }
 
   private static <S, Score_ extends Score<Score_>> List<Candidate<S, Score_>> alternatives(
-      AlnsContext<S, Score_> context, AlnsTarget<S> target) {
-    var candidates = new ArrayList<Candidate<S, Score_>>();
-    for (var assignment : context.assignments(target)) {
-      context.checkTermination();
-      candidates.add(new Candidate<>(assignment, context.evaluate(assignment)));
+      AlnsContext<S, Score_> context, AlnsTarget<S> target, int retainedCount) {
+    Comparator<OrderedCandidate<S, Score_>> worstFirst =
+        (left, right) -> {
+          int score = left.candidate().evaluation().compareTo(right.candidate().evaluation());
+          // Among equal scores, the later original assignment is the first one discarded.
+          return score != 0 ? score : Integer.compare(right.index(), left.index());
+        };
+    var candidates =
+        new PriorityQueue<OrderedCandidate<S, Score_>>(Math.min(retainedCount, 16), worstFirst);
+    var assignments = context.assignments(target);
+    for (int start = 0; start < assignments.size(); start += SCORING_BATCH_SIZE) {
+      var batch =
+          assignments.subList(start, Math.min(assignments.size(), start + SCORING_BATCH_SIZE));
+      var evaluations = context.evaluateAssignments(batch);
+      for (int i = 0; i < batch.size(); i++) {
+        var evaluation = evaluations.get(i);
+        if (candidates.size() == retainedCount) {
+          if (evaluation.compareTo(candidates.peek().candidate().evaluation()) <= 0) {
+            continue;
+          }
+          candidates.remove();
+        }
+        var candidate =
+            new OrderedCandidate<>(start + i, new Candidate<>(batch.get(i), evaluation));
+        candidates.add(candidate);
+      }
     }
-    candidates.sort((left, right) -> right.evaluation().compareTo(left.evaluation()));
-    return candidates;
+    return candidates.stream()
+        .sorted(worstFirst.reversed())
+        .map(OrderedCandidate::candidate)
+        .toList();
   }
+
+  private record OrderedCandidate<S, Score_ extends Score<Score_>>(
+      int index, Candidate<S, Score_> candidate) {}
 
   private static <S, Score_ extends Score<Score_>> Choice<S, Score_> chooseRegret(
       AlnsContext<S, Score_> context, List<AlnsTarget<S>> pending, int k) {
@@ -306,7 +341,7 @@ public final class BuiltinAlnsOperators {
       if (mandatoryRemaining && target.variable().allowsUnassigned()) {
         continue;
       }
-      var alternatives = alternatives(context, target);
+      var alternatives = alternatives(context, target, k);
       if (alternatives.isEmpty()) {
         return null;
       }

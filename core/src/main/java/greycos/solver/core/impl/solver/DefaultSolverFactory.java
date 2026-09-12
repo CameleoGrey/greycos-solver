@@ -164,6 +164,10 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
             .withEnvironmentMode(environmentMode)
             .withMoveThreadCount(moveThreadCount)
             .withMoveThreadBufferSize(solverConfig.getMoveThreadBufferSize())
+            .withConstraintStreamProfilingEnabled(
+                scoreDirectorFactoryConfig != null
+                    && Boolean.TRUE.equals(
+                        scoreDirectorFactoryConfig.getConstraintStreamProfilingEnabled()))
             .withThreadFactoryClass(solverConfig.getThreadFactoryClass())
             .withNearbyDistanceMeterClass(solverConfig.getNearbyDistanceMeterClass())
             .withRandom(randomFactory.get())

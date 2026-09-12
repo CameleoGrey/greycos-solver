@@ -7,6 +7,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.IntFunction;
 import java.util.random.RandomGenerator;
 
@@ -33,6 +34,7 @@ import greycos.solver.core.config.alns.AlnsSelectionPolicyType;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.config.util.ConfigUtils;
+import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline;
 import greycos.solver.core.impl.phase.AbstractPhase;
 import greycos.solver.core.impl.phase.PhaseType;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -46,12 +48,25 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
     implements AlnsPhase<Solution_> {
   private final AlnsPhaseConfig config;
   private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
+  private final Integer moveThreadCount;
+  private final int moveThreadBufferSize;
+  private final ThreadFactory threadFactory;
+  private final EnvironmentMode environmentMode;
   private AlnsMetrics<Solution_> metrics;
+  private MoveEvaluationPipeline.Diagnostics moveEvaluationDiagnostics;
 
   private DefaultAlnsPhase(Builder<Solution_> builder) {
     super(builder);
     config = builder.config;
     bestSolutionRecaller = builder.bestSolutionRecaller;
+    moveThreadCount = builder.moveThreadCount;
+    moveThreadBufferSize = builder.moveThreadBufferSize;
+    threadFactory = builder.threadFactory;
+    environmentMode = builder.environmentMode;
+  }
+
+  public MoveEvaluationPipeline.Diagnostics getMoveEvaluationDiagnostics() {
+    return moveEvaluationDiagnostics;
   }
 
   @Override
@@ -78,12 +93,17 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
     var budget = new TrialBudget(director);
     phaseStarted(scope);
     Throwable phaseFailure = null;
+    DefaultAlnsContext<Solution_, Score_> context = null;
+    moveEvaluationDiagnostics = null;
     try (var resources = new ResourceScope();
-        var context =
-            new DefaultAlnsContext<Solution_, Score_>(
-                director,
-                random,
-                () -> isPhaseTerminatedAfterYielding(scope) || budget.exhausted())) {
+        var ownedContext =
+            context =
+                new DefaultAlnsContext<Solution_, Score_>(
+                    director,
+                    random,
+                    () -> isPhaseTerminatedAfterYielding(scope) || budget.exhausted())) {
+      context.configureMoveThreads(
+          moveThreadCount, moveThreadBufferSize, threadFactory, phaseIndex, environmentMode);
       var initial = director.calculateScore();
       if (!initial.isFullyAssigned()) {
         throw new IllegalStateException(
@@ -99,7 +119,7 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
       AlnsAcceptancePolicy<Score_> acceptance = resources.own(buildAcceptance(director, resources));
       acceptance.initialize(initial.raw());
       while (!isPhaseTerminatedAfterYielding(scope)) {
-        adoptPending(scope, acceptance);
+        adoptPending(scope, acceptance, context);
         var eligible = eligiblePairs(context, destroys, repairs);
         if (eligible.isEmpty()) {
           break;
@@ -235,6 +255,14 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
       phaseFailure = failure;
       throw failure;
     } finally {
+      if (context != null) {
+        scope.addChildThreadsScoreCalculationCount(context.additionalCalculationCount());
+        moveEvaluationDiagnostics = context.moveEvaluationDiagnostics();
+        if (moveEvaluationDiagnostics != null) {
+          logger.debug(
+              "{}ALNS move evaluation diagnostics: {}", logIndentation, moveEvaluationDiagnostics);
+        }
+      }
       finishPhase(scope, phaseFailure);
     }
     logger.info(
@@ -322,13 +350,16 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   private <Score_ extends Score<Score_>> void adoptPending(
-      AlnsPhaseScope<Solution_> scope, AlnsAcceptancePolicy<Score_> acceptance) {
+      AlnsPhaseScope<Solution_> scope,
+      AlnsAcceptancePolicy<Score_> acceptance,
+      DefaultAlnsContext<Solution_, Score_> context) {
     var pending = scope.getSolverScope().consumePendingMove();
     if (pending == null) {
       return;
     }
     scope.getScoreDirector().getMoveDirector().execute(pending.move());
     InnerScore<Score_> score = scope.calculateScore();
+    context.incumbentChanged(pending.move(), score);
     var adoption = new AlnsStepScope<>(scope);
     adoption.setScore(score);
     bestSolutionRecaller.processWorkingSolutionDuringStep(adoption);
@@ -775,6 +806,10 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
   public static final class Builder<Solution_> extends AbstractPhaseBuilder<Solution_> {
     private final AlnsPhaseConfig config;
     private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
+    private Integer moveThreadCount;
+    private int moveThreadBufferSize = 10;
+    private ThreadFactory threadFactory;
+    private EnvironmentMode environmentMode = EnvironmentMode.PHASE_ASSERT;
 
     public Builder(
         int phaseIndex,
@@ -790,6 +825,22 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
     @Override
     public Builder<Solution_> enableAssertions(EnvironmentMode mode) {
       super.enableAssertions(mode);
+      environmentMode = mode;
+      return this;
+    }
+
+    public Builder<Solution_> withMoveThreadCount(Integer moveThreadCount) {
+      this.moveThreadCount = moveThreadCount;
+      return this;
+    }
+
+    public Builder<Solution_> withMoveThreadBufferSize(int moveThreadBufferSize) {
+      this.moveThreadBufferSize = moveThreadBufferSize;
+      return this;
+    }
+
+    public Builder<Solution_> withThreadFactory(ThreadFactory threadFactory) {
+      this.threadFactory = threadFactory;
       return this;
     }
 

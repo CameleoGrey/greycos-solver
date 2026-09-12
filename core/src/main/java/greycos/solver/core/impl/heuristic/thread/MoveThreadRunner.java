@@ -70,16 +70,18 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
           director.getMoveDirector().execute(step);
           @SuppressWarnings("unchecked")
           var expected = (InnerScore<Score_>) next.stepScore;
-          workingScore = expected;
-          director.getSolutionDescriptor().setScore(director.getWorkingSolution(), expected.raw());
+          workingScore = expected == null ? director.calculateScore() : expected;
+          director
+              .getSolutionDescriptor()
+              .setScore(director.getWorkingSolution(), workingScore.raw());
           if (pipeline.assertStepScoreFromScratch) {
-            director.assertPredictedScoreFromScratch(expected, step);
+            director.assertPredictedScoreFromScratch(workingScore, step);
           }
           if (pipeline.assertExpectedStepScore) {
-            director.assertExpectedWorkingScore(expected, step);
+            director.assertExpectedWorkingScore(workingScore, step);
           }
           if (pipeline.assertShadowVariablesAreNotStaleAfterStep) {
-            director.assertShadowVariablesAreNotStale(expected, step);
+            director.assertShadowVariablesAreNotStale(workingScore, step);
           }
           if (pipeline.diagnosticsEnabled) {
             replayNanos += System.nanoTime() - start;

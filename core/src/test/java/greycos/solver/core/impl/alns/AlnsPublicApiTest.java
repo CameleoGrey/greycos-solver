@@ -320,6 +320,7 @@ class AlnsPublicApiTest {
         public static final class Destroy implements AlnsDestroyOperator<Problem, SimpleScore> {
           @Override public List<AlnsTarget<Problem>> select(AlnsContext<Problem, SimpleScore> context, int size) {
             context.checkTermination();
+            context.evaluateRemovals(context.targets());
             return context.targets().stream().limit(size).toList();
           }
         }
@@ -329,8 +330,11 @@ class AlnsPublicApiTest {
               context.checkTermination();
               AlnsAssignment<Problem> best = null;
               AlnsEvaluation<SimpleScore> bestScore = null;
-              for (var assignment : context.assignments(target)) {
-                var score = context.evaluate(view -> view.assign(assignment));
+              var assignments = context.assignments(target);
+              var evaluations = context.evaluateAssignments(assignments);
+              for (int i = 0; i < assignments.size(); i++) {
+                var assignment = assignments.get(i);
+                var score = evaluations.get(i);
                 if (bestScore == null || score.compareTo(bestScore) > 0) { best = assignment; bestScore = score; }
               }
               if (best == null) return false;
@@ -355,6 +359,7 @@ class AlnsPublicApiTest {
           return new SolverConfig().withSolutionClass(Problem.class).withEntityClasses(Job.class)
               .withConstraintProviderClass(Constraints.class)
               .withPhases(new AlnsPhaseConfig()
+                  .withMoveThreadCount("2")
                   .withDestroyOperators(new AlnsDestroyOperatorConfig().withId("customDestroy").withCustomClass(Destroy.class))
                   .withRepairOperators(new AlnsRepairOperatorConfig().withId("customRepair").withCustomClass(Repair.class))
                   .withSelectionPolicyClass(Selection.class).withAcceptancePolicyClass(Acceptance.class)

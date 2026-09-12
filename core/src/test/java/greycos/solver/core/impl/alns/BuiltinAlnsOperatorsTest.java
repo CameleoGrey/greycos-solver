@@ -2,6 +2,7 @@ package greycos.solver.core.impl.alns;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -10,6 +11,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.function.Function;
 import java.util.random.RandomGenerator;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import greycos.solver.core.api.score.HardSoftScore;
@@ -24,6 +26,7 @@ import greycos.solver.core.api.solver.alns.AlnsRanking;
 import greycos.solver.core.api.solver.alns.AlnsRelatedness;
 import greycos.solver.core.api.solver.alns.AlnsRepairOperator;
 import greycos.solver.core.api.solver.alns.AlnsTarget;
+import greycos.solver.core.api.solver.alns.AlnsTerminationException;
 import greycos.solver.core.api.solver.alns.AlnsVariable;
 import greycos.solver.core.config.alns.AlnsDestroyOperatorConfig;
 import greycos.solver.core.config.alns.AlnsDestroyOperatorType;
@@ -36,6 +39,79 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class BuiltinAlnsOperatorsTest {
+
+  @Test
+  void defaultBatchesRestoreStateAndPreserveInputOrderIncludingDuplicates() {
+    var context = new TestContext();
+    var a = context.basic("a", "first", false, true, "1", "2", "3");
+    var b = context.basic("b", "first", false, true, "10");
+    context.scorer =
+        ctx ->
+            HardSoftScore.ofSoft(
+                (ctx.value(a) == null ? 0 : Integer.parseInt(ctx.value(a).toString()))
+                    + (ctx.value(b) == null ? 0 : Integer.parseInt(ctx.value(b).toString())));
+    var before = new LinkedHashMap<>(context.state.assignments);
+    var assignments = context.assignments(a);
+    assertThat(
+            context.evaluateAssignments(
+                List.of(assignments.get(2), assignments.get(0), assignments.get(2))))
+        .extracting(AlnsEvaluation::score)
+        .containsExactly(
+            HardSoftScore.ofSoft(13), HardSoftScore.ofSoft(11), HardSoftScore.ofSoft(13));
+    assertThat(context.state.assignments).isEqualTo(before);
+    assertThat(context.evaluateRemovals(List.of(a, b, a)))
+        .extracting(AlnsEvaluation::score)
+        .containsExactly(
+            HardSoftScore.ofSoft(10), HardSoftScore.ofSoft(1), HardSoftScore.ofSoft(10));
+    assertThat(context.state.assignments).isEqualTo(before);
+    assertThat(context.applied).isEmpty();
+    assertThat(context.evaluateAssignments(List.of())).isEmpty();
+    assertThat(context.evaluateRemovals(List.of())).isEmpty();
+    assertThat(context.evaluations).isEqualTo(6);
+  }
+
+  @Test
+  void defaultBatchChecksBeforeTheNextProbeAndNotAfterTheLastProbe() {
+    var context = new TestContext();
+    var target = context.basic("a", "first", false, false, "1", "2", "3");
+    context.terminateAfterEvaluations = 2;
+    var assignments = context.assignments(target);
+    assertThat(context.evaluateAssignments(assignments.subList(0, 2))).hasSize(2);
+    assertThat(context.value(target)).isNull();
+    assertThatThrownBy(() -> context.evaluateAssignments(assignments.subList(2, 3)))
+        .isInstanceOf(AlnsTerminationException.class);
+    assertThat(context.evaluations).isEqualTo(2);
+
+    var prefix = new TestContext();
+    var prefixTarget = prefix.basic("a", "first", false, false, "1", "2", "3");
+    prefix.terminateAfterEvaluations = 2;
+    assertThatThrownBy(() -> prefix.evaluateAssignments(prefix.assignments(prefixTarget)))
+        .isInstanceOf(AlnsTerminationException.class);
+    assertThat(prefix.evaluations).isEqualTo(2);
+    assertThat(prefix.value(prefixTarget)).isNull();
+  }
+
+  @ParameterizedTest
+  @EnumSource(AlnsRepairOperatorType.class)
+  void largeAlternativeSetsUseBoundedBatchesAndStableScoreTies(AlnsRepairOperatorType type) {
+    var context = new TestContext();
+    var values = IntStream.range(0, 600).mapToObj(Integer::toString).toArray(String[]::new);
+    var target = context.basic("a", "first", false, false, values);
+    var config = new AlnsRepairOperatorConfig().withType(type).withTopK(3);
+    assertThat(
+            BuiltinAlnsOperators.<State, HardSoftScore>repair(config)
+                .repair(context, List.of(target)))
+        .isTrue();
+    assertThat(context.evaluations).isEqualTo(values.length);
+    assertThat(context.assignmentBatchSizes).allSatisfy(size -> assertThat(size).isBetween(1, 256));
+    if (type == AlnsRepairOperatorType.RANDOMIZED_GREEDY) {
+      var expectedRandom = new Random(0);
+      expectedRandom.nextInt(0, 1); // The existing pending-target permutation consumes this draw.
+      assertThat(context.value(target)).isEqualTo(Integer.toString(expectedRandom.nextInt(3)));
+    } else {
+      assertThat(context.value(target)).isEqualTo("0");
+    }
+  }
 
   @ParameterizedTest
   @MethodSource("invalidConfigurations")
@@ -414,6 +490,15 @@ class BuiltinAlnsOperatorsTest {
     Function<TestContext, HardSoftScore> scorer = ignored -> HardSoftScore.ZERO;
     int evaluations;
     int destructions;
+    int terminateAfterEvaluations = Integer.MAX_VALUE;
+    final List<Integer> assignmentBatchSizes = new ArrayList<>();
+
+    @Override
+    public List<AlnsEvaluation<HardSoftScore>> evaluateAssignments(
+        List<AlnsAssignment<State>> assignments) {
+      assignmentBatchSizes.add(assignments.size());
+      return AlnsContext.super.evaluateAssignments(assignments);
+    }
 
     AlnsTarget<State> basic(
         String label, String variable, boolean optional, boolean assigned, String... values) {
@@ -544,6 +629,8 @@ class BuiltinAlnsOperatorsTest {
     }
 
     @Override
-    public void checkTermination() {}
+    public void checkTermination() {
+      if (evaluations >= terminateAfterEvaluations) throw new AlnsTerminationException();
+    }
   }
 }

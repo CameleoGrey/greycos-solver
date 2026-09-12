@@ -1,5 +1,6 @@
 package greycos.solver.core.api.solver.alns;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.random.RandomGenerator;
 
@@ -59,6 +60,37 @@ public interface AlnsContext<Solution_, Score_ extends Score<Score_>>
 
   default AlnsEvaluation<Score_> evaluate(AlnsAssignment<Solution_> assignment) {
     return evaluate(view -> view.assign(assignment));
+  }
+
+  /**
+   * Evaluates independent assignments against the current state, returning one result in input
+   * order for each assignment. Every probe restores the enclosing state. Implementations may score
+   * these framework-owned assignments concurrently; callbacks and working objects remain confined
+   * to the calling thread. The default implementation evaluates them sequentially.
+   */
+  default List<AlnsEvaluation<Score_>> evaluateAssignments(
+      List<AlnsAssignment<Solution_>> assignments) {
+    var evaluations = new ArrayList<AlnsEvaluation<Score_>>(assignments.size());
+    for (var assignment : assignments) {
+      checkTermination();
+      evaluations.add(evaluate(assignment));
+    }
+    return List.copyOf(evaluations);
+  }
+
+  /**
+   * Evaluates independent removals against the current state, returning results in input order.
+   * Each target is removed in its own scratch probe; the removals are not cumulative. The enclosing
+   * state and pending targets are restored after every probe. The default implementation evaluates
+   * them sequentially.
+   */
+  default List<AlnsEvaluation<Score_>> evaluateRemovals(List<AlnsTarget<Solution_>> targets) {
+    var evaluations = new ArrayList<AlnsEvaluation<Score_>>(targets.size());
+    for (var target : targets) {
+      checkTermination();
+      evaluations.add(evaluate(view -> view.destroy(target)));
+    }
+    return List.copyOf(evaluations);
   }
 
   /** Applies a change to the current candidate without making an acceptance decision. */

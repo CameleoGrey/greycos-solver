@@ -359,6 +359,9 @@
           <xs:choice maxOccurs="unbounded" minOccurs="0">
                                     
             
+            <xs:element name="alns" type="tns:alnsPhaseConfig"/>
+                                    
+            
             <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
                                     
             
@@ -641,6 +644,237 @@
   </xs:complexType>
       
   
+  <xs:complexType final="extension restriction" name="alnsPhaseConfig">
+            
+    
+    <xs:complexContent>
+                  
+      
+      <xs:extension base="tns:phaseConfig">
+                        
+        
+        <xs:sequence>
+                              
+          
+          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
+                              
+          
+          <xs:element maxOccurs="unbounded" minOccurs="0" name="destroyOperator" type="tns:alnsDestroyOperatorConfig"/>
+                              
+          
+          <xs:element maxOccurs="unbounded" minOccurs="0" name="repairOperator" type="tns:alnsRepairOperatorConfig"/>
+                              
+          
+          <xs:element minOccurs="0" name="selectionPolicyType" type="tns:alnsSelectionPolicyType"/>
+                              
+          
+          <xs:element minOccurs="0" name="selectionPolicyClass" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="selectionPolicyCustomProperties" type="tns:jaxbAdaptedMap"/>
+                              
+          
+          <xs:element minOccurs="0" name="acceptanceType" type="tns:alnsAcceptanceType"/>
+                              
+          
+          <xs:element minOccurs="0" name="acceptancePolicyClass" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="acceptancePolicyCustomProperties" type="tns:jaxbAdaptedMap"/>
+                              
+          
+          <xs:element minOccurs="0" name="lateAcceptanceSize" type="xs:int"/>
+                              
+          
+          <xs:element minOccurs="0" name="startingTemperature" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="coolingRate" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="segmentLength" type="xs:int"/>
+                              
+          
+          <xs:element minOccurs="0" name="reactionFactor" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="minimumWeight" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="ucbExploration" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="newBestReward" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="improvedReward" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="acceptedReward" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="repairScoreCalculationLimit" type="xs:long"/>
+                              
+          
+          <xs:element minOccurs="0" name="repairSpentLimit" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="recoveryCount" type="xs:int"/>
+                            
+        
+        </xs:sequence>
+                      
+      
+      </xs:extension>
+                
+    
+    </xs:complexContent>
+          
+  
+  </xs:complexType>
+      
+  
+  <xs:complexType abstract="true" name="phaseConfig">
+            
+    
+    <xs:complexContent>
+                  
+      
+      <xs:extension base="tns:abstractConfig">
+                        
+        
+        <xs:sequence>
+                              
+          
+          <xs:element minOccurs="0" name="termination" type="tns:terminationConfig"/>
+                            
+        
+        </xs:sequence>
+                      
+      
+      </xs:extension>
+                
+    
+    </xs:complexContent>
+          
+  
+  </xs:complexType>
+      
+  
+  <xs:complexType final="extension restriction" name="alnsDestroyOperatorConfig">
+            
+    
+    <xs:complexContent>
+                  
+      
+      <xs:extension base="tns:abstractConfig">
+                        
+        
+        <xs:sequence>
+                              
+          
+          <xs:element minOccurs="0" name="id" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="type" type="tns:alnsDestroyOperatorType"/>
+                              
+          
+          <xs:element minOccurs="0" name="entityClass" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="variableName" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="minimumDestroyedCount" type="xs:int"/>
+                              
+          
+          <xs:element minOccurs="0" name="maximumDestroyedCount" type="xs:int"/>
+                              
+          
+          <xs:element minOccurs="0" name="minimumDestroyedPercentage" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="maximumDestroyedPercentage" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="customClass" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="relatednessClass" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="rankingClass" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="rankExponent" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="initialWeight" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="customProperties" type="tns:jaxbAdaptedMap"/>
+                            
+        
+        </xs:sequence>
+                      
+      
+      </xs:extension>
+                
+    
+    </xs:complexContent>
+          
+  
+  </xs:complexType>
+      
+  
+  <xs:complexType final="extension restriction" name="alnsRepairOperatorConfig">
+            
+    
+    <xs:complexContent>
+                  
+      
+      <xs:extension base="tns:abstractConfig">
+                        
+        
+        <xs:sequence>
+                              
+          
+          <xs:element minOccurs="0" name="id" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="type" type="tns:alnsRepairOperatorType"/>
+                              
+          
+          <xs:element minOccurs="0" name="entityClass" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="variableName" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="customClass" type="xs:string"/>
+                              
+          
+          <xs:element minOccurs="0" name="topK" type="xs:int"/>
+                              
+          
+          <xs:element minOccurs="0" name="initialWeight" type="xs:double"/>
+                              
+          
+          <xs:element minOccurs="0" name="customProperties" type="tns:jaxbAdaptedMap"/>
+                            
+        
+        </xs:sequence>
+                      
+      
+      </xs:extension>
+                
+    
+    </xs:complexContent>
+          
+  
+  </xs:complexType>
+      
+  
   <xs:complexType name="constructionHeuristicPhaseConfig">
             
     
@@ -711,33 +945,6 @@
                               
           
           <xs:element minOccurs="0" name="forager" type="tns:constructionHeuristicForagerConfig"/>
-                            
-        
-        </xs:sequence>
-                      
-      
-      </xs:extension>
-                
-    
-    </xs:complexContent>
-          
-  
-  </xs:complexType>
-      
-  
-  <xs:complexType abstract="true" name="phaseConfig">
-            
-    
-    <xs:complexContent>
-                  
-      
-      <xs:extension base="tns:abstractConfig">
-                        
-        
-        <xs:sequence>
-                              
-          
-          <xs:element minOccurs="0" name="termination" type="tns:terminationConfig"/>
                             
         
         </xs:sequence>
@@ -2204,6 +2411,9 @@
             <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
                                     
             
+            <xs:element name="alns" type="tns:alnsPhaseConfig"/>
+                                    
+            
             <xs:element name="customPhase" type="tns:customPhaseConfig"/>
                                     
             
@@ -2450,6 +2660,9 @@
           <xs:choice maxOccurs="unbounded" minOccurs="0">
                                     
             
+            <xs:element name="alns" type="tns:alnsPhaseConfig"/>
+                                    
+            
             <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
                                     
             
@@ -2582,6 +2795,9 @@
       <xs:enumeration value="MOVE_COUNT_PER_STEP"/>
                   
       
+      <xs:enumeration value="ALNS_STATISTICS"/>
+                  
+      
       <xs:enumeration value="MOVE_COUNT_PER_TYPE"/>
                   
       
@@ -2616,6 +2832,93 @@
                   
       
       <xs:enumeration value="OR"/>
+                
+    
+    </xs:restriction>
+          
+  
+  </xs:simpleType>
+      
+  
+  <xs:simpleType name="alnsDestroyOperatorType">
+            
+    
+    <xs:restriction base="xs:string">
+                  
+      
+      <xs:enumeration value="RANDOM"/>
+                  
+      
+      <xs:enumeration value="RELATEDNESS"/>
+                  
+      
+      <xs:enumeration value="WORST_REMOVAL"/>
+                  
+      
+      <xs:enumeration value="LIST_BLOCK"/>
+                
+    
+    </xs:restriction>
+          
+  
+  </xs:simpleType>
+      
+  
+  <xs:simpleType name="alnsRepairOperatorType">
+            
+    
+    <xs:restriction base="xs:string">
+                  
+      
+      <xs:enumeration value="GREEDY"/>
+                  
+      
+      <xs:enumeration value="REGRET_2"/>
+                  
+      
+      <xs:enumeration value="REGRET_3"/>
+                  
+      
+      <xs:enumeration value="RANDOMIZED_GREEDY"/>
+                
+    
+    </xs:restriction>
+          
+  
+  </xs:simpleType>
+      
+  
+  <xs:simpleType name="alnsSelectionPolicyType">
+            
+    
+    <xs:restriction base="xs:string">
+                  
+      
+      <xs:enumeration value="SEGMENTED_ROULETTE"/>
+                  
+      
+      <xs:enumeration value="UCB"/>
+                
+    
+    </xs:restriction>
+          
+  
+  </xs:simpleType>
+      
+  
+  <xs:simpleType name="alnsAcceptanceType">
+            
+    
+    <xs:restriction base="xs:string">
+                  
+      
+      <xs:enumeration value="LATE_ACCEPTANCE"/>
+                  
+      
+      <xs:enumeration value="HILL_CLIMBING"/>
+                  
+      
+      <xs:enumeration value="SIMULATED_ANNEALING"/>
                 
     
     </xs:restriction>

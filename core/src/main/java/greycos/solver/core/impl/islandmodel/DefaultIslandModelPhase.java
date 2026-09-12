@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.IntFunction;
 
 import greycos.solver.core.api.solver.event.EventProducerId;
+import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
@@ -346,14 +347,18 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
   @SuppressWarnings("rawtypes")
   private void normalizeInnerPhaseMoveThreadCount(List<PhaseConfig> phaseConfigList) {
+    var configuredMoveThreadCount = islandModelConfig.getMoveThreadCount();
+    var defaultMoveThreadCount =
+        configuredMoveThreadCount != null
+            ? configuredMoveThreadCount
+            : SolverConfig.MOVE_THREAD_COUNT_NONE;
     for (var phaseConfig : phaseConfigList) {
       if (phaseConfig instanceof LocalSearchPhaseConfig localSearchPhaseConfig
           && localSearchPhaseConfig.getMoveThreadCount() == null) {
-        var configuredMoveThreadCount = islandModelConfig.getMoveThreadCount();
-        localSearchPhaseConfig.setMoveThreadCount(
-            configuredMoveThreadCount != null
-                ? configuredMoveThreadCount
-                : SolverConfig.MOVE_THREAD_COUNT_NONE);
+        localSearchPhaseConfig.setMoveThreadCount(defaultMoveThreadCount);
+      } else if (phaseConfig instanceof AlnsPhaseConfig alnsPhaseConfig
+          && alnsPhaseConfig.getMoveThreadCount() == null) {
+        alnsPhaseConfig.setMoveThreadCount(defaultMoveThreadCount);
       }
     }
   }

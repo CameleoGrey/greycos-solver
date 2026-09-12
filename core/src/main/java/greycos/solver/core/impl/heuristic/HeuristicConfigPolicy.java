@@ -33,6 +33,7 @@ public class HeuristicConfigPolicy<Solution_> {
   private final String logIndentation;
   private final Integer moveThreadCount;
   private final Integer moveThreadBufferSize;
+  private final boolean constraintStreamProfilingEnabled;
   private final Class<? extends ThreadFactory> threadFactoryClass;
   private final InitializingScoreTrend initializingScoreTrend;
   private final SolutionDescriptor<Solution_> solutionDescriptor;
@@ -56,6 +57,7 @@ public class HeuristicConfigPolicy<Solution_> {
     this.logIndentation = builder.logIndentation;
     this.moveThreadCount = builder.moveThreadCount;
     this.moveThreadBufferSize = builder.moveThreadBufferSize;
+    this.constraintStreamProfilingEnabled = builder.constraintStreamProfilingEnabled;
     this.threadFactoryClass = builder.threadFactoryClass;
     this.initializingScoreTrend = builder.initializingScoreTrend;
     this.solutionDescriptor = builder.solutionDescriptor;
@@ -82,6 +84,10 @@ public class HeuristicConfigPolicy<Solution_> {
 
   public Integer getMoveThreadBufferSize() {
     return moveThreadBufferSize;
+  }
+
+  public boolean isConstraintStreamProfilingEnabled() {
+    return constraintStreamProfilingEnabled;
   }
 
   public InitializingScoreTrend getInitializingScoreTrend() {
@@ -134,6 +140,7 @@ public class HeuristicConfigPolicy<Solution_> {
         .withEnvironmentMode(environmentMode)
         .withMoveThreadCount(moveThreadCount)
         .withMoveThreadBufferSize(moveThreadBufferSize)
+        .withConstraintStreamProfilingEnabled(constraintStreamProfilingEnabled)
         .withThreadFactoryClass(threadFactoryClass)
         .withNearbyDistanceMeterClass(nearbyDistanceMeterClass)
         .withRandom(random)
@@ -278,6 +285,7 @@ public class HeuristicConfigPolicy<Solution_> {
     private EnvironmentMode environmentMode;
     private Integer moveThreadCount;
     private Integer moveThreadBufferSize;
+    private boolean constraintStreamProfilingEnabled;
     private Class<? extends ThreadFactory> threadFactoryClass;
     private InitializingScoreTrend initializingScoreTrend;
     private SolutionDescriptor<Solution_> solutionDescriptor;
@@ -311,6 +319,11 @@ public class HeuristicConfigPolicy<Solution_> {
 
     public Builder<Solution_> withMoveThreadBufferSize(Integer moveThreadBufferSize) {
       this.moveThreadBufferSize = moveThreadBufferSize;
+      return this;
+    }
+
+    public Builder<Solution_> withConstraintStreamProfilingEnabled(boolean enabled) {
+      this.constraintStreamProfilingEnabled = enabled;
       return this;
     }
 

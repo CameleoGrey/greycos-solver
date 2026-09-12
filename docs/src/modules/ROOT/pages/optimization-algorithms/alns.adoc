@@ -37,7 +37,8 @@ where a forager can evaluate multiple candidates before committing one step.
 Existing ruin-and-recreate selectors remain available independently of the ALNS phase.
 
 Normal solver and phase terminations apply to ALNS.
-The optional `repairScoreCalculationLimit` and `repairSpentLimit` bound work inside one repair:
+The optional `repairScoreCalculationLimit` and `repairSpentLimit` bound work inside one trial,
+including destroy selection and repair:
 
 [source,xml]
 ----
@@ -56,6 +57,14 @@ Custom operators must call `AlnsContext.checkTermination()` in long loops.
 A score calculation or custom callback already running must return before it can be interrupted safely.
 Interrupted or failed repairs restore planning variables, list membership, shadow variables, and incremental score state.
 Problem changes are processed through the solver's normal stop-and-restart lifecycle.
+
+The calculation limit counts logical score queries in their sequential order.
+It includes trial initialization, destroy baselines and scratch probes, insertion probes,
+and candidate/completeness queries; it is not a limit on insertion probes alone.
+Move-worker results count when the coordinator consumes them in input order.
+Worker initialization, state synchronization, and speculative results that are discarded do not consume this logical limit.
+Existing checkpoints remain cooperative: a query can reach the limit before the next checkpoint restores the incumbent.
+Exhausting a repair limit records a failed repair and allows the next trial; outer termination records cancellation.
 
 == Operators and variable bindings
 
@@ -168,6 +177,56 @@ Do not modify the solution directly, retain working-object handles after the tri
 or share mutable operator state across solves.
 The context balances notifications and restores temporary probes; acceptance belongs to the outer phase.
 
+Use `evaluateAssignments(List<AlnsAssignment<Solution_>>)` to score independent placements against
+the same current state, and `evaluateRemovals(List<AlnsTarget<Solution_>>)` to score independent removals.
+Both return one `AlnsEvaluation` per input entry in input order.
+Removals are separate scratch probes, not cumulative changes.
+Repeated entries are evaluated independently; foreign working-object handles, invalid assignments, and null entries are rejected.
+An empty batch performs no scoring. The surrounding trial must be active.
+The default API implementations run sequentially, so existing custom contexts remain compatible.
+
+The framework may evaluate these batches on move workers.
+Custom callbacks passed to `evaluate(AlnsChange)` and `execute(AlnsChange)`, along with custom
+relatedness/ranking callbacks and operator policies, remain on their owning solver or island thread.
+An individual `evaluate(assignment)` is also synchronous on that thread.
+The batch methods give the framework enough information to rebase working references safely;
+applications must continue to call the context from its owning thread.
+
+== Move workers
+
+An ALNS phase inherits the solver's `moveThreadCount` unless the phase specifies an override:
+
+[source,xml]
+----
+<alns>
+  <termination><secondsSpentLimit>60</secondsSpentLimit></termination>
+  <moveThreadCount>2</moveThreadCount>
+</alns>
+----
+
+`NONE` selects sequential evaluation, including when it overrides an enabled solver setting.
+`AUTO` uses the existing move-thread resolver; an explicit positive count selects that many workers.
+The solver-level `moveThreadBufferSize` bounds candidates in flight per worker and defaults to ten.
+The usual xref:advanced-features/advanced-features.adoc#multithreadedIncrementalSolving[move-worker rebasing requirements] apply.
+Constraint Stream profiling cannot be combined with enabled ALNS move workers, including a phase override.
+
+Workers start lazily on the first batch containing multiple candidates.
+Each owns one persistent cloned solution and incremental score director.
+The framework rebases probes onto those solutions and synchronizes committed mutations and rollbacks
+before scoring against the next partial state. Empty and single-candidate batches use the coordinator.
+
+Built-in GREEDY, RANDOMIZED_GREEDY, REGRET_2, and REGRET_3 repairs use batches of alternatives.
+The score-based WORST_REMOVAL destroy operator also uses batches.
+Repair retains only the best alternatives needed by its decision, preserving the original order of equal scores.
+Regret evaluation remains bounded per target; it does not materialize every target/placement combination together.
+Outer trials, target selection, random draws, selected insertions, acceptance, and adaptation remain sequential.
+
+Fixed seeds and fixed logical work limits preserve the search trajectory across worker counts for
+deterministic, timing-independent operators and policies.
+Wall-time termination, custom policies that use elapsed time, and concurrent island migration can change that trajectory.
+Extra workers add state memory, rebasing, synchronization and speculative scoring costs.
+Measure useful probes and completed trials on representative problems: cheap probes or small batches may be slower with workers.
+
 == Islands and threads
 
 Place ALNS in the explicit inner phase list of an island model:
@@ -187,7 +246,9 @@ Place ALNS in the explicit inner phase list of an island model:
 ----
 
 Each island owns its incumbent, random stream, operator instances, adaptation state, and acceptance state.
-Trials and repair execute sequentially within each island, independently of solver-level move-worker configuration.
+Trials and repair decisions execute sequentially within each island; independent probes can use that island's move workers.
+An inner ALNS phase uses its explicit `moveThreadCount` first, then the enclosing island's setting.
+When neither is specified, the inner phase defaults to `NONE`, independently of the solver-level setting.
 Islands execute concurrently.
 Migration and global-best adoption occur between complete trials.
 Adoption refreshes incumbent-dependent state without rewarding an operator or resetting learned operator weights.
@@ -228,11 +289,20 @@ A rejected proposal has zero incumbent step-score change.
 Constraint-match step metrics follow the configured sampling interval, with a final sample at phase end;
 new-best constraint values are captured when that best is produced.
 
-Enable `ALNS_STATISTICS` to record trial outcomes, insertion-probe counts, destroyed and recovered counts,
+Enable `ALNS_STATISTICS` to record trial outcomes, consumed scoring-probe counts, destroyed and recovered counts,
 repair duration, and learned operator weights under `greycos.solver.alns`.
 Metrics identify the operator pair and phase; island metrics also include `island.id`.
 Compare configurations using solution quality at matched wall-clock budgets and multiple seeds.
 Report outer proposal counts and repair work separately: a higher score-calculation rate alone does not establish faster search.
+
+ALNS probe statistics count logical evaluations consumed by the operator, including removal and nested scratch probes.
+They exclude unconsumed speculative worker results.
+Final solver and phase calculation totals include physical worker setup, synchronization and discarded scoring,
+with consumed worker probes counted once.
+Those totals can differ across worker counts even when the logical budget, trial trace and result are identical.
+For separate diagnostic runs, `-Dgreycos.solver.moveThreadDiagnostics=true` enables worker timing samples
+and coordinator waiting measurements. The phase exposes final pipeline counters for generated, evaluated,
+consumed and discarded candidates. Leave diagnostic timing disabled for throughput comparisons.
 
 The opt-in synthetic comparison harness runs basic assignment, list routing, and mixed-variable workloads across three seeds,
 rotating ordinary local search, local search with ruin-and-recreate, and ALNS at matched phase time budgets:

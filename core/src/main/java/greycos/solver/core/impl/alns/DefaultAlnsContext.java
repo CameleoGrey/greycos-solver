@@ -1,10 +1,12 @@
 package greycos.solver.core.impl.alns;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.BooleanSupplier;
 import java.util.random.RandomGenerator;
 
@@ -16,9 +18,13 @@ import greycos.solver.core.api.solver.alns.AlnsEvaluation;
 import greycos.solver.core.api.solver.alns.AlnsTarget;
 import greycos.solver.core.api.solver.alns.AlnsTerminationException;
 import greycos.solver.core.api.solver.alns.AlnsVariable;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline;
+import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.preview.api.move.Move;
 
 /** Framework context for one sequential island. Acceptance never re-executes an operator. */
 public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
@@ -28,6 +34,7 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   private final BooleanSupplier terminated;
   private final AlnsTransaction<Solution_, Score_> transaction;
   private final AlnsModel<Solution_> model;
+  private AlnsProbeEvaluator<Solution_, Score_> probeEvaluator;
   private final Set<AlnsTarget<Solution_>> pending = new LinkedHashSet<>();
   private final Set<AlnsTarget<Solution_>> repairTargets = new LinkedHashSet<>();
   private boolean pendingLocked;
@@ -43,6 +50,49 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
     this.terminated = Objects.requireNonNull(terminated);
     transaction = new AlnsTransaction<>(scoreDirector);
     model = new AlnsModel<>(scoreDirector, this::checkTermination);
+  }
+
+  void configureMoveThreads(
+      Integer threadCount,
+      int bufferSize,
+      ThreadFactory threadFactory,
+      int phaseIndex,
+      EnvironmentMode environmentMode) {
+    if (threadCount == null) return;
+    probeEvaluator =
+        new AlnsProbeEvaluator<>(
+            scoreDirector,
+            threadCount,
+            bufferSize,
+            threadFactory,
+            phaseIndex,
+            environmentMode,
+            terminated);
+    transaction.enableReplication(probeEvaluator::abort);
+  }
+
+  long additionalCalculationCount() {
+    return probeEvaluator == null ? 0 : probeEvaluator.getAdditionalCalculationCount();
+  }
+
+  MoveEvaluationPipeline.Diagnostics moveEvaluationDiagnostics() {
+    return probeEvaluator == null ? null : probeEvaluator.getDiagnostics();
+  }
+
+  private void flushReplay(InnerScore<Score_> score) {
+    if (probeEvaluator == null) return;
+    var replay = transaction.publishReplay();
+    if (Thread.currentThread().isInterrupted()) {
+      probeEvaluator.abort();
+    } else {
+      probeEvaluator.replay(replay, score);
+    }
+  }
+
+  void incumbentChanged(Move<Solution_> move, InnerScore<Score_> score) {
+    if (transaction.isActive()) throw new IllegalStateException("Migration during an ALNS trial.");
+    transaction.appendReplay(move);
+    flushReplay(score);
   }
 
   public void beginTrial() {
@@ -87,18 +137,22 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
     requireActive();
     if (!pending.isEmpty())
       throw new IllegalStateException("Cannot commit with unresolved ALNS repair targets.");
-    if (!score().isComplete())
+    var evaluation = score();
+    if (!evaluation.isComplete())
       throw new IllegalStateException("Cannot commit an incompletely assigned ALNS candidate.");
+    flushReplay(InnerScore.fullyAssigned(evaluation.score()));
     transaction.commit();
     repairTargets.clear();
     pendingLocked = false;
   }
 
   public void rollback() {
+    var initialScore = transaction.isActive() ? transaction.initialScore() : null;
     transaction.rollback();
     pending.clear();
     repairTargets.clear();
     pendingLocked = false;
+    if (initialScore != null) flushReplay(null);
   }
 
   @Override
@@ -186,6 +240,79 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   }
 
   @Override
+  public AlnsEvaluation<Score_> evaluate(AlnsAssignment<Solution_> assignment) {
+    requireActive();
+    checkTermination();
+    return evaluateLocally(compileAssignment(assignment));
+  }
+
+  @Override
+  public List<AlnsEvaluation<Score_>> evaluateAssignments(
+      List<AlnsAssignment<Solution_>> assignments) {
+    Objects.requireNonNull(assignments);
+    return evaluateBatch(
+        new AbstractList<>() {
+          @Override
+          public Move<Solution_> get(int index) {
+            return compileAssignment(assignments.get(index));
+          }
+
+          @Override
+          public int size() {
+            return assignments.size();
+          }
+        });
+  }
+
+  @Override
+  public List<AlnsEvaluation<Score_>> evaluateRemovals(List<AlnsTarget<Solution_>> targets) {
+    Objects.requireNonNull(targets);
+    return evaluateBatch(
+        new AbstractList<>() {
+          @Override
+          public Move<Solution_> get(int index) {
+            return compileRemoval(targets.get(index));
+          }
+
+          @Override
+          public int size() {
+            return targets.size();
+          }
+        });
+  }
+
+  private List<AlnsEvaluation<Score_>> evaluateBatch(List<Move<Solution_>> moves) {
+    requireActive();
+    var results = new ArrayList<AlnsEvaluation<Score_>>(moves.size());
+    if (moves.isEmpty()) return results;
+    checkTermination();
+    if (probeEvaluator != null && probeEvaluator.isEnabledFor(moves.size())) {
+      // Initial lazy cloning observes this same enclosing state; publication also marks scratch
+      // savepoints whose rollback must subsequently be replicated.
+      flushReplay(null);
+      probeEvaluator.evaluateTo(
+          moves,
+          score -> {
+            scoreDirector.incrementCalculationCount();
+            probeCount++;
+            results.add(new AlnsEvaluation<>(score.raw(), score.unassignedCount()));
+          });
+    } else {
+      for (var move : moves) {
+        checkTermination();
+        results.add(evaluateLocally(move));
+      }
+    }
+    // The caller owns the checkpoint following the final alternative, including any RNG draw.
+    return results;
+  }
+
+  private AlnsEvaluation<Score_> evaluateLocally(Move<Solution_> move) {
+    var score = transaction.evaluatePrimitives(move, this::checkTermination, () -> probeCount++);
+    return new AlnsEvaluation<>(score.raw(), score.unassignedCount());
+  }
+
+  @Override
   public void execute(AlnsChange<Solution_> change) {
     requireActive();
     checkTermination();
@@ -205,6 +332,18 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   public void assign(AlnsAssignment<Solution_> assignment) {
     requireActive();
     checkTermination();
+    var move = compileAssignment(assignment);
+    AlnsPrimitiveMove.forEachPrimitive(
+        move,
+        primitive -> {
+          checkTermination();
+          transaction.apply(primitive);
+        });
+    pending.remove(assignment.target());
+  }
+
+  private Move<Solution_> compileAssignment(AlnsAssignment<Solution_> assignment) {
+    checkTermination();
     var target = assignment.target();
     requirePending(target);
     model.validateAssignment(assignment);
@@ -212,77 +351,48 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
     var current = model.current(target);
     if (descriptor instanceof ListVariableDescriptor<Solution_> list) {
       if (current.entity() != assignment.entity() || current.index() != assignment.index()) {
-        if (!current.isUnassigned()) remove(list, target, current);
-        if (!assignment.isUnassigned()) {
-          checkTermination();
-          transaction.apply(
-              list,
-              assignment.entity(),
-              recorder -> {
-                recorder.beforeListVariableElementAssigned(list, target.value());
-                recorder.beforeListVariableChanged(
-                    list, assignment.entity(), assignment.index(), assignment.index());
-                list.addElement(assignment.entity(), assignment.index(), target.value());
-                recorder.afterListVariableChanged(
-                    list, assignment.entity(), assignment.index(), assignment.index() + 1);
-                recorder.afterListVariableElementAssigned(list, target.value());
-              });
-        }
+        var removal =
+            current.isUnassigned()
+                ? null
+                : AlnsPrimitiveMove.remove(list, current.entity(), current.index(), target.value());
+        var insertion =
+            assignment.isUnassigned()
+                ? null
+                : AlnsPrimitiveMove.insert(
+                    list, assignment.entity(), assignment.index(), target.value());
+        if (removal == null && insertion != null) return insertion;
+        if (removal != null && insertion == null) return removal;
+        if (removal != null) return AlnsPrimitiveMove.composite(List.of(removal, insertion));
       }
     } else if (!Objects.equals(current.value(), assignment.value())) {
-      changeBasic(
+      return AlnsPrimitiveMove.basic(
           (BasicVariableDescriptor<Solution_>) descriptor, target.entity(), assignment.value());
     }
-    pending.remove(target);
+    return AlnsPrimitiveMove.composite(List.of());
   }
 
   @Override
   public void destroy(AlnsTarget<Solution_> target) {
     requireActive();
     checkTermination();
+    var move = compileRemoval(target);
+    if (pendingLocked) pending.add(target);
+    AlnsPrimitiveMove.forEachPrimitive(move, transaction::apply);
+  }
+
+  private Move<Solution_> compileRemoval(AlnsTarget<Solution_> target) {
+    checkTermination();
     requirePending(target);
     var descriptor = model.descriptor(target);
     var current = model.current(target);
     model.assertMovable(target, current);
-    if (pendingLocked) pending.add(target);
-    if (current.isUnassigned()) return;
+    if (current.isUnassigned()) return AlnsPrimitiveMove.composite(List.of());
     if (descriptor instanceof ListVariableDescriptor<Solution_> list) {
-      remove(list, target, current);
+      return AlnsPrimitiveMove.remove(list, current.entity(), current.index(), target.value());
     } else {
-      changeBasic((BasicVariableDescriptor<Solution_>) descriptor, target.entity(), null);
+      return AlnsPrimitiveMove.basic(
+          (BasicVariableDescriptor<Solution_>) descriptor, target.entity(), null);
     }
-  }
-
-  private void changeBasic(
-      BasicVariableDescriptor<Solution_> descriptor, Object entity, Object value) {
-    transaction.apply(
-        descriptor,
-        entity,
-        recorder -> {
-          recorder.beforeVariableChanged(descriptor, entity);
-          descriptor.setValue(entity, value);
-          recorder.afterVariableChanged(descriptor, entity);
-        });
-  }
-
-  private void remove(
-      ListVariableDescriptor<Solution_> descriptor,
-      AlnsTarget<Solution_> target,
-      AlnsAssignment<Solution_> current) {
-    transaction.apply(
-        descriptor,
-        current.entity(),
-        recorder -> {
-          recorder.beforeListVariableElementUnassigned(descriptor, target.value());
-          recorder.beforeListVariableChanged(
-              descriptor, current.entity(), current.index(), current.index() + 1);
-          Object removed = descriptor.removeElement(current.entity(), current.index());
-          if (removed != target.value())
-            throw new IllegalStateException("ALNS list position changed unexpectedly.");
-          recorder.afterListVariableChanged(
-              descriptor, current.entity(), current.index(), current.index());
-          recorder.afterListVariableElementUnassigned(descriptor, target.value());
-        });
   }
 
   private void requirePending(AlnsTarget<Solution_> target) {
@@ -317,10 +427,22 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   @Override
   public void close() {
     if (!closed) {
+      Throwable originalFailure = null;
       try {
         rollback();
+      } catch (RuntimeException | Error failure) {
+        originalFailure = failure;
+        throw failure;
       } finally {
         closed = true;
+        if (probeEvaluator != null) {
+          try {
+            probeEvaluator.close();
+          } catch (RuntimeException | Error workerFailure) {
+            if (originalFailure == null) throw workerFailure;
+            if (originalFailure != workerFailure) originalFailure.addSuppressed(workerFailure);
+          }
+        }
       }
     }
   }
