@@ -8,6 +8,7 @@ import jakarta.xml.bind.annotation.XmlType;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import greycos.solver.core.api.solver.alns.AlnsDestroyOperator;
+import greycos.solver.core.api.solver.alns.AlnsGrouping;
 import greycos.solver.core.api.solver.alns.AlnsRanking;
 import greycos.solver.core.api.solver.alns.AlnsRelatedness;
 import greycos.solver.core.config.AbstractConfig;
@@ -31,6 +32,7 @@ import org.jspecify.annotations.Nullable;
       "customClass",
       "relatednessClass",
       "rankingClass",
+      "groupingClass",
       "rankExponent",
       "initialWeight",
       "customProperties"
@@ -47,6 +49,7 @@ public final class AlnsDestroyOperatorConfig extends AbstractConfig<AlnsDestroyO
   private String customClass;
   private String relatednessClass;
   private String rankingClass;
+  private String groupingClass;
   private Double rankExponent;
   private Double initialWeight;
 
@@ -203,6 +206,26 @@ public final class AlnsDestroyOperatorConfig extends AbstractConfig<AlnsDestroyO
     return this;
   }
 
+  /**
+   * Optional grouping callback for {@link AlnsDestroyOperatorType#GROUP_REMOVAL}. Without a
+   * callback, basic bindings group by equal current values and list bindings by current owner
+   * identity. Both forms keep planning variables separate and include only eligible bindings. The
+   * callback is independently instantiated and receives {@link #getCustomProperties()}.
+   */
+  public @Nullable Class<? extends AlnsGrouping> getGroupingClass() {
+    return ConfigUtils.resolveClass(groupingClass, "groupingClass", this);
+  }
+
+  public void setGroupingClass(@Nullable Class<? extends AlnsGrouping> groupingClass) {
+    this.groupingClass = groupingClass == null ? null : groupingClass.getName();
+  }
+
+  public @NonNull AlnsDestroyOperatorConfig withGroupingClass(
+      @NonNull Class<? extends AlnsGrouping> groupingClass) {
+    setGroupingClass(groupingClass);
+    return this;
+  }
+
   public @Nullable Double getRankExponent() {
     return rankExponent;
   }
@@ -268,6 +291,8 @@ public final class AlnsDestroyOperatorConfig extends AbstractConfig<AlnsDestroyO
         ConfigUtils.inheritOverwritableProperty(relatednessClass, inheritedConfig.relatednessClass);
     rankingClass =
         ConfigUtils.inheritOverwritableProperty(rankingClass, inheritedConfig.rankingClass);
+    groupingClass =
+        ConfigUtils.inheritOverwritableProperty(groupingClass, inheritedConfig.groupingClass);
     rankExponent =
         ConfigUtils.inheritOverwritableProperty(rankExponent, inheritedConfig.rankExponent);
     initialWeight =
@@ -296,6 +321,9 @@ public final class AlnsDestroyOperatorConfig extends AbstractConfig<AlnsDestroyO
     }
     if (rankingClass != null) {
       classVisitor.accept(getRankingClass());
+    }
+    if (groupingClass != null) {
+      classVisitor.accept(getGroupingClass());
     }
   }
 }

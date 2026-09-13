@@ -34,6 +34,7 @@ import greycos.solver.core.api.solver.alns.AlnsChange;
 import greycos.solver.core.api.solver.alns.AlnsContext;
 import greycos.solver.core.api.solver.alns.AlnsDestroyOperator;
 import greycos.solver.core.api.solver.alns.AlnsEvaluation;
+import greycos.solver.core.api.solver.alns.AlnsGrouping;
 import greycos.solver.core.api.solver.alns.AlnsListVariable;
 import greycos.solver.core.api.solver.alns.AlnsMutableSolutionView;
 import greycos.solver.core.api.solver.alns.AlnsOperatorPair;
@@ -116,6 +117,7 @@ class AlnsPublicApiTest {
     }
     assertThat(outputDirectory.resolve("consumer/PublicAlnsConsumer$Destroy.class")).exists();
     assertThat(outputDirectory.resolve("consumer/PublicAlnsConsumer$Repair.class")).exists();
+    assertThat(outputDirectory.resolve("consumer/PublicAlnsConsumer$Grouping.class")).exists();
     assertThat(outputDirectory.resolve("consumer/PublicAlnsConsumer$Selection.class")).exists();
     assertThat(outputDirectory.resolve("consumer/PublicAlnsConsumer$Acceptance.class")).exists();
     if (!productionModulePath.isEmpty())
@@ -144,6 +146,7 @@ class AlnsPublicApiTest {
             AlnsContext.class,
             AlnsDestroyOperator.class,
             AlnsEvaluation.class,
+            AlnsGrouping.class,
             AlnsListVariable.class,
             AlnsMutableSolutionView.class,
             AlnsOperatorPair.class,
@@ -288,6 +291,7 @@ class AlnsPublicApiTest {
       import greycos.solver.core.api.solver.alns.AlnsContext;
       import greycos.solver.core.api.solver.alns.AlnsDestroyOperator;
       import greycos.solver.core.api.solver.alns.AlnsEvaluation;
+      import greycos.solver.core.api.solver.alns.AlnsGrouping;
       import greycos.solver.core.api.solver.alns.AlnsOperatorPair;
       import greycos.solver.core.api.solver.alns.AlnsOutcome;
       import greycos.solver.core.api.solver.alns.AlnsRepairOperator;
@@ -295,8 +299,10 @@ class AlnsPublicApiTest {
       import greycos.solver.core.api.solver.alns.AlnsTarget;
       import greycos.solver.core.api.solver.alns.AlnsTrialResult;
       import greycos.solver.core.config.alns.AlnsDestroyOperatorConfig;
+      import greycos.solver.core.config.alns.AlnsDestroyOperatorType;
       import greycos.solver.core.config.alns.AlnsPhaseConfig;
       import greycos.solver.core.config.alns.AlnsRepairOperatorConfig;
+      import greycos.solver.core.config.alns.AlnsRepairOperatorType;
       import greycos.solver.core.config.solver.SolverConfig;
       import greycos.solver.core.config.solver.termination.TerminationConfig;
 
@@ -322,6 +328,11 @@ class AlnsPublicApiTest {
             context.checkTermination();
             context.evaluateRemovals(context.targets());
             return context.targets().stream().limit(size).toList();
+          }
+        }
+        public static final class Grouping implements AlnsGrouping<Problem> {
+          @Override public Object groupKey(Problem problem, AlnsTarget<Problem> target) {
+            return ((Job) target.entity()).value;
           }
         }
         public static final class Repair implements AlnsRepairOperator<Problem, SimpleScore> {
@@ -360,8 +371,14 @@ class AlnsPublicApiTest {
               .withConstraintProviderClass(Constraints.class)
               .withPhases(new AlnsPhaseConfig()
                   .withMoveThreadCount("2")
-                  .withDestroyOperators(new AlnsDestroyOperatorConfig().withId("customDestroy").withCustomClass(Destroy.class))
-                  .withRepairOperators(new AlnsRepairOperatorConfig().withId("customRepair").withCustomClass(Repair.class))
+                  .withDestroyOperators(
+                      new AlnsDestroyOperatorConfig().withId("customDestroy").withCustomClass(Destroy.class),
+                      new AlnsDestroyOperatorConfig().withId("group").withType(AlnsDestroyOperatorType.GROUP_REMOVAL)
+                          .withGroupingClass(Grouping.class))
+                  .withRepairOperators(
+                      new AlnsRepairOperatorConfig().withId("customRepair").withCustomClass(Repair.class),
+                      new AlnsRepairOperatorConfig().withId("cheapest").withType(AlnsRepairOperatorType.CHEAPEST_INSERTION),
+                      new AlnsRepairOperatorConfig().withId("regret").withType(AlnsRepairOperatorType.REGRET_K).withRegretK(4))
                   .withSelectionPolicyClass(Selection.class).withAcceptancePolicyClass(Acceptance.class)
                   .withTerminationConfig(new TerminationConfig().withStepCountLimit(3)));
         }

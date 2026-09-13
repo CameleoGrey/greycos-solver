@@ -41,6 +41,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -189,8 +190,12 @@ class AlnsMoveThreadingTest {
         .allSatisfy(AlnsThreadingTestSupport::assertThreadStopped);
   }
 
-  @Test
-  void cancellationWhileWorkerScoresRestoresIncumbentAndClosesWorkers() throws Exception {
+  @ParameterizedTest
+  @EnumSource(
+      value = AlnsRepairOperatorType.class,
+      names = {"GREEDY", "CHEAPEST_INSERTION", "REGRET_K"})
+  void cancellationWhileWorkerScoresRestoresIncumbentAndClosesWorkers(AlnsRepairOperatorType repair)
+      throws Exception {
     BlockingConstraints.reset(false);
     RecordingThreadFactory.threads.clear();
     var workload = new BasicWorkload();
@@ -200,7 +205,7 @@ class AlnsMoveThreadingTest {
                 "2",
                 0,
                 4,
-                AlnsRepairOperatorType.GREEDY,
+                repair,
                 new TerminationConfig().withStepCountLimit(2),
                 EnvironmentMode.NO_ASSERT)
             .withThreadFactoryClass(RecordingThreadFactory.class)
@@ -264,15 +269,22 @@ class AlnsMoveThreadingTest {
   @ParameterizedTest
   @ValueSource(longs = {1, 2, 4, 5, 8, 9, 16, 17, 25})
   void repairScoreBudgetMatchesSequentialAtBatchBoundaries(long limit) {
-    var sequential = budgetTrace("NONE", limit);
-    for (var threads : List.of("1", "2", "4")) {
-      assertThat(budgetTrace(threads, limit))
-          .as("limit=%s threads=%s", limit, threads)
-          .isEqualTo(sequential);
+    for (var repair :
+        List.of(
+            AlnsRepairOperatorType.GREEDY,
+            AlnsRepairOperatorType.CHEAPEST_INSERTION,
+            AlnsRepairOperatorType.REGRET_K)) {
+      var sequential = budgetTrace("NONE", limit, repair);
+      for (var threads : List.of("1", "2", "4")) {
+        assertThat(budgetTrace(threads, limit, repair))
+            .as("repair=%s limit=%s threads=%s", repair, limit, threads)
+            .isEqualTo(sequential);
+      }
     }
   }
 
-  private static List<String> budgetTrace(String threads, long limit) {
+  private static List<String> budgetTrace(
+      String threads, long limit, AlnsRepairOperatorType repair) {
     var workload = new BasicWorkload();
     var config =
         AlnsMoveThreadingWorkload.config(
@@ -280,7 +292,7 @@ class AlnsMoveThreadingTest {
             threads,
             0L,
             4,
-            AlnsRepairOperatorType.GREEDY,
+            repair,
             new TerminationConfig().withStepCountLimit(3),
             EnvironmentMode.NO_ASSERT);
     ((AlnsPhaseConfig) config.getPhaseConfigList().getFirst())

@@ -3,6 +3,7 @@ package greycos.solver.core.impl.alns;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,7 @@ import greycos.solver.core.api.solver.alns.AlnsAssignment;
 import greycos.solver.core.api.solver.alns.AlnsContext;
 import greycos.solver.core.api.solver.alns.AlnsDestroyOperator;
 import greycos.solver.core.api.solver.alns.AlnsEvaluation;
+import greycos.solver.core.api.solver.alns.AlnsGrouping;
 import greycos.solver.core.api.solver.alns.AlnsRanking;
 import greycos.solver.core.api.solver.alns.AlnsRelatedness;
 import greycos.solver.core.api.solver.alns.AlnsRepairOperator;
@@ -42,7 +44,8 @@ public final class BuiltinAlnsOperators {
     if (copied.getCustomClass() != null
         && (copied.getType() != null
             || copied.getRelatednessClass() != null
-            || copied.getRankingClass() != null)) {
+            || copied.getRankingClass() != null
+            || copied.getGroupingClass() != null)) {
       throw new IllegalArgumentException(
           "ALNS customClass cannot be combined with a built-in destroy type or callback.");
     }
@@ -58,6 +61,9 @@ public final class BuiltinAlnsOperators {
     if (copied.getRankingClass() != null && type != AlnsDestroyOperatorType.WORST_REMOVAL) {
       throw new IllegalArgumentException("ALNS rankingClass is only supported by WORST_REMOVAL.");
     }
+    if (copied.getGroupingClass() != null && type != AlnsDestroyOperatorType.GROUP_REMOVAL) {
+      throw new IllegalArgumentException("ALNS groupingClass is only supported by GROUP_REMOVAL.");
+    }
     double exponent = Objects.requireNonNullElse(copied.getRankExponent(), 6.0);
     if (!Double.isFinite(exponent) || exponent <= 0) {
       throw new IllegalArgumentException("ALNS rankExponent must be finite and positive.");
@@ -70,12 +76,18 @@ public final class BuiltinAlnsOperators {
         type != AlnsDestroyOperatorType.WORST_REMOVAL || copied.getRankingClass() == null
             ? null
             : ConfigUtils.newInstance(copied, "rankingClass", copied.getRankingClass());
+    AlnsGrouping<S> grouping =
+        copied.getGroupingClass() == null
+            ? null
+            : ConfigUtils.newInstance(copied, "groupingClass", copied.getGroupingClass());
     if (type == AlnsDestroyOperatorType.RELATEDNESS && relatedness == null) {
       throw new IllegalArgumentException("RELATEDNESS requires relatednessClass.");
     }
     if (relatedness != null)
       configureProperties(relatedness, "relatednessClass", copied.getCustomProperties());
     if (ranking != null) configureProperties(ranking, "rankingClass", copied.getCustomProperties());
+    if (grouping != null)
+      configureProperties(grouping, "groupingClass", copied.getCustomProperties());
     AlnsDestroyOperator<S, Score_> delegate =
         (context, size) -> {
           context.checkTermination();
@@ -89,9 +101,11 @@ public final class BuiltinAlnsOperators {
             case LIST_BLOCK -> listBlock(context, pool, count);
             case RELATEDNESS -> related(context, pool, count, relatedness, exponent);
             case WORST_REMOVAL -> worst(context, pool, count, ranking, exponent);
+            case GROUP_REMOVAL -> group(context, pool, count, grouping);
           };
         };
-    return new ManagedDestroy<>(delegate, relatedness != null ? relatedness : ranking);
+    return new ManagedDestroy<>(
+        delegate, relatedness != null ? relatedness : ranking != null ? ranking : grouping);
   }
 
   public static <S, Score_ extends Score<Score_>> List<AlnsTarget<S>> scopedTargets(
@@ -151,6 +165,49 @@ public final class BuiltinAlnsOperators {
     int latestStart = Math.min(seedIndex, right - length);
     int start = context.random().nextInt(earliestStart, latestStart + 1);
     return List.copyOf(sameList.subList(start, start + length));
+  }
+
+  private static <S, Score_ extends Score<Score_>> List<AlnsTarget<S>> group(
+      AlnsContext<S, Score_> context,
+      List<AlnsTarget<S>> pool,
+      int count,
+      AlnsGrouping<S> grouping) {
+    var groups = new LinkedHashMap<GroupKey, ArrayList<AlnsTarget<S>>>();
+    for (var target : pool) {
+      context.checkTermination();
+      Object key;
+      if (grouping != null) {
+        key = grouping.groupKey(context.workingSolution(), target);
+        if (key == null) {
+          throw new IllegalArgumentException("ALNS grouping must return a nonnull group key.");
+        }
+      } else {
+        var current = context.currentAssignment(target);
+        key = target.isList() ? new IdentityKey(current.entity()) : current.value();
+      }
+      groups
+          .computeIfAbsent(new GroupKey(target.variable(), key), ignored -> new ArrayList<>())
+          .add(target);
+    }
+    context.checkTermination();
+    var selected = new ArrayList<>(groups.values()).get(context.random().nextInt(groups.size()));
+    return selected.size() <= count
+        ? List.copyOf(selected)
+        : randomSelection(selected, count, context.random());
+  }
+
+  private record GroupKey(Object variable, Object key) {}
+
+  private record IdentityKey(Object value) {
+    @Override
+    public boolean equals(Object other) {
+      return other instanceof IdentityKey key && value == key.value;
+    }
+
+    @Override
+    public int hashCode() {
+      return System.identityHashCode(value);
+    }
   }
 
   private static <S, Score_ extends Score<Score_>> List<AlnsTarget<S>> related(
@@ -240,6 +297,9 @@ public final class BuiltinAlnsOperators {
   public static <S, Score_ extends Score<Score_>> AlnsRepairOperator<S, Score_> repair(
       AlnsRepairOperatorConfig config) {
     var copied = config.copyConfig();
+    if (copied.getRegretK() != null && copied.getType() != AlnsRepairOperatorType.REGRET_K) {
+      throw new IllegalArgumentException("ALNS regretK is only supported by REGRET_K.");
+    }
     if (copied.getCustomClass() != null && copied.getType() != null) {
       throw new IllegalArgumentException(
           "ALNS customClass cannot be combined with a built-in repair type.");
@@ -253,6 +313,10 @@ public final class BuiltinAlnsOperators {
     int topK = Objects.requireNonNullElse(copied.getTopK(), 3);
     if (topK < 1) {
       throw new IllegalArgumentException("ALNS repair topK must be positive.");
+    }
+    int regretK = Objects.requireNonNullElse(copied.getRegretK(), 4);
+    if (regretK < 2) {
+      throw new IllegalArgumentException("ALNS regretK must be at least 2.");
     }
     return (context, targets) -> {
       var pending = new ArrayList<>(new LinkedHashSet<>(targets));
@@ -268,8 +332,18 @@ public final class BuiltinAlnsOperators {
       while (!pending.isEmpty()) {
         context.checkTermination();
         Choice<S, Score_> choice;
-        if (type == AlnsRepairOperatorType.REGRET_2 || type == AlnsRepairOperatorType.REGRET_3) {
-          choice = chooseRegret(context, pending, type == AlnsRepairOperatorType.REGRET_2 ? 2 : 3);
+        if (type == AlnsRepairOperatorType.REGRET_2
+            || type == AlnsRepairOperatorType.REGRET_3
+            || type == AlnsRepairOperatorType.REGRET_K) {
+          choice =
+              chooseRegret(
+                  context,
+                  pending,
+                  type == AlnsRepairOperatorType.REGRET_2
+                      ? 2
+                      : type == AlnsRepairOperatorType.REGRET_3 ? 3 : regretK);
+        } else if (type == AlnsRepairOperatorType.CHEAPEST_INSERTION) {
+          choice = chooseCheapest(context, pending);
         } else {
           var target = pending.get(0);
           var alternatives =
@@ -340,16 +414,42 @@ public final class BuiltinAlnsOperators {
   private record OrderedCandidate<S, Score_ extends Score<Score_>>(
       int index, Candidate<S, Score_> candidate) {}
 
-  private static <S, Score_ extends Score<Score_>> Choice<S, Score_> chooseRegret(
-      AlnsContext<S, Score_> context, List<AlnsTarget<S>> pending, int k) {
-    Choice<S, Score_> best = null;
+  private static <S> List<AlnsTarget<S>> eligiblePending(List<AlnsTarget<S>> pending) {
     // Mandatory and optional decisions are not interchangeable: complete mandatory repairs first.
     boolean mandatoryRemaining =
         pending.stream().anyMatch(target -> !target.variable().allowsUnassigned());
-    var eligible =
-        pending.stream()
-            .filter(target -> !mandatoryRemaining || !target.variable().allowsUnassigned())
-            .toList();
+    return pending.stream()
+        .filter(target -> !mandatoryRemaining || !target.variable().allowsUnassigned())
+        .toList();
+  }
+
+  private static <S, Score_ extends Score<Score_>> Choice<S, Score_> chooseCheapest(
+      AlnsContext<S, Score_> context, List<AlnsTarget<S>> pending) {
+    Choice<S, Score_> best = null;
+    var eligible = eligiblePending(pending);
+    List<List<Candidate<S, Score_>>> prepared =
+        context instanceof DefaultAlnsContext<S, Score_> framework && framework.usesPreparedProbes()
+            ? framework.bestAssignments(eligible, 1)
+            : null;
+    for (int targetIndex = 0; targetIndex < eligible.size(); targetIndex++) {
+      var target = eligible.get(targetIndex);
+      var alternatives =
+          prepared == null ? alternatives(context, target, 1) : prepared.get(targetIndex);
+      if (alternatives.isEmpty()) {
+        return null;
+      }
+      var candidate = alternatives.getFirst();
+      if (best == null || candidate.evaluation().compareTo(best.candidate().evaluation()) > 0) {
+        best = new Choice<>(target, candidate, null, false);
+      }
+    }
+    return best;
+  }
+
+  private static <S, Score_ extends Score<Score_>> Choice<S, Score_> chooseRegret(
+      AlnsContext<S, Score_> context, List<AlnsTarget<S>> pending, int k) {
+    Choice<S, Score_> best = null;
+    var eligible = eligiblePending(pending);
     List<List<Candidate<S, Score_>>> prepared =
         context instanceof DefaultAlnsContext<S, Score_> framework && framework.usesPreparedProbes()
             ? framework.bestAssignments(eligible, k)
@@ -364,12 +464,22 @@ public final class BuiltinAlnsOperators {
       var first = alternatives.get(0);
       BigDecimal[] regret =
           AlnsScoreMath.difference(first.evaluation().score(), first.evaluation().score());
-      for (int rank = 1; rank < k; rank++) {
-        var other = alternatives.get(Math.min(rank, alternatives.size() - 1));
+      for (int rank = 1; rank < Math.min(k, alternatives.size()); rank++) {
+        if (k > 3 && rank % SCORING_BATCH_SIZE == 0) context.checkTermination();
+        var other = alternatives.get(rank);
         var difference =
             AlnsScoreMath.difference(first.evaluation().score(), other.evaluation().score());
         for (int level = 0; level < regret.length; level++) {
           regret[level] = regret[level].add(difference[level]);
+        }
+      }
+      if (alternatives.size() < k) {
+        var difference =
+            AlnsScoreMath.difference(
+                first.evaluation().score(), alternatives.getLast().evaluation().score());
+        var repetitions = BigDecimal.valueOf(k - alternatives.size());
+        for (int level = 0; level < regret.length; level++) {
+          regret[level] = regret[level].add(difference[level].multiply(repetitions));
         }
       }
       var candidate = new Choice<>(target, first, regret, alternatives.size() == 1);

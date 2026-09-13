@@ -16,6 +16,8 @@ import greycos.solver.core.api.solver.alns.AlnsAssignment;
 import greycos.solver.core.api.solver.alns.AlnsListVariable;
 import greycos.solver.core.api.solver.alns.AlnsTarget;
 import greycos.solver.core.api.solver.alns.AlnsTerminationException;
+import greycos.solver.core.config.alns.AlnsDestroyOperatorConfig;
+import greycos.solver.core.config.alns.AlnsDestroyOperatorType;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirector;
@@ -277,6 +279,11 @@ class AlnsContextTest {
         var context = new DefaultAlnsContext<>(director, new Random(0), () -> false)) {
       context.beginTrial();
       assertThat(context.targets()).extracting(AlnsTarget::value).containsExactly(b);
+      var group =
+          BuiltinAlnsOperators
+              .<TestdataListUnassignedPinnedEntityProvidingSolution, SimpleScore>destroy(
+                  new AlnsDestroyOperatorConfig().withType(AlnsDestroyOperatorType.GROUP_REMOVAL));
+      assertThat(group.select(context, 100)).extracting(AlnsTarget::value).containsExactly(b);
       assertThat(context.unassignedTargets())
           .extracting(AlnsTarget::value)
           .containsExactly(dropped);
@@ -326,6 +333,10 @@ class AlnsContextTest {
       context.beginTrial();
       assertThat(context.variables()).hasSize(3);
       assertThat(context.targets()).hasSize(3);
+      var group =
+          BuiltinAlnsOperators.<TestdataMixedSolution, SimpleScore>destroy(
+              new AlnsDestroyOperatorConfig().withType(AlnsDestroyOperatorType.GROUP_REMOVAL));
+      assertThat(group.select(context, 100)).hasSize(1);
       var target =
           context.targets().stream()
               .filter(t -> t.variable().variableName().equals("basicValue"))

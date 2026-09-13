@@ -78,18 +78,58 @@ Exhausting a repair limit records a failed repair and allows the next trial; out
 
 == Operators and variable bindings
 
-Destroy operator types are `RANDOM`, `RELATEDNESS`, `WORST_REMOVAL`, and `LIST_BLOCK`.
+Destroy operator types are `RANDOM`, `RELATEDNESS`, `WORST_REMOVAL`, `LIST_BLOCK`, and `GROUP_REMOVAL`.
 `RELATEDNESS` requires a domain-specific `relatednessClass`; smaller distances indicate closer targets.
 `WORST_REMOVAL` can use a `rankingClass`; larger ranks are selected earlier.
 Its built-in alternative estimates removal benefits through score probes.
 Rank-based removal uses `rankExponent=6.0` by default.
 `LIST_BLOCK` removes a contiguous block from an eligible unpinned list region.
 
-Repair operator types are `GREEDY`, `REGRET_2`, `REGRET_3`, and `RANDOMIZED_GREEDY`.
-The randomized greedy operator chooses among the best `topK` placements (default `3`).
-Regret repair compares the best placement with its second or third alternative using score levels.
+`GROUP_REMOVAL` selects one nonempty group uniformly from the scoped movable targets.
+For basic variables, a group contains bindings with the same variable and equal current planning values.
+For list variables, a group contains values belonging to the same variable and current owner object.
+List owners and planning targets retain object identity even when their business values compare equal.
+If the selected group fits the requested destruction count, all its eligible members are selected;
+otherwise a uniform subset of that count is selected without replacement.
+Smaller groups underfill the request. Pinned members remain excluded, and repair may reuse the original
+container, so removing a group does not guarantee that a physical container becomes or remains empty.
+
+An optional `groupingClass` implements `AlnsGrouping<Solution_>.groupKey(solution, target)` to group
+by domain attributes such as a shift or batch. Keys must be nonnull and have stable `equals`/`hashCode`
+throughout selection. Callback keys remain scoped by variable; equal keys on different variables do
+not combine their bindings. Use a custom destroy operator for compound groups spanning variables.
+The callback is configured through `customProperties` and has the same per-phase/island ownership and
+`AutoCloseable` lifecycle as relatedness and ranking callbacks. `groupingClass` is only valid for `GROUP_REMOVAL`.
+
+Repair operator types are `GREEDY`, `REGRET_2`, `REGRET_3`, `RANDOMIZED_GREEDY`,
+`CHEAPEST_INSERTION`, and `REGRET_K`.
+`GREEDY` processes targets in framework encounter order and chooses the best placement for each.
+`RANDOMIZED_GREEDY` shuffles that order and chooses uniformly among each target's best `topK`
+placements (default `3`); `topK=1` gives random-order, best-placement insertion.
+This randomization scores every placement; it does not apply cost noise or skip probes through blinking.
+`CHEAPEST_INSERTION` evaluates every eligible pending target against the same partial solution,
+then inserts the globally best target/placement pair and recomputes after each insertion.
+It can spend more probes per repair than sequential greedy.
+
+`REGRET_K` uses `regretK` (default `4`, minimum `2`); `regretK` is only valid for this type.
+`REGRET_2` and `REGRET_3` retain their fixed k values.
+For each target, regret is the sum of the best score minus alternatives 2 through k, calculated
+exactly at each score level and compared lexicographically. Alternatives are individual placements,
+including multiple positions in one list; they are not reduced to the best placement per destination.
+Single-option targets take priority. When fewer than k alternatives exist, the last available
+alternative supplies the missing ranks. After each insertion, alternatives and regret are recomputed.
+
+All repairs resolve mandatory targets before optional targets. Equal regrets prefer the better best
+placement. Remaining target ties use encounter order, as do global cheapest ties and equal-score placements.
 All placements respect the model's variable ranges and pinning.
 Unassignment remains eligible only where the model permits it.
+Legal placements may violate scored hard constraints; candidate counts do not represent a generic
+count of hard-feasible positions.
+
+The automatic portfolio remains per-variable `RANDOM`, plus `LIST_BLOCK` for the list variable,
+paired with `GREEDY` and `REGRET_2`. The three additional types are opt-in.
+Explicit destroy or repair lists replace the corresponding automatic list; include existing operators
+explicitly when adding an operator to that portfolio.
 
 An explicit operator may target an `entityClass` and `variableName`.
 This identifies a basic entity/variable binding or the list variable whose values can be moved.
@@ -129,6 +169,29 @@ If both bounds are explicit and their resolved counts conflict, solving fails wi
 Already unassigned optional targets can also be considered for recovery; `recoveryCount` controls this separately.
 The default recovery allowance follows the destruction size, with at least one recovery opportunity.
 Coincident coordinates or equal business values do not merge planning targets: target identity follows working-object identity.
+
+For example, an explicit group/regret portfolio can be configured as follows:
+
+[source,xml]
+----
+<alns>
+  <termination><secondsSpentLimit>60</secondsSpentLimit></termination>
+  <destroyOperator>
+    <id>group</id>
+    <type>GROUP_REMOVAL</type>
+    <maximumDestroyedCount>20</maximumDestroyedCount>
+  </destroyOperator>
+  <repairOperator>
+    <id>cheapest</id>
+    <type>CHEAPEST_INSERTION</type>
+  </repairOperator>
+  <repairOperator>
+    <id>regret-4</id>
+    <type>REGRET_K</type>
+    <regretK>4</regretK>
+  </repairOperator>
+</alns>
+----
 
 == Adaptive selection and acceptance
 
@@ -197,7 +260,7 @@ The default API implementations run sequentially, so existing custom contexts re
 
 The framework may evaluate these batches on move workers.
 Custom callbacks passed to `evaluate(AlnsChange)` and `execute(AlnsChange)`, along with custom
-relatedness/ranking callbacks and operator policies, remain on their owning solver or island thread.
+relatedness/ranking/grouping callbacks and operator policies, remain on their owning solver or island thread.
 An individual `evaluate(assignment)` is also synchronous on that thread.
 The batch methods give the framework enough information to rebase working references safely;
 applications must continue to call the context from its owning thread.
@@ -232,12 +295,13 @@ Each owns one persistent cloned solution and incremental score director.
 The framework rebases probes onto those solutions and synchronizes committed mutations and rollbacks
 before scoring against the next partial state. Empty and single-candidate batches use the coordinator.
 
-Built-in GREEDY, RANDOMIZED_GREEDY, REGRET_2, and REGRET_3 repairs stream prepared alternatives through
+All built-in repairs stream prepared alternatives through
 a bounded candidate window. Assignment metadata and worker references are prepared for the current
 state; full lists of candidate moves and result wrappers are unnecessary on this internal path.
 The score-based WORST_REMOVAL destroy operator also uses batches.
 Repair retains only the best alternatives needed by its decision, preserving the original order of equal scores.
-Regret repair can stream all eligible pending targets against one unchanged state before choosing an insertion.
+Regret and CHEAPEST_INSERTION repairs can stream all eligible pending targets against one unchanged state
+before choosing an insertion.
 The stream keeps the original target and assignment order without materializing every placement together.
 GREEDY and RANDOMIZED_GREEDY finish each target before the selected insertion changes that state.
 Known winning evaluations also supply subsequent worker synchronization scores when they still describe
@@ -401,3 +465,12 @@ It records the observed elapsed time, score, score calculations, outer moves, an
 and independently checks each returned score. Heap samples include retained JVM allocations after validation;
 peak heap and process RSS are not measured by this harness.
 These small easy-score workloads validate the comparison procedure; they do not establish production performance.
+
+The optional real-domain operator comparison is documented in
+`tools/benchmark/scripts/README-alns-operators.md` in the repository.
+It requires the local Cloud Balancing and Vehicle Routing examples and their data.
+The harness compares the default portfolio, each new operator separately, the combined portfolio,
+and random-order best-placement repair on identical initialized inputs across multiple seeds.
+It separates phase-time limits from fixed score-query limits and independently recomputes returned scores.
+Its manifest, per-pair work counts, score trajectories, CSV and summary distinguish completed trials
+from cancellation and preserve hard/soft score ordering.

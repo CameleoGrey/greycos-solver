@@ -15,6 +15,11 @@ import java.nio.charset.StandardCharsets;
 import greycos.solver.benchmark.impl.io.jaxb.PlannerBenchmarkConfigIO;
 import greycos.solver.benchmark.util.RigidTestdataSolutionFileIO;
 import greycos.solver.core.api.cotwin.solution.SolutionFileIO;
+import greycos.solver.core.api.solver.alns.AlnsGrouping;
+import greycos.solver.core.config.alns.AlnsDestroyOperatorType;
+import greycos.solver.core.config.alns.AlnsPhaseConfig;
+import greycos.solver.core.config.alns.AlnsRepairOperatorConfig;
+import greycos.solver.core.config.alns.AlnsRepairOperatorType;
 import greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 import greycos.solver.core.testcotwin.TestdataSolution;
 import greycos.solver.jackson.impl.cotwin.solution.JacksonSolutionFileIO;
@@ -72,6 +77,53 @@ class PlannerBenchmarkConfigTest {
               benchmarkElementWithNamespace, PlannerBenchmarkConfig.XML_ELEMENT_NAME);
     }
     assertThat(jaxbString).isXmlEqualTo(originalXml);
+  }
+
+  @Test
+  void namespacedAlnsOperatorsValidateAndRoundTrip() {
+    var xml =
+        """
+        <plannerBenchmark xmlns="%s">
+          <solverBenchmark>
+            <name>ALNS extensions</name>
+            <solver>
+              <alns>
+                <destroyOperator>
+                  <type>GROUP_REMOVAL</type><groupingClass>%s</groupingClass>
+                  <customProperties><property name="setting" value="example"/></customProperties>
+                </destroyOperator>
+                <repairOperator><type>CHEAPEST_INSERTION</type></repairOperator>
+                <repairOperator><type>REGRET_K</type><regretK>5</regretK></repairOperator>
+              </alns>
+            </solver>
+          </solverBenchmark>
+        </plannerBenchmark>
+        """
+            .formatted(PlannerBenchmarkConfig.XML_NAMESPACE, AlnsGrouping.class.getName());
+    var io = new PlannerBenchmarkConfigIO();
+    var config = io.read(new StringReader(xml));
+    var phase =
+        (AlnsPhaseConfig)
+            config
+                .getSolverBenchmarkConfigList()
+                .getFirst()
+                .getSolverConfig()
+                .getPhaseConfigList()
+                .getFirst();
+    var destroy = phase.getDestroyOperatorConfigList().getFirst();
+    assertThat(destroy.getType()).isEqualTo(AlnsDestroyOperatorType.GROUP_REMOVAL);
+    assertThat(destroy.getGroupingClass()).isEqualTo(AlnsGrouping.class);
+    assertThat(destroy.getCustomProperties()).containsEntry("setting", "example");
+    assertThat(phase.getRepairOperatorConfigList())
+        .extracting(AlnsRepairOperatorConfig::getType)
+        .containsExactly(
+            AlnsRepairOperatorType.CHEAPEST_INSERTION, AlnsRepairOperatorType.REGRET_K);
+    assertThat(phase.getRepairOperatorConfigList().getLast().getRegretK()).isEqualTo(5);
+    var writer = new StringWriter();
+    io.write(config, writer);
+    assertThat(io.read(new StringReader(writer.toString())))
+        .usingRecursiveComparison()
+        .isEqualTo(config);
   }
 
   @Test

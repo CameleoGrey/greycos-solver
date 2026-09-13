@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
       "variableName",
       "customClass",
       "topK",
+      "regretK",
       "initialWeight",
       "customProperties"
     })
@@ -34,6 +35,7 @@ public final class AlnsRepairOperatorConfig extends AbstractConfig<AlnsRepairOpe
   private String variableName;
   private String customClass;
   private Integer topK;
+  private Integer regretK;
   private Double initialWeight;
 
   @XmlJavaTypeAdapter(JaxbCustomPropertiesAdapter.class)
@@ -118,6 +120,24 @@ public final class AlnsRepairOperatorConfig extends AbstractConfig<AlnsRepairOpe
     return this;
   }
 
+  /**
+   * Number of alternatives used by {@link AlnsRepairOperatorType#REGRET_K}; at least two. When
+   * unspecified, that operator uses four alternatives. Existing regret operators retain their fixed
+   * number of alternatives.
+   */
+  public @Nullable Integer getRegretK() {
+    return regretK;
+  }
+
+  public void setRegretK(@Nullable Integer regretK) {
+    this.regretK = regretK;
+  }
+
+  public @NonNull AlnsRepairOperatorConfig withRegretK(@NonNull Integer regretK) {
+    setRegretK(regretK);
+    return this;
+  }
+
   public @Nullable Double getInitialWeight() {
     return initialWeight;
   }
@@ -155,6 +175,7 @@ public final class AlnsRepairOperatorConfig extends AbstractConfig<AlnsRepairOpe
         ConfigUtils.inheritOverwritableProperty(variableName, inheritedConfig.variableName);
     customClass = ConfigUtils.inheritOverwritableProperty(customClass, inheritedConfig.customClass);
     topK = ConfigUtils.inheritOverwritableProperty(topK, inheritedConfig.topK);
+    regretK = ConfigUtils.inheritOverwritableProperty(regretK, inheritedConfig.regretK);
     initialWeight =
         ConfigUtils.inheritOverwritableProperty(initialWeight, inheritedConfig.initialWeight);
     if (customProperties == null && inheritedConfig.customProperties != null) {

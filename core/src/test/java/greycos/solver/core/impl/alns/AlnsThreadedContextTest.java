@@ -139,6 +139,73 @@ class AlnsThreadedContextTest {
     }
   }
 
+  static Stream<Arguments> groupedRepairs() {
+    return Stream.of("basic", "list", "mixed")
+        .flatMap(
+            shape ->
+                Stream.of(
+                        AlnsRepairOperatorType.CHEAPEST_INSERTION, AlnsRepairOperatorType.REGRET_K)
+                    .map(repair -> Arguments.of(shape, repair)));
+  }
+
+  @ParameterizedTest
+  @MethodSource("groupedRepairs")
+  void groupRemovalAndNewRepairsPreserveScoresShadowsAndRollbackAcrossWorkers(
+      String shape, AlnsRepairOperatorType repair) {
+    var workload = AlnsMoveThreadingWorkload.named(shape);
+    var sequential = groupedTrace(workload, null, repair);
+    for (int threads : new int[] {1, 2, 4, 8}) {
+      assertThat(groupedTrace(workload, threads, repair))
+          .as("%s %s workers=%d", shape, repair, threads)
+          .isEqualTo(sequential);
+    }
+  }
+
+  private static <S> List<String> groupedTrace(
+      Workload<S> workload, Integer threads, AlnsRepairOperatorType repairType) {
+    try (var fixture = new Fixture<>(workload, threads, EnvironmentMode.FULL_ASSERT)) {
+      var context = fixture.context;
+      var destroy =
+          BuiltinAlnsOperators.<S, SimpleScore>destroy(
+              new AlnsDestroyOperatorConfig().withType(AlnsDestroyOperatorType.GROUP_REMOVAL));
+      var repair =
+          BuiltinAlnsOperators.<S, SimpleScore>repair(
+              new AlnsRepairOperatorConfig().withType(repairType));
+      var trace = new ArrayList<String>();
+      for (int trial = 0; trial < 3; trial++) {
+        context.beginTrial();
+        String original = workload.state(fixture.solution);
+        var originalScore = context.score();
+        var pool = context.targets();
+        var selected = destroy.select(context, 3);
+        assertThat(selected).isNotEmpty().hasSizeLessThanOrEqualTo(3);
+        assertThat(selected)
+            .allSatisfy(
+                target -> assertThat(target.variable()).isEqualTo(selected.getFirst().variable()));
+        assertThat(context.isChanged()).isFalse();
+        assertThat(workload.state(fixture.solution)).isEqualTo(original);
+        trace.add(selected.stream().map(pool::indexOf).toList().toString());
+        context.setPendingTargets(selected);
+        context.destroy(selected);
+        assertThat(repair.repair(context, selected)).isTrue();
+        assertThat(context.pendingTargets()).isEmpty();
+        var candidate = context.score();
+        assertThat(candidate.isComplete()).isTrue();
+        assertThat(workload.recompute(fixture.solution)).isEqualTo(candidate.score());
+        trace.add(candidate + ":" + workload.state(fixture.solution) + ":" + context.probeCount());
+        if (trial == 0) {
+          context.commit();
+        } else {
+          context.rollback();
+          assertThat(context.score()).isEqualTo(originalScore);
+          assertThat(workload.state(fixture.solution)).isEqualTo(original);
+          assertThat(workload.recompute(fixture.solution)).isEqualTo(originalScore.score());
+        }
+      }
+      return trace;
+    }
+  }
+
   @ParameterizedTest
   @ValueSource(ints = {0, 2})
   void guardedSequentialProbeRecoversAnIncompleteNotificationAndDiscardsStartedWorkers(

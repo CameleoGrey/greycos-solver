@@ -7,5 +7,7 @@ public enum AlnsDestroyOperatorType {
   RANDOM,
   RELATEDNESS,
   WORST_REMOVAL,
-  LIST_BLOCK
+  LIST_BLOCK,
+  /** Removes eligible bindings from one group, bounded by the requested destruction count. */
+  GROUP_REMOVAL
 }

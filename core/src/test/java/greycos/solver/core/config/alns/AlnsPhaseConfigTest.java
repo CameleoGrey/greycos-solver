@@ -14,6 +14,7 @@ import java.util.Map;
 import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.api.solver.alns.AlnsAcceptancePolicy;
 import greycos.solver.core.api.solver.alns.AlnsDestroyOperator;
+import greycos.solver.core.api.solver.alns.AlnsGrouping;
 import greycos.solver.core.api.solver.alns.AlnsRanking;
 import greycos.solver.core.api.solver.alns.AlnsRelatedness;
 import greycos.solver.core.api.solver.alns.AlnsRepairOperator;
@@ -149,6 +150,78 @@ class AlnsPhaseConfigTest {
   }
 
   @Test
+  void newOperatorsValidateAndRoundTripWithGroupingAndRegretConfiguration() {
+    var xml =
+        """
+        <solver xmlns="%s">
+          <alns>
+            <destroyOperator>
+              <id>group</id><type>GROUP_REMOVAL</type>
+              <groupingClass>%s</groupingClass>
+              <customProperties><property name="setting" value="example"/></customProperties>
+            </destroyOperator>
+            <destroyOperator><id>automatic-group</id><type>GROUP_REMOVAL</type></destroyOperator>
+            <repairOperator><id>cheapest</id><type>CHEAPEST_INSERTION</type></repairOperator>
+            <repairOperator><id>regret</id><type>REGRET_K</type><regretK>5</regretK></repairOperator>
+            <repairOperator><id>default-regret</id><type>REGRET_K</type></repairOperator>
+          </alns>
+        </solver>
+        """
+            .formatted(SolverConfig.XML_NAMESPACE, AlnsGrouping.class.getName());
+    var io = new SolverConfigIO();
+    var config = io.read(new StringReader(xml));
+    var phase = (AlnsPhaseConfig) config.getPhaseConfigList().getFirst();
+    var destroy = phase.getDestroyOperatorConfigList().getFirst();
+    assertThat(destroy.getType()).isEqualTo(AlnsDestroyOperatorType.GROUP_REMOVAL);
+    assertThat(destroy.getGroupingClass()).isEqualTo(AlnsGrouping.class);
+    assertThat(destroy.getCustomProperties()).containsEntry("setting", "example");
+    assertThat(phase.getDestroyOperatorConfigList().getLast().getGroupingClass()).isNull();
+    assertThat(phase.getRepairOperatorConfigList())
+        .extracting(AlnsRepairOperatorConfig::getType)
+        .containsExactly(
+            AlnsRepairOperatorType.CHEAPEST_INSERTION,
+            AlnsRepairOperatorType.REGRET_K,
+            AlnsRepairOperatorType.REGRET_K);
+    assertThat(phase.getRepairOperatorConfigList().get(1).getRegretK()).isEqualTo(5);
+    assertThat(phase.getRepairOperatorConfigList().getLast().getRegretK()).isNull();
+    var writer = new StringWriter();
+    io.write(config, writer);
+    assertThat(io.read(new StringReader(writer.toString())))
+        .usingRecursiveComparison()
+        .isEqualTo(config);
+  }
+
+  @Test
+  void groupingAndRegretPropertiesCopyInheritOverrideAndClearIndependently() {
+    var destroy =
+        new AlnsDestroyOperatorConfig()
+            .withType(AlnsDestroyOperatorType.GROUP_REMOVAL)
+            .withGroupingClass(AlnsGrouping.class)
+            .withCustomProperties(new LinkedHashMap<>(Map.of("setting", "original")));
+    var destroyCopy = destroy.copyConfig();
+    assertThat(destroyCopy.getGroupingClass()).isEqualTo(AlnsGrouping.class);
+    assertThat(new AlnsDestroyOperatorConfig().inherit(destroy).getGroupingClass())
+        .isEqualTo(AlnsGrouping.class);
+    destroyCopy.setGroupingClass(null);
+    destroyCopy.getCustomProperties().put("setting", "changed");
+    assertThat(destroy.getGroupingClass()).isEqualTo(AlnsGrouping.class);
+    assertThat(destroy.getCustomProperties()).containsEntry("setting", "original");
+    assertThat(destroyCopy.getGroupingClass()).isNull();
+
+    var repair =
+        new AlnsRepairOperatorConfig().withType(AlnsRepairOperatorType.REGRET_K).withRegretK(5);
+    var repairCopy = repair.copyConfig();
+    assertThat(repairCopy.getRegretK()).isEqualTo(5);
+    assertThat(new AlnsRepairOperatorConfig().inherit(repair).getRegretK()).isEqualTo(5);
+    assertThat(new AlnsRepairOperatorConfig().withRegretK(2).inherit(repair).getRegretK())
+        .isEqualTo(2);
+    repairCopy.setRegretK(null);
+    assertThat(repairCopy.getRegretK()).isNull();
+    assertThat(repair.getRegretK()).isEqualTo(5);
+    assertThat(new AlnsRepairOperatorConfig().getRegretK()).isNull();
+  }
+
+  @Test
   void copyAndInheritanceDoNotShareMutableOperatorConfiguration() {
     var original =
         new AlnsPhaseConfig()
@@ -253,6 +326,7 @@ class AlnsPhaseConfigTest {
                     .withEntityClass(TestdataEntity.class)
                     .withCustomClass(AlnsDestroyOperator.class)
                     .withRankingClass(AlnsRanking.class)
+                    .withGroupingClass(AlnsGrouping.class)
                     .withRelatednessClass(AlnsRelatedness.class))
             .withRepairOperators(
                 new AlnsRepairOperatorConfig().withCustomClass(AlnsRepairOperator.class));
@@ -265,6 +339,7 @@ class AlnsPhaseConfigTest {
             TestdataEntity.class,
             AlnsDestroyOperator.class,
             AlnsRanking.class,
+            AlnsGrouping.class,
             AlnsRelatedness.class,
             AlnsRepairOperator.class);
   }
