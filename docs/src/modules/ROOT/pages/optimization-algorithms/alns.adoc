@@ -1,14 +1,117 @@
 [#alns]
 = Adaptive Large Neighborhood Search
 
-Adaptive Large Neighborhood Search (ALNS) is an improvement phase for basic planning variables,
-list variables, and models containing both.
-Each trial chooses a destroy operator and a repair operator, removes a bounded set of assignments,
-and evaluates the repaired candidate using the configured score calculation.
-The acceptance policy either retains that candidate or restores the incumbent.
-Operator selection learns from the outcome of complete trials.
+Adaptive Large Neighborhood Search (ALNS) improves an existing plan by repeatedly removing some
+assignments and rebuilding that part of the plan. It learns which combinations of removal and repair
+strategies have been useful, and uses them more often while continuing to explore alternatives.
+GreyCOS provides ALNS as a solver phase, using the same planning model, constraints, and incremental
+score calculation as other phases.
 
-Configure construction heuristics before ALNS unless the input solution is already initialized:
+This chapter progresses from the algorithm to configuration, operator choice, custom extensions,
+and production tuning. Code examples are contextual snippets, not complete applications.
+
+[#alnsWhenToUse]
+== What ALNS solves
+
+A small change can be unattractive even when a coordinated set of changes would improve the plan.
+For example, moving one process away from an expensive computer does not save its running cost
+while other processes remain there. Moving a group may allow the computer to become unused.
+In routing, removing several nearby customers allows repair to redistribute them across routes and
+choose new insertion positions, including arrangements that individual relocations struggle to reach.
+
+The _large neighborhood_ consists of the possible ways to rebuild the selected part of the solution.
+Destroying more assignments exposes more combinations; the repair heuristic searches a useful
+part of that space instead of enumerating every combination. _Adaptive_ refers to learning from
+completed trials which operators deserve more search effort. It does not mean learning the business
+constraints or changing their weights.
+
+[cols="1,2,2", options="header"]
+|===
+|Approach |Search decision |Useful starting point
+|Elementary local search |Evaluate changes, swaps, or sequence moves; accept and select a step.
+|Small adjustments make useful progress and candidate evaluations are inexpensive.
+|Local search with ruin-and-recreate |Use partial destruction and reconstruction as a move within the local-search acceptor/forager lifecycle.
+|Add occasional larger changes to an existing local-search configuration.
+|ALNS phase |Choose a destroy/repair pair, build one proposal, accept or reject it, and reward its operators.
+|Several complementary rebuilding strategies can address different bottlenecks or instance structures.
+|===
+
+Routing with capacity and time windows, employee assignment, and machine or resource allocation
+are natural applications when partial reconstruction is affordable. ALNS is less attractive when
+even small repairs consume most of the time budget, few decisions are movable, or ordinary local
+search already reaches the required quality quickly. Benchmark both approaches on representative inputs.
+More elaborate repair and more operators do not guarantee better results.
+
+The solver returns the best solution found, even when the acceptance policy temporarily accepts
+worse solutions. ALNS is a heuristic: it provides neither an optimality proof nor a guarantee that
+the returned plan satisfies every hard constraint.
+For the general framework, see Røpke and Pisinger's
+https://doi.org/10.1287/trsc.1050.0135[An Adaptive Large Neighborhood Search Heuristic for the Pickup and Delivery Problem with Time Windows].
+The following configuration and lifecycle details describe GreyCOS specifically.
+
+[#alnsArchitecture]
+== Architecture and one complete trial
+
+GreyCOS supports multiple basic planning variables and at most one planning list variable in a
+solution model, including models combining these kinds. A basic target identifies an entity/variable
+binding, such as `CloudProcess.computer`. A list target identifies a value in the list variable,
+such as a customer in `Vehicle.customers`; removing it also changes route membership and order.
+
+[literal]
+....
+Business input -> planning model (cotwin) -> construction or initialized input
+                                            |
+                                            v
+        select destroy/repair pair -> select targets -> destroy + repair
+                    ^                                      |
+                    |                          context mutations and probes
+                    |                                      |
+                    |                           shadows + incremental score
+                    |                                      |
+                    +--- adaptation <- accept or roll back candidate
+                                            |
+                                  retain best solution separately
+                                            |
+                     reconstruct business result -> independent validation/metrics
+....
+
+The application defines decisions, immutable facts, score semantics, and necessary shadows.
+`ConstraintProvider` continues to own incremental Constraint Stream scoring; ALNS does not need a
+second objective function. Operators use domain facts to choose where and how to search, while
+the configured score evaluates their placements. Keep reporting, database calls, and whole-solution
+business replay outside both the operators' hot loops and incremental scoring.
+
+[source,text]
+----
+start from an initialized incumbent; retain the best solution separately
+until termination or no eligible operator pair remains:
+    select one compatible destroy/repair pair
+    select a bounded set of movable targets without changing the incumbent
+    select eligible optional unassigned targets for recovery
+    remove the selected assignments through the context
+    repair the pending targets, evaluating and applying placements through the context
+    if repair completes: accept the candidate or restore the incumbent
+    otherwise: restore the incumbent
+    update best solution, trial history, and operator rewards as applicable
+return the best solution found
+----
+
+The phase owns acceptance, adaptation, budgets, and rollback. The context owns recorded changes,
+score-director notifications, and temporary probes. Built-in and custom operators share this context
+contract. A successful repair is retained directly if accepted; the phase does not call the repair
+again to commit it.
+
+Distinguish three states: the incumbent is the current complete plan; scratch states inside repair
+may be incomplete; the best solution is the best complete plan retained by the solver. Here, _complete_ means
+that mandatory decisions are assigned. It does not mean hard-feasible. An `AlnsEvaluation` orders
+states by fewer unassigned mandatory decisions first, then by the domain's score. Removing work
+can improve a partial score without producing a usable business result.
+
+[#alnsGettingStarted]
+== Getting started
+
+Configure your solution/entity classes and score calculation as usual. The following fragment goes
+inside an existing solver XML configuration and uses the default operator portfolio and policies:
 
 [source,xml]
 ----
@@ -17,12 +120,655 @@ Configure construction heuristics before ALNS unless the input solution is alrea
   <termination>
     <secondsSpentLimit>60</secondsSpentLimit>
   </termination>
+  <moveThreadCount>NONE</moveThreadCount>
 </alns>
 ----
 
-The solver returns the best solution found, even when the acceptance policy temporarily accepts worse solutions.
-ALNS is a heuristic and does not provide an optimality proof.
+The equivalent Java fragment configures phases on an existing `SolverConfig` named `solverConfig`.
+Imports are `java.time.Duration`,
+`greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig`,
+`greycos.solver.core.config.alns.AlnsPhaseConfig`, and
+`greycos.solver.core.config.solver.termination.TerminationConfig`:
 
+[source,java]
+----
+solverConfig.withPhases(
+        new ConstructionHeuristicPhaseConfig(),
+        new AlnsPhaseConfig()
+                .withMoveThreadCount("NONE")
+                .withTerminationConfig(new TerminationConfig()
+                        .withSpentLimit(Duration.ofSeconds(60))));
+----
+
+Use construction unless the supplied solution is already initialized. Existing initialized plans
+can warm-start ALNS directly; their movable assignments remain changeable. Pin committed decisions
+using the model's normal pinning features. Mixed models may require multiple construction phases
+or explicit placers; a bare construction heuristic cannot infer every mixed-variable initialization.
+See xref:optimization-algorithms/construction-heuristics.adoc#constructionHeuristics[construction heuristics].
+
+The 60 seconds above is an illustrative ALNS phase budget, starting after construction.
+Add solver-level termination when total solving time must also be bounded.
+An explicit phase list replaces generated phases, and ALNS is not added automatically to the normal
+construction-plus-local-search default. ALNS can precede or follow local search; give each earlier
+improvement phase its own termination so later phases can run. A solver-wide deadline alone does
+not reserve time for later phases. Compare final results at the application's complete time budget.
+
+[#alnsOperators]
+== Operators and variable bindings
+
+=== Choosing destroy operators
+
+[cols="1,2,2", options="header"]
+|===
+|Type |Behavior and requirements |Application and work tradeoff
+|`RANDOM` |Uniform selection without replacement from scoped movable targets.
+|Inexpensive general diversification; useful alongside more focused operators.
+|`RELATEDNESS` |Requires `relatednessClass`; finite nonnegative distances describe closeness, with smaller values closer.
+|Remove geographically close customers or jobs sharing time/resource characteristics. Callback cost matters.
+|`WORST_REMOVAL` |Select using a `rankingClass` (larger finite ranks first), or estimate removal benefits with score probes.
+|Focus on costly assignments. A cheap domain ranking is an estimate; score-based ranking spends additional probes.
+|`LIST_BLOCK` |Remove a contiguous block from an eligible unpinned region of a list.
+|Rebuild route or sequence segments. Requires a list binding and may underfill the requested size.
+|`GROUP_REMOVAL` |Choose one nonempty group uniformly; select all eligible members or a capped random subset.
+|Attempt resource consolidation or rebuild a batch. Optional `groupingClass` supplies business group keys.
+|===
+
+Rank-based removal uses `rankExponent=6.0` by default.
+It introduces randomness biased toward the better-ranked candidates; increasing the exponent
+strengthens that bias. Relatedness uses a random seed target and repeatedly selects close targets;
+it does not require the relatedness measure to be the same as the scored objective.
+
+`GROUP_REMOVAL` selects one nonempty group uniformly from the scoped movable targets.
+For basic variables, a group contains bindings with the same variable and equal current planning values.
+For list variables, a group contains values belonging to the same variable and current owner object.
+List owners and planning targets retain object identity even when their business values compare equal.
+If the selected group fits the requested destruction count, all its eligible members are selected;
+otherwise a uniform subset of that count is selected without replacement.
+Smaller groups underfill the request. Pinned members remain excluded, and repair may reuse the original
+container, so removing a group does not guarantee that a physical container becomes or remains empty.
+
+An optional `groupingClass` implements `AlnsGrouping<Solution_>.groupKey(solution, target)` to group
+by domain attributes such as a shift or batch. Keys must be nonnull and have stable `equals`/`hashCode`
+throughout selection. Callback keys remain scoped by variable; equal keys on different variables do
+not combine their bindings. Use a custom destroy operator for compound groups spanning variables.
+The callback is configured through `customProperties` and has the same per-phase/island ownership and
+`AutoCloseable` lifecycle as relatedness and ranking callbacks. `groupingClass` is only valid for `GROUP_REMOVAL`.
+
+=== Choosing repair operators
+
+[cols="1,2,2", options="header"]
+|===
+|Type |Insertion decision |Application and work tradeoff
+|`GREEDY` |Process targets in framework encounter order; choose each target's best placement.
+|Simple baseline, with fewer repeated evaluations than global insertion strategies.
+|`RANDOMIZED_GREEDY` |Shuffle target order and choose uniformly among the best `topK` placements (default `3`).
+|Diversify repairs of the same destroyed state. `topK=1` still randomizes target order.
+|`CHEAPEST_INSERTION` |Choose the best target/placement pair across all eligible pending targets.
+|Let insertion order follow immediate score benefit; recompute alternatives after each insertion.
+|`REGRET_2` |Prioritize the target with the greatest loss between its best and second-best placements.
+|Protect scarce good placements before flexible targets consume them; part of the default portfolio.
+|`REGRET_3` |Use the accumulated loss from the second- and third-best placements.
+|Consider more alternatives when deciding urgency, with repeated candidate evaluations.
+|`REGRET_K` |Generalized regret, with `regretK=4` by default and a minimum of `2`.
+|Experiment with a wider view of alternatives; increasing k is not a quality guarantee.
+|===
+
+The randomization in `RANDOMIZED_GREEDY` scores every placement;
+it does not apply cost noise or skip probes through blinking.
+`CHEAPEST_INSERTION` evaluates every eligible pending target against the same partial solution,
+then inserts the globally best target/placement pair and recomputes after each insertion.
+It can spend more probes per repair than sequential greedy.
+
+`REGRET_K` uses `regretK` (default `4`, minimum `2`); `regretK` is only valid for this type.
+`REGRET_2` and `REGRET_3` retain their fixed k values.
+For each target, regret is the sum of the best score minus alternatives 2 through k, calculated
+exactly at each score level and compared lexicographically. Alternatives are individual placements,
+including multiple positions in one list; they are not reduced to the best placement per destination.
+Single-option targets take priority. When fewer than k alternatives exist, the last available
+alternative supplies the missing ranks. After each insertion, alternatives and regret are recomputed.
+
+For a single-level maximizing score, target A with placement scores `-10, -11` has regret-2 of `1`;
+target B with `-12, -30` has regret-2 of `18`. Regret repair chooses B first because delaying it
+risks losing a much better placement. Cheapest insertion chooses A first because `-10` is the best
+immediate score. These scores are alternatives against the same partial solution; both operators
+recompute after inserting. With multiple score levels, GreyCOS preserves lexicographic ordering.
+
+All built-in repairs resolve mandatory targets before optional targets. Equal regrets prefer the better best
+placement. Remaining target ties use encounter order, as do global cheapest ties and equal-score placements.
+All placements respect the model's variable ranges and pinning.
+Unassignment remains eligible only where the model permits it.
+Legal placements may violate scored hard constraints; candidate counts do not represent a generic
+count of hard-feasible positions.
+
+=== Portfolio scopes, size, and recovery
+
+The automatic portfolio is per-variable `RANDOM`, plus `LIST_BLOCK` for the list variable,
+paired with unrestricted `GREEDY` and `REGRET_2` repairs. Other operator types are opt-in.
+Explicit destroy or repair lists replace the corresponding automatic list; include existing operators
+explicitly when adding an operator to that portfolio.
+
+An explicit operator may target an `entityClass` and `variableName`.
+This identifies a basic entity/variable binding or the list variable whose values can be moved.
+For list models, specify the owner's entity class and list field, not the customer/value class.
+Omitting both fields makes an operator unrestricted; `LIST_BLOCK` still needs a matching list binding.
+Each destroy scope must have at least one repair scope covering all its variables. Separate narrow
+repair operators do not combine to cover one broad destroy operator. For example, a destroy spanning
+both employee and timeslot variables requires a compatible repair covering both.
+The phase stops when no operator pair has eligible destruction or recovery work.
+
+In this fragment, the application supplies `com.example.Vehicle` with a planning list named `visits`:
+
+[source,xml]
+----
+<alns>
+  <termination>
+    <secondsSpentLimit>60</secondsSpentLimit>
+  </termination>
+  <destroyOperator>
+    <id>random-orders</id>
+    <type>RANDOM</type>
+    <entityClass>com.example.Vehicle</entityClass>
+    <variableName>visits</variableName>
+    <minimumDestroyedCount>5</minimumDestroyedCount>
+    <maximumDestroyedCount>20</maximumDestroyedCount>
+    <initialWeight>1.0</initialWeight>
+  </destroyOperator>
+  <repairOperator>
+    <id>regret-orders</id>
+    <type>REGRET_2</type>
+    <entityClass>com.example.Vehicle</entityClass>
+    <variableName>visits</variableName>
+    <initialWeight>1.0</initialWeight>
+  </repairOperator>
+</alns>
+----
+
+Use count bounds or `minimumDestroyedPercentage`/`maximumDestroyedPercentage` bounds, expressed as fractions.
+For example, `0.10` means ten percent, not `10`. Do not set both a count and a percentage for the same bound.
+Counts are limited by the eligible target population.
+Percentages are rounded down to whole targets, with a minimum of one target for nonempty populations.
+The automatically configured destroy bounds are `5..20` for basic bindings and `5..40` for list bindings.
+An unspecified bound adjusts to respect an explicitly configured bound.
+If both bounds are explicit and their resolved counts conflict, solving fails with a configuration error.
+Already unassigned optional targets can also be considered for recovery; `recoveryCount` controls this separately.
+The requested size is sampled uniformly between the resolved inclusive bounds.
+An operator may select fewer targets, so bounds do not guarantee an exact amount of destruction.
+The default recovery allowance is `max(1, actualDestroyedCount)`; `recoveryCount=0` disables it.
+Recovery samples already-unassigned optional bindings in the compatible scope in addition to destroyed
+targets. Repair may assign them or explicitly choose a legal unassigned alternative. It does not
+promise to recover them successfully. A dummy resource representing business backlog is a different
+model: work on that resource is assigned from ALNS's perspective, not an optional recovery target.
+Coincident coordinates or equal business values do not merge planning targets: target identity follows working-object identity.
+
+For example, an explicit group/regret portfolio can be configured as follows:
+
+[source,xml]
+----
+<alns>
+  <termination><secondsSpentLimit>60</secondsSpentLimit></termination>
+  <destroyOperator>
+    <id>group</id>
+    <type>GROUP_REMOVAL</type>
+    <maximumDestroyedCount>20</maximumDestroyedCount>
+  </destroyOperator>
+  <repairOperator>
+    <id>cheapest</id>
+    <type>CHEAPEST_INSERTION</type>
+  </repairOperator>
+  <repairOperator>
+    <id>regret-4</id>
+    <type>REGRET_K</type>
+    <regretK>4</regretK>
+  </repairOperator>
+</alns>
+----
+
+[#alnsPolicies]
+== Adaptive selection and acceptance
+
+=== Learning which operators to use
+
+`SEGMENTED_ROULETTE` is the default selection policy.
+It learns separate destroy and repair weights, choosing among compatible operator pairs.
+Defaults are `segmentLength=100`, `reactionFactor=0.2`, and `minimumWeight=0.01`.
+The default rewards are `5` for a new best solution, `3` for an incumbent improvement,
+`1` for another accepted candidate, and `0` for rejection, failure, or no change.
+The positive weight floor keeps operators eligible for exploration.
+
+Roulette first draws an eligible destroy operator by weight, then a compatible repair by its weight.
+Each completed trial credits both selected operators with the same outcome reward. At a segment
+boundary, each used operator updates its weight as follows:
+
+[literal]
+....
+newWeight = max(minimumWeight,
+                (1 - reactionFactor) * oldWeight + reactionFactor * meanSegmentReward)
+....
+
+For example, old weight `1.0` and mean reward `3.0` produce `1.4` with reaction `0.2`.
+Unused operators retain their weights. Shorter segments and a larger reaction factor react faster
+but can overreact to noisy outcomes; rewards measure results per trial, not improvement per CPU second.
+
+`UCB` instead learns compatible destroy/repair pair arms.
+It explores unused arms and balances their normalized reward with an exploration term.
+The default `ucbExploration` is the square root of two.
+For a used pair, its selection value is `meanNormalizedReward + ucbExploration * sqrt(log(max(1, trials)) / pairUses)`.
+Rewards are divided by the maximum of `1` and the configured outcome rewards. Unused eligible pairs
+are tried first, and ties are broken randomly. Initial operator weights affect roulette, not UCB.
+Many pair combinations can require substantial exploration before UCB has useful evidence.
+`selectionPolicyClass` supplies a custom selection policy when required.
+Its `selectionPolicyCustomProperties` map configures public bean properties on that policy instance.
+
+=== Deciding whether to keep a candidate
+
+All built-in acceptance policies accept lexicographically better or equal complete candidate scores.
+Acceptance can retain a plan with hard violations; the score and policy determine which transitions
+are acceptable, while the application independently checks whether a result can be published.
+
+`LATE_ACCEPTANCE` is the default acceptance policy, with `lateAcceptanceSize=128`.
+It also accepts a worse candidate if it is at least as good as the current slot in its circular score
+history. Every completed trial writes its resulting incumbent into that slot and advances it,
+including rejection, repair failure, and no change. The history starts filled with the initial
+incumbent score. For example, incumbent `-100`, historical slot `-120`, and candidate `-110`
+allow a temporary worsening while the separately retained best remains protected.
+`HILL_CLIMBING` accepts improvements and equal scores.
+`SIMULATED_ANNEALING` requires an explicit score-valued `startingTemperature`:
+
+[source,xml]
+----
+<alns>
+  <termination>
+    <stepCountLimit>10000</stepCountLimit>
+  </termination>
+  <acceptanceType>SIMULATED_ANNEALING</acceptanceType>
+  <startingTemperature>0hard/100soft</startingTemperature>
+  <coolingRate>0.999</coolingRate>
+</alns>
+----
+
+Use the score syntax of the domain.
+Temperature components must be nonnegative. Only lexicographically worse candidates enter the
+annealing calculation: their acceptance probability is `exp(-sum(positiveLoss[level] / temperature[level]))`.
+A positive loss at a zero-temperature level rejects such a candidate; improvements at other levels
+do not offset positive losses. Lexicographically non-worse candidates are accepted before this
+calculation. With equal hard scores, a soft loss of `20` and soft temperature `100` has probability
+`exp(-0.2)`, approximately `0.82`. Choose temperatures in the actual score units of plausible trial losses.
+Cooling advances once per completed trial, including rejection.
+The default cooling multiplier is `0.999`.
+Temperature is multiplied by this factor per completed trial, not per second or insertion probe.
+Choose cooling relative to the expected number of trials; a repair that is more expensive changes
+how much cooling occurs within a wall-clock budget. Cancellation advances neither cooling nor history.
+`acceptancePolicyClass` supplies a custom acceptance policy.
+Use `acceptancePolicyCustomProperties` to configure that instance.
+
+[#alnsDefaults]
+== Configuration defaults and recommended starting point
+
+These are framework defaults, not the larger portfolios or tuned settings in individual examples.
+An unset configuration getter may return `null`; the runtime supplies the defaults below.
+
+[cols="2,2,3", options="header"]
+|===
+|Setting |Default |Meaning or constraint
+|Destroy / repair portfolio |`RANDOM` per variable, plus list `LIST_BLOCK` / `GREEDY`, `REGRET_2`
+|Explicit lists replace their respective defaults and must be nonempty.
+|Explicit operator with omitted `id`; `initialWeight` |Generated `destroy-i` / `repair-i`; `1.0`
+|The automatic portfolio uses variable-derived destroy IDs and `greedy` / `regret-2`. Weights must be positive and finite.
+|Omitted explicit operator `type` |Destroy `RANDOM`; repair `GREEDY`
+|A custom class is an alternative to a built-in type.
+|Destroyed count bounds |`5..20` for basic targets; `5..40` when the eligible population contains list targets
+|Clamp to eligible population; percentages are fractions in `(0,1]`.
+|`recoveryCount` |`max(1, actualDestroyedCount)`
+|Additional optional recovery allowance; `0` disables recovery.
+|`repairScoreCalculationLimit`, `repairSpentLimit` |Unset
+|No additional per-trial bound. Explicit values must be positive; outer termination still applies.
+|`selectionPolicyType` |`SEGMENTED_ROULETTE`
+|Alternative: `UCB` learns compatible pairs.
+|`segmentLength`, `reactionFactor`, `minimumWeight` |`100`, `0.2`, `0.01`
+|Positive segment length and weight floor; reaction in `(0,1]`.
+|`newBestReward`, `improvedReward`, `acceptedReward` |`5.0`, `3.0`, `1.0`
+|Finite nonnegative rewards; other completed outcomes earn zero.
+|`ucbExploration` |`sqrt(2)`
+|Finite nonnegative exploration coefficient.
+|`acceptanceType`, `lateAcceptanceSize` |`LATE_ACCEPTANCE`, `128`
+|Positive history size; alternatives are hill climbing and simulated annealing.
+|`startingTemperature`, `coolingRate` |No default temperature; `0.999`
+|Annealing requires a score-valued nonnegative temperature; cooling in `(0,1]`.
+|`rankExponent`, `topK`, `regretK` |`6.0`, `3`, `4`
+|Positive finite exponent; positive top-k; regret-k at least `2` and only for `REGRET_K`.
+|`moveThreadingMode`, `moveThreadCount` |`PROBES`, inherited worker count
+|Phase `NONE` disables workers; an unset solver worker count resolves to sequential execution.
+|Solver `moveThreadBufferSize` |`10`
+|In-flight probe capacity per worker; not a candidate-sampling parameter.
+|`repairAttemptCount` |Unset
+|Required and at least `2` in `REPAIR_ATTEMPTS`; forbidden in `PROBES`.
+|===
+
+Start with the getting-started configuration, the default portfolio and late acceptance.
+Set an explicit seed on `SolverConfig` for comparisons and use `moveThreadCount=NONE` as a clear
+baseline. Use assertions for correctness checks and disable expensive diagnostics when measuring
+production performance. A fixed seed alone does not make wall-time termination reproducible.
+
+Add a focused destroy operator only when it addresses an observed structure, such as customers in
+the same area or work on one costly resource. Retain a general random operator for exploration.
+Compare greedy and regret repair before increasing the portfolio; too many operators spread
+learning over choices that may get few trials. Treat `5..20` and `5..40` as defaults to test, not
+recommended neighborhood sizes for every problem.
+
+Measure completed trial duration and probe counts before setting a per-trial repair budget.
+A limit that repeatedly interrupts repairs prevents useful proposals; a limit that allows one repair
+to dominate the solve can starve adaptation. Tune destruction size and repair strategy together,
+then selection and acceptance, and finally worker counts or islands at a fixed resource budget.
+
+[#alnsCustomOperators]
+== Defining custom operators
+
+The public extension types are in `greycos.solver.core.api.solver.alns`.
+Implement `AlnsDestroyOperator` or `AlnsRepairOperator` and configure its `customClass`.
+Each configured class is instantiated independently for every solver phase or island.
+A custom operator class may receive `customProperties` through the standard configuration property mechanism.
+
+A destroy operator returns unique handles from the context; the framework applies their removal.
+A repair operator examines `assignments(target)`, probes alternatives through `evaluate(...)`,
+and applies selected placements through `execute(...)` or the mutable context methods.
+It returns `false` when mandatory repair cannot be completed.
+These public interfaces do not require internal score-director classes or preview move APIs.
+
+`workingSolution()` provides read access to domain data.
+Apply every mutation through the supplied context, including custom compound changes.
+Do not modify the solution directly, retain contexts, mutation views, random generators, or working-object handles beyond their callback,
+or share mutable operator state across solves.
+The context balances notifications and restores temporary probes; acceptance belongs to the outer phase.
+
+Use `evaluateAssignments(List<AlnsAssignment<Solution_>>)` to score independent placements against
+the same current state, and `evaluateRemovals(List<AlnsTarget<Solution_>>)` to score independent removals.
+Both return one `AlnsEvaluation` per input entry in input order.
+Removals are separate scratch probes, not cumulative changes.
+Repeated entries are evaluated independently; foreign working-object handles, invalid assignments, and null entries are rejected.
+An empty batch performs no scoring. The surrounding trial must be active.
+The default API implementations run sequentially, so existing custom contexts remain compatible.
+
+The framework may evaluate these batches on move workers.
+Custom callbacks passed to `evaluate(AlnsChange)` and `execute(AlnsChange)`, along with custom
+relatedness/ranking/grouping callbacks and operator policies, remain on their owning solver or island thread.
+An individual `evaluate(assignment)` is also synchronous on that thread.
+The batch methods give the framework enough information to rebase working references safely;
+applications must continue to call the context from its owning thread.
+
+=== A small custom destroy selector
+
+Prefer a relatedness, ranking, or grouping callback when it already expresses the desired change.
+A custom selector is useful when selection needs its own filtering or a compound rule.
+This example focuses on processes assigned to computers above a configured cost threshold,
+selecting at most the requested size in encounter order. It assumes the existing Cloud Balancing
+model with mandatory `CloudProcess.computer` assignments.
+
+For these two Cloud Balancing classes, imports are `java.util.ArrayList`,
+`java.util.List`, the types in `greycos.solver.core.api.solver.alns`,
+`greycos.solver.core.api.score.HardSoftScore`, and
+`CloudBalance`, `CloudComputer`, `CloudProcess` from `examples.cloudbalancing.cotwin`.
+
+[source,java]
+----
+public class CostThresholdDestroy
+        implements AlnsDestroyOperator<CloudBalance, HardSoftScore> {
+    private int minimumCost = 100;
+
+    public void setMinimumCost(int minimumCost) {
+        this.minimumCost = minimumCost;
+    }
+
+    @Override
+    public List<AlnsTarget<CloudBalance>> select(
+            AlnsContext<CloudBalance, HardSoftScore> context, int size) {
+        var selected = new ArrayList<AlnsTarget<CloudBalance>>();
+        for (var target : context.targets()) {
+            context.checkTermination();
+            if (selected.size() == size) break;
+            if (target.isList() || target.variable().entityClass() != CloudProcess.class
+                    || !target.variable().variableName().equals("computer")) continue;
+            var computer = (CloudComputer) context.currentAssignment(target).value();
+            if (computer.getCost() >= minimumCost) selected.add(target);
+        }
+        return selected;
+    }
+}
+----
+
+`context.targets()` is not automatically filtered to the configured operator scope. Filter explicitly,
+as above, and return only unique supplied handles within that scope. The framework validates the
+selection and performs destruction; do not call entity setters or permanently destroy targets inside
+`select()`. Scratch probes are allowed if they restore the incumbent before selection returns.
+The threshold can produce an empty selection, and capped removal does not guarantee a computer
+becomes or stays unused. Use `context.random()` for random selection rather than a new generator.
+
+=== A small custom repair
+
+This repair tries high-CPU-demand processes first, then chooses each process's best current placement.
+It is scoped to the same mandatory basic variable. The ordering is a search heuristic: capacity and
+cost remain defined by the existing constraints. The sort and search retain encounter order on ties.
+
+[source,java]
+----
+public class DemandFirstRepair
+        implements AlnsRepairOperator<CloudBalance, HardSoftScore> {
+    @Override
+    public boolean repair(AlnsContext<CloudBalance, HardSoftScore> context,
+            List<AlnsTarget<CloudBalance>> pending) {
+        var ordered = new ArrayList<>(pending);
+        ordered.sort((left, right) -> {
+            context.checkTermination();
+            return Integer.compare(((CloudProcess) right.entity()).getRequiredCpuPower(),
+                    ((CloudProcess) left.entity()).getRequiredCpuPower());
+        });
+        for (var target : ordered) {
+            context.checkTermination();
+            var placements = context.assignments(target);
+            if (placements.isEmpty()) return false;
+            var evaluations = context.evaluateAssignments(placements);
+            int best = 0;
+            for (int i = 1; i < evaluations.size(); i++) {
+                context.checkTermination();
+                if (evaluations.get(i).compareTo(evaluations.get(best)) > 0) best = i;
+            }
+            context.assign(placements.get(best));
+        }
+        return context.pendingTargets().isEmpty();
+    }
+}
+----
+
+Compare `AlnsEvaluation` objects directly: they include mandatory completeness and the exact
+lexicographic score. Do not flatten hard/soft levels into an arbitrary scalar or treat `isComplete()`
+as a feasibility check. Obtain assignments again after every committed insertion, especially for
+lists, whose positions change. Batch evaluations are independent alternatives, not a sequence of
+insertions to apply together.
+
+A repair can mutate only the fixed destroyed-plus-recovery target set for its trial. It must resolve
+every pending binding explicitly; in a model allowing unassignment, choosing the legal unassigned
+alternative also resolves a binding. A generic repair should prioritize mandatory targets before
+optional ones. Return `false` for an ordinary inability to repair. Do not catch and suppress
+`AlnsTerminationException`; it signals cooperative termination. Other callback exceptions restore
+state and propagate rather than silently becoming ordinary failed repairs.
+
+=== Registering operators and properties
+
+Assuming these public classes are in `com.example.alns`, configure them as follows:
+
+[source,xml]
+----
+<alns>
+  <termination><secondsSpentLimit>60</secondsSpentLimit></termination>
+  <destroyOperator>
+    <id>cost-threshold</id>
+    <entityClass>examples.cloudbalancing.cotwin.CloudProcess</entityClass>
+    <variableName>computer</variableName>
+    <maximumDestroyedCount>10</maximumDestroyedCount>
+    <customClass>com.example.alns.CostThresholdDestroy</customClass>
+    <customProperties><property name="minimumCost" value="100"/></customProperties>
+  </destroyOperator>
+  <repairOperator>
+    <id>demand-first</id>
+    <entityClass>examples.cloudbalancing.cotwin.CloudProcess</entityClass>
+    <variableName>computer</variableName>
+    <customClass>com.example.alns.DemandFirstRepair</customClass>
+  </repairOperator>
+</alns>
+----
+
+The corresponding Java operator configuration uses `AlnsDestroyOperatorConfig` and
+`AlnsRepairOperatorConfig` from `greycos.solver.core.config.alns`, and `java.util.Map`:
+
+[source,java]
+----
+var destroy = new AlnsDestroyOperatorConfig()
+        .withId("cost-threshold")
+        .withEntityClass(CloudProcess.class).withVariableName("computer")
+        .withMaximumDestroyedCount(10)
+        .withCustomClass(CostThresholdDestroy.class)
+        .withCustomProperties(Map.of("minimumCost", "100"));
+var repair = new AlnsRepairOperatorConfig()
+        .withId("demand-first")
+        .withEntityClass(CloudProcess.class).withVariableName("computer")
+        .withCustomClass(DemandFirstRepair.class);
+var alns = new AlnsPhaseConfig().withDestroyOperators(destroy).withRepairOperators(repair)
+        .withTerminationConfig(new TerminationConfig().withSpentLimit(Duration.ofSeconds(60)));
+----
+
+Do not combine `customClass` with a built-in `type` or built-in destroy callback classes.
+Classes need a public no-argument constructor;
+nested classes must be `public static` and use `$` in their XML class names. Custom properties are
+strings applied through public bean setters. Each phase/solve/island gets its own instances, and
+`AutoCloseable` extensions are closed by the framework. Retain configuration, not working state.
+
+=== Domain callbacks and policy extensions
+
+For routing, a small public `AlnsRelatedness` implementation can use the existing location matrix.
+Here `Customer` and `VehicleRoutingSolution` are from `examples.vehiclerouting.cotwin`, and the
+operator is configured against `Vehicle.customers`:
+
+[source,java]
+----
+public class CustomerRelatedness implements AlnsRelatedness<VehicleRoutingSolution> {
+    @Override
+    public double distance(VehicleRoutingSolution solution,
+            AlnsTarget<VehicleRoutingSolution> left, AlnsTarget<VehicleRoutingSolution> right) {
+        var from = (Customer) left.value();
+        var to = (Customer) right.value();
+        return from.getLocation().getDistanceTo(to.getLocation());
+    }
+}
+----
+
+Register it with `type=RELATEDNESS` and `relatednessClass`, or Java `withRelatednessClass(...)`.
+Validate matrix coverage and units at input preparation. Distances must be finite and nonnegative;
+unreachable-arc sentinels need a deliberate domain policy before becoming relatedness distances.
+
+The other lightweight extension signatures are `AlnsRanking<Solution_>.rank(solution, target)`
+(larger finite values are removed earlier) and `AlnsGrouping<Solution_>.groupKey(solution, target)`
+(nonnull stable equality/hash keys). Configure `rankingClass` for `WORST_REMOVAL` or `groupingClass`
+for `GROUP_REMOVAL`, with `customProperties` as needed. For example, a ranking can estimate a
+customer's current route detour, while a group key can identify a depot shared by several routes.
+Read current owners and neighbors: a target's stored placement is not a live placement query.
+With a context, use `currentAssignment(target)`; callbacks without one read the current solution
+or maintained shadows. Equal grouping keys on different variables remain separate.
+
+Compound scratch probes use `evaluate(AlnsChange)` and unwind to the enclosing state, including
+nested evaluations. Apply the chosen change through `execute(AlnsChange)` or `assign()`; obtaining
+a good scratch score does not commit it. List insertion indices refer to the destination after
+removing the target's previous placement. In a compound change, determine later placements after
+earlier mutations. Never directly modify lists, facts, entity fields, or shadows.
+
+Advanced policy extensions use `selectionPolicyClass` with `AlnsSelectionPolicy` or
+`acceptancePolicyClass` with `AlnsAcceptancePolicy`, instead of their respective built-in types.
+Their separate custom-property maps configure those instances. Selection must return a supplied
+eligible pair and learns from `AlnsTrialResult`, not insertion probes. Acceptance receives immutable
+complete scores; its `stepEnded()` sees every completed trial and `incumbentChanged()` signals
+island adoption. Best-solution recall follows acceptance; a custom acceptance policy that rejects
+a new-best candidate prevents that candidate from being retained. Cancellation is not an operator-learning sample.
+
+[#alnsAppliedTasks]
+== Applying ALNS to business problems
+
+=== Resource consolidation with basic variables
+
+In Cloud Balancing, each process chooses a computer. Hard constraints penalize CPU, memory, and
+network overload; soft cost charges each used computer once. Keep that score unchanged when trying
+ALNS. `GROUP_REMOVAL` can select the processes on one computer, and `REGRET_2` or
+`CHEAPEST_INSERTION` can try to place them on remaining capacity. A random destroy operator
+retains a different way to reorganize the allocation.
+
+Suppose two processes occupy a computer costing `100`, and an already-used computer has room for
+both. Removing and reinserting both on the second computer can save `100`; moving only one leaves
+the first computer's cost unchanged. Repair may choose the original computer again, and a capped
+group may leave some of its processes in place. ALNS therefore creates an opportunity to consolidate,
+not a constraint forcing consolidation. Inspect capacity violations and the independently calculated
+used-computer cost in the returned business result.
+
+The same pattern applies to jobs on machines or assignments to employees. A grouping key can select
+a business batch; a relatedness measure can combine immutable skill requirements or overlapping
+time windows. If several genuine variables must change together, configure a destroy scope and a
+repair scope covering those variables. Do not assume equal values across variables create one group.
+
+=== Route rebuilding with a list variable
+
+In the existing time-windowed routing example, `Vehicle.customers` is the genuine list and customers
+hold maintained owner, predecessor/successor, index, and timing shadows. Removing nearby customers
+or a contiguous block allows repair to choose vehicles and insertion positions together.
+The provider evaluates capacity, timing, and travel against the same model as other phases.
+
+For example, destroying B and C in `depot -> A -> B -> C -> depot` leaves
+`depot -> A -> depot`. A repair can insert B on another vehicle, then reconsider every legal position
+for C in the changed routes. Inserting B may alter waiting, service start, departure, and lateness
+downstream. Context mutations update shadows before evaluation; a rejected complete candidate
+restores route order, membership, shadows, and incremental score state.
+
+Start with the automatic random/block portfolio and greedy/regret-2 repairs. Try geographic
+relatedness for clusters, detour ranking for expensive visits, or group removal for routes sharing
+a resource. `CHEAPEST_INSERTION` and higher-k regret revisit all eligible pending targets after each
+insertion, so trial work grows with both destroyed targets and possible placements. A nearby custom
+repair can restrict candidate destinations when needed, but that changes the search neighborhood
+and can exclude useful placements. Measure that tradeoff explicitly.
+
+Preserve atomic customer/order identity even when coordinates coincide. Pinned prefixes stay fixed;
+legal insertion positions still may violate scored hard constraints. A geographic destroy callback
+does not by itself enforce pickup-delivery pairing, precedence, time windows, or optional-work policy.
+Those belong in the decision model and constraints, with specialized operators where helpful.
+
+The repository's `examples.vehiclerouting.VehicleRoutingALNS` contains relatedness and detour-ranking
+callbacks. `VehicleRoutingALNSNearby` illustrates a larger custom repair, but also depends on
+implementation-level nearby utilities; the public-only patterns above avoid that coupling.
+See the repository's `examples/README.adoc` for the current example configurations and commands.
+After solving, reconstruct routes by business IDs and independently replay travel, timing, capacity,
+and served-work totals before accepting a result.
+
+[#alnsTroubleshooting]
+== Tuning and troubleshooting
+
+[cols="2,3", options="header"]
+|===
+|Observation |What to inspect and try
+|Many failed repairs |Separate exhausted repair budgets from unresolved mandatory targets. Reduce destruction or use a cheaper repair, then measure; increasing budgets alone may reduce completed trials.
+|Many no-change trials |Check that targets are movable, scopes match, and the chosen repair can build a different arrangement. Compare randomized repair or a more focused destroy operator.
+|Few trials before termination |Inspect probe counts, score/shadow cost, and destruction size. Compare greedy with global cheapest/regret before adding workers.
+|Repeated rejection |Check candidate loss scale and acceptance settings. Recalibrate annealing in score units; compare late acceptance. Do not weaken business constraints to hide rejection.
+|An operator gets little use |Check eligibility and scope first, then learned rewards and available trial count. Reduce redundant operators before increasing exploration.
+|Optional work remains unassigned |Check `allowsUnassigned`, recovery allowance, compatible destinations, and the scored cost of leaving work unassigned. Recovery selection alone proves no assignment was retained.
+|Returned plan has hard violations |Initialization and successful repair do not imply hard feasibility. Inspect the score breakdown, input feasibility, ranges/pins, model fidelity, and independent business validation.
+|More workers give worse wall-time results |Measure useful consumed probes, completed trials, memory, and synchronization cost. Cheap or small batches may favor sequential execution.
+|Same seed gives different results |Control input order, resolved threads, solver/JDK versions, budgets, and callbacks. Use fixed logical work for deterministic comparisons; timing and island migration remain scheduling-sensitive.
+|===
+
+Change one search choice at a time on identical initialized inputs when isolating ALNS behavior.
+Also compare complete solves including construction at the application's deadline. Use multiple
+seeds, representative sizes and constraints, and controlled CPU/memory. Record time to first feasible
+or target-quality result, best score trajectory, final business metrics, trial outcomes, probes,
+and memory/GC. Preserve objective semantics across comparisons and independently validate results.
+
+The following sections explain the advanced execution and monitoring contracts needed to interpret
+those measurements.
+
+[#alnsTrials]
 == Trials, rejection, and termination
 
 One ALNS step is one complete proposal, including a rejected proposal or a failed repair.
@@ -76,195 +822,7 @@ Worker initialization, state synchronization, and speculative results that are d
 Existing checkpoints remain cooperative: a query can reach the limit before the next checkpoint restores the incumbent.
 Exhausting a repair limit records a failed repair and allows the next trial; outer termination records cancellation.
 
-== Operators and variable bindings
-
-Destroy operator types are `RANDOM`, `RELATEDNESS`, `WORST_REMOVAL`, `LIST_BLOCK`, and `GROUP_REMOVAL`.
-`RELATEDNESS` requires a domain-specific `relatednessClass`; smaller distances indicate closer targets.
-`WORST_REMOVAL` can use a `rankingClass`; larger ranks are selected earlier.
-Its built-in alternative estimates removal benefits through score probes.
-Rank-based removal uses `rankExponent=6.0` by default.
-`LIST_BLOCK` removes a contiguous block from an eligible unpinned list region.
-
-`GROUP_REMOVAL` selects one nonempty group uniformly from the scoped movable targets.
-For basic variables, a group contains bindings with the same variable and equal current planning values.
-For list variables, a group contains values belonging to the same variable and current owner object.
-List owners and planning targets retain object identity even when their business values compare equal.
-If the selected group fits the requested destruction count, all its eligible members are selected;
-otherwise a uniform subset of that count is selected without replacement.
-Smaller groups underfill the request. Pinned members remain excluded, and repair may reuse the original
-container, so removing a group does not guarantee that a physical container becomes or remains empty.
-
-An optional `groupingClass` implements `AlnsGrouping<Solution_>.groupKey(solution, target)` to group
-by domain attributes such as a shift or batch. Keys must be nonnull and have stable `equals`/`hashCode`
-throughout selection. Callback keys remain scoped by variable; equal keys on different variables do
-not combine their bindings. Use a custom destroy operator for compound groups spanning variables.
-The callback is configured through `customProperties` and has the same per-phase/island ownership and
-`AutoCloseable` lifecycle as relatedness and ranking callbacks. `groupingClass` is only valid for `GROUP_REMOVAL`.
-
-Repair operator types are `GREEDY`, `REGRET_2`, `REGRET_3`, `RANDOMIZED_GREEDY`,
-`CHEAPEST_INSERTION`, and `REGRET_K`.
-`GREEDY` processes targets in framework encounter order and chooses the best placement for each.
-`RANDOMIZED_GREEDY` shuffles that order and chooses uniformly among each target's best `topK`
-placements (default `3`); `topK=1` gives random-order, best-placement insertion.
-This randomization scores every placement; it does not apply cost noise or skip probes through blinking.
-`CHEAPEST_INSERTION` evaluates every eligible pending target against the same partial solution,
-then inserts the globally best target/placement pair and recomputes after each insertion.
-It can spend more probes per repair than sequential greedy.
-
-`REGRET_K` uses `regretK` (default `4`, minimum `2`); `regretK` is only valid for this type.
-`REGRET_2` and `REGRET_3` retain their fixed k values.
-For each target, regret is the sum of the best score minus alternatives 2 through k, calculated
-exactly at each score level and compared lexicographically. Alternatives are individual placements,
-including multiple positions in one list; they are not reduced to the best placement per destination.
-Single-option targets take priority. When fewer than k alternatives exist, the last available
-alternative supplies the missing ranks. After each insertion, alternatives and regret are recomputed.
-
-All repairs resolve mandatory targets before optional targets. Equal regrets prefer the better best
-placement. Remaining target ties use encounter order, as do global cheapest ties and equal-score placements.
-All placements respect the model's variable ranges and pinning.
-Unassignment remains eligible only where the model permits it.
-Legal placements may violate scored hard constraints; candidate counts do not represent a generic
-count of hard-feasible positions.
-
-The automatic portfolio remains per-variable `RANDOM`, plus `LIST_BLOCK` for the list variable,
-paired with `GREEDY` and `REGRET_2`. The three additional types are opt-in.
-Explicit destroy or repair lists replace the corresponding automatic list; include existing operators
-explicitly when adding an operator to that portfolio.
-
-An explicit operator may target an `entityClass` and `variableName`.
-This identifies a basic entity/variable binding or the list variable whose values can be moved.
-For example:
-
-[source,xml]
-----
-<alns>
-  <termination>
-    <secondsSpentLimit>60</secondsSpentLimit>
-  </termination>
-  <destroyOperator>
-    <id>random-orders</id>
-    <type>RANDOM</type>
-    <entityClass>com.example.Vehicle</entityClass>
-    <variableName>visits</variableName>
-    <minimumDestroyedCount>5</minimumDestroyedCount>
-    <maximumDestroyedCount>20</maximumDestroyedCount>
-    <initialWeight>1.0</initialWeight>
-  </destroyOperator>
-  <repairOperator>
-    <id>regret-orders</id>
-    <type>REGRET_2</type>
-    <entityClass>com.example.Vehicle</entityClass>
-    <variableName>visits</variableName>
-    <initialWeight>1.0</initialWeight>
-  </repairOperator>
-</alns>
-----
-
-Use count bounds or `minimumDestroyedPercentage`/`maximumDestroyedPercentage` bounds, expressed as fractions.
-Counts are limited by the eligible target population.
-Percentages are rounded down to whole targets, with a minimum of one target for nonempty populations.
-The automatically configured destroy bounds are `5..20` for basic bindings and `5..40` for list bindings.
-An unspecified bound adjusts to respect an explicitly configured bound.
-If both bounds are explicit and their resolved counts conflict, solving fails with a configuration error.
-Already unassigned optional targets can also be considered for recovery; `recoveryCount` controls this separately.
-The default recovery allowance follows the destruction size, with at least one recovery opportunity.
-Coincident coordinates or equal business values do not merge planning targets: target identity follows working-object identity.
-
-For example, an explicit group/regret portfolio can be configured as follows:
-
-[source,xml]
-----
-<alns>
-  <termination><secondsSpentLimit>60</secondsSpentLimit></termination>
-  <destroyOperator>
-    <id>group</id>
-    <type>GROUP_REMOVAL</type>
-    <maximumDestroyedCount>20</maximumDestroyedCount>
-  </destroyOperator>
-  <repairOperator>
-    <id>cheapest</id>
-    <type>CHEAPEST_INSERTION</type>
-  </repairOperator>
-  <repairOperator>
-    <id>regret-4</id>
-    <type>REGRET_K</type>
-    <regretK>4</regretK>
-  </repairOperator>
-</alns>
-----
-
-== Adaptive selection and acceptance
-
-`SEGMENTED_ROULETTE` is the default selection policy.
-It learns separate destroy and repair weights, choosing among compatible operator pairs.
-Defaults are `segmentLength=100`, `reactionFactor=0.2`, and `minimumWeight=0.01`.
-The default rewards are `5` for a new best solution, `3` for an incumbent improvement,
-`1` for another accepted candidate, and `0` for rejection, failure, or no change.
-The positive weight floor keeps operators eligible for exploration.
-
-`UCB` instead learns compatible destroy/repair pair arms.
-It explores unused arms and balances their normalized reward with an exploration term.
-The default `ucbExploration` is the square root of two.
-`selectionPolicyClass` supplies a custom selection policy when required.
-Its `selectionPolicyCustomProperties` map configures public bean properties on that policy instance.
-
-`LATE_ACCEPTANCE` is the default acceptance policy, with `lateAcceptanceSize=128`.
-`HILL_CLIMBING` accepts improvements and equal scores.
-`SIMULATED_ANNEALING` requires an explicit score-valued `startingTemperature`:
-
-[source,xml]
-----
-<alns>
-  <termination>
-    <stepCountLimit>10000</stepCountLimit>
-  </termination>
-  <acceptanceType>SIMULATED_ANNEALING</acceptanceType>
-  <startingTemperature>0hard/100soft</startingTemperature>
-  <coolingRate>0.999</coolingRate>
-</alns>
-----
-
-Use the score syntax of the domain.
-Temperature components must be nonnegative; a zero component rejects worsening at that level.
-Cooling advances once per completed trial, including rejection.
-The default cooling multiplier is `0.999`.
-`acceptancePolicyClass` supplies a custom acceptance policy.
-Use `acceptancePolicyCustomProperties` to configure that instance.
-
-== Stable custom operator API
-
-The public extension types are in `greycos.solver.core.api.solver.alns`.
-Implement `AlnsDestroyOperator` or `AlnsRepairOperator` and configure its `customClass`.
-Each configured class is instantiated independently for every solver phase or island.
-A custom operator class may receive `customProperties` through the standard configuration property mechanism.
-
-A destroy operator returns unique handles from the context; the framework applies their removal.
-A repair operator examines `assignments(target)`, probes alternatives through `evaluate(...)`,
-and applies selected placements through `execute(...)` or the mutable context methods.
-It returns `false` when mandatory repair cannot be completed.
-These public interfaces do not require internal score-director classes or preview move APIs.
-
-`workingSolution()` provides read access to domain data.
-Apply every mutation through the supplied context, including custom compound changes.
-Do not modify the solution directly, retain working-object handles after the trial,
-or share mutable operator state across solves.
-The context balances notifications and restores temporary probes; acceptance belongs to the outer phase.
-
-Use `evaluateAssignments(List<AlnsAssignment<Solution_>>)` to score independent placements against
-the same current state, and `evaluateRemovals(List<AlnsTarget<Solution_>>)` to score independent removals.
-Both return one `AlnsEvaluation` per input entry in input order.
-Removals are separate scratch probes, not cumulative changes.
-Repeated entries are evaluated independently; foreign working-object handles, invalid assignments, and null entries are rejected.
-An empty batch performs no scoring. The surrounding trial must be active.
-The default API implementations run sequentially, so existing custom contexts remain compatible.
-
-The framework may evaluate these batches on move workers.
-Custom callbacks passed to `evaluate(AlnsChange)` and `execute(AlnsChange)`, along with custom
-relatedness/ranking/grouping callbacks and operator policies, remain on their owning solver or island thread.
-An individual `evaluate(assignment)` is also synchronous on that thread.
-The batch methods give the framework enough information to rebase working references safely;
-applications must continue to call the context from its owning thread.
-
+[#alnsMoveWorkers]
 == Move workers
 
 An ALNS phase inherits the solver's `moveThreadCount` unless the phase specifies an override:
@@ -281,7 +839,10 @@ An ALNS phase inherits the solver's `moveThreadCount` unless the phase specifies
 `AUTO` uses the existing move-thread resolver; an explicit positive count selects that many workers.
 In `PROBES` mode, the solver-level `moveThreadBufferSize` bounds candidates in flight per worker
 and defaults to ten.
-The usual xref:advanced-features/advanced-features.adoc#multithreadedIncrementalSolving[move-worker rebasing requirements] apply.
+Workers need stable xref:using-greycos-solver/modeling-planning-problems.adoc#planningId[`@PlanningId` values]
+on planning entities and planning values, and correct
+xref:using-greycos-solver/modeling-planning-problems.adoc#cloningASolution[solution cloning].
+Mutable planning state belongs to each clone; immutable facts may be shared.
 Constraint Stream profiling cannot be combined with enabled ALNS move workers, including a phase override.
 
 `moveThreadingMode` selects the unit of independent work. Its default is `PROBES`.
@@ -430,8 +991,15 @@ A rejected proposal has zero incumbent step-score change.
 Constraint-match step metrics follow the configured sampling interval, with a final sample at phase end;
 new-best constraint values are captured when that best is produced.
 
-Enable `ALNS_STATISTICS` to record trial outcomes, consumed scoring-probe counts, destroyed and recovered counts,
+Enable `ALNS_STATISTICS` to record trial outcomes, consumed scoring-probe counts, selected destruction and recovery counts,
 repair duration, and learned operator weights under `greycos.solver.alns`.
+Add `<monitoring><metric>ALNS_STATISTICS</metric></monitoring>` at solver level in XML,
+or include `SolverMetric.ALNS_STATISTICS` in the Java `MonitoringConfig` metric list.
+The metric named `recovered` counts targets selected for recovery, including trials that later fail
+or are rejected; it does not count successful retained reassignments. Likewise, `repair.duration`
+covers the trial body, including destruction, candidate checking, and rollback.
+UCB reports pair mean normalized rewards as its learned weights, not its full exploration values;
+roulette reports separate destroy and repair weights.
 Metrics identify the operator pair and phase; island metrics also include `island.id`.
 Compare configurations using solution quality at matched wall-clock budgets and multiple seeds.
 Report outer proposal counts and repair work separately: a higher score-calculation rate alone does not establish faster search.
@@ -466,11 +1034,7 @@ and independently checks each returned score. Heap samples include retained JVM 
 peak heap and process RSS are not measured by this harness.
 These small easy-score workloads validate the comparison procedure; they do not establish production performance.
 
-The optional real-domain operator comparison is documented in
-`tools/benchmark/scripts/README-alns-operators.md` in the repository.
-It requires the local Cloud Balancing and Vehicle Routing examples and their data.
-The harness compares the default portfolio, each new operator separately, the combined portfolio,
-and random-order best-placement repair on identical initialized inputs across multiple seeds.
-It separates phase-time limits from fixed score-query limits and independently recomputes returned scores.
-Its manifest, per-pair work counts, score trajectories, CSV and summary distinguish completed trials
-from cancellation and preserve hard/soft score ordering.
+For real-domain experiments, the repository's `examples/README.adoc` documents the available
+Vehicle Routing ALNS programs, configurations, and validation tests. Start from those actual
+resources and follow the comparison procedure above; their individual settings are examples,
+not framework defaults or evidence of a universally best portfolio.

@@ -346,6 +346,7 @@
           <xs:element minOccurs="0" name="relatednessClass" type="xs:string"/>
                     
           <xs:element minOccurs="0" name="rankingClass" type="xs:string"/>
+                    
           <xs:element minOccurs="0" name="groupingClass" type="xs:string"/>
                     
           <xs:element minOccurs="0" name="rankExponent" type="xs:double"/>
@@ -381,6 +382,7 @@
           <xs:element minOccurs="0" name="customClass" type="xs:string"/>
                     
           <xs:element minOccurs="0" name="topK" type="xs:int"/>
+                    
           <xs:element minOccurs="0" name="regretK" type="xs:int"/>
                     
           <xs:element minOccurs="0" name="initialWeight" type="xs:double"/>
@@ -1748,6 +1750,7 @@
       <xs:enumeration value="WORST_REMOVAL"/>
             
       <xs:enumeration value="LIST_BLOCK"/>
+            
       <xs:enumeration value="GROUP_REMOVAL"/>
           
     </xs:restriction>
@@ -1765,7 +1768,9 @@
       <xs:enumeration value="REGRET_3"/>
             
       <xs:enumeration value="RANDOMIZED_GREEDY"/>
+            
       <xs:enumeration value="CHEAPEST_INSERTION"/>
+            
       <xs:enumeration value="REGRET_K"/>
           
     </xs:restriction>
