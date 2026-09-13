@@ -41,7 +41,13 @@ public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<
 
     if (shouldUpdate) {
       previousBestScore = bestScore;
-      boolean updated = globalState.tryUpdate(bestSolution, bestScore);
+      // Construction heuristics temporarily retain the mutable working solution as their best.
+      // Publish an island-owned snapshot before another construction step changes it.
+      var publishedSolution =
+          bestSolution == solverScope.getWorkingSolution()
+              ? solverScope.getScoreDirector().cloneSolution(bestSolution)
+              : bestSolution;
+      boolean updated = globalState.tryUpdate(publishedSolution, bestScore);
 
       if (updated) {
         long timeSpentMs = solverScope.getTimeMillisSpent();

@@ -65,7 +65,8 @@ public class GlobalBestPropagator<Solution_>
         return;
       }
 
-      var clonedSolution = updateMainSolverScope(newGlobalBest, newGlobalBestScore);
+      var clonedSolution =
+          updateMainSolverScope(newGlobalBest, newGlobalBestScore, snapshot.getTimestampMillis());
       lastKnownBestScore = newGlobalBestScore;
       fireBestSolutionChangedEvent(clonedSolution);
     }
@@ -80,7 +81,8 @@ public class GlobalBestPropagator<Solution_>
     return comparisonResult > 0;
   }
 
-  private Solution_ updateMainSolverScope(Solution_ newBestSolution, InnerScore<?> newBestScore) {
+  private Solution_ updateMainSolverScope(
+      Solution_ newBestSolution, InnerScore<?> newBestScore, long timestampMillis) {
     var clonedSolution = mainSolverScope.getScoreDirector().cloneSolution(newBestSolution);
 
     // Update main solver scope
@@ -90,7 +92,7 @@ public class GlobalBestPropagator<Solution_>
     var innerScore = (InnerScore<?>) newBestScore;
     mainSolverScope.setBestScore(innerScore);
 
-    mainSolverScope.setBestSolutionTimeMillis(mainSolverScope.getClock().millis());
+    mainSolverScope.setBestSolutionTimeMillis(timestampMillis);
     return clonedSolution;
   }
 

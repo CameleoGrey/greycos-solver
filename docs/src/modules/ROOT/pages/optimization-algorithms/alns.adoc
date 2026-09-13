@@ -958,6 +958,36 @@ New solves and problem-change restarts build fresh runtime state.
 Fixed seeds and fixed trial budgets support reproducible single-island runs;
 concurrent island scheduling can change when migrants become available.
 
+Termination configured directly on `islandModel` applies to generated local search and to every
+explicit inner phase, including ALNS. An inner phase can have its own additional termination;
+ending that inner phase does not reset the enclosing budget.
+
+[cols="1,3", options="header"]
+|===
+|Enclosing limit |Meaning across islands and inner phases
+|Elapsed time |One clock starting when the enclosing island phase starts, shared by all islands.
+|Unimproved elapsed time |Time since the last strict improvement of the shared global best.
+The idle clock starts when the first inner local-search or ALNS phase starts. Construction heuristics
+and custom phases do not start it. Later phase transitions do not restart it.
+|Step, move-evaluation, score-calculation counts |Each island receives its own full cumulative quota
+across its phase sequence, including construction and custom phases. Quotas are not pooled, divided
+among islands, or restarted for each inner phase. Normal framework score calculations count too.
+|===
+
+For example, an enclosing step limit of `100` with two islands permits up to `100` completed steps
+per island across that island's inner phases. If its first phase uses `30`, its later phases share
+the remaining `70`. An inner limit of `10` ends only that inner phase; it does not stop a peer island
+that still has work available. For ALNS, one completed trial is one step and one move evaluation;
+insertion probes and credited repair-attempt queries consume the score-calculation quota.
+
+AND/OR combinations retain their configured logic. A zero elapsed or work limit is checked before
+the first custom command runs; no command runs if the complete expression is already satisfied.
+A zero leaf inside AND still requires its other conditions. Global improvements extend the shared idle deadline even when
+migration and global-best adoption are disabled; equal scores and delayed local adoption do not
+extend it. New solves and problem-change restarts create fresh enclosing budgets. Time and external
+cancellation remain cooperative at balanced mutation boundaries, so an interrupted ALNS trial
+restores its incumbent before its workers and island finish.
+
 == Progress logging
 
 Enable `DEBUG` on `greycos.solver.core.impl.alns.DefaultAlnsPhase` to see one progress message

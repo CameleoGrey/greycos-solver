@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.islandmodel;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -18,10 +19,15 @@ public class SharedGlobalState<Solution_> {
   public static final class BestSolutionSnapshot<Solution_> {
     private final Solution_ solution;
     private final InnerScore<?> score;
+    private final long timestampMillis;
+    private final long version;
 
-    private BestSolutionSnapshot(Solution_ solution, InnerScore<?> score) {
+    private BestSolutionSnapshot(
+        Solution_ solution, InnerScore<?> score, long timestampMillis, long version) {
       this.solution = Objects.requireNonNull(solution, "Best solution cannot be null");
       this.score = Objects.requireNonNull(score, "Best score cannot be null");
+      this.timestampMillis = timestampMillis;
+      this.version = version;
     }
 
     public Solution_ getSolution() {
@@ -35,10 +41,20 @@ public class SharedGlobalState<Solution_> {
     public InnerScore<?> getInnerScore() {
       return score;
     }
+
+    public long getTimestampMillis() {
+      return timestampMillis;
+    }
+
+    public long getVersion() {
+      return version;
+    }
   }
 
   private volatile BestSolutionSnapshot<Solution_> bestSnapshot;
   private final Object lock = new Object();
+  private Clock clock = Clock.systemUTC();
+  private Consumer<BestSolutionSnapshot<Solution_>> progressObserver;
 
   private final List<Consumer<BestSolutionSnapshot<Solution_>>> observers =
       new CopyOnWriteArrayList<>();
@@ -65,7 +81,17 @@ public class SharedGlobalState<Solution_> {
         }
       }
 
-      updatedSnapshot = new BestSolutionSnapshot<>(candidate, candidateScore);
+      updatedSnapshot =
+          new BestSolutionSnapshot<>(
+              candidate,
+              candidateScore,
+              clock.millis(),
+              currentSnapshot == null ? 1L : currentSnapshot.getVersion() + 1L);
+      // Internal termination history must observe every improvement in publication order.
+      // External observers remain outside this lock and may arrive out of order.
+      if (progressObserver != null) {
+        progressObserver.accept(updatedSnapshot);
+      }
       bestSnapshot = updatedSnapshot;
     }
     notifyObservers(updatedSnapshot);
@@ -115,8 +141,20 @@ public class SharedGlobalState<Solution_> {
   }
 
   public void reset() {
+    reset(Clock.systemUTC(), null);
+  }
+
+  void reset(Clock clock, Consumer<BestSolutionSnapshot<Solution_>> progressObserver) {
     synchronized (lock) {
+      this.clock = Objects.requireNonNull(clock);
+      this.progressObserver = progressObserver;
       bestSnapshot = null;
+    }
+  }
+
+  void clearProgressObserver() {
+    synchronized (lock) {
+      progressObserver = null;
     }
   }
 

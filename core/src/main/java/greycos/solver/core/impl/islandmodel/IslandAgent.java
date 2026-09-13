@@ -76,11 +76,8 @@ public class IslandAgent<Solution_> implements Runnable {
 
       islandScope.setWorkingRandom(random);
       islandScope.setInitialSolution(initialSolution);
-      islandScope.getSolver().solvingStarted(islandScope);
 
       for (Phase<Solution_> phase : phases) {
-        LOGGER.debug("Agent {} running phase: {}", agentId, phase.getClass().getSimpleName());
-
         if (phase instanceof LocalSearchPhase || phase instanceof AlnsPhase) {
           MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
           phase.addPhaseLifecycleListener(migrationTrigger);
@@ -100,13 +97,12 @@ public class IslandAgent<Solution_> implements Runnable {
               agentId,
               phase.getClass().getSimpleName());
         }
-
-        phase.solvingStarted(islandScope);
-        phase.solve(islandScope);
-        phase.solvingEnded(islandScope);
       }
 
-      islandScope.getSolver().solvingEnded(islandScope);
+      var islandSolver = (IslandSolver<Solution_>) islandScope.getSolver();
+      islandSolver.solvingStarted(islandScope);
+      islandSolver.runPhases(islandScope);
+      islandSolver.solvingEnded(islandScope);
       markAsDead();
     } catch (Exception e) {
       try {

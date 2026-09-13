@@ -14,6 +14,7 @@ abstract sealed class AbstractUniversalTermination<Solution_> extends AbstractTe
         BestScoreFeasibleTermination,
         BestScoreTermination,
         ChildThreadPlumbingTermination,
+        IslandSequenceTermination,
         MoveCountTermination,
         ScoreCalculationCountTermination,
         TimeMillisSpentTermination,

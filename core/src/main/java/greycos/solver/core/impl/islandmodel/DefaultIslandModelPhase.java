@@ -2,6 +2,7 @@ package greycos.solver.core.impl.islandmodel;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -19,6 +20,7 @@ import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.SolverConfig;
+import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.phase.AbstractPhase;
 import greycos.solver.core.impl.phase.Phase;
@@ -34,6 +36,7 @@ import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecallerFactory;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.ChildThreadSupportingTermination;
+import greycos.solver.core.impl.solver.termination.IslandTerminationBudget;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
 import greycos.solver.core.impl.solver.termination.SolverTermination;
 import greycos.solver.core.impl.solver.termination.UniversalTermination;
@@ -111,7 +114,18 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       phaseLifecycleStarted = true;
 
       this.solverScope = solverScope;
-      globalState.reset();
+      var outerBudget =
+          new IslandTerminationBudget<Solution_>(
+              Objects.requireNonNullElseGet(
+                  islandModelConfig.getTerminationConfig(), TerminationConfig::new),
+              configPolicy,
+              solverScope.getClock(),
+              phaseScope.getStartingSystemTimeMillis());
+      globalState.reset(
+          solverScope.getClock(),
+          snapshot ->
+              outerBudget.bestScoreImproved(
+                  snapshot.getInnerScore(), snapshot.getTimestampMillis(), snapshot.getVersion()));
       warnAboutPotentialThreadOversubscription();
 
       var initialSolution = solverScope.getBestSolution();
@@ -129,7 +143,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
               new PhaseEventProducerId(getPhaseType(), phaseIndex));
       globalBestPropagator.start();
 
-      createAndRunAgents(solverScope);
+      createAndRunAgents(solverScope, outerBudget);
 
       var globalBest = globalState.getBestSolution();
       if (globalBest != null) {
@@ -159,13 +173,15 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       if (globalBestPropagator != null) {
         globalBestPropagator.stop();
       }
+      globalState.clearProgressObserver();
       if (phaseLifecycleStarted) {
         phaseEnded(phaseScope);
       }
     }
   }
 
-  private void createAndRunAgents(SolverScope<Solution_> solverScope) {
+  private void createAndRunAgents(
+      SolverScope<Solution_> solverScope, IslandTerminationBudget<Solution_> outerBudget) {
     var threadFactory = configPolicy.buildThreadFactory(ChildThreadType.PART_THREAD);
     var executor = Executors.newFixedThreadPool(islandCount, threadFactory);
     var completionService = new ExecutorCompletionService<Void>(executor);
@@ -187,29 +203,42 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         var sender = channels.get((i + 1) % islandCount);
 
         var agentScope = createAgentSolverScope(solverScope, i);
-        var agentRandom = agentScope.getWorkingRandom();
-        var agentConfigPolicy = createAgentConfigPolicy(agentRandom);
-        var agentTermination = createAgentTermination(agentScope);
-        var agentRecaller =
-            BestSolutionRecallerFactory.create()
-                .<Solution_>buildBestSolutionRecaller(agentConfigPolicy.getEnvironmentMode());
-        var agentPhases = buildPhasesForAgent(agentConfigPolicy, agentRecaller, agentTermination);
-        var islandSolver =
-            new IslandSolver<>(
-                agentRecaller, toUniversalTermination(agentTermination), agentPhases);
-        agentScope.setSolver(islandSolver);
-        var initialSolution = deepCloneSolution(solverScope.getBestSolution());
-        var agent =
-            createAgent(
-                i,
-                sender,
-                receiver,
-                agentPhases,
-                agentScope,
-                initialSolution,
-                completionLatch,
-                agentRandom);
-        futures.add(completionService.submit(agent, null));
+        try {
+          var agentRandom = agentScope.getWorkingRandom();
+          var agentConfigPolicy = createAgentConfigPolicy(agentRandom);
+          var agentTermination =
+              UniversalTermination.or(
+                  createAgentTermination(agentScope),
+                  outerBudget.createIslandTermination(agentScope));
+          var agentRecaller =
+              BestSolutionRecallerFactory.create()
+                  .<Solution_>buildBestSolutionRecaller(agentConfigPolicy.getEnvironmentMode());
+          var agentPhases = buildPhasesForAgent(agentConfigPolicy, agentRecaller, agentTermination);
+          var islandSolver =
+              new IslandSolver<>(
+                  agentRecaller, toUniversalTermination(agentTermination), agentPhases);
+          agentScope.setSolver(islandSolver);
+          var initialSolution = deepCloneSolution(solverScope.getBestSolution());
+          var agent =
+              createAgent(
+                  i,
+                  sender,
+                  receiver,
+                  agentPhases,
+                  agentScope,
+                  initialSolution,
+                  completionLatch,
+                  agentRandom);
+          futures.add(completionService.submit(agent, null));
+        } catch (RuntimeException | Error failure) {
+          // Ownership transfers to the agent only after successful submission.
+          try {
+            agentScope.getScoreDirector().close();
+          } catch (Exception cleanupFailure) {
+            failure.addSuppressed(cleanupFailure);
+          }
+          throw failure;
+        }
       }
 
       for (int i = 0; i < islandCount; i++) {
@@ -329,10 +358,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       localSearchConfig.setForagerConfig(foragerConfig.copyConfig());
     }
 
-    var terminationConfig = islandModelConfig.getTerminationConfig();
-    if (terminationConfig != null) {
-      localSearchConfig.setTerminationConfig(terminationConfig.copyConfig());
-    }
+    // The outer budget spans the entire island sequence and is already part of its termination.
     return localSearchConfig;
   }
 

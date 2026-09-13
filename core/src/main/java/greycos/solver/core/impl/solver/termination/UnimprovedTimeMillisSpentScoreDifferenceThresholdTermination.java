@@ -32,6 +32,14 @@ final class UnimprovedTimeMillisSpentScoreDifferenceThresholdTermination<Solutio
   private long phaseSafeTimeMillis = -1L;
   private boolean currentPhaseSendsBestSolutionEvents = false;
 
+  long getUnimprovedTimeMillisSpentLimit() {
+    return unimprovedTimeMillisSpentLimit;
+  }
+
+  Score<?> getUnimprovedScoreDifferenceThreshold() {
+    return unimprovedScoreDifferenceThreshold;
+  }
+
   public UnimprovedTimeMillisSpentScoreDifferenceThresholdTermination(
       long unimprovedTimeMillisSpentLimit, Score<?> unimprovedScoreDifferenceThreshold) {
     this(unimprovedTimeMillisSpentLimit, unimprovedScoreDifferenceThreshold, Clock.systemUTC());

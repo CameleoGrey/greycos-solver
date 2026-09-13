@@ -40,21 +40,22 @@ import org.jspecify.annotations.Nullable;
 /**
  * Configuration for island model phase.
  *
- * <p>The island model runs multiple independent island agents in parallel, each running local
- * search independently. Agents periodically exchange their best solutions through migration in a
- * ring topology.
- *
- * <p>This is an opt-in feature that provides:
- *
- * <ul>
- *   <li>Enhanced solution quality through migration
- *   <li>Near-linear horizontal scaling
- *   <li>Fault tolerance (if one island fails, others continue)
- * </ul>
+ * <p>The island model runs independent agents in parallel. Each agent runs its configured phase
+ * sequence with its own working solution and random stream. Agents can exchange best solutions
+ * through ring migration. An agent failure stops its peers and propagates to the enclosing solver.
  *
  * <p>IslandModelPhaseConfig includes all local search configuration options (move selector,
  * acceptor, forager, etc.) that each island uses. Each island runs the same local search
  * configuration, but with independent random seeds and solution states.
+ *
+ * <p>The enclosing termination applies to both generated local search and explicit inner phases.
+ * Elapsed time is shared from island-phase entry. Unimproved elapsed time follows strict
+ * improvements of the shared best, starting when the first inner local-search or ALNS phase starts;
+ * construction heuristics and custom phases do not start that idle clock. Step, move-evaluation and
+ * score-calculation limits give each island its own cumulative quota across its entire phase
+ * sequence, including construction and custom phases. They are not divided among islands or reset
+ * between inner phases. Explicit inner-phase limits remain independent. AND/OR termination
+ * composition is preserved, and repeated solves create fresh budgets.
  */
 @XmlType(
     propOrder = {

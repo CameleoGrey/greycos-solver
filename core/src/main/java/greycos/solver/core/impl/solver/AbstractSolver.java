@@ -96,9 +96,13 @@ public abstract class AbstractSolver<Solution_> implements Solver<Solution_> {
       // working solution.
       // If there isn't, no need to planning clone the best solution to the working solution.
       if (it.hasNext()) {
-        solverScope.setWorkingSolutionFromBestSolution();
+        restoreWorkingSolutionForNextPhase(solverScope);
       }
     }
+  }
+
+  protected void restoreWorkingSolutionForNextPhase(SolverScope<Solution_> solverScope) {
+    solverScope.setWorkingSolutionFromBestSolution();
   }
 
   public void solvingEnded(SolverScope<Solution_> solverScope) {

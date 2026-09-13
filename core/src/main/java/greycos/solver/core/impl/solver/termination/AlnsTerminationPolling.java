@@ -79,6 +79,9 @@ public final class AlnsTerminationPolling<Solution_> {
   }
 
   private boolean isSupported(Termination<Solution_> termination) {
+    if (termination instanceof IslandSequenceTermination<Solution_> island) {
+      return island.supportedForRepairAttempts();
+    }
     if (termination instanceof AbstractCompositeTermination<Solution_> composite) {
       return composite.terminationList.stream().allMatch(this::isSupported);
     }
@@ -111,6 +114,11 @@ public final class AlnsTerminationPolling<Solution_> {
       boolean phase,
       Map<Termination<Solution_>, BooleanSupplier> phaseTimePredicates,
       Map<Termination<Solution_>, BooleanSupplier> solverTimePredicates) {
+    if (termination instanceof IslandSequenceTermination<Solution_> island) {
+      // The bridge owns its enclosing sequence/global scopes. Unwrapping it against the current
+      // inner ALNS scope would reset work/time origins and change nested AND/OR semantics.
+      return () -> island.isSolverTerminated(solverScope);
+    }
     if (termination instanceof AbstractCompositeTermination<Solution_> composite) {
       var compiledChildren = new ArrayList<BooleanSupplier>();
       var terminations = phase ? composite.phaseTerminationList : composite.solverTerminationList;

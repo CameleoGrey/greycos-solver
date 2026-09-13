@@ -4,6 +4,7 @@ import java.util.List;
 
 import greycos.solver.core.api.solver.change.ProblemChange;
 import greycos.solver.core.impl.phase.Phase;
+import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.AbstractSolver;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -16,6 +17,8 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 final class IslandSolver<Solution_> extends AbstractSolver<Solution_> {
 
+  private boolean scoreDirectorClosed;
+
   IslandSolver(
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       UniversalTermination<Solution_> globalTermination,
@@ -24,27 +27,59 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_> {
   }
 
   @Override
-  public void solvingStarted(SolverScope<Solution_> solverScope) {
-    solverScope.setWorkingSolutionFromBestSolution();
-    bestSolutionRecaller.solvingStarted(solverScope);
-    globalTermination.solvingStarted(solverScope);
+  public void runPhases(SolverScope<Solution_> solverScope) {
+    super.runPhases(solverScope);
+  }
+
+  @Override
+  protected void restoreWorkingSolutionForNextPhase(SolverScope<Solution_> solverScope) {
+    var pending = solverScope.consumePendingMove();
+    super.restoreWorkingSolutionForNextPhase(solverScope);
+    // A migration queued at the final step still targets the old entity instances.
+    // Rebase its captured target assignments onto the replacement working clone.
+    if (pending != null
+        && pending.move() instanceof SolutionSyncMove<Solution_> syncMove
+        && pending.score() != null
+        && improvesBestScore(pending.score(), solverScope.getBestScore())) {
+      solverScope.setPendingMoveIfBetter(
+          syncMove.rebase(solverScope.getScoreDirector()),
+          pending.score(),
+          pending.requiresReset());
+    }
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static boolean improvesBestScore(InnerScore<?> candidate, InnerScore<?> best) {
+    return ((InnerScore) candidate).compareTo((InnerScore) best) > 0;
   }
 
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
-    try {
-      bestSolutionRecaller.solvingEnded(solverScope);
-      globalTermination.solvingEnded(solverScope);
-    } finally {
-      solverScope.getScoreDirector().close();
-    }
+    withScoreDirectorCleanup(solverScope, () -> super.solvingEnded(solverScope));
   }
 
   @Override
   public void solvingError(SolverScope<Solution_> solverScope, Exception exception) {
+    withScoreDirectorCleanup(solverScope, () -> super.solvingError(solverScope, exception));
+  }
+
+  private void withScoreDirectorCleanup(SolverScope<Solution_> solverScope, Runnable cleanup) {
     try {
-      super.solvingError(solverScope, exception);
-    } finally {
+      cleanup.run();
+    } catch (RuntimeException | Error failure) {
+      try {
+        closeScoreDirector(solverScope);
+      } catch (RuntimeException | Error closeFailure) {
+        failure.addSuppressed(closeFailure);
+      }
+      throw failure;
+    }
+    closeScoreDirector(solverScope);
+  }
+
+  private void closeScoreDirector(SolverScope<Solution_> solverScope) {
+    if (!scoreDirectorClosed) {
+      scoreDirectorClosed = true;
       solverScope.getScoreDirector().close();
     }
   }
