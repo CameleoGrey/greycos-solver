@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.score.stream.collector.consecutive;
 
+import static greycos.solver.core.impl.score.stream.collector.consecutive.ConsecutiveSequenceTestUtils.assertSameSequences;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
@@ -132,17 +133,17 @@ class ConsecutiveSetTreeTest {
 
     duplicateValue.set(0); // mimic the constraint collector changing a planning variable
 
-    tree.remove(duplicateValue);
+    tree.remove(duplicateValue, 3);
     assertThat(sequenceList).hasSize(1);
     assertThat(sequenceList.get(0).getCount()).isEqualTo(3);
     assertThat(breakList).isEmpty();
 
-    tree.remove(duplicateValue);
+    tree.remove(duplicateValue, 3);
     assertThat(sequenceList).hasSize(1);
     assertThat(sequenceList.get(0).getCount()).isEqualTo(3);
     assertThat(breakList).isEmpty();
 
-    tree.remove(duplicateValue);
+    tree.remove(duplicateValue, 3);
     assertThat(sequenceList).hasSize(1);
     assertThat(sequenceList.get(0).getCount()).isEqualTo(2);
     assertThat(tree.getBreaks()).isEmpty();
@@ -183,17 +184,17 @@ class ConsecutiveSetTreeTest {
           softly.assertThat(tree.getLastBreak()).isNull();
         });
 
-    tree.remove(a);
+    tree.remove(a, 3);
     assertThat(sequenceList).hasSize(1);
     assertThat(sequenceList.get(0).getCount()).isEqualTo(2);
     assertThat(breakList).isEmpty();
 
-    tree.remove(b);
+    tree.remove(b, 3);
     assertThat(sequenceList).hasSize(1);
     assertThat(sequenceList.get(0).getCount()).isEqualTo(1);
     assertThat(breakList).isEmpty();
 
-    tree.remove(c);
+    tree.remove(c, 3);
     assertThat(sequenceList).isEmpty();
     assertThat(tree.getBreaks()).isEmpty();
   }
@@ -264,7 +265,7 @@ class ConsecutiveSetTreeTest {
     tree.add(atomic(7), 7);
 
     removed4.set(8); // mimic changing a planning variable
-    tree.remove(removed4);
+    tree.remove(removed4, 4);
 
     IterableList<Sequence<AtomicInteger, Integer>> sequenceList =
         new IterableList<>(tree.getConsecutiveSequences());
@@ -301,9 +302,9 @@ class ConsecutiveSetTreeTest {
     removed2.set(10);
     removed3.set(-1);
 
-    tree.remove(removed2);
-    tree.remove(removed1);
-    tree.remove(removed3);
+    tree.remove(removed2, 2);
+    tree.remove(removed1, 1);
+    tree.remove(removed3, 3);
 
     IterableList<Sequence<AtomicInteger, Integer>> sequenceList =
         new IterableList<>(tree.getConsecutiveSequences());
@@ -330,7 +331,7 @@ class ConsecutiveSetTreeTest {
     // mimic changing planning variable
     end.set(3);
 
-    tree.remove(end);
+    tree.remove(end, 7);
 
     IterableList<Sequence<AtomicInteger, Integer>> sequenceList =
         new IterableList<>(tree.getConsecutiveSequences());
@@ -342,7 +343,7 @@ class ConsecutiveSetTreeTest {
     // mimic changing planning variable
     start.set(3);
 
-    tree.remove(start);
+    tree.remove(start, 1);
     assertThat(sequenceList).hasSize(1);
     assertThat(sequenceList.get(0).getCount()).isEqualTo(5);
     assertThat(tree.getBreaks()).isEmpty();
@@ -366,7 +367,7 @@ class ConsecutiveSetTreeTest {
                 .map(Object::toString)
                 .collect(Collectors.joining(", ", "Removing " + value + " from [", "]"));
         valueToCountMap.computeIfPresent(value, (key, count) -> (count == 1) ? null : count - 1);
-        tree.remove(value);
+        tree.remove(value, value);
       } else {
         op =
             valueToCountMap.keySet().stream()
@@ -384,15 +385,11 @@ class ConsecutiveSetTreeTest {
             .forEach(key -> freshTree.add(key, key));
       }
 
-      assertThat(tree.getConsecutiveSequences())
-          .as("Mismatched Sequence: " + op)
-          .usingRecursiveComparison()
-          .ignoringFields("sourceTree")
-          .isEqualTo(freshTree.getConsecutiveSequences());
-      assertThat(tree.getBreaks())
-          .as("Mismatched Break: " + op)
-          .usingRecursiveComparison()
-          .isEqualTo(freshTree.getBreaks());
+      try {
+        assertSameSequences(tree, freshTree);
+      } catch (AssertionError error) {
+        throw new AssertionError(op, error);
+      }
     }
   }
 
@@ -417,7 +414,7 @@ class ConsecutiveSetTreeTest {
                 .map(Object::toString)
                 .collect(Collectors.joining(", ", "Removing " + value + " from [", "]"));
         valueToCountMap.computeIfPresent(value, (key, count) -> (count == 1) ? null : count - 1);
-        tree.remove(value);
+        tree.remove(value, Math.abs(value));
       } else {
         op =
             valueToCountMap.keySet().stream()
@@ -435,15 +432,11 @@ class ConsecutiveSetTreeTest {
             .forEach(key -> freshTree.add(key, Math.abs(key)));
       }
 
-      assertThat(tree.getConsecutiveSequences())
-          .as("Mismatched Sequence: " + op)
-          .usingRecursiveComparison()
-          .ignoringFields("sourceTree")
-          .isEqualTo(freshTree.getConsecutiveSequences());
-      assertThat(tree.getBreaks())
-          .as("Mismatched Break: " + op)
-          .usingRecursiveComparison()
-          .isEqualTo(freshTree.getBreaks());
+      try {
+        assertSameSequences(tree, freshTree);
+      } catch (AssertionError error) {
+        throw new AssertionError(op, error);
+      }
     }
   }
 

@@ -4,6 +4,7 @@ import static greycos.solver.core.api.score.stream.ConstraintCollectors.compose;
 import static greycos.solver.core.api.score.stream.ConstraintCollectors.countBi;
 import static greycos.solver.core.api.score.stream.ConstraintCollectors.max;
 import static greycos.solver.core.api.score.stream.ConstraintCollectors.min;
+import static greycos.solver.core.impl.score.stream.collector.consecutive.ConsecutiveSequenceTestUtils.assertSameSequences;
 import static greycos.solver.core.testutil.PlannerTestUtils.asMap;
 import static greycos.solver.core.testutil.PlannerTestUtils.asSet;
 import static greycos.solver.core.testutil.PlannerTestUtils.asSortedMap;
@@ -36,6 +37,7 @@ import greycos.solver.core.api.score.stream.bi.BiConstraintCollector;
 import greycos.solver.core.api.score.stream.bi.BiConstraintCollectorAccumulator;
 import greycos.solver.core.api.score.stream.bi.BiConstraintCollectorValueHandle;
 import greycos.solver.core.api.score.stream.common.LoadBalance;
+import greycos.solver.core.api.score.stream.common.SequenceChain;
 import greycos.solver.core.impl.score.stream.collector.AbstractConstraintCollectorsTest;
 import greycos.solver.core.impl.util.Pair;
 import greycos.solver.core.impl.util.Quadruple;
@@ -938,23 +940,23 @@ final class InnerBiConstraintCollectorsTest extends AbstractConstraintCollectors
     // Add first value, sequence is [2]
     int firstValue = 2;
     Runnable firstRetractor = accumulate(collector, container, firstValue, 0);
-    assertResultRecursive(collector, container, buildSequenceChain(2));
+    assertSequenceResult(collector, container, buildSequenceChain(2));
     // Add second value, sequence is [1,2]
     int secondValue = 1;
     Runnable secondRetractor = accumulate(collector, container, secondValue, 0);
-    assertResultRecursive(collector, container, buildSequenceChain(1, 2));
+    assertSequenceResult(collector, container, buildSequenceChain(1, 2));
     // Add third value, same as the second. Sequence is [{1,1},2}]
     Runnable thirdRetractor = accumulate(collector, container, secondValue, 0);
-    assertResultRecursive(collector, container, buildSequenceChain(1, 1, 2));
+    assertSequenceResult(collector, container, buildSequenceChain(1, 1, 2));
     // Retract one instance of the second value; we only have two values now.
     secondRetractor.run();
-    assertResultRecursive(collector, container, buildSequenceChain(1, 2));
+    assertSequenceResult(collector, container, buildSequenceChain(1, 2));
     // Retract final instance of the second value; we only have one value now.
     thirdRetractor.run();
-    assertResultRecursive(collector, container, buildSequenceChain(2));
+    assertSequenceResult(collector, container, buildSequenceChain(2));
     // Retract last value; there are no values now.
     firstRetractor.run();
-    assertResultRecursive(collector, container, buildSequenceChain());
+    assertSequenceResult(collector, container, buildSequenceChain());
   }
 
   @Override
@@ -1371,15 +1373,15 @@ final class InnerBiConstraintCollectorsTest extends AbstractConstraintCollectors
     var container = collector.supplier().get();
     var slot1 = insert(collector, container, 1, 0);
     var slot2 = insert(collector, container, 3, 0); // gap of 2 — two sequences
-    assertResultRecursive(collector, container, buildSequenceChain(1, 3));
+    assertSequenceResult(collector, container, buildSequenceChain(1, 3));
     slot1.replaceWith(2, 0); // 2 and 3 are consecutive — one sequence
-    assertResultRecursive(collector, container, buildSequenceChain(2, 3));
+    assertSequenceResult(collector, container, buildSequenceChain(2, 3));
     slot1.replaceWith(2, 0); // same value → result unchanged
-    assertResultRecursive(collector, container, buildSequenceChain(2, 3));
+    assertSequenceResult(collector, container, buildSequenceChain(2, 3));
     slot2.remove();
-    assertResultRecursive(collector, container, buildSequenceChain(2));
+    assertSequenceResult(collector, container, buildSequenceChain(2));
     slot1.remove();
-    assertResultRecursive(collector, container, buildSequenceChain());
+    assertSequenceResult(collector, container, buildSequenceChain());
   }
 
   @Test
@@ -1619,16 +1621,12 @@ final class InnerBiConstraintCollectorsTest extends AbstractConstraintCollectors
         .isEqualTo(expectedResult);
   }
 
-  private static <A, B, Container_, Result_> void assertResultRecursive(
+  private static <A, B, Container_, Result_> void assertSequenceResult(
       BiConstraintCollector<A, B, Container_, Result_> collector,
       Object container,
       Result_ expectedResult) {
     var actualResult = collector.finisher().apply((Container_) container);
-    assertThat(actualResult)
-        .as("Collector (" + collector + ") did not produce expected result.")
-        .usingRecursiveComparison()
-        .ignoringFields("sourceTree", "indexFunction", "sequenceList", "startItemToSequence")
-        .isEqualTo(expectedResult);
+    assertSameSequences((SequenceChain<?, ?>) actualResult, (SequenceChain<?, ?>) expectedResult);
   }
 
   private static <Container_> void assertUnfairness(

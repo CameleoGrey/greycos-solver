@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
-import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
@@ -16,6 +15,7 @@ import greycos.solver.core.api.score.stream.common.Break;
 import greycos.solver.core.api.score.stream.common.Sequence;
 import greycos.solver.core.api.score.stream.common.SequenceChain;
 import greycos.solver.core.impl.util.MappingIterator;
+import greycos.solver.core.impl.util.Pair;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
@@ -41,8 +41,9 @@ public final class ConsecutiveSetTree<
   final BiFunction<Point_, Point_, Difference_> sequenceLengthFunction;
   private final Difference_ maxDifference;
   private final Difference_ zeroDifference;
-  private final Map<Value_, ValueCount<ComparableValue<Value_, Point_>>> valueCountMap =
-      new HashMap<>();
+  // Contributions of one mutable value may temporarily coexist at different captured indexes.
+  private final Map<Pair<Value_, Point_>, ValueCount<ComparableValue<Value_, Point_>>>
+      valueCountMap = new HashMap<>();
   private final NavigableMap<ComparableValue<Value_, Point_>, Value_> itemMap = new TreeMap<>();
   private final NavigableMap<
           ComparableValue<Value_, Point_>, SequenceImpl<Value_, Point_, Difference_>>
@@ -50,6 +51,7 @@ public final class ConsecutiveSetTree<
 
   private ComparableValue<Value_, Point_> firstItem;
   private ComparableValue<Value_, Point_> lastItem;
+  private long nextInsertionOrder;
 
   public ConsecutiveSetTree(
       BiFunction<Point_, Point_, Difference_> differenceFunction,
@@ -107,25 +109,29 @@ public final class ConsecutiveSetTree<
   }
 
   public boolean add(Value_ value, Point_ valueIndex) {
-    var valueCount = valueCountMap.get(value);
+    var key = new Pair<>(value, valueIndex);
+    var valueCount = valueCountMap.get(key);
     if (valueCount != null) { // Item already in bag.
-      addExistingItem(valueCount, valueIndex, value);
+      valueCount.count++;
       return true;
     }
 
-    var addingItem = addItemToBag(value, valueIndex);
+    var addingItem = addItemToBag(key);
     var firstBeforeItemEntry = startItemToSequence.floorEntry(addingItem);
     if (firstBeforeItemEntry != null) {
-      addSubsequentItem(addingItem, firstBeforeItemEntry, valueIndex, value);
+      addSubsequentItem(addingItem, firstBeforeItemEntry);
     } else { // No items before it
       addFirstItem(addingItem);
     }
     return true;
   }
 
-  private ComparableValue<Value_, Point_> addItemToBag(Value_ value, Point_ valueIndex) {
-    var addingItem = new ComparableValue<>(value, valueIndex);
-    valueCountMap.put(value, new ValueCount<>(addingItem));
+  private ComparableValue<Value_, Point_> addItemToBag(Pair<Value_, Point_> key) {
+    if (nextInsertionOrder == Long.MAX_VALUE) {
+      throw new IllegalStateException("Consecutive sequence insertion order exhausted.");
+    }
+    var addingItem = new ComparableValue<>(key.key(), key.value(), nextInsertionOrder++);
+    valueCountMap.put(key, new ValueCount<>(addingItem));
     itemMap.put(addingItem, addingItem.value());
     if (firstItem == null || addingItem.compareTo(firstItem) < 0) {
       firstItem = addingItem;
@@ -136,31 +142,13 @@ public final class ConsecutiveSetTree<
     return addingItem;
   }
 
-  private static <Value_, Point_ extends Comparable<Point_>> void addExistingItem(
-      ValueCount<ComparableValue<Value_, Point_>> valueCount, Point_ valueIndex, Value_ value) {
-    var addingItem = valueCount.value;
-    if (!Objects.equals(addingItem.index(), valueIndex)) {
-      throw new IllegalStateException(
-          """
-          Impossible state: the item (%s) is already in the bag with a different index (%s vs %s)
-          Maybe the index map function is not deterministic?\
-          """
-              .formatted(value, addingItem.index(), valueIndex));
-    }
-    valueCount.count++;
-  }
-
   private void addSubsequentItem(
       ComparableValue<Value_, Point_> addingItem,
       Map.Entry<ComparableValue<Value_, Point_>, SequenceImpl<Value_, Point_, Difference_>>
-          firstBeforeItemEntry,
-      Point_ valueIndex,
-      Value_ value) {
+          firstBeforeItemEntry) {
     var prevBag = firstBeforeItemEntry.getValue();
     var endOfBeforeSequenceItem = prevBag.lastItem;
-    var endOfBeforeSequenceIndex = endOfBeforeSequenceItem.index();
-    if (isInNaturalOrderAndHashOrderIfEqual(
-        valueIndex, value, endOfBeforeSequenceIndex, endOfBeforeSequenceItem.value())) {
+    if (addingItem.compareTo(endOfBeforeSequenceItem) < 0) {
       // Item is already in the bag; do nothing
       return;
     }
@@ -249,17 +237,10 @@ public final class ConsecutiveSetTree<
     }
   }
 
-  private static <T extends Comparable<T>, Value_> boolean isInNaturalOrderAndHashOrderIfEqual(
-      T a, Value_ aItem, T b, Value_ bItem) {
-    var difference = a.compareTo(b);
-    if (difference != 0) {
-      return difference < 0;
-    }
-    return System.identityHashCode(aItem) - System.identityHashCode(bItem) < 0;
-  }
-
-  public boolean remove(Value_ value) {
-    var valueCount = valueCountMap.get(value);
+  /** Retracts a contribution using the index captured when it was added. */
+  public boolean remove(Value_ value, Point_ valueIndex) {
+    var key = new Pair<>(value, valueIndex);
+    var valueCount = valueCountMap.get(key);
     if (valueCount == null) { // Item not in bag.
       return false;
     }
@@ -269,7 +250,7 @@ public final class ConsecutiveSetTree<
     }
 
     // Item is removed from bag
-    valueCountMap.remove(value);
+    valueCountMap.remove(key);
     var removingItem = valueCount.value;
     itemMap.remove(removingItem);
     var noMoreItems = itemMap.isEmpty();
@@ -283,7 +264,7 @@ public final class ConsecutiveSetTree<
     var firstBeforeItemEntry = startItemToSequence.floorEntry(removingItem);
     var firstBeforeItem = firstBeforeItemEntry.getKey();
     var bag = firstBeforeItemEntry.getValue();
-    if (bag.getFirstItem() == bag.getLastItem()) { // Bag is empty if first item = last item
+    if (bag.firstItem == bag.lastItem) { // Removing the only entry empties this sequence.
       var removedBreak = bag.previousBreak; // null if this was the first sequence
       startItemToSequence.remove(firstBeforeItem);
       var nextSeqEntry = startItemToSequence.higherEntry(firstBeforeItem);
@@ -379,8 +360,8 @@ public final class ConsecutiveSetTree<
   private boolean isFirstSuccessorOfSecond(
       ComparableValue<Value_, Point_> first, ComparableValue<Value_, Point_> second) {
     var difference = differenceFunction.apply(second.index(), first.index());
-    return isInNaturalOrderAndHashOrderIfEqual(
-            zeroDifference, second.value(), difference, first.value())
+    var comparison = difference.compareTo(zeroDifference);
+    return (comparison > 0 || (comparison == 0 && second.compareValueOrder(first) < 0))
         && difference.compareTo(maxDifference) <= 0;
   }
 

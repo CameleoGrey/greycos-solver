@@ -4,19 +4,25 @@ import static greycos.solver.core.api.score.stream.Joiners.equal;
 import static greycos.solver.core.api.score.stream.Joiners.filtering;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.function.Function;
 
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintCollectors;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
 import greycos.solver.core.api.score.stream.Joiners;
+import greycos.solver.core.api.score.stream.common.SequenceChain;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirector;
 import greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamTest;
 import greycos.solver.core.testcotwin.TestdataEntity;
 import greycos.solver.core.testcotwin.TestdataSolution;
+import greycos.solver.core.testcotwin.TestdataValue;
 import greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListEntity;
 import greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListSolution;
 import greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassignedValuesListValue;
@@ -29,6 +35,89 @@ final class BavetRegressionTest extends AbstractConstraintStreamTest {
 
   public BavetRegressionTest(ConstraintMatchPolicy constraintMatchPolicy) {
     super(new BavetConstraintStreamImplSupport(constraintMatchPolicy));
+  }
+
+  @TestTemplate
+  void consecutiveSequencesWithSharedContributions() {
+    var solution = new TestdataSolution("consecutive sequences");
+    var values = new ArrayList<TestdataValue>();
+    for (int i = 0; i < 8; i++) {
+      values.add(new TestdataValue(Integer.toString(i)));
+    }
+    solution.setValueList(values);
+    var changing = new TestdataEntity("changing", values.get(0));
+    var anchor = new TestdataEntity("anchor", values.get(2));
+    solution.setEntityList(
+        new ArrayList<>(List.of(changing, anchor, new TestdataEntity("last", values.get(3)))));
+    ConstraintProvider provider =
+        factory ->
+            new Constraint[] {
+              factory
+                  .forEach(TestdataEntity.class)
+                  .join(TestdataValue.class)
+                  .groupBy(
+                      ConstraintCollectors.toConsecutiveSequences(
+                          (entity, value) -> entity,
+                          entity -> Integer.parseInt(entity.getValue().getCode())))
+                  .flattenLast(SequenceChain::getConsecutiveSequences)
+                  .penalize(SimpleScore.ONE, sequence -> sequence.getCount() * sequence.getCount())
+                  .asConstraint(TEST_CONSTRAINT_ID)
+            };
+    try (InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector =
+        buildScoreDirector(TestdataSolution.buildSolutionDescriptor(), provider)) {
+      scoreDirector.setWorkingSolution(solution);
+      assertConsecutiveScore(scoreDirector, solution, provider);
+      for (int index : new int[] {1, 6, 2, 0, -1, 3}) {
+        scoreDirector.beforeVariableChanged(changing, "value");
+        changing.setValue(index == -1 ? null : values.get(index));
+        scoreDirector.afterVariableChanged(changing, "value");
+        assertConsecutiveScore(scoreDirector, solution, provider);
+      }
+      // Removing one right-hand tuple must retain each entity's other contributions.
+      var removedFact = values.getLast();
+      scoreDirector.beforeProblemFactRemoved(removedFact);
+      values.removeLast();
+      scoreDirector.afterProblemFactRemoved(removedFact);
+      assertConsecutiveScore(scoreDirector, solution, provider);
+
+      for (var entity : List.copyOf(solution.getEntityList())) {
+        scoreDirector.beforeEntityRemoved(entity);
+        solution.getEntityList().remove(entity);
+        scoreDirector.afterEntityRemoved(entity);
+        assertConsecutiveScore(scoreDirector, solution, provider);
+      }
+    }
+  }
+
+  private void assertConsecutiveScore(
+      InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector,
+      TestdataSolution solution,
+      ConstraintProvider provider) {
+    var counts = new TreeMap<Integer, Integer>();
+    for (var entity : solution.getEntityList()) {
+      if (entity.getValue() != null) {
+        counts.merge(Integer.parseInt(entity.getValue().getCode()), 1, Integer::sum);
+      }
+    }
+    long expectedScore = 0;
+    int count = 0;
+    int previousIndex = -2;
+    for (var entry : counts.entrySet()) {
+      if (entry.getKey() > previousIndex + 1) {
+        expectedScore -= (long) count * count;
+        count = 0;
+      }
+      count += entry.getValue();
+      previousIndex = entry.getKey();
+    }
+    expectedScore -= (long) count * count;
+    var actual = scoreDirector.calculateScore();
+    assertThat(actual.raw()).isEqualTo(SimpleScore.of(expectedScore));
+    try (InnerScoreDirector<TestdataSolution, SimpleScore> fresh =
+        buildScoreDirector(TestdataSolution.buildSolutionDescriptor(), provider)) {
+      fresh.setWorkingSolution(solution);
+      assertThat(actual).isEqualTo(fresh.calculateScore());
+    }
   }
 
   @TestTemplate

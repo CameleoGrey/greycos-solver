@@ -28,23 +28,33 @@ public abstract class AbstractSequenceSlot<Result_> {
 
   private final State<Result_> state;
   private @Nullable Result_ cachedValue;
+  private int cachedIndex;
 
   public AbstractSequenceSlot(State<Result_> state) {
     this.state = state;
   }
 
   protected void addMapped(Result_ result) {
+    var index = state.toIndexFunction.applyAsInt(result);
+    state.context.add(result, index);
     cachedValue = result;
-    state.context.add(result, state.toIndexFunction.applyAsInt(result));
+    cachedIndex = index;
   }
 
   protected void replaceWithMapped(Result_ input) {
-    state.context.remove(cachedValue);
+    var index = state.toIndexFunction.applyAsInt(input);
+    if (input == cachedValue && index == cachedIndex) {
+      return;
+    }
+    state.context.remove(cachedValue, cachedIndex);
+    state.context.add(input, index);
     cachedValue = input;
-    state.context.add(input, state.toIndexFunction.applyAsInt(input));
+    cachedIndex = index;
   }
 
   protected void removeMapped() {
-    state.context.remove(cachedValue);
+    state.context.remove(cachedValue, cachedIndex);
+    cachedValue = null;
+    cachedIndex = 0;
   }
 }
