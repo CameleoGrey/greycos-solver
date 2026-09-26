@@ -34,11 +34,11 @@ $ ./mvnw clean install -Dquickly
 
 == Legal notice
 
-GreyCOS Solver was forked on 21 December 2025 from TimeFold Solver Community Edition,
+GreyCOS Solver was forked on 21 December 2025 from Timefold Solver Community Edition,
 which was entirely Apache-2.0 licensed (a permissive license).
 
-TimeFold Solver is a derivative work of OptaPlanner and OptaPy, which includes copyrights of
+Timefold Solver is a derivative work of OptaPlanner and OptaPy, which includes copyrights of
 the original creator, Red Hat Inc., affiliates, and contributors, that were all entirely 
 licensed under the Apache-2.0 license. Every source file has been modified.
 
-I'd never buy the Enterprise Edition of TimeFold Solver and never had an access to its source code or its byte code.
+I'd never buy the Enterprise Edition of Timefold Solver and never had an access to its source code or its byte code.
