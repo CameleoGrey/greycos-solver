@@ -29,6 +29,7 @@ import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.DefaultSolver;
+import greycos.solver.core.impl.solver.monitoring.SolverTags;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.testcotwin.TestdataConstraintProvider;
 import greycos.solver.core.testcotwin.TestdataEntity;
@@ -45,7 +46,7 @@ class AlnsMetricsTest {
   @Test
   void moveCountGaugesFollowActivePhaseAcrossSolverRuns() {
     var tag = UUID.randomUUID().toString();
-    var tags = Tags.of("test.id", tag);
+    var tags = SolverTags.withProblemId(tag).asTags();
     var registry = new SimpleMeterRegistry();
     try {
       Metrics.addRegistry(registry);
@@ -93,7 +94,7 @@ class AlnsMetricsTest {
   @Test
   void localSearchWithoutCompletedStepsResetsMoveCountGauges() {
     var tag = UUID.randomUUID().toString();
-    var tags = Tags.of("test.id", tag);
+    var tags = SolverTags.withProblemId(tag).asTags();
     var registry = new SimpleMeterRegistry();
     try {
       Metrics.addRegistry(registry);
@@ -124,7 +125,7 @@ class AlnsMetricsTest {
   @Test
   void moveCountGaugeHandoffPreservesOtherSolverTags() {
     var tag = UUID.randomUUID().toString();
-    var tags = Tags.of("test.id", tag);
+    var tags = SolverTags.withProblemId(tag).asTags();
     var otherTags = tags.and("solver.id", "other");
     var otherSelected = new AtomicLong(23L);
     var otherAccepted = new AtomicLong(17L);
@@ -192,22 +193,30 @@ class AlnsMetricsTest {
         var solver =
             (DefaultSolver<TestdataSolution>)
                 SolverFactory.<TestdataSolution>create(config).buildSolver();
-        solver.setMonitorTagMap(Map.of("test.id", tag));
+        solver.setMonitorTags(SolverTags.withProblemId(tag));
         solver.solve(TestdataSolution.generateUninitializedSolution(3, 6));
         assertThat(
-                registry.find("greycos.solver.alns.trials").tag("test.id", tag).counters().stream()
+                registry
+                    .find("greycos.solver.alns.trials")
+                    .tag("problem.id", tag)
+                    .counters()
+                    .stream()
                     .mapToDouble(counter -> counter.count())
                     .sum())
             .isEqualTo(4.0);
         assertThat(
-                registry.find("greycos.solver.alns.probes").tag("test.id", tag).counters().stream()
+                registry
+                    .find("greycos.solver.alns.probes")
+                    .tag("problem.id", tag)
+                    .counters()
+                    .stream()
                     .mapToDouble(counter -> counter.count())
                     .sum())
             .isPositive();
         assertThat(
                 registry
                     .find("greycos.solver.alns.repair.duration")
-                    .tag("test.id", tag)
+                    .tag("problem.id", tag)
                     .timers()
                     .stream()
                     .mapToLong(timer -> timer.count())
@@ -216,7 +225,7 @@ class AlnsMetricsTest {
         assertThat(
                 registry
                     .find(SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".selected")
-                    .tag("test.id", tag)
+                    .tag("problem.id", tag)
                     .gauge()
                     .value())
             .isEqualTo(1.0);
@@ -248,7 +257,7 @@ class AlnsMetricsTest {
       try {
         @SuppressWarnings("unchecked")
         SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
-        when(solverScope.getMonitoringTags()).thenReturn(Tags.of("test.id", tag));
+        when(solverScope.getMonitoringTags()).thenReturn(SolverTags.withProblemId(tag).asTags());
         when(solverScope.isMetricEnabled(SolverMetric.ALNS_STATISTICS)).thenReturn(true);
         var phaseScope = new AlnsPhaseScope<>(solverScope, 0);
         phaseScope.getLastCompletedStepScope().setScore(InnerScore.fullyAssigned(SimpleScore.ZERO));
@@ -261,7 +270,7 @@ class AlnsMetricsTest {
         assertThat(
                 registry
                     .find("greycos.solver.alns.operator.weight")
-                    .tag("test.id", tag)
+                    .tag("problem.id", tag)
                     .gauge()
                     .value())
             .isEqualTo(7.0);
@@ -298,7 +307,7 @@ class AlnsMetricsTest {
     var solver =
         (DefaultSolver<TestdataSolution>)
             SolverFactory.<TestdataSolution>create(config).buildSolver();
-    solver.setMonitorTagMap(Map.of("test.id", tag));
+    solver.setMonitorTags(SolverTags.withProblemId(tag));
     return solver;
   }
 
@@ -365,7 +374,7 @@ class AlnsMetricsTest {
 
   private static void removeTestMeters(String tag) {
     for (var meter : List.copyOf(Metrics.globalRegistry.getMeters())) {
-      if (tag.equals(meter.getId().getTag("test.id"))) {
+      if (tag.equals(meter.getId().getTag("problem.id"))) {
         Metrics.globalRegistry.remove(meter);
       }
     }

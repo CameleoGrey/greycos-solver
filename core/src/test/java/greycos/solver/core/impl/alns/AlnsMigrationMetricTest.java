@@ -6,7 +6,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import greycos.solver.core.api.score.SimpleScore;
@@ -18,6 +17,7 @@ import greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.DefaultSolver;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
+import greycos.solver.core.impl.solver.monitoring.SolverTags;
 import greycos.solver.core.impl.solver.monitoring.statistic.PickedMoveBestScoreDiffStatistic;
 import greycos.solver.core.impl.solver.monitoring.statistic.PickedMoveStepScoreDiffStatistic;
 import greycos.solver.core.testcotwin.TestdataEntity;
@@ -42,7 +42,7 @@ class AlnsMigrationMetricTest {
         spy(
             (DefaultSolver<TestdataSolution>)
                 SolverFactory.<TestdataSolution>create(config).buildSolver());
-    solver.setMonitorTagMap(Map.of("test.id", tag));
+    solver.setMonitorTags(SolverTags.withProblemId(tag));
     var stepStatistic = new PickedMoveStepScoreDiffStatistic<TestdataSolution>();
     var bestStatistic = new PickedMoveBestScoreDiffStatistic<TestdataSolution, SimpleScore>();
     try {
@@ -79,7 +79,7 @@ class AlnsMigrationMetricTest {
       Metrics.removeRegistry(registry);
       registry.close();
       for (var meter : List.copyOf(Metrics.globalRegistry.getMeters())) {
-        if (tag.equals(meter.getId().getTag("test.id"))) {
+        if (tag.equals(meter.getId().getTag("problem.id"))) {
           Metrics.globalRegistry.remove(meter);
         }
       }
@@ -118,7 +118,7 @@ class AlnsMigrationMetricTest {
     assertThat(
             registry
                 .find(SolverMetricUtil.getGaugeName(metric, "score"))
-                .tags("test.id", tag, "move.type", "destroy/repair")
+                .tags("problem.id", tag, "move.type", "destroy/repair")
                 .gauge()
                 .value())
         .isEqualTo(expected);

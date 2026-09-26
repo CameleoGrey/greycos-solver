@@ -5,7 +5,7 @@ import java.util.Collection;
 import greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
 import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 
 public final class NextElementShadowVariableDescriptor<Solution_>
     extends AbstractNextPrevElementShadowVariableDescriptor<Solution_> {
@@ -32,7 +32,6 @@ public final class NextElementShadowVariableDescriptor<Solution_>
   @Override
   public Collection<Class<?>> getUpdaterClasses() {
     throw new UnsupportedOperationException(
-        "Impossible state: Handled by %s."
-            .formatted(ListVariableStateSupply.class.getSimpleName()));
+        "Impossible state: Handled by %s.".formatted(ListVariableState.class.getSimpleName()));
   }
 }

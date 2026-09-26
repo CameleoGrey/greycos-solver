@@ -50,7 +50,7 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
       SolverTermination<Solution_> solverTermination) {
 
     HeuristicConfigPolicy<Solution_> phaseConfigPolicy =
-        solverConfigPolicy.createPhaseConfigPolicy();
+        solverConfigPolicy.copyPhaseConfigPolicy(resolveEnvironmentMode(solverConfigPolicy));
 
     ThreadFactory threadFactory =
         solverConfigPolicy.buildThreadFactory(ChildThreadType.PART_THREAD);
@@ -79,7 +79,7 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
             resolvedActiveThreadCount,
             phaseConfigList_,
             solverTermination)
-        .enableAssertions(phaseConfigPolicy.getEnvironmentMode())
+        .enableAssertions()
         .build();
   }
 
@@ -98,7 +98,8 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
                 + ") either.");
       }
       throw new UnsupportedOperationException(
-          "A solutionPartitionerClass must be specified. Generic partitioner is not yet implemented.");
+          "A solutionPartitionerClass must be specified. Generic partitioner is not yet"
+              + " implemented.");
     }
 
     SolutionPartitioner<?> solutionPartitioner =

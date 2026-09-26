@@ -4,7 +4,6 @@ import java.util.BitSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.PriorityQueue;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -14,31 +13,33 @@ final class AffectedEntitiesUpdater<Solution_> implements Consumer<BitSet> {
   // From WorkingReferenceGraph.
   private final BaseTopologicalOrderGraph graph;
   private final List<GraphNode<Solution_>> nodeList; // Immutable.
-  private final BaseTopologicalOrderGraph.NodeTopologicalOrder[] nodeTopologicalOrders; // Immutable
   private final ChangedVariableNotifier<Solution_> changedVariableNotifier;
 
   // Internal state; expensive to create, therefore we reuse.
   private final LoopedTracker loopedTracker;
   private final BitSet visited;
-  private final PriorityQueue<BaseTopologicalOrderGraph.NodeTopologicalOrder> changeQueue;
+  private final boolean ignoreInconsistentSolutions;
+  private final NodeTopologicalOrderQueue changeQueue;
+  private boolean consistencyProcessed;
 
   AffectedEntitiesUpdater(
       BaseTopologicalOrderGraph graph,
       List<GraphNode<Solution_>> nodeList,
-      BaseTopologicalOrderGraph.NodeTopologicalOrder[] nodeTopologicalOrders,
       Function<Object, List<GraphNode<Solution_>>> entityToContainingNode,
       int entityCount,
-      ChangedVariableNotifier<Solution_> changedVariableNotifier) {
+      ChangedVariableNotifier<Solution_> changedVariableNotifier,
+      boolean ignoreInconsistentSolutions) {
     this.graph = graph;
     this.nodeList = nodeList;
-    this.nodeTopologicalOrders = nodeTopologicalOrders;
     this.changedVariableNotifier = changedVariableNotifier;
     var instanceCount = nodeList.size();
     this.loopedTracker =
         new LoopedTracker(
             instanceCount, createNodeToEntityNodes(entityCount, nodeList, entityToContainingNode));
     this.visited = new BitSet(instanceCount);
-    this.changeQueue = new PriorityQueue<>(instanceCount);
+    this.changeQueue = new NodeTopologicalOrderQueue(graph, instanceCount);
+    this.ignoreInconsistentSolutions = ignoreInconsistentSolutions;
+    this.consistencyProcessed = false;
   }
 
   static <Solution_> int[][] createNodeToEntityNodes(
@@ -83,10 +84,9 @@ final class AffectedEntitiesUpdater<Solution_> implements Consumer<BitSet> {
     initializeChangeQueue(changed);
 
     while (!changeQueue.isEmpty()) {
-      var nextNode = changeQueue.poll().nodeId();
-      if (visited.get(nextNode)) {
-        continue;
-      }
+      // The queue holds each node at most once, so a polled node is never one that was already
+      // visited.
+      var nextNode = changeQueue.poll();
       visited.set(nextNode);
       var shadowVariable = nodeList.get(nextNode);
       var isChanged =
@@ -97,7 +97,7 @@ final class AffectedEntitiesUpdater<Solution_> implements Consumer<BitSet> {
         while (iterator.hasNext()) {
           var nextNodeForwardEdge = iterator.nextInt();
           if (!visited.get(nextNodeForwardEdge)) {
-            changeQueue.add(nodeTopologicalOrders[nextNodeForwardEdge]);
+            changeQueue.offer(nextNodeForwardEdge);
           }
         }
       }
@@ -105,6 +105,7 @@ final class AffectedEntitiesUpdater<Solution_> implements Consumer<BitSet> {
 
     // Prepare for the next time updateChanged() is called.
     // No need to clear changeQueue, as that already finishes empty.
+    consistencyProcessed = true;
     loopedTracker.clear();
     visited.clear();
   }
@@ -120,7 +121,7 @@ final class AffectedEntitiesUpdater<Solution_> implements Consumer<BitSet> {
     // This should never happen, since arrays in Java are limited
     // to slightly less than Integer.MAX_VALUE.
     for (var i = changed.nextSetBit(0); i >= 0; i = changed.nextSetBit(i + 1)) {
-      changeQueue.add(nodeTopologicalOrders[i]);
+      changeQueue.offer(i);
       if (i == Integer.MAX_VALUE) {
         break; // or (i+1) would overflow
       }
@@ -137,19 +138,22 @@ final class AffectedEntitiesUpdater<Solution_> implements Consumer<BitSet> {
 
     // Do not need to update anyChanged here; the graph already marked
     // all nodes whose looped status changed for us
-    var groupEntities = shadowVariableReferences.get(0).groupEntities();
-    var groupEntityIds = entityVariable.groupEntityIds();
 
-    if (groupEntities != null) {
-      for (var i = 0; i < groupEntityIds.length; i++) {
-        var groupEntity = groupEntities[i];
-        var groupEntityId = groupEntityIds[i];
+    if (!(ignoreInconsistentSolutions && consistencyProcessed)) {
+      var groupEntities = shadowVariableReferences.get(0).groupEntities();
+      var groupEntityIds = entityVariable.groupEntityIds();
+
+      if (groupEntities != null) {
+        for (var i = 0; i < groupEntityIds.length; i++) {
+          var groupEntity = groupEntities[i];
+          var groupEntityId = groupEntityIds[i];
+          anyChanged |=
+              updateLoopedStatusOfEntity(groupEntity, groupEntityId, entityConsistencyState);
+        }
+      } else {
         anyChanged |=
-            updateLoopedStatusOfEntity(groupEntity, groupEntityId, entityConsistencyState);
+            updateLoopedStatusOfEntity(entity, entityVariable.entityId(), entityConsistencyState);
       }
-    } else {
-      anyChanged |=
-          updateLoopedStatusOfEntity(entity, entityVariable.entityId(), entityConsistencyState);
     }
 
     for (var shadowVariableReference : shadowVariableReferences) {
@@ -185,7 +189,7 @@ final class AffectedEntitiesUpdater<Solution_> implements Consumer<BitSet> {
     }
   }
 
-  /** See {@link ConsistencyTracker#setUnknownConsistencyFromEntityShadowVariablesInconsistent} */
+  /** See {@link ConsistencyTracker#setUnknownConsistencyValues} */
   void setUnknownInconsistencyValues() {
     for (var node : nodeList) {
       var entityConsistencyState = node.variableReferences().get(0).entityConsistencyState();

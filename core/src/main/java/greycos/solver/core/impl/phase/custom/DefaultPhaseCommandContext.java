@@ -66,11 +66,17 @@ final class DefaultPhaseCommandContext<Solution_> implements PhaseCommandContext
   }
 
   @Override
+  public @Nullable <Result_> Result_ executeTemporarily(
+      Move<Solution_> move,
+      Function<Solution_, @Nullable Result_> temporarySolutionConsumer,
+      Function<Solution_, @Nullable Result_> structurallyFlawedSolutionConsumer) {
+    return moveDirector.executeTemporaryHandlingStructurallyFlawedSolutions(
+        move, temporarySolutionConsumer, structurallyFlawedSolutionConsumer, false);
+  }
+
+  @Override
   public <Score_ extends Score<Score_>> Score_ executeTemporarily(Move<Solution_> move) {
-    Score_ score =
-        executeTemporarily(
-            move,
-            solution -> moveDirector.getScoreDirector().getSolutionDescriptor().getScore(solution));
+    Score_ score = (Score_) moveDirector.executeTemporary(move).raw();
     return Objects.requireNonNull(
         score, () -> "The move (%s) failed to calculate a score.".formatted(move));
   }
@@ -82,11 +88,21 @@ final class DefaultPhaseCommandContext<Solution_> implements PhaseCommandContext
   }
 
   @Override
+  public @Nullable <Result_> Result_ executeTemporarilyAndCalculateScore(
+      Move<Solution_> move,
+      Function<Solution_, @Nullable Result_> temporarySolutionConsumer,
+      Function<Solution_, @Nullable Result_> structurallyFlawedSolutionConsumer) {
+    return moveDirector.executeTemporaryHandlingStructurallyFlawedSolutions(
+        move, temporarySolutionConsumer, structurallyFlawedSolutionConsumer, true);
+  }
+
+  @Override
   public <Score_ extends Score<Score_>> Score_ executeTemporarilyAndCalculateScore(
       Move<Solution_> move) {
     Score_ score =
         executeTemporarilyAndCalculateScore(
             move,
+            solution -> moveDirector.getScoreDirector().getSolutionDescriptor().getScore(solution),
             solution -> moveDirector.getScoreDirector().getSolutionDescriptor().getScore(solution));
     return Objects.requireNonNull(
         score, () -> "The move (%s) failed to calculate a score.".formatted(move));

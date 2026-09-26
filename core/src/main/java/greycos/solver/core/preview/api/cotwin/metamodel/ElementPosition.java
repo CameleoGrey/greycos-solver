@@ -17,6 +17,9 @@ import org.jspecify.annotations.NullMarked;
  * early as possible. If user code already guarantees that unassigned values will never appear,
  * {@link ElementPosition#ensureAssigned()} can be used to avoid instanceof checks and casting.
  *
+ * <p>An {@link ElementPosition} is valid only at the time it is obtained. It does not update if the
+ * list variable changes afterward.
+ *
  * <p><strong>This package and all of its contents are part of the Neighborhoods API, which is under
  * development and is only offered as a preview feature.</strong> There are no guarantees for
  * backward compatibility; any class, method, or field may change or be removed without prior

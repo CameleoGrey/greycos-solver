@@ -4,7 +4,6 @@ import static greycos.solver.core.testutil.PlannerAssert.assertCode;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -61,15 +60,9 @@ class DefaultExhaustiveSearchPhaseTest {
     when(phaseScope.getWorkingSolution()).thenReturn(workingSolution);
     InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector =
         mock(InnerScoreDirector.class);
+    when(scoreDirector.isLastVariableUpdateSuccessful()).thenReturn(true);
     var moveDirector = new MoveDirector<>(scoreDirector);
-    doAnswer(
-            invocation -> {
-              var move = (Move<TestdataSolution>) invocation.getArgument(0);
-              moveDirector.execute(move);
-              return null;
-            })
-        .when(scoreDirector)
-        .executeMove(any());
+    when(scoreDirector.getMoveDirector()).thenReturn(moveDirector);
     when(phaseScope.getScoreDirector()).thenReturn(scoreDirector);
 
     var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
@@ -124,15 +117,9 @@ class DefaultExhaustiveSearchPhaseTest {
     when(phaseScope.getWorkingSolution()).thenReturn(workingSolution);
     InnerScoreDirector<TestdataListSolution, SimpleScore> scoreDirector =
         mock(InnerScoreDirector.class);
+    when(scoreDirector.isLastVariableUpdateSuccessful()).thenReturn(true);
     var moveDirector = new MoveDirector<>(scoreDirector);
-    doAnswer(
-            invocation -> {
-              var move = (Move<TestdataListSolution>) invocation.getArgument(0);
-              moveDirector.execute(move);
-              return null;
-            })
-        .when(scoreDirector)
-        .executeMove(any());
+    when(scoreDirector.getMoveDirector()).thenReturn(moveDirector);
     when(phaseScope.getScoreDirector()).thenReturn(scoreDirector);
     when(phaseScope.calculateScore())
         .thenReturn(InnerScore.withUnassignedCount(SimpleScore.of(7), 96));

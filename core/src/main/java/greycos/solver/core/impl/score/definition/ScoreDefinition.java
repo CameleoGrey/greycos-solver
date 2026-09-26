@@ -6,6 +6,8 @@ import greycos.solver.core.api.score.SimpleBigDecimalScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.score.trend.InitializingScoreTrend;
 
+import org.jspecify.annotations.NullMarked;
+
 /**
  * A ScoreDefinition knows how to compare {@link Score}s and what the perfect maximum/minimum {@link
  * Score} is.
@@ -14,6 +16,7 @@ import greycos.solver.core.impl.score.trend.InitializingScoreTrend;
  * @see HardSoftScoreDefinition
  * @param <Score_> the {@link Score} type
  */
+@NullMarked
 public interface ScoreDefinition<Score_ extends Score<Score_>> {
 
   /**
@@ -48,6 +51,20 @@ public interface ScoreDefinition<Score_ extends Score<Score_>> {
    * @return never null
    */
   Class<Score_> getScoreClass();
+
+  /**
+   * The score that represents a solution that is structurally flawed.
+   *
+   * @return never null
+   */
+  Score_ getStructurallyFlawedScore();
+
+  /**
+   * The same score as the argument, except with a negative structural score
+   *
+   * @return never null
+   */
+  Score_ getStructurallyFlawedScore(Score_ score);
 
   /**
    * The score that represents zero.

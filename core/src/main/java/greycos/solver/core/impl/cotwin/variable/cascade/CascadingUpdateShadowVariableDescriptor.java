@@ -18,7 +18,6 @@ import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.supply.Demand;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 
 public final class CascadingUpdateShadowVariableDescriptor<Solution_>
@@ -166,12 +165,6 @@ public final class CascadingUpdateShadowVariableDescriptor<Solution_>
   @Override
   public Collection<Class<?>> getUpdaterClasses() {
     return Collections.emptyList();
-  }
-
-  @Override
-  public Demand<?> getProvidedDemand() {
-    throw new UnsupportedOperationException(
-        "Cascade update element shadow variable cannot be demanded.");
   }
 
   private record ShadowVariableTarget<Solution_>(

@@ -96,7 +96,7 @@ class AlnsBatchContextTest {
       var factory =
           new BavetConstraintStreamScoreDirectorFactory<BasicSolution, SimpleScore>(
               descriptor, new BasicConstraints(), EnvironmentMode.NO_ASSERT, false);
-      director = factory.createScoreDirectorBuilder().build();
+      director = factory.createScoreDirectorBuilder(EnvironmentMode.NO_ASSERT).build();
       director.setWorkingSolution(solution);
       director.calculateScore();
       context = new DefaultAlnsContext<>(director, new Random(0), () -> false);

@@ -3,12 +3,15 @@ package greycos.solver.quarkus.jackson.score.analysis;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.analysis.ConstraintAnalysis;
+import greycos.solver.core.api.score.analysis.EntityVariablePair;
 import greycos.solver.core.api.score.analysis.MatchAnalysis;
 import greycos.solver.core.api.score.analysis.ScoreAnalysis;
+import greycos.solver.core.api.score.analysis.VariableLoop;
 import greycos.solver.core.api.score.stream.Constraint;
 import greycos.solver.core.api.score.stream.ConstraintJustification;
 import greycos.solver.core.api.score.stream.ConstraintProvider;
@@ -75,7 +78,21 @@ public abstract class AbstractScoreAnalysisJacksonDeserializer<Score_ extends Sc
                 constraintRef, constraintWeight, constraintScore, matchScoreList, matchCount));
       }
     }
-    return new DefaultScoreAnalysis<>(score, constraintAnalysisList, initialized);
+    var variableLoops = new ArrayList<VariableLoop>();
+    var structuralNode = node.get("structuralFlawAnalysis");
+    if (structuralNode != null && !structuralNode.isNull()) {
+      for (var loopNode : required(structuralNode, "variableLoops")) {
+        var variables = new LinkedHashSet<EntityVariablePair>();
+        for (var pairNode : required(loopNode, "involvedVariableSet")) {
+          variables.add(
+              new EntityVariablePair(
+                  deserializeStructuralFlawEntity(required(pairNode, "entity"), ctxt),
+                  required(pairNode, "variableName").asText()));
+        }
+        variableLoops.add(new VariableLoop(variables));
+      }
+    }
+    return new DefaultScoreAnalysis<>(score, constraintAnalysisList, initialized, variableLoops);
   }
 
   /**
@@ -104,6 +121,12 @@ public abstract class AbstractScoreAnalysisJacksonDeserializer<Score_ extends Sc
       DeserializationContext context,
       Score_ score)
       throws IOException;
+
+  /** Override to restore the cotwin type of entities involved in variable loops. */
+  protected Object deserializeStructuralFlawEntity(
+      JsonNode entityNode, DeserializationContext context) throws IOException {
+    return context.readTreeAsValue(entityNode, Object.class);
+  }
 
   private static JsonNode required(JsonNode parent, String propertyName) {
     var value = parent.get(propertyName);

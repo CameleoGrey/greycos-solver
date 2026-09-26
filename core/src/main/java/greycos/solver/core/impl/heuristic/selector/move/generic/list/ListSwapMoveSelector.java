@@ -3,68 +3,42 @@ package greycos.solver.core.impl.heuristic.selector.move.generic.list;
 import static greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelector.filterPinnedListPlanningVariableValuesWithIndex;
 
 import java.util.Iterator;
-import java.util.Objects;
 
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
-import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.preview.api.move.Move;
 
-public class ListSwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
+public final class ListSwapMoveSelector<Solution_>
+    extends AbstractGenericListMoveSelector<Solution_> {
 
   private final IterableValueSelector<Solution_> leftValueSelector;
   private final IterableValueSelector<Solution_> rightValueSelector;
   private final boolean randomSelection;
 
-  private ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
-
   public ListSwapMoveSelector(
       IterableValueSelector<Solution_> leftValueSelector,
       IterableValueSelector<Solution_> rightValueSelector,
       boolean randomSelection) {
+    super((ListVariableDescriptor<Solution_>) leftValueSelector.getVariableDescriptor());
     this.leftValueSelector =
         filterPinnedListPlanningVariableValuesWithIndex(
-            leftValueSelector, this::getListVariableStateSupply);
+            leftValueSelector, this::getListVariableState);
     this.rightValueSelector =
         filterPinnedListPlanningVariableValuesWithIndex(
-            rightValueSelector, this::getListVariableStateSupply);
+            rightValueSelector, this::getListVariableState);
     this.randomSelection = randomSelection;
 
     phaseLifecycleSupport.addEventListener(this.leftValueSelector);
     phaseLifecycleSupport.addEventListener(this.rightValueSelector);
   }
 
-  private ListVariableStateSupply<Solution_, Object, Object> getListVariableStateSupply() {
-    return Objects.requireNonNull(
-        listVariableStateSupply,
-        "Impossible state: The listVariableStateSupply is not initialized yet.");
-  }
-
-  @Override
-  public void solvingStarted(SolverScope<Solution_> solverScope) {
-    super.solvingStarted(solverScope);
-    var listVariableDescriptor =
-        (ListVariableDescriptor<Solution_>) leftValueSelector.getVariableDescriptor();
-    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
-    listVariableStateSupply = supplyManager.demand(listVariableDescriptor.getStateDemand());
-  }
-
-  @Override
-  public void solvingEnded(SolverScope<Solution_> solverScope) {
-    super.solvingEnded(solverScope);
-    listVariableStateSupply = null;
-  }
-
   @Override
   public Iterator<Move<Solution_>> iterator() {
     if (randomSelection) {
-      return new RandomListSwapIterator<>(
-          listVariableStateSupply, leftValueSelector, rightValueSelector);
+      return new RandomListSwapIterator<>(listVariableState, leftValueSelector, rightValueSelector);
     } else {
       return new OriginalListSwapIterator<>(
-          listVariableStateSupply, leftValueSelector, rightValueSelector);
+          listVariableState, leftValueSelector, rightValueSelector);
     }
   }
 

@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.neighborhood.bias;
 
+import static greycos.solver.core.testutil.NeighborhoodTestUtils.createSession;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
@@ -76,7 +77,7 @@ class PairFairnessBiasIT extends AbstractBiasIT {
     var valueStream = moveStreamFactory.forEach(TestdataValue.class, false);
     var cachedDataset = entityStream.join(valueStream, fixture.joiner()).asCachedDataset();
 
-    var session = session(moveStreamFactory, fixture.solution);
+    var session = createSession(moveStreamFactory, fixture.solution);
     var instance = session.getInstance(cachedDataset);
     var iterator = instance.iterator(new Random(0));
 
@@ -118,7 +119,7 @@ class PairFairnessBiasIT extends AbstractBiasIT {
     var entityDataset = entityStream.asCachedDataset();
     var justInTimeDataset = entityDataset.join(valueStream, fixture.joiner());
 
-    var session = session(moveStreamFactory, fixture.solution);
+    var session = createSession(moveStreamFactory, fixture.solution);
     var instance = session.getInstance(justInTimeDataset);
 
     var seenPairSet = new HashSet<List<Object>>();

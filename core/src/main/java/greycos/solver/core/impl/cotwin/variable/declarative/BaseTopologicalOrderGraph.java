@@ -65,7 +65,8 @@ public interface BaseTopologicalOrderGraph {
      */
     @Override
     public int compareTo(NodeTopologicalOrder other) {
-      return graph.getTopologicalOrder(nodeId) - graph.getTopologicalOrder(other.nodeId);
+      return Integer.compare(
+          graph.getTopologicalOrder(nodeId), graph.getTopologicalOrder(other.nodeId));
     }
 
     @Override

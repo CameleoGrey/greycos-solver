@@ -2,14 +2,12 @@ package greycos.solver.core.impl.heuristic.selector.move.generic.list.ruin;
 
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.Objects;
 
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.move.generic.CountSupplier;
-import greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateConstructionHeuristicPhaseBuilder;
 import greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateMoveSelectorSize;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.AbstractGenericListMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
@@ -17,17 +15,18 @@ import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.preview.api.move.Move;
 
-final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
+import org.jspecify.annotations.NonNull;
+
+final class ListRuinRecreateMoveSelector<Solution_>
+    extends AbstractGenericListMoveSelector<Solution_> {
 
   private final IterableValueSelector<Solution_> valueSelector;
-  private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>
       constructionHeuristicPhaseBuilder;
   private final CountSupplier minimumSelectedCountSupplier;
   private final CountSupplier maximumSelectedCountSupplier;
 
   private SolverScope<Solution_> solverScope;
-  private ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
 
   public ListRuinRecreateMoveSelector(
       IterableValueSelector<Solution_> valueSelector,
@@ -35,23 +34,16 @@ final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<
       RuinRecreateConstructionHeuristicPhaseBuilder<Solution_> constructionHeuristicPhaseBuilder,
       CountSupplier minimumSelectedCountSupplier,
       CountSupplier maximumSelectedCountSupplier) {
-    super();
+    super(listVariableDescriptor);
     this.valueSelector =
         ListChangeMoveSelector.filterPinnedListPlanningVariableValuesWithIndex(
-            FilteringValueSelector.ofAssigned(valueSelector, this::getListVariableStateSupply),
-            this::getListVariableStateSupply);
-    this.listVariableDescriptor = listVariableDescriptor;
+            FilteringValueSelector.ofAssigned(valueSelector, this::getListVariableState),
+            this::getListVariableState);
     this.constructionHeuristicPhaseBuilder = constructionHeuristicPhaseBuilder;
     this.minimumSelectedCountSupplier = minimumSelectedCountSupplier;
     this.maximumSelectedCountSupplier = maximumSelectedCountSupplier;
 
     phaseLifecycleSupport.addEventListener(this.valueSelector);
-  }
-
-  private ListVariableStateSupply<Solution_, Object, Object> getListVariableStateSupply() {
-    return Objects.requireNonNull(
-        listVariableStateSupply,
-        "Impossible state: The listVariableStateSupply is not initialized yet.");
   }
 
   @Override
@@ -79,24 +71,13 @@ final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<
   }
 
   @Override
-  public void solvingStarted(SolverScope<Solution_> solverScope) {
-    super.solvingStarted(solverScope);
-    this.solverScope = solverScope;
-    this.listVariableStateSupply =
-        solverScope
-            .getScoreDirector()
-            .getSupplyManager()
-            .demand(listVariableDescriptor.getStateDemand());
+  public void phaseStarted(@NonNull AbstractPhaseScope<Solution_> phaseScope) {
+    super.phaseStarted(phaseScope);
+    this.solverScope = phaseScope.getSolverScope();
   }
 
   @Override
-  public void solvingEnded(SolverScope<Solution_> solverScope) {
-    super.solvingEnded(solverScope);
-    this.listVariableStateSupply = null;
-  }
-
-  @Override
-  public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
+  public void phaseEnded(@NonNull AbstractPhaseScope<Solution_> phaseScope) {
     super.phaseEnded(phaseScope);
     this.solverScope = null;
   }
@@ -111,7 +92,7 @@ final class ListRuinRecreateMoveSelector<Solution_> extends GenericMoveSelector<
         valueSelector,
         constructionHeuristicPhaseBuilder,
         solverScope,
-        listVariableStateSupply,
+        listVariableState,
         RuinRecreateMoveSelectorSize.clampCount(
             minimumSelectedCountSupplier.applyAsInt(valueSelectorSize), valueSelectorSize),
         RuinRecreateMoveSelectorSize.clampCount(

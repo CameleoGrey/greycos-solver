@@ -1,19 +1,30 @@
 package greycos.solver.core.impl.cotwin.solution.descriptor;
 
+import java.util.Comparator;
 import java.util.Objects;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
-import greycos.solver.core.preview.api.cotwin.metamodel.PlanningEntityMetaModel;
+import greycos.solver.core.preview.api.cotwin.metamodel.GenuineEntityMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
+import greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
 
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public record DefaultPlanningVariableMetaModel<Solution_, Entity_, Value_>(
-    PlanningEntityMetaModel<Solution_, Entity_> entity,
+    GenuineEntityMetaModel<Solution_, Entity_> entity,
     BasicVariableDescriptor<Solution_> variableDescriptor)
     implements PlanningVariableMetaModel<Solution_, Entity_, Value_>,
         InnerGenuineVariableMetaModel<Solution_> {
+
+  static final Comparator<VariableMetaModel<?, ?, ?>> VARIABLE_META_MODEL_COMPARATOR =
+      Comparator.comparing(
+              (VariableMetaModel<?, ?, ?> variableMetaModel) -> variableMetaModel.entity())
+          .thenComparingInt(
+              (VariableMetaModel<?, ?, ?> variableMetaModel) ->
+                  ((InnerVariableMetaModel<?>) variableMetaModel)
+                      .variableDescriptor()
+                      .getOrdinal());
 
   @SuppressWarnings("unchecked")
   @Override
@@ -32,10 +43,15 @@ public record DefaultPlanningVariableMetaModel<Solution_, Entity_, Value_>(
   }
 
   @Override
+  public boolean isValueRangeOnSolution() {
+    return variableDescriptor.canExtractValueRangeFromSolution();
+  }
+
+  @Override
   public boolean equals(Object o) {
     // Do not use entity in equality checks;
-    // If an entity is subclassed, that subclass will have it
-    // own distinct VariableMetaModel
+    // If an entity is subclassed,
+    // that subclass will have it own distinct VariableMetaModel
     if (o instanceof DefaultPlanningVariableMetaModel<?, ?, ?> that) {
       return Objects.equals(variableDescriptor, that.variableDescriptor);
     }
@@ -45,6 +61,11 @@ public record DefaultPlanningVariableMetaModel<Solution_, Entity_, Value_>(
   @Override
   public int hashCode() {
     return Objects.hash(variableDescriptor);
+  }
+
+  @Override
+  public int compareTo(VariableMetaModel<Solution_, Entity_, Value_> other) {
+    return VARIABLE_META_MODEL_COMPARATOR.compare(this, other);
   }
 
   @Override

@@ -56,7 +56,12 @@ class TerminationBestScoreImprovementTest {
         UniversalTermination.or(PhaseTermination.bridge(globalTermination), local);
     var phase =
         new DefaultAlnsPhase.Builder<TestdataSolution>(
-                0, "", phaseTermination, new AlnsPhaseConfig(), mock(BestSolutionRecaller.class))
+                0,
+                greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+                "",
+                phaseTermination,
+                new AlnsPhaseConfig(),
+                mock(BestSolutionRecaller.class))
             .build();
     var scope = new SolverScope<TestdataSolution>();
 

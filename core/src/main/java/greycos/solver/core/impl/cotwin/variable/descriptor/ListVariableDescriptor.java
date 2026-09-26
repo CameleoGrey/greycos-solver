@@ -12,27 +12,21 @@ import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateDemand;
 import greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
-import greycos.solver.core.impl.move.MoveDirector;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
-import greycos.solver.core.preview.api.neighborhood.stream.function.BiNeighborhoodsPredicate;
+import greycos.solver.core.preview.api.neighborhood.stream.function.UniNeighborhoodsPredicate;
 
 public final class ListVariableDescriptor<Solution_> extends GenuineVariableDescriptor<Solution_> {
 
-  private final ListVariableStateDemand<Solution_> stateDemand =
-      new ListVariableStateDemand<>(this);
   private final BiPredicate<Object, Object> inListPredicate =
       (element, entity) -> {
         var list = getValue(entity);
         return list.contains(element);
       };
-  private final BiNeighborhoodsPredicate<Solution_, Object, Object>
-      entityContainsPinnedValuePredicate =
-          (solutionView, value, entity) -> {
-            var moveDirector = (MoveDirector<Solution_, ?>) solutionView;
-            return moveDirector.isPinned(this, value);
-          };
+  private final UniNeighborhoodsPredicate<Solution_, Object> valueMovablePredicate =
+      (solutionView, value) ->
+          value == null
+              || !solutionView.isPinned(this.<Object, Object>getVariableMetaModel(), value);
 
   private boolean allowsUnassignedValues = true;
 
@@ -43,18 +37,14 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
     super(ordinal, entityDescriptor, variableMemberAccessor);
   }
 
-  public ListVariableStateDemand<Solution_> getStateDemand() {
-    return stateDemand;
-  }
-
   @SuppressWarnings("unchecked")
   public <A> BiPredicate<A, Object> getInListPredicate() {
     return (BiPredicate<A, Object>) inListPredicate;
   }
 
   @SuppressWarnings("unchecked")
-  public <A, B> BiNeighborhoodsPredicate<Solution_, A, B> getEntityContainsPinnedValuePredicate() {
-    return (BiNeighborhoodsPredicate<Solution_, A, B>) entityContainsPinnedValuePredicate;
+  public <A> UniNeighborhoodsPredicate<Solution_, A> getValueMovablePredicate() {
+    return (UniNeighborhoodsPredicate<Solution_, A>) valueMovablePredicate;
   }
 
   public boolean allowsUnassignedValues() {
@@ -119,8 +109,9 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
       // This state may be impossible.
       throw new IllegalStateException(
           """
-                            Instances of entityClass (%s) may be used in list variable (%s), but the class has more than one @%s-annotated field (%s).
-                            Remove the annotations from all but one field."""
+          Instances of entityClass (%s) may be used in list variable (%s), but the class has more than one @%s-annotated field (%s).
+          Remove the annotations from all but one field.\
+          """
               .formatted(
                   inverseRelationEntityDescriptor.getEntityClass().getCanonicalName(),
                   getSimpleEntityAndVariableName(),

@@ -47,6 +47,7 @@ public final class ExhaustiveSearchPhaseScope<Solution_> extends AbstractPhaseSc
   public void setExpandableNodeQueue(SortedSet<ExhaustiveSearchNode> expandableNodeQueue) {
     this.expandableNodeQueue = expandableNodeQueue;
     optimisticBoundBuckets.clear();
+    expandableNodeQueue.forEach(this::addToBoundBucket);
   }
 
   @SuppressWarnings("unchecked")
@@ -79,7 +80,8 @@ public final class ExhaustiveSearchPhaseScope<Solution_> extends AbstractPhaseSc
   public <Score_ extends Score<Score_>> void registerPessimisticBound(
       InnerScore<Score_> pessimisticBound) {
     var castBestPessimisticBound = this.<Score_>getBestPessimisticBound();
-    if (pessimisticBound.compareTo(castBestPessimisticBound) > 0) {
+    if (castBestPessimisticBound == null
+        || pessimisticBound.compareTo(castBestPessimisticBound) > 0) {
       bestPessimisticBound = pessimisticBound;
       pruneDominatedBuckets(pessimisticBound);
     }

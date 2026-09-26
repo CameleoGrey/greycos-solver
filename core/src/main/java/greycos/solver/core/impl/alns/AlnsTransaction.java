@@ -202,7 +202,8 @@ final class AlnsTransaction<Solution_, Score_ extends Score<Score_>> implements 
     try {
       for (int i = undoMoves.size() - 1; i >= savepoint.index(); i--) {
         var undo = undoMoves.get(i);
-        scoreDirector.executeMove(undo);
+        // A savepoint or an intermediate undo state may contain inconsistent shadows.
+        scoreDirector.getMoveDirector().executeAllowingStructurallyFlawedSolutions(undo);
         if (publicationGeneration != savepoint.publicationGeneration()) appendReplay(undo);
       }
       if (publicationGeneration == savepoint.publicationGeneration()) {

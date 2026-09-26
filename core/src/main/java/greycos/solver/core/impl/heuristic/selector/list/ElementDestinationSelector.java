@@ -8,14 +8,11 @@ import java.util.Objects;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import greycos.solver.core.impl.heuristic.selector.AbstractSelector;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.ConcatenatingIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
-import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.util.MappingIterator;
 import greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
@@ -36,17 +33,14 @@ import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
-public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solution_>
+public final class ElementDestinationSelector<Solution_> extends AbstractListMoveSelector<Solution_>
     implements DestinationSelector<Solution_> {
 
-  private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final EntitySelector<Solution_> entitySelector;
   private final IterableValueSelector<Solution_> replayingValueSelector;
   private final IterableValueSelector<Solution_> valueSelector;
   private final boolean randomSelection;
   private final boolean isExhaustiveSearch;
-
-  private ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
 
   public ElementDestinationSelector(
       EntitySelector<Solution_> entitySelector,
@@ -61,12 +55,10 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
       IterableValueSelector<Solution_> valueSelector,
       boolean randomSelection,
       boolean isExhaustiveSearch) {
-    this.listVariableDescriptor =
-        (ListVariableDescriptor<Solution_>) valueSelector.getVariableDescriptor();
+    super((ListVariableDescriptor<Solution_>) valueSelector.getVariableDescriptor());
     this.entitySelector = entitySelector;
     var selector =
-        filterPinnedListPlanningVariableValuesWithIndex(
-            valueSelector, this::getListVariableStateSupply);
+        filterPinnedListPlanningVariableValuesWithIndex(valueSelector, this::getListVariableState);
     this.replayingValueSelector = replayingValueSelector;
     this.valueSelector =
         listVariableDescriptor.allowsUnassignedValues()
@@ -76,12 +68,6 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
     this.isExhaustiveSearch = isExhaustiveSearch;
     phaseLifecycleSupport.addEventListener(this.entitySelector);
     phaseLifecycleSupport.addEventListener(this.valueSelector);
-  }
-
-  private ListVariableStateSupply<Solution_, Object, Object> getListVariableStateSupply() {
-    return Objects.requireNonNull(
-        listVariableStateSupply,
-        "Impossible state: The listVariableStateSupply is not initialized yet.");
   }
 
   private IterableValueSelector<Solution_> filterUnassignedValues(
@@ -103,20 +89,7 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
      * and always add one option to unassign at the end,
      * we can keep the correct probabilities throughout.
      */
-    return FilteringValueSelector.ofAssigned(valueSelector, this::getListVariableStateSupply);
-  }
-
-  @Override
-  public void solvingStarted(SolverScope<Solution_> solverScope) {
-    super.solvingStarted(solverScope);
-    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
-    listVariableStateSupply = supplyManager.demand(listVariableDescriptor.getStateDemand());
-  }
-
-  @Override
-  public void solvingEnded(SolverScope<Solution_> solverScope) {
-    super.solvingEnded(solverScope);
-    listVariableStateSupply = null;
+    return FilteringValueSelector.ofAssigned(valueSelector, this::getListVariableState);
   }
 
   @Override
@@ -139,10 +112,10 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
       // In case of list var which allows unassigned values, we need to exclude unassigned elements.
       var totalValueSize =
           valueSelector.getSize()
-              - (allowsUnassignedValues ? listVariableStateSupply.getUnassignedCount() : 0);
+              - (allowsUnassignedValues ? listVariableState.getUnassignedCount() : 0);
       var totalSize = Math.addExact(entitySelector.getSize(), totalValueSize);
       return new ElementPositionRandomIterator<>(
-          listVariableStateSupply,
+          listVariableState,
           entitySelector,
           replayingValueSelector != null ? replayingValueSelector.iterator() : null,
           valueSelector,
@@ -175,7 +148,7 @@ public class ElementDestinationSelector<Solution_> extends AbstractSelector<Solu
             new MappingIterator<>(
                 valueSelector.iterator(),
                 v -> {
-                  var pos = listVariableStateSupply.getElementPosition(v).ensureAssigned();
+                  var pos = listVariableState.getElementPosition(v).ensureAssigned();
                   return ElementPosition.of(pos.entity(), pos.index() + 1);
                 });
         if (listVariableDescriptor.allowsUnassignedValues()) {

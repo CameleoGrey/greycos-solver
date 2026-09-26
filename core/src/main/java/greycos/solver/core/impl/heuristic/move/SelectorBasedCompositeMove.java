@@ -8,10 +8,12 @@ import java.util.stream.Collectors;
 
 import greycos.solver.core.api.cotwin.lookup.Lookup;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.impl.move.PlanningEntityResolver;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.preview.api.move.MutableSolutionView;
+import greycos.solver.core.preview.api.move.SolutionView;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -22,7 +24,7 @@ import org.jspecify.annotations.NullMarked;
  */
 @NullMarked
 public final class SelectorBasedCompositeMove<Solution_>
-    extends AbstractSelectorBasedMove<Solution_> {
+    extends AbstractSelectorBasedMove<Solution_> implements PlanningEntityResolver<Solution_> {
 
   @SafeVarargs
   public static <Solution_, Move_ extends Move<Solution_>> Move<Solution_> buildMove(
@@ -103,6 +105,15 @@ public final class SelectorBasedCompositeMove<Solution_>
     var entities = LinkedHashSet.newLinkedHashSet(moves.length * 2);
     for (var move : moves) {
       entities.addAll(move.getPlanningEntities());
+    }
+    return entities;
+  }
+
+  @Override
+  public SequencedCollection<Object> resolvePlanningEntities(SolutionView<Solution_> solutionView) {
+    var entities = LinkedHashSet.newLinkedHashSet(moves.length * 2);
+    for (var move : moves) {
+      entities.addAll(PlanningEntityResolver.resolve(move, solutionView));
     }
     return entities;
   }

@@ -57,7 +57,7 @@ class ListRuinRecreateEligibilityTest {
           assertThat(
                   fixture
                       .director()
-                      .getListVariableStateSupply(
+                      .getListVariableState(
                           fixture.director().getSolutionDescriptor().getListVariableDescriptor())
                       .getIndexOrFail(originalA.get(0)))
               .isZero();
@@ -129,6 +129,7 @@ class ListRuinRecreateEligibilityTest {
     director.setWorkingSolution(solution);
     var policy =
         new HeuristicConfigPolicy.Builder<TestdataPinnedWithIndexListSolution>()
+            .withEnvironmentMode(EnvironmentMode.TRACKED_FULL_ASSERT)
             .withSolutionDescriptor(descriptor)
             .withInitializingScoreTrend(
                 InitializingScoreTrend.buildUniformTrend(InitializingScoreTrendLevel.ANY, 1))

@@ -38,7 +38,7 @@ public class DepthFirstNodeComparator<Solution_>
     // In non-mixed cases, the comparison order is irrelevant.
     if (scoreBounderEnabled) {
       // Investigate better optimistic bound first
-      var optimisticBoundComparison = a.getOptimisticBound().compareTo(b.getOptimisticBound());
+      var optimisticBoundComparison = NodeComparatorUtils.compareOptimisticBounds(a, b);
       if (optimisticBoundComparison != 0) {
         return optimisticBoundComparison;
       }

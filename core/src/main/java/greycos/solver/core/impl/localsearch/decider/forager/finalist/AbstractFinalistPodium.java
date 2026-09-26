@@ -31,6 +31,10 @@ public abstract class AbstractFinalistPodium<Solution_>
 
   protected void clearAndAddFinalist(LocalSearchMoveScope<Solution_> moveScope) {
     finalistList.clear();
+    if (moveScope.getScore().isStructurallyFlawed()) {
+      throw new IllegalStateException(
+          "Impossible state: Finalist (%s) is structurally flawed.".formatted(moveScope));
+    }
     finalistList.add(moveScope);
   }
 
@@ -38,6 +42,10 @@ public abstract class AbstractFinalistPodium<Solution_>
     if (finalistList.size() >= FINALIST_LIST_MAX_SIZE) {
       // Avoid unbounded growth and OutOfMemoryException
       return;
+    }
+    if (moveScope.getScore().isStructurallyFlawed()) {
+      throw new IllegalStateException(
+          "Impossible state: Finalist (%s) is structurally flawed.".formatted(moveScope));
     }
     finalistList.add(moveScope);
   }

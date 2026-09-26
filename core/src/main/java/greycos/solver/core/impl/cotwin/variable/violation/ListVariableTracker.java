@@ -7,15 +7,13 @@ import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.impl.cotwin.variable.ListVariableChangeHandler;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.supply.Demand;
-import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 
 import org.jspecify.annotations.NullMarked;
 
 /** Tracks variable change events for a given {@link PlanningListVariable}. */
 @NullMarked
-public class ListVariableTracker<Solution_> implements ListVariableChangeHandler<Solution_> {
+public final class ListVariableTracker<Solution_> implements ListVariableChangeHandler<Solution_> {
 
   private final ListVariableDescriptor<Solution_> variableDescriptor;
   private final List<Object> beforeVariableChangedEntityList;
@@ -80,28 +78,9 @@ public class ListVariableTracker<Solution_> implements ListVariableChangeHandler
     return out;
   }
 
-  public TrackerDemand demand() {
-    return new TrackerDemand();
-  }
-
   @Override
   public void afterListElementUnassigned(
       InnerScoreDirector<Solution_, ?> scoreDirector, Object unassignedElement) {
     // Do nothing
-  }
-
-  /**
-   * In order for the {@link ListVariableTracker} to be registered for shadow variable update
-   * events, it needs to be passed to the {@link InnerScoreDirector#getSupplyManager()}, which
-   * requires a {@link Demand}.
-   *
-   * <p>Unlike most other {@link Demand}s, there will only be one instance of {@link
-   * ListVariableTracker} in the {@link InnerScoreDirector} for each list variable.
-   */
-  public class TrackerDemand implements Demand<ListVariableTracker<Solution_>> {
-    @Override
-    public ListVariableTracker<Solution_> createExternalizedSupply(SupplyManager supplyManager) {
-      return ListVariableTracker.this;
-    }
   }
 }

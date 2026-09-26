@@ -3,7 +3,7 @@ package greycos.solver.core.impl.heuristic.selector.move.generic.list;
 import static greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.phaseStarted;
 import static greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.solvingStarted;
 import static greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.stepStarted;
-import static greycos.solver.core.impl.heuristic.selector.list.TriangularNumbers.nthTriangle;
+import static greycos.solver.core.impl.util.TriangularNumbers.nthTriangle;
 import static greycos.solver.core.testcotwin.list.TestdataListUtils.getAllowsUnassignedvaluesListVariableDescriptor;
 import static greycos.solver.core.testcotwin.list.TestdataListUtils.getListVariableDescriptor;
 import static greycos.solver.core.testcotwin.list.TestdataListUtils.listSize;
@@ -84,7 +84,8 @@ class RandomSubListSwapMoveSelectorTest {
             9, 0,
             0, 0);
 
-    solvingStarted(moveSelector, scoreDirector, random);
+    var solverScope = solvingStarted(moveSelector, scoreDirector, random);
+    phaseStarted(moveSelector, solverScope);
 
     assertCodesOfNeverEndingMoveSelector(
         moveSelector,
@@ -152,7 +153,8 @@ class RandomSubListSwapMoveSelectorTest {
     // Columns are: left subList index, right subList index, reversing flag.
     var random = new TestRandom(0, 2, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 1, 3, 0, 1, 0, 0, 0);
 
-    solvingStarted(moveSelector, scoreDirector, random);
+    var solverScope = solvingStarted(moveSelector, scoreDirector, random);
+    phaseStarted(moveSelector, solverScope);
 
     assertCodesOfNeverEndingMoveSelector(
         moveSelector,
@@ -210,7 +212,8 @@ class RandomSubListSwapMoveSelectorTest {
             4, 0,
             0, 0);
 
-    solvingStarted(moveSelector, scoreDirector, random);
+    var solverScope = solvingStarted(moveSelector, scoreDirector, random);
+    phaseStarted(moveSelector, solverScope);
 
     assertCodesOfNeverEndingMoveSelector(
         moveSelector,
@@ -306,7 +309,8 @@ class RandomSubListSwapMoveSelectorTest {
             1, 1,
             0, 0);
 
-    solvingStarted(moveSelector, scoreDirector, random);
+    var solverScope = solvingStarted(moveSelector, scoreDirector, random);
+    phaseStarted(moveSelector, solverScope);
 
     assertCodesOfNeverEndingMoveSelector(
         moveSelector,
@@ -380,7 +384,8 @@ class RandomSubListSwapMoveSelectorTest {
             0, 0, 0, 1, 0, 2, 0, 0, 1, 0, 1, 1, 1, 2, 1, 0, 2, 0, 2, 1, 2, 2, 2, 0, 0, 0, 0, 1, 0,
             2, 0, 0, 0, 0);
 
-    solvingStarted(moveSelector, scoreDirector, random);
+    var solverScope = solvingStarted(moveSelector, scoreDirector, random);
+    phaseStarted(moveSelector, solverScope);
 
     assertCodesOfNeverEndingMoveSelector(
         moveSelector,
@@ -530,9 +535,9 @@ class RandomSubListSwapMoveSelectorTest {
     moveSelector.phaseEnded(phaseScope);
     moveSelector.solvingEnded(solverScope);
 
-    // The invocation counts are multiplied for the entity selector because it is used by both left
-    // and right
-    // subList selectors and each registers the entity selector to its phaseLifecycleSupport.
+    // The invocation counts are multiplied for the entity selector
+    // because it is used by both left and right subList selectors
+    // and each registers the entity selector to its phaseLifecycleSupport.
     verifyPhaseLifecycle(entitySelector, 2, 2, 4);
     verifyPhaseLifecycle(leftValueSelector, 1, 1, 2);
     verifyPhaseLifecycle(rightValueSelector, 1, 1, 2);

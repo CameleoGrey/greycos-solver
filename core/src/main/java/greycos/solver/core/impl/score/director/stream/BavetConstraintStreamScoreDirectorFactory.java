@@ -12,20 +12,26 @@ import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import greycos.solver.core.impl.nodesharing.DefaultConstraintProviderNodeSharer;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
-import greycos.solver.core.impl.score.director.AbstractScoreDirector;
+import greycos.solver.core.impl.score.director.AbstractScoreDirectorFactory;
+import greycos.solver.core.impl.score.director.ScoreDirectorFactoryFactory;
+import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirector.Builder;
 import greycos.solver.core.impl.score.stream.bavet.BavetConstraintFactory;
 import greycos.solver.core.impl.score.stream.bavet.BavetConstraintSession;
 import greycos.solver.core.impl.score.stream.bavet.BavetConstraintSessionFactory;
 import greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamScoreDirectorFactory;
 import greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class BavetConstraintStreamScoreDirectorFactory<
+@NullMarked
+public sealed class BavetConstraintStreamScoreDirectorFactory<
         Solution_, Score_ extends Score<Score_>>
     extends AbstractConstraintStreamScoreDirectorFactory<
-        Solution_, Score_, BavetConstraintStreamScoreDirectorFactory<Solution_, Score_>> {
+        Solution_, Score_, BavetConstraintStreamScoreDirectorFactory<Solution_, Score_>>
+    permits MultiEnvironmentBavetConstraintStreamScoreDirectorFactory {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(BavetConstraintStreamScoreDirectorFactory.class);
@@ -34,7 +40,7 @@ public final class BavetConstraintStreamScoreDirectorFactory<
       BavetConstraintStreamScoreDirectorFactory<Solution_, Score_> buildScoreDirectorFactory(
           SolutionDescriptor<Solution_> solutionDescriptor,
           ScoreDirectorFactoryConfig config,
-          EnvironmentMode environmentMode) {
+          EnvironmentMode globalEnvironmentMode) {
     var providedConstraintProviderClass = config.getConstraintProviderClass();
     if (providedConstraintProviderClass == null
         || !ConstraintProvider.class.isAssignableFrom(providedConstraintProviderClass)) {
@@ -55,7 +61,7 @@ public final class BavetConstraintStreamScoreDirectorFactory<
     return new BavetConstraintStreamScoreDirectorFactory<>(
         solutionDescriptor,
         constraintProvider,
-        environmentMode,
+        globalEnvironmentMode,
         Boolean.TRUE.equals(config.getConstraintStreamProfilingEnabled()));
   }
 
@@ -85,11 +91,18 @@ public final class BavetConstraintStreamScoreDirectorFactory<
   public BavetConstraintStreamScoreDirectorFactory(
       SolutionDescriptor<Solution_> solutionDescriptor,
       ConstraintProvider constraintProvider,
-      EnvironmentMode environmentMode,
-      boolean constraintStreamProfilingEnabled) {
-    super(solutionDescriptor, environmentMode);
-    this.constraintStreamProfilingEnabled = constraintStreamProfilingEnabled;
-    var constraintFactory = new BavetConstraintFactory<>(solutionDescriptor, environmentMode);
+      EnvironmentMode globalEnvironmentMode) {
+    this(solutionDescriptor, constraintProvider, globalEnvironmentMode, false);
+  }
+
+  public BavetConstraintStreamScoreDirectorFactory(
+      SolutionDescriptor<Solution_> solutionDescriptor,
+      ConstraintProvider constraintProvider,
+      EnvironmentMode globalEnvironmentMode,
+      boolean profilingEnabled) {
+    super(solutionDescriptor, globalEnvironmentMode);
+    this.constraintStreamProfilingEnabled = profilingEnabled;
+    var constraintFactory = new BavetConstraintFactory<>(solutionDescriptor, globalEnvironmentMode);
     constraintMetaModel =
         DefaultConstraintMetaModel.of(constraintFactory.buildConstraints(constraintProvider));
     constraintSessionFactory =
@@ -97,8 +110,26 @@ public final class BavetConstraintStreamScoreDirectorFactory<
             solutionDescriptor, constraintMetaModel, constraintStreamProfilingEnabled);
   }
 
+  /**
+   * Create a new factory from one already built for the same environment mode, sharing the
+   * constraint network it built rather than building a second one.
+   */
+  BavetConstraintStreamScoreDirectorFactory(
+      BavetConstraintStreamScoreDirectorFactory<Solution_, Score_> inheritedScoreDirectorFactory) {
+    super(
+        inheritedScoreDirectorFactory.solutionDescriptor,
+        inheritedScoreDirectorFactory.globalEnvironmentMode);
+    this.constraintStreamProfilingEnabled =
+        inheritedScoreDirectorFactory.constraintStreamProfilingEnabled;
+    this.constraintSessionFactory = inheritedScoreDirectorFactory.constraintSessionFactory;
+    this.constraintMetaModel = inheritedScoreDirectorFactory.constraintMetaModel;
+    this.initializingScoreTrend = inheritedScoreDirectorFactory.initializingScoreTrend;
+    this.assertionScoreDirectorFactory =
+        inheritedScoreDirectorFactory.assertionScoreDirectorFactory;
+  }
+
   public BavetConstraintSession<Score_> newSession(
-      Solution_ workingSolution,
+      @Nullable Solution_ workingSolution,
       ConsistencyTracker<Solution_> consistencyTracker,
       ConstraintMatchPolicy constraintMatchPolicy,
       boolean scoreDirectorDerived) {
@@ -123,11 +154,21 @@ public final class BavetConstraintStreamScoreDirectorFactory<
   @Override
   public BavetConstraintStreamScoreDirector.Builder<Solution_, Score_>
       createScoreDirectorBuilder() {
-    return new BavetConstraintStreamScoreDirector.Builder<>(this);
+    return createScoreDirectorBuilder(globalEnvironmentMode);
   }
 
   @Override
-  public AbstractScoreDirector<Solution_, Score_, ?> buildScoreDirector() {
-    return createScoreDirectorBuilder().build();
+  public Builder<Solution_, Score_> createScoreDirectorBuilder(EnvironmentMode environmentMode) {
+    return new Builder<>(this, environmentMode);
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  public <Factory_ extends AbstractScoreDirectorFactory<Solution_, Score_, Factory_>>
+      AbstractScoreDirectorFactory<Solution_, Score_, Factory_> adaptToMultiEnvironmentMode(
+          ScoreDirectorFactoryFactory<Solution_, Score_> scoreDirectorFactoryFactory) {
+    return (AbstractScoreDirectorFactory<Solution_, Score_, Factory_>)
+        new MultiEnvironmentBavetConstraintStreamScoreDirectorFactory<>(
+            scoreDirectorFactoryFactory, this);
   }
 }

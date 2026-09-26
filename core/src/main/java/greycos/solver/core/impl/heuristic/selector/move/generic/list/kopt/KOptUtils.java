@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import greycos.solver.core.api.function.TriPredicate;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.util.MathUtils;
 import greycos.solver.core.impl.util.Pair;
 
@@ -110,17 +110,17 @@ final class KOptUtils {
   }
 
   public static <Node_> Function<Node_, Node_> getMultiEntitySuccessorFunction(
-      Node_[] pickedValues, ListVariableStateSupply<?, Object, Object> listVariableStateSupply) {
-    var entityOrderInfo = EntityOrderInfo.of(pickedValues, listVariableStateSupply);
-    return node -> entityOrderInfo.successor(node, listVariableStateSupply);
+      Node_[] pickedValues, ListVariableState<?, Object, Object> listVariableState) {
+    var entityOrderInfo = EntityOrderInfo.of(pickedValues, listVariableState);
+    return node -> entityOrderInfo.successor(node, listVariableState);
   }
 
   public static <Node_> TriPredicate<Node_, Node_, Node_> getBetweenPredicate(
-      ListVariableStateSupply<?, ?, ?> listVariableStateSupply) {
+      ListVariableState<?, ?, ?> listVariableState) {
     return (start, middle, end) -> {
-      int startIndex = listVariableStateSupply.getIndexOrFail(start);
-      int middleIndex = listVariableStateSupply.getIndexOrFail(middle);
-      int endIndex = listVariableStateSupply.getIndexOrFail(end);
+      int startIndex = listVariableState.getIndexOrFail(start);
+      int middleIndex = listVariableState.getIndexOrFail(middle);
+      int endIndex = listVariableState.getIndexOrFail(end);
 
       if (startIndex <= endIndex) {
         // test middleIndex in [startIndex, endIndex]
@@ -133,10 +133,9 @@ final class KOptUtils {
   }
 
   public static <Node_> TriPredicate<Node_, Node_, Node_> getMultiEntityBetweenPredicate(
-      Node_[] pickedValues, ListVariableStateSupply<?, Object, Object> listVariableStateSupply) {
-    var entityOrderInfo = EntityOrderInfo.of(pickedValues, listVariableStateSupply);
-    return (start, middle, end) ->
-        entityOrderInfo.between(start, middle, end, listVariableStateSupply);
+      Node_[] pickedValues, ListVariableState<?, Object, Object> listVariableState) {
+    var entityOrderInfo = EntityOrderInfo.of(pickedValues, listVariableState);
+    return (start, middle, end) -> entityOrderInfo.between(start, middle, end, listVariableState);
   }
 
   public static void flipSubarray(int[] array, int fromIndexInclusive, int toIndexExclusive) {

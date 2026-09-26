@@ -8,6 +8,8 @@ import greycos.solver.core.impl.score.trend.InitializingScoreTrend;
 
 public class SimpleScoreDefinition extends AbstractScoreDefinition<SimpleScore> {
 
+  private static final SimpleScore STRUCTURALLY_FLAWED_SCORE = new SimpleScore(-1L, 0L);
+
   public SimpleScoreDefinition() {
     super(new String[] {"score"});
   }
@@ -20,6 +22,16 @@ public class SimpleScoreDefinition extends AbstractScoreDefinition<SimpleScore> 
   @Override
   public Class<SimpleScore> getScoreClass() {
     return SimpleScore.class;
+  }
+
+  @Override
+  public SimpleScore getStructurallyFlawedScore() {
+    return STRUCTURALLY_FLAWED_SCORE;
+  }
+
+  @Override
+  public SimpleScore getStructurallyFlawedScore(SimpleScore score) {
+    return new SimpleScore(-1L, score.score());
   }
 
   @Override

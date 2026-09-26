@@ -2,12 +2,14 @@ package greycos.solver.core.impl.cotwin.solution.descriptor;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.preview.api.cotwin.metamodel.GenuineEntityMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.GenuineVariableMetaModel;
+import greycos.solver.core.preview.api.cotwin.metamodel.PlanningEntityMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
@@ -20,6 +22,13 @@ import org.jspecify.annotations.NullMarked;
 public final class DefaultGenuineEntityMetaModel<Solution_, Entity_>
     implements GenuineEntityMetaModel<Solution_, Entity_>,
         InnerPlanningEntityMetaModel<Solution_, Entity_> {
+
+  static final Comparator<PlanningEntityMetaModel<?, ?>> ENTITY_META_MODEL_COMPARATOR =
+      Comparator.comparingInt(
+          (PlanningEntityMetaModel<?, ?> entityMetaModel) ->
+              ((InnerPlanningEntityMetaModel<?, ?>) entityMetaModel)
+                  .entityDescriptor()
+                  .getOrdinal());
 
   private final EntityDescriptor<Solution_> entityDescriptor;
   private final PlanningSolutionMetaModel<Solution_> solution;
@@ -62,7 +71,7 @@ public final class DefaultGenuineEntityMetaModel<Solution_, Entity_>
           throw new IllegalStateException(
               "The entity class (%s) has no genuine variables."
                   .formatted(type().getCanonicalName()));
-      case 1 -> (GenuineVariableMetaModel<Solution_, Entity_, Value_>) genuineVariables.get(0);
+      case 1 -> (GenuineVariableMetaModel<Solution_, Entity_, Value_>) genuineVariables.getFirst();
       default ->
           throw new IllegalStateException(
               "The entity class (%s) has multiple genuine variables (%s)."
@@ -196,6 +205,11 @@ public final class DefaultGenuineEntityMetaModel<Solution_, Entity_>
               .formatted(variable.name(), type.getSimpleName()));
     }
     variables.add(variable);
+  }
+
+  @Override
+  public int compareTo(PlanningEntityMetaModel<Solution_, Entity_> other) {
+    return ENTITY_META_MODEL_COMPARATOR.compare(this, other);
   }
 
   @Override

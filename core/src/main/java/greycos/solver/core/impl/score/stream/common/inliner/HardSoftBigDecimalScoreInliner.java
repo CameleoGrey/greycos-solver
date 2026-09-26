@@ -5,6 +5,7 @@ import java.util.Map;
 
 import greycos.solver.core.api.score.HardSoftBigDecimalScore;
 import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.impl.score.ScoreUtil;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 
@@ -27,9 +28,9 @@ final class HardSoftBigDecimalScoreInliner extends AbstractScoreInliner<HardSoft
       AbstractConstraint<?, ?, ?> constraint) {
     var constraintWeight = constraintWeightMap.get(constraint);
     var context = new HardSoftBigDecimalScoreContext(this, constraint, constraintWeight);
-    if (constraintWeight.softScore().equals(BigDecimal.ZERO)) {
+    if (ScoreUtil.isZero(constraintWeight.softScore())) {
       return WeightedScoreImpacter.of(context, HardSoftBigDecimalScoreContext::changeHardScoreBy);
-    } else if (constraintWeight.hardScore().equals(BigDecimal.ZERO)) {
+    } else if (ScoreUtil.isZero(constraintWeight.hardScore())) {
       return WeightedScoreImpacter.of(context, HardSoftBigDecimalScoreContext::changeSoftScoreBy);
     } else {
       return WeightedScoreImpacter.of(context, HardSoftBigDecimalScoreContext::changeScoreBy);

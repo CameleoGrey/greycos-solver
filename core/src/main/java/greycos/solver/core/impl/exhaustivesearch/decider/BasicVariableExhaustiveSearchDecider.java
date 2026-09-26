@@ -18,6 +18,12 @@ import greycos.solver.core.preview.api.move.builtin.Moves;
 public final class BasicVariableExhaustiveSearchDecider<Solution_, Score_ extends Score<Score_>>
     extends AbstractExhaustiveSearchDecider<Solution_, Score_> {
 
+  private boolean deferCompleteSolutions;
+
+  void setDeferCompleteSolutions(boolean deferCompleteSolutions) {
+    this.deferCompleteSolutions = deferCompleteSolutions;
+  }
+
   public BasicVariableExhaustiveSearchDecider(
       String logIndentation,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
@@ -64,7 +70,12 @@ public final class BasicVariableExhaustiveSearchDecider<Solution_, Score_ extend
 
   @Override
   public boolean isSolutionComplete(ExhaustiveSearchNode<Solution_> expandingNode) {
-    return expandingNode.getLayer().isLastLayer();
+    return !deferCompleteSolutions && expandingNode.getLayer().isLastLayer();
+  }
+
+  @Override
+  protected boolean isStartNodeComplete(ExhaustiveSearchNode<Solution_> startNode) {
+    return isSolutionComplete(startNode);
   }
 
   @Override
@@ -114,7 +125,10 @@ public final class BasicVariableExhaustiveSearchDecider<Solution_, Score_ extend
     var restoreMoveList = Arrays.<Move<Solution_>>asList(moves);
     var compositeMove = Moves.compose(restoreMoveList);
     // Execute the move.
-    phaseScope.getScoreDirector().executeMove(compositeMove);
+    phaseScope
+        .getScoreDirector()
+        .getMoveDirector()
+        .executeAllowingStructurallyFlawedSolutions(compositeMove);
     var startingStepScore = stepScope.<Score_>getStartingStepScore();
     phaseScope
         .getSolutionDescriptor()

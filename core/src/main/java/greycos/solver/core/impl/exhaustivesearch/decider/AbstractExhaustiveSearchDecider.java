@@ -3,6 +3,7 @@ package greycos.solver.core.impl.exhaustivesearch.decider;
 import java.util.ArrayList;
 
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.exhaustivesearch.event.ExhaustiveSearchPhaseLifecycleListener;
 import greycos.solver.core.impl.exhaustivesearch.node.ExhaustiveSearchLayer;
 import greycos.solver.core.impl.exhaustivesearch.node.ExhaustiveSearchNode;
@@ -45,6 +46,7 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
   protected boolean acceptUninitializedSolutions = false;
   private boolean assertMoveScoreFromScratch = false;
   private boolean assertExpectedUndoMoveScore = false;
+  private boolean requireCompleteSolutionForPessimisticBound;
 
   AbstractExhaustiveSearchDecider(
       String logIndentation,
@@ -65,17 +67,14 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
     this.scoreBounder = scoreBounder;
   }
 
+  public void enableAssertions(EnvironmentMode environmentMode) {
+    this.assertMoveScoreFromScratch = environmentMode.isFullyAsserted();
+    this.assertExpectedUndoMoveScore = environmentMode.isIntrusivelyAsserted();
+  }
+
   @SuppressWarnings("unchecked")
   public ScoreBounder<Score_> getScoreBounder() {
     return (ScoreBounder<Score_>) scoreBounder;
-  }
-
-  public void setAssertMoveScoreFromScratch(boolean assertMoveScoreFromScratch) {
-    this.assertMoveScoreFromScratch = assertMoveScoreFromScratch;
-  }
-
-  public void setAssertExpectedUndoMoveScore(boolean assertExpectedUndoMoveScore) {
-    this.assertExpectedUndoMoveScore = assertExpectedUndoMoveScore;
   }
 
   protected void enableAcceptUninitializedSolutions() {
@@ -127,13 +126,11 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
       var undoMove =
           scoreDirector
               .getMoveDirector()
-              .executeTemporary(
-                  move,
-                  (score, undo) -> {
-                    processMove(stepScope, moveNode, isSolutionComplete, score);
-                    return undo;
-                  });
+              .executeTemporaryProducingUndoMove(
+                  move, score -> processMove(stepScope, moveNode, isSolutionComplete, score));
       moveNode.setUndoMove(undoMove);
+    } else if (requireCompleteSolutionForPessimisticBound) {
+      processMove(stepScope, moveNode, isSolutionComplete, scoreDirector.calculateScore());
     }
     var executionPoint = SolverLifecyclePoint.of(stepScope, moveNode.getTreeId());
     if (assertExpectedUndoMoveScore) {
@@ -157,6 +154,17 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
       ExhaustiveSearchNode<Solution_> moveNode,
       boolean isSolutionComplete,
       InnerScore<Score_> score) {
+    if (score.isStructurallyFlawed()) {
+      moveNode.setScore(score);
+      // A later assignment may remove a dependency loop, for example by inserting a list value
+      // between the two elements involved. Keep partial nodes, without bounding their skipped
+      // score.
+      if (!isSolutionComplete) {
+        moveNode.setOptimisticBound(null);
+        stepScope.getPhaseScope().addExpandableNode(moveNode);
+      }
+      return;
+    }
     if (!scoreBounderEnabled) {
       processMoverWithoutBounder(stepScope, moveNode, score, isSolutionComplete);
     } else {
@@ -193,7 +201,9 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
     }
     if (isSolutionComplete) {
       // There is no point in bounding a fully initialized score
-      phaseScope.registerPessimisticBound(score);
+      if (!requireCompleteSolutionForPessimisticBound || score.isFullyAssigned()) {
+        phaseScope.registerPessimisticBound(score);
+      }
       bestSolutionRecaller.processWorkingSolutionDuringMove(score, stepScope);
     } else {
       var scoreDirector = phaseScope.<Score_>getScoreDirector();
@@ -201,11 +211,13 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
       var optimisticBound = castScoreBounder.calculateOptimisticBound(scoreDirector, score);
       moveNode.setOptimisticBound(optimisticBound);
       var bestPessimisticBound = (InnerScore<Score_>) phaseScope.getBestPessimisticBound();
-      if (optimisticBound.compareTo(bestPessimisticBound) > 0) {
+      if (bestPessimisticBound == null || optimisticBound.compareTo(bestPessimisticBound) > 0) {
         // It's still worth investigating this node further (no need to prune it)
         phaseScope.addExpandableNode(moveNode);
-        var pessimisticBound = castScoreBounder.calculatePessimisticBound(scoreDirector, score);
-        phaseScope.registerPessimisticBound(pessimisticBound);
+        if (!requireCompleteSolutionForPessimisticBound) {
+          var pessimisticBound = castScoreBounder.calculatePessimisticBound(scoreDirector, score);
+          phaseScope.registerPessimisticBound(pessimisticBound);
+        }
       }
     }
   }
@@ -239,25 +251,40 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
       ExhaustiveSearchPhaseScope<Solution_> phaseScope, ExhaustiveSearchLayer layer) {
     var startLayer = layer == null ? phaseScope.getLayerList().getFirst() : layer;
     var startNode = new ExhaustiveSearchNode<Solution_>(startLayer, null);
+    var complete = isStartNodeComplete(startNode);
 
     if (scoreBounderEnabled) {
       var scoreDirector = phaseScope.<Score_>getScoreDirector();
       var score = scoreDirector.calculateScore();
       startNode.setScore(score);
       ScoreBounder<Score_> bounder = getScoreBounder();
-      phaseScope.setBestPessimisticBound(
-          startLayer.isLastLayer()
-              ? score
-              : bounder.calculatePessimisticBound(scoreDirector, score));
-      startNode.setOptimisticBound(
-          startLayer.isLastLayer()
-              ? score
-              : bounder.calculateOptimisticBound(scoreDirector, score));
+      if (requireCompleteSolutionForPessimisticBound) {
+        // A sound partial solution need not have any sound completion. Only an actual incumbent
+        // establishes a pruning threshold; business-score trends do not establish consistency.
+        var bestScore = phaseScope.getSolverScope().getBestScore();
+        phaseScope.setBestPessimisticBound(
+            bestScore != null && bestScore.isFullyAssigned() && !bestScore.isStructurallyFlawed()
+                ? bestScore
+                : null);
+      } else {
+        phaseScope.setBestPessimisticBound(
+            score.isStructurallyFlawed()
+                ? null
+                : complete ? score : bounder.calculatePessimisticBound(scoreDirector, score));
+      }
+      if (!score.isStructurallyFlawed()) {
+        startNode.setOptimisticBound(
+            complete ? score : bounder.calculateOptimisticBound(scoreDirector, score));
+      }
     }
     if (!startLayer.isLastLayer()) {
       phaseScope.addExpandableNode(startNode);
     }
     phaseScope.getLastCompletedStepScope().setExpandingNode(startNode);
+  }
+
+  protected boolean isStartNodeComplete(ExhaustiveSearchNode<Solution_> startNode) {
+    return startNode.getLayer().isLastLayer();
   }
 
   // ************************************************************************
@@ -278,6 +305,10 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
 
   @Override
   public void phaseStarted(ExhaustiveSearchPhaseScope<Solution_> phaseScope) {
+    var solutionDescriptor = phaseScope.getSolutionDescriptor();
+    requireCompleteSolutionForPessimisticBound =
+        !solutionDescriptor.hasAnyShadowVariablesInconsistentMember()
+            && !solutionDescriptor.getDeclarativeShadowVariableDescriptors().isEmpty();
     sourceEntitySelector.phaseStarted(phaseScope);
     moveRepository.phaseStarted(phaseScope);
     fillLayerList(phaseScope);
@@ -298,5 +329,17 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
   @Override
   public void stepEnded(ExhaustiveSearchStepScope<Solution_> stepScope) {
     moveRepository.stepEnded(stepScope);
+  }
+
+  public void afterStep(ExhaustiveSearchPhaseScope<Solution_> phaseScope) {
+    // Most deciders do not switch search stages after the completed step has been recorded.
+  }
+
+  public boolean onSearchExhausted(ExhaustiveSearchPhaseScope<Solution_> phaseScope) {
+    return false;
+  }
+
+  public void releaseSearchState() {
+    // Only a mixed search retains suspended queues outside the phase scope.
   }
 }

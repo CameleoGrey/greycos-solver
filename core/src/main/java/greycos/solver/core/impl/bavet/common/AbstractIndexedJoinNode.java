@@ -116,7 +116,7 @@ public abstract class AbstractIndexedJoinNode<
     if (oldCompositeKey.equals(newCompositeKey)) {
       // No need for re-indexing because the index keys didn't change
       if (isFiltering) {
-        enqueuePendingLeft(leftTuple);
+        crossMatchLeft(leftTuple);
       } else {
         // Prefer an update over retract-insert if possible
         innerUpdateLeft(
@@ -171,8 +171,8 @@ public abstract class AbstractIndexedJoinNode<
       // Defer the cross-match (the opposite-side read) to this node's own layer turn
       // instead of computing it now,
       // at whatever layer the parent that produced leftTuple happens to be in.
-      // See AbstractJoinNode's pendingLeft/pendingRight javadoc.
-      enqueuePendingLeft(leftTuple);
+      // See AbstractCrossMatchNode's pendingLeft/pendingRight javadoc.
+      crossMatchLeft(leftTuple);
       return;
     }
     // Non-filtering: reads the opposite side eagerly, with no per-read staleness check needed
@@ -233,7 +233,7 @@ public abstract class AbstractIndexedJoinNode<
     if (oldCompositeKey.equals(newCompositeKey)) {
       // No need for re-indexing because the index keys didn't change
       if (isFiltering) {
-        enqueuePendingRight(rightTuple);
+        crossMatchRight(rightTuple);
       } else {
         // Prefer an update over retract-insert if possible
         innerUpdateRight(
@@ -288,7 +288,7 @@ public abstract class AbstractIndexedJoinNode<
     }
     if (isFiltering) {
       // See the mirror comment in indexAndPropagateLeft.
-      enqueuePendingRight(rightTuple);
+      crossMatchRight(rightTuple);
       return;
     }
     forEachLeftMatch(

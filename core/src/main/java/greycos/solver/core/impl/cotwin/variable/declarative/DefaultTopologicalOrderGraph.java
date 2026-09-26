@@ -44,9 +44,7 @@ public class DefaultTopologicalOrderGraph implements TopologicalOrderGraph {
     var out = new ArrayList<List<Integer>>(componentMap.size());
     var visited = new boolean[forwardEdges.length];
     for (var component : componentMap.values()) {
-      if (component.size() < 2) {
-        // all looped components have at least 2 members.
-        // non-looped components have exactly one member.
+      if (!isNodeInLoopedComponent[component.getFirst()]) {
         continue;
       }
       if (visited[component.get(0)]) {
@@ -91,7 +89,7 @@ public class DefaultTopologicalOrderGraph implements TopologicalOrderGraph {
   public boolean isLooped(LoopedTracker loopedTracker, int node) {
     return switch (loopedTracker.status(node)) {
       case UNKNOWN -> {
-        if (componentMap.get(node).size() > 1) {
+        if (isNodeInLoopedComponent[node]) {
           loopedTracker.mark(node, LoopedStatus.LOOPED);
           yield true;
         }
@@ -115,7 +113,7 @@ public class DefaultTopologicalOrderGraph implements TopologicalOrderGraph {
   }
 
   @Override
-  public void commitChanges(BitSet changed) {
+  public boolean commitChanges(BitSet changed) {
     var index = new MutableInt(1);
     var stackIndex = new MutableInt(0);
     var size = forwardEdges.length;
@@ -124,6 +122,7 @@ public class DefaultTopologicalOrderGraph implements TopologicalOrderGraph {
     var lowMap = new int[size];
     var onStackSet = new boolean[size];
     var components = new ArrayList<BitSet>();
+    var anyLooped = false;
     componentMap.clear();
 
     for (var node = 0; node < size; node++) {
@@ -136,7 +135,9 @@ public class DefaultTopologicalOrderGraph implements TopologicalOrderGraph {
     for (var i = components.size() - 1; i >= 0; i--) {
       var component = components.get(i);
       var componentSize = component.cardinality();
-      var isComponentLooped = componentSize != 1;
+      var firstNode = component.nextSetBit(0);
+      var isComponentLooped = componentSize > 1 || forwardEdges[firstNode].contains(firstNode);
+      anyLooped |= isComponentLooped;
       var componentNodes = new ArrayList<Integer>(componentSize);
       for (var node = component.nextSetBit(0); node >= 0; node = component.nextSetBit(node + 1)) {
         nodeIdToTopologicalOrderMap[node] = ordIndex;
@@ -157,6 +158,7 @@ public class DefaultTopologicalOrderGraph implements TopologicalOrderGraph {
         }
       }
     }
+    return anyLooped;
   }
 
   private void strongConnect(

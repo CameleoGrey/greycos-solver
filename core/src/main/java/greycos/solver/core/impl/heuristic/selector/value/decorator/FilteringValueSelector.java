@@ -4,7 +4,7 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
@@ -37,7 +37,7 @@ public class FilteringValueSelector<Solution_> extends AbstractDemandEnabledSele
 
   public static <Solution_> ValueSelector<Solution_> ofAssigned(
       ValueSelector<Solution_> valueSelector,
-      Supplier<ListVariableStateSupply<Solution_, Object, Object>> listVariableStateSupplier) {
+      Supplier<ListVariableState<Solution_, Object, Object>> listVariableStateSupplier) {
     var listVariableDescriptor =
         (ListVariableDescriptor<Solution_>) valueSelector.getVariableDescriptor();
     if (!listVariableDescriptor.allowsUnassignedValues()) {
@@ -47,17 +47,17 @@ public class FilteringValueSelector<Solution_> extends AbstractDemandEnabledSele
     return FilteringValueSelector.of(
         valueSelector,
         (scoreDirector, selection) -> {
-          var listVariableStateSupply = listVariableStateSupplier.get();
-          if (listVariableStateSupply.getUnassignedCount() == 0) {
+          var listVariableState = listVariableStateSupplier.get();
+          if (listVariableState.getUnassignedCount() == 0) {
             return true;
           }
-          return listVariableStateSupply.isAssigned(selection);
+          return listVariableState.isAssigned(selection);
         });
   }
 
   public static <Solution_> IterableValueSelector<Solution_> ofAssigned(
       IterableValueSelector<Solution_> iterableValueSelector,
-      Supplier<ListVariableStateSupply<Solution_, Object, Object>> listVariableStateSupplier) {
+      Supplier<ListVariableState<Solution_, Object, Object>> listVariableStateSupplier) {
     return (IterableValueSelector<Solution_>)
         ofAssigned((ValueSelector<Solution_>) iterableValueSelector, listVariableStateSupplier);
   }

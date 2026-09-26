@@ -24,7 +24,7 @@ public class GeneralTypeChangeMigrationRecipe extends AbstractRecipe {
         // Planning Id
         new ChangeType(
             "greycos.solver.core.api.domain.lookup.PlanningId",
-            "greycos.solver.core.api.cotwin.common.PlanningId",
+            "greycos.solver.core.api.cotwin.lookup.PlanningId",
             true),
         // Score API
         new ChangeType(
@@ -96,7 +96,7 @@ public class GeneralTypeChangeMigrationRecipe extends AbstractRecipe {
             true),
         new ChangeType(
             "greycos.solver.core.impl.domain.valuerange.buildin.composite.CompositeCountableValueRange",
-            "greycos.solver.core.impl.cotwin.valuerange.CompositeValueRange",
+            "greycos.solver.core.impl.cotwin.valuerange.buildin.composite.CompositeCountableValueRange",
             true),
         new ChangeType(
             "greycos.solver.core.impl.domain.valuerange.buildin.composite.NullAllowingCountableValueRange",

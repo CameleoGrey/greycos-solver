@@ -1,0 +1,28 @@
+package greycos.solver.core.testcotwin.shadow.no_inconsistent_field;
+
+import java.time.Duration;
+
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintFactory;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
+
+import org.jspecify.annotations.NonNull;
+
+public class TestdataDependencyNoInconsistentFieldConstraintProvider implements ConstraintProvider {
+  @Override
+  public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory constraintFactory) {
+    return new Constraint[] {
+      finishTasksAsSoonAsPossible(constraintFactory),
+    };
+  }
+
+  public Constraint finishTasksAsSoonAsPossible(@NonNull ConstraintFactory constraintFactory) {
+    return constraintFactory
+        .forEach(TestdataDependencyNoInconsistentFieldValue.class)
+        .penalize(
+            HardSoftScore.ONE_SOFT,
+            t -> (int) Duration.between(t.getEntity().getStartTime(), t.getEndTime()).toMinutes())
+        .asConstraint("Finish tasks as early as possible");
+  }
+}

@@ -46,4 +46,13 @@ class SimpleBigDecimalScoreDefinitionTest {
     assertThat(scoreDefinition.divideBySanitizedDivisor(dividend, tenDivisor))
         .isEqualTo(scoreDefinition.fromLevelNumbers(new Number[] {BigDecimal.ONE}));
   }
+
+  @Test
+  void divideBySanitizedDivisorClampsNegativeScale() {
+    var scoreDefinition = new SimpleBigDecimalScoreDefinition();
+    var dividend = scoreDefinition.fromLevelNumbers(new Number[] {new BigDecimal("1E+1")});
+    var divisor = scoreDefinition.fromLevelNumbers(new Number[] {new BigDecimal("2.00")});
+    assertThat(scoreDefinition.divideBySanitizedDivisor(dividend, divisor))
+        .isEqualTo(scoreDefinition.fromLevelNumbers(new Number[] {BigDecimal.valueOf(5)}));
+  }
 }

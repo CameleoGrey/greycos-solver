@@ -15,7 +15,7 @@ GreyCOS Solver separates its API from its implementation:
 They will change in future major or minor releases,
 but probably not in hotfix releases.
 
-Backwards incompatible changes for a new major version are clearly documented in xref:upgrading-greycos-solver/upgrade-to-latest-version.adoc#manualUpgrade[the upgrade recipe].
+Backwards incompatible changes for a new major version are clearly documented in xref:upgrading-greycos-solver/upgrade-to-latest.adoc#manualUpgrade[the upgrade recipe].
 
 
 [#previewFeatures]

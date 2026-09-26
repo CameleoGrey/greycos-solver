@@ -21,7 +21,7 @@ public class OptimisticBoundFirstNodeComparator<Solution_>
   @Override
   public int compare(ExhaustiveSearchNode<Solution_> a, ExhaustiveSearchNode<Solution_> b) {
     // Investigate better optimistic bound first (ignore initScore to avoid depth first ordering)
-    var optimisticBoundComparison = a.getOptimisticBound().compareTo(b.getOptimisticBound());
+    var optimisticBoundComparison = NodeComparatorUtils.compareOptimisticBounds(a, b);
     if (optimisticBoundComparison < 0) {
       return -1;
     } else if (optimisticBoundComparison > 0) {

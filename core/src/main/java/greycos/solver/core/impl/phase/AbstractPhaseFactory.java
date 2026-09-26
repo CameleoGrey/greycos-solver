@@ -11,6 +11,7 @@ import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.config.util.ConfigUtils;
@@ -42,6 +43,12 @@ public abstract class AbstractPhaseFactory<
     this.phaseConfig = phaseConfig;
   }
 
+  protected EnvironmentMode resolveEnvironmentMode(
+      HeuristicConfigPolicy<Solution_> phaseConfigPolicy) {
+    return Objects.requireNonNullElse(
+        phaseConfig.getEnvironmentMode(), phaseConfigPolicy.getEnvironmentMode());
+  }
+
   protected PhaseTermination<Solution_> buildPhaseTermination(
       HeuristicConfigPolicy<Solution_> configPolicy,
       SolverTermination<Solution_> solverTermination) {
@@ -66,16 +73,18 @@ public abstract class AbstractPhaseFactory<
       if (!inapplicableTerminationList.isEmpty()) {
         throw new IllegalStateException(
             """
-                                The phase (%s) configured with terminations (%s) includes some terminations which are not applicable to it (%s).
-                                Maybe remove these terminations from the phase's configuration."""
+            The phase (%s) configured with terminations (%s) includes some terminations which are not applicable to it (%s).
+            Maybe remove these terminations from the phase's configuration.\
+            """
                 .formatted(phaseName, phaseTermination, inapplicableTerminationList));
       }
     } else if (!inapplicableTerminationList.isEmpty()) {
       logger.trace(
           """
-                    The solver-level termination ({}) includes phase-level terminations ({}) \
-                    which are not applicable to the phase ({}).
-                    These phase-level terminations will not take effect in this phase.""",
+          The solver-level termination ({}) includes phase-level terminations ({}) \
+          which are not applicable to the phase ({}).
+          These phase-level terminations will not take effect in this phase.\
+          """,
           solverTermination,
           inapplicableTerminationList,
           phaseName);
@@ -139,7 +148,8 @@ public abstract class AbstractPhaseFactory<
     }
     if (resolvedMoveThreadCount > availableProcessorCount) {
       logger.warn(
-          "The resolvedMoveThreadCount ({}) is higher than the availableProcessorCount ({}), which is counter-efficient.",
+          "The resolvedMoveThreadCount ({}) is higher than the availableProcessorCount ({}), which"
+              + " is counter-efficient.",
           resolvedMoveThreadCount,
           availableProcessorCount);
     }

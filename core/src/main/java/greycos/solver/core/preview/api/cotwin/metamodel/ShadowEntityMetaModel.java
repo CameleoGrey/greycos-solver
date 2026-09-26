@@ -12,36 +12,27 @@ public non-sealed interface ShadowEntityMetaModel<Solution_, Entity_>
   @Override
   List<ShadowVariableMetaModel<Solution_, Entity_, ?>> variables();
 
-  @SuppressWarnings("unchecked")
+  /**
+   * Returns a {@link ShadowVariableMetaModel} for a variable with the given name.
+   *
+   * @return A variable declared by the entity.
+   */
   @Override
   default <Value_> ShadowVariableMetaModel<Solution_, Entity_, Value_> variable(
       String variableName) {
-    for (var variableMetaModel : variables()) {
-      if (variableMetaModel.name().equals(variableName)) {
-        return (ShadowVariableMetaModel<Solution_, Entity_, Value_>) variableMetaModel;
-      }
-    }
-    throw new IllegalArgumentException(
-        "The variableName (%s) does not exist in the variables (%s)."
-            .formatted(variableName, variables()));
+    return (ShadowVariableMetaModel<Solution_, Entity_, Value_>)
+        PlanningEntityMetaModel.super.<Value_>variable(variableName);
   }
 
-  @SuppressWarnings("unchecked")
+  /**
+   * As defined by {@link #variable(String)}, but only succeeds if the variable is of a given type.
+   *
+   * @return A variable declared by the entity.
+   */
   @Override
   default <Value_> ShadowVariableMetaModel<Solution_, Entity_, Value_> variable(
       String variableName, Class<Value_> variableClass) {
-    for (var variableMetaModel : variables()) {
-      if (variableMetaModel.name().equals(variableName)) {
-        if (!variableClass.isAssignableFrom(variableMetaModel.type())) {
-          throw new IllegalArgumentException(
-              "The variableName (%s) exists among variables (%s) but is not of type (%s)."
-                  .formatted(variableName, variables(), variableClass.getCanonicalName()));
-        }
-        return (ShadowVariableMetaModel<Solution_, Entity_, Value_>) variableMetaModel;
-      }
-    }
-    throw new IllegalArgumentException(
-        "The variableName (%s) does not exist in the variables (%s)."
-            .formatted(variableName, variables()));
+    return (ShadowVariableMetaModel<Solution_, Entity_, Value_>)
+        PlanningEntityMetaModel.super.variable(variableName, variableClass);
   }
 }

@@ -62,6 +62,9 @@ public final class DefaultAlnsAcceptance<Score_ extends Score<Score_>>
 
   @Override
   public boolean isAccepted(Score_ current, Score_ candidate, RandomGenerator random) {
+    if (candidate.structuralScore() < 0) {
+      return false;
+    }
     if (candidate.compareTo(current) >= 0) {
       return true;
     }

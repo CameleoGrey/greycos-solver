@@ -7,8 +7,10 @@ import greycos.solver.core.preview.api.move.builtin.ChangeMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.ListAssignMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.ListChangeMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.ListSwapMoveProvider;
+import greycos.solver.core.preview.api.move.builtin.ListTailSwapMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.ListUnassignMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.SwapMoveProvider;
+import greycos.solver.core.preview.api.move.builtin.TwoOptListMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.UnassignMoveProvider;
 import greycos.solver.core.preview.api.neighborhood.Neighborhood;
 import greycos.solver.core.preview.api.neighborhood.NeighborhoodBuilder;
@@ -31,9 +33,16 @@ public final class DefaultNeighborhoodProvider<Solution_>
       for (var variableMetaModel : entityMetaModel.genuineVariables()) {
         if (variableMetaModel
             instanceof PlanningListVariableMetaModel<Solution_, ?, ?> listVariableMetaModel) {
-          // TODO Implement 2-opt and 3-opt moves for list variables.
-          builder.add(new ListChangeMoveProvider<>(listVariableMetaModel));
+          // ListChangeMoveProvider's crossingNull=false:
+          // ListAssignMoveProvider/ListUnassignMoveProvider below already cover those moves,
+          // at a much higher rate than ListChangeMoveProvider's flag would.
+          builder.add(new ListChangeMoveProvider<>(listVariableMetaModel, false));
           builder.add(new ListSwapMoveProvider<>(listVariableMetaModel));
+          // TwoOptListMoveProvider's crossingEntity=false:
+          // ListTailSwapMoveProvider below already covers the cross-entity tail swap,
+          // at a much higher rate than TwoOptListMoveProvider's flag would.
+          builder.add(new TwoOptListMoveProvider<>(listVariableMetaModel, false));
+          builder.add(new ListTailSwapMoveProvider<>(listVariableMetaModel));
           if (listVariableMetaModel.allowsUnassignedValues()) {
             builder.add(new ListAssignMoveProvider<>(listVariableMetaModel));
             builder.add(new ListUnassignMoveProvider<>(listVariableMetaModel));
@@ -41,7 +50,10 @@ public final class DefaultNeighborhoodProvider<Solution_>
         } else if (variableMetaModel
             instanceof PlanningVariableMetaModel<Solution_, ?, ?> basicVariableMetaModel) {
           hasBasicVariable = true;
-          builder.add(new ChangeMoveProvider<>(basicVariableMetaModel));
+          // ChangeMoveProvider's crossingNull=false:
+          // AssignMoveProvider/UnassignMoveProvider below already cover those moves,
+          // at a much higher rate than ChangeMoveProvider's flag would.
+          builder.add(new ChangeMoveProvider<>(basicVariableMetaModel, false));
           if (basicVariableMetaModel.allowsUnassigned()) {
             builder.add(new AssignMoveProvider<>(basicVariableMetaModel));
             builder.add(new UnassignMoveProvider<>(basicVariableMetaModel));

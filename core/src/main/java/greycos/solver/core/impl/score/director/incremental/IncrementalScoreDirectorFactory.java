@@ -12,6 +12,8 @@ import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.score.director.AbstractScoreDirectorFactory;
 import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 
+import org.jspecify.annotations.NonNull;
+
 /**
  * Incremental implementation of {@link ScoreDirectorFactory}.
  *
@@ -28,7 +30,7 @@ public final class IncrementalScoreDirectorFactory<Solution_, Score_ extends Sco
       IncrementalScoreDirectorFactory<Solution_, Score_> buildScoreDirectorFactory(
           SolutionDescriptor<Solution_> solutionDescriptor,
           ScoreDirectorFactoryConfig config,
-          EnvironmentMode environmentMode) {
+          EnvironmentMode globalEnvironmentMode) {
     if (!IncrementalScoreCalculator.class.isAssignableFrom(
         config.getIncrementalScoreCalculatorClass())) {
       throw new IllegalArgumentException(
@@ -53,7 +55,7 @@ public final class IncrementalScoreDirectorFactory<Solution_, Score_ extends Sco
               "incrementalScoreCalculatorCustomProperties");
           return incrementalScoreCalculator;
         },
-        environmentMode);
+        globalEnvironmentMode);
   }
 
   private final Supplier<IncrementalScoreCalculator<Solution_, Score_>>
@@ -62,19 +64,20 @@ public final class IncrementalScoreDirectorFactory<Solution_, Score_ extends Sco
   public IncrementalScoreDirectorFactory(
       SolutionDescriptor<Solution_> solutionDescriptor,
       Supplier<IncrementalScoreCalculator<Solution_, Score_>> incrementalScoreCalculatorSupplier,
-      EnvironmentMode environmentMode) {
-    super(solutionDescriptor, environmentMode);
+      EnvironmentMode globalEnvironmentMode) {
+    super(solutionDescriptor, globalEnvironmentMode);
     this.incrementalScoreCalculatorSupplier = incrementalScoreCalculatorSupplier;
   }
 
   @Override
   public IncrementalScoreDirector.Builder<Solution_, Score_> createScoreDirectorBuilder() {
-    return new IncrementalScoreDirector.Builder<>(this)
-        .withIncrementalScoreCalculator(incrementalScoreCalculatorSupplier.get());
+    return createScoreDirectorBuilder(globalEnvironmentMode);
   }
 
   @Override
-  public IncrementalScoreDirector<Solution_, Score_> buildScoreDirector() {
-    return createScoreDirectorBuilder().build();
+  public IncrementalScoreDirector.Builder<Solution_, Score_> createScoreDirectorBuilder(
+      @NonNull EnvironmentMode environmentMode) {
+    return new IncrementalScoreDirector.Builder<>(this, environmentMode)
+        .withIncrementalScoreCalculator(incrementalScoreCalculatorSupplier.get());
   }
 }

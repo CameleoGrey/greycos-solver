@@ -38,6 +38,11 @@ import org.jspecify.annotations.Nullable;
  * finalize the API. Please direct your feedback to <a
  * href="https://github.com/CameleoGrey/greycos-solver">GreyCOS Solver GitHub</a>.
  *
+ * <p>Moves are created and executed often, which means their runtime performance is critical to the
+ * overall performance of the solver. Treat their methods as you would treat any other code on the
+ * hot path - avoid any work that does not need doing, especially expensive validation. Prefer doing
+ * that work during move selection, not during move execution.
+ *
  * @param <Solution_>
  * @see MoveTester How to test {@link Move}s.
  */

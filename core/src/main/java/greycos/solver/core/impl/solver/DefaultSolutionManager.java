@@ -1,12 +1,16 @@
 package greycos.solver.core.impl.solver;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.cotwin.variable.InconsistentSolutionException;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.analysis.ScoreAnalysis;
+import greycos.solver.core.api.score.analysis.VariableLoop;
 import greycos.solver.core.api.solver.RecommendedAssignment;
 import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import greycos.solver.core.api.solver.SolutionManager;
@@ -51,26 +55,27 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
   public Score_ update(Solution_ solution, SolutionUpdatePolicy solutionUpdatePolicy) {
     if (solutionUpdatePolicy == SolutionUpdatePolicy.NO_UPDATE) {
       throw new IllegalArgumentException(
-          "Can not call "
-              + this.getClass().getSimpleName()
-              + ".update() with this solutionUpdatePolicy ("
-              + solutionUpdatePolicy
-              + ").");
+          "Cannot call %s.update() with this solutionUpdatePolicy (%s), since it would do nothing."
+              .formatted(this.getClass().getSimpleName(), solutionUpdatePolicy));
     }
     return callScoreDirector(
+        "Solution update",
         solution,
         solutionUpdatePolicy,
-        s -> s.getSolutionDescriptor().getScore(s.getWorkingSolution()),
+        (s, inconsistentEntities) -> s.getSolutionDescriptor().getScore(s.getWorkingSolution()),
         ConstraintMatchPolicy.DISABLED,
+        false,
         false);
   }
 
   private <Result_> Result_ callScoreDirector(
+      String feature,
       Solution_ solution,
       SolutionUpdatePolicy solutionUpdatePolicy,
-      Function<InnerScoreDirector<Solution_, Score_>, Result_> function,
+      BiFunction<InnerScoreDirector<Solution_, Score_>, List<VariableLoop>, Result_> function,
       ConstraintMatchPolicy constraintMatchPolicy,
-      boolean cloneSolution) {
+      boolean cloneSolution,
+      boolean handlesStructurallyFlawedSolutions) {
     var isShadowVariableUpdateEnabled = solutionUpdatePolicy.isShadowVariableUpdateEnabled();
     var nonNullSolution = Objects.requireNonNull(solution);
     try (var scoreDirector =
@@ -79,6 +84,7 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
             .withLookUpEnabled(cloneSolution)
             .withConstraintMatchPolicy(constraintMatchPolicy)
             .withExpectShadowVariablesInCorrectState(!isShadowVariableUpdateEnabled)
+            .withForceAllowInconsistentSolutions(handlesStructurallyFlawedSolutions)
             .build()) {
       nonNullSolution =
           cloneSolution ? scoreDirector.cloneSolution(nonNullSolution) : nonNullSolution;
@@ -96,13 +102,45 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
           && !scoreDirector.getConstraintMatchPolicy().isEnabled()) {
         throw new IllegalStateException(
             """
-                        Requested constraint matching but score director doesn't support it.
-                        Maybe use Constraint Streams instead of Easy or Incremental score calculator?""");
+            Requested constraint matching but score director doesn't support it.
+            Maybe use Constraint Streams instead of Easy or Incremental score calculator?\
+            """);
       }
+
+      // if handlesStructurallyFlawedSolutions is true, then the score can never be structurally
+      // flawed
+      // and all variable updates will be successful
+      List<VariableLoop> inconsistentEntities = null;
       if (solutionUpdatePolicy.isScoreUpdateEnabled()) {
-        scoreDirector.calculateScore();
+        var score = scoreDirector.calculateScore();
+        if (score.isStructurallyFlawed()) {
+          inconsistentEntities = scoreDirector.computeVariableLoops();
+          throw new InconsistentSolutionException(feature, nonNullSolution, inconsistentEntities);
+        }
+        if (handlesStructurallyFlawedSolutions) {
+          inconsistentEntities = scoreDirector.computeVariableLoops();
+          if (!inconsistentEntities.isEmpty()
+              && !scoreDirector.getSolutionDescriptor().hasAnyShadowVariablesInconsistentMember()) {
+            scoreDirector
+                .getSolutionDescriptor()
+                .setScore(
+                    scoreDirector.getWorkingSolution(),
+                    scoreDirector.getScoreDefinition().getStructurallyFlawedScore(score.raw()));
+          }
+        }
+      } else if (!scoreDirector.isLastVariableUpdateSuccessful()) {
+        inconsistentEntities = scoreDirector.computeVariableLoops();
+        throw new InconsistentSolutionException(feature, nonNullSolution, inconsistentEntities);
       }
-      return function.apply(scoreDirector);
+
+      if (inconsistentEntities == null) {
+        inconsistentEntities =
+            (handlesStructurallyFlawedSolutions)
+                ? scoreDirector.computeVariableLoops()
+                : Collections.emptyList();
+      }
+
+      return function.apply(scoreDirector, inconsistentEntities);
     }
   }
 
@@ -117,10 +155,10 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
       if (!Objects.equals(currentScore, calculatedScore)) {
         throw new IllegalStateException(
             """
-                        Current score (%s) and freshly calculated score (%s) for solution (%s) do not match.
-                        Maybe run %s environment mode to check for score corruptions.
-                        Otherwise enable %s.%s to update the stale score.
-                        """
+            Current score (%s) and freshly calculated score (%s) for solution (%s) do not match.
+            Maybe run %s environment mode to check for score corruptions.
+            Otherwise enable %s.%s to update the stale score.
+            """
                 .formatted(
                     currentScore,
                     calculatedScore,
@@ -142,11 +180,13 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
     var currentScore = (Score_) scoreDirectorFactory.getSolutionDescriptor().getScore(solution);
     var analysis =
         callScoreDirector(
+            "Score analysis",
             solution,
             solutionUpdatePolicy,
-            scoreDirector -> scoreDirector.buildScoreAnalysis(fetchPolicy),
+            (scoreDirector, inconsistentEntities) -> scoreDirector.buildScoreAnalysis(fetchPolicy),
             ConstraintMatchPolicy.match(fetchPolicy),
-            false);
+            false,
+            true);
     assertFreshScore(solution, currentScore, analysis.score(), solutionUpdatePolicy);
     return analysis;
   }
@@ -172,10 +212,12 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
             solution,
             evaluatedEntityOrElement);
     return callScoreDirector(
+        "Recommended assignment",
         solution,
         SolutionUpdatePolicy.UPDATE_ALL,
-        assigner,
+        (scoreDirector, inconsistentEntities) -> assigner.apply(scoreDirector),
         ConstraintMatchPolicy.match(fetchPolicy),
-        true);
+        true,
+        false);
   }
 }

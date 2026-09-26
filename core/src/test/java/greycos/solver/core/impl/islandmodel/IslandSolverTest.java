@@ -34,6 +34,8 @@ class IslandSolverTest {
     BestSolutionRecaller<TestdataSolution> bestSolutionRecaller = mock(BestSolutionRecaller.class);
     var solver =
         new IslandSolver<>(
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
             bestSolutionRecaller,
             new BasicPlumbingTermination<>(false),
             List.of(customPhase, localSearchPhase));
@@ -55,7 +57,11 @@ class IslandSolverTest {
     BestSolutionRecaller<TestdataSolution> bestSolutionRecaller = mock(BestSolutionRecaller.class);
     var solver =
         new IslandSolver<>(
-            bestSolutionRecaller, new BasicPlumbingTermination<>(false), List.of(phase));
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            bestSolutionRecaller,
+            new BasicPlumbingTermination<>(false),
+            List.of(phase));
     var solverScope = new SolverScope<TestdataSolution>();
     @SuppressWarnings("unchecked")
     InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);

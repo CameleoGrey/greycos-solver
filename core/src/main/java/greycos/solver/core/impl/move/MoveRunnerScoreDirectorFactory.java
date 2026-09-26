@@ -19,12 +19,12 @@ final class MoveRunnerScoreDirectorFactory<Solution_, Score_ extends Score<Score
   }
 
   public MoveRunnerScoreDirectorFactory(SolutionDescriptor<Solution_> solutionDescriptor) {
-    this(solutionDescriptor, null);
+    this(solutionDescriptor, EnvironmentMode.PHASE_ASSERT);
   }
 
   @Override
   public AbstractScoreDirector.AbstractScoreDirectorBuilder<Solution_, Score_, ?, ?>
-      createScoreDirectorBuilder() {
-    return new MoveRunnerScoreDirector.Builder<>(this);
+      createScoreDirectorBuilder(EnvironmentMode environmentMode) {
+    return new MoveRunnerScoreDirector.Builder<>(this, environmentMode);
   }
 }

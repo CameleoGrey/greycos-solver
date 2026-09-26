@@ -3,8 +3,10 @@ package greycos.solver.core.impl.bavet.common.index;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.IntStream;
 
 import greycos.solver.core.api.score.stream.Joiners;
 import greycos.solver.core.impl.bavet.bi.joiner.DefaultBiJoiner;
@@ -14,6 +16,8 @@ import greycos.solver.core.impl.neighborhood.stream.joiner.DefaultBiNeighborhood
 import greycos.solver.core.preview.api.neighborhood.stream.joiner.NeighborhoodsJoiners;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ContainingAnyOfIndexerTest extends AbstractIndexerTest {
 
@@ -234,6 +238,37 @@ class ContainingAnyOfIndexerTest extends AbstractIndexerTest {
     putTuple(indexer, List.of("X", "Y"), "2");
 
     assertUniqueRandomDrainMatchesForEach(indexer, CompositeKey.ofMany(List.of("X", "Y"), "1"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"size", "iterator", "forEach", "uniqueRandomIterator"})
+  void singleKeyUniqueRandomIteratorSurvivesMultiKeyReads(String readOperation) {
+    Indexer<Integer> indexer = new IndexerFactory<>(randomAccessSingleJoiner).buildIndexer(true);
+    var key = List.of("X", "Y");
+    var entries = IntStream.range(0, 100).mapToObj(i -> indexer.put(key, i)).toList();
+    for (var i = 0; i < entries.size(); i += 5) {
+      indexer.remove(key, entries.get(i));
+    }
+    var expected = IntStream.range(0, 100).filter(i -> i % 5 != 0).boxed().toList();
+    var singleKeyIterator = indexer.uniqueRandomIterator(List.of("X"), new Random(0));
+    var singleKeyResults = new ArrayList<Integer>();
+    singleKeyResults.add(singleKeyIterator.next());
+
+    var multiKeyResults = new ArrayList<Integer>();
+    switch (readOperation) {
+      case "size" -> assertThat(indexer.size(key)).isEqualTo(expected.size());
+      case "iterator" -> indexer.iterator(key).forEachRemaining(multiKeyResults::add);
+      case "forEach" -> indexer.forEach(key, multiKeyResults::add);
+      case "uniqueRandomIterator" ->
+          indexer.uniqueRandomIterator(key, new Random(1)).forEachRemaining(multiKeyResults::add);
+      default -> throw new IllegalArgumentException(readOperation);
+    }
+    if (!readOperation.equals("size")) {
+      assertThat(multiKeyResults).containsExactlyInAnyOrderElementsOf(expected);
+    }
+
+    singleKeyIterator.forEachRemaining(singleKeyResults::add);
+    assertThat(singleKeyResults).containsExactlyInAnyOrderElementsOf(expected);
   }
 
   @Test

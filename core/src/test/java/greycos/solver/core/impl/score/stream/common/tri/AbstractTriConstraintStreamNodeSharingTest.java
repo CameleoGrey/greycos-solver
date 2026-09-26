@@ -3,6 +3,7 @@ package greycos.solver.core.impl.score.stream.common.tri;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -595,6 +596,17 @@ public abstract class AbstractTriConstraintStreamNodeSharingTest
 
     assertThat(baseStream.concat(baseStream.filter(filter1)))
         .isSameAs(baseStream.concat(baseStream.filter(filter1)));
+  }
+
+  @Override
+  @TestTemplate
+  public void differentPaddingFunctionConcat() {
+    var biStream = constraintFactory.forEach(TestdataEntity.class).join(TestdataEntity.class);
+    BiFunction<TestdataEntity, TestdataEntity, TestdataEntity> paddingA = (a, b) -> a;
+    BiFunction<TestdataEntity, TestdataEntity, TestdataEntity> paddingB = (a, b) -> null;
+
+    assertThat(baseStream.concat(biStream, paddingA))
+        .isNotSameAs(baseStream.concat(biStream, paddingB));
   }
 
   @Override

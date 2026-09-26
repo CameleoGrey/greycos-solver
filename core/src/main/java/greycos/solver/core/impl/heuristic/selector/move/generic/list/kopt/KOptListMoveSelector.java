@@ -3,21 +3,17 @@ package greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 import static greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelector.filterPinnedListPlanningVariableValuesWithIndex;
 
 import java.util.Iterator;
-import java.util.Objects;
 import java.util.function.Supplier;
 
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.AbstractGenericListMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
-import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.util.MathUtils;
 import greycos.solver.core.preview.api.move.Move;
 
-final class KOptListMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
-
-  private final ListVariableDescriptor<Solution_> listVariableDescriptor;
+final class KOptListMoveSelector<Solution_> extends AbstractGenericListMoveSelector<Solution_> {
 
   private final IterableValueSelector<Solution_> originSelector;
   private final IterableValueSelector<Solution_> valueSelector;
@@ -26,8 +22,6 @@ final class KOptListMoveSelector<Solution_> extends GenericMoveSelector<Solution
 
   private final int[] pickedKDistribution;
 
-  private ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
-
   public KOptListMoveSelector(
       ListVariableDescriptor<Solution_> listVariableDescriptor,
       IterableValueSelector<Solution_> originSelector,
@@ -35,11 +29,9 @@ final class KOptListMoveSelector<Solution_> extends GenericMoveSelector<Solution
       int minK,
       int maxK,
       int[] pickedKDistribution) {
-    this.listVariableDescriptor = listVariableDescriptor;
-    this.originSelector =
-        createEffectiveValueSelector(originSelector, this::getListVariableStateSupply);
-    this.valueSelector =
-        createEffectiveValueSelector(valueSelector, this::getListVariableStateSupply);
+    super(listVariableDescriptor);
+    this.originSelector = createEffectiveValueSelector(originSelector, this::getListVariableState);
+    this.valueSelector = createEffectiveValueSelector(valueSelector, this::getListVariableState);
     this.minK = minK;
     this.maxK = maxK;
     this.pickedKDistribution = pickedKDistribution;
@@ -50,30 +42,11 @@ final class KOptListMoveSelector<Solution_> extends GenericMoveSelector<Solution
 
   private IterableValueSelector<Solution_> createEffectiveValueSelector(
       IterableValueSelector<Solution_> iterableValueSelector,
-      Supplier<ListVariableStateSupply<Solution_, Object, Object>> listVariableStateSupplier) {
+      Supplier<ListVariableState<Solution_, Object, Object>> listVariableStateSupplier) {
     var filteredValueSelector =
         filterPinnedListPlanningVariableValuesWithIndex(
             iterableValueSelector, listVariableStateSupplier);
     return FilteringValueSelector.ofAssigned(filteredValueSelector, listVariableStateSupplier);
-  }
-
-  private ListVariableStateSupply<Solution_, Object, Object> getListVariableStateSupply() {
-    return Objects.requireNonNull(
-        listVariableStateSupply,
-        "Impossible state: The listVariableStateSupply is not initialized yet.");
-  }
-
-  @Override
-  public void solvingStarted(SolverScope<Solution_> solverScope) {
-    super.solvingStarted(solverScope);
-    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
-    listVariableStateSupply = supplyManager.demand(listVariableDescriptor.getStateDemand());
-  }
-
-  @Override
-  public void solvingEnded(SolverScope<Solution_> solverScope) {
-    super.solvingEnded(solverScope);
-    listVariableStateSupply = null;
   }
 
   @Override
@@ -103,7 +76,7 @@ final class KOptListMoveSelector<Solution_> extends GenericMoveSelector<Solution
     return new KOptListMoveIterator<>(
         workingRandom,
         listVariableDescriptor,
-        listVariableStateSupply,
+        listVariableState,
         originSelector,
         valueSelector,
         minK,

@@ -18,8 +18,6 @@ import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescript
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
-import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
-import greycos.solver.core.preview.api.cotwin.metamodel.UnassignedElement;
 
 /** Resolves stable ALNS handles and enforces entity ranges and pinning across mixed models. */
 final class AlnsModel<Solution_> {
@@ -54,7 +52,7 @@ final class AlnsModel<Solution_> {
                   descriptor.getVariableName(),
                   list.getElementType(),
                   list.allowsUnassignedValues());
-          scoreDirector.getListVariableStateSupply(list);
+          scoreDirector.getListVariableState(list);
         } else {
           var basic = (BasicVariableDescriptor<Solution_>) descriptor;
           handle =
@@ -109,10 +107,11 @@ final class AlnsModel<Solution_> {
   AlnsAssignment<Solution_> current(AlnsTarget<Solution_> target) {
     var descriptor = descriptor(target);
     if (descriptor instanceof ListVariableDescriptor<Solution_> list) {
-      var position =
-          scoreDirector.getListVariableStateSupply(list).getElementPosition(target.value());
-      return position instanceof PositionInList assigned
-          ? new AlnsAssignment<>(target, assigned.entity(), target.value(), assigned.index())
+      var state = scoreDirector.getListVariableState(list);
+      var entity = state.getInverseSingleton(target.value());
+      return entity != null
+          ? new AlnsAssignment<>(
+              target, entity, target.value(), state.getIndexOrFail(target.value()))
           : new AlnsAssignment<>(target, null, target.value(), -1);
     }
     return new AlnsAssignment<>(target, target.entity(), descriptor.getValue(target.entity()), -1);
@@ -126,8 +125,8 @@ final class AlnsModel<Solution_> {
       var descriptor = entry.getValue();
       if (descriptor instanceof ListVariableDescriptor<Solution_> list) {
         if (unassigned) {
-          var stateSupply = scoreDirector.getListVariableStateSupply(list);
-          if (stateSupply.getUnassignedCount() == 0) continue;
+          var state = scoreDirector.getListVariableState(list);
+          if (state.getUnassignedCount() == 0) continue;
           if (descriptor.getValueRangeDescriptor().canExtractValueRangeFromSolution()) {
             boolean hasMovableDestination = false;
             for (var entity : entities.get(descriptor)) {
@@ -140,7 +139,7 @@ final class AlnsModel<Solution_> {
             if (!hasMovableDestination) continue;
             for (var value : orderedListValues.get(descriptor)) {
               checkpoint.run();
-              if (stateSupply.getElementPosition(value) instanceof UnassignedElement) {
+              if (!state.isAssigned(value)) {
                 result.add(new AlnsTarget<>(handle, null, value));
               }
             }
@@ -153,9 +152,7 @@ final class AlnsModel<Solution_> {
             while (iterator.hasNext()) {
               checkpoint.run();
               Object value = iterator.next();
-              if (value != null
-                  && seen.add(value)
-                  && stateSupply.getElementPosition(value) instanceof UnassignedElement) {
+              if (value != null && seen.add(value) && !state.isAssigned(value)) {
                 result.add(new AlnsTarget<>(handle, null, value));
               }
             }

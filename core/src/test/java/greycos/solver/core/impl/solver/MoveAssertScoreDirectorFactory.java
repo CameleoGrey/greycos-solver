@@ -3,6 +3,7 @@ package greycos.solver.core.impl.solver;
 import java.util.function.Consumer;
 
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.score.director.AbstractScoreDirector;
@@ -30,8 +31,8 @@ public final class MoveAssertScoreDirectorFactory<Solution_, Score_ extends Scor
 
   @Override
   public AbstractScoreDirector.AbstractScoreDirectorBuilder<Solution_, Score_, ?, ?>
-      createScoreDirectorBuilder() {
-    return new MoveAssertScoreDirector.Builder<>(this)
+      createScoreDirectorBuilder(EnvironmentMode environmentMode) {
+    return new MoveAssertScoreDirector.Builder<>(this, environmentMode)
         .withMoveSolutionConsumer(moveSolutionConsumer)
         .withMoveRepository(moveRepository);
   }

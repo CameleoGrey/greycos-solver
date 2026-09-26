@@ -2,6 +2,7 @@ package greycos.solver.core.impl.cotwin.variable.declarative;
 
 import java.util.List;
 
+import greycos.solver.core.api.score.analysis.VariableLoop;
 import greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
 
 public sealed interface VariableReferenceGraph
@@ -17,8 +18,10 @@ public sealed interface VariableReferenceGraph
    * <p>Called after all other shadow variables are updated. Declarative {@link
    * greycos.solver.core.api.cotwin.variable.ShadowVariable} are guaranteed to be the last variables
    * to update.
+   *
+   * @return true if the update successful; false otherwise
    */
-  void updateChanged();
+  boolean updateChanged();
 
   /**
    * Called before the variable corresponding to the {@link VariableMetaModel} on the given entity
@@ -77,4 +80,6 @@ public sealed interface VariableReferenceGraph
       int toIndex) {
     // Most graphs do not have edges that depend on a list variable's contents.
   }
+
+  List<VariableLoop> getVariableLoops();
 }

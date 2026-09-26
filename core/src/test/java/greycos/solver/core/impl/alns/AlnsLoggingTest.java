@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -34,6 +33,7 @@ import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.solver.DefaultSolver;
+import greycos.solver.core.impl.solver.monitoring.SolverTags;
 import greycos.solver.core.testcotwin.TestdataEntity;
 import greycos.solver.core.testcotwin.TestdataSolution;
 import greycos.solver.core.testcotwin.TestdataValue;
@@ -285,7 +285,7 @@ class AlnsLoggingTest {
     var solver =
         (DefaultSolver<TestdataSolution>)
             SolverFactory.<TestdataSolution>create(config).buildSolver();
-    solver.setMonitorTagMap(Map.of("test.id", meters.id));
+    solver.setMonitorTags(SolverTags.withProblemId(meters.id));
     return solver;
   }
 
@@ -412,7 +412,7 @@ class AlnsLoggingTest {
     }
 
     long total(String suffix) {
-      return registry.find("greycos.solver.alns" + suffix).tag("test.id", id).counters().stream()
+      return registry.find("greycos.solver.alns" + suffix).tag("problem.id", id).counters().stream()
           .mapToLong(counter -> (long) counter.count())
           .sum();
     }
@@ -421,7 +421,7 @@ class AlnsLoggingTest {
     public void close() {
       Metrics.removeRegistry(registry);
       for (var meter : List.copyOf(Metrics.globalRegistry.getMeters())) {
-        if (id.equals(meter.getId().getTag("test.id"))) {
+        if (id.equals(meter.getId().getTag("problem.id"))) {
           Metrics.globalRegistry.remove(meter);
         }
       }

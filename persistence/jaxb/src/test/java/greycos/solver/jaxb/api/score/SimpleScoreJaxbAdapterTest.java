@@ -17,6 +17,12 @@ class SimpleScoreJaxbAdapterTest extends AbstractScoreJaxbAdapterTest {
     assertSerializeAndDeserialize(score, new TestSimpleScoreWrapper(score));
   }
 
+  @Test
+  void serializeAndDeserializeWithNegativeStructuralScore() {
+    var score = new SimpleScore(-1L, 1234L);
+    assertSerializeAndDeserialize(score, new TestSimpleScoreWrapper(score));
+  }
+
   @XmlRootElement
   public static class TestSimpleScoreWrapper extends TestScoreWrapper<SimpleScore> {
 

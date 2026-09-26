@@ -21,6 +21,18 @@ import org.junit.jupiter.api.Test;
 class SharedGlobalStateTest {
 
   @Test
+  void structurallyFlawedCandidatesAreNeverPublished() {
+    var state = new SharedGlobalState<String>();
+    var flawed = InnerScore.fullyAssigned(new SimpleScore(-1, Long.MAX_VALUE));
+    assertThat(state.tryUpdate("flawed", flawed)).isFalse();
+    assertThat(state.getBestSnapshot()).isNull();
+    assertThat(state.tryUpdate("sound", InnerScore.fullyAssigned(SimpleScore.of(-100)))).isTrue();
+    assertThat(state.tryUpdate("flawed", flawed)).isFalse();
+    assertThat(state.getBestSolution()).isEqualTo("sound");
+    assertThat(state.getBestSnapshot().getVersion()).isEqualTo(1);
+  }
+
+  @Test
   void concurrentUpdatesAreThreadSafe() throws InterruptedException {
     SharedGlobalState<String> state = new SharedGlobalState<>();
     int threadCount = 10;

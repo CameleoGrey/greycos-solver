@@ -1,102 +1,112 @@
 package greycos.solver.core.impl.move;
 
 import java.util.ArrayList;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.heuristic.move.AbstractMove;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.ruin.SelectorBasedListRuinRecreateMove;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.RevertableScoreDirector;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.score.director.ValueRangeManager;
 import greycos.solver.core.impl.score.director.VariableDescriptorCache;
+import greycos.solver.core.preview.api.move.Move;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+@NullMarked
 public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extends Score<Score_>>
     implements RevertableScoreDirector<Solution_> {
 
-  private final InnerScoreDirector<Solution_, Score_> backingScoreDirector;
-  private List<ChangeAction<Solution_>> variableChanges;
-  private boolean variableChangesExposed;
+  private final @Nullable InnerScoreDirector<Solution_, Score_> backingScoreDirector;
+  private @Nullable List<ChangeAction<Solution_>> variableChangeList;
+  private boolean variableChangesEscaped = false;
 
-  /*
-   * The fromIndex of afterListVariableChanged must match the fromIndex of its beforeListVariableChanged call.
-   * Otherwise this will happen in the undo move:
-   *
-   * // beforeListVariableChanged(0, 3);
-   * [1, 2, 3, 4]
-   * change
-   * [1, 2, 3]
-   * // afterListVariableChanged(2, 3)
-   * // Start Undo
-   * // Undo afterListVariableChanged(2, 3)
-   * [1, 2, 3] -> [1, 2]
-   * // Undo beforeListVariableChanged(0, 3);
-   * [1, 2, 3, 4, 1, 2]
-   *
-   * This map exists to ensure that this is the case.
+  /**
+   * Tracks before-actions awaiting their matching after-call so the two can be merged into one undo
+   * step, and so that every such call can be validated against the bracket it claims to close (see
+   * {@link #afterListVariableChanged}). Shared with {@link #getNonDelegating()}'s copy, same as
+   * {@link #variableChangeList}, since a before/after pair can be split across the two (see {@link
+   * SelectorBasedListRuinRecreateMove}).
    */
-  private final Map<Object, Integer> cache;
+  private final PendingListChangeTracker pendingListChangeTracker;
 
   public VariableChangeRecordingScoreDirector(ScoreDirector<Solution_> backingScoreDirector) {
-    this(backingScoreDirector, true);
-  }
-
-  public VariableChangeRecordingScoreDirector(
-      ScoreDirector<Solution_> backingScoreDirector, boolean requiresIndexCache) {
     this.backingScoreDirector = (InnerScoreDirector<Solution_, Score_>) backingScoreDirector;
-    this.cache = requiresIndexCache ? new IdentityHashMap<>() : null;
-    this.variableChanges = new ArrayList<>();
+    this.pendingListChangeTracker = new PendingListChangeTracker();
   }
 
   private VariableChangeRecordingScoreDirector(
-      InnerScoreDirector<Solution_, Score_> backingScoreDirector,
-      List<ChangeAction<Solution_>> variableChanges,
-      Map<Object, Integer> cache) {
+      @Nullable InnerScoreDirector<Solution_, Score_> backingScoreDirector,
+      List<ChangeAction<Solution_>> variableChangeList,
+      PendingListChangeTracker pendingListChangeTracker) {
     this.backingScoreDirector = backingScoreDirector;
-    this.variableChanges = variableChanges;
-    this.variableChangesExposed = true;
-    this.cache = cache;
+    this.variableChangeList = variableChangeList;
+    this.variableChangesEscaped = true;
+    this.pendingListChangeTracker = pendingListChangeTracker;
   }
 
   @Override
-  public greycos.solver.core.preview.api.move.Move<Solution_> createUndoMove() {
-    // The undo move retains the current list; undoChanges() must not clear it.
-    variableChangesExposed = true;
-    return new RecordedUndoMove<>(variableChanges);
+  public Move<Solution_> createUndoMove() {
+    // The list would normally be copied here to prevent any outside modification.
+    // However, copying this list on the hot path would be a major performance issue.
+    // Instead, the list is passed as a reference here, and instead of it being cleared by
+    // undoChanges(),
+    // the reference is replaced; that way, the move does not actually share the list with anyone,
+    // and copying of its contents can be avoided.
+    variableChangesEscaped = true;
+    return new RecordedUndoMove<>(getVariableChangeList());
   }
 
   @Override
   public void undoChanges() {
-    var changeCount = variableChanges.size();
-    if (changeCount > 0) {
-      for (var i = changeCount - 1; i >= 0; i--) {
-        variableChanges.get(i).undo(backingScoreDirector);
+    var changeList = variableChangeList;
+    if (changeList != null && !changeList.isEmpty()) {
+      for (var i = changeList.size() - 1; i >= 0; i--) {
+        changeList.get(i).undo(backingScoreDirector);
       }
       Objects.requireNonNull(backingScoreDirector).updateShadowVariables();
     }
-    if (variableChangesExposed) {
-      variableChanges = new ArrayList<>();
-      variableChangesExposed = false;
-    } else {
-      variableChanges.clear();
+    resetVariableChangeList();
+    pendingListChangeTracker.clear();
+  }
+
+  private List<ChangeAction<Solution_>> getVariableChangeList() {
+    if (variableChangeList == null) {
+      // We use an ArrayList, as LinkedList is slow to iterate and brings node allocation overhead.
+      // We use a small initial capacity, as many moves will not perform that many operations.
+      // The minimum is 2 - a single change, and shadow var update;
+      // we use 4 to give some room for marginally more expensive operations as well,
+      // without allocating the full default capacity.
+      variableChangeList = new ArrayList<>(4);
     }
-    if (cache != null) {
-      cache.clear();
+    return variableChangeList;
+  }
+
+  private void resetVariableChangeList() {
+    if (variableChangesEscaped) {
+      // the list was handed to a move by createUndoMove(),
+      // so clearing it would empty that move instead.
+      // Drop the reference and let it be reallocated.
+      variableChangeList = null;
+      variableChangesEscaped = false;
+    } else if (variableChangeList != null) {
+      variableChangeList.clear();
     }
   }
 
   @Override
   public void beforeVariableChanged(
       VariableDescriptor<Solution_> variableDescriptor, Object entity) {
-    variableChanges.add(
-        new VariableChangeAction<>(
-            entity, variableDescriptor.getValue(entity), variableDescriptor));
+    getVariableChangeList()
+        .add(
+            new VariableChangeAction<>(
+                entity, variableDescriptor.getValue(entity), variableDescriptor));
     if (backingScoreDirector != null) {
       backingScoreDirector.beforeVariableChanged(variableDescriptor, entity);
     }
@@ -116,15 +126,14 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
       Object entity,
       int fromIndex,
       int toIndex) {
-    // List is fromIndex, fromIndex, since the undo action for afterListVariableChange will clear
-    // the affected list
-    if (cache != null) {
-      cache.put(entity, fromIndex);
-    }
     var list = variableDescriptor.getValue(entity);
-    variableChanges.add(
-        new ListVariableBeforeChangeAction<>(
-            entity, (List<Object>) list, fromIndex, toIndex, variableDescriptor));
+    var action =
+        new ListVariableBeforeChangeAction<>(entity, list, fromIndex, toIndex, variableDescriptor);
+    // pendingListChangeTracker will fail fast if a second beforeListVariableChanged call on the
+    // same entity
+    // occurs before a corresponding afterListVariableChanged call.
+    pendingListChangeTracker.put(entity, action);
+    getVariableChangeList().add(action);
     if (backingScoreDirector != null) {
       backingScoreDirector.beforeListVariableChanged(
           variableDescriptor, entity, fromIndex, toIndex);
@@ -137,18 +146,74 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
       Object entity,
       int fromIndex,
       int toIndex) {
-    if (cache != null) {
-      Integer requiredFromIndex = cache.remove(entity);
-      if (requiredFromIndex != fromIndex) {
-        throw new IllegalArgumentException(
-            """
-                                The fromIndex of afterListVariableChanged (%d) must match the fromIndex of its beforeListVariableChanged counterpart (%d).
-                                Maybe check implementation of your %s."""
-                .formatted(fromIndex, requiredFromIndex, AbstractMove.class.getSimpleName()));
-      }
+    // The tracker is shared with getNonDelegating()'s copy, so a pair split across the two still
+    // matches.
+    var pendingBeforeAction = pendingListChangeTracker.remove(entity);
+    if (pendingBeforeAction == null) {
+      throw new IllegalArgumentException(
+          """
+          The afterListVariableChanged (%d, %d) of entity (%s) has no matching beforeListVariableChanged.
+          Maybe check implementation of your %s.\
+          """
+              .formatted(fromIndex, toIndex, entity, Move.class.getSimpleName()));
     }
-    variableChanges.add(
-        new ListVariableAfterChangeAction<>(entity, fromIndex, toIndex, variableDescriptor));
+    var requiredFromIndex = pendingBeforeAction.fromIndex();
+    if (requiredFromIndex != fromIndex) {
+      /*
+       * Otherwise this will happen in the undo move:
+       *
+       * // beforeListVariableChanged(0, 3);
+       * [1, 2, 3, 4]
+       * change
+       * [1, 2, 3]
+       * // afterListVariableChanged(2, 3)
+       * // Undo restores oldValue at index 2 instead of index 0.
+       */
+      throw new IllegalArgumentException(
+          """
+          The fromIndex of afterListVariableChanged (%d) must match its beforeListVariableChanged counterpart (%d).
+          Maybe check implementation of your %s.\
+          """
+              .formatted(fromIndex, requiredFromIndex, Move.class.getSimpleName()));
+    } else if (toIndex < fromIndex) {
+      throw new IllegalArgumentException(
+          """
+          The afterListVariableChanged (%d, %d) of entity (%s) has toIndex (%d) smaller than fromIndex (%d).
+          Maybe check implementation of your %s.\
+          """
+              .formatted(
+                  fromIndex, toIndex, entity, toIndex, fromIndex, Move.class.getSimpleName()));
+    }
+    // The reported range must account for every element the mutation added or removed;
+    // undo clears exactly [fromIndex, toIndex) before restoring,
+    // so a range that is too short leaves elements behind
+    // and one that is too long deletes elements that were never captured.
+    var actualLengthDelta =
+        variableDescriptor.getValue(entity).size() - pendingBeforeAction.originalListSize();
+    var reportedLengthDelta = toIndex - pendingBeforeAction.originalToIndex();
+    if (actualLengthDelta != reportedLengthDelta) {
+      throw new IllegalArgumentException(
+          """
+          The afterListVariableChanged (%d, %d) of entity (%s) reports a length change of (%d), \
+          but its list variable actually changed length by (%d).
+          Maybe check implementation of your %s; \
+          its beforeListVariableChanged/afterListVariableChanged range must cover everything it changed.\
+          """
+              .formatted(
+                  fromIndex,
+                  toIndex,
+                  entity,
+                  reportedLengthDelta,
+                  actualLengthDelta,
+                  Move.class.getSimpleName()));
+    }
+    // pendingBeforeAction mutated in place by updateToIndex();
+    // nothing needs to happen with it afterward here,
+    // because it is the SAME instance already sitting in variableChangeList
+    // (added in beforeListVariableChanged(), which put it in both variableChangeList and this
+    // tracker).
+    // undoChanges() will later read that mutation directly off the list.
+    pendingBeforeAction.updateToIndex(toIndex);
     if (backingScoreDirector != null) {
       backingScoreDirector.afterListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
     }
@@ -157,7 +222,8 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
   @Override
   public void beforeListVariableElementAssigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
-    variableChanges.add(new ListVariableBeforeAssignmentAction<>(element, variableDescriptor));
+    getVariableChangeList()
+        .add(new ListVariableBeforeAssignmentAction<>(element, variableDescriptor));
     if (backingScoreDirector != null) {
       backingScoreDirector.beforeListVariableElementAssigned(variableDescriptor, element);
     }
@@ -166,7 +232,8 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
   @Override
   public void afterListVariableElementAssigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
-    variableChanges.add(new ListVariableAfterAssignmentAction<>(element, variableDescriptor));
+    getVariableChangeList()
+        .add(new ListVariableAfterAssignmentAction<>(element, variableDescriptor));
     if (backingScoreDirector != null) {
       backingScoreDirector.afterListVariableElementAssigned(variableDescriptor, element);
     }
@@ -175,7 +242,8 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
   @Override
   public void beforeListVariableElementUnassigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
-    variableChanges.add(new ListVariableBeforeUnassignmentAction<>(element, variableDescriptor));
+    getVariableChangeList()
+        .add(new ListVariableBeforeUnassignmentAction<>(element, variableDescriptor));
     if (backingScoreDirector != null) {
       backingScoreDirector.beforeListVariableElementUnassigned(variableDescriptor, element);
     }
@@ -184,7 +252,8 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
   @Override
   public void afterListVariableElementUnassigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
-    variableChanges.add(new ListVariableAfterUnassignmentAction<>(element, variableDescriptor));
+    getVariableChangeList()
+        .add(new ListVariableAfterUnassignmentAction<>(element, variableDescriptor));
     if (backingScoreDirector != null) {
       backingScoreDirector.afterListVariableElementUnassigned(variableDescriptor, element);
     }
@@ -199,11 +268,11 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
 
   @Override
   public ValueRangeManager<Solution_> getValueRangeManager() {
-    return getBacking().getValueRangeManager();
+    return Objects.requireNonNull(getBacking()).getValueRangeManager();
   }
 
   /** Returns the score director to which events are delegated. */
-  public InnerScoreDirector<Solution_, Score_> getBacking() {
+  public @Nullable InnerScoreDirector<Solution_, Score_> getBacking() {
     return backingScoreDirector;
   }
 
@@ -214,9 +283,10 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
    * delegated score director events.
    */
   public VariableChangeRecordingScoreDirector<Solution_, Score_> getNonDelegating() {
-    // Another recorder may retain this list, or create an undo move from it.
-    variableChangesExposed = true;
-    return new VariableChangeRecordingScoreDirector<>(null, variableChanges, cache);
+    // Either recorder may retain an undo; neither may clear the shared action list on reset.
+    variableChangesEscaped = true;
+    return new VariableChangeRecordingScoreDirector<>(
+        null, getVariableChangeList(), pendingListChangeTracker);
   }
 
   @Override
@@ -231,14 +301,14 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
 
   @Override
   public void updateShadowVariables() {
-    variableChanges.add(UpdateShadowVariablesAction.instance());
+    getVariableChangeList().add(UpdateShadowVariablesAction.instance());
     if (backingScoreDirector != null) {
       backingScoreDirector.updateShadowVariables();
     }
   }
 
   @Override
-  public <E> E lookUpWorkingObject(E externalObject) {
+  public <E> @Nullable E lookUpWorkingObject(@Nullable E externalObject) {
     return Objects.requireNonNull(backingScoreDirector).lookUpWorkingObject(externalObject);
   }
 }

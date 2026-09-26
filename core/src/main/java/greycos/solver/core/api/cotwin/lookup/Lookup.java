@@ -1,5 +1,7 @@
 package greycos.solver.core.api.cotwin.lookup;
 
+import java.util.Objects;
+
 import greycos.solver.core.api.solver.change.ProblemChange;
 
 import org.jspecify.annotations.Nullable;
@@ -25,4 +27,16 @@ public interface Lookup {
    * @param <T> the object type
    */
   <T> @Nullable T lookUpWorkingObject(@Nullable T problemFactOrPlanningEntity);
+
+  /**
+   * Rebases a non-null entity or fact and requires a non-null working object.
+   *
+   * @param problemFactOrPlanningEntity the non-null fact or entity to rebase
+   * @param <T> the object type
+   * @return the non-null working object
+   */
+  default <T> T lookUpNonNullWorkingObject(T problemFactOrPlanningEntity) {
+    return Objects.requireNonNull(
+        lookUpWorkingObject(Objects.requireNonNull(problemFactOrPlanningEntity)));
+  }
 }

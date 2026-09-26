@@ -216,7 +216,11 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           var agentPhases = buildPhasesForAgent(agentConfigPolicy, agentRecaller, agentTermination);
           var islandSolver =
               new IslandSolver<>(
-                  agentRecaller, toUniversalTermination(agentTermination), agentPhases);
+                  agentConfigPolicy.getEnvironmentMode(),
+                  solverScope.getSolver().getScoreDirectorFactory(),
+                  agentRecaller,
+                  toUniversalTermination(agentTermination),
+                  agentPhases);
           agentScope.setSolver(islandSolver);
           var initialSolution = deepCloneSolution(solverScope.getBestSolution());
           var agent =
@@ -428,7 +432,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   private HeuristicConfigPolicy<Solution_> createAgentConfigPolicy(RandomSource agentRandom) {
-    var basePolicy = configPolicy.createChildThreadConfigPolicy(ChildThreadType.PART_THREAD);
+    var basePolicy = configPolicy.copyChildThreadConfigPolicy();
     return basePolicy
         .cloneBuilder()
         .withRandom(agentRandom)
@@ -445,22 +449,9 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     var agentScope = parentScope.createChildThreadSolverScope(ChildThreadType.PART_THREAD);
     agentScope.setMonitoringTags(
         parentScope.getMonitoringTags().and("island.id", Integer.toString(agentId)));
-    var parentScoreDirector = parentScope.getScoreDirector();
-    var scoreDirectorFactory = parentScoreDirector.getScoreDirectorFactory();
-    var newScoreDirector =
-        scoreDirectorFactory
-            .createScoreDirectorBuilder()
-            .withLookUpEnabled(true)
-            .withConstraintMatchPolicy(parentScoreDirector.getConstraintMatchPolicy())
-            .build();
-    var previousScoreDirector = agentScope.getScoreDirector();
-    try {
-      previousScoreDirector.close();
-    } catch (Exception e) {
-      LOGGER.warn("Failed to close island score director replacement.", e);
-    }
-    agentScope.setScoreDirector(newScoreDirector);
-    agentScope.setProblemChangeDirector(new DefaultProblemChangeDirector<>(newScoreDirector));
+    var scoreDirector = agentScope.getScoreDirector();
+    scoreDirector.resetCalculationCount();
+    agentScope.setProblemChangeDirector(new DefaultProblemChangeDirector<>(scoreDirector));
     return agentScope;
   }
 
@@ -501,7 +492,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         + '}';
   }
 
-  public static class Builder<Solution_> extends AbstractPhaseBuilder<Solution_> {
+  public static class Builder<Solution_>
+      extends AbstractPhaseBuilder<Solution_, DefaultIslandModelPhase<Solution_>> {
 
     private IslandModelPhaseConfig islandModelConfig;
     private int islandCount = IslandModelConfig.DEFAULT_ISLAND_COUNT;
@@ -515,8 +507,11 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     private SolverTermination<Solution_> solverTermination;
 
     public Builder(
-        int phaseIndex, String logIndentation, PhaseTermination<Solution_> phaseTermination) {
-      super(phaseIndex, logIndentation, phaseTermination);
+        int phaseIndex,
+        EnvironmentMode environmentMode,
+        String logIndentation,
+        PhaseTermination<Solution_> phaseTermination) {
+      super(phaseIndex, environmentMode, logIndentation, phaseTermination);
     }
 
     public Builder<Solution_> withIslandModelConfig(IslandModelPhaseConfig islandModelConfig) {
@@ -569,12 +564,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     @Deprecated
     public Builder<Solution_> withCompareGlobalFrequency(int compareGlobalFrequency) {
       this.receiveGlobalUpdateFrequency = compareGlobalFrequency;
-      return this;
-    }
-
-    @Override
-    public Builder<Solution_> enableAssertions(EnvironmentMode environmentMode) {
-      super.enableAssertions(environmentMode);
       return this;
     }
 

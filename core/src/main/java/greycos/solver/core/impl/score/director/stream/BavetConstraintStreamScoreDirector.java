@@ -8,6 +8,7 @@ import greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
@@ -72,7 +73,7 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
     var solutionDescriptor = getSolutionDescriptor();
     var entityList = new ArrayList<>();
     solutionDescriptor.visitAllEntities(solution, entityList::add);
-    shadowVariableSupport.setConsistencyTracker(
+    variableSupport.setConsistencyTracker(
         ConsistencyTracker.frozen(getSolutionDescriptor(), entityList.toArray()));
   }
 
@@ -81,7 +82,7 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
     session =
         scoreDirectorFactory.newSession(
             workingSolution,
-            shadowVariableSupport.getConsistencyTracker(),
+            variableSupport.getConsistencyTracker(),
             constraintMatchPolicy,
             derived);
     super.setWorkingSolutionWithoutUpdatingShadows(workingSolution, session::insert);
@@ -95,8 +96,8 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
   }
 
   @Override
-  public InnerScore<Score_> calculateScore() {
-    shadowVariableSupport.assertShadowVariablesAreUpToDate();
+  public InnerScore<Score_> innerCalculateScore() {
+    variableSupport.assertShadowVariablesAreUpToDate();
     var score = session.calculateScore();
     setCalculatedScore(score);
     return new InnerScore<>(score, -getWorkingInitScore());
@@ -237,7 +238,13 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
 
     public Builder(
         BavetConstraintStreamScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory) {
-      super(scoreDirectorFactory);
+      this(scoreDirectorFactory, scoreDirectorFactory.getGlobalEnvironmentMode());
+    }
+
+    public Builder(
+        BavetConstraintStreamScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory,
+        EnvironmentMode environmentMode) {
+      super(scoreDirectorFactory, environmentMode);
     }
 
     @Override
@@ -246,9 +253,7 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
     }
 
     @Override
-    public AbstractScoreDirector<
-            Solution_, Score_, BavetConstraintStreamScoreDirectorFactory<Solution_, Score_>>
-        buildDerived() {
+    public BavetConstraintStreamScoreDirector<Solution_, Score_> buildDerived() {
       return new BavetConstraintStreamScoreDirector<>(this, true);
     }
   }

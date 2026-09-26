@@ -57,11 +57,10 @@ class NearbySubListSelectorTest {
             false);
 
     InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    var listVariableStateSupply =
-        mock(greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply.class);
-    when(listVariableStateSupply.getInverseSingleton(any())).thenReturn(entity);
-    when(listVariableStateSupply.getIndexOrElse(any(), eq(-1))).thenReturn(-1);
-    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableStateSupply);
+    var listVariableState = mock(greycos.solver.core.impl.cotwin.variable.ListVariableState.class);
+    when(listVariableState.getInverseSingleton(any())).thenReturn(entity);
+    when(listVariableState.getIndexOrElse(any(), eq(-1))).thenReturn(-1);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableState);
 
     SolverScope<TestdataSolution> solverScope =
         SelectorTestUtils.solvingStarted(nearbySubListSelector, scoreDirector, new TestRandom(0));
@@ -122,9 +121,8 @@ class NearbySubListSelectorTest {
     TestRandom testRandom = new TestRandom(new double[0]);
 
     InnerScoreDirector<TestdataSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    var listVariableStateSupply =
-        mock(greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply.class);
-    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableStateSupply);
+    var listVariableState = mock(greycos.solver.core.impl.cotwin.variable.ListVariableState.class);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableState);
 
     SolverScope<TestdataSolution> solverScope =
         SelectorTestUtils.solvingStarted(nearbySubListSelector, scoreDirector, testRandom);

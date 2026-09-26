@@ -11,7 +11,9 @@ import greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.analysis.EntityVariablePair;
 import greycos.solver.core.api.score.analysis.ScoreAnalysis;
+import greycos.solver.core.api.score.analysis.VariableLoop;
 import greycos.solver.core.api.score.stream.ConstraintJustification;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.api.score.stream.DefaultConstraintJustification;
@@ -69,6 +71,27 @@ class GreyCOSJacksonModuleTest extends AbstractJacksonRoundTripTest {
     assertThat(output.getHardSoftScore()).isEqualTo(HardSoftScore.of(-1, -20));
     assertThat(output.getPolymorphicScore())
         .isEqualTo(BendableScore.of(new long[] {-1, -20}, new long[] {-300, -4000, -50000}));
+  }
+
+  @Test
+  void structurallyFlawedScoreAnalysisRoundTrip() throws Exception {
+    var objectMapper =
+        JsonMapper.builder()
+            .addModule(GreyCOSJacksonModule.createModule())
+            .addModule(new CustomJacksonModule())
+            .build();
+    var loop =
+        new VariableLoop(
+            java.util.Set.of(
+                new EntityVariablePair("first", "startTime"),
+                new EntityVariablePair("second", "endTime")));
+    var original =
+        new DefaultScoreAnalysis<>(new HardSoftScore(-1, -2, -3), Map.of(), true, List.of(loop));
+    var serialized = objectMapper.writeValueAsString(original);
+    ScoreAnalysis<HardSoftScore> restored = objectMapper.readValue(serialized, ScoreAnalysis.class);
+    assertThat(restored).isEqualTo(original);
+    assertThat(restored.isSolutionStructurallyFlawed()).isTrue();
+    assertThat(restored.structuralFlawAnalysis().getVariableLoops()).containsExactly(loop);
   }
 
   @Test

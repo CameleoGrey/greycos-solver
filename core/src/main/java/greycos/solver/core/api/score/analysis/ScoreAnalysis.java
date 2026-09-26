@@ -80,6 +80,27 @@ public interface ScoreAnalysis<Score_ extends Score<Score_>> {
   boolean isSolutionInitialized();
 
   /**
+   * Indicates whether the solution was structurally flawed at the time of analysis.
+   *
+   * @see Score#structuralScore()
+   * @return isSolutionStructurallyFlawed true if the solution was structurally flawed at the time
+   *     of analysis.
+   */
+  default boolean isSolutionStructurallyFlawed() {
+    return score().structuralScore() < 0;
+  }
+
+  /**
+   * Returns an analysis of the structural flaws of a structurally flawed solution.
+   *
+   * @see Score#structuralScore()
+   * @return null if the solution was not structurally flawed at the time of analysis.
+   */
+  default @Nullable StructuralFlawAnalysis structuralFlawAnalysis() {
+    return null;
+  }
+
+  /**
    * Performs a lookup on {@link #constraintMap()}. Equivalent to {@code
    * constraintMap().get(constraintRef)}.
    *

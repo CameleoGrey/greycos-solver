@@ -8,6 +8,7 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.score.constraint.ConstraintMatch;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
@@ -45,8 +46,8 @@ public final class EasyScoreDirector<Solution_, Score_ extends Score<Score_>>
   }
 
   @Override
-  public InnerScore<Score_> calculateScore() {
-    shadowVariableSupport.assertShadowVariablesAreUpToDate();
+  public InnerScore<Score_> innerCalculateScore() {
+    variableSupport.assertShadowVariablesAreUpToDate();
     var score = easyScoreCalculator.calculateScore(workingSolution);
     setCalculatedScore(score);
     return new InnerScore<>(score, -getWorkingInitScore());
@@ -87,7 +88,13 @@ public final class EasyScoreDirector<Solution_, Score_ extends Score<Score_>>
     private @Nullable EasyScoreCalculator<Solution_, Score_> easyScoreCalculator;
 
     public Builder(EasyScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory) {
-      super(scoreDirectorFactory);
+      this(scoreDirectorFactory, scoreDirectorFactory.getGlobalEnvironmentMode());
+    }
+
+    public Builder(
+        EasyScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory,
+        EnvironmentMode environmentMode) {
+      super(scoreDirectorFactory, environmentMode);
     }
 
     @Override

@@ -25,7 +25,7 @@ public class DefaultCustomPhaseFactory<Solution_>
       HeuristicConfigPolicy<Solution_> solverConfigPolicy,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
-    var phaseConfigPolicy = solverConfigPolicy.createPhaseConfigPolicy();
+    var environmentMode = resolveEnvironmentMode(solverConfigPolicy);
     var customPhaseCommandClassList = phaseConfig.getCustomPhaseCommandClassList();
     var customPhaseCommandList = phaseConfig.getCustomPhaseCommandList();
     if (ConfigUtils.isEmptyCollection(customPhaseCommandClassList)
@@ -41,8 +41,9 @@ public class DefaultCustomPhaseFactory<Solution_>
         if (customPhaseCommandClass == null) {
           throw new IllegalArgumentException(
               """
-                            The customPhaseCommandClass (%s) cannot be null in the customPhase (%s).
-                            Maybe there was a typo in the class name provided in the solver config XML?"""
+              The customPhaseCommandClass (%s) cannot be null in the customPhase (%s).
+              Maybe there was a typo in the class name provided in the solver config XML?\
+              """
                   .formatted(customPhaseCommandClass, phaseConfig));
         }
         customPhaseCommandList_.add(createCustomPhaseCommand(customPhaseCommandClass));
@@ -51,13 +52,15 @@ public class DefaultCustomPhaseFactory<Solution_>
     if (customPhaseCommandList != null) {
       customPhaseCommandList_.addAll((Collection) customPhaseCommandList);
     }
+    var phaseConfigPolicy = solverConfigPolicy.copyPhaseConfigPolicy(environmentMode);
     return new DefaultCustomPhase.DefaultCustomPhaseBuilder<>(
             phaseIndex,
             lastInitializingPhase,
+            environmentMode,
             solverConfigPolicy.getLogIndentation(),
             buildPhaseTermination(phaseConfigPolicy, solverTermination),
             customPhaseCommandList_)
-        .enableAssertions(phaseConfigPolicy.getEnvironmentMode())
+        .enableAssertions()
         .build();
   }
 

@@ -18,10 +18,10 @@ public final class AssignedListValueSelector<Solution_>
 
   @Override
   protected boolean valueFilter(Object value) {
-    if (listVariableStateSupply.getUnassignedCount() == 0) {
+    if (listVariableState.getUnassignedCount() == 0) {
       return true; // Avoid hash lookup.
     }
-    return listVariableStateSupply.isAssigned(value);
+    return listVariableState.isAssigned(value);
   }
 
   @Override

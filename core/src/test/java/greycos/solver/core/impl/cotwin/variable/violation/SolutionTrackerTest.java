@@ -1,50 +1,48 @@
 package greycos.solver.core.impl.cotwin.variable.violation;
 
+import static greycos.solver.core.testutil.PlannerTestUtils.mockScoreDirector;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import greycos.solver.core.impl.cotwin.variable.supply.Demand;
-import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
+import greycos.solver.core.impl.cotwin.variable.VariableSupport;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
-public class SolutionTrackerTest {
+class SolutionTrackerTest {
 
   @Test
-  public void testFormatList() {
-    assertThat(SolutionTracker.formatList(List.of())).isEqualTo("");
+  void testFormatList() {
+    assertThat(SolutionTracker.formatList(List.of())).isEmpty();
     assertThat(SolutionTracker.formatList(List.of("item 1", "item 2", "item 3")))
         .isEqualTo(
             """
-                                  - item 1
-                                  - item 2
-                                  - item 3
-                                """);
+              - item 1
+              - item 2
+              - item 3
+            """);
     assertThat(SolutionTracker.formatList(List.of("item 1", "item 2", "item 3", "4", "5")))
         .isEqualTo(
             """
-                                  - item 1
-                                  - item 2
-                                  - item 3
-                                  - 4
-                                  - 5
-                                """);
+              - item 1
+              - item 2
+              - item 3
+              - 4
+              - 5
+            """);
     assertThat(
             SolutionTracker.formatList(
                 List.of("item 1", "item 2", "item 3", "4", "5", "6", "7", "8")))
         .isEqualTo(
             """
-                                  - item 1
-                                  - item 2
-                                  - item 3
-                                  - 4
-                                  - 5
-                                  ...(3 more)
-                                """);
+              - item 1
+              - item 2
+              - item 3
+              - 4
+              - 5
+              ...(3 more)
+            """);
   }
 
   @Test
@@ -94,8 +92,9 @@ public class SolutionTrackerTest {
   @Test
   void testBuildScoreCorruptionMessage() {
     var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
-    var supplyManager = Mockito.mock(SupplyManager.class);
-    var tracker = new SolutionTracker<>(solutionDescriptor, supplyManager);
+    var scoreDirector = mockScoreDirector(solutionDescriptor);
+    var variableSupport = VariableSupport.create(scoreDirector);
+    var tracker = new SolutionTracker<>(solutionDescriptor, variableSupport);
 
     var workingSolution = TestdataSolution.generateSolution(3, 3);
     tracker.setBeforeMoveSolution(workingSolution);
@@ -117,36 +116,39 @@ public class SolutionTrackerTest {
     assertThat(tracker.buildScoreCorruptionMessage())
         .contains(
             "Variables that are different between before and undo:",
-            "Actual value (null) of variable value on TestdataEntity entity (Generated Entity 0) differs from expected (Generated Value 0)",
+            "Actual value (null) of variable value on TestdataEntity entity (Generated Entity 0)"
+                + " differs from expected (Generated Value 0)",
             "Variables that are different between from scratch and before",
-            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated Entity 1) differs from expected (null)",
-            "Actual value (Generated Value 0) of variable value on TestdataEntity entity (Generated Entity 0) differs from expected (null)",
+            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated"
+                + " Entity 1) differs from expected (null)",
+            "Actual value (Generated Value 0) of variable value on TestdataEntity entity (Generated"
+                + " Entity 0) differs from expected (null)",
             "Variables that are different between from scratch and undo",
-            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated Entity 1) differs from expected (null)",
+            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated"
+                + " Entity 1) differs from expected (null)",
             "Missing shadow variable update events for actual move",
-            "Entity (Generated Entity 1) is missing a beforeVariableChanged call for variable (value).",
-            "Entity (Generated Entity 1) is missing a afterVariableChanged call for variable (value).",
-            "Entity (Generated Entity 0) is missing a beforeVariableChanged call for variable (value).",
-            "Entity (Generated Entity 0) is missing a afterVariableChanged call for variable (value).",
+            "Entity (Generated Entity 1) is missing a beforeVariableChanged call for variable"
+                + " (value).",
+            "Entity (Generated Entity 1) is missing a afterVariableChanged call for variable"
+                + " (value).",
+            "Entity (Generated Entity 0) is missing a beforeVariableChanged call for variable"
+                + " (value).",
+            "Entity (Generated Entity 0) is missing a afterVariableChanged call for variable"
+                + " (value).",
             "Missing shadow variable update events for undo move",
-            "Entity (Generated Entity 1) is missing a beforeVariableChanged call for variable (value).",
-            "Entity (Generated Entity 1) is missing a afterVariableChanged call for variable (value).");
+            "Entity (Generated Entity 1) is missing a beforeVariableChanged call for variable"
+                + " (value).",
+            "Entity (Generated Entity 1) is missing a afterVariableChanged call for variable"
+                + " (value).");
   }
 
   @Test
   void testBuildScoreCorruptionMessageGoodShadowVariables() {
     var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
-    var supplyManager = Mockito.mock(SupplyManager.class);
-    var variableTrackers = new ArrayList<BasicVariableTracker<?>>();
-    Mockito.when(supplyManager.demand(Mockito.any()))
-        .thenAnswer(
-            (invocation) -> {
-              var demand = invocation.getArgument(0, Demand.class);
-              var supply = demand.createExternalizedSupply(supplyManager);
-              variableTrackers.add((BasicVariableTracker<?>) supply);
-              return supply;
-            });
-    var tracker = new SolutionTracker<>(solutionDescriptor, supplyManager);
+    var scoreDirector = mockScoreDirector(solutionDescriptor);
+    var variableSupport = VariableSupport.create(scoreDirector);
+    var tracker = new SolutionTracker<>(solutionDescriptor, variableSupport);
+    var variableTrackers = tracker.getBasicVariableTrackers();
 
     var workingSolution = TestdataSolution.generateSolution(3, 3);
     tracker.setBeforeMoveSolution(workingSolution);
@@ -193,38 +195,40 @@ public class SolutionTrackerTest {
     assertThat(tracker.buildScoreCorruptionMessage())
         .contains(
             "Variables that are different between before and undo:",
-            "Actual value (null) of variable value on TestdataEntity entity (Generated Entity 0) differs from expected (Generated Value 0)",
+            "Actual value (null) of variable value on TestdataEntity entity (Generated Entity 0)"
+                + " differs from expected (Generated Value 0)",
             "Variables that are different between from scratch and before",
-            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated Entity 1) differs from expected (null)",
-            "Actual value (Generated Value 0) of variable value on TestdataEntity entity (Generated Entity 0) differs from expected (null)",
+            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated"
+                + " Entity 1) differs from expected (null)",
+            "Actual value (Generated Value 0) of variable value on TestdataEntity entity (Generated"
+                + " Entity 0) differs from expected (null)",
             "Variables that are different between from scratch and undo",
-            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated Entity 1) differs from expected (null)")
+            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated"
+                + " Entity 1) differs from expected (null)")
         .doesNotContain(
             "Missing shadow variable update events for actual move",
-            "Entity (Generated Entity 1) is missing a beforeVariableChanged call for variable (value).",
-            "Entity (Generated Entity 1) is missing a afterVariableChanged call for variable (value).",
-            "Entity (Generated Entity 0) is missing a beforeVariableChanged call for variable (value).",
-            "Entity (Generated Entity 0) is missing a afterVariableChanged call for variable (value).",
+            "Entity (Generated Entity 1) is missing a beforeVariableChanged call for variable"
+                + " (value).",
+            "Entity (Generated Entity 1) is missing a afterVariableChanged call for variable"
+                + " (value).",
+            "Entity (Generated Entity 0) is missing a beforeVariableChanged call for variable"
+                + " (value).",
+            "Entity (Generated Entity 0) is missing a afterVariableChanged call for variable"
+                + " (value).",
             "Missing shadow variable update events for undo move",
-            "Entity (Generated Entity 1) is missing a beforeVariableChanged call for variable (value).",
-            "Entity (Generated Entity 1) is missing a afterVariableChanged call for variable (value).");
+            "Entity (Generated Entity 1) is missing a beforeVariableChanged call for variable"
+                + " (value).",
+            "Entity (Generated Entity 1) is missing a afterVariableChanged call for variable"
+                + " (value).");
   }
 
   @Test
   void testBuildScoreCorruptionMessageGoodForwardShadowVariables() {
     var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
-    var supplyManager = Mockito.mock(SupplyManager.class);
-    var variableTrackers = new ArrayList<BasicVariableTracker<?>>();
-    Mockito.when(supplyManager.demand(Mockito.any()))
-        .thenAnswer(
-            (invocation) -> {
-              var demand = invocation.getArgument(0, Demand.class);
-              var supply = demand.createExternalizedSupply(supplyManager);
-              variableTrackers.add((BasicVariableTracker<?>) supply);
-              return supply;
-            });
-    SolutionTracker<TestdataSolution> tracker =
-        new SolutionTracker<>(solutionDescriptor, supplyManager);
+    var scoreDirector = mockScoreDirector(solutionDescriptor);
+    var variableSupport = VariableSupport.create(scoreDirector);
+    var tracker = new SolutionTracker<>(solutionDescriptor, variableSupport);
+    var variableTrackers = tracker.getBasicVariableTrackers();
 
     var workingSolution = TestdataSolution.generateSolution(3, 3);
     tracker.setBeforeMoveSolution(workingSolution);
@@ -263,35 +267,36 @@ public class SolutionTrackerTest {
     assertThat(tracker.buildScoreCorruptionMessage())
         .contains(
             "Variables that are different between before and undo:",
-            "Actual value (null) of variable value on TestdataEntity entity (Generated Entity 0) differs from expected (Generated Value 0)",
+            "Actual value (null) of variable value on TestdataEntity entity (Generated Entity 0)"
+                + " differs from expected (Generated Value 0)",
             "Variables that are different between from scratch and before",
-            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated Entity 1) differs from expected (null)",
-            "Actual value (Generated Value 0) of variable value on TestdataEntity entity (Generated Entity 0) differs from expected (null)",
+            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated"
+                + " Entity 1) differs from expected (null)",
+            "Actual value (Generated Value 0) of variable value on TestdataEntity entity (Generated"
+                + " Entity 0) differs from expected (null)",
             "Variables that are different between from scratch and undo",
-            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated Entity 1) differs from expected (null)",
+            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated"
+                + " Entity 1) differs from expected (null)",
             "Missing shadow variable update events for undo move",
-            "Entity (Generated Entity 1) is missing a beforeVariableChanged call for variable (value).",
-            "Entity (Generated Entity 1) is missing a afterVariableChanged call for variable (value).")
+            "Entity (Generated Entity 1) is missing a beforeVariableChanged call for variable"
+                + " (value).",
+            "Entity (Generated Entity 1) is missing a afterVariableChanged call for variable"
+                + " (value).")
         .doesNotContain(
             "Missing shadow variable update events for actual move",
-            "Entity (Generated Entity 0) is missing a beforeVariableChanged call for variable (value).",
-            "Entity (Generated Entity 0) is missing a afterVariableChanged call for variable (value).");
+            "Entity (Generated Entity 0) is missing a beforeVariableChanged call for variable"
+                + " (value).",
+            "Entity (Generated Entity 0) is missing a afterVariableChanged call for variable"
+                + " (value).");
   }
 
   @Test
   void testBuildScoreCorruptionMessageGoodUndoShadowVariables() {
     var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
-    var supplyManager = Mockito.mock(SupplyManager.class);
-    var variableTrackers = new ArrayList<BasicVariableTracker<?>>();
-    Mockito.when(supplyManager.demand(Mockito.any()))
-        .thenAnswer(
-            (invocation) -> {
-              Demand<?> demand = invocation.getArgument(0, Demand.class);
-              var supply = demand.createExternalizedSupply(supplyManager);
-              variableTrackers.add((BasicVariableTracker<?>) supply);
-              return supply;
-            });
-    var tracker = new SolutionTracker<>(solutionDescriptor, supplyManager);
+    var scoreDirector = mockScoreDirector(solutionDescriptor);
+    var variableSupport = VariableSupport.create(scoreDirector);
+    var tracker = new SolutionTracker<>(solutionDescriptor, variableSupport);
+    var variableTrackers = tracker.getBasicVariableTrackers();
 
     var workingSolution = TestdataSolution.generateSolution(3, 3);
     tracker.setBeforeMoveSolution(workingSolution);
@@ -321,12 +326,16 @@ public class SolutionTrackerTest {
     assertThat(tracker.buildScoreCorruptionMessage())
         .contains(
             "Variables that are different between before and undo:",
-            "Actual value (null) of variable value on TestdataEntity entity (Generated Entity 0) differs from expected (Generated Value 0)",
+            "Actual value (null) of variable value on TestdataEntity entity (Generated Entity 0)"
+                + " differs from expected (Generated Value 0)",
             "Variables that are different between from scratch and before",
-            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated Entity 1) differs from expected (null)",
-            "Actual value (Generated Value 0) of variable value on TestdataEntity entity (Generated Entity 0) differs from expected (null)",
+            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated"
+                + " Entity 1) differs from expected (null)",
+            "Actual value (Generated Value 0) of variable value on TestdataEntity entity (Generated"
+                + " Entity 0) differs from expected (null)",
             "Variables that are different between from scratch and undo",
-            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated Entity 1) differs from expected (null)")
+            "Actual value (Generated Value 1) of variable value on TestdataEntity entity (Generated"
+                + " Entity 1) differs from expected (null)")
         .doesNotContain("Missing shadow variable update events for undo move");
   }
 }

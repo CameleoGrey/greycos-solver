@@ -11,12 +11,21 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 class BendableBigDecimalScoreJacksonRoundTripTest extends AbstractScoreJacksonRoundTripTest {
 
-  @SuppressWarnings("RedundantExplicitVariableType")
   @Test
   void serializeAndDeserialize() {
     assertSerializeAndDeserialize(null, new TestBendableBigDecimalScoreWrapper(null));
-    BendableBigDecimalScore score =
+    var score =
         BendableBigDecimalScore.of(
+            new BigDecimal[] {new BigDecimal("1000.0001"), new BigDecimal("200.0020")},
+            new BigDecimal[] {new BigDecimal("34.4300")});
+    assertSerializeAndDeserialize(score, new TestBendableBigDecimalScoreWrapper(score));
+  }
+
+  @Test
+  void serializeAndDeserializeWithNegativeStructuralScore() {
+    var score =
+        new BendableBigDecimalScore(
+            -1L,
             new BigDecimal[] {new BigDecimal("1000.0001"), new BigDecimal("200.0020")},
             new BigDecimal[] {new BigDecimal("34.4300")});
     assertSerializeAndDeserialize(score, new TestBendableBigDecimalScoreWrapper(score));

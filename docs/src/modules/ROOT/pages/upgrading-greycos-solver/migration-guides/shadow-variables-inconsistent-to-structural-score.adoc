@@ -1,0 +1,49 @@
+[#migrateShadowVariablesInconsistent]
+= Migrating `@ShadowVariablesInconsistent` to structural scores
+:doctype: book
+:icons: font
+
+GreyCOS retains `@ShadowVariablesInconsistent` for compatibility.
+To use automatic rejection of shadow dependency loops, remove every such field from the cotwin model
+and remove the constraints that penalize those fields.
+Leaving a marker on any entity keeps the legacy behavior for the model.
+
+For example, remove this field and its accessor:
+
+[source,java]
+----
+@ShadowVariablesInconsistent
+private boolean inconsistent;
+
+public boolean isInconsistent() {
+    return inconsistent;
+}
+----
+
+Also remove constraints whose only purpose was to penalize that marker:
+
+[source,java]
+----
+Constraint inconsistentVisits(ConstraintFactory factory) {
+    return factory.forEachUnfiltered(Visit.class)
+            .filter(Visit::isInconsistent)
+            .penalize(HardSoftScore.ONE_HARD)
+            .asConstraint("Inconsistent visits");
+}
+----
+
+After all markers are removed, a shadow dependency loop gives the solution a negative
+xref:constraints-and-score/overview.adoc#structuralScore[structural score].
+The solver rejects such candidate solutions before accepting them or publishing a best solution.
+
+When solving starts with a dependency loop, GreyCOS attempts to unassign the involved planning
+entities and then rebuild their assignments. If pinning or another restriction prevents recovery,
+solving fails with a diagnostic.
+`SolutionManager.update(...)`, `updateShadowVariables(...)` and recommendation methods
+report inconsistent input through `InconsistentSolutionException`.
+`SolutionManager.analyze(...)` returns a `ScoreAnalysis` whose `structuralFlawAnalysis()`
+identifies the involved entities. Its constraint analyses omit matches sourced from inconsistent entities.
+
+Test both a sound solution and one with a dependency loop after migrating.
+If the application intentionally accepts inconsistent solutions with null shadow values,
+retain the marker and its constraints.

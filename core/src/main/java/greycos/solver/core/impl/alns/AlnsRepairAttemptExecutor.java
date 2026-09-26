@@ -530,8 +530,12 @@ final class AlnsRepairAttemptExecutor<Solution_, Score_ extends Score<Score_>>
             throw new IllegalStateException("Repair worker missed a baseline replay.");
           }
           if (!task.replay.isEmpty()) {
-            director.executeMove(
-                AlnsPrimitiveMove.composite(task.replay).rebase(director.getMoveDirector()));
+            // Destruction may leave inconsistent shadows. Repair attempts must be able to
+            // evaluate and roll back from this baseline before a consistent candidate is found.
+            director
+                .getMoveDirector()
+                .executeAllowingStructurallyFlawedSolutions(
+                    AlnsPrimitiveMove.composite(task.replay).rebase(director.getMoveDirector()));
           }
           baselineScore = director.calculateScore();
           appliedVersion = task.version;
@@ -560,7 +564,7 @@ final class AlnsRepairAttemptExecutor<Solution_, Score_ extends Score<Score_>>
         if (repair.repair(context, List.copyOf(targets))) {
           context.checkTermination();
           var evaluation = context.score();
-          if (evaluation.isComplete()) {
+          if (evaluation.isComplete() && !evaluation.isStructurallyFlawed()) {
             var score = InnerScore.fullyAssigned(evaluation.score());
             var journal = context.drainReplayJournal();
             if (environmentMode.isFullyAsserted()) {

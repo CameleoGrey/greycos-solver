@@ -65,7 +65,8 @@ class ListSwapMoveSelectorTest {
             mockIterableValueSelector(listVariableDescriptor, v3, v1, v2),
             false);
 
-    solvingStarted(moveSelector, scoreDirector);
+    var solverScope = solvingStarted(moveSelector, scoreDirector);
+    phaseStarted(moveSelector, solverScope);
 
     // Value order: [3, 1, 2]
     // Entity order: [A, B, C]
@@ -232,7 +233,8 @@ class ListSwapMoveSelectorTest {
             mockIterableValueSelector(listVariableDescriptor, v4, v3, v2, v1),
             false);
 
-    solvingStarted(moveSelector, scoreDirector);
+    var solverScope = solvingStarted(moveSelector, scoreDirector);
+    phaseStarted(moveSelector, solverScope);
 
     // Tests each move from the product of the two value selectors.
     assertAllCodesOfMoveSelectorWithoutSize(
@@ -317,7 +319,8 @@ class ListSwapMoveSelectorTest {
                 listVariableDescriptor, v1, v2, v3, v1, v2, v3, v1, v2, v3, v1),
             true);
 
-    solvingStarted(moveSelector, scoreDirector);
+    var solverScope = solvingStarted(moveSelector, scoreDirector);
+    phaseStarted(moveSelector, solverScope);
 
     assertCodesOfNeverEndingMoveSelector(
         moveSelector,
@@ -572,7 +575,8 @@ class ListSwapMoveSelectorTest {
                 listVariableDescriptor, v1, v2, v3, v4, v1, v2, v3, v4, v1, v2, v3, v1, v4),
             true);
 
-    solvingStarted(moveSelector, scoreDirector);
+    var solverScope = solvingStarted(moveSelector, scoreDirector);
+    phaseStarted(moveSelector, solverScope);
 
     assertCodesOfNeverEndingMoveSelector(
         moveSelector,

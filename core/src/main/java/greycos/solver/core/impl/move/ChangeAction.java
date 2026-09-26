@@ -5,7 +5,6 @@ import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirec
 
 public sealed interface ChangeAction<Solution_>
     permits ListVariableAfterAssignmentAction,
-        ListVariableAfterChangeAction,
         ListVariableAfterUnassignmentAction,
         ListVariableBeforeAssignmentAction,
         ListVariableBeforeChangeAction,

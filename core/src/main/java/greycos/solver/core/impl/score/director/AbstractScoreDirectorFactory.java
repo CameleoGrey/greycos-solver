@@ -1,15 +1,18 @@
 package greycos.solver.core.impl.score.director;
 
+import java.util.Objects;
+
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.trend.InitializingScoreTrend;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +23,7 @@ import org.slf4j.LoggerFactory;
  * @param <Score_> the score type to go with the solution
  * @see ScoreDirectorFactory
  */
+@NullMarked
 public abstract class AbstractScoreDirectorFactory<
         Solution_,
         Score_ extends Score<Score_>,
@@ -29,25 +33,25 @@ public abstract class AbstractScoreDirectorFactory<
   protected final transient Logger logger = LoggerFactory.getLogger(getClass());
 
   protected final SolutionDescriptor<Solution_> solutionDescriptor;
-  protected final EnvironmentMode environmentMode;
-  protected final ListVariableDescriptor<Solution_> listVariableDescriptor;
+  protected final EnvironmentMode globalEnvironmentMode;
+  @Nullable protected final ListVariableDescriptor<Solution_> listVariableDescriptor;
+  @Nullable protected InitializingScoreTrend initializingScoreTrend;
+  @Nullable protected ScoreDirectorFactory<Solution_, Score_> assertionScoreDirectorFactory = null;
 
-  protected InitializingScoreTrend initializingScoreTrend;
-
-  protected ScoreDirectorFactory<Solution_, Score_> assertionScoreDirectorFactory = null;
-
-  protected boolean assertClonedSolution = false;
-  protected boolean trackingWorkingSolution = false;
-
-  public AbstractScoreDirectorFactory(
-      SolutionDescriptor<Solution_> solutionDescriptor, EnvironmentMode environmentMode) {
-    this.solutionDescriptor = solutionDescriptor;
-    this.environmentMode = environmentMode;
+  protected AbstractScoreDirectorFactory(
+      SolutionDescriptor<Solution_> solutionDescriptor, EnvironmentMode globalEnvironmentMode) {
+    this.solutionDescriptor = Objects.requireNonNull(solutionDescriptor);
     this.listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
+    this.globalEnvironmentMode =
+        Objects.requireNonNullElse(globalEnvironmentMode, EnvironmentMode.PHASE_ASSERT);
   }
 
   public AbstractScoreDirectorFactory(SolutionDescriptor<Solution_> solutionDescriptor) {
     this(solutionDescriptor, null);
+  }
+
+  public EnvironmentMode getGlobalEnvironmentMode() {
+    return globalEnvironmentMode;
   }
 
   @Override
@@ -61,62 +65,27 @@ public abstract class AbstractScoreDirectorFactory<
   }
 
   @Override
-  public InitializingScoreTrend getInitializingScoreTrend() {
+  public @Nullable InitializingScoreTrend getInitializingScoreTrend() {
     return initializingScoreTrend;
+  }
+
+  @Override
+  public AbstractScoreDirector.AbstractScoreDirectorBuilder<Solution_, Score_, ?, ?>
+      createScoreDirectorBuilder() {
+    return createScoreDirectorBuilder(globalEnvironmentMode);
   }
 
   public void setInitializingScoreTrend(InitializingScoreTrend initializingScoreTrend) {
     this.initializingScoreTrend = initializingScoreTrend;
   }
 
-  public ScoreDirectorFactory<Solution_, Score_> getAssertionScoreDirectorFactory() {
+  public @Nullable ScoreDirectorFactory<Solution_, Score_> getAssertionScoreDirectorFactory() {
     return assertionScoreDirectorFactory;
   }
 
   public void setAssertionScoreDirectorFactory(
       ScoreDirectorFactory<Solution_, Score_> assertionScoreDirectorFactory) {
     this.assertionScoreDirectorFactory = assertionScoreDirectorFactory;
-  }
-
-  public boolean isAssertClonedSolution() {
-    return assertClonedSolution;
-  }
-
-  public void setAssertClonedSolution(boolean assertClonedSolution) {
-    this.assertClonedSolution = assertClonedSolution;
-  }
-
-  /**
-   * When true, a snapshot of the solution is created before, after and after the undo of a move. In
-   * {@link EnvironmentMode#TRACKED_FULL_ASSERT}, the snapshots are compared when corruption is
-   * detected, allowing us to report exactly what variables are different.
-   */
-  public boolean isTrackingWorkingSolution() {
-    return trackingWorkingSolution;
-  }
-
-  public void setTrackingWorkingSolution(boolean trackingWorkingSolution) {
-    this.trackingWorkingSolution = trackingWorkingSolution;
-  }
-
-  @Override
-  public void assertScoreFromScratch(Solution_ solution) {
-    // Get the score before uncorruptedScoreDirector.calculateScore() modifies it
-    var score = getSolutionDescriptor().<Score_>getScore(solution);
-    // Most score directors don't need derived status; CS will override this.
-    try (var uncorruptedScoreDirector =
-        createScoreDirectorBuilder()
-            .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
-            .buildDerived()) {
-      uncorruptedScoreDirector.setWorkingSolution(solution);
-      var uncorruptedScore = uncorruptedScoreDirector.calculateScore().raw();
-      if (!score.equals(uncorruptedScore)) {
-        throw new IllegalStateException(
-            "Score corruption (%s): the solution's score (%s) is not the uncorruptedScore (%s)."
-                .formatted(
-                    score.subtract(uncorruptedScore).toShortString(), score, uncorruptedScore));
-      }
-    }
   }
 
   public void validateEntity(ScoreDirector<Solution_> scoreDirector, Object entity) {

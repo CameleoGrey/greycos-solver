@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.phase;
 
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.phase.custom.CustomPhase;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
@@ -13,7 +14,7 @@ public abstract class AbstractPossiblyInitializingPhase<Solution_> extends Abstr
   private final boolean lastInitializingPhase;
 
   protected AbstractPossiblyInitializingPhase(
-      AbstractPossiblyInitializingPhaseBuilder<Solution_> builder) {
+      AbstractPossiblyInitializingPhaseBuilder<Solution_, ?> builder) {
     super(builder);
     this.lastInitializingPhase = builder.isLastInitializingPhase();
   }
@@ -49,29 +50,33 @@ public abstract class AbstractPossiblyInitializingPhase<Solution_> extends Abstr
     } else if (terminationStatus.early()) {
       var advice =
           this instanceof CustomPhase<?>
-              ? "If the phase was used to initialize the solution, the solution may not be fully initialized."
+              ? "If the phase was used to initialize the solution, the solution may not be fully"
+                  + " initialized."
               : "The solution may not be fully initialized.";
       logger.warn(
           """
-                    {} terminated early with step count ({}).
-                    {}""",
+          {} terminated early with step count ({}).
+          {}\
+          """,
           this.getClass().getSimpleName(),
           terminationStatus.stepCount(),
           advice);
     }
   }
 
-  public abstract static class AbstractPossiblyInitializingPhaseBuilder<Solution_>
-      extends AbstractPhaseBuilder<Solution_> {
+  public abstract static class AbstractPossiblyInitializingPhaseBuilder<
+          Solution_, Phase_ extends AbstractPhase<Solution_>>
+      extends AbstractPhaseBuilder<Solution_, Phase_> {
 
     private final boolean lastInitializingPhase;
 
     protected AbstractPossiblyInitializingPhaseBuilder(
         int phaseIndex,
         boolean lastInitializingPhase,
+        EnvironmentMode environmentMode,
         String phaseName,
         PhaseTermination<Solution_> phaseTermination) {
-      super(phaseIndex, phaseName, phaseTermination);
+      super(phaseIndex, environmentMode, phaseName, phaseTermination);
       this.lastInitializingPhase = lastInitializingPhase;
     }
 

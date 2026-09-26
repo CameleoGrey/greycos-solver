@@ -1,6 +1,8 @@
 package greycos.solver.core.impl.bavet.common.index;
 
 import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.random.RandomGenerator;
 
@@ -8,6 +10,7 @@ import greycos.solver.core.impl.util.ElementAwareArrayList;
 import greycos.solver.core.impl.util.ListEntry;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An {@link LeafIndexer} that supports random access to its entries. It is shown to be 10-20 %
@@ -38,12 +41,41 @@ public final class RandomAccessLeafIndexer<T> implements LeafIndexer<T> {
 
   @Override
   public void forEach(Object compositeKey, Consumer<T> tupleConsumer) {
-    tupleList.forEach(tupleConsumer);
+    // Reads must not compact: another iterator may hold reservations for these physical slots.
+    var slotCount = tupleList.slotCount();
+    for (var slot = 0; slot < slotCount; slot++) {
+      var entry = tupleList.entryAt(slot);
+      if (entry != null) {
+        tupleConsumer.accept(entry.element());
+      }
+    }
   }
 
   @Override
   public Iterator<T> iterator(Object queryCompositeKey) {
-    return tupleList.iterator();
+    return new Iterator<>() {
+      private final int slotCount = tupleList.slotCount();
+      private int nextSlot;
+      private @Nullable ElementAwareArrayList<T>.Entry nextEntry;
+
+      @Override
+      public boolean hasNext() {
+        while (nextEntry == null && nextSlot < slotCount) {
+          nextEntry = tupleList.entryAt(nextSlot++);
+        }
+        return nextEntry != null;
+      }
+
+      @Override
+      public T next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        var element = Objects.requireNonNull(nextEntry).element();
+        nextEntry = null;
+        return element;
+      }
+    };
   }
 
   @Override

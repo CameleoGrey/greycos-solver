@@ -49,6 +49,8 @@ import greycos.solver.core.impl.solver.termination.SolverTermination;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
 import greycos.solver.core.preview.api.neighborhood.NeighborhoodProvider;
 
+import org.jspecify.annotations.NonNull;
+
 public class DefaultLocalSearchPhaseFactory<Solution_>
     extends AbstractPhaseFactory<Solution_, LocalSearchPhaseConfig> {
 
@@ -63,12 +65,17 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
       HeuristicConfigPolicy<Solution_> solverConfigPolicy,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
-    var phaseConfigPolicy = solverConfigPolicy.createPhaseConfigPolicy();
+    var environmentMode = resolveEnvironmentMode(solverConfigPolicy);
+    var phaseConfigPolicy = solverConfigPolicy.copyPhaseConfigPolicy(environmentMode);
     var phaseTermination = buildPhaseTermination(phaseConfigPolicy, solverTermination);
     var decider = buildDecider(phaseConfigPolicy, phaseTermination);
     return new DefaultLocalSearchPhase.Builder<>(
-            phaseIndex, solverConfigPolicy.getLogIndentation(), phaseTermination, decider)
-        .enableAssertions(phaseConfigPolicy.getEnvironmentMode())
+            phaseIndex,
+            environmentMode,
+            solverConfigPolicy.getLogIndentation(),
+            phaseTermination,
+            decider)
+        .enableAssertions()
         .build();
   }
 
@@ -174,7 +181,7 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
     var acceptor =
         buildAcceptor(
             configPolicy, moveRepository instanceof NeighborhoodsBasedMoveRepository<Solution_>);
-    var forager = buildForager(configPolicy);
+    var forager = buildForager();
     if (moveRepository.isNeverEnding() && !forager.supportsNeverEndingMoveSelector()) {
       throw new IllegalStateException(
           """
@@ -219,31 +226,37 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
       }
       return buildAcceptor(acceptorConfig, configPolicy);
     } else {
-      var localSearchType_ =
+      var updatedLocalSearchType =
           Objects.requireNonNullElse(localSearchType, LocalSearchType.LATE_ACCEPTANCE);
-      var acceptorConfig_ = new LocalSearchAcceptorConfig();
+      acceptorConfig = new LocalSearchAcceptorConfig();
       if (neighborhoodsEnabled
-          && localSearchType_ == LocalSearchType.VARIABLE_NEIGHBORHOOD_DESCENT) {
+          && updatedLocalSearchType == LocalSearchType.VARIABLE_NEIGHBORHOOD_DESCENT) {
         // Maybe works, but never tested.
         throw new UnsupportedOperationException(
             "Variable Neighborhood descent is not yet supported with the Neighborhoods API.");
       }
-      var acceptorType =
-          switch (localSearchType_) {
-            case HILL_CLIMBING, VARIABLE_NEIGHBORHOOD_DESCENT -> AcceptorType.HILL_CLIMBING;
-            case TABU_SEARCH -> AcceptorType.ENTITY_TABU;
-            case SIMULATED_ANNEALING -> AcceptorType.SIMULATED_ANNEALING;
-            case LATE_ACCEPTANCE -> AcceptorType.LATE_ACCEPTANCE;
-            case DIVERSIFIED_LATE_ACCEPTANCE -> AcceptorType.DIVERSIFIED_LATE_ACCEPTANCE;
-            case GREAT_DELUGE -> AcceptorType.GREAT_DELUGE;
-          };
-      if (neighborhoodsEnabled && acceptorType.isTabu()) {
-        throw new UnsupportedOperationException(
-            "Tabu search is not yet supported with the Neighborhoods API.");
-      }
-      acceptorConfig_.setAcceptorTypeList(Collections.singletonList(acceptorType));
-      return buildAcceptor(acceptorConfig_, configPolicy);
+      var acceptorType = getAcceptorType(neighborhoodsEnabled, updatedLocalSearchType);
+      acceptorConfig.setAcceptorTypeList(Collections.singletonList(acceptorType));
+      return buildAcceptor(acceptorConfig, configPolicy);
     }
+  }
+
+  private static @NonNull AcceptorType getAcceptorType(
+      boolean neighborhoodsEnabled, LocalSearchType localSearchType) {
+    var acceptorType =
+        switch (localSearchType) {
+          case HILL_CLIMBING, VARIABLE_NEIGHBORHOOD_DESCENT -> AcceptorType.HILL_CLIMBING;
+          case TABU_SEARCH -> AcceptorType.ENTITY_TABU;
+          case SIMULATED_ANNEALING -> AcceptorType.SIMULATED_ANNEALING;
+          case LATE_ACCEPTANCE -> AcceptorType.LATE_ACCEPTANCE;
+          case DIVERSIFIED_LATE_ACCEPTANCE -> AcceptorType.DIVERSIFIED_LATE_ACCEPTANCE;
+          case GREAT_DELUGE -> AcceptorType.GREAT_DELUGE;
+        };
+    if (neighborhoodsEnabled && acceptorType.isTabu()) {
+      throw new UnsupportedOperationException(
+          "Tabu search is not yet supported with the Neighborhoods API.");
+    }
+    return acceptorType;
   }
 
   private Acceptor<Solution_> buildAcceptor(
@@ -251,8 +264,7 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
     return AcceptorFactory.<Solution_>create(acceptorConfig).buildAcceptor(configPolicy);
   }
 
-  protected LocalSearchForager<Solution_> buildForager(
-      HeuristicConfigPolicy<Solution_> configPolicy) {
+  protected LocalSearchForager<Solution_> buildForager() {
     LocalSearchForagerConfig foragerConfig_;
     if (phaseConfig.getForagerConfig() != null) {
       if (phaseConfig.getLocalSearchType() != null) {
@@ -274,10 +286,7 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
           // Slow stepping algorithm
           foragerConfig_.setAcceptedCountLimit(1000);
           break;
-        case SIMULATED_ANNEALING:
-        case LATE_ACCEPTANCE:
-        case DIVERSIFIED_LATE_ACCEPTANCE:
-        case GREAT_DELUGE:
+        case SIMULATED_ANNEALING, LATE_ACCEPTANCE, DIVERSIFIED_LATE_ACCEPTANCE, GREAT_DELUGE:
           // Fast stepping algorithm
           foragerConfig_.setAcceptedCountLimit(1);
           break;

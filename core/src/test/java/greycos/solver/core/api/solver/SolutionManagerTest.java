@@ -5,13 +5,17 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
+import greycos.solver.core.api.cotwin.variable.InconsistentSolutionException;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.score.analysis.EntityVariablePair;
 import greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.impl.util.Pair;
@@ -42,6 +46,10 @@ import greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseRela
 import greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseRelationEntity;
 import greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseRelationSolution;
 import greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseRelationValue;
+import greycos.solver.core.testcotwin.shadow.no_inconsistent_field.TestdataDependencyNoInconsistentFieldConstraintProvider;
+import greycos.solver.core.testcotwin.shadow.no_inconsistent_field.TestdataDependencyNoInconsistentFieldEntity;
+import greycos.solver.core.testcotwin.shadow.no_inconsistent_field.TestdataDependencyNoInconsistentFieldSolution;
+import greycos.solver.core.testcotwin.shadow.no_inconsistent_field.TestdataDependencyNoInconsistentFieldValue;
 import greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedConstraintProvider;
 import greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedEntity;
 import greycos.solver.core.testcotwin.unassignedvar.TestdataAllowsUnassignedSolution;
@@ -191,6 +199,58 @@ public class SolutionManagerTest {
         });
   }
 
+  @ParameterizedTest
+  @EnumSource(SolutionManagerSource.class)
+  void updateInconsistent(SolutionManagerSource solutionManagerSource) {
+    var entity1 = new TestdataDependencyNoInconsistentFieldEntity("e1");
+    var valueA1 = new TestdataDependencyNoInconsistentFieldValue("a1");
+    var valueA2 =
+        new TestdataDependencyNoInconsistentFieldValue(
+            "a2", Duration.ofHours(1L), List.of(valueA1));
+    entity1.setValues(List.of(valueA2, valueA1));
+    var inconsistentSolution =
+        new TestdataDependencyNoInconsistentFieldSolution(
+            List.of(entity1), List.of(valueA1, valueA2));
+
+    var solverFactory =
+        SolverFactory.create(
+            new SolverConfig()
+                .withSolutionClass(TestdataDependencyNoInconsistentFieldSolution.class)
+                .withEntityClasses(
+                    TestdataDependencyNoInconsistentFieldEntity.class,
+                    TestdataDependencyNoInconsistentFieldValue.class)
+                .withConstraintProviderClass(
+                    TestdataDependencyNoInconsistentFieldConstraintProvider.class));
+    var solutionManager = solutionManagerSource.createSolutionManager(solverFactory);
+    assertThat(solutionManager).isNotNull();
+
+    assertThatCode(() -> solutionManager.update(inconsistentSolution))
+        .isInstanceOf(InconsistentSolutionException.class)
+        .hasMessageContainingAll(
+            "The solution (",
+            "is inconsistent",
+            "Solution update",
+            "requires a consistent solution")
+        .hasFieldOrPropertyWithValue("solution", inconsistentSolution)
+        .matches(
+            exception -> {
+              var inconsistentGroups =
+                  ((InconsistentSolutionException) exception).getVariableLoops();
+              if (inconsistentGroups.size() != 1) {
+                return false;
+              }
+              return inconsistentGroups
+                  .getFirst()
+                  .involvedVariableSet()
+                  .equals(
+                      Set.of(
+                          new EntityVariablePair(valueA1, "startTime"),
+                          new EntityVariablePair(valueA1, "endTime"),
+                          new EntityVariablePair(valueA2, "startTime"),
+                          new EntityVariablePair(valueA2, "endTime")));
+            });
+  }
+
   private void assertShadowedListValueAllNull(
       SoftAssertions softly, TestdataListValueWithShadowHistory current) {
     softly.assertThat(current.getIndex()).isNull();
@@ -232,6 +292,58 @@ public class SolutionManagerTest {
           softly.assertThat(solution.getScore()).isNull();
           softly.assertThat(solution.getEntityList().get(0).getFirstShadow()).isNotNull();
         });
+  }
+
+  @ParameterizedTest
+  @EnumSource(SolutionManagerSource.class)
+  void updateOnlyShadowVariablesInconsistent(SolutionManagerSource solutionManagerSource) {
+    var entity1 = new TestdataDependencyNoInconsistentFieldEntity("e1");
+    var valueA1 = new TestdataDependencyNoInconsistentFieldValue("a1");
+    var valueA2 =
+        new TestdataDependencyNoInconsistentFieldValue(
+            "a2", Duration.ofHours(1L), List.of(valueA1));
+    entity1.setValues(List.of(valueA2, valueA1));
+    var inconsistentSolution =
+        new TestdataDependencyNoInconsistentFieldSolution(
+            List.of(entity1), List.of(valueA1, valueA2));
+
+    var solverFactory =
+        SolverFactory.create(
+            new SolverConfig()
+                .withSolutionClass(TestdataDependencyNoInconsistentFieldSolution.class)
+                .withEntityClasses(
+                    TestdataDependencyNoInconsistentFieldEntity.class,
+                    TestdataDependencyNoInconsistentFieldValue.class)
+                .withConstraintProviderClass(
+                    TestdataDependencyNoInconsistentFieldConstraintProvider.class));
+    var solutionManager = solutionManagerSource.createSolutionManager(solverFactory);
+    assertThat(solutionManager).isNotNull();
+
+    assertThatCode(() -> solutionManager.update(inconsistentSolution))
+        .isInstanceOf(InconsistentSolutionException.class)
+        .hasMessageContainingAll(
+            "The solution (",
+            "is inconsistent",
+            "Solution update",
+            "requires a consistent solution")
+        .hasFieldOrPropertyWithValue("solution", inconsistentSolution)
+        .matches(
+            exception -> {
+              var inconsistentGroups =
+                  ((InconsistentSolutionException) exception).getVariableLoops();
+              if (inconsistentGroups.size() != 1) {
+                return false;
+              }
+              return inconsistentGroups
+                  .getFirst()
+                  .involvedVariableSet()
+                  .equals(
+                      Set.of(
+                          new EntityVariablePair(valueA1, "startTime"),
+                          new EntityVariablePair(valueA1, "endTime"),
+                          new EntityVariablePair(valueA2, "startTime"),
+                          new EntityVariablePair(valueA2, "endTime")));
+            });
   }
 
   @ParameterizedTest

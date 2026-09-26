@@ -50,6 +50,16 @@ class DefaultAlnsPoliciesTest {
   }
 
   @Test
+  void annealingRejectsStructuralFlawsEvenWhenOrdinaryLevelsImprove() {
+    var policy =
+        new DefaultAlnsAcceptance<SimpleScore>(
+            AlnsAcceptanceType.SIMULATED_ANNEALING, 2, SimpleScore.of(100), .999);
+    policy.initialize(SimpleScore.of(-100));
+    assertThat(policy.isAccepted(SimpleScore.of(-100), new SimpleScore(-1, 0), new Random(0)))
+        .isFalse();
+  }
+
+  @Test
   void exactArithmeticAndExplicitTemperature() {
     assertThat(
             AlnsScoreMath.difference(

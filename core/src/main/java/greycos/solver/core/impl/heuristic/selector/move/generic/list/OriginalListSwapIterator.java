@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.Iterator;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.heuristic.move.SelectorBasedCompositeMove;
 import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
@@ -18,17 +18,17 @@ import greycos.solver.core.preview.api.move.Move;
 public class OriginalListSwapIterator<Solution_>
     extends UpcomingSelectionIterator<Move<Solution_>> {
 
-  private final ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
+  private final ListVariableState<Solution_, Object, Object> listVariableState;
   private final Iterator<Object> leftValueIterator;
   private final IterableValueSelector<Solution_> rightValueSelector;
   private Iterator<Object> rightValueIterator;
   private Object upcomingLeftValue;
 
   public OriginalListSwapIterator(
-      ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply,
+      ListVariableState<Solution_, Object, Object> listVariableState,
       IterableValueSelector<Solution_> leftValueSelector,
       IterableValueSelector<Solution_> rightValueSelector) {
-    this.listVariableStateSupply = listVariableStateSupply;
+    this.listVariableState = listVariableState;
     this.leftValueIterator = leftValueSelector.iterator();
     this.rightValueSelector = rightValueSelector;
     this.rightValueIterator = Collections.emptyIterator();
@@ -45,19 +45,19 @@ public class OriginalListSwapIterator<Solution_>
     }
 
     var upcomingRightValue = rightValueIterator.next();
-    return buildSwapMove(listVariableStateSupply, upcomingLeftValue, upcomingRightValue);
+    return buildSwapMove(listVariableState, upcomingLeftValue, upcomingRightValue);
   }
 
   static <Solution_> Move<Solution_> buildSwapMove(
-      ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply,
+      ListVariableState<Solution_, Object, Object> listVariableState,
       Object upcomingLeftValue,
       Object upcomingRightValue) {
     if (upcomingLeftValue == upcomingRightValue) {
       return SelectorBasedNoChangeMove.getInstance();
     }
-    var listVariableDescriptor = listVariableStateSupply.getSourceVariableDescriptor();
-    var upcomingLeft = listVariableStateSupply.getElementPosition(upcomingLeftValue);
-    var upcomingRight = listVariableStateSupply.getElementPosition(upcomingRightValue);
+    var listVariableDescriptor = listVariableState.getSourceVariableDescriptor();
+    var upcomingLeft = listVariableState.getElementPosition(upcomingLeftValue);
+    var upcomingRight = listVariableState.getElementPosition(upcomingRightValue);
     var leftUnassigned = upcomingLeft instanceof UnassignedElement;
     var rightUnassigned = upcomingRight instanceof UnassignedElement;
     if (leftUnassigned && rightUnassigned) { // No need to swap two unassigned elements.

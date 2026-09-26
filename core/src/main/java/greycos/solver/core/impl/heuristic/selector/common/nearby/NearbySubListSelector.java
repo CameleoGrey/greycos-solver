@@ -2,9 +2,10 @@ package greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.random.RandomGenerator;
 
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.heuristic.selector.AbstractSelector;
@@ -34,7 +35,8 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
 
   private @Nullable NearbyDistanceMatrix<Object, Object> distanceMatrix;
   private @Nullable NearbyDistanceMatrixDemand<Object, Object> distanceMatrixDemand;
-  private @Nullable ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
+  private @Nullable SupplyManager distanceMatrixSupplyManager;
+  private @Nullable ListVariableState<Solution_, Object, Object> listVariableState;
   private boolean eagerInitialized = false;
 
   public NearbySubListSelector(
@@ -75,12 +77,10 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
-    if (distanceMatrix != null || distanceMatrixDemand != null || listVariableStateSupply != null) {
+    if (distanceMatrix != null || distanceMatrixDemand != null || listVariableState != null) {
       throw new IllegalStateException("The nearby subList selector is already solving.");
     }
     super.solvingStarted(solverScope);
-    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
-    listVariableStateSupply = supplyManager.demand(listVariableDescriptor.getStateDemand());
     distanceMatrix = null;
     distanceMatrixDemand = null;
     eagerInitialized = false;
@@ -89,7 +89,7 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
   private void initializeDistanceMatrix(@NonNull SupplyManager supplyManager) {
     @SuppressWarnings("unchecked")
     var castedDistanceMeter = (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
-    distanceMatrixDemand =
+    var demand =
         new NearbyDistanceMatrixDemand<>(
             castedDistanceMeter,
             nearbyRandom,
@@ -101,44 +101,65 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
             this::calculateOriginSizeEstimate,
             origin -> childSubListSelector.endingValueIterator(),
             origin -> calculateDestinationSize());
-    distanceMatrix = supplyManager.demand(distanceMatrixDemand);
+    distanceMatrix = supplyManager.demand(demand);
+    distanceMatrixDemand = demand;
+    distanceMatrixSupplyManager = supplyManager;
   }
 
   @Override
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
-    super.phaseStarted(phaseScope);
-    if (distanceMatrix == null) {
-      if (distanceMatrixDemand != null) {
-        throw new IllegalStateException(
-            "The nearby distance matrix demand exists without its supply.");
+    try {
+      super.phaseStarted(phaseScope);
+      listVariableState =
+          phaseScope.getScoreDirector().getListVariableState(listVariableDescriptor);
+      if (distanceMatrix == null) {
+        initializeDistanceMatrix(phaseScope.getScoreDirector().getSupplyManager());
       }
-      initializeDistanceMatrix(phaseScope.getScoreDirector().getSupplyManager());
-    }
-    if (eagerInitialization && !eagerInitialized) {
-      initializeAllOrigins();
-      eagerInitialized = true;
+      if (eagerInitialization && !eagerInitialized) {
+        initializeAllOrigins();
+        eagerInitialized = true;
+      }
+    } catch (RuntimeException | Error failure) {
+      try {
+        releaseDistanceMatrix();
+      } catch (RuntimeException | Error cleanupFailure) {
+        failure.addSuppressed(cleanupFailure);
+      }
+      throw failure;
     }
   }
 
   @Override
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
-    super.phaseEnded(phaseScope);
-    eagerInitialized = false;
+    try {
+      super.phaseEnded(phaseScope);
+    } finally {
+      releaseDistanceMatrix();
+    }
   }
 
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
-    super.solvingEnded(solverScope);
-    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
-    if (distanceMatrixDemand != null) {
-      if (!supplyManager.cancel(distanceMatrixDemand)) {
-        throw new IllegalStateException("The nearby distance matrix demand is not active.");
-      }
-      distanceMatrixDemand = null;
+    try {
+      super.solvingEnded(solverScope);
+    } finally {
+      releaseDistanceMatrix();
     }
-    listVariableStateSupply = null;
+  }
+
+  private void releaseDistanceMatrix() {
+    var demand = distanceMatrixDemand;
+    var supplyManager = distanceMatrixSupplyManager;
+    // The solver may already use another director. Release through the owner and clear first
+    // so repeated cleanup remains safe, including when cancellation itself fails.
+    distanceMatrixDemand = null;
+    distanceMatrixSupplyManager = null;
     distanceMatrix = null;
+    listVariableState = null;
     eagerInitialized = false;
+    if (demand != null && !Objects.requireNonNull(supplyManager).cancel(demand)) {
+      throw new IllegalStateException("The nearby distance matrix demand is not active.");
+    }
   }
 
   private void initializeAllOrigins() {
@@ -189,12 +210,12 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
     return distanceMatrix;
   }
 
-  private @NonNull ListVariableStateSupply<Solution_, Object, Object> getListVariableStateSupply() {
-    if (listVariableStateSupply == null) {
+  private @NonNull ListVariableState<Solution_, Object, Object> getListVariableState() {
+    if (listVariableState == null) {
       throw new IllegalStateException(
-          "listVariableStateSupply is null. Make sure solvingStarted() was called.");
+          "listVariableState is null. Make sure solvingStarted() was called.");
     }
-    return listVariableStateSupply;
+    return listVariableState;
   }
 
   private @NonNull Object firstElement(@NonNull SubList subList) {
@@ -204,7 +225,7 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
   private @Nullable SubList buildNearbySubList(
       @NonNull Object origin, int nearbyIndex, @Nullable RandomGenerator random) {
     Object nearbyElement = getDistanceMatrix().getDestination(origin, nearbyIndex);
-    var stateSupply = getListVariableStateSupply();
+    var stateSupply = getListVariableState();
     Object nearbyEntity = stateSupply.getInverseSingleton(nearbyElement);
     int nearbyIndexInEntity = stateSupply.getIndexOrElse(nearbyElement, -1);
     if (nearbyEntity == null || nearbyIndexInEntity < 0) {
@@ -224,7 +245,7 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
 
   private boolean isNearbySubListCandidateValid(@NonNull Object origin, int nearbyIndex) {
     Object nearbyElement = getDistanceMatrix().getDestination(origin, nearbyIndex);
-    var stateSupply = getListVariableStateSupply();
+    var stateSupply = getListVariableState();
     Object nearbyEntity = stateSupply.getInverseSingleton(nearbyElement);
     int nearbyIndexInEntity = stateSupply.getIndexOrElse(nearbyElement, -1);
     if (nearbyEntity == null || nearbyIndexInEntity < 0) {

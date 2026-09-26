@@ -17,7 +17,6 @@ import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.AbstractUniE
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.ForEachIncludingPinnedEnumeratingStream;
 import greycos.solver.core.impl.score.director.SessionContext;
 import greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
-import greycos.solver.core.preview.api.neighborhood.stream.joiner.NeighborhoodsJoiners;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -68,13 +67,10 @@ public final class EnumeratingStreamFactory<Solution_> {
               .formatted(listVariableDescriptor.getVariableName()));
     }
     // The predicate is cached to allow for node-sharing, which expects identical lambdas.
-    var stream =
-        forEachNonDiscriminating(sourceClass, includeNull)
-            .ifNotExists(
-                parentEntityDescriptor.getEntityClass(),
-                NeighborhoodsJoiners.filtering(
-                    listVariableDescriptor.getEntityContainsPinnedValuePredicate()));
-    return share((AbstractUniEnumeratingStream<Solution_, A>) stream);
+    return share(
+        (AbstractUniEnumeratingStream<Solution_, A>)
+            forEachNonDiscriminating(sourceClass, includeNull)
+                .filter(listVariableDescriptor.getValueMovablePredicate()));
   }
 
   public <A> void assertValidForEachType(Class<A> fromType) {
@@ -95,10 +91,11 @@ public final class EnumeratingStreamFactory<Solution_> {
           problemFactOrEntityClassSet.stream().map(Class::getCanonicalName).sorted().toList();
       throw new IllegalArgumentException(
           """
-                    Cannot use class (%s) in an enumerating stream as it is neither the same as, \
-                    nor a superclass or superinterface of one of planning entities or problem facts.
-                    Ensure that all forEach(), join(), ifExists() and ifNotExists() building blocks only reference classes \
-                    assignable from planning entities or problem facts (%s) annotated on the planning solution (%s)."""
+          Cannot use class (%s) in an enumerating stream as it is neither the same as, \
+          nor a superclass or superinterface of one of planning entities or problem facts.
+          Ensure that all forEach(), join(), ifExists() and ifNotExists() building blocks only reference classes \
+          assignable from planning entities or problem facts (%s) annotated on the planning solution (%s).\
+          """
               .formatted(
                   fromType.getCanonicalName(),
                   canonicalClassNameList,

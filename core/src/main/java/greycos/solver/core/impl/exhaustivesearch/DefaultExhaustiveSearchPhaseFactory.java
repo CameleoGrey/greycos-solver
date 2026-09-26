@@ -18,7 +18,6 @@ import greycos.solver.core.config.heuristic.selector.move.composite.CartesianPro
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
@@ -65,9 +64,11 @@ public class DefaultExhaustiveSearchPhaseFactory<Solution_>
     var valueSorterManner =
         Objects.requireNonNullElse(
             phaseConfig.getValueSorterManner(), exhaustiveSearchType.getDefaultValueSorterManner());
+    var environmentMode = resolveEnvironmentMode(solverConfigPolicy);
     var phaseConfigPolicy =
         solverConfigPolicy
             .cloneBuilder()
+            .withEnvironmentMode(environmentMode)
             .withReinitializeVariableFilterEnabled(true)
             .withEntitySorterManner(entitySorterManner)
             .withValueSorterManner(valueSorterManner)
@@ -125,11 +126,12 @@ public class DefaultExhaustiveSearchPhaseFactory<Solution_>
     }
     return new DefaultExhaustiveSearchPhase.Builder<>(
             phaseIndex,
+            environmentMode,
             solverConfigPolicy.getLogIndentation(),
             phaseTermination,
             nodeExplorationType.buildNodeComparator(scoreBounderEnabled),
             decider)
-        .enableAssertions(phaseConfigPolicy.getEnvironmentMode())
+        .enableAssertions()
         .build();
   }
 
@@ -277,13 +279,7 @@ public class DefaultExhaustiveSearchPhaseFactory<Solution_>
               scoreBounderEnabled,
               scoreBounder);
     }
-    EnvironmentMode environmentMode = configPolicy.getEnvironmentMode();
-    if (environmentMode.isFullyAsserted()) {
-      decider.setAssertMoveScoreFromScratch(true);
-    }
-    if (environmentMode.isIntrusivelyAsserted()) {
-      decider.setAssertExpectedUndoMoveScore(true);
-    }
+    decider.enableAssertions(configPolicy.getEnvironmentMode());
     return decider;
   }
 

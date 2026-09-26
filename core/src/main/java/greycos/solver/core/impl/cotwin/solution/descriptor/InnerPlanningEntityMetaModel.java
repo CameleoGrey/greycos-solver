@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.cotwin.solution.descriptor;
 
+import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
 
 import org.jspecify.annotations.NullMarked;
@@ -9,4 +10,6 @@ sealed interface InnerPlanningEntityMetaModel<Solution_, Entity_>
     permits DefaultGenuineEntityMetaModel, DefaultShadowEntityMetaModel {
 
   void addVariable(VariableMetaModel<Solution_, Entity_, ?> variable);
+
+  EntityDescriptor<Solution_> entityDescriptor();
 }

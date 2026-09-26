@@ -1,5 +1,7 @@
 package greycos.solver.core.preview.api.cotwin.metamodel;
 
+import greycos.solver.core.api.cotwin.lookup.Lookup;
+
 import org.jspecify.annotations.NullMarked;
 
 /**
@@ -26,4 +28,14 @@ public sealed interface PositionInList extends ElementPosition, Comparable<Posit
   <Entity_> Entity_ entity();
 
   int index();
+
+  /**
+   * Rebase this position in list to a new thread. This is a convenience method that calls {@link
+   * Lookup#lookUpNonNullWorkingObject(Object)}.
+   *
+   * @param lookup the helper
+   * @return the rebased position
+   * @see Lookup Description of rebasing.
+   */
+  PositionInList rebase(Lookup lookup);
 }

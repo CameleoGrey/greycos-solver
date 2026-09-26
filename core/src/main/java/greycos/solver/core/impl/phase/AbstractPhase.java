@@ -35,6 +35,7 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
   protected final transient Logger logger = LoggerFactory.getLogger(getClass());
 
   protected final int phaseIndex;
+  protected final EnvironmentMode environmentMode;
   protected final String logIndentation;
 
   // Called "phaseTermination" to clearly distinguish from "solverTermination" inside
@@ -49,8 +50,9 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
   /** Used for {@link #addPhaseLifecycleListener(PhaseLifecycleListener)}. */
   protected PhaseLifecycleSupport<Solution_> phaseLifecycleSupport = new PhaseLifecycleSupport<>();
 
-  protected AbstractPhase(AbstractPhaseBuilder<Solution_> builder) {
+  protected AbstractPhase(AbstractPhaseBuilder<Solution_, ?> builder) {
     phaseIndex = builder.phaseIndex;
+    environmentMode = builder.environmentMode;
     logIndentation = builder.logIndentation;
     phaseTermination = builder.phaseTermination;
     assertPhaseScoreFromScratch = builder.assertPhaseScoreFromScratch;
@@ -84,6 +86,11 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
   // ************************************************************************
   // Lifecycle methods
   // ************************************************************************
+
+  @Override
+  public EnvironmentMode getEnvironmentMode() {
+    return environmentMode;
+  }
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
@@ -145,12 +152,13 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
       } catch (ScoreCorruptionException | VariableCorruptionException e) {
         throw new IllegalStateException(
             """
-                        Solver corruption was detected. Solutions provided by this solver can not be trusted.
-                        Corruptions typically arise from a bug in either your constraints or your shadow variables,
-                        but they may also be caused by a rare solver bug.
-                        Run your solver with %s %s to find out more information about the error \
-                        and if you are convinced that the problem is not in your code, please report a bug to GreyCOS.
-                        At your own risk, you may run your solver with %s or %s instead to ignore this error."""
+            Solver corruption was detected. Solutions provided by this solver can not be trusted.
+            Corruptions typically arise from a bug in either your constraints or your shadow variables,
+            but they may also be caused by a rare solver bug.
+            Run your solver with %s %s to find out more information about the error \
+            and if you are convinced that the problem is not in your code, please report a bug to GreyCOS.
+            At your own risk, you may run your solver with %s or %s instead to ignore this error.\
+            """
                 .formatted(
                     EnvironmentMode.class.getSimpleName(),
                     EnvironmentMode.FULL_ASSERT,
@@ -250,18 +258,20 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
       if (uninitializedEntityCount > 0) {
         throw new IllegalStateException(
             """
-                                %s phase (%d) needs to start from an initialized solution, but there are (%d) uninitialized entities.
-                                Maybe there is no Construction Heuristic configured before this phase to initialize the solution.
-                                Or maybe the getter/setters of your planning variables in your cotwin classes aren't implemented correctly."""
+            %s phase (%d) needs to start from an initialized solution, but there are (%d) uninitialized entities.
+            Maybe there is no Construction Heuristic configured before this phase to initialize the solution.
+            Or maybe the getter/setters of your planning variables in your cotwin classes aren't implemented correctly.\
+            """
                 .formatted(getPhaseType(), phaseIndex, uninitializedEntityCount));
       }
       var unassignedValueCount = initializationStatistics.unassignedValueCount();
       if (unassignedValueCount > 0) {
         throw new IllegalStateException(
             """
-                                %s phase (%d) needs to start from an initialized solution, \
-                                but planning list variable (%s) has (%d) unexpected unassigned values.
-                                Maybe there is no Construction Heuristic configured before this phase to initialize the solution."""
+            %s phase (%d) needs to start from an initialized solution, \
+            but planning list variable (%s) has (%d) unexpected unassigned values.
+            Maybe there is no Construction Heuristic configured before this phase to initialize the solution.\
+            """
                 .formatted(
                     getPhaseType(),
                     phaseIndex,
@@ -271,9 +281,11 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
     }
   }
 
-  public abstract static class AbstractPhaseBuilder<Solution_> {
+  public abstract static class AbstractPhaseBuilder<
+      Solution_, Phase_ extends AbstractPhase<Solution_>> {
 
     private final int phaseIndex;
+    protected final EnvironmentMode environmentMode;
     private final String logIndentation;
     private final PhaseTermination<Solution_> phaseTermination;
 
@@ -283,20 +295,25 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
     private boolean assertShadowVariablesAreNotStaleAfterStep = false;
 
     protected AbstractPhaseBuilder(
-        int phaseIndex, String logIndentation, PhaseTermination<Solution_> phaseTermination) {
+        int phaseIndex,
+        EnvironmentMode environmentMode,
+        String logIndentation,
+        PhaseTermination<Solution_> phaseTermination) {
       this.phaseIndex = phaseIndex;
+      this.environmentMode = environmentMode;
       this.logIndentation = logIndentation;
       this.phaseTermination = phaseTermination;
     }
 
-    public AbstractPhaseBuilder<Solution_> enableAssertions(EnvironmentMode environmentMode) {
+    @SuppressWarnings("unchecked")
+    public <Builder_ extends AbstractPhaseBuilder<Solution_, Phase_>> Builder_ enableAssertions() {
       assertPhaseScoreFromScratch = environmentMode.isAsserted();
       assertStepScoreFromScratch = environmentMode.isFullyAsserted();
       assertExpectedStepScore = environmentMode.isIntrusivelyAsserted();
       assertShadowVariablesAreNotStaleAfterStep = environmentMode.isIntrusivelyAsserted();
-      return this;
+      return (Builder_) this;
     }
 
-    protected abstract AbstractPhase<Solution_> build();
+    public abstract Phase_ build();
   }
 }

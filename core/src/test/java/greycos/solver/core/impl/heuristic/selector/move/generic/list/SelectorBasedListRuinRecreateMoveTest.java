@@ -177,6 +177,7 @@ class SelectorBasedListRuinRecreateMoveTest {
 
     var solverConfigPolicy =
         new HeuristicConfigPolicy.Builder<TestdataPinnedWithIndexListSolution>()
+            .withEnvironmentMode(EnvironmentMode.PHASE_ASSERT)
             .withSolutionDescriptor(solutionDescriptor)
             .withInitializingScoreTrend(
                 InitializingScoreTrend.buildUniformTrend(InitializingScoreTrendLevel.ANY, 1))
@@ -204,7 +205,7 @@ class SelectorBasedListRuinRecreateMoveTest {
 
     // Execute the move and immediately undo it, exactly like local search does to evaluate a
     // candidate move.
-    scoreDirector.getMoveDirector().executeTemporary(move);
+    scoreDirector.getMoveDirector().executeTemporary(move, score -> score);
 
     assertThat(entityA.getValueList()).containsExactly(aPin, special1, special2, special3);
     assertThat(entityB.getValueList()).containsExactly(bPin);

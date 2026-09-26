@@ -9,6 +9,8 @@ import greycos.solver.core.impl.score.director.AbstractScoreDirectorFactory;
 import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 import greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;
 
+import org.jspecify.annotations.NullMarked;
+
 /**
  * FP streams implementation of {@link ScoreDirectorFactory}.
  *
@@ -16,6 +18,7 @@ import greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner
  * @param <Score_> the score type to go with the solution
  * @see ScoreDirectorFactory
  */
+@NullMarked
 public abstract class AbstractConstraintStreamScoreDirectorFactory<
         Solution_,
         Score_ extends Score<Score_>,
@@ -23,8 +26,8 @@ public abstract class AbstractConstraintStreamScoreDirectorFactory<
     extends AbstractScoreDirectorFactory<Solution_, Score_, Factory_> {
 
   protected AbstractConstraintStreamScoreDirectorFactory(
-      SolutionDescriptor<Solution_> solutionDescriptor, EnvironmentMode environmentMode) {
-    super(solutionDescriptor, environmentMode);
+      SolutionDescriptor<Solution_> solutionDescriptor, EnvironmentMode globalEnvironmentMode) {
+    super(solutionDescriptor, globalEnvironmentMode);
   }
 
   /**

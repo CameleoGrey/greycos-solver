@@ -9,8 +9,10 @@ import greycos.solver.core.preview.api.move.builtin.ChangeMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.ListAssignMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.ListChangeMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.ListSwapMoveProvider;
+import greycos.solver.core.preview.api.move.builtin.ListTailSwapMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.ListUnassignMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.SwapMoveProvider;
+import greycos.solver.core.preview.api.move.builtin.TwoOptListMoveProvider;
 import greycos.solver.core.preview.api.move.builtin.UnassignMoveProvider;
 import greycos.solver.core.testcotwin.TestdataSolution;
 import greycos.solver.core.testcotwin.list.TestdataListSolution;
@@ -64,7 +66,11 @@ class DefaultNeighborhoodProviderTest {
             new DefaultNeighborhoodProvider<TestdataListSolution>().defineNeighborhood(builder);
     assertThat(neighborhood.getMoveProviderList())
         .map(c -> (Class) c.getClass())
-        .containsExactly(ListChangeMoveProvider.class, ListSwapMoveProvider.class);
+        .containsExactly(
+            ListChangeMoveProvider.class,
+            ListSwapMoveProvider.class,
+            TwoOptListMoveProvider.class,
+            ListTailSwapMoveProvider.class);
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})
@@ -81,6 +87,8 @@ class DefaultNeighborhoodProviderTest {
         .containsExactly(
             ListChangeMoveProvider.class,
             ListSwapMoveProvider.class,
+            TwoOptListMoveProvider.class,
+            ListTailSwapMoveProvider.class,
             ListAssignMoveProvider.class,
             ListUnassignMoveProvider.class);
   }

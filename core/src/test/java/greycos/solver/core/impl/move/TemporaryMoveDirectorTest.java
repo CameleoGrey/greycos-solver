@@ -156,6 +156,53 @@ class TemporaryMoveDirectorTest {
   }
 
   @Test
+  void retainedUndoApiRestoresFailuresAndSurvivesDirectorReuse() {
+    try (var fixture = new Fixture()) {
+      var move = fixture.change(fixture.values.get(1));
+      var undo =
+          fixture.moveDirector.executeTemporaryProducingUndoMove(
+              move, score -> assertThat(score.raw()).isEqualTo(SimpleScore.ONE));
+      fixture.assertOriginalState();
+      var failure = new IllegalStateException("Callback failed");
+      assertThatThrownBy(
+              () ->
+                  fixture.moveDirector.executeTemporaryProducingUndoMove(
+                      fixture.change(fixture.values.get(2)),
+                      score -> {
+                        throw failure;
+                      }))
+          .isSameAs(failure);
+      fixture.assertOriginalState();
+      fixture.moveDirector.execute(move);
+      fixture.moveDirector.execute(undo);
+      fixture.assertOriginalState();
+    }
+  }
+
+  @Test
+  void temporaryWithoutScoringRestoresAfterCallbackFailureAndReusesDirector() {
+    try (var fixture = new Fixture()) {
+      var previousCalculationCount = fixture.scoreDirector.getCalculationCount();
+      var failure = new IllegalStateException("Callback failed");
+      assertThatThrownBy(
+              () ->
+                  fixture.moveDirector.executeTemporaryWithoutScoring(
+                      fixture.change(fixture.values.get(1)),
+                      solution -> {
+                        throw failure;
+                      }))
+          .isSameAs(failure);
+      assertThat(fixture.scoreDirector.getCalculationCount()).isEqualTo(previousCalculationCount);
+      fixture.assertOriginalState();
+      var result =
+          fixture.moveDirector.executeTemporaryWithoutScoring(
+              fixture.change(fixture.values.get(2)), solution -> fixture.entity.getValue());
+      assertThat(result).isSameAs(fixture.values.get(2));
+      fixture.assertOriginalState();
+    }
+  }
+
+  @Test
   void scoreFailureUndoesCompletedMove() {
     var scoreDirector =
         (InnerScoreDirector<TestdataSolution, SimpleScore>) mock(InnerScoreDirector.class);

@@ -8,6 +8,7 @@ import java.util.function.Function;
 import greycos.solver.core.api.function.QuadFunction;
 import greycos.solver.core.api.function.QuadPredicate;
 import greycos.solver.core.api.function.ToLongQuadFunction;
+import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.score.stream.ConstraintCollectors;
 import greycos.solver.core.api.score.stream.ConstraintFactory;
 import greycos.solver.core.api.score.stream.Joiners;
@@ -482,6 +483,23 @@ public abstract class AbstractQuadConstraintStreamNodeSharingTest
 
     assertThat(baseStream.concat(baseStream.filter(filter1)))
         .isSameAs(baseStream.concat(baseStream.filter(filter1)));
+  }
+
+  @Override
+  @TestTemplate
+  public void differentPaddingFunctionConcat() {
+    var triStream =
+        constraintFactory
+            .forEach(TestdataEntity.class)
+            .join(TestdataEntity.class)
+            .join(TestdataEntity.class);
+    TriFunction<TestdataEntity, TestdataEntity, TestdataEntity, TestdataEntity> paddingA =
+        (a, b, c) -> a;
+    TriFunction<TestdataEntity, TestdataEntity, TestdataEntity, TestdataEntity> paddingB =
+        (a, b, c) -> null;
+
+    assertThat(baseStream.concat(triStream, paddingA))
+        .isNotSameAs(baseStream.concat(triStream, paddingB));
   }
 
   @Override

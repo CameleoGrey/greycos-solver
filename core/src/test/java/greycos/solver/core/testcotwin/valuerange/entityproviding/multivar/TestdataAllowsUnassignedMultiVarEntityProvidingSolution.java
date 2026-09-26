@@ -12,6 +12,7 @@ import greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 import greycos.solver.core.testcotwin.TestdataObject;
 import greycos.solver.core.testcotwin.TestdataValue;
 
@@ -23,6 +24,11 @@ public class TestdataAllowsUnassignedMultiVarEntityProvidingSolution extends Tes
     return SolutionDescriptor.buildSolutionDescriptor(
         TestdataAllowsUnassignedMultiVarEntityProvidingSolution.class,
         TestdataAllowsUnassignedMultiVarEntityProvidingEntity.class);
+  }
+
+  public static PlanningSolutionMetaModel<TestdataAllowsUnassignedMultiVarEntityProvidingSolution>
+      buildMetaModel() {
+    return buildSolutionDescriptor().getMetaModel();
   }
 
   public static TestdataAllowsUnassignedMultiVarEntityProvidingSolution generateSolution() {

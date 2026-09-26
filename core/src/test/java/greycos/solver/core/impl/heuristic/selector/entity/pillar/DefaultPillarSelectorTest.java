@@ -15,7 +15,7 @@ import java.util.List;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.config.heuristic.selector.entity.pillar.SubPillarConfigPolicy;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
-import greycos.solver.core.impl.cotwin.variable.ShadowVariableSupport;
+import greycos.solver.core.impl.cotwin.variable.VariableSupport;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
@@ -109,7 +109,7 @@ class DefaultPillarSelectorTest {
     InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector =
         mock(InnerScoreDirector.class);
     doReturn(solutionDescriptor).when(scoreDirector).getSolutionDescriptor();
-    doReturn(ShadowVariableSupport.create(scoreDirector)).when(scoreDirector).getSupplyManager();
+    doReturn(VariableSupport.create(scoreDirector)).when(scoreDirector).getSupplyManager();
 
     SolverScope<TestdataSolution> solverScope = PlannerTestUtils.mockSolverScope();
     doReturn(scoreDirector).when(solverScope).getScoreDirector();
@@ -470,7 +470,7 @@ class DefaultPillarSelectorTest {
      */
     SupplyManager pillarSupplyManager = solverScope.getScoreDirector().getSupplyManager();
     Assertions.assertThat(pillarSupplyManager.getActiveCount(pillarSelector1.getPillarDemand()))
-        .isEqualTo(0);
+        .isZero();
     pillarSelector1.stepStarted(stepScopeA1);
     Assertions.assertThat(pillarSupplyManager.getActiveCount(pillarSelector1.getPillarDemand()))
         .isEqualTo(1);
@@ -491,7 +491,7 @@ class DefaultPillarSelectorTest {
         .isEqualTo(1);
     pillarSelector2.stepEnded(stepScopeA1);
     Assertions.assertThat(pillarSupplyManager.getActiveCount(pillarSelector1.getPillarDemand()))
-        .isEqualTo(0);
+        .isZero();
 
     pillarSelector1.phaseEnded(phaseScopeA);
     pillarSelector2.phaseEnded(phaseScopeA);
@@ -549,7 +549,7 @@ class DefaultPillarSelectorTest {
      */
     SupplyManager pillarSupplyManager = solverScope.getScoreDirector().getSupplyManager();
     Assertions.assertThat(pillarSupplyManager.getActiveCount(pillarSelector1.getPillarDemand()))
-        .isEqualTo(0);
+        .isZero();
     pillarSelector1.stepStarted(stepScopeA1);
     Assertions.assertThat(pillarSupplyManager.getActiveCount(pillarSelector1.getPillarDemand()))
         .isEqualTo(1);
@@ -570,13 +570,13 @@ class DefaultPillarSelectorTest {
         .isEqualTo(1);
     pillarSelector2.phaseEnded(phaseScopeA);
     Assertions.assertThat(pillarSupplyManager.getActiveCount(pillarSelector1.getPillarDemand()))
-        .isEqualTo(0);
+        .isZero();
 
     pillarSelector1.solvingEnded(solverScope);
     Assertions.assertThat(pillarSupplyManager.getActiveCount(pillarSelector1.getPillarDemand()))
-        .isEqualTo(0);
+        .isZero();
     pillarSelector2.solvingEnded(solverScope);
     Assertions.assertThat(pillarSupplyManager.getActiveCount(pillarSelector2.getPillarDemand()))
-        .isEqualTo(0);
+        .isZero();
   }
 }

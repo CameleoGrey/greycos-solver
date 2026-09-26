@@ -68,11 +68,13 @@ public class DefaultIslandModelPhaseFactory<Solution_>
     LOGGER.debug(
         "Building island model with {} islands, inheriting LocalSearchPhaseConfig", islandCount);
 
-    var phaseTermination = buildPhaseTermination(solverConfigPolicy, solverTermination);
+    var environmentMode = resolveEnvironmentMode(solverConfigPolicy);
+    var phaseConfigPolicy = solverConfigPolicy.copyPhaseConfigPolicy(environmentMode);
+    var phaseTermination = buildPhaseTermination(phaseConfigPolicy, solverTermination);
 
-    return new DefaultIslandModelPhase.Builder<>(phaseIndex, "", phaseTermination)
+    return new DefaultIslandModelPhase.Builder<>(phaseIndex, environmentMode, "", phaseTermination)
         .withIslandModelConfig(phaseConfig)
-        .withConfigPolicy(solverConfigPolicy)
+        .withConfigPolicy(phaseConfigPolicy)
         .withBestSolutionRecaller(bestSolutionRecaller)
         .withSolverTermination(solverTermination)
         .withIslandCount(islandCount)
@@ -80,6 +82,7 @@ public class DefaultIslandModelPhaseFactory<Solution_>
         .withCompareGlobalEnabled(compareGlobalEnabled)
         .withReceiveGlobalUpdateFrequency(receiveGlobalUpdateFrequency)
         .withMigrationTimeout(migrationTimeout)
+        .enableAssertions()
         .build();
   }
 

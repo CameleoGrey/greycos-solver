@@ -7,13 +7,13 @@ import static org.mockito.Mockito.mock;
 import java.util.List;
 import java.util.function.Function;
 
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.util.Pair;
 import greycos.solver.core.testcotwin.list.TestdataListValue;
 
 import org.junit.jupiter.api.Test;
 
-public class KOptUtilsTest {
+class KOptUtilsTest {
 
   private final TestdataListValue v1 = new TestdataListValue("1");
   private final TestdataListValue v2 = new TestdataListValue("2");
@@ -237,8 +237,8 @@ public class KOptUtilsTest {
         incl,
         item -> originalTour.get((originalTour.indexOf(item) + 1) % originalTour.size()),
         getBetweenPredicate(
-            new DelegatingListVariableStateSupply<>(
-                mock(ListVariableStateSupply.class), originalTour::indexOf)));
+            new DelegatingListVariableState<Object>(
+                mock(ListVariableState.class), originalTour::indexOf)));
   }
 
   private static int identityIndexOf(List<TestdataListValue> sourceList, TestdataListValue query) {

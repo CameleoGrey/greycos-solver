@@ -112,7 +112,13 @@ class IslandLifecycleRegressionTest {
     var recaller = (BestSolutionRecaller<TestdataSolution>) mock(BestSolutionRecaller.class);
     var termination = (UniversalTermination<TestdataSolution>) mock(BasicPlumbingTermination.class);
     var listener = (PhaseLifecycleListener<TestdataSolution>) mock(PhaseLifecycleListener.class);
-    var solver = new IslandSolver<>(recaller, termination, List.of(phase, otherPhase));
+    var solver =
+        new IslandSolver<>(
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            recaller,
+            termination,
+            List.of(phase, otherPhase));
     solver.addPhaseLifecycleListener(listener);
     scope.setSolver(solver);
     var random = DefaultRandomSource.seeded(0L).splitForChildThread();
@@ -169,7 +175,11 @@ class IslandLifecycleRegressionTest {
     doThrow(errorCleanupFailure).when(phase).solvingError(scope, failure);
     var solver =
         new IslandSolver<TestdataSolution>(
-            mock(BestSolutionRecaller.class), mock(BasicPlumbingTermination.class), List.of(phase));
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            mock(BestSolutionRecaller.class),
+            mock(BasicPlumbingTermination.class),
+            List.of(phase));
 
     assertThatThrownBy(() -> solver.solvingEnded(scope)).isSameAs(failure);
     assertThatThrownBy(() -> solver.solvingError(scope, failure)).isSameAs(errorCleanupFailure);
@@ -193,7 +203,11 @@ class IslandLifecycleRegressionTest {
       when(termination.isSolverTerminated(scope)).thenReturn(false, true);
       var solver =
           new IslandSolver<TestdataSolution>(
-              mock(BestSolutionRecaller.class), termination, List.of(first, second));
+              greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+              mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+              mock(BestSolutionRecaller.class),
+              termination,
+              List.of(first, second));
 
       solver.runPhases(scope);
 

@@ -9,11 +9,13 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 
+import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.localsearch.decider.acceptor.Acceptor;
 import greycos.solver.core.impl.localsearch.decider.acceptor.CompositeAcceptor;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
@@ -67,6 +69,8 @@ class CompositeAcceptorTest {
       acceptorList.add(acceptor);
     }
     var acceptor = new CompositeAcceptor<>(acceptorList);
-    return acceptor.isAccepted(mock(LocalSearchMoveScope.class));
+    var moveScope = mock(LocalSearchMoveScope.class);
+    when(moveScope.getScore()).thenReturn(InnerScore.fullyAssigned(new SimpleScore(0)));
+    return acceptor.isAccepted(moveScope);
   }
 }

@@ -78,7 +78,8 @@ class ListChangeMoveSelectorTest {
                 ElementPosition.of(a, 1)),
             false);
 
-    solvingStarted(moveSelector, scoreDirector);
+    var solverScope = solvingStarted(moveSelector, scoreDirector);
+    phaseStarted(moveSelector, solverScope);
 
     // Value order: [3, 1, 2]
     // Entity order: [A, B, C]
@@ -141,7 +142,7 @@ class ListChangeMoveSelectorTest {
     var solverScope =
         solvingStarted(
             moveSelector, scoreDirector, mimicRecordingValueSelector, destinationSelector);
-    phaseStarted(solverScope, mimicRecordingValueSelector, destinationSelector);
+    phaseStarted(solverScope, moveSelector, mimicRecordingValueSelector, destinationSelector);
 
     // Not testing size; filtering selector doesn't and can't report correct size unless iterating
     // over all values.
@@ -287,7 +288,8 @@ class ListChangeMoveSelectorTest {
                 ElementPosition.unassigned()),
             false);
 
-    solvingStarted(moveSelector, scoreDirector);
+    var solverScope = solvingStarted(moveSelector, scoreDirector);
+    phaseStarted(solverScope, moveSelector);
 
     // First try all destinations for v3 (which is originally at C[0]),
     // then v1 (originally at A[1]),
@@ -358,7 +360,7 @@ class ListChangeMoveSelectorTest {
     var solverScope =
         solvingStarted(
             moveSelector, scoreDirector, mimicRecordingValueSelector, destinationSelector);
-    phaseStarted(solverScope, mimicRecordingValueSelector, destinationSelector);
+    phaseStarted(solverScope, moveSelector, mimicRecordingValueSelector, destinationSelector);
     // Not testing size; filtering selector doesn't and can't report correct size unless iterating
     // over all values.
     assertAllCodesOfMoveSelectorWithoutSize(
@@ -402,7 +404,8 @@ class ListChangeMoveSelectorTest {
                 ElementPosition.of(a, 2)),
             true);
 
-    solvingStarted(moveSelector, scoreDirector);
+    var solverScope = solvingStarted(moveSelector, scoreDirector);
+    phaseStarted(moveSelector, solverScope);
 
     // Initial state:
     // - A [1, 2]
@@ -630,7 +633,8 @@ class ListChangeMoveSelectorTest {
                 ElementPosition.unassigned()),
             true);
 
-    solvingStarted(moveSelector, scoreDirector);
+    var solverScope = solvingStarted(moveSelector, scoreDirector);
+    phaseStarted(moveSelector, solverScope);
 
     assertCodesOfNeverEndingMoveSelector(
         moveSelector,

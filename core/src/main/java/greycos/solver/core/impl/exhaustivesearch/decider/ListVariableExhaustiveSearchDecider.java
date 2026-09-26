@@ -1,9 +1,10 @@
 package greycos.solver.core.impl.exhaustivesearch.decider;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import greycos.solver.core.api.score.Score;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.exhaustivesearch.node.ExhaustiveSearchNode;
 import greycos.solver.core.impl.exhaustivesearch.node.bounder.ScoreBounder;
 import greycos.solver.core.impl.exhaustivesearch.scope.ExhaustiveSearchPhaseScope;
@@ -20,7 +21,7 @@ import greycos.solver.core.preview.api.move.builtin.Moves;
 public final class ListVariableExhaustiveSearchDecider<Solution_, Score_ extends Score<Score_>>
     extends AbstractExhaustiveSearchDecider<Solution_, Score_> {
 
-  private ListVariableStateSupply<Solution_, ?, ?> listVariableState;
+  private ListVariableState<Solution_, ?, ?> listVariableState;
 
   public ListVariableExhaustiveSearchDecider(
       String logIndentation,
@@ -132,7 +133,10 @@ public final class ListVariableExhaustiveSearchDecider<Solution_, Score_ extends
     System.arraycopy(assignMoves, 0, moves, unassignMoves.length, assignMoves.length);
     var compositeMove = Moves.compose(moves);
     // Execute the move.
-    phaseScope.getScoreDirector().executeMove(compositeMove);
+    phaseScope
+        .getScoreDirector()
+        .getMoveDirector()
+        .executeAllowingStructurallyFlawedSolutions(compositeMove);
     var score = phaseScope.<Score_>calculateScore();
     stepScope.getExpandingNode().setScore(score);
     phaseScope.getSolutionDescriptor().setScore(phaseScope.getWorkingSolution(), score.raw());
@@ -179,12 +183,10 @@ public final class ListVariableExhaustiveSearchDecider<Solution_, Score_ extends
   @Override
   public void phaseStarted(ExhaustiveSearchPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
-    var listVariableDescriptor = phaseScope.getSolutionDescriptor().getListVariableDescriptor();
+    var listVariableDescriptor =
+        Objects.requireNonNull(phaseScope.getSolutionDescriptor().getListVariableDescriptor());
     this.listVariableState =
-        phaseScope
-            .getSolverScope()
-            .getScoreDirector()
-            .getListVariableStateSupply(listVariableDescriptor);
+        phaseScope.getScoreDirector().getListVariableState(listVariableDescriptor);
   }
 
   @Override

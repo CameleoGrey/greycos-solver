@@ -1,10 +1,7 @@
 package greycos.solver.core.impl.cotwin.variable;
 
-import java.io.Closeable;
-
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.supply.Supply;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 
 import org.jspecify.annotations.NullMarked;
@@ -16,7 +13,7 @@ import org.jspecify.annotations.NullMarked;
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
 @NullMarked
-public interface ListVariableChangeHandler<Solution_> extends Supply, Closeable {
+public interface ListVariableChangeHandler<Solution_> {
 
   VariableDescriptor<Solution_> getSourceVariableDescriptor();
 

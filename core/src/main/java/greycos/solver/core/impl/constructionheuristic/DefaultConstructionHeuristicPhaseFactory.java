@@ -61,9 +61,11 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
         Objects.requireNonNullElse(
             phaseConfig.getValueSorterManner(),
             constructionHeuristicType_.getDefaultValueSorterManner());
+    var environmentMode = resolveEnvironmentMode(solverConfigPolicy);
     var phaseConfigPolicyBuilder =
         solverConfigPolicy
             .cloneBuilder()
+            .withEnvironmentMode(environmentMode)
             .withReinitializeVariableFilterEnabled(true)
             .withUnassignedValuesAllowed(true)
             .withEntitySorterManner(entitySorterManner)
@@ -91,11 +93,12 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
     return new DefaultConstructionHeuristicPhaseBuilder<>(
             phaseIndex,
             lastInitializingPhase,
+            phaseConfigPolicy.getEnvironmentMode(),
             phaseConfigPolicy.getLogIndentation(),
             phaseTermination,
             entityPlacer,
             buildDecider(phaseConfigPolicy, phaseTermination))
-        .enableAssertions(phaseConfigPolicy.getEnvironmentMode());
+        .enableAssertions();
   }
 
   @Override
@@ -150,8 +153,9 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
     if (listVariableDescriptor.getEntityDescriptor().hasAnyBasicVariables()) {
       throw new IllegalArgumentException(
           """
-                    The entity (%s) has both basic and list variables and cannot be deduced automatically.
-                    Maybe customize the phase configuration and add separate construction heuristic phases for each variable."""
+          The entity (%s) has both basic and list variables and cannot be deduced automatically.
+          Maybe customize the phase configuration and add separate construction heuristic phases for each variable.\
+          """
               .formatted(listVariableDescriptor.getEntityDescriptor().getEntityClass()));
     }
     return Optional.of(listVariableDescriptor);
@@ -264,8 +268,9 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
     if (moveSelectorConfigList.size() != 1) {
       throw new IllegalArgumentException(
           """
-                    For the constructionHeuristicType (%s), the moveSelectorConfigList (%s) must be a singleton.
-                    Use a single %s or %s element to nest multiple MoveSelectors."""
+          For the constructionHeuristicType (%s), the moveSelectorConfigList (%s) must be a singleton.
+          Use a single %s or %s element to nest multiple MoveSelectors.\
+          """
               .formatted(
                   phaseConfig.getConstructionHeuristicType(),
                   phaseConfig.getMoveSelectorConfigList(),

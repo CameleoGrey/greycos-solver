@@ -11,6 +11,14 @@ import java.util.TreeSet;
 
 import greycos.solver.benchmark.config.PlannerBenchmarkConfig;
 import greycos.solver.benchmark.config.SolverBenchmarkConfig;
+import greycos.solver.benchmark.config.blueprint.SolverBenchmarkBluePrintConfig;
+import greycos.solver.benchmark.config.blueprint.SolverBenchmarkBluePrintType;
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.config.solver.SolverConfig;
 
 import org.junit.jupiter.api.Test;
 
@@ -67,6 +75,153 @@ class DefaultPlannerBenchmarkFactoryTest {
     config.setSolverBenchmarkBluePrintConfigList(null);
     DefaultPlannerBenchmarkFactory benchmarkFactory = new DefaultPlannerBenchmarkFactory(config);
     assertThatIllegalArgumentException().isThrownBy(benchmarkFactory::validate);
+  }
+
+  @Test
+  void phaseWithoutEnvironmentModeIsValid() {
+    PlannerBenchmarkConfig config = buildConfigWithPhases(EnvironmentMode.FULL_ASSERT, null, null);
+    new DefaultPlannerBenchmarkFactory(config).validate();
+  }
+
+  @Test
+  void phaseOverridingEnvironmentModeIsRejected() {
+    // The scenario this guards: a leftover FULL_ASSERT on one phase handicaps this solver benchmark
+    // against the others, while the report still states one environment mode for the whole run.
+    PlannerBenchmarkConfig config =
+        buildConfigWithPhases(EnvironmentMode.PHASE_ASSERT, null, EnvironmentMode.FULL_ASSERT);
+    DefaultPlannerBenchmarkFactory benchmarkFactory = new DefaultPlannerBenchmarkFactory(config);
+    assertThatIllegalStateException()
+        .isThrownBy(benchmarkFactory::validate)
+        .withMessageContaining("cannot override the environment mode when in benchmark mode");
+  }
+
+  @Test
+  void anyEnvironmentModeOverrideIsRejected() {
+    // The offending solver benchmark is the last one, so every one of them has to be checked.
+    PlannerBenchmarkConfig config = new PlannerBenchmarkConfig();
+    config.setSolverBenchmarkConfigList(
+        Arrays.asList(
+            buildSolverBenchmarkConfig(EnvironmentMode.PHASE_ASSERT, null, null),
+            buildSolverBenchmarkConfig(
+                EnvironmentMode.PHASE_ASSERT, null, EnvironmentMode.FULL_ASSERT)));
+    DefaultPlannerBenchmarkFactory benchmarkFactory = new DefaultPlannerBenchmarkFactory(config);
+    assertThatIllegalStateException()
+        .isThrownBy(benchmarkFactory::validate)
+        .withMessageContaining("cannot override the environment mode when in benchmark mode");
+  }
+
+  @Test
+  void solverBenchmarkWithoutSolverConfigIsValid() {
+    // A <solverBenchmark> without a <solver> has no phases, so it has nothing to override.
+    PlannerBenchmarkConfig config = new PlannerBenchmarkConfig();
+    config.setSolverBenchmarkConfigList(Collections.singletonList(new SolverBenchmarkConfig()));
+    new DefaultPlannerBenchmarkFactory(config).validate();
+  }
+
+  @Test
+  void inheritedConfigWithoutPhaseOverrideIsValid() {
+    // A global environmentMode on the inherited config is fine; only phase-level overrides are not.
+    PlannerBenchmarkConfig config = new PlannerBenchmarkConfig();
+    config.setSolverBenchmarkConfigList(Collections.singletonList(new SolverBenchmarkConfig()));
+    config.setInheritedSolverBenchmarkConfig(
+        buildSolverBenchmarkConfig(EnvironmentMode.FULL_ASSERT, null, null));
+    new DefaultPlannerBenchmarkFactory(config).validate();
+  }
+
+  @Test
+  void inheritedConfigOverridingEnvironmentModeIsRejected() {
+    PlannerBenchmarkConfig config = new PlannerBenchmarkConfig();
+    config.setSolverBenchmarkConfigList(Collections.singletonList(new SolverBenchmarkConfig()));
+    config.setInheritedSolverBenchmarkConfig(
+        buildSolverBenchmarkConfig(null, EnvironmentMode.FULL_ASSERT, null));
+    DefaultPlannerBenchmarkFactory benchmarkFactory = new DefaultPlannerBenchmarkFactory(config);
+    assertThatIllegalStateException()
+        .isThrownBy(benchmarkFactory::validate)
+        .withMessageContaining("cannot override the environment mode when in benchmark mode");
+  }
+
+  @Test
+  void inheritedConfigOverridingEnvironmentModeIsRejectedWithBluePrintsOnly() {
+    PlannerBenchmarkConfig config = new PlannerBenchmarkConfig();
+    config.setSolverBenchmarkConfigList(null);
+    config.setSolverBenchmarkBluePrintConfigList(
+        Collections.singletonList(
+            new SolverBenchmarkBluePrintConfig()
+                .withSolverBenchmarkBluePrintType(
+                    SolverBenchmarkBluePrintType
+                        .CONSTRUCTION_HEURISTIC_WITH_AND_WITHOUT_LOCAL_SEARCH)));
+    config.setInheritedSolverBenchmarkConfig(
+        buildSolverBenchmarkConfig(null, EnvironmentMode.FULL_ASSERT, null));
+    DefaultPlannerBenchmarkFactory benchmarkFactory = new DefaultPlannerBenchmarkFactory(config);
+    assertThatIllegalStateException()
+        .isThrownBy(benchmarkFactory::validate)
+        .withMessageContaining("cannot override the environment mode when in benchmark mode");
+  }
+
+  @Test
+  void nestedIslandPhaseOverrideIsRejected() {
+    var nestedPhase = new LocalSearchPhaseConfig().withEnvironmentMode(EnvironmentMode.FULL_ASSERT);
+    var islandPhase = new IslandModelPhaseConfig().withPhaseConfigList(List.of(nestedPhase));
+    var solver =
+        new SolverConfig()
+            .withEnvironmentMode(EnvironmentMode.PHASE_ASSERT)
+            .withPhases(islandPhase);
+    var config =
+        new PlannerBenchmarkConfig()
+            .withSolverBenchmarkConfigs(new SolverBenchmarkConfig().withSolverConfig(solver));
+
+    assertThatIllegalStateException()
+        .isThrownBy(() -> new DefaultPlannerBenchmarkFactory(config).validate())
+        .withMessageContaining("cannot override the environment mode when in benchmark mode");
+  }
+
+  @Test
+  void nestedPartitionPhaseOverrideIsRejected() {
+    var nestedPhase = new LocalSearchPhaseConfig().withEnvironmentMode(EnvironmentMode.FULL_ASSERT);
+    var partitionPhase = new PartitionedSearchPhaseConfig().withPhaseConfigs(nestedPhase);
+    var solver =
+        new SolverConfig()
+            .withEnvironmentMode(EnvironmentMode.PHASE_ASSERT)
+            .withPhases(partitionPhase);
+    var config =
+        new PlannerBenchmarkConfig()
+            .withSolverBenchmarkConfigs(new SolverBenchmarkConfig().withSolverConfig(solver));
+
+    assertThatIllegalStateException()
+        .isThrownBy(() -> new DefaultPlannerBenchmarkFactory(config).validate())
+        .withMessageContaining("cannot override the environment mode when in benchmark mode");
+  }
+
+  private static PlannerBenchmarkConfig buildConfigWithPhases(
+      EnvironmentMode globalEnvironmentMode,
+      EnvironmentMode constructionHeuristicEnvironmentMode,
+      EnvironmentMode localSearchEnvironmentMode) {
+    PlannerBenchmarkConfig config = new PlannerBenchmarkConfig();
+    config.setSolverBenchmarkConfigList(
+        Collections.singletonList(
+            buildSolverBenchmarkConfig(
+                globalEnvironmentMode,
+                constructionHeuristicEnvironmentMode,
+                localSearchEnvironmentMode)));
+    return config;
+  }
+
+  private static SolverBenchmarkConfig buildSolverBenchmarkConfig(
+      EnvironmentMode globalEnvironmentMode,
+      EnvironmentMode constructionHeuristicEnvironmentMode,
+      EnvironmentMode localSearchEnvironmentMode) {
+    ConstructionHeuristicPhaseConfig constructionHeuristicPhaseConfig =
+        new ConstructionHeuristicPhaseConfig();
+    constructionHeuristicPhaseConfig.setEnvironmentMode(constructionHeuristicEnvironmentMode);
+    LocalSearchPhaseConfig localSearchPhaseConfig = new LocalSearchPhaseConfig();
+    localSearchPhaseConfig.setEnvironmentMode(localSearchEnvironmentMode);
+    SolverConfig solverConfig =
+        new SolverConfig()
+            .withEnvironmentMode(globalEnvironmentMode)
+            .withPhases(constructionHeuristicPhaseConfig, localSearchPhaseConfig);
+    SolverBenchmarkConfig solverBenchmarkConfig = new SolverBenchmarkConfig();
+    solverBenchmarkConfig.setSolverConfig(solverConfig);
+    return solverBenchmarkConfig;
   }
 
   @Test

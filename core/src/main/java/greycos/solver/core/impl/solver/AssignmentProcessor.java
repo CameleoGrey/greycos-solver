@@ -55,12 +55,11 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
     // The cloned element may already be assigned.
     // If it is, we need to unassign it before we can run the construction heuristic.
     var moveDirector = scoreDirector.getMoveDirector();
-    var supplyManager = scoreDirector.getSupplyManager();
     var solutionDescriptor = solverFactory.getSolutionDescriptor();
     var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
     if (listVariableDescriptor != null) {
-      var demand = listVariableDescriptor.getStateDemand();
-      try (var listVariableStateSupply = supplyManager.demand(demand)) {
+      {
+        var listVariableStateSupply = scoreDirector.getListVariableState(listVariableDescriptor);
         var elementPosition = listVariableStateSupply.getElementPosition(clonedElement);
         if (elementPosition
             instanceof PositionInList positionInList) { // Unassign the cloned element.
@@ -100,7 +99,7 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
     entityPlacer.phaseStarted(phaseScope);
     entityPlacer.stepStarted(stepScope);
 
-    try (scoreDirector) {
+    try {
       var placementIterator = entityPlacer.iterator();
       if (!placementIterator.hasNext()) {
         throw new IllegalStateException(
@@ -113,8 +112,11 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
       var recommendedAssignmentList = new ArrayList<Recommendation_>();
       var moveIndex = 0L;
       for (var move : placement) {
-        recommendedAssignmentList.add(
-            execute(scoreDirector, move, moveIndex, clonedElement, propositionFunction));
+        var recommendation =
+            execute(scoreDirector, move, moveIndex, clonedElement, propositionFunction);
+        if (recommendation != null) {
+          recommendedAssignmentList.add(recommendation);
+        }
         moveIndex++;
       }
       recommendedAssignmentList.sort(null);
@@ -146,22 +148,24 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
     }
   }
 
-  private Recommendation_ execute(
+  private @Nullable Recommendation_ execute(
       InnerScoreDirector<Solution_, Score_> scoreDirector,
       Move<Solution_> move,
       long moveIndex,
       In_ clonedElement,
       Function<In_, @Nullable Out_> propositionFunction) {
-    return Objects.requireNonNull(
-        scoreDirector
-            .getMoveDirector()
-            .executeTemporary(
-                move,
-                (unused, unused2) -> {
-                  var newScoreAnalysis = scoreDirector.buildScoreAnalysis(fetchPolicy);
-                  var newScoreDifference = newScoreAnalysis.diff(originalScoreAnalysis);
-                  return recommendationConstructor.apply(
-                      moveIndex, propositionFunction.apply(clonedElement), newScoreDifference);
-                }));
+    return scoreDirector
+        .getMoveDirector()
+        .executeTemporaryWithScore(
+            move,
+            score -> {
+              if (score.isStructurallyFlawed()) {
+                return null;
+              }
+              var newScoreAnalysis = scoreDirector.buildScoreAnalysis(fetchPolicy);
+              var newScoreDifference = newScoreAnalysis.diff(originalScoreAnalysis);
+              return recommendationConstructor.apply(
+                  moveIndex, propositionFunction.apply(clonedElement), newScoreDifference);
+            });
   }
 }

@@ -85,7 +85,7 @@ class GeneralTypeChangeMigrationRecipeTest implements RewriteTest {
             """
                         package greycos;
 
-                        import greycos.solver.core.api.cotwin.common.PlanningId;
+                        import greycos.solver.core.api.cotwin.lookup.PlanningId;
                         import greycos.solver.core.api.solver.change.ProblemChange;
 
                         public class Test {
@@ -203,12 +203,12 @@ class GeneralTypeChangeMigrationRecipeTest implements RewriteTest {
                         package greycos;
 
                         import greycos.solver.core.api.cotwin.valuerange.ValueRange;
-                        import greycos.solver.core.impl.cotwin.valuerange.CompositeValueRange;
                         import greycos.solver.core.impl.cotwin.valuerange.NullAllowingValueRange;
+                        import greycos.solver.core.impl.cotwin.valuerange.buildin.composite.CompositeCountableValueRange;
 
                         public class Test {
                                 ValueRange valueRange;
-                                CompositeValueRange valueRange2;
+                                CompositeCountableValueRange valueRange2;
                                 NullAllowingValueRange valueRange3;
                         }"""));
   }

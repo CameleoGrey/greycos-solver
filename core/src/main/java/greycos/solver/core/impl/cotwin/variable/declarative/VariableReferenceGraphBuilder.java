@@ -62,9 +62,6 @@ public final class VariableReferenceGraphBuilder<Solution_> {
    */
   public void addInitialDynamicEdge(
       @NonNull GraphNode<Solution_> from, @NonNull GraphNode<Solution_> to) {
-    if (from.graphNodeId() == to.graphNodeId()) {
-      return;
-    }
     initialDynamicEdges.computeIfAbsent(from, k -> new ArrayList<>()).add(to);
   }
 
@@ -139,9 +136,6 @@ public final class VariableReferenceGraphBuilder<Solution_> {
   }
 
   public void addFixedEdge(@NonNull GraphNode<Solution_> from, @NonNull GraphNode<Solution_> to) {
-    if (from.graphNodeId() == to.graphNodeId()) {
-      return;
-    }
     fixedEdges.computeIfAbsent(from, k -> new ArrayList<>()).add(to);
   }
 
@@ -165,7 +159,8 @@ public final class VariableReferenceGraphBuilder<Solution_> {
         .add(consumer);
   }
 
-  public VariableReferenceGraph build(IntFunction<TopologicalOrderGraph> graphCreator) {
+  public VariableReferenceGraph build(
+      IntFunction<TopologicalOrderGraph> graphCreator, boolean ignoreInconsistentSolutions) {
     assertNoFixedLoops();
     if (nodeList.isEmpty()) {
       return EmptyVariableReferenceGraph.INSTANCE;
@@ -173,7 +168,7 @@ public final class VariableReferenceGraphBuilder<Solution_> {
     if (isGraphFixed) {
       return new FixedVariableReferenceGraph<>(this, graphCreator);
     }
-    return new DefaultVariableReferenceGraph<>(this, graphCreator);
+    return new DefaultVariableReferenceGraph<>(this, graphCreator, ignoreInconsistentSolutions);
   }
 
   public @NonNull GraphNode<Solution_> lookupOrError(
@@ -246,78 +241,78 @@ public final class VariableReferenceGraphBuilder<Solution_> {
     out.append(
         """
 
-                        Fixed dependency loops indicate a problem in either the input problem or in the @%s of the looped @%s.
-                        There are two kinds of fixed dependency loops:
+        Fixed dependency loops indicate a problem in either the input problem or in the @%s of the looped @%s.
+        There are two kinds of fixed dependency loops:
 
-                        - You have two shadow variables whose sources refer to each other;
-                          this is called a source-induced fixed loop.
-                          In code, this situation looks like this:
+        - You have two shadow variables whose sources refer to each other;
+          this is called a source-induced fixed loop.
+          In code, this situation looks like this:
 
-                              @ShadowVariable(supplierName="variable1Supplier")
-                              String variable1;
+              @ShadowVariable(supplierName="variable1Supplier")
+              String variable1;
 
-                              @ShadowVariable(supplierName="variable2Supplier")
-                              String variable2;
+              @ShadowVariable(supplierName="variable2Supplier")
+              String variable2;
 
-                              // ...
+              // ...
 
-                              @ShadowSources("variable2")
-                              String variable1Supplier() { /* ... */ }
+              @ShadowSources("variable2")
+              String variable1Supplier() { /* ... */ }
 
-                              @ShadowSources("variable1")
-                              String variable2Supplier() { /* ... */ }
+              @ShadowSources("variable1")
+              String variable2Supplier() { /* ... */ }
 
-                        - You have a shadow variable whose sources refer to itself transitively via a fact;
-                          this is called a fact-induced fixed loop.
-                          In code, this situation looks like this:
+        - You have a shadow variable whose sources refer to itself transitively via a fact;
+          this is called a fact-induced fixed loop.
+          In code, this situation looks like this:
 
-                              @PlanningEntity
-                              public class Entity {
-                                  Entity dependency;
+              @PlanningEntity
+              public class Entity {
+                  Entity dependency;
 
-                                  @ShadowVariable(supplierName="variableSupplier")
-                                  String variable;
+                  @ShadowVariable(supplierName="variableSupplier")
+                  String variable;
 
-                                  @ShadowSources("dependency.variable")
-                                  String variableSupplier() { /* ... */ }
-                                  // ...
-                              }
+                  @ShadowSources("dependency.variable")
+                  String variableSupplier() { /* ... */ }
+                  // ...
+              }
 
-                              Entity a = new Entity();
-                              Entity b = new Entity();
-                              a.setDependency(b);
-                              b.setDependency(a);
-                              // a depends on b, and b depends on a, which is invalid.
-
-
-                        The solver cannot break a fixed loop since the loop is caused by sources or facts instead of variables.
-                        Fixed loops should not be confused with variable-induced loops, which can be broken by the solver:
-
-                              @PlanningEntity
-                              public class Entity {
-                                  Entity dependency;
-
-                                  @PreviousElementShadowVariable(/* ... */)
-                                  Entity previous;
-
-                                  @ShadowVariable(supplierName="variableSupplier")
-                                  String variable;
-
-                                  @ShadowSources({"previous.variable", "dependency.variable"})
-                                  String variable1Supplier() { /* ... */ }
-                                  // ...
-                              }
-
-                              Entity a = new Entity();
-                              Entity b = new Entity();
-                              b.setDependency(a);
-                              a.setPrevious(b);
-                              // b depends on a via a fact, and a depends on b via a variable
-                              // The solver can break this loop by moving a after b.
+              Entity a = new Entity();
+              Entity b = new Entity();
+              a.setDependency(b);
+              b.setDependency(a);
+              // a depends on b, and b depends on a, which is invalid.
 
 
-                        Maybe check none of your @%s form a loop on the same entity.
-                        """
+        The solver cannot break a fixed loop since the loop is caused by sources or facts instead of variables.
+        Fixed loops should not be confused with variable-induced loops, which can be broken by the solver:
+
+              @PlanningEntity
+              public class Entity {
+                  Entity dependency;
+
+                  @PreviousElementShadowVariable(/* ... */)
+                  Entity previous;
+
+                  @ShadowVariable(supplierName="variableSupplier")
+                  String variable;
+
+                  @ShadowSources({"previous.variable", "dependency.variable"})
+                  String variable1Supplier() { /* ... */ }
+                  // ...
+              }
+
+              Entity a = new Entity();
+              Entity b = new Entity();
+              b.setDependency(a);
+              a.setPrevious(b);
+              // b depends on a via a fact, and a depends on b via a variable
+              // The solver can break this loop by moving a after b.
+
+
+        Maybe check none of your @%s form a loop on the same entity.
+        """
             .formatted(
                 ShadowSources.class.getSimpleName(),
                 ShadowVariable.class.getSimpleName(),

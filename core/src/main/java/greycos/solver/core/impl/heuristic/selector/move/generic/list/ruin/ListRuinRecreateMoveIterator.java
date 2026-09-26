@@ -6,7 +6,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.random.RandomGenerator;
 
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateConstructionHeuristicPhaseBuilder;
@@ -21,7 +21,7 @@ final class ListRuinRecreateMoveIterator<Solution_>
   private final RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>
       constructionHeuristicPhaseBuilder;
   private final SolverScope<Solution_> solverScope;
-  private final ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
+  private final ListVariableState<Solution_, Object, Object> listVariableState;
   private final int minimumRuinedCount;
   private final int maximumRuinedCount;
   private final RandomGenerator workingRandom;
@@ -30,14 +30,14 @@ final class ListRuinRecreateMoveIterator<Solution_>
       IterableValueSelector<Solution_> valueSelector,
       RuinRecreateConstructionHeuristicPhaseBuilder<Solution_> constructionHeuristicPhaseBuilder,
       SolverScope<Solution_> solverScope,
-      ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply,
+      ListVariableState<Solution_, Object, Object> listVariableState,
       int minimumRuinedCount,
       int maximumRuinedCount,
       RandomGenerator workingRandom) {
     this.valueSelector = valueSelector;
     this.constructionHeuristicPhaseBuilder = constructionHeuristicPhaseBuilder;
     this.solverScope = solverScope;
-    this.listVariableStateSupply = listVariableStateSupply;
+    this.listVariableState = listVariableState;
     this.minimumRuinedCount = minimumRuinedCount;
     this.maximumRuinedCount = maximumRuinedCount;
     this.workingRandom = workingRandom;
@@ -60,7 +60,7 @@ final class ListRuinRecreateMoveIterator<Solution_>
         var selectedValue = valueIterator.next();
         if (selectedValueSet.add(selectedValue)) {
           selectedValueList.add(selectedValue);
-          var affectedEntity = listVariableStateSupply.getInverseSingleton(selectedValue);
+          var affectedEntity = listVariableState.getInverseSingleton(selectedValue);
           if (affectedEntity != null) {
             affectedEntitySet.add(affectedEntity);
           }
@@ -75,7 +75,7 @@ final class ListRuinRecreateMoveIterator<Solution_>
       }
     }
     return new SelectorBasedListRuinRecreateMove<>(
-        listVariableStateSupply.getSourceVariableDescriptor(),
+        listVariableState.getSourceVariableDescriptor(),
         constructionHeuristicPhaseBuilder,
         solverScope,
         selectedValueList,

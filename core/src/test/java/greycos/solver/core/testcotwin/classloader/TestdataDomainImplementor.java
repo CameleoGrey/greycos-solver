@@ -338,7 +338,7 @@ public class TestdataDomainImplementor {
                   "valueList",
                   fieldCreator -> {
                     fieldCreator.private_();
-                    fieldCreator.setType(java.util.List.class);
+                    fieldCreator.setType(List.class);
                   });
 
           // private List<TestdataEntity> entityList;
@@ -347,7 +347,7 @@ public class TestdataDomainImplementor {
                   "entityList",
                   fieldCreator -> {
                     fieldCreator.private_();
-                    fieldCreator.setType(java.util.List.class);
+                    fieldCreator.setType(List.class);
                   });
 
           // private SimpleScore score;
@@ -392,7 +392,7 @@ public class TestdataDomainImplementor {
               methodCreator -> {
                 methodCreator.public_();
                 methodCreator.returning(
-                    GenericType.of(java.util.List.class, List.of(TypeArgument.of(valueClassDesc))));
+                    GenericType.of(List.class, List.of(TypeArgument.of(valueClassDesc))));
                 methodCreator.addAnnotation(
                     ValueRangeProvider.class,
                     annotationCreator -> annotationCreator.add("id", "valueRange"));
@@ -408,7 +408,7 @@ public class TestdataDomainImplementor {
               methodCreator -> {
                 methodCreator.public_();
                 methodCreator.returning(void.class);
-                var valueList = methodCreator.parameter("valueList", java.util.List.class);
+                var valueList = methodCreator.parameter("valueList", List.class);
                 methodCreator.body(
                     blockCreator -> {
                       blockCreator.set(methodCreator.this_().field(valueListField), valueList);
@@ -422,8 +422,7 @@ public class TestdataDomainImplementor {
               methodCreator -> {
                 methodCreator.public_();
                 methodCreator.returning(
-                    GenericType.of(
-                        java.util.List.class, List.of(TypeArgument.of(entityClassDesc))));
+                    GenericType.of(List.class, List.of(TypeArgument.of(entityClassDesc))));
                 methodCreator.addAnnotation(PlanningEntityCollectionProperty.class);
                 methodCreator.body(
                     blockCreator ->
@@ -436,7 +435,7 @@ public class TestdataDomainImplementor {
               methodCreator -> {
                 methodCreator.public_();
                 methodCreator.returning(void.class);
-                var entityList = methodCreator.parameter("entityList", java.util.List.class);
+                var entityList = methodCreator.parameter("entityList", List.class);
                 methodCreator.body(
                     blockCreator -> {
                       blockCreator.set(methodCreator.this_().field(entityListField), entityList);

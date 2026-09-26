@@ -11,7 +11,6 @@ import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.solver.DefaultSolver;
-import greycos.solver.core.impl.solver.scope.SolverScope;
 
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Metrics;
@@ -74,14 +73,15 @@ public class MoveCountPerTypeStatistic<Solution_> implements SolverStatistic<Sol
     }
 
     void unregister(Solver<Solution_> solver) {
-      SolverScope<Solution_> solverScope = ((DefaultSolver<Solution_>) solver).getSolverScope();
-      tagsToMoveCountMap.values().stream()
-          .flatMap(v -> v.keySet().stream())
-          .forEach(
-              meter ->
-                  Metrics.globalRegistry.remove(
-                      new Meter.Id(
-                          meter, solverScope.getMonitoringTags(), null, null, Meter.Type.GAUGE)));
+      tagsToMoveCountMap.forEach(
+          (tags, counts) ->
+              counts
+                  .keySet()
+                  .forEach(
+                      meter ->
+                          Metrics.globalRegistry.remove(
+                              new Meter.Id(meter, tags, null, null, Meter.Type.GAUGE))));
+      tagsToMoveCountMap.clear();
     }
   }
 }

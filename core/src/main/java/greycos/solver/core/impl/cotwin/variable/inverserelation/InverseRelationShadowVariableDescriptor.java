@@ -11,9 +11,8 @@ import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
-import greycos.solver.core.impl.cotwin.variable.BasicVariableStateDemand;
-import greycos.solver.core.impl.cotwin.variable.ExternalizedBasicVariableStateSupply;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.BasicVariableState;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 
@@ -75,10 +74,11 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
     if (sourceEntityDescriptor == null) {
       throw new IllegalArgumentException(
           """
-                    The entityClass (%s) has an @%s-annotated property (%s) \
-                    with a sourceClass (%s) which is not a valid planning entity.
-                    Maybe check the annotations of the class (%s).
-                    Maybe add the class (%s) among planning entities in the solver configuration."""
+          The entityClass (%s) has an @%s-annotated property (%s) \
+          with a sourceClass (%s) which is not a valid planning entity.
+          Maybe check the annotations of the class (%s).
+          Maybe add the class (%s) among planning entities in the solver configuration.\
+          """
               .formatted(
                   entityDescriptor.getEntityClass(),
                   InverseRelationShadowVariable.class.getSimpleName(),
@@ -93,9 +93,10 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
     if (sourceVariableDescriptor == null) {
       throw new IllegalStateException(
           """
-                    The entityClass (%s) has an @%s-annotated property (%s) \
-                    with sourceVariableName (%s) which is not a valid planning variable on entityClass (%s).
-                    %s"""
+          The entityClass (%s) has an @%s-annotated property (%s) \
+          with sourceVariableName (%s) which is not a valid planning variable on entityClass (%s).
+          %s\
+          """
               .formatted(
                   entityDescriptor.getEntityClass(),
                   InverseRelationShadowVariable.class.getSimpleName(),
@@ -110,9 +111,10 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
       if (!list) {
         throw new IllegalArgumentException(
             """
-                        The entityClass (%s) has an @%s-annotated property (%s) \
-                        which does not return a %s with sourceVariableName (%s) which is not a list variable @%s.
-                        Only list variable supports a singleton inverse."""
+            The entityClass (%s) has an @%s-annotated property (%s) \
+            which does not return a %s with sourceVariableName (%s) which is not a list variable @%s.
+            Only list variable supports a singleton inverse.\
+            """
                 .formatted(
                     entityDescriptor.getEntityClass(),
                     InverseRelationShadowVariable.class.getSimpleName(),
@@ -125,9 +127,10 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
       if (list) {
         throw new IllegalArgumentException(
             """
-                        The entityClass (%s) has an @%s-annotated property (%s) \
-                        which returns a %s with sourceVariableName (%s) which is a list variable @%s.
-                        A list variable supports only a singleton inverse."""
+            The entityClass (%s) has an @%s-annotated property (%s) \
+            which returns a %s with sourceVariableName (%s) which is a list variable @%s.
+            A list variable supports only a singleton inverse.\
+            """
                 .formatted(
                     entityDescriptor.getEntityClass(),
                     InverseRelationShadowVariable.class.getSimpleName(),
@@ -148,29 +151,9 @@ public final class InverseRelationShadowVariableDescriptor<Solution_>
   public Collection<Class<?>> getUpdaterClasses() {
     if (singleton) {
       throw new UnsupportedOperationException(
-          "Impossible state: Handled by %s."
-              .formatted(ListVariableStateSupply.class.getSimpleName()));
+          "Impossible state: Handled by %s.".formatted(ListVariableState.class.getSimpleName()));
     } else {
-      return Collections.singleton(ExternalizedBasicVariableStateSupply.class);
+      return Collections.singleton(BasicVariableState.class);
     }
-  }
-
-  // ************************************************************************
-  // Worker methods
-  // ************************************************************************
-
-  @Override
-  public BasicVariableStateDemand<Solution_> getProvidedDemand() {
-    if (singleton) {
-      throw new UnsupportedOperationException(
-          "Impossible state: Handled by %s."
-              .formatted(ListVariableStateSupply.class.getSimpleName()));
-    } else {
-      return new BasicVariableStateDemand<>(sourceVariableDescriptor);
-    }
-  }
-
-  public boolean isSingleton() {
-    return singleton;
   }
 }

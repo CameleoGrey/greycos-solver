@@ -171,7 +171,7 @@ public class IslandAgent<Solution_> implements Runnable {
     var currentInnerScore = getCurrentBestScore();
 
     int comparisonResult = compareInnerScores(migrantInnerScore, currentInnerScore);
-    if (comparisonResult > 0) {
+    if (!migrantInnerScore.isStructurallyFlawed() && comparisonResult > 0) {
       LOGGER.info(
           "Agent {} received better migrant from agent {} (score: {} vs {})",
           agentId,
@@ -202,6 +202,9 @@ public class IslandAgent<Solution_> implements Runnable {
 
     Solution_ migrant = getCurrentBestSolution();
     var migrantScore = getCurrentBestScore();
+    if (migrantScore.isStructurallyFlawed()) {
+      return null;
+    }
     AgentUpdate<Solution_> updateToSend =
         new AgentUpdate<>(agentId, migrant, migrantScore, snapshotAliveBits());
     LOGGER.debug("Agent {} sending migration", agentId);

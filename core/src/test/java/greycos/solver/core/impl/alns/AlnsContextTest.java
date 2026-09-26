@@ -464,7 +464,7 @@ class AlnsContextTest {
     var factory =
         new BavetConstraintStreamScoreDirectorFactory<S, SimpleScore>(
             descriptor, provider, EnvironmentMode.NO_ASSERT, false);
-    var director = factory.createScoreDirectorBuilder().build();
+    var director = factory.createScoreDirectorBuilder(EnvironmentMode.NO_ASSERT).build();
     director.setWorkingSolution(solution);
     director.calculateScore();
     return director;

@@ -2,17 +2,9 @@ package greycos.solver.migration;
 
 import java.util.List;
 
-import greycos.solver.migration.v2.ConstraintArgRemovalMigrationRecipe;
-import greycos.solver.migration.v2.ConstraintMetadataMigrationRecipe;
-import greycos.solver.migration.v2.GeneralDependencyDeleteMigrationRecipe;
-import greycos.solver.migration.v2.GeneralMethodChangeNameMigrationRecipe;
-import greycos.solver.migration.v2.GeneralMethodDeleteInvocationMigrationRecipe;
-import greycos.solver.migration.v2.GeneralPackageRenameMigrationRecipe;
-import greycos.solver.migration.v2.GeneralTypeChangeMigrationRecipe;
-import greycos.solver.migration.v2.PlanningSolutionAnnotationCleanupMigrationRecipe;
-import greycos.solver.migration.v2.ProblemIdDeletionMigrationRecipe;
-import greycos.solver.migration.v2.SolverConfigOverrideSolutionDeletionMigrationRecipe;
-import greycos.solver.migration.v2.TestingAPIsMigrationRecipe;
+import greycos.solver.migration.preview.PreviewToLatestRecipe;
+import greycos.solver.migration.v1.ToLatestV1Recipe;
+import greycos.solver.migration.v2.ToLatestV2Recipe;
 
 import org.openrewrite.Recipe;
 import org.openrewrite.java.RemoveUnusedImports;
@@ -31,25 +23,16 @@ public final class ToLatestRecipe extends AbstractRecipe {
 
   @Override
   public String getDescription() {
-    return "Replace calls to deleted or deprecated GreyCOS Solver types and methods with their current alternatives.";
+    return "Replace calls to deleted or deprecated GreyCOS Solver types and methods with their"
+        + " current alternatives.";
   }
 
   @Override
   public List<Recipe> getRecipeList() {
     return List.of(
         new ToLatestV1Recipe(),
-        new ChangeVersionRecipe(),
-        new ConstraintArgRemovalMigrationRecipe(),
-        new ConstraintMetadataMigrationRecipe(),
-        new PlanningSolutionAnnotationCleanupMigrationRecipe(),
-        new GeneralMethodDeleteInvocationMigrationRecipe(),
-        new GeneralMethodChangeNameMigrationRecipe(),
-        new GeneralTypeChangeMigrationRecipe(),
-        new ProblemIdDeletionMigrationRecipe(),
-        new TestingAPIsMigrationRecipe(),
-        new GeneralDependencyDeleteMigrationRecipe(),
-        new GeneralPackageRenameMigrationRecipe(),
-        new SolverConfigOverrideSolutionDeletionMigrationRecipe(),
+        new ToLatestV2Recipe(),
+        new PreviewToLatestRecipe(),
         new RemoveUnusedImports());
   }
 }

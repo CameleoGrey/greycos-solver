@@ -7,4 +7,4 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 public sealed interface EnumeratingStreamBinaryOperation<Solution_>
     extends BavetStreamBinaryOperation<AbstractEnumeratingStream<Solution_>>
-    permits IfExistsEnumeratingStream, JoinEnumeratingStream {}
+    permits ConcatEnumeratingStream, IfExistsEnumeratingStream, JoinEnumeratingStream {}

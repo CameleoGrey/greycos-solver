@@ -12,7 +12,7 @@ import java.util.RandomAccess;
 import java.util.stream.Stream;
 
 import greycos.solver.core.api.function.TriConsumer;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.score.director.ValueRangeManager;
 
@@ -68,14 +68,13 @@ final class MultipleDelegateList<T> implements List<T>, RandomAccess {
     }
   }
 
-  public int getIndexOfValue(
-      ListVariableStateSupply<?, Object, Object> listVariableStateSupply, Object value) {
+  public int getIndexOfValue(ListVariableState<?, Object, Object> listVariableState, Object value) {
     var elementPosition =
-        listVariableStateSupply
+        listVariableState
             .getElementPosition(value)
             .ensureAssigned(() -> "Value (" + value + ") is not contained in any entity list");
     var entity = elementPosition.entity();
-    var listVariableDescriptor = listVariableStateSupply.getSourceVariableDescriptor();
+    var listVariableDescriptor = listVariableState.getSourceVariableDescriptor();
     for (var i = 0; i < delegateEntities.length; i++) {
       if (delegateEntities[i] == entity) {
         var firstUnpinnedIndex = listVariableDescriptor.getFirstUnpinnedIndex(delegateEntities[i]);

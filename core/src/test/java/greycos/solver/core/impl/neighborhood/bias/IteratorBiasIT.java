@@ -9,6 +9,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import greycos.solver.core.impl.bavet.common.index.CompositeKey;
 import greycos.solver.core.impl.bavet.common.index.Indexer;
@@ -24,6 +25,7 @@ import greycos.solver.core.preview.api.neighborhood.stream.joiner.NeighborhoodsJ
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
@@ -43,15 +45,28 @@ class IteratorBiasIT extends AbstractBiasIT {
     return IntStream.concat(oneStream, multipleStream);
   }
 
+  /**
+   * Crosses the draw count with the physical layout, because the iterators draw over slots: on a
+   * {@link Layout#GAPPED} list a draw must reject and redraw, and that rejection must not skew
+   * which element comes back.
+   */
+  private static List<Arguments> selectionCountAndLayout() {
+    return selectionCount()
+        .boxed()
+        .flatMap(n -> Stream.of(Layout.values()).map(layout -> Arguments.of(n, layout)))
+        .toList();
+  }
+
   @MethodSource(
-      "selectionCount") // Determines how many draws are made before recording the nth pick.
+      "selectionCountAndLayout") // Determines how many draws are made before recording the nth
+  // pick.
   @ParameterizedTest
-  void repeatingRandomIteratorIsUniformAtDraw(int n) {
+  void repeatingRandomIteratorIsUniformAtDraw(int n, Layout layout) {
     var trialCount = 1_000_000;
-    var sampleList = toEntries(SAMPLES);
+    var sampleList = layout.build(SAMPLES);
     var root = new Random(0);
     BiasReport.tally(
-            "RepeatingRandomIterator uniform at draw #" + n,
+            "RepeatingRandomIterator uniform at draw #" + n + " (" + layout + ")",
             trialCount,
             trial -> {
               var splitRandom = splitFrom(root);
@@ -140,8 +155,9 @@ class IteratorBiasIT extends AbstractBiasIT {
    * landed on the retired index moved to whichever survivor was closest instead of being redrawn
    * from the live pool uniformly.
    */
-  @Test
-  void retiringRandomIteratorStaysUniformAfterRetirement() {
+  @EnumSource(Layout.class)
+  @ParameterizedTest
+  void retiringRandomIteratorStaysUniformAfterRetirement(Layout layout) {
     var trialCount = 1_000_000;
     var elementCount = 20;
     var retiredElementSet =
@@ -152,11 +168,11 @@ class IteratorBiasIT extends AbstractBiasIT {
     var root = new Random(0);
     var report =
         BiasReport.tally(
-            "DefaultRetiringRandomIterator uniform after interior retirement",
+            "DefaultRetiringRandomIterator uniform after interior retirement (" + layout + ")",
             trialCount,
             trial -> {
               var splitRandom = splitFrom(root);
-              var iterator = RetiringRandomIterator.of(toEntries(elementList), splitRandom);
+              var iterator = RetiringRandomIterator.of(layout.build(elementList), splitRandom);
               for (var retiredElement : retiredElementSet) {
                 retireElement(iterator, retiredElement);
               }
@@ -182,19 +198,20 @@ class IteratorBiasIT extends AbstractBiasIT {
    * on) against the same "snap to nearest active index" bias, this time over a full drain: every
    * one of the {@code n!} possible draw orders must be equally likely.
    */
-  @Test
-  void uniqueRandomIteratorDrainsInUniformPermutationOrder() {
+  @EnumSource(Layout.class)
+  @ParameterizedTest
+  void uniqueRandomIteratorDrainsInUniformPermutationOrder(Layout layout) {
     var trialCount = 1_000_000;
     var elementList = List.of(0, 1, 2, 3, 4);
 
     var root = new Random(0);
     var report =
         BiasReport.tally(
-            "UniqueRandomIterator uniform full-drain permutation order",
+            "UniqueRandomIterator uniform full-drain permutation order (" + layout + ")",
             trialCount,
             trial -> {
               var splitRandom = splitFrom(root);
-              var iterator = UniqueRandomIterator.of(toEntries(elementList), splitRandom);
+              var iterator = UniqueRandomIterator.of(layout.build(elementList), splitRandom);
               return drainToList(iterator);
             });
     report.expectUniform(permutationsOf(elementList)).assertWithinSigma(SIGMA_LIMIT);

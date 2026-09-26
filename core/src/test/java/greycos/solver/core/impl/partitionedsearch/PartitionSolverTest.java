@@ -35,7 +35,14 @@ class PartitionSolverTest {
     int partIndex = 5;
 
     var partitionSolver =
-        new PartitionSolver<>(bestSolutionRecaller, termination, phaseList, solverScope, partIndex);
+        new PartitionSolver<>(
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            bestSolutionRecaller,
+            termination,
+            phaseList,
+            solverScope,
+            partIndex);
 
     assertThat(partitionSolver.getPartIndex()).isEqualTo(5);
     assertThat(partitionSolver.getSolverScope()).isSameAs(solverScope);
@@ -57,7 +64,14 @@ class PartitionSolverTest {
     solverScope.setScoreDirector(scoreDirector);
 
     var partitionSolver =
-        new PartitionSolver<>(bestSolutionRecaller, termination, phaseList, solverScope, 0);
+        new PartitionSolver<>(
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            bestSolutionRecaller,
+            termination,
+            phaseList,
+            solverScope,
+            0);
 
     partitionSolver.solvingEnded(solverScope);
 
@@ -74,7 +88,14 @@ class PartitionSolverTest {
     SolverScope<TestdataSolution> solverScope = new SolverScope<>();
 
     var partitionSolver =
-        new PartitionSolver<>(bestSolutionRecaller, termination, phaseList, solverScope, 0);
+        new PartitionSolver<>(
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            bestSolutionRecaller,
+            termination,
+            phaseList,
+            solverScope,
+            0);
 
     ProblemChange<TestdataSolution> problemChange = mock(ProblemChange.class);
 
@@ -94,7 +115,14 @@ class PartitionSolverTest {
     SolverScope<TestdataSolution> solverScope = new SolverScope<>();
 
     var partitionSolver =
-        new PartitionSolver<>(bestSolutionRecaller, termination, phaseList, solverScope, 0);
+        new PartitionSolver<>(
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            bestSolutionRecaller,
+            termination,
+            phaseList,
+            solverScope,
+            0);
 
     @SuppressWarnings("unchecked")
     ProblemChange<TestdataSolution> problemChange = mock(ProblemChange.class);
@@ -116,7 +144,14 @@ class PartitionSolverTest {
     SolverScope<TestdataSolution> solverScope = new SolverScope<>();
 
     var partitionSolver =
-        new PartitionSolver<>(bestSolutionRecaller, termination, phaseList, solverScope, 0);
+        new PartitionSolver<>(
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            bestSolutionRecaller,
+            termination,
+            phaseList,
+            solverScope,
+            0);
 
     assertThat(partitionSolver.isSolving()).isFalse();
   }
@@ -131,7 +166,14 @@ class PartitionSolverTest {
     SolverScope<TestdataSolution> solverScope = new SolverScope<>();
 
     var partitionSolver =
-        new PartitionSolver<>(bestSolutionRecaller, termination, phaseList, solverScope, 0);
+        new PartitionSolver<>(
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            bestSolutionRecaller,
+            termination,
+            phaseList,
+            solverScope,
+            0);
 
     assertThat(partitionSolver.isTerminateEarly()).isFalse();
   }
@@ -146,7 +188,14 @@ class PartitionSolverTest {
     SolverScope<TestdataSolution> solverScope = new SolverScope<>();
 
     var partitionSolver =
-        new PartitionSolver<>(bestSolutionRecaller, termination, phaseList, solverScope, 0);
+        new PartitionSolver<>(
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            bestSolutionRecaller,
+            termination,
+            phaseList,
+            solverScope,
+            0);
 
     assertThat(partitionSolver.terminateEarly()).isFalse();
   }
@@ -161,7 +210,14 @@ class PartitionSolverTest {
     SolverScope<TestdataSolution> solverScope = new SolverScope<>();
 
     var partitionSolver =
-        new PartitionSolver<>(bestSolutionRecaller, termination, phaseList, solverScope, 0);
+        new PartitionSolver<>(
+            greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            bestSolutionRecaller,
+            termination,
+            phaseList,
+            solverScope,
+            0);
 
     assertThat(partitionSolver.isEveryProblemChangeProcessed()).isFalse();
   }

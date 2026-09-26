@@ -16,7 +16,7 @@ public interface RevertableScoreDirector<Solution_>
    * result in a fresh move instance with only those operations that happened after the latest call
    * to {@link #undoChanges()}. This is useful when the undo operation ever needs to be replayed
    * manually; most use cases do not need this and should refer to {@link
-   * MoveDirector#executeTemporary(Move)}.
+   * MoveDirector#executeTemporary(Move, MoveDirector.TemporaryScorePostprocessor)}.
    */
   Move<Solution_> createUndoMove();
 

@@ -3,7 +3,7 @@ package greycos.solver.core.impl.heuristic.selector.list;
 import static greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.phaseStarted;
 import static greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.solvingStarted;
 import static greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.stepStarted;
-import static greycos.solver.core.impl.heuristic.selector.list.TriangularNumbers.nthTriangle;
+import static greycos.solver.core.impl.util.TriangularNumbers.nthTriangle;
 import static greycos.solver.core.testcotwin.list.TestdataListUtils.getAllowsUnassignedvaluesListVariableDescriptor;
 import static greycos.solver.core.testcotwin.list.TestdataListUtils.getListVariableDescriptor;
 import static greycos.solver.core.testcotwin.list.TestdataListUtils.getPinnedListVariableDescriptor;
@@ -67,7 +67,8 @@ class RandomSubListSelectorTest {
 
     var random = new TestRandom(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0);
 
-    solvingStarted(selector, scoreDirector, random);
+    var solverScope = solvingStarted(selector, scoreDirector, random);
+    phaseStarted(selector, solverScope);
 
     // Every possible subList is selected.
     assertCodesOfNeverEndingIterableSelector(
@@ -162,7 +163,8 @@ class RandomSubListSelectorTest {
 
     var random = new TestRandom(0, 1, 2, 3, 4, 5, 0);
 
-    solvingStarted(selector, scoreDirector, random);
+    var solverScope = solvingStarted(selector, scoreDirector, random);
+    phaseStarted(selector, solverScope);
 
     // Every possible subList is selected.
     assertCodesOfNeverEndingIterableSelector(
@@ -200,7 +202,8 @@ class RandomSubListSelectorTest {
 
     var random = new TestRandom(0, 1, 2, 3, 4, 5, 6, 0);
 
-    solvingStarted(selector, scoreDirector, random);
+    var solverScope = solvingStarted(selector, scoreDirector, random);
+    phaseStarted(selector, solverScope);
 
     // Every possible subList is selected.
     assertCodesOfNeverEndingIterableSelector(

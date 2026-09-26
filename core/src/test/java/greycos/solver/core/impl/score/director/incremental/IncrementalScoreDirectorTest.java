@@ -12,6 +12,7 @@ import greycos.solver.core.api.score.calculator.ConstraintMatchRegistry;
 import greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.api.score.stream.DefaultConstraintJustification;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
@@ -29,7 +30,8 @@ class IncrementalScoreDirectorTest {
   @Test
   void illegalStateExceptionThrownWhenConstraintMatchNotEnabled() {
     try (var scoreDirector =
-        new IncrementalScoreDirector.Builder<>(mockIncrementalScoreDirectorFactory())
+        new IncrementalScoreDirector.Builder<>(
+                mockIncrementalScoreDirectorFactory(), EnvironmentMode.PHASE_ASSERT)
             .withIncrementalScoreCalculator(mockIncrementalScoreCalculator(false))
             .build()) {
       scoreDirector.setWorkingSolution(new Object());
@@ -42,7 +44,8 @@ class IncrementalScoreDirectorTest {
   @Test
   void constraintMatchTotalsNeverNull() {
     try (var scoreDirector =
-        new IncrementalScoreDirector.Builder<>(mockIncrementalScoreDirectorFactory())
+        new IncrementalScoreDirector.Builder<>(
+                mockIncrementalScoreDirectorFactory(), EnvironmentMode.PHASE_ASSERT)
             .withIncrementalScoreCalculator(mockIncrementalScoreCalculator(true))
             .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
             .build()) {
@@ -54,7 +57,8 @@ class IncrementalScoreDirectorTest {
   @Test
   void constraintMatchIsNotEnabledWhenScoreCalculatorNotConstraintMatchAware() {
     try (var scoreDirector =
-        new IncrementalScoreDirector.Builder<>(mockIncrementalScoreDirectorFactory())
+        new IncrementalScoreDirector.Builder<>(
+                mockIncrementalScoreDirectorFactory(), EnvironmentMode.PHASE_ASSERT)
             .withIncrementalScoreCalculator(mockIncrementalScoreCalculator(false))
             .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
             .build()) {
@@ -90,7 +94,8 @@ class IncrementalScoreDirectorTest {
     @Test
     void registerConstraintMatchThrowsWhenConstraintMatchingDisabled() {
       try (var scoreDirector =
-          new IncrementalScoreDirector.Builder<>(mockIncrementalScoreDirectorFactory())
+          new IncrementalScoreDirector.Builder<>(
+                  mockIncrementalScoreDirectorFactory(), EnvironmentMode.PHASE_ASSERT)
               .withIncrementalScoreCalculator(mockIncrementalScoreCalculator(false))
               .build()) {
         scoreDirector.setWorkingSolution(new Object());
@@ -109,7 +114,8 @@ class IncrementalScoreDirectorTest {
     void registerConstraintMatchUpdatesTotalScoreAndMap() {
       var calculator = new RegistryCapturingCalculator(SimpleScore.of(-5));
       try (var scoreDirector =
-          new IncrementalScoreDirector.Builder<>(mockIncrementalScoreDirectorFactory())
+          new IncrementalScoreDirector.Builder<>(
+                  mockIncrementalScoreDirectorFactory(), EnvironmentMode.PHASE_ASSERT)
               .withIncrementalScoreCalculator(calculator)
               .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
               .build()) {
@@ -147,10 +153,14 @@ class IncrementalScoreDirectorTest {
             }
 
             @Override
-            public void beforeVariableChanged(Object entity, String variableName) {}
+            public void beforeVariableChanged(Object entity, String variableName) {
+              // No action needed
+            }
 
             @Override
-            public void afterVariableChanged(Object entity, String variableName) {}
+            public void afterVariableChanged(Object entity, String variableName) {
+              // No action needed
+            }
 
             @Override
             public SimpleScore calculateScore() {
@@ -159,7 +169,8 @@ class IncrementalScoreDirectorTest {
           };
 
       try (var scoreDirector =
-          new IncrementalScoreDirector.Builder<>(mockIncrementalScoreDirectorFactory())
+          new IncrementalScoreDirector.Builder<>(
+                  mockIncrementalScoreDirectorFactory(), EnvironmentMode.PHASE_ASSERT)
               .withIncrementalScoreCalculator(calculator)
               .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
               .build()) {
@@ -201,10 +212,14 @@ class IncrementalScoreDirectorTest {
             }
 
             @Override
-            public void beforeVariableChanged(Object entity, String variableName) {}
+            public void beforeVariableChanged(Object entity, String variableName) {
+              // No action needed
+            }
 
             @Override
-            public void afterVariableChanged(Object entity, String variableName) {}
+            public void afterVariableChanged(Object entity, String variableName) {
+              // No action needed
+            }
 
             @Override
             public SimpleScore calculateScore() {
@@ -213,7 +228,8 @@ class IncrementalScoreDirectorTest {
           };
 
       try (var scoreDirector =
-          new IncrementalScoreDirector.Builder<>(mockIncrementalScoreDirectorFactory())
+          new IncrementalScoreDirector.Builder<>(
+                  mockIncrementalScoreDirectorFactory(), EnvironmentMode.PHASE_ASSERT)
               .withIncrementalScoreCalculator(calculator)
               .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
               .build()) {
@@ -255,10 +271,14 @@ class IncrementalScoreDirectorTest {
             }
 
             @Override
-            public void beforeVariableChanged(Object entity, String variableName) {}
+            public void beforeVariableChanged(Object entity, String variableName) {
+              // No action needed
+            }
 
             @Override
-            public void afterVariableChanged(Object entity, String variableName) {}
+            public void afterVariableChanged(Object entity, String variableName) {
+              // No action needed
+            }
 
             @Override
             public SimpleScore calculateScore() {
@@ -267,7 +287,8 @@ class IncrementalScoreDirectorTest {
           };
 
       try (var scoreDirector =
-          new IncrementalScoreDirector.Builder<>(mockIncrementalScoreDirectorFactory())
+          new IncrementalScoreDirector.Builder<>(
+                  mockIncrementalScoreDirectorFactory(), EnvironmentMode.PHASE_ASSERT)
               .withIncrementalScoreCalculator(calculator)
               .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
               .build()) {
@@ -310,10 +331,14 @@ class IncrementalScoreDirectorTest {
             }
 
             @Override
-            public void beforeVariableChanged(Object entity, String variableName) {}
+            public void beforeVariableChanged(Object entity, String variableName) {
+              // No action needed
+            }
 
             @Override
-            public void afterVariableChanged(Object entity, String variableName) {}
+            public void afterVariableChanged(Object entity, String variableName) {
+              // No action needed
+            }
 
             @Override
             public SimpleScore calculateScore() {
@@ -322,7 +347,8 @@ class IncrementalScoreDirectorTest {
           };
 
       try (var scoreDirector =
-          new IncrementalScoreDirector.Builder<>(mockIncrementalScoreDirectorFactory())
+          new IncrementalScoreDirector.Builder<>(
+                  mockIncrementalScoreDirectorFactory(), EnvironmentMode.PHASE_ASSERT)
               .withIncrementalScoreCalculator(calculator)
               .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
               .build()) {
@@ -360,10 +386,14 @@ class IncrementalScoreDirectorTest {
             }
 
             @Override
-            public void beforeVariableChanged(Object entity, String variableName) {}
+            public void beforeVariableChanged(Object entity, String variableName) {
+              // No action needed
+            }
 
             @Override
-            public void afterVariableChanged(Object entity, String variableName) {}
+            public void afterVariableChanged(Object entity, String variableName) {
+              // No action needed
+            }
 
             @Override
             public SimpleScore calculateScore() {
@@ -372,7 +402,8 @@ class IncrementalScoreDirectorTest {
           };
 
       try (var scoreDirector =
-          new IncrementalScoreDirector.Builder<>(mockIncrementalScoreDirectorFactory())
+          new IncrementalScoreDirector.Builder<>(
+                  mockIncrementalScoreDirectorFactory(), EnvironmentMode.PHASE_ASSERT)
               .withIncrementalScoreCalculator(calculator)
               .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
               .build()) {
@@ -408,10 +439,14 @@ class IncrementalScoreDirectorTest {
       }
 
       @Override
-      public void beforeVariableChanged(Object entity, String variableName) {}
+      public void beforeVariableChanged(Object entity, String variableName) {
+        // No action needed
+      }
 
       @Override
-      public void afterVariableChanged(Object entity, String variableName) {}
+      public void afterVariableChanged(Object entity, String variableName) {
+        // No action needed
+      }
 
       @Override
       public SimpleScore calculateScore() {

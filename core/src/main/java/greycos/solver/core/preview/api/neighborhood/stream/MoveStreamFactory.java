@@ -14,7 +14,7 @@ import greycos.solver.core.preview.api.neighborhood.MoveIteratorProvider;
 import greycos.solver.core.preview.api.neighborhood.stream.enumerating.EnumeratingStream;
 import greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
 import greycos.solver.core.preview.api.neighborhood.stream.function.UniNeighborhoodsPredicate;
-import greycos.solver.core.preview.api.neighborhood.stream.sampling.UniSamplingStream;
+import greycos.solver.core.preview.api.neighborhood.stream.picking.UniPickingStream;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -125,12 +125,12 @@ public interface MoveStreamFactory<Solution_> {
       UniEnumeratingStream<Solution_, ElementPosition> forEachDestinationIncludingUnassigned(
           PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel);
 
-  <A> UniSamplingStream<Solution_, A> pick(UniEnumeratingStream<Solution_, A> enumeratingStream);
+  <A> UniPickingStream<Solution_, A> pick(UniEnumeratingStream<Solution_, A> enumeratingStream);
 
   /**
    * Terminal operation for datasets {@link UniEnumeratingStream#asCachedDataset() cached} from
-   * streams started on this factory, parallel to {@link UniSamplingStream#asMove}. The move order
-   * of the given provider's iterator is never part of the API contract.
+   * streams started on this factory, parallel to {@link UniPickingStream#asMove}. The move order of
+   * the given provider's iterator is never part of the API contract.
    */
   MoveStream<Solution_> buildMoveStream(MoveIteratorProvider<Solution_> iteratorProvider);
 }

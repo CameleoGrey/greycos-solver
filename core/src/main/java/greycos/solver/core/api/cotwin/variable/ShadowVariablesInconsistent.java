@@ -9,6 +9,7 @@ import java.lang.annotation.Target;
 
 import greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.Constraint;
 
 /**
@@ -113,7 +114,12 @@ import greycos.solver.core.api.score.stream.Constraint;
  * with {@link ShadowSources}. {@link ShadowSources} marked methods do not need to check {@link
  * ShadowVariablesInconsistent} properties, since they are only called if all their dependencies are
  * consistent.
+ *
+ * @deprecated The introduction of {@link Score#structuralScore()} removed the need for this
+ *     annotation. If you currently have this annotation on a property, you are encouraged to remove
+ *     it to have simpler constraints and faster solve speeds.
  */
 @Target({METHOD, FIELD})
 @Retention(RUNTIME)
+@Deprecated(since = "2.7.0", forRemoval = true)
 public @interface ShadowVariablesInconsistent {}

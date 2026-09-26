@@ -56,6 +56,14 @@ public class DefaultExhaustiveSearchPhase<Solution_> extends AbstractPhase<Solut
 
   @Override
   public void solve(SolverScope<Solution_> solverScope) {
+    try {
+      runSearch(solverScope);
+    } finally {
+      decider.releaseSearchState();
+    }
+  }
+
+  private void runSearch(SolverScope<Solution_> solverScope) {
     var expandableNodeQueue = new TreeSet<>(nodeComparator);
     var phaseScope = new ExhaustiveSearchPhaseScope<>(solverScope, phaseIndex);
     phaseScope.setExpandableNodeQueue(expandableNodeQueue);
@@ -64,6 +72,9 @@ public class DefaultExhaustiveSearchPhase<Solution_> extends AbstractPhase<Solut
     while (!phaseTermination.isPhaseTerminated(phaseScope)) {
       var node = phaseScope.pollExpandableNode();
       if (node == null) {
+        if (decider.onSearchExhausted(phaseScope)) {
+          continue;
+        }
         break;
       }
       var stepScope = new ExhaustiveSearchStepScope<>(phaseScope);
@@ -74,6 +85,7 @@ public class DefaultExhaustiveSearchPhase<Solution_> extends AbstractPhase<Solut
       decider.expandNode(stepScope);
       stepEnded(stepScope);
       phaseScope.setLastCompletedStepScope(stepScope);
+      decider.afterStep(phaseScope);
     }
     phaseEnded(phaseScope);
   }
@@ -100,7 +112,8 @@ public class DefaultExhaustiveSearchPhase<Solution_> extends AbstractPhase<Solut
     if (logger.isDebugEnabled()) {
       var phaseScope = stepScope.getPhaseScope();
       logger.debug(
-          "{}    ES step ({}), time spent ({}), treeId ({}), {} best score ({}), selected move count ({}).",
+          "{}    ES step ({}), time spent ({}), treeId ({}), {} best score ({}), selected move"
+              + " count ({}).",
           logIndentation,
           stepScope.getStepIndex(),
           phaseScope.calculateSolverTimeMillisSpentUpToNow(),
@@ -116,11 +129,12 @@ public class DefaultExhaustiveSearchPhase<Solution_> extends AbstractPhase<Solut
     decider.phaseEnded(phaseScope);
     phaseScope.endingNow();
     logger.info(
-        "{}Exhaustive Search phase ({}) ended: time spent ({}), best score ({}),"
+        "{}Exhaustive Search phase ({}) ended: time spent ({}), environment mode ({}), best score ({}),"
             + " move evaluation speed ({}/sec), step total ({}).",
         logIndentation,
         phaseIndex,
         phaseScope.calculateSolverTimeMillisSpentUpToNow(),
+        environmentMode.name(),
         phaseScope.getBestScore().raw(),
         phaseScope.getPhaseMoveEvaluationSpeed(),
         phaseScope.getNextStepIndex());
@@ -132,7 +146,8 @@ public class DefaultExhaustiveSearchPhase<Solution_> extends AbstractPhase<Solut
     decider.solvingEnded(solverScope);
   }
 
-  public static class Builder<Solution_> extends AbstractPhaseBuilder<Solution_> {
+  public static class Builder<Solution_>
+      extends AbstractPhaseBuilder<Solution_, DefaultExhaustiveSearchPhase<Solution_>> {
 
     private final Comparator<ExhaustiveSearchNode> nodeComparator;
     private final AbstractExhaustiveSearchDecider<Solution_, ? extends Score<?>> decider;
@@ -142,21 +157,26 @@ public class DefaultExhaustiveSearchPhase<Solution_> extends AbstractPhase<Solut
 
     public Builder(
         int phaseIndex,
+        EnvironmentMode environmentMode,
         String logIndentation,
         PhaseTermination<Solution_> phaseTermination,
         Comparator<ExhaustiveSearchNode> nodeComparator,
         AbstractExhaustiveSearchDecider<Solution_, ? extends Score<?>> decider) {
-      super(phaseIndex, logIndentation, phaseTermination);
+      super(phaseIndex, environmentMode, logIndentation, phaseTermination);
       this.nodeComparator = nodeComparator;
       this.decider = decider;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Builder<Solution_> enableAssertions(EnvironmentMode environmentMode) {
-      super.enableAssertions(environmentMode);
+    public <
+            Builder_ extends
+                AbstractPhaseBuilder<Solution_, DefaultExhaustiveSearchPhase<Solution_>>>
+        Builder_ enableAssertions() {
+      super.enableAssertions();
       assertWorkingSolutionScoreFromScratch = environmentMode.isFullyAsserted();
       assertExpectedWorkingSolutionScore = environmentMode.isIntrusivelyAsserted();
-      return this;
+      return (Builder_) this;
     }
 
     @Override

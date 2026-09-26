@@ -62,6 +62,9 @@ public class SharedGlobalState<Solution_> {
   public boolean tryUpdate(Solution_ candidate, InnerScore<?> candidateScore) {
     Objects.requireNonNull(candidate, "Candidate solution cannot be null");
     Objects.requireNonNull(candidateScore, "Candidate score cannot be null");
+    if (candidateScore.isStructurallyFlawed()) {
+      return false;
+    }
 
     var currentSnapshot = bestSnapshot;
     if (currentSnapshot != null) {

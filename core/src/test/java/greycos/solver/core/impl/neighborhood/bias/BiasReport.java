@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
  * @param <Category_> what a single draw is classified into (a bucket, an entity code, a whole draw
  *     order, ...)
  */
-final class BiasReport<Category_> {
+public final class BiasReport<Category_> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BiasReport.class);
   private static final int MAX_DETAIL_ROW_COUNT = 32;
@@ -44,7 +44,7 @@ final class BiasReport<Category_> {
     this.countByCategory = Objects.requireNonNull(countByCategory);
   }
 
-  static <Category_> BiasReport<Category_> tally(
+  public static <Category_> BiasReport<Category_> tally(
       String label, int sampleCount, IntFunction<Category_> sampler) {
     var countByCategory = new HashMap<Category_, Long>();
     for (var i = 0; i < sampleCount; i++) {
@@ -58,7 +58,7 @@ final class BiasReport<Category_> {
    * expectedCategoryCollection.size()}). A category absent from the collection is ignored by {@link
    * #assertWithinSigma(double)}, even if it was drawn.
    */
-  BiasReport<Category_> expectUniform(Collection<Category_> expectedCategoryCollection) {
+  public BiasReport<Category_> expectUniform(Collection<Category_> expectedCategoryCollection) {
     var share = 1.0 / expectedCategoryCollection.size();
     var freshExpectedShareByCategory = new HashMap<Category_, Double>();
     for (var category : expectedCategoryCollection) {
@@ -84,7 +84,7 @@ final class BiasReport<Category_> {
    * binomial sampling noise. Requires {@link #expectUniform} or {@link #expectWeights} to have been
    * called first.
    */
-  void assertWithinSigma(double sigmaLimit) {
+  public void assertWithinSigma(double sigmaLimit) {
     assertThat(expectedShareByCategory)
         .as("call expectUniform() or expectWeights() before assertWithinSigma()")
         .isNotEmpty();

@@ -1,11 +1,10 @@
 package greycos.solver.core.impl.cotwin.variable.declarative;
 
-import java.util.Collections;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
-import greycos.solver.core.impl.cotwin.variable.BasicVariableStateDemand;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.inverserelation.CollectionInverseVariableSupply;
+import greycos.solver.core.impl.cotwin.variable.inverserelation.CollectionInverseVariableState;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
 
@@ -19,20 +18,17 @@ public record ChangedVariableNotifier<Solution_>(
   private static final ChangedVariableNotifier<?> EMPTY =
       new ChangedVariableNotifier<>((a, b) -> {}, (a, b) -> {}, null);
 
-  public CollectionInverseVariableSupply getCollectionInverseVariableSupply(
+  public CollectionInverseVariableState getCollectionInverseVariableState(
       VariableMetaModel<?, ?, ?> variableMetaModel) {
     if (innerScoreDirector == null) {
-      return entity -> Collections.emptyList();
-    } else {
-      var solutionDescriptor = innerScoreDirector.getSolutionDescriptor();
-      var variableDescriptor =
-          solutionDescriptor
-              .getEntityDescriptorStrict(variableMetaModel.entity().type())
-              .getVariableDescriptor(variableMetaModel.name());
-      return innerScoreDirector
-          .getSupplyManager()
-          .demand(new BasicVariableStateDemand<>(variableDescriptor));
+      return CollectionInverseVariableState.EMPTY;
     }
+    var solutionDescriptor = innerScoreDirector.getSolutionDescriptor();
+    var variableDescriptor =
+        solutionDescriptor
+            .getEntityDescriptorStrict(variableMetaModel.entity().type())
+            .getVariableDescriptor(variableMetaModel.name());
+    return innerScoreDirector.getBasicVariableState(Objects.requireNonNull(variableDescriptor));
   }
 
   public @Nullable Solution_ getWorkingSolution() {

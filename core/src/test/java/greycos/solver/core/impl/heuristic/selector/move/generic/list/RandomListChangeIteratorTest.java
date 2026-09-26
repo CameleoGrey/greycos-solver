@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.heuristic.selector.move.generic.list;
 
+import static greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.phaseStarted;
 import static greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.solvingStarted;
 import static greycos.solver.core.testcotwin.list.TestdataListUtils.getListVariableDescriptor;
 import static greycos.solver.core.testcotwin.list.TestdataListUtils.mockEntitySelector;
@@ -43,10 +44,12 @@ class RandomListChangeIteratorTest {
         new ElementDestinationSelector<>(entitySelector, destinationValueSelector, true);
 
     var random = new TestRandom(3, 0, 1);
-    solvingStarted(destinationSelector, scoreDirector, random);
+    var solverScope = solvingStarted(destinationSelector, scoreDirector, random);
+    phaseStarted(destinationSelector, solverScope);
+
     var randomListChangeIterator =
         new RandomListChangeIterator<>(
-            scoreDirector.getSupplyManager().demand(listVariableDescriptor.getStateDemand()),
+            scoreDirector.getListVariableState(listVariableDescriptor),
             sourceValueSelector,
             destinationSelector);
 

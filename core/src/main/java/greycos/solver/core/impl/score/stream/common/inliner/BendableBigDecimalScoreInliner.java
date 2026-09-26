@@ -6,6 +6,7 @@ import java.util.Map;
 
 import greycos.solver.core.api.score.BendableBigDecimalScore;
 import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.impl.score.ScoreUtil;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 
@@ -35,7 +36,7 @@ final class BendableBigDecimalScoreInliner extends AbstractScoreInliner<Bendable
     Integer singleLevel = null;
     var constraintWeight = constraintWeightMap.get(constraint);
     for (var i = 0; i < constraintWeight.levelsSize(); i++) {
-      if (!constraintWeight.hardOrSoftScore(i).equals(BigDecimal.ZERO)) {
+      if (!ScoreUtil.isZero(constraintWeight.hardOrSoftScore(i))) {
         if (singleLevel != null) {
           singleLevel = null;
           break;

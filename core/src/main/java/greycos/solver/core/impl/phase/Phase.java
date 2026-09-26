@@ -5,6 +5,7 @@ import java.util.function.IntFunction;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.event.EventProducerId;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
@@ -42,4 +43,6 @@ public interface Phase<Solution_> extends PhaseLifecycleListener<Solution_> {
   void solve(SolverScope<Solution_> solverScope);
 
   IntFunction<EventProducerId> getEventProducerIdSupplier();
+
+  EnvironmentMode getEnvironmentMode();
 }

@@ -1,5 +1,7 @@
 package greycos.solver.core.preview.api.neighborhood.stream.enumerating;
 
+import java.util.function.Function;
+
 import greycos.solver.core.preview.api.neighborhood.MoveIteratorProvider;
 import greycos.solver.core.preview.api.neighborhood.MoveIteratorSession;
 import greycos.solver.core.preview.api.neighborhood.stream.MoveStreamFactory;
@@ -18,6 +20,16 @@ public interface BiEnumeratingStream<Solution_, A, B> extends EnumeratingStream 
 
   /** As defined by {@link UniEnumeratingStream#filter(UniNeighborhoodsPredicate)}. */
   BiEnumeratingStream<Solution_, A, B> filter(BiNeighborhoodsPredicate<Solution_, A, B> filter);
+
+  /** As defined by {@link UniEnumeratingStream#concat(UniEnumeratingStream)}. */
+  BiEnumeratingStream<Solution_, A, B> concat(BiEnumeratingStream<Solution_, A, B> otherStream);
+
+  /**
+   * As defined by {@link #concat(BiEnumeratingStream)}, except {@code otherStream} only has a
+   * single fact per tuple; {@code paddingFunction} derives the missing second fact from the first.
+   */
+  BiEnumeratingStream<Solution_, A, B> concat(
+      UniEnumeratingStream<Solution_, A> otherStream, Function<A, B> paddingFunction);
 
   // ************************************************************************
   // Operations with duplicate tuple possibility
@@ -69,6 +81,9 @@ public interface BiEnumeratingStream<Solution_, A, B> extends EnumeratingStream 
    *
    * <p>Repeated calls on the same stream return an equal handle, and the rows are materialized only
    * once.
+   *
+   * @return Any operations called on the returned instance will not be cached. This method creates
+   *     the boundary the in-memory caching from the just-in-time computations.
    */
   BiDataset<Solution_, A, B> asCachedDataset();
 }

@@ -369,7 +369,8 @@ public final class BuiltinAlnsOperators {
         }
         pending.remove(choice.target());
       }
-      return context.score().isComplete();
+      var evaluation = context.score();
+      return evaluation.isComplete() && !evaluation.isStructurallyFlawed();
     };
   }
 
@@ -394,6 +395,7 @@ public final class BuiltinAlnsOperators {
       var evaluations = context.evaluateAssignments(batch);
       for (int i = 0; i < batch.size(); i++) {
         var evaluation = evaluations.get(i);
+        if (evaluation.isStructurallyFlawed()) continue;
         if (candidates.size() == retainedCount) {
           if (evaluation.compareTo(candidates.peek().candidate().evaluation()) <= 0) {
             continue;

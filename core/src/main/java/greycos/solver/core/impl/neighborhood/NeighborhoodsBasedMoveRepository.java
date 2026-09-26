@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
 
+import greycos.solver.core.impl.move.UniformRandomUnionMoveIterator;
 import greycos.solver.core.impl.neighborhood.stream.DefaultMoveStreamFactory;
 import greycos.solver.core.impl.neighborhood.stream.DefaultNeighborhoodSession;
 import greycos.solver.core.impl.neighborhood.stream.InnerMoveStream;
@@ -118,6 +119,7 @@ public final class NeighborhoodsBasedMoveRepository<Solution_>
   }
 
   public Iterator<Move<Solution_>> iterator(RandomGenerator random) { // For testing only.
-    return new RandomOrderNeighborhoodIterator<>(Objects.requireNonNull(moveIterableList), random);
+    var iterableList = Objects.requireNonNull(moveIterableList);
+    return UniformRandomUnionMoveIterator.of(random, iterableList, MoveIterable::iterator);
   }
 }

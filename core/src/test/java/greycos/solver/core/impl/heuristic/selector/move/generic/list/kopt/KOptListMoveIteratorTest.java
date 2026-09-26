@@ -19,14 +19,14 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 
 import org.junit.jupiter.api.Test;
 
-public class KOptListMoveIteratorTest {
+class KOptListMoveIteratorTest {
 
   private static class KOptListMoveIteratorMockData {
     int minK;
@@ -39,7 +39,7 @@ public class KOptListMoveIteratorTest {
     Random workingRandom;
     ListVariableDescriptor<Object> listVariableDescriptor;
     EntityDescriptor<Object> entityDescriptor;
-    ListVariableStateSupply<Object, Object, Object> listVariableStateSupply;
+    ListVariableState<Object, Object, Object> listVariableState;
     IterableValueSelector<Object> originSelector;
     IterableValueSelector<Object> valueSelector;
   }
@@ -58,14 +58,14 @@ public class KOptListMoveIteratorTest {
     result.workingRandom = mock(Random.class);
     result.listVariableDescriptor = mock(ListVariableDescriptor.class);
     result.entityDescriptor = mock(EntityDescriptor.class);
-    result.listVariableStateSupply = mock(ListVariableStateSupply.class);
+    result.listVariableState = mock(ListVariableState.class);
     result.originSelector = mock(IterableValueSelector.class);
     result.valueSelector = mock(IterableValueSelector.class);
     result.kOptListMoveIterator =
         new KOptListMoveIterator<>(
             result.workingRandom,
             result.listVariableDescriptor,
-            result.listVariableStateSupply,
+            result.listVariableState,
             result.originSelector,
             result.valueSelector,
             minK,
@@ -150,13 +150,12 @@ public class KOptListMoveIteratorTest {
       entityToList.put(entity, entityList);
       entityToOffset.put(entity, 1);
 
-      for (int i = 0; i < entityList.size(); i++) {
-        when(mocks.listVariableStateSupply.getElementPosition(entityList.get(i)))
+      for (var i = 0; i < entityList.size(); i++) {
+        when(mocks.listVariableState.getElementPosition(entityList.get(i)))
             .thenReturn(ElementPosition.of(entity, i));
-        when(mocks.listVariableStateSupply.getInverseSingleton(entityList.get(i)))
-            .thenReturn(entity);
-        when(mocks.listVariableStateSupply.getIndexOrFail(entityList.get(i))).thenReturn(i);
-        when(mocks.listVariableStateSupply.getSourceVariableDescriptor())
+        when(mocks.listVariableState.getInverseSingleton(entityList.get(i))).thenReturn(entity);
+        when(mocks.listVariableState.getIndexOrFail(entityList.get(i))).thenReturn(i);
+        when(mocks.listVariableState.getSourceVariableDescriptor())
             .thenReturn(mocks.listVariableDescriptor);
       }
       when(mocks.listVariableDescriptor.getListSize(entity)).thenReturn(entityList.size());
@@ -262,13 +261,12 @@ public class KOptListMoveIteratorTest {
       entityToList.put(entity, entityList);
       entityToOffset.put(entity, 1);
 
-      for (int i = 0; i < entityList.size(); i++) {
-        when(mocks.listVariableStateSupply.getElementPosition(entityList.get(i)))
+      for (var i = 0; i < entityList.size(); i++) {
+        when(mocks.listVariableState.getElementPosition(entityList.get(i)))
             .thenReturn(ElementPosition.of(entity, i));
-        when(mocks.listVariableStateSupply.getInverseSingleton(entityList.get(i)))
-            .thenReturn(entity);
-        when(mocks.listVariableStateSupply.getIndexOrFail(entityList.get(i))).thenReturn(i);
-        when(mocks.listVariableStateSupply.getSourceVariableDescriptor())
+        when(mocks.listVariableState.getInverseSingleton(entityList.get(i))).thenReturn(entity);
+        when(mocks.listVariableState.getIndexOrFail(entityList.get(i))).thenReturn(i);
+        when(mocks.listVariableState.getSourceVariableDescriptor())
             .thenReturn(mocks.listVariableDescriptor);
       }
       when(mocks.listVariableDescriptor.getListSize(entity)).thenReturn(entityList.size());

@@ -14,7 +14,6 @@ import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
-import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.partitionedsearch.event.PartitionedSearchPhaseLifecycleListener;
 import greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
@@ -100,6 +99,8 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     }
 
     var phaseScope = new PartitionedSearchPhaseScope<>(solverScope, phaseIndex);
+    // Partitioning uses the phase's director, while listeners receive the populated scope.
+    solverScope.getSolver().prepareForPhase(phaseScope);
     List<Solution_> partList =
         solutionPartitioner.splitWorkingSolution(
             phaseScope.getScoreDirector(), runnablePartThreadLimit);
@@ -217,16 +218,26 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
               runnablePartThreadSemaphore,
               partitionQueue);
 
-      executor.submit(
-          () -> {
-            try {
-              partitionSolver.solve(part);
-              long partCalculationCount = partitionSolver.getScoreCalculationCount();
-              partitionQueue.addFinish(currentPartIndex, partCalculationCount);
-            } catch (Throwable throwable) {
-              partitionQueue.addExceptionThrown(currentPartIndex, throwable);
-            }
-          });
+      try {
+        executor.submit(
+            () -> {
+              try {
+                partitionSolver.solve(part);
+                long partCalculationCount = partitionSolver.getScoreCalculationCount();
+                partitionQueue.addFinish(currentPartIndex, partCalculationCount);
+              } catch (Throwable throwable) {
+                partitionQueue.addExceptionThrown(currentPartIndex, throwable);
+              }
+            });
+      } catch (RuntimeException | Error failure) {
+        // Ownership transfers to the partition thread only after successful submission.
+        try {
+          partitionSolver.getSolverScope().getScoreDirector().close();
+        } catch (RuntimeException | Error cleanupFailure) {
+          failure.addSuppressed(cleanupFailure);
+        }
+        throw failure;
+      }
     }
   }
 
@@ -257,32 +268,48 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
         solverScope.createChildThreadSolverScope(ChildThreadType.PART_THREAD);
     partSolverScope.setRunnableThreadSemaphore(runnablePartThreadSemaphore);
 
-    var partConfigPolicy =
-        configPolicy
-            .createChildThreadConfigPolicy(ChildThreadType.PART_THREAD)
-            .cloneBuilder()
-            .withRandom(partSolverScope.getWorkingRandom())
-            .build();
-    List<Phase<Solution_>> phaseList =
-        PhaseFactory.buildPhases(
-            effectivePhaseConfigList, partConfigPolicy, bestSolutionRecaller, partTermination);
+    try {
+      var partConfigPolicy =
+          configPolicy
+              .copyChildThreadConfigPolicy()
+              .cloneBuilder()
+              .withRandom(partSolverScope.getWorkingRandom())
+              .build();
+      List<Phase<Solution_>> phaseList =
+          PhaseFactory.buildPhases(
+              effectivePhaseConfigList, partConfigPolicy, bestSolutionRecaller, partTermination);
 
-    PartitionSolver<Solution_> partitionSolver =
-        new PartitionSolver<>(
-            bestSolutionRecaller, partTermination, phaseList, partSolverScope, partIndex);
+      PartitionSolver<Solution_> partitionSolver =
+          new PartitionSolver<>(
+              configPolicy.getEnvironmentMode(),
+              solverScope.getSolver().getScoreDirectorFactory(),
+              bestSolutionRecaller,
+              partTermination,
+              phaseList,
+              partSolverScope,
+              partIndex);
 
-    partitionSolver.addEventListener(
-        bestSolutionChangedEvent -> {
-          InnerScoreDirector<Solution_, ?> childScoreDirector = partSolverScope.getScoreDirector();
-          PartitionChangeMove<Solution_> move =
-              PartitionChangeMove.createMove(childScoreDirector, partIndex);
+      partitionSolver.addEventListener(
+          bestSolutionChangedEvent -> {
+            InnerScoreDirector<Solution_, ?> childScoreDirector =
+                partSolverScope.getScoreDirector();
+            PartitionChangeMove<Solution_> move =
+                PartitionChangeMove.createMove(childScoreDirector, partIndex);
 
-          InnerScoreDirector<Solution_, ?> parentScoreDirector = solverScope.getScoreDirector();
-          move = move.rebase(parentScoreDirector);
+            InnerScoreDirector<Solution_, ?> parentScoreDirector = solverScope.getScoreDirector();
+            move = move.rebase(parentScoreDirector);
 
-          partitionQueue.addMove(partIndex, move);
-        });
-    return partitionSolver;
+            partitionQueue.addMove(partIndex, move);
+          });
+      return partitionSolver;
+    } catch (RuntimeException | Error failure) {
+      try {
+        partSolverScope.getScoreDirector().close();
+      } catch (RuntimeException | Error cleanupFailure) {
+        failure.addSuppressed(cleanupFailure);
+      }
+      throw failure;
+    }
   }
 
   protected void doStep(PartitionedSearchStepScope<Solution_> stepScope) {
@@ -313,7 +340,8 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     super.phaseEnded(phaseScope);
   }
 
-  public static class Builder<Solution_> extends AbstractPhaseBuilder<Solution_> {
+  public static class Builder<Solution_>
+      extends AbstractPhaseBuilder<Solution_, DefaultPartitionedSearchPhase<Solution_>> {
 
     private final SolutionPartitioner<Solution_> solutionPartitioner;
     private final ThreadFactory threadFactory;
@@ -332,20 +360,13 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
         Integer runnablePartThreadLimit,
         List<PhaseConfig> phaseConfigList,
         SolverTermination<Solution_> solverTermination) {
-      super(phaseIndex, logIndentation, phaseTermination);
+      super(phaseIndex, configPolicy.getEnvironmentMode(), logIndentation, phaseTermination);
       this.configPolicy = configPolicy;
       this.solutionPartitioner = solutionPartitioner;
       this.threadFactory = threadFactory;
       this.runnablePartThreadLimit = runnablePartThreadLimit;
       this.phaseConfigList = phaseConfigList;
       this.solverTermination = solverTermination;
-    }
-
-    @Override
-    public DefaultPartitionedSearchPhase.Builder<Solution_> enableAssertions(
-        EnvironmentMode environmentMode) {
-      super.enableAssertions(environmentMode);
-      return this;
     }
 
     @Override

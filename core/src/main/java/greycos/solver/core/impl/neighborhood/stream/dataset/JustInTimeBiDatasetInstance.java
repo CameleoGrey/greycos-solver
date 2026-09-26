@@ -217,8 +217,8 @@ public final class JustInTimeBiDatasetInstance<Solution_, A, B> implements BiDat
         return rightTupleIterator;
       }
       // RetiringBiWalk.advance() retries this call up to PROBE_ATTEMPT_COUNT times before retiring
-      // the
-      // left, since a single bail-out is a false negative, not proof of emptiness.
+      // the left,
+      // since a single bail-out is a false negative, not proof of emptiness.
       var bailOutSize =
           rightDatasetInstance.size(compositeKey) * FilteringIterator.BAIL_OUT_SAFETY_MULTIPLIER;
       return new FilteringIterator<>(

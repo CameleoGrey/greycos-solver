@@ -8,11 +8,11 @@ import java.util.Objects;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
+import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 
 public class MimicReplayingEntitySelector<Solution_>
-    extends AbstractDemandEnabledSelector<Solution_>
-    implements greycos.solver.core.impl.heuristic.selector.entity.EntitySelector<Solution_> {
+    extends AbstractDemandEnabledSelector<Solution_> implements EntitySelector<Solution_> {
 
   private final EntityMimicRecorder<Solution_> entityMimicRecorder;
 

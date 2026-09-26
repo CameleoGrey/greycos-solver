@@ -4,7 +4,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.localsearch.decider.acceptor.AbstractAcceptor;
 import greycos.solver.core.impl.localsearch.decider.acceptor.Acceptor;
 import greycos.solver.core.impl.localsearch.decider.acceptor.tabu.size.TabuSizeStrategy;
@@ -54,8 +56,8 @@ public abstract sealed class AbstractTabuAcceptor<Solution_> extends AbstractAcc
     this.aspirationEnabled = aspirationEnabled;
   }
 
-  public void setAssertTabuHashCodeCorrectness(boolean assertTabuHashCodeCorrectness) {
-    this.assertTabuHashCodeCorrectness = assertTabuHashCodeCorrectness;
+  public void enableAssertions(EnvironmentMode environmentMode) {
+    assertTabuHashCodeCorrectness = environmentMode.isFullyAsserted();
   }
 
   // ************************************************************************
@@ -107,7 +109,7 @@ public abstract sealed class AbstractTabuAcceptor<Solution_> extends AbstractAcc
       if (oldTabuStepIndexInteger == null) {
         // oldTabu not null here, as null is a valid key and therefore has a valid corresponding
         // value.
-        throw createHashcodeStabilityViolationException(oldTabu);
+        throw createHashcodeStabilityViolationException(Objects.requireNonNull(oldTabu));
       }
       var oldTabuStepCount = tabuStepIndex - oldTabuStepIndexInteger; // at least 1
       if (oldTabuStepCount < totalTabuListSize) {
@@ -130,7 +132,7 @@ public abstract sealed class AbstractTabuAcceptor<Solution_> extends AbstractAcc
   }
 
   @Override
-  public boolean isAccepted(LocalSearchMoveScope<Solution_> moveScope) {
+  public boolean isStructurallyValidSolutionAccepted(LocalSearchMoveScope<Solution_> moveScope) {
     var maximumTabuStepIndex = locateMaximumTabuStepIndex(moveScope);
     if (maximumTabuStepIndex < 0) {
       // The move isn't tabu at all

@@ -9,20 +9,26 @@ import java.util.TreeMap;
 import java.util.function.Consumer;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import greycos.solver.core.api.cotwin.variable.ShadowVariablesInconsistent;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.analysis.ConstraintAnalysis;
 import greycos.solver.core.api.score.analysis.MatchAnalysis;
 import greycos.solver.core.api.score.analysis.ScoreAnalysis;
+import greycos.solver.core.api.score.analysis.VariableLoop;
 import greycos.solver.core.api.score.stream.Constraint;
 import greycos.solver.core.api.score.stream.ConstraintJustification;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import greycos.solver.core.api.solver.SolutionManager;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.BasicVariableState;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.move.MoveDirector;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
@@ -237,6 +243,10 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    */
   boolean expectShadowVariablesInCorrectState();
 
+  boolean ignoreInconsistentSolutions();
+
+  void unassignInconsistentEntities();
+
   /**
    * @return never null
    */
@@ -251,6 +261,13 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    * @return never null
    */
   ScoreDefinition<Score_> getScoreDefinition();
+
+  /**
+   * The environment mode this score director was built for, which decides which assertions it runs.
+   * It is not necessarily the solver's global environment mode: a phase may override it, in which
+   * case that phase's score director reports the phase's mode.
+   */
+  EnvironmentMode getEnvironmentMode();
 
   /**
    * Returns a planning clone of the solution, which is not a shallow clone nor a deep clone nor a
@@ -278,7 +295,11 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
 
   void resetCalculationCount();
 
-  void incrementCalculationCount();
+  default void incrementCalculationCount() {
+    incrementCalculationCount(1L);
+  }
+
+  void incrementCalculationCount(long count);
 
   /**
    * @return never null
@@ -289,11 +310,37 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
 
   ValueRangeManager<Solution_> getValueRangeManager();
 
-  <Entity_, Value_> ListVariableStateSupply<Solution_, Entity_, Value_> getListVariableStateSupply(
+  /**
+   * Returns the {@link BasicVariableState}, the single source of truth for the inverse relation of
+   * the given basic {@link PlanningVariable}.
+   *
+   * @param variableDescriptor never null, must not describe a {@link PlanningListVariable}
+   * @return never null
+   */
+  BasicVariableState<Solution_> getBasicVariableState(
+      VariableDescriptor<Solution_> variableDescriptor);
+
+  /**
+   * Returns the {@link ListVariableState}, the single source of truth for all information about
+   * elements inside the given {@link PlanningListVariable}, including its shadow variables.
+   *
+   * @param variableDescriptor never null
+   * @return never null
+   */
+  <Entity_, Value_> ListVariableState<Solution_, Entity_, Value_> getListVariableState(
       ListVariableDescriptor<Solution_> variableDescriptor);
 
   InnerScoreDirector<Solution_, Score_> createChildThreadScoreDirector(
       ChildThreadType childThreadType);
+
+  /**
+   * Asserts that if the {@link Score} is calculated for the parameter solution, it would be equal
+   * to the score of that parameter.
+   *
+   * @param solution never null
+   * @see InnerScoreDirector#assertWorkingScoreFromScratch(InnerScore, Object)
+   */
+  void assertScoreFromScratch(Solution_ solution);
 
   /**
    * Do not waste performance by propagating changes to step (or higher) mechanisms.
@@ -348,7 +395,6 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    * @param workingScore never null
    * @param completedAction sometimes null, when assertion fails then the completedAction's {@link
    *     Object#toString()} is included in the exception message
-   * @see ScoreDirectorFactory#assertScoreFromScratch
    */
   void assertWorkingScoreFromScratch(InnerScore<Score_> workingScore, Object completedAction);
 
@@ -363,7 +409,6 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    * @param predictedScore never null
    * @param completedAction sometimes null, when assertion fails then the completedAction's {@link
    *     Object#toString()} is included in the exception message
-   * @see ScoreDirectorFactory#assertScoreFromScratch
    */
   void assertPredictedScoreFromScratch(InnerScore<Score_> predictedScore, Object completedAction);
 
@@ -403,12 +448,22 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
   }
 
   /**
+   * @return true if the last {@link #updateShadowVariables()} did not result in a structurally
+   *     flawed solutions, false otherwise.
+   *     <p>Note: Planning models with {@link ShadowVariablesInconsistent} will always result in
+   *     successful updates.
+   */
+  boolean isLastVariableUpdateSuccessful();
+
+  /**
    * A derived score director is created from a root score director. The derived score director can
    * be used to create separate instances for use cases like multithreaded solving.
    */
   default boolean isDerived() {
     return false;
   }
+
+  List<VariableLoop> computeVariableLoops();
 
   default ScoreAnalysis<Score_> buildScoreAnalysis(ScoreAnalysisFetchPolicy fetchPolicy) {
     var state = calculateScore();
@@ -418,7 +473,15 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
           constraintMatchTotal.getConstraintRef(),
           getConstraintAnalysis(constraintMatchTotal, fetchPolicy));
     }
-    return new DefaultScoreAnalysis<>(state.raw(), constraintAnalysisMap, state.isFullyAssigned());
+    var variableLoops = computeVariableLoops();
+    // Legacy marker models score inconsistencies through constraints while still reporting loops.
+    var score =
+        variableLoops.isEmpty() || getSolutionDescriptor().hasAnyShadowVariablesInconsistentMember()
+            ? state.raw()
+            : getScoreDefinition().getStructurallyFlawedScore(state.raw());
+    getSolutionDescriptor().setScore(getWorkingSolution(), score);
+    return new DefaultScoreAnalysis<>(
+        score, constraintAnalysisMap, state.isFullyAssigned(), variableLoops);
   }
 
   default void beforeEntityAdded(Object entity) {

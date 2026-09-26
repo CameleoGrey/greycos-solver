@@ -11,7 +11,6 @@ import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.supply.Demand;
 
 public final class IndexShadowVariableDescriptor<Solution_>
     extends ShadowVariableDescriptor<Solution_> {
@@ -27,8 +26,9 @@ public final class IndexShadowVariableDescriptor<Solution_>
         && !variableMemberAccessor.getType().equals(Long.class)) {
       throw new IllegalStateException(
           """
-                            The entityClass (%s) has an @%s-annotated member (%s) of type (%s) which cannot represent an index in a list.
-                            The @%s-annotated member type must be %s or %s."""
+          The entityClass (%s) has an @%s-annotated member (%s) of type (%s) which cannot represent an index in a list.
+          The @%s-annotated member type must be %s or %s.\
+          """
               .formatted(
                   entityDescriptor.getEntityClass().getName(),
                   IndexShadowVariable.class.getSimpleName(),
@@ -60,8 +60,9 @@ public final class IndexShadowVariableDescriptor<Solution_>
     if (entitiesWithSourceVariable.isEmpty()) {
       throw new IllegalArgumentException(
           """
-                    The entityClass (%s) has an @%s-annotated property (%s) with sourceVariableName (%s) \
-                    which is not a valid planning variable on any of the entity classes (%s)."""
+          The entityClass (%s) has an @%s-annotated property (%s) with sourceVariableName (%s) \
+          which is not a valid planning variable on any of the entity classes (%s).\
+          """
               .formatted(
                   entityDescriptor.getEntityClass(),
                   IndexShadowVariable.class.getSimpleName(),
@@ -72,9 +73,10 @@ public final class IndexShadowVariableDescriptor<Solution_>
     if (entitiesWithSourceVariable.size() > 1) {
       throw new IllegalArgumentException(
           """
-                    The entityClass (%s) has an @%s-annotated property (%s) with sourceVariableName (%s) \
-                    which is not a unique planning variable.
-                    A planning variable with the name (%s) exists on multiple entity classes (%s)."""
+          The entityClass (%s) has an @%s-annotated property (%s) with sourceVariableName (%s) \
+          which is not a unique planning variable.
+          A planning variable with the name (%s) exists on multiple entity classes (%s).\
+          """
               .formatted(
                   entityDescriptor.getEntityClass(),
                   IndexShadowVariable.class.getSimpleName(),
@@ -88,8 +90,9 @@ public final class IndexShadowVariableDescriptor<Solution_>
     if (variableDescriptor == null) {
       throw new IllegalStateException(
           """
-                    Impossible state: variableDescriptor (%s) is null but previous checks indicate that \
-                    the entityClass (%s) has a planning variable with sourceVariableName (%s)."""
+          Impossible state: variableDescriptor (%s) is null but previous checks indicate that \
+          the entityClass (%s) has a planning variable with sourceVariableName (%s).\
+          """
               .formatted(
                   variableDescriptor, entityDescriptor.getEntityClass(), sourceVariableName));
     }
@@ -114,15 +117,7 @@ public final class IndexShadowVariableDescriptor<Solution_>
   @Override
   public Collection<Class<?>> getUpdaterClasses() {
     throw new UnsupportedOperationException(
-        "Impossible state: Handled by %s."
-            .formatted(ListVariableStateSupply.class.getSimpleName()));
-  }
-
-  @Override
-  public Demand<?> getProvidedDemand() {
-    throw new UnsupportedOperationException(
-        "Impossible state: Handled by %s."
-            .formatted(ListVariableStateSupply.class.getSimpleName()));
+        "Impossible state: Handled by %s.".formatted(ListVariableState.class.getSimpleName()));
   }
 
   @SuppressWarnings("unchecked")

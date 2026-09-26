@@ -7,11 +7,9 @@ import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.supply.Demand;
 
 abstract class AbstractNextPrevElementShadowVariableDescriptor<Solution_>
     extends ShadowVariableDescriptor<Solution_> {
@@ -125,12 +123,5 @@ abstract class AbstractNextPrevElementShadowVariableDescriptor<Solution_>
   @Override
   public VariableDescriptor<Solution_> getSourceVariableDescriptor() {
     return sourceVariableDescriptor;
-  }
-
-  @Override
-  public Demand<?> getProvidedDemand() {
-    throw new UnsupportedOperationException(
-        "Impossible state: Handled by %s."
-            .formatted(ListVariableStateSupply.class.getSimpleName()));
   }
 }

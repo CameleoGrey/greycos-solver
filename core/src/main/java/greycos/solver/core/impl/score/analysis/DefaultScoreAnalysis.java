@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SequencedMap;
@@ -12,6 +13,8 @@ import java.util.stream.Stream;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.analysis.ConstraintAnalysis;
 import greycos.solver.core.api.score.analysis.ScoreAnalysis;
+import greycos.solver.core.api.score.analysis.StructuralFlawAnalysis;
+import greycos.solver.core.api.score.analysis.VariableLoop;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 
 import org.jspecify.annotations.NullMarked;
@@ -33,6 +36,7 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
   private final Score_ score;
   private final SequencedMap<ConstraintRef, ConstraintAnalysis<Score_>> constraintMap;
   private final boolean solutionInitialized;
+  private final @Nullable StructuralFlawAnalysis structuralFlawAnalysis;
 
   public DefaultScoreAnalysis(
       Score_ score, Map<ConstraintRef, ConstraintAnalysis<Score_>> constraintMap) {
@@ -43,7 +47,20 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
       Score_ score,
       Map<ConstraintRef, ConstraintAnalysis<Score_>> constraintMap,
       boolean solutionInitialized) {
+    this(score, constraintMap, solutionInitialized, List.of());
+  }
+
+  public DefaultScoreAnalysis(
+      Score_ score,
+      Map<ConstraintRef, ConstraintAnalysis<Score_>> constraintMap,
+      boolean solutionInitialized,
+      List<VariableLoop> variableLoops) {
     this.score = Objects.requireNonNull(score, "score");
+    var loops = List.copyOf(variableLoops);
+    this.structuralFlawAnalysis =
+        score.structuralScore() < 0 || !loops.isEmpty()
+            ? new DefaultStructuralFlawAnalysis(loops)
+            : null;
     Objects.requireNonNull(constraintMap, "constraintMap");
     var sortedMap =
         new LinkedHashMap<ConstraintRef, ConstraintAnalysis<Score_>>(constraintMap.size());
@@ -68,6 +85,19 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
   public boolean isSolutionInitialized() {
     return solutionInitialized;
   }
+
+  @Override
+  public boolean isSolutionStructurallyFlawed() {
+    return structuralFlawAnalysis != null;
+  }
+
+  @Override
+  public @Nullable StructuralFlawAnalysis structuralFlawAnalysis() {
+    return structuralFlawAnalysis;
+  }
+
+  private record DefaultStructuralFlawAnalysis(List<VariableLoop> getVariableLoops)
+      implements StructuralFlawAnalysis {}
 
   @Override
   public @Nullable ConstraintAnalysis<Score_> getConstraintAnalysis(ConstraintRef constraintRef) {
@@ -102,7 +132,11 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
                 result.put(constraintRef, difference);
               }
             });
-    return new DefaultScoreAnalysis<>(score.subtract(other.score()), result, solutionInitialized);
+    return new DefaultScoreAnalysis<>(
+        score.subtract(other.score()),
+        result,
+        solutionInitialized,
+        structuralFlawAnalysis == null ? List.of() : structuralFlawAnalysis.getVariableLoops());
   }
 
   @Override
@@ -128,6 +162,12 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
                 Constraint matches:
             """
             .formatted(score));
+    if (structuralFlawAnalysis != null) {
+      summary.append("    Structural flaws:\n");
+      structuralFlawAnalysis
+          .getVariableLoops()
+          .forEach(loop -> summary.append("        ").append(loop).append('\n'));
+    }
     constraintAnalyses().stream()
         .sorted(Comparator.comparing(ConstraintAnalysis::score))
         .forEach(
@@ -173,12 +213,13 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
     return other instanceof DefaultScoreAnalysis<?> analysis
         && score.equals(analysis.score)
         && constraintMap.equals(analysis.constraintMap)
-        && solutionInitialized == analysis.solutionInitialized;
+        && solutionInitialized == analysis.solutionInitialized
+        && Objects.equals(structuralFlawAnalysis, analysis.structuralFlawAnalysis);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(score, constraintMap, solutionInitialized);
+    return Objects.hash(score, constraintMap, solutionInitialized, structuralFlawAnalysis);
   }
 
   @Override

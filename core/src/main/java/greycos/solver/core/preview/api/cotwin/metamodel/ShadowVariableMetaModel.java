@@ -26,4 +26,8 @@ import org.jspecify.annotations.NullMarked;
  */
 @NullMarked
 public non-sealed interface ShadowVariableMetaModel<Solution_, Entity_, Value_>
-    extends VariableMetaModel<Solution_, Entity_, Value_> {}
+    extends VariableMetaModel<Solution_, Entity_, Value_> {
+
+  @Override
+  PlanningEntityMetaModel<Solution_, Entity_> entity();
+}

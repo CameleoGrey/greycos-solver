@@ -16,7 +16,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 
@@ -39,8 +39,7 @@ public class MultipleDelegateListTest {
 
     when(listVariableDescriptor.getEntityDescriptor()).thenReturn(entityDescriptor);
 
-    ListVariableStateSupply<Object, Object, Object> listVariableStateSupply =
-        mock(ListVariableStateSupply.class);
+    ListVariableState<Object, Object, Object> listVariableState = mock(ListVariableState.class);
     doAnswer(
             invocation -> {
               String value = invocation.getArgument(0);
@@ -54,17 +53,16 @@ public class MultipleDelegateListTest {
                 default -> ElementPosition.unassigned();
               };
             })
-        .when(listVariableStateSupply)
+        .when(listVariableState)
         .getElementPosition(anyString());
-    when(listVariableStateSupply.getSourceVariableDescriptor()).thenReturn(listVariableDescriptor);
+    when(listVariableState.getSourceVariableDescriptor()).thenReturn(listVariableDescriptor);
 
     List<String> expectedOrder = List.of("a", "b", "c", "d", "e", "f");
     for (int i = 0; i < expectedOrder.size(); i++) {
-      assertThat(combined.getIndexOfValue(listVariableStateSupply, expectedOrder.get(i)))
-          .isEqualTo(i);
+      assertThat(combined.getIndexOfValue(listVariableState, expectedOrder.get(i))).isEqualTo(i);
     }
 
-    assertThatCode(() -> combined.getIndexOfValue(listVariableStateSupply, "g"))
+    assertThatCode(() -> combined.getIndexOfValue(listVariableState, "g"))
         .hasMessage("Value (g) is not contained in any entity list");
   }
 

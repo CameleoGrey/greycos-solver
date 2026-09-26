@@ -36,6 +36,7 @@ abstract class AbstractNearbyEntitySelector<Solution_>
 
   protected @Nullable NearbyDistanceMatrix<Object, Object> distanceMatrix;
   private @Nullable NearbyDistanceMatrixDemand<Object, Object> distanceMatrixDemand;
+  private @Nullable SupplyManager distanceMatrixSupplyManager;
 
   protected AbstractNearbyEntitySelector(
       @NonNull EntitySelector<Solution_> childEntitySelector,
@@ -103,7 +104,7 @@ abstract class AbstractNearbyEntitySelector<Solution_>
   private void initializeDistanceMatrix(@NonNull SupplyManager supplyManager) {
     @SuppressWarnings("unchecked")
     var castedDistanceMeter = (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
-    distanceMatrixDemand =
+    var demand =
         new NearbyDistanceMatrixDemand<>(
             castedDistanceMeter,
             nearbyRandom,
@@ -115,43 +116,62 @@ abstract class AbstractNearbyEntitySelector<Solution_>
             this::calculateOriginSizeEstimate,
             origin -> childEntitySelector.endingIterator(),
             origin -> calculateDestinationSize());
-    distanceMatrix = supplyManager.demand(distanceMatrixDemand);
+    distanceMatrix = supplyManager.demand(demand);
+    distanceMatrixDemand = demand;
+    distanceMatrixSupplyManager = supplyManager;
   }
 
   @Override
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
-    super.phaseStarted(phaseScope);
-    if (distanceMatrix == null) {
-      if (distanceMatrixDemand != null) {
-        throw new IllegalStateException(
-            "The nearby distance matrix demand exists without its supply.");
+    try {
+      super.phaseStarted(phaseScope);
+      if (distanceMatrix == null) {
+        initializeDistanceMatrix(phaseScope.getScoreDirector().getSupplyManager());
       }
-      initializeDistanceMatrix(phaseScope.getScoreDirector().getSupplyManager());
-    }
-    if (eagerInitialization && !eagerInitialized) {
-      initializeAllOrigins();
-      eagerInitialized = true;
+      if (eagerInitialization && !eagerInitialized) {
+        initializeAllOrigins();
+        eagerInitialized = true;
+      }
+    } catch (RuntimeException | Error failure) {
+      try {
+        releaseDistanceMatrix();
+      } catch (RuntimeException | Error cleanupFailure) {
+        failure.addSuppressed(cleanupFailure);
+      }
+      throw failure;
     }
   }
 
   @Override
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
-    super.phaseEnded(phaseScope);
-    eagerInitialized = false;
+    try {
+      super.phaseEnded(phaseScope);
+    } finally {
+      releaseDistanceMatrix();
+    }
   }
 
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
-    super.solvingEnded(solverScope);
-    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
-    if (distanceMatrixDemand != null) {
-      if (!supplyManager.cancel(distanceMatrixDemand)) {
-        throw new IllegalStateException("The nearby distance matrix demand is not active.");
-      }
-      distanceMatrixDemand = null;
+    try {
+      super.solvingEnded(solverScope);
+    } finally {
+      releaseDistanceMatrix();
     }
+  }
+
+  private void releaseDistanceMatrix() {
+    var demand = distanceMatrixDemand;
+    var supplyManager = distanceMatrixSupplyManager;
+    // The solver may already use another director. Release through the owner and clear first
+    // so repeated cleanup remains safe, including when cancellation itself fails.
+    distanceMatrixDemand = null;
+    distanceMatrixSupplyManager = null;
     distanceMatrix = null;
     eagerInitialized = false;
+    if (demand != null && !Objects.requireNonNull(supplyManager).cancel(demand)) {
+      throw new IllegalStateException("The nearby distance matrix demand is not active.");
+    }
   }
 
   protected abstract @NonNull Iterator<?> endingOriginIterator();

@@ -43,6 +43,7 @@ class SelectorBasedListAssignMoveTest {
   void setUp() {
     when(innerScoreDirector.getSolutionDescriptor())
         .thenReturn(variableDescriptor.getEntityDescriptor().getSolutionDescriptor());
+    when(innerScoreDirector.isLastVariableUpdateSuccessful()).thenReturn(true);
     when(otherInnerScoreDirector.getValueRangeManager()).thenReturn(valueRangeManager);
   }
 
@@ -59,7 +60,7 @@ class SelectorBasedListAssignMoveTest {
 
     moveDirector.executeTemporary(
         new SelectorBasedListAssignMove<>(variableDescriptor, v1, e1, 0),
-        (__, ___) -> {
+        __ -> {
           assertThat(e1.getValueList()).containsExactly(v1);
           verify(innerScoreDirector).beforeListVariableChanged(variableDescriptor, e1, 0, 0);
           verify(innerScoreDirector).beforeListVariableElementAssigned(variableDescriptor, v1);

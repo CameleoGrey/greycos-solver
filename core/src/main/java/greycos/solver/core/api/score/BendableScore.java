@@ -1,7 +1,8 @@
 package greycos.solver.core.api.score;
 
+import static greycos.solver.core.impl.score.ScoreUtil.STRUCTURAL_LABEL;
+
 import java.util.Arrays;
-import java.util.Objects;
 
 import greycos.solver.core.impl.score.ScoreUtil;
 import greycos.solver.core.impl.score.definition.BendableScoreDefinition;
@@ -20,20 +21,32 @@ import org.jspecify.annotations.NullMarked;
  * @see Score
  */
 @NullMarked
-public record BendableScore(long[] hardScores, long[] softScores)
+public record BendableScore(long structuralScore, long[] hardScores, long[] softScores)
     implements IBendableScore<BendableScore> {
+
+  public BendableScore(long[] hardScores, long[] softScores) {
+    this(0L, hardScores, softScores);
+  }
 
   public static BendableScore parseScore(String scoreString) {
     var scoreTokens = ScoreUtil.parseBendableScoreTokens(BendableScore.class, scoreString);
-    var hardScores = new long[scoreTokens[0].length];
+    var structuralScore = 0L;
+    if (scoreTokens[0] != null && scoreTokens[0].length > 0) {
+      structuralScore =
+          ScoreUtil.parseLevelAsLong(BendableScore.class, scoreString, scoreTokens[0][0]);
+    }
+    var hardScores = new long[scoreTokens[1].length];
     for (var i = 0; i < hardScores.length; i++) {
       hardScores[i] =
-          ScoreUtil.parseLevelAsLong(BendableScore.class, scoreString, scoreTokens[0][i]);
+          ScoreUtil.parseLevelAsLong(BendableScore.class, scoreString, scoreTokens[1][i]);
     }
-    var softScores = new long[scoreTokens[1].length];
+    var softScores = new long[scoreTokens[2].length];
     for (var i = 0; i < softScores.length; i++) {
       softScores[i] =
-          ScoreUtil.parseLevelAsLong(BendableScore.class, scoreString, scoreTokens[1][i]);
+          ScoreUtil.parseLevelAsLong(BendableScore.class, scoreString, scoreTokens[2][i]);
+    }
+    if (structuralScore != 0L) {
+      return new BendableScore(structuralScore, hardScores, softScores);
     }
     return of(hardScores, softScores);
   }
@@ -88,6 +101,9 @@ public record BendableScore(long[] hardScores, long[] softScores)
 
   @Override
   public boolean isFeasible() {
+    if (structuralScore < 0) {
+      return false;
+    }
     for (var hardScore : hardScores) {
       if (hardScore < 0) {
         return false;
@@ -209,6 +225,9 @@ public record BendableScore(long[] hardScores, long[] softScores)
   @Override
   public boolean equals(Object o) {
     if (o instanceof BendableScore other) {
+      if (structuralScore != other.structuralScore) {
+        return false;
+      }
       if (hardLevelsSize() != other.hardLevelsSize()
           || softLevelsSize() != other.softLevelsSize()) {
         return false;
@@ -230,12 +249,18 @@ public record BendableScore(long[] hardScores, long[] softScores)
 
   @Override
   public int hashCode() {
-    return Objects.hash(Arrays.hashCode(hardScores), Arrays.hashCode(softScores));
+    var hash = Long.hashCode(structuralScore);
+    hash = 31 * hash + Arrays.hashCode(hardScores);
+    hash = 31 * hash + Arrays.hashCode(softScores);
+    return hash;
   }
 
   @Override
   public int compareTo(BendableScore other) {
     validateCompatible(other);
+    if (structuralScore != other.structuralScore) {
+      return Long.compare(structuralScore, other.structuralScore);
+    }
     for (var i = 0; i < hardScores.length; i++) {
       if (hardScores[i] != other.hardScore(i)) {
         return Long.compare(hardScores[i], other.hardScore(i));
@@ -256,7 +281,10 @@ public record BendableScore(long[] hardScores, long[] softScores)
 
   @Override
   public String toString() {
-    var s = new StringBuilder(((hardScores.length + softScores.length) * 4) + 7);
+    var s = new StringBuilder(((hardScores.length + softScores.length) * 4) + 15);
+    if (structuralScore < 0) {
+      s.append("%d%s/".formatted(structuralScore, STRUCTURAL_LABEL));
+    }
     s.append("[");
     var first = true;
     for (var hardScore : hardScores) {

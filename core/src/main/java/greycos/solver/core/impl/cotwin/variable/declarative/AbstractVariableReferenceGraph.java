@@ -93,8 +93,9 @@ public abstract sealed class AbstractVariableReferenceGraph<Solution_, ChangeTra
    * @implNote {@link #updateChanged()} sets {{@link #isUpdating}} to true so {@link
    *     #beforeVariableChanged(VariableMetaModel, Object)} and {@link
    *     #afterVariableChanged(VariableMetaModel, Object)} can short circuit.
+   * @return true if the update successful; false otherwise
    */
-  abstract void innerUpdateChanged();
+  abstract boolean innerUpdateChanged();
 
   /**
    * Called when any non-declarative source variable for the given {@link GraphNode} changes.
@@ -104,10 +105,11 @@ public abstract sealed class AbstractVariableReferenceGraph<Solution_, ChangeTra
   abstract void markChanged(GraphNode<Solution_> changed);
 
   @Override
-  public final void updateChanged() {
+  public final boolean updateChanged() {
     isUpdating = true;
-    innerUpdateChanged();
+    var success = innerUpdateChanged();
     isUpdating = false;
+    return success;
   }
 
   private BaseTopologicalOrderGraph.NodeTopologicalOrder[] buildNodeTopologicalOrderArray(
@@ -138,13 +140,19 @@ public abstract sealed class AbstractVariableReferenceGraph<Solution_, ChangeTra
     return map.get(entity);
   }
 
+  static boolean isInternalDependency(
+      GraphNode<?> from,
+      GraphNode<?> to,
+      VariableMetaModel<?, ?, ?> sourceVariable,
+      VariableMetaModel<?, ?, ?> targetVariable) {
+    // Distinct shadow variables in one node are already evaluated in dependency order.
+    // A variable depending on itself is a real cycle, even when other shadows share its node.
+    return from.graphNodeId() == to.graphNodeId() && !sourceVariable.equals(targetVariable);
+  }
+
   public final void addEdge(@NonNull GraphNode<Solution_> from, @NonNull GraphNode<Solution_> to) {
     var fromNodeId = from.graphNodeId();
     var toNodeId = to.graphNodeId();
-    if (fromNodeId == toNodeId) {
-      return;
-    }
-
     var count = edgeCount[fromNodeId].getCount(toNodeId);
     if (count == 0) {
       graph.addEdge(fromNodeId, toNodeId);
@@ -157,10 +165,6 @@ public abstract sealed class AbstractVariableReferenceGraph<Solution_, ChangeTra
       @NonNull GraphNode<Solution_> from, @NonNull GraphNode<Solution_> to) {
     var fromNodeId = from.graphNodeId();
     var toNodeId = to.graphNodeId();
-    if (fromNodeId == toNodeId) {
-      return;
-    }
-
     var count = edgeCount[fromNodeId].getCount(toNodeId);
     if (count == 1) {
       graph.removeEdge(fromNodeId, toNodeId);
@@ -275,7 +279,9 @@ public abstract sealed class AbstractVariableReferenceGraph<Solution_, ChangeTra
             continue;
           }
           var from = sourceNodeMap.get(sourceEntity);
-          if (from == null) {
+          if (from == null
+              || isInternalDependency(
+                  from, to, locator.sourceVariableId(), locator.targetVariableId())) {
             continue;
           }
           if (isAdd) {

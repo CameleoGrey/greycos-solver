@@ -26,4 +26,27 @@ class ExhaustiveSearchPhaseScopeTest extends AbstractNodeComparatorTest {
     phase.registerPessimisticBound(InnerScore.fullyAssigned(SimpleScore.ONE));
     assertThat(phase.getExpandableNodeQueue()).hasSize(1);
   }
+
+  @Test
+  void unknownBoundsSurviveTheFirstIncumbentAndQueueReplacement() {
+    var phase = new ExhaustiveSearchPhaseScope<TestdataSolution>(new SolverScope<>(), 0);
+    var queue = new TreeSet<>(new ScoreFirstNodeComparator<TestdataSolution>(true));
+    phase.setExpandableNodeQueue((TreeSet) queue);
+    var unknown =
+        this.<TestdataSolution>buildNode(
+            1,
+            InnerScore.fullyAssigned(new SimpleScore(-1, 0)),
+            (InnerScore<SimpleScore>) null,
+            0,
+            0);
+    var dominated = this.<TestdataSolution>buildNode(1, "0", 0, 1);
+    phase.addExpandableNode(unknown);
+    phase.addExpandableNode(dominated);
+    phase.setExpandableNodeQueue(new TreeSet<>(new ScoreFirstNodeComparator(true)));
+    phase.setExpandableNodeQueue((TreeSet) queue);
+    phase.registerPessimisticBound(InnerScore.fullyAssigned(SimpleScore.ONE));
+    assertThat(phase.getExpandableNodeQueue()).containsExactly(unknown);
+    assertThat(phase.pollExpandableNode()).isSameAs(unknown);
+    assertThat(phase.pollExpandableNode()).isNull();
+  }
 }

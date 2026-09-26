@@ -6,10 +6,11 @@ import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescripto
 import greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractRandomSwapIterator;
 import greycos.solver.core.impl.heuristic.selector.list.SubList;
 import greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
-import greycos.solver.core.impl.heuristic.selector.move.generic.GenericMoveSelector;
+import greycos.solver.core.impl.heuristic.selector.move.generic.AbstractGenericMoveSelector;
 import greycos.solver.core.preview.api.move.Move;
 
-public class RandomSubListSwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
+public class RandomSubListSwapMoveSelector<Solution_>
+    extends AbstractGenericMoveSelector<Solution_> {
 
   private final SubListSelector<Solution_> leftSubListSelector;
   private final SubListSelector<Solution_> rightSubListSelector;

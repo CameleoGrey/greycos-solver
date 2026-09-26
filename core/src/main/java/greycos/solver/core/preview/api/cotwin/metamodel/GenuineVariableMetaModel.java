@@ -1,5 +1,7 @@
 package greycos.solver.core.preview.api.cotwin.metamodel;
 
+import greycos.solver.core.api.cotwin.entity.PlanningEntity;
+import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.cotwin.variable.PlanningVariable;
 
 import org.jspecify.annotations.NullMarked;
@@ -24,4 +26,26 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 public sealed interface GenuineVariableMetaModel<Solution_, Entity_, Value_>
     extends VariableMetaModel<Solution_, Entity_, Value_>
-    permits PlanningVariableMetaModel, PlanningListVariableMetaModel {}
+    permits PlanningVariableMetaModel, PlanningListVariableMetaModel {
+
+  /**
+   * Returns true if this variable is a list variable. Effectively checks if this variable is an
+   * instance of {@link PlanningListVariableMetaModel}.
+   *
+   * @return True if this variable is a list variable, false if it is a basic variable.
+   */
+  default boolean isListVariable() {
+    return this instanceof PlanningListVariableMetaModel;
+  }
+
+  /**
+   * Whether this variable's value range is declared on {@link PlanningSolution}, as opposed to on
+   * the {@link PlanningEntity entity}.
+   *
+   * @return true if the value range is on the solution, false if it is on the entity
+   */
+  boolean isValueRangeOnSolution();
+
+  @Override
+  GenuineEntityMetaModel<Solution_, Entity_> entity();
+}

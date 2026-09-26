@@ -155,38 +155,10 @@ public class GeneralPackageRenameMigrationRecipe extends AbstractRecipe {
             "greycos.solver.quarkus.jackson.score.buildin",
             "greycos.solver.quarkus.jackson.score",
             true),
-        // Value Range API
-        new ChangePackage(
-            "greycos.solver.core.impl.domain.valuerange.buildin.bigdecimal",
-            "greycos.solver.core.impl.cotwin.valuerange",
-            true),
-        new ChangePackage(
-            "greycos.solver.core.impl.domain.valuerange.buildin.biginteger",
-            "greycos.solver.core.impl.cotwin.valuerange",
-            true),
-        new ChangePackage(
-            "greycos.solver.core.impl.domain.valuerange.buildin.primboolean",
-            "greycos.solver.core.impl.cotwin.valuerange",
-            true),
-        new ChangePackage(
-            "greycos.solver.core.impl.domain.valuerange.buildin.primint",
-            "greycos.solver.core.impl.cotwin.valuerange",
-            true),
-        new ChangePackage(
-            "greycos.solver.core.impl.domain.valuerange.buildin.collection",
-            "greycos.solver.core.impl.cotwin.valuerange",
-            true),
-        new ChangePackage(
-            "greycos.solver.core.impl.domain.valuerange.buildin.primlong",
-            "greycos.solver.core.impl.cotwin.valuerange",
-            true),
-        new ChangePackage(
-            "greycos.solver.core.impl.domain.valuerange.buildin.temporal",
-            "greycos.solver.core.impl.cotwin.valuerange",
-            true),
+        // GreyCOS retains the buildin subpackages for value-range implementations.
         new ChangePackage(
             "greycos.solver.core.impl.domain.valuerange.buildin",
-            "greycos.solver.core.impl.cotwin.valuerange",
+            "greycos.solver.core.impl.cotwin.valuerange.buildin",
             true));
   }
 }

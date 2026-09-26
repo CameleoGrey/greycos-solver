@@ -127,7 +127,7 @@ class AcceptorFactoryTest {
   }
 
   @Test
-  <Solution_> void valueTabuWithoutSizes_throwsException() {
+  void valueTabuWithoutSizes_throwsException() {
     var config =
         new LocalSearchAcceptorConfig().withAcceptorTypeList(List.of(AcceptorType.VALUE_TABU));
     var factory = AcceptorFactory.create(config);
@@ -136,7 +136,7 @@ class AcceptorFactoryTest {
   }
 
   @Test
-  <Solution_> void moveTabuWithoutSizes_throwsException() {
+  void moveTabuWithoutSizes_throwsException() {
     var config =
         new LocalSearchAcceptorConfig().withAcceptorTypeList(List.of(AcceptorType.MOVE_TABU));
     var factory = AcceptorFactory.create(config);

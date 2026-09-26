@@ -5,6 +5,7 @@ import java.util.Map;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import greycos.solver.core.impl.score.director.AbstractScoreDirector;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -26,7 +27,7 @@ final class MoveTesterScoreDirector<Solution_, Score_ extends Score<Score_>>
   }
 
   @Override
-  public InnerScore<Score_> calculateScore() {
+  public InnerScore<Score_> innerCalculateScore() {
     return InnerScore.fullyAssigned(scoreDirectorFactory.getScoreDefinition().getZeroScore());
   }
 
@@ -48,8 +49,10 @@ final class MoveTesterScoreDirector<Solution_, Score_ extends Score<Score_>>
           MoveTesterScoreDirectorFactory<Solution_, Score_>,
           MoveTesterScoreDirector.Builder<Solution_, Score_>> {
 
-    public Builder(MoveTesterScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory) {
-      super(scoreDirectorFactory);
+    public Builder(
+        MoveTesterScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory,
+        EnvironmentMode environmentMode) {
+      super(scoreDirectorFactory, environmentMode);
     }
 
     @Override

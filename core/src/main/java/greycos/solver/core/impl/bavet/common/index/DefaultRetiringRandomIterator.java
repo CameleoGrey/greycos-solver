@@ -1,7 +1,5 @@
 package greycos.solver.core.impl.bavet.common.index;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.random.RandomGenerator;
 
@@ -14,6 +12,11 @@ import org.jspecify.annotations.Nullable;
  * Implements a lazy Fisher-Yates shuffle over the live (not yet retired) slots, so that both a
  * single draw and a full drain are exactly uniform, even after retirements. It accepts a list of
  * unique items on input, and does not copy or modify it.
+ *
+ * <p>The shuffle runs over the list's {@link ElementAwareArrayList#slotCount() physical slots}, not
+ * over its logical indexes, so resolving a draw does not require building a logical index. A slot
+ * which holds a gap is retired before drawing again. This keeps the draw uniform over the elements
+ * and bounds rejected draws by the number of gaps, even when most elements have been retired.
  *
  * <p>The classic Fisher-Yates shuffle repeats, over a shrinking range {@code [0, i]}: pick a random
  * index {@code j} in the range, swap the items at {@code i} and {@code j}, then shrink the range
@@ -41,21 +44,33 @@ final class DefaultRetiringRandomIterator<T extends @Nullable Object>
   private final RandomGenerator workingRandom;
 
   /**
-   * Maps a live slot to the logical index (into {@link #source}) it currently holds; a slot absent
-   * from the map holds the logical index equal to itself (the identity mapping every slot starts
-   * with). {@link #resolveSlot(int)} is therefore always a bijection from the live slots {@code [0,
-   * activeCount)} onto the live logical indexes, which is what makes every draw and every full
-   * drain exactly uniform: a draw picks a live slot uniformly, and {@link #retire()} swaps the
-   * retired slot with the last live slot (updating only that one map entry) instead of leaving a
-   * gap that would have to be walked around. A {@link HashMap} is used instead of an eager {@code
-   * int[]} permutation of every logical index, because one of these iterators is built per
-   * neighborhood per step, over datasets that can hold well over 100,000 tuples; a {@link HashMap}
-   * only grows with the number of retirements, not with the size of {@link #source}.
+   * Maps a live Fisher-Yates slot to the physical slot (into {@link #source}) it currently holds; a
+   * slot which holds no reservation holds the physical slot equal to itself (the identity mapping
+   * every slot starts with). {@link SlotReservationMap#resolve(int)} is therefore always a
+   * bijection from the live slots {@code [0, activeCount)} onto the not-yet-retired physical slots,
+   * which is what makes every draw and every full drain exactly uniform: a draw picks a live slot
+   * uniformly, and {@link #retire()} swaps the retired slot with the last live slot (updating only
+   * that one reservation) instead of leaving a gap that would have to be walked around.
+   *
+   * <p>{@link SlotReservationMap} keeps the reservations in a small pair log while there are few of
+   * them, and only upgrades to an {@code int[]} of every logical index once the log fills up,
+   * because one of these iterators is built per neighborhood per step, over datasets that can hold
+   * well over 100,000 tuples, and most of them retire only a handful of elements.
    */
-  private final Map<Integer, Integer> slotMap = new HashMap<>();
+  private final SlotReservationMap slotMap;
 
-  /** [0, activeCount) is the live Fisher-Yates range. */
+  /**
+   * [0, activeCount) is the live Fisher-Yates range, over {@link ElementAwareArrayList#slotCount()
+   * physical slots}. This range holds the not-yet-retired elements plus gaps not yet encountered;
+   * {@link #liveRemaining} is what says whether any element is left in it.
+   */
   private int activeCount;
+
+  /**
+   * How many elements the range still holds, as opposed to gaps. Needed because {@link
+   * #activeCount} counts slots, and a positive slot count may be all gaps.
+   */
+  private int liveRemaining;
 
   private int nextSlot = -1;
   private @Nullable T next = null;
@@ -64,29 +79,33 @@ final class DefaultRetiringRandomIterator<T extends @Nullable Object>
   DefaultRetiringRandomIterator(ElementAwareArrayList<T> source, RandomGenerator workingRandom) {
     this.source = source;
     this.workingRandom = workingRandom;
-    this.activeCount = source.size();
+    this.activeCount = source.slotCount();
+    this.liveRemaining = source.size();
+    // activeCount only ever shrinks, so no slot outside [0, slotCount) is ever resolved.
+    this.slotMap = new SlotReservationMap(activeCount);
   }
 
   @Override
   public boolean hasNext() {
-    if (activeCount <= 0) {
-      return false;
-    }
     if (nextSlot != -1) {
       return true;
     }
-    nextSlot = workingRandom.nextInt(activeCount); // The Fisher-Yates random pick.
-    next = source.get(resolveSlot(nextSlot));
-    slotToOptionallyRetire = -1;
-    return true;
-  }
-
-  private int resolveSlot(int slot) {
-    var result = slotMap.get(slot);
-    if (result != null) {
-      return result;
+    // The source does not change while this iterator exists, so liveRemaining > 0 guarantees
+    // the live range still holds an element, and this loop always finds one.
+    while (liveRemaining > 0) {
+      var candidateSlot = workingRandom.nextInt(activeCount); // The Fisher-Yates random pick.
+      var entry = source.entryAt(slotMap.resolve(candidateSlot));
+      if (entry != null) {
+        nextSlot = candidateSlot;
+        next = entry.element();
+        slotToOptionallyRetire = -1;
+        return true;
+      }
+      // Retire the gap without changing liveRemaining. Each gap can reject at most one draw,
+      // including when only one live element remains and is repeatedly drawn without retirement.
+      retireSlot(candidateSlot);
     }
-    return slot;
+    return false;
   }
 
   @Override
@@ -102,19 +121,23 @@ final class DefaultRetiringRandomIterator<T extends @Nullable Object>
   }
 
   @Override
-  public void retire() { // Fisher-Yates swap-and-shrink; one-sided lazy map update.
+  public void retire() { // Fisher-Yates swap-and-shrink; one-sided lazy reservation update.
     if (slotToOptionallyRetire == -1) {
       throw new IllegalStateException(
           "The next() method has not been called yet, or the retire() method was already called"
               + " after the last next() call.");
     }
-    var retiredSlot = slotToOptionallyRetire;
+    retireSlot(slotToOptionallyRetire);
+    liveRemaining--;
+    slotToOptionallyRetire = -1;
+  }
+
+  private void retireSlot(int retiredSlot) {
     var lastSlot = activeCount - 1;
     if (retiredSlot != lastSlot) {
-      slotMap.put(retiredSlot, resolveSlot(lastSlot));
+      slotMap.reserve(retiredSlot, slotMap.resolve(lastSlot));
     }
-    slotMap.remove(lastSlot);
+    slotMap.release(lastSlot);
     activeCount = lastSlot;
-    slotToOptionallyRetire = -1;
   }
 }

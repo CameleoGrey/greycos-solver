@@ -3,39 +3,36 @@ package greycos.solver.core.impl.heuristic.selector.list;
 import static greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelector.filterPinnedListPlanningVariableValuesWithIndex;
 
 import java.util.Iterator;
-import java.util.Objects;
 
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import greycos.solver.core.impl.heuristic.selector.AbstractSelector;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
-import greycos.solver.core.impl.solver.scope.SolverScope;
+import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import greycos.solver.core.impl.util.TriangleElementFactory;
+import greycos.solver.core.impl.util.TriangularNumbers;
 
-public class RandomSubListSelector<Solution_> extends AbstractSelector<Solution_>
+import org.jspecify.annotations.NonNull;
+
+public final class RandomSubListSelector<Solution_> extends AbstractListMoveSelector<Solution_>
     implements SubListSelector<Solution_> {
 
   private final EntitySelector<Solution_> entitySelector;
   private final IterableValueSelector<Solution_> valueSelector;
-  private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final int minimumSubListSize;
   private final int maximumSubListSize;
 
   private TriangleElementFactory triangleElementFactory;
-  private ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
 
   public RandomSubListSelector(
       EntitySelector<Solution_> entitySelector,
       IterableValueSelector<Solution_> valueSelector,
       int minimumSubListSize,
       int maximumSubListSize) {
+    super((ListVariableDescriptor<Solution_>) valueSelector.getVariableDescriptor());
     this.entitySelector = entitySelector;
     this.valueSelector =
-        filterPinnedListPlanningVariableValuesWithIndex(
-            valueSelector, this::getListVariableStateSupply);
-    this.listVariableDescriptor =
-        (ListVariableDescriptor<Solution_>) valueSelector.getVariableDescriptor();
+        filterPinnedListPlanningVariableValuesWithIndex(valueSelector, this::getListVariableState);
     if (minimumSubListSize < 1) {
       throw new IllegalArgumentException(
           "The minimumSubListSize (%d) must be greater than 0.".formatted(minimumSubListSize));
@@ -52,25 +49,17 @@ public class RandomSubListSelector<Solution_> extends AbstractSelector<Solution_
     phaseLifecycleSupport.addEventListener(this.valueSelector);
   }
 
-  private ListVariableStateSupply<Solution_, Object, Object> getListVariableStateSupply() {
-    return Objects.requireNonNull(
-        listVariableStateSupply,
-        "Impossible state: The listVariableStateSupply is not initialized yet.");
-  }
-
   @Override
-  public void solvingStarted(SolverScope<Solution_> solverScope) {
-    super.solvingStarted(solverScope);
-    triangleElementFactory =
+  public void phaseStarted(@NonNull AbstractPhaseScope<Solution_> phaseScope) {
+    super.phaseStarted(phaseScope);
+    this.triangleElementFactory =
         new TriangleElementFactory(minimumSubListSize, maximumSubListSize, workingRandom);
-    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
-    listVariableStateSupply = supplyManager.demand(listVariableDescriptor.getStateDemand());
   }
 
   @Override
-  public void solvingEnded(SolverScope<Solution_> solverScope) {
-    super.solvingEnded(solverScope);
-    listVariableStateSupply = null;
+  public void phaseEnded(@NonNull AbstractPhaseScope<Solution_> phaseScope) {
+    super.phaseEnded(phaseScope);
+    triangleElementFactory = null;
   }
 
   @Override
@@ -151,7 +140,7 @@ public class RandomSubListSelector<Solution_> extends AbstractSelector<Solution_
         // Using valueSelector instead of entitySelector is fairer
         // because entities with bigger list variables will be selected more often.
         var value = valueIterator.next();
-        sourceEntity = listVariableStateSupply.getInverseSingleton(value);
+        sourceEntity = listVariableState.getInverseSingleton(value);
         if (sourceEntity == null) { // Ignore values which are unassigned.
           continue;
         }

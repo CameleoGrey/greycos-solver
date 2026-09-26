@@ -7,9 +7,10 @@ import greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
-import greycos.solver.core.impl.score.director.AbstractScoreDirector;
 import greycos.solver.core.impl.score.director.AbstractScoreDirectorFactory;
 import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
+
+import org.jspecify.annotations.NonNull;
 
 /**
  * Easy implementation of {@link ScoreDirectorFactory}.
@@ -27,7 +28,7 @@ public final class EasyScoreDirectorFactory<Solution_, Score_ extends Score<Scor
       EasyScoreDirectorFactory<Solution_, Score_> buildScoreDirectorFactory(
           SolutionDescriptor<Solution_> solutionDescriptor,
           ScoreDirectorFactoryConfig config,
-          EnvironmentMode environmentMode) {
+          EnvironmentMode globalEnvironmentMode) {
     var easyScoreCalculatorClass = config.getEasyScoreCalculatorClass();
     if (easyScoreCalculatorClass == null
         || !EasyScoreCalculator.class.isAssignableFrom(easyScoreCalculatorClass)) {
@@ -43,7 +44,8 @@ public final class EasyScoreDirectorFactory<Solution_, Score_ extends Score<Scor
         "easyScoreCalculatorClass",
         config.getEasyScoreCalculatorCustomProperties(),
         "easyScoreCalculatorCustomProperties");
-    return new EasyScoreDirectorFactory<>(solutionDescriptor, easyScoreCalculator, environmentMode);
+    return new EasyScoreDirectorFactory<>(
+        solutionDescriptor, easyScoreCalculator, globalEnvironmentMode);
   }
 
   public static <Solution_, Score_ extends Score<Score_>>
@@ -57,8 +59,8 @@ public final class EasyScoreDirectorFactory<Solution_, Score_ extends Score<Scor
   public EasyScoreDirectorFactory(
       SolutionDescriptor<Solution_> solutionDescriptor,
       EasyScoreCalculator<Solution_, Score_> easyScoreCalculator,
-      EnvironmentMode environmentMode) {
-    super(solutionDescriptor, environmentMode);
+      EnvironmentMode globalEnvironmentMode) {
+    super(solutionDescriptor, globalEnvironmentMode);
     this.easyScoreCalculator = easyScoreCalculator;
   }
 
@@ -70,11 +72,13 @@ public final class EasyScoreDirectorFactory<Solution_, Score_ extends Score<Scor
 
   @Override
   public EasyScoreDirector.Builder<Solution_, Score_> createScoreDirectorBuilder() {
-    return new EasyScoreDirector.Builder<>(this).withEasyScoreCalculator(easyScoreCalculator);
+    return createScoreDirectorBuilder(globalEnvironmentMode);
   }
 
   @Override
-  public AbstractScoreDirector<Solution_, Score_, ?> buildScoreDirector() {
-    return this.createScoreDirectorBuilder().build();
+  public EasyScoreDirector.Builder<Solution_, Score_> createScoreDirectorBuilder(
+      @NonNull EnvironmentMode environmentMode) {
+    return new EasyScoreDirector.Builder<>(this, environmentMode)
+        .withEasyScoreCalculator(easyScoreCalculator);
   }
 }

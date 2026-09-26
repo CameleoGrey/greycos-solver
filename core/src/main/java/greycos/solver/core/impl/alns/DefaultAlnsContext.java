@@ -130,8 +130,9 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
 
   void applyRepairJournal(List<Move<Solution_>> journal, InnerScore<Score_> expected) {
     requireActive();
-    if (!expected.isFullyAssigned())
-      throw new IllegalArgumentException("Cannot apply an incomplete repair attempt.");
+    if (!expected.isFullyAssigned() || expected.isStructurallyFlawed())
+      throw new IllegalArgumentException(
+          "Cannot apply an incomplete or structurally flawed repair attempt.");
     if (replayLookup == null) {
       var descriptor = scoreDirector.getSolutionDescriptor();
       replayLookup = new LookUpManager(descriptor.getLookUpStrategyResolver());
@@ -248,6 +249,8 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
     var evaluation = score();
     if (!evaluation.isComplete())
       throw new IllegalStateException("Cannot commit an incompletely assigned ALNS candidate.");
+    if (evaluation.isStructurallyFlawed())
+      throw new IllegalStateException("Cannot commit a structurally flawed ALNS candidate.");
     flushReplay(InnerScore.fullyAssigned(evaluation.score()));
     transaction.commit();
     baselineChanged.run();
@@ -456,6 +459,7 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
         (score, ordinal) -> {
           if (transaction.revision() != revision)
             throw new IllegalStateException("ALNS candidate baseline changed during evaluation.");
+          if (score.isStructurallyFlawed()) return;
           int targetIndex = source.targetIndex(ordinal);
           var heap = heaps.get(targetIndex);
           if (heap.size() == retainedCount) {
@@ -509,6 +513,9 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
   void assignEvaluated(BuiltinAlnsOperators.Candidate<Solution_, Score_> candidate) {
     if (candidate.baselineRevision() != transaction.revision()) {
       throw new IllegalStateException("ALNS winning evaluation belongs to a stale baseline.");
+    }
+    if (candidate.evaluation().isStructurallyFlawed()) {
+      throw new IllegalArgumentException("Cannot assign a structurally flawed ALNS candidate.");
     }
     assign(candidate.assignment());
     knownReplayScore =

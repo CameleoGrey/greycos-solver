@@ -3,8 +3,10 @@ package greycos.solver.core.impl.islandmodel;
 import java.util.List;
 
 import greycos.solver.core.api.solver.change.ProblemChange;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.score.director.InnerScore;
+import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 import greycos.solver.core.impl.solver.AbstractSolver;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -17,13 +19,14 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 final class IslandSolver<Solution_> extends AbstractSolver<Solution_> {
 
-  private boolean scoreDirectorClosed;
-
   IslandSolver(
+      EnvironmentMode environmentMode,
+      ScoreDirectorFactory<Solution_, ?> scoreDirectorFactory,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       UniversalTermination<Solution_> globalTermination,
       List<Phase<Solution_>> phaseList) {
-    super(bestSolutionRecaller, globalTermination, phaseList);
+    super(
+        environmentMode, scoreDirectorFactory, bestSolutionRecaller, globalTermination, phaseList);
   }
 
   @Override
@@ -51,37 +54,6 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_> {
   @SuppressWarnings({"rawtypes", "unchecked"})
   private static boolean improvesBestScore(InnerScore<?> candidate, InnerScore<?> best) {
     return ((InnerScore) candidate).compareTo((InnerScore) best) > 0;
-  }
-
-  @Override
-  public void solvingEnded(SolverScope<Solution_> solverScope) {
-    withScoreDirectorCleanup(solverScope, () -> super.solvingEnded(solverScope));
-  }
-
-  @Override
-  public void solvingError(SolverScope<Solution_> solverScope, Exception exception) {
-    withScoreDirectorCleanup(solverScope, () -> super.solvingError(solverScope, exception));
-  }
-
-  private void withScoreDirectorCleanup(SolverScope<Solution_> solverScope, Runnable cleanup) {
-    try {
-      cleanup.run();
-    } catch (RuntimeException | Error failure) {
-      try {
-        closeScoreDirector(solverScope);
-      } catch (RuntimeException | Error closeFailure) {
-        failure.addSuppressed(closeFailure);
-      }
-      throw failure;
-    }
-    closeScoreDirector(solverScope);
-  }
-
-  private void closeScoreDirector(SolverScope<Solution_> solverScope) {
-    if (!scoreDirectorClosed) {
-      scoreDirectorClosed = true;
-      solverScope.getScoreDirector().close();
-    }
   }
 
   @Override

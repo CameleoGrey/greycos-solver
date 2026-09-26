@@ -12,6 +12,8 @@ import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
 import greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;
 
+import org.jspecify.annotations.NullMarked;
+
 /**
  * The type is public to make it easier for Bavet-specific minimal bug reproducers to be created.
  * Instances should be created through {@link
@@ -21,6 +23,7 @@ import greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner
  * @see PropagationQueue Description of the tuple propagation mechanism.
  * @param <Score_>
  */
+@NullMarked
 public final class BavetConstraintSession<Score_ extends Score<Score_>>
     extends AbstractSession<ConstraintStreamsBavetNodeNetwork> {
 

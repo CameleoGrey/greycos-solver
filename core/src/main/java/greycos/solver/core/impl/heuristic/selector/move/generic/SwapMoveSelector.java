@@ -10,7 +10,7 @@ import greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractRando
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.preview.api.move.Move;
 
-public class SwapMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
+public class SwapMoveSelector<Solution_> extends AbstractGenericMoveSelector<Solution_> {
 
   protected final EntitySelector<Solution_> leftEntitySelector;
   protected final EntitySelector<Solution_> rightEntitySelector;

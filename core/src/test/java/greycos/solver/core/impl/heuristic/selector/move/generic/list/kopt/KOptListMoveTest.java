@@ -12,10 +12,8 @@ import java.util.List;
 import java.util.function.Function;
 
 import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateDemand;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.ValueRangeManager;
 import greycos.solver.core.testcotwin.list.TestdataListEntity;
@@ -189,11 +187,9 @@ class KOptListMoveTest {
               {v6, destinationV6},
               {e1, destinationE1},
             });
-    var supplyManager = Mockito.mock(SupplyManager.class);
-    var inverseVariableSupply = Mockito.mock(ListVariableStateSupply.class);
+    var inverseVariableSupply = Mockito.mock(ListVariableState.class);
 
-    when(destinationScoreDirector.getSupplyManager()).thenReturn(supplyManager);
-    when(supplyManager.demand(Mockito.any(ListVariableStateDemand.class)))
+    when(destinationScoreDirector.getListVariableState(Mockito.any(ListVariableDescriptor.class)))
         .thenReturn(inverseVariableSupply);
     when(inverseVariableSupply.getInverseSingleton(destinationE1.getValueList().get(0)))
         .thenReturn(destinationE1);
@@ -255,11 +251,9 @@ class KOptListMoveTest {
               {e1, destinationE1},
               {e2, destinationE2},
             });
-    var supplyManager = Mockito.mock(SupplyManager.class);
-    var inverseVariableSupply = Mockito.mock(ListVariableStateSupply.class);
+    var inverseVariableSupply = Mockito.mock(ListVariableState.class);
 
-    when(destinationScoreDirector.getSupplyManager()).thenReturn(supplyManager);
-    when(supplyManager.demand(Mockito.any(ListVariableStateDemand.class)))
+    when(destinationScoreDirector.getListVariableState(Mockito.any(ListVariableDescriptor.class)))
         .thenReturn(inverseVariableSupply);
     when(inverseVariableSupply.getInverseSingleton(destinationE1.getValueList().get(0)))
         .thenReturn(destinationE1);
@@ -788,8 +782,7 @@ class KOptListMoveTest {
 
     var pickedValues = removedEdgeList.toArray(Object[]::new);
 
-    var listVariableDataSupply =
-        scoreDirector.getSupplyManager().demand(listVariableDescriptor.getStateDemand());
+    var listVariableDataSupply = scoreDirector.getListVariableState(listVariableDescriptor);
     listVariableDataSupply = spy(listVariableDataSupply);
     when(listVariableDataSupply.getSourceVariableDescriptor())
         .thenReturn(listVariableDescriptorSpy);
@@ -843,11 +836,11 @@ class KOptListMoveTest {
 
   private static <Node_> Function<Node_, Node_> getSuccessorFunction(
       ListVariableDescriptor<?> listVariableDescriptor,
-      ListVariableStateSupply<?, Object, Object> listVariableStateSupply) {
+      ListVariableState<?, Object, Object> listVariableState) {
     return (node) -> {
-      var entity = listVariableStateSupply.getInverseSingleton(node);
+      var entity = listVariableState.getInverseSingleton(node);
       var valueList = (List<Node_>) listVariableDescriptor.getValue(entity);
-      var index = listVariableStateSupply.getIndexOrFail(node);
+      var index = listVariableState.getIndexOrFail(node);
       if (index == valueList.size() - 1) {
         var firstUnpinnedIndex = listVariableDescriptor.getFirstUnpinnedIndex(entity);
         return valueList.get(firstUnpinnedIndex);

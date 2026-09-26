@@ -251,7 +251,7 @@ public interface MutableSolutionView<Solution_> extends SolutionView<Solution_> 
 
   /**
    * Moves a value within one entity's {@link PlanningListVariable planning list variable}. Behaves
-   * as if the value is first put in the destinationIndex, and then removed from the sourceIndex,
+   * as if the value is first put in the destinationIndex and then removed from the sourceIndex,
    * shifting all later values to the left. The value previously at the destinationIndex is
    * unassigned.
    *
@@ -331,4 +331,137 @@ public interface MutableSolutionView<Solution_> extends SolutionView<Solution_> 
       Entity_ entity,
       int leftIndex,
       int rightIndex);
+
+  /**
+   * Moves a contiguous span of values within one entity's {@link PlanningListVariable planning list
+   * variable}. Behaves as if the span is first removed, shifting all later values to the left, and
+   * then inserted at the destination index.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param entity The entity whose variable value is to be changed.
+   * @param fromIndex The index of the first value of the span to be moved, inclusive.
+   * @param toIndex The index one past the last value of the span to be moved, exclusive.
+   * @param destinationIndex The index, after removal of the span, at which the span is to be
+   *     re-inserted; Acceptable values range from zero to the list size minus the span length.
+   * @param reversing if {@code true}, the span is inserted in reverse element order
+   * @return the moved values, in the order they were inserted
+   * @throws IllegalArgumentException if {@code toIndex <= fromIndex}
+   */
+  <Entity_, Value_> List<Value_> moveValuesInList(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ entity,
+      int fromIndex,
+      int toIndex,
+      int destinationIndex,
+      boolean reversing);
+
+  /**
+   * Moves a contiguous span of values from one entity's {@link PlanningListVariable planning list
+   * variable} to another.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param sourceEntity The entity from which the span will be removed.
+   * @param sourceFromIndex The index of the first value of the span to be moved, inclusive.
+   * @param sourceToIndex The index one past the last value of the span to be moved, exclusive.
+   * @param destinationEntity The entity to which the span will be added.
+   * @param destinationIndex The index in the destination entity's list variable at which the span
+   *     is to be inserted; all values at or after the index are shifted to the right.
+   * @param reversing if {@code true}, the span is inserted in reverse element order
+   * @return the moved values, in the order they were inserted
+   * @throws IllegalArgumentException if {@code sourceEntity == destinationEntity} or {@code
+   *     sourceToIndex <= sourceFromIndex}
+   */
+  <Entity_, Value_> List<Value_> moveValuesBetweenLists(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ sourceEntity,
+      int sourceFromIndex,
+      int sourceToIndex,
+      Entity_ destinationEntity,
+      int destinationIndex,
+      boolean reversing);
+
+  /**
+   * Swaps two contiguous, non-overlapping spans of values within one entity's {@link
+   * PlanningListVariable planning list variable}.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param entity The entity whose variable values are to be swapped.
+   * @param leftFromIndex The index of the first value of the left span, inclusive.
+   * @param leftToIndex The index one past the last value of the left span, exclusive.
+   * @param rightFromIndex The index of the first value of the right span, inclusive.
+   * @param rightToIndex The index one past the last value of the right span, exclusive.
+   * @param reversing if {@code true}, both spans are inserted in reverse element order
+   * @throws IllegalArgumentException if either span is empty, or if {@code leftToIndex >
+   *     rightFromIndex}; the left span may end at the same index where the right span starts
+   */
+  <Entity_, Value_> void swapValuesInList(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ entity,
+      int leftFromIndex,
+      int leftToIndex,
+      int rightFromIndex,
+      int rightToIndex,
+      boolean reversing);
+
+  /**
+   * Swaps two contiguous spans of values between two entities' {@link PlanningListVariable planning
+   * list variable}.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param leftEntity The first entity whose variable values are to be swapped.
+   * @param leftFromIndex The index of the first value of the left span, inclusive.
+   * @param leftToIndex The index one past the last value of the left span, exclusive.
+   * @param rightEntity The second entity whose variable values are to be swapped.
+   * @param rightFromIndex The index of the first value of the right span, inclusive.
+   * @param rightToIndex The index one past the last value of the right span, exclusive.
+   * @param reversing if {@code true}, both spans are inserted in reverse element order
+   * @throws IllegalArgumentException if either span is empty, or if {@code leftEntity ==
+   *     rightEntity}; use {@link #swapValuesInList(PlanningListVariableMetaModel, Object, int, int,
+   *     int, int, boolean)} instead
+   */
+  <Entity_, Value_> void swapValuesBetweenLists(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ leftEntity,
+      int leftFromIndex,
+      int leftToIndex,
+      Entity_ rightEntity,
+      int rightFromIndex,
+      int rightToIndex,
+      boolean reversing);
+
+  /**
+   * Removes a contiguous span of values from a given entity's {@link PlanningListVariable planning
+   * list variable}. Shifts any subsequent values to the left.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param entity The entity whose span is to be removed from its list variable.
+   * @param fromIndex The index of the first value of the span to be removed, inclusive.
+   * @param toIndex The index one past the last value of the span to be removed, exclusive.
+   * @return the removed values, in list order
+   * @throws IllegalArgumentException if {@code toIndex <= fromIndex}
+   */
+  <Entity_, Value_> List<Value_> unassignValues(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Entity_ entity,
+      int fromIndex,
+      int toIndex);
+
+  /**
+   * Gathers a set of values - wherever each one currently is, assigned or not - and inserts them
+   * consecutively, in iteration order, at one destination. If a value is currently assigned
+   * elsewhere, it is unassigned from its current position first. A {@code null} destination
+   * unassigns every already-assigned value instead of inserting them anywhere.
+   *
+   * <p>All shadow variables are updated exactly once, regardless of how many entities are affected.
+   *
+   * @param variableMetaModel Describes the variable to be changed.
+   * @param values The values to be gathered; each may currently be assigned to any entity, or
+   *     unassigned. Must not contain null elements; this is not enforced at runtime.
+   * @param destination Where to insert the values, or {@code null} to unassign them instead.
+   * @return the gathered values, in the order they were given
+   */
+  <Entity_, Value_> List<Value_> massMoveValues(
+      PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      Iterable<Value_> values,
+      @Nullable PositionInList destination);
 }

@@ -136,7 +136,7 @@ class InvalidValueRangeFailFastTest {
     @Override
     protected void doMoveOnGenuineVariables(ScoreDirector<TestdataListSolution> scoreDirector) {
       var entity = scoreDirector.getWorkingSolution().getEntityList().get(0);
-      scoreDirector.beforeListVariableChanged(entity, "valueList", 0, 0);
+      scoreDirector.beforeListVariableChanged(entity, "valueList", 0, entity.getValueList().size());
       entity.getValueList().add(new TestdataListValue("bad value"));
       scoreDirector.afterListVariableChanged(entity, "valueList", 0, entity.getValueList().size());
     }

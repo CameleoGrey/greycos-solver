@@ -1,6 +1,8 @@
 package greycos.solver.core.impl.neighborhood.stream.enumerating.common;
 
 import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.random.RandomGenerator;
 
 import greycos.solver.core.impl.bavet.common.index.RepeatingRandomIterator;
@@ -11,6 +13,7 @@ import greycos.solver.core.impl.util.ElementAwareArrayList;
 import greycos.solver.core.preview.api.neighborhood.stream.dataset.UniDatasetInstance;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public abstract class AbstractLeftDatasetInstance<Solution_, Tuple_ extends Tuple>
@@ -58,11 +61,35 @@ public abstract class AbstractLeftDatasetInstance<Solution_, Tuple_ extends Tupl
 
   /**
    * Not part of {@link UniDatasetInstance}: only satisfies {@link Iterable}, for callers (such as
-   * {@code JustInTimeBiDatasetInstance#size()}) that need a plain, non-random walk internally.
+   * {@code JustInTimeBiDatasetInstance#size()}) that need a plain, non-random walk internally. This
+   * traversal must not compact the list: a lazy per-key index may be built while a random iterator
+   * over the same dataset still holds reservations for its physical slots.
    */
   @Override
   public Iterator<Tuple_> iterator() {
-    return tupleList.iterator();
+    return new Iterator<>() {
+      private final int slotCount = tupleList.slotCount();
+      private int nextSlot;
+      private @Nullable ElementAwareArrayList<Tuple_>.Entry nextEntry;
+
+      @Override
+      public boolean hasNext() {
+        while (nextEntry == null && nextSlot < slotCount) {
+          nextEntry = tupleList.entryAt(nextSlot++);
+        }
+        return nextEntry != null;
+      }
+
+      @Override
+      public Tuple_ next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        var tuple = Objects.requireNonNull(nextEntry).element();
+        nextEntry = null;
+        return tuple;
+      }
+    };
   }
 
   @Override

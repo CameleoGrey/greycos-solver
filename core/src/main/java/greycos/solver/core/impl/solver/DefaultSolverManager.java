@@ -1,7 +1,6 @@
 package greycos.solver.core.impl.solver;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +25,7 @@ import greycos.solver.core.api.solver.event.NewBestSolutionEvent;
 import greycos.solver.core.api.solver.event.SolverJobStartedEvent;
 import greycos.solver.core.config.solver.SolverManagerConfig;
 import greycos.solver.core.config.util.ConfigUtils;
+import greycos.solver.core.impl.solver.monitoring.SolverTags;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -114,8 +114,7 @@ public final class DefaultSolverManager<Solution_> implements SolverManager<Solu
       @Nullable BiConsumer<? super Object, ? super Throwable> exceptionHandler,
       SolverConfigOverride configOverride) {
     var solver = solverFactory.buildSolver(configOverride);
-    ((DefaultSolver<Solution_>) solver)
-        .setMonitorTagMap(Map.of("problem.id", problemId.toString()));
+    ((DefaultSolver<Solution_>) solver).setMonitorTags(SolverTags.withProblemId(problemId));
     BiConsumer<? super Object, ? super Throwable> finalExceptionHandler =
         (exceptionHandler != null) ? exceptionHandler : defaultExceptionHandler;
     var solverJob =

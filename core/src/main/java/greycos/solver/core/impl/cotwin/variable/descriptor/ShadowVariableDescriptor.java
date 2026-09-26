@@ -6,7 +6,6 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
-import greycos.solver.core.impl.cotwin.variable.supply.Demand;
 
 import org.jspecify.annotations.Nullable;
 
@@ -47,11 +46,6 @@ public abstract class ShadowVariableDescriptor<Solution_> extends VariableDescri
    * @return never null, the classes responsible for updating this shadow variable
    */
   public abstract Collection<Class<?>> getUpdaterClasses();
-
-  /**
-   * @return never null
-   */
-  public abstract Demand<?> getProvidedDemand();
 
   // ************************************************************************
   // Extraction methods

@@ -14,7 +14,6 @@ import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.supply.Demand;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 
 import org.jspecify.annotations.Nullable;
@@ -55,9 +54,10 @@ public class DeclarativeShadowVariableDescriptor<Solution_>
     if (method == null) {
       throw new IllegalArgumentException(
           """
-                    @%s (%s) defines a supplierName (%s) that does not exist inside its declaring class (%s).
-                    Maybe you included a parameter which is not a planning solution (%s)?
-                    Maybe you misspelled the supplierName name?"""
+          @%s (%s) defines a supplierName (%s) that does not exist inside its declaring class (%s).
+          Maybe you included a parameter which is not a planning solution (%s)?
+          Maybe you misspelled the supplierName name?\
+          """
               .formatted(
                   ShadowVariable.class.getSimpleName(),
                   variableName,
@@ -70,9 +70,9 @@ public class DeclarativeShadowVariableDescriptor<Solution_>
     if (shadowVariableUpdater == null) {
       throw new IllegalArgumentException(
           """
-                    Method "%s" referenced from @%s member %s is not annotated with @%s.
-                    Maybe annotate the method %s with @%s?
-                    """
+          Method "%s" referenced from @%s member %s is not annotated with @%s.
+          Maybe annotate the method %s with @%s?
+          """
               .formatted(
                   methodName,
                   ShadowVariable.class.getSimpleName(),
@@ -95,10 +95,10 @@ public class DeclarativeShadowVariableDescriptor<Solution_>
     if (sourcePaths.length == 0) {
       throw new IllegalArgumentException(
           """
-                    Method "%s" referenced from @%s member %s has no sources.
-                    A shadow variable must have at least one source (since otherwise it a constant).
-                    Maybe add one source?
-                    """
+          Method "%s" referenced from @%s member %s has no sources.
+          A shadow variable must have at least one source (since otherwise it a constant).
+          Maybe add one source?
+          """
               .formatted(methodName, ShadowVariable.class.getSimpleName(), variableMemberAccessor));
     }
 
@@ -113,11 +113,6 @@ public class DeclarativeShadowVariableDescriptor<Solution_>
   @Override
   public Collection<Class<?>> getUpdaterClasses() {
     return Collections.emptyList();
-  }
-
-  @Override
-  public Demand<?> getProvidedDemand() {
-    return null;
   }
 
   @Override
@@ -172,9 +167,9 @@ public class DeclarativeShadowVariableDescriptor<Solution_>
         solutionMetamodel, member.getDeclaringClass(), member.getName())) {
       throw new IllegalArgumentException(
           """
-                            The @%s-annotated supplier method (%s) for variable (%s) on class (%s) uses a alignmentKey (%s) that is a variable.
-                            A alignmentKey must be a problem fact and cannot change during solving.
-                            """
+          The @%s-annotated supplier method (%s) for variable (%s) on class (%s) uses a alignmentKey (%s) that is a variable.
+          A alignmentKey must be a problem fact and cannot change during solving.
+          """
               .formatted(
                   ShadowSources.class.getSimpleName(),
                   calculator.getName(),

@@ -53,7 +53,6 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
   private final Integer moveThreadCount;
   private final int moveThreadBufferSize;
   private final ThreadFactory threadFactory;
-  private final EnvironmentMode environmentMode;
   private AlnsMetrics<Solution_> metrics;
   private MoveEvaluationPipeline.Diagnostics moveEvaluationDiagnostics;
   private AlnsRepairAttemptExecutor.Diagnostics repairAttemptDiagnostics;
@@ -65,7 +64,6 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
     moveThreadCount = builder.moveThreadCount;
     moveThreadBufferSize = builder.moveThreadBufferSize;
     threadFactory = builder.threadFactory;
-    environmentMode = builder.environmentMode;
   }
 
   public MoveEvaluationPipeline.Diagnostics getMoveEvaluationDiagnostics() {
@@ -95,10 +93,10 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
     validate();
     var scope = new AlnsPhaseScope<>(solverScope, phaseIndex);
     metrics = new AlnsMetrics<>();
+    phaseStarted(scope);
     InnerScoreDirector<Solution_, Score_> director = solverScope.getScoreDirector();
     var random = solverScope.getWorkingRandom().moveIteratorUsage();
     var budget = new TrialBudget(director);
-    phaseStarted(scope);
     var polling = new AlnsTerminationPolling<>(scope, phaseTermination);
     Throwable phaseFailure = null;
     DefaultAlnsContext<Solution_, Score_> context = null;
@@ -145,6 +143,10 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
       if (!initial.isFullyAssigned()) {
         throw new IllegalStateException(
             "ALNS requires an initialized solution; configure a construction heuristic first.");
+      }
+      if (initial.isStructurallyFlawed()) {
+        throw new IllegalStateException(
+            "ALNS requires structurally consistent shadow variables; configure a construction heuristic first.");
       }
       scope.getLastCompletedStepScope().setScore(initial);
       metrics.phaseStarted(scope);
@@ -228,7 +230,7 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
                   "ALNS repair attempt journal did not reproduce its evaluated score.");
             }
             candidate = evaluation.score();
-            if (evaluation.isComplete()) {
+            if (evaluation.isComplete() && !evaluation.isStructurallyFlawed()) {
               if (!context.isChanged()) {
                 outcome = AlnsOutcome.NO_CHANGE;
               } else if (acceptance.isAccepted(
@@ -344,7 +346,7 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
     var scope = step.getPhaseScope();
     var islandSuffix = "";
     for (var tag : scope.getSolverScope().getMonitoringTags()) {
-      if (tag.getKey().equals("island.id")) {
+      if (tag.getKey().equals("island.id") && !tag.getValue().equals("root")) {
         islandSuffix = ", island (" + tag.getValue() + ")";
         break;
       }
@@ -923,30 +925,24 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
     }
   }
 
-  public static final class Builder<Solution_> extends AbstractPhaseBuilder<Solution_> {
+  public static final class Builder<Solution_>
+      extends AbstractPhaseBuilder<Solution_, DefaultAlnsPhase<Solution_>> {
     private final AlnsPhaseConfig config;
     private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
     private Integer moveThreadCount;
     private int moveThreadBufferSize = 10;
     private ThreadFactory threadFactory;
-    private EnvironmentMode environmentMode = EnvironmentMode.PHASE_ASSERT;
 
     public Builder(
         int phaseIndex,
+        EnvironmentMode environmentMode,
         String logIndentation,
         PhaseTermination<Solution_> termination,
         AlnsPhaseConfig config,
         BestSolutionRecaller<Solution_> recaller) {
-      super(phaseIndex, logIndentation, termination);
+      super(phaseIndex, environmentMode, logIndentation, termination);
       this.config = config;
       bestSolutionRecaller = recaller;
-    }
-
-    @Override
-    public Builder<Solution_> enableAssertions(EnvironmentMode mode) {
-      super.enableAssertions(mode);
-      environmentMode = mode;
-      return this;
     }
 
     public Builder<Solution_> withMoveThreadCount(Integer moveThreadCount) {

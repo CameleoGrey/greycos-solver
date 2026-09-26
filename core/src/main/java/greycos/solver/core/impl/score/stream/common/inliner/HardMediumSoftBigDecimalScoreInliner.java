@@ -5,6 +5,7 @@ import java.util.Map;
 
 import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
 import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.impl.score.ScoreUtil;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 
@@ -32,16 +33,13 @@ final class HardMediumSoftBigDecimalScoreInliner
     var mediumConstraintWeight = constraintWeight.mediumScore();
     var softConstraintWeight = constraintWeight.softScore();
     var context = new HardMediumSoftBigDecimalScoreContext(this, constraint, constraintWeight);
-    if (mediumConstraintWeight.equals(BigDecimal.ZERO)
-        && softConstraintWeight.equals(BigDecimal.ZERO)) {
+    if (ScoreUtil.isZero(mediumConstraintWeight) && ScoreUtil.isZero(softConstraintWeight)) {
       return WeightedScoreImpacter.of(
           context, HardMediumSoftBigDecimalScoreContext::changeHardScoreBy);
-    } else if (hardConstraintWeight.equals(BigDecimal.ZERO)
-        && softConstraintWeight.equals(BigDecimal.ZERO)) {
+    } else if (ScoreUtil.isZero(hardConstraintWeight) && ScoreUtil.isZero(softConstraintWeight)) {
       return WeightedScoreImpacter.of(
           context, HardMediumSoftBigDecimalScoreContext::changeMediumScoreBy);
-    } else if (hardConstraintWeight.equals(BigDecimal.ZERO)
-        && mediumConstraintWeight.equals(BigDecimal.ZERO)) {
+    } else if (ScoreUtil.isZero(hardConstraintWeight) && ScoreUtil.isZero(mediumConstraintWeight)) {
       return WeightedScoreImpacter.of(
           context, HardMediumSoftBigDecimalScoreContext::changeSoftScoreBy);
     } else {

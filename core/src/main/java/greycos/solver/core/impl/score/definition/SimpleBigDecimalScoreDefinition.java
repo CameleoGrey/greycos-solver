@@ -9,6 +9,9 @@ import greycos.solver.core.impl.score.trend.InitializingScoreTrend;
 public class SimpleBigDecimalScoreDefinition
     extends AbstractScoreDefinition<SimpleBigDecimalScore> {
 
+  private static final SimpleBigDecimalScore STRUCTURALLY_FLAWED_SCORE =
+      new SimpleBigDecimalScore(-1L, BigDecimal.ZERO);
+
   public SimpleBigDecimalScoreDefinition() {
     super(new String[] {"score"});
   }
@@ -26,6 +29,16 @@ public class SimpleBigDecimalScoreDefinition
   @Override
   public Class<SimpleBigDecimalScore> getScoreClass() {
     return SimpleBigDecimalScore.class;
+  }
+
+  @Override
+  public SimpleBigDecimalScore getStructurallyFlawedScore() {
+    return STRUCTURALLY_FLAWED_SCORE;
+  }
+
+  @Override
+  public SimpleBigDecimalScore getStructurallyFlawedScore(SimpleBigDecimalScore score) {
+    return new SimpleBigDecimalScore(-1L, score.score());
   }
 
   @Override

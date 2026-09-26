@@ -8,8 +8,8 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.MockClock;
@@ -19,10 +19,14 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 /**
  * Running these tests while other tests are running the solver is a bad idea, because the other
- * solver will mess with the metrics. It is recommended to run these tests as integration tests,
- * completely separate from the other tests.
+ * solver will mess with the metrics. Every solver publishes its meters to the same global registry
+ * under the same meter names, and {@link TestMeterRegistry#publish()} keys its measurements by
+ * meter name only. A solver in a concurrently running test therefore overwrites these measurements,
+ * which makes a test read one meter from its own solver and another meter from a foreign solver.
+ *
+ * <p>The global resource lock makes these tests run in isolation, without any other test running.
  */
-@Execution(ExecutionMode.SAME_THREAD)
+@ResourceLock(Resources.GLOBAL)
 public abstract class AbstractMeterTest {
 
   @BeforeEach // To guard against nasty tests which do not do this.
@@ -74,13 +78,18 @@ public abstract class AbstractMeterTest {
               meter -> {
                 final Map<String, BigDecimal> meterMeasurementMap = new LinkedHashMap<>();
                 String meterTags = "";
-                if (meter.getId().getTags().size() > 1) {
-                  meterTags =
-                      meter.getId().getConventionTags(NamingConvention.dot).stream()
-                          .filter(tag -> !tag.getKey().equals("solver.id"))
-                          .map(tag -> tag.getKey() + "=" + tag.getValue())
-                          .sorted()
-                          .collect(Collectors.joining(",", ":", ""));
+                var distinguishingTags =
+                    meter.getId().getConventionTags(NamingConvention.dot).stream()
+                        .filter(
+                            tag ->
+                                !tag.getKey().equals("solver.id")
+                                    && !tag.getKey().equals("problem.id")
+                                    && !tag.getKey().equals("island.id"))
+                        .map(tag -> tag.getKey() + "=" + tag.getValue())
+                        .sorted()
+                        .collect(Collectors.joining(","));
+                if (!distinguishingTags.isEmpty()) {
+                  meterTags = ":" + distinguishingTags;
                 }
                 measurementMap.put(
                     meter.getId().getConventionName(NamingConvention.dot) + meterTags,

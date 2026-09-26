@@ -10,13 +10,15 @@ import greycos.solver.core.impl.bavet.common.TupleSource;
 import greycos.solver.core.impl.bavet.common.tuple.QuadTuple;
 import greycos.solver.core.impl.bavet.quad.PrecomputeQuadNode;
 import greycos.solver.core.impl.score.stream.bavet.BavetConstraintFactory;
+import greycos.solver.core.impl.score.stream.bavet.BavetPrecomputeStream;
 import greycos.solver.core.impl.score.stream.bavet.common.BavetPrecomputeBuildHelper;
 import greycos.solver.core.impl.score.stream.bavet.common.ConstraintNodeBuildHelper;
 import greycos.solver.core.impl.score.stream.bavet.common.bridge.BavetAftBridgeQuadConstraintStream;
 import greycos.solver.core.impl.score.stream.common.RetrievalSemantics;
 
 public class BavetPrecomputeQuadConstraintStream<Solution_, A, B, C, D>
-    extends BavetAbstractQuadConstraintStream<Solution_, A, B, C, D> implements TupleSource {
+    extends BavetAbstractQuadConstraintStream<Solution_, A, B, C, D>
+    implements TupleSource, BavetPrecomputeStream {
   private final BavetAbstractConstraintStream<Solution_> recordingPrecomputedConstraintStream;
   private final Set<Class<?>> entityClassSet;
   private BavetAftBridgeQuadConstraintStream<Solution_, A, B, C, D> aftStream;

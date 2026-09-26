@@ -20,6 +20,8 @@ final class ListVariableBeforeChangeAction<Solution_, Entity_, Value_>
   private final int oldValueCount;
   private final int fromIndex;
   private final int toIndex;
+  private final int originalListSize;
+  private int updatedToIndex = -1;
   private final ListVariableDescriptor<Solution_> variableDescriptor;
 
   ListVariableBeforeChangeAction(
@@ -32,6 +34,7 @@ final class ListVariableBeforeChangeAction<Solution_, Entity_, Value_>
     this.fromIndex = fromIndex;
     this.toIndex = toIndex;
     this.variableDescriptor = variableDescriptor;
+    this.originalListSize = listValue.size();
     this.oldValueCount = toIndex - fromIndex;
     if (oldValueCount == 0) {
       oldSingleValue = null;
@@ -40,10 +43,38 @@ final class ListVariableBeforeChangeAction<Solution_, Entity_, Value_>
     } else if (oldValueCount == 1) {
       oldSingleValue = listValue.get(fromIndex);
       oldValueArray = EMPTY_OLD_VALUES;
-      oldValueView = new ImmutableArraySliceView<>(new Object[] {oldSingleValue}, 1);
+      oldValueView = java.util.Collections.singletonList(oldSingleValue);
     } else {
       oldSingleValue = null;
       oldValueArray = snapshotOldValues(listValue, fromIndex, toIndex);
+      oldValueView = new ImmutableArraySliceView<>(oldValueArray, oldValueCount);
+    }
+  }
+
+  ListVariableBeforeChangeAction(
+      Entity_ entity,
+      List<Value_> oldValue,
+      int fromIndex,
+      int toIndex,
+      int originalListSize,
+      ListVariableDescriptor<Solution_> variableDescriptor) {
+    this.entity = entity;
+    this.fromIndex = fromIndex;
+    this.toIndex = toIndex;
+    this.originalListSize = originalListSize;
+    this.variableDescriptor = variableDescriptor;
+    this.oldValueCount = oldValue.size();
+    if (oldValueCount == 0) {
+      oldSingleValue = null;
+      oldValueArray = EMPTY_OLD_VALUES;
+      oldValueView = List.of();
+    } else if (oldValueCount == 1) {
+      oldSingleValue = oldValue.getFirst();
+      oldValueArray = EMPTY_OLD_VALUES;
+      oldValueView = java.util.Collections.singletonList(oldSingleValue);
+    } else {
+      oldSingleValue = null;
+      oldValueArray = oldValue.toArray();
       oldValueView = new ImmutableArraySliceView<>(oldValueArray, oldValueCount);
     }
   }
@@ -56,8 +87,12 @@ final class ListVariableBeforeChangeAction<Solution_, Entity_, Value_>
       int oldValueCount,
       int fromIndex,
       int toIndex,
+      int originalListSize,
+      int updatedToIndex,
       ListVariableDescriptor<Solution_> variableDescriptor) {
     this.entity = entity;
+    this.originalListSize = originalListSize;
+    this.updatedToIndex = updatedToIndex;
     this.oldSingleValue = oldSingleValue;
     this.oldValueArray = oldValueArray;
     this.oldValueView = oldValueView;
@@ -82,11 +117,14 @@ final class ListVariableBeforeChangeAction<Solution_, Entity_, Value_>
   @Override
   @SuppressWarnings("unchecked")
   public void undo(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
-    if (oldValueCount == 0) {
-      // The sibling after-change action already notified the collapsed empty range.
-      return;
+    if (updatedToIndex < 0) {
+      throw new IllegalStateException(
+          "The beforeListVariableChanged (%d, %d) of entity (%s) was never closed by its afterListVariableChanged."
+              .formatted(fromIndex, toIndex, entity));
     }
+    scoreDirector.beforeListVariableChanged(variableDescriptor, entity, fromIndex, updatedToIndex);
     var valueList = (List<Value_>) variableDescriptor.getValue(entity);
+    valueList.subList(fromIndex, updatedToIndex).clear();
     if (oldValueCount == 1) {
       valueList.add(fromIndex, (Value_) oldSingleValue);
     } else if (oldValueCount > 1) {
@@ -110,7 +148,7 @@ final class ListVariableBeforeChangeAction<Solution_, Entity_, Value_>
     } else if (oldValueCount == 1) {
       rebasedOldValueArray = EMPTY_OLD_VALUES;
       rebasedOldSingleValue = lookup.lookUpWorkingObject(oldSingleValue);
-      rebasedOldValueView = new ImmutableArraySliceView<>(new Object[] {rebasedOldSingleValue}, 1);
+      rebasedOldValueView = java.util.Collections.singletonList(rebasedOldSingleValue);
     } else {
       rebasedOldValueArray = new Object[oldValueCount];
       for (var i = 0; i < oldValueCount; i++) {
@@ -127,6 +165,8 @@ final class ListVariableBeforeChangeAction<Solution_, Entity_, Value_>
         oldValueCount,
         fromIndex,
         toIndex,
+        originalListSize,
+        updatedToIndex,
         variableDescriptor);
   }
 
@@ -143,8 +183,16 @@ final class ListVariableBeforeChangeAction<Solution_, Entity_, Value_>
     return fromIndex;
   }
 
-  public int toIndex() {
+  public int originalToIndex() {
     return toIndex;
+  }
+
+  public int originalListSize() {
+    return originalListSize;
+  }
+
+  void updateToIndex(int updatedToIndex) {
+    this.updatedToIndex = updatedToIndex;
   }
 
   public ListVariableDescriptor<Solution_> variableDescriptor() {

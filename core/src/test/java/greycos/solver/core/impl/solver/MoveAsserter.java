@@ -69,9 +69,12 @@ public class MoveAsserter<Solution_> {
     var scoreDirectorFactory =
         new MoveAssertScoreDirectorFactory<>(
             solutionDescriptor, moveSolutionConsumer, moveRepository);
-    scoreDirectorFactory.setTrackingWorkingSolution(true);
     try (var scoreDirector =
-        scoreDirectorFactory.createScoreDirectorBuilder().withLookUpEnabled(false).build()) {
+        scoreDirectorFactory
+            .createScoreDirectorBuilder(
+                greycos.solver.core.config.solver.EnvironmentMode.TRACKED_FULL_ASSERT)
+            .withLookUpEnabled(false)
+            .build()) {
       var innerScore =
           InnerScore.fullyAssigned((Score) scoreDirector.getScoreDefinition().getZeroScore());
       scoreDirector.setWorkingSolution(solution);
@@ -94,9 +97,11 @@ public class MoveAsserter<Solution_> {
   public void applyMove(Solution_ solution, Move<Solution_> move, Runnable beforeMove) {
     var scoreDirectorFactory =
         new MoveAssertScoreDirectorFactory<>(solutionDescriptor, ignored -> {}, moveRepository);
-    scoreDirectorFactory.setTrackingWorkingSolution(false);
     try (var scoreDirector =
-        scoreDirectorFactory.createScoreDirectorBuilder().withLookUpEnabled(false).build()) {
+        scoreDirectorFactory
+            .createScoreDirectorBuilder(greycos.solver.core.config.solver.EnvironmentMode.NO_ASSERT)
+            .withLookUpEnabled(false)
+            .build()) {
       scoreDirector.setWorkingSolution(solution);
       beforeMove.run();
       scoreDirector.executeMove(move);

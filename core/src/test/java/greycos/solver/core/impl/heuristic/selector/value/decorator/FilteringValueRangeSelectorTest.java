@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.heuristic.selector.common.TestdataObjectSorter;
 import greycos.solver.core.impl.heuristic.selector.value.FromEntityPropertyValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.mimic.ManualValueMimicRecorder;
@@ -77,10 +77,10 @@ class FilteringValueRangeSelectorTest {
                 TestdataListEntityProvidingSolution.buildSolutionDescriptor(), solution))
         .when(scoreDirector)
         .getValueRangeManager();
-    var listVariableSupply = mock(ListVariableStateSupply.class);
-    doReturn(listVariableSupply).when(scoreDirector).getListVariableStateSupply(any());
+    var listVariableState = mock(ListVariableState.class);
+    doReturn(listVariableState).when(scoreDirector).getListVariableState(any());
     doReturn(TestdataListEntityProvidingEntity.buildVariableDescriptorForValueList())
-        .when(listVariableSupply)
+        .when(listVariableState)
         .getSourceVariableDescriptor();
     valueSelector.solvingStarted(solverScope);
 

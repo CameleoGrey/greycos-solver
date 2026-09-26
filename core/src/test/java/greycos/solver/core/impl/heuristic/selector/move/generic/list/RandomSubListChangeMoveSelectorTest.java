@@ -3,7 +3,7 @@ package greycos.solver.core.impl.heuristic.selector.move.generic.list;
 import static greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.phaseStarted;
 import static greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.solvingStarted;
 import static greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.stepStarted;
-import static greycos.solver.core.impl.heuristic.selector.list.TriangularNumbers.nthTriangle;
+import static greycos.solver.core.impl.util.TriangularNumbers.nthTriangle;
 import static greycos.solver.core.testcotwin.list.TestdataListUtils.getAllowsUnassignedvaluesListVariableDescriptor;
 import static greycos.solver.core.testcotwin.list.TestdataListUtils.getListVariableDescriptor;
 import static greycos.solver.core.testcotwin.list.TestdataListUtils.listSize;
@@ -68,7 +68,8 @@ class RandomSubListChangeMoveSelectorTest {
 
     var random = new TestRandom(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1);
 
-    solvingStarted(moveSelector, scoreDirector, random);
+    var solverScope = solvingStarted(moveSelector, scoreDirector, random);
+    phaseStarted(moveSelector, solverScope);
 
     // Every possible subList is selected.
     assertCodesOfNeverEndingMoveSelector(
@@ -164,7 +165,8 @@ class RandomSubListChangeMoveSelectorTest {
     var random =
         new TestRandom(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 0);
 
-    solvingStarted(moveSelector, scoreDirector, random);
+    var solverScope = solvingStarted(moveSelector, scoreDirector, random);
+    phaseStarted(moveSelector, solverScope);
 
     // Every possible subList is selected.
     assertCodesOfNeverEndingMoveSelector(
@@ -247,7 +249,8 @@ class RandomSubListChangeMoveSelectorTest {
             9, 0,
             -1, -1);
 
-    solvingStarted(moveSelector, scoreDirector, random);
+    var solverScope = solvingStarted(moveSelector, scoreDirector, random);
+    phaseStarted(moveSelector, solverScope);
 
     // Every possible subList is selected; some moves are reversing.
     assertCodesOfNeverEndingMoveSelector(
@@ -298,7 +301,8 @@ class RandomSubListChangeMoveSelectorTest {
 
     var random = new TestRandom(0, 1, 2, 3, 4, -1);
 
-    solvingStarted(moveSelector, scoreDirector, random);
+    var solverScope = solvingStarted(moveSelector, scoreDirector, random);
+    phaseStarted(moveSelector, solverScope);
 
     // Only subLists bigger than 1 and smaller than 4 are selected.
     assertCodesOfNeverEndingMoveSelector(
@@ -375,7 +379,8 @@ class RandomSubListChangeMoveSelectorTest {
 
     var random = new TestRandom(0, 1, -1);
 
-    solvingStarted(moveSelector, scoreDirector, random);
+    var solverScope = solvingStarted(moveSelector, scoreDirector, random);
+    phaseStarted(moveSelector, solverScope);
 
     // Only subLists of size 2 are selected.
     assertCodesOfNeverEndingMoveSelector(

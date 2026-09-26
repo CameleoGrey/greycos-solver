@@ -17,7 +17,7 @@ import greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelecti
 import greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionDistributionType;
 import greycos.solver.core.config.heuristic.selector.list.DestinationSelectorConfig;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.SelectorTestUtils;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
@@ -77,9 +77,9 @@ class NearbyDestinationSelectorTest {
             originValueSelector);
 
     InnerScoreDirector<TestdataListSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    ListVariableStateSupply<TestdataListSolution, Object, Object> listVariableStateSupply =
-        mock(ListVariableStateSupply.class);
-    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableStateSupply);
+    ListVariableState<TestdataListSolution, Object, Object> listVariableState =
+        mock(ListVariableState.class);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableState);
 
     SolverScope<TestdataListSolution> solverScope =
         SelectorTestUtils.solvingStarted(
@@ -129,9 +129,9 @@ class NearbyDestinationSelectorTest {
             null);
 
     InnerScoreDirector<TestdataListSolution, ?> scoreDirector = mock(InnerScoreDirector.class);
-    ListVariableStateSupply<TestdataListSolution, Object, Object> listVariableStateSupply =
-        mock(ListVariableStateSupply.class);
-    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableStateSupply);
+    ListVariableState<TestdataListSolution, Object, Object> listVariableState =
+        mock(ListVariableState.class);
+    NearbyTestUtils.mockSupplyManager(scoreDirector, listVariableState);
 
     SolverScope<TestdataListSolution> solverScope =
         SelectorTestUtils.solvingStarted(

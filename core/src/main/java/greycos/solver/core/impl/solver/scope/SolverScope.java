@@ -51,6 +51,7 @@ public class SolverScope<Solution_> {
 
   private Set<SolverMetric> solverMetricSet = Collections.emptySet();
   private int constraintMatchMetricSampleInterval = 1;
+  private boolean anyMetricConstraintMatchBased;
   private Tags monitoringTags;
   private int startingSolverCount;
   private RandomSource workingRandom;
@@ -164,6 +165,12 @@ public class SolverScope<Solution_> {
 
   public void setSolverMetricSet(EnumSet<SolverMetric> solverMetricSet) {
     this.solverMetricSet = solverMetricSet;
+    this.anyMetricConstraintMatchBased =
+        this.solverMetricSet.stream().anyMatch(SolverMetric::isMetricConstraintMatchBased);
+  }
+
+  public boolean isAnyMetricConstraintMatchBased() {
+    return anyMetricConstraintMatchBased;
   }
 
   public int getConstraintMatchMetricSampleInterval() {
@@ -242,7 +249,7 @@ public class SolverScope<Solution_> {
   }
 
   public void assertScoreFromScratch(Solution_ solution) {
-    scoreDirector.getScoreDirectorFactory().assertScoreFromScratch(solution);
+    scoreDirector.assertScoreFromScratch(solution);
   }
 
   @SuppressWarnings("unchecked")
@@ -402,6 +409,7 @@ public class SolverScope<Solution_> {
     childThreadSolverScope.bestScore.set(null);
     childThreadSolverScope.monitoringTags = monitoringTags;
     childThreadSolverScope.solverMetricSet = solverMetricSet;
+    childThreadSolverScope.anyMetricConstraintMatchBased = anyMetricConstraintMatchBased;
     childThreadSolverScope.constraintMatchMetricSampleInterval =
         constraintMatchMetricSampleInterval;
     childThreadSolverScope.startingSolverCount = startingSolverCount;

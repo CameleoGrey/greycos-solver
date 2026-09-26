@@ -1,6 +1,7 @@
 module greycos.solver.migration {
   exports greycos.solver.migration;
   exports greycos.solver.migration.common;
+  exports greycos.solver.migration.preview;
   exports greycos.solver.migration.v1;
   exports greycos.solver.migration.v2;
 

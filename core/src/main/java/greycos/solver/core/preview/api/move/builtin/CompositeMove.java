@@ -9,8 +9,10 @@ import java.util.stream.Collectors;
 
 import greycos.solver.core.api.cotwin.lookup.Lookup;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.impl.move.PlanningEntityResolver;
 import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.preview.api.move.MutableSolutionView;
+import greycos.solver.core.preview.api.move.SolutionView;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -24,7 +26,8 @@ import org.jspecify.annotations.NullMarked;
  * @see Move
  */
 @NullMarked
-public final class CompositeMove<Solution_> implements Move<Solution_> {
+public final class CompositeMove<Solution_>
+    implements Move<Solution_>, PlanningEntityResolver<Solution_> {
 
   /**
    * @param moveList Do not modify this argument afterwards or the CompositeMove corrupts.
@@ -69,6 +72,15 @@ public final class CompositeMove<Solution_> implements Move<Solution_> {
     var entities = LinkedHashSet.newLinkedHashSet(moveList.size() * 2);
     for (var move : moveList) {
       entities.addAll(move.getPlanningEntities());
+    }
+    return entities;
+  }
+
+  @Override
+  public SequencedCollection<Object> resolvePlanningEntities(SolutionView<Solution_> solutionView) {
+    var entities = LinkedHashSet.newLinkedHashSet(moveList.size() * 2);
+    for (var move : moveList) {
+      entities.addAll(PlanningEntityResolver.resolve(move, solutionView));
     }
     return entities;
   }

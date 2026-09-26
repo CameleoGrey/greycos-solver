@@ -4,6 +4,7 @@ import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 
 public final class SelectionCacheLifecycleBridge<Solution_>
@@ -12,6 +13,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
   private final SelectionCacheType cacheType;
   private final SelectionCacheLifecycleListener<Solution_> selectionCacheLifecycleListener;
   private boolean isConstructed = false;
+  private InnerScoreDirector<Solution_, ?> cachedScoreDirector = null;
   private Long workingEntityListRevision = null;
 
   public SelectionCacheLifecycleBridge(
@@ -35,7 +37,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
     if (cacheType == SelectionCacheType.SOLVER) {
       selectionCacheLifecycleListener.constructCache(solverScope);
       isConstructed = true;
-      updateWorkingEntityListRevision(solverScope);
+      updateCacheContext(solverScope);
     }
   }
 
@@ -56,7 +58,10 @@ public final class SelectionCacheLifecycleBridge<Solution_>
       assertNotConstructed();
       selectionCacheLifecycleListener.constructCache(phaseScope.getSolverScope());
       isConstructed = true;
-      updateWorkingEntityListRevision(phaseScope.getSolverScope());
+      updateCacheContext(phaseScope.getSolverScope());
+    } else if (cacheType == SelectionCacheType.SOLVER) {
+      // Other selector caches may read this cache during phaseStarted(), before the first step.
+      resetCacheIfWorkingSolutionChanged(phaseScope.getSolverScope());
     }
   }
 
@@ -66,9 +71,9 @@ public final class SelectionCacheLifecycleBridge<Solution_>
       assertNotConstructed();
       selectionCacheLifecycleListener.constructCache(stepScope.getPhaseScope().getSolverScope());
       isConstructed = true;
-      updateWorkingEntityListRevision(stepScope.getPhaseScope().getSolverScope());
+      updateCacheContext(stepScope.getPhaseScope().getSolverScope());
     } else if (cacheType == SelectionCacheType.PHASE || cacheType == SelectionCacheType.SOLVER) {
-      resetCacheIfWorkingSolutionChanged(stepScope);
+      resetCacheIfWorkingSolutionChanged(stepScope.getPhaseScope().getSolverScope());
     }
   }
 
@@ -77,8 +82,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
     if (cacheType == SelectionCacheType.STEP) {
       assertConstructed();
       selectionCacheLifecycleListener.disposeCache(stepScope.getPhaseScope().getSolverScope());
-      isConstructed = false;
-      workingEntityListRevision = null;
+      clearCacheContext();
     }
   }
 
@@ -101,8 +105,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
         assertConstructed(); // The step cache may have already been disposed of during stepEnded().
       }
       selectionCacheLifecycleListener.disposeCache(phaseScope.getSolverScope());
-      isConstructed = false;
-      workingEntityListRevision = null;
+      clearCacheContext();
     }
   }
 
@@ -111,28 +114,37 @@ public final class SelectionCacheLifecycleBridge<Solution_>
     if (cacheType == SelectionCacheType.SOLVER) {
       assertConstructed();
       selectionCacheLifecycleListener.disposeCache(solverScope);
-      isConstructed = false;
-      workingEntityListRevision = null;
+      clearCacheContext();
     } else {
       assertNotConstructed(); // Fail fast if we have a disposal problem, which is effectively a
       // memory leak.
     }
   }
 
-  private void updateWorkingEntityListRevision(SolverScope<Solution_> solverScope) {
-    workingEntityListRevision = solverScope.getScoreDirector().getWorkingEntityListRevision();
+  private void updateCacheContext(SolverScope<Solution_> solverScope) {
+    cachedScoreDirector = solverScope.getScoreDirector();
+    workingEntityListRevision = cachedScoreDirector.getWorkingEntityListRevision();
   }
 
-  private void resetCacheIfWorkingSolutionChanged(AbstractStepScope<Solution_> stepScope) {
+  private void clearCacheContext() {
+    isConstructed = false;
+    cachedScoreDirector = null;
+    workingEntityListRevision = null;
+  }
+
+  private void resetCacheIfWorkingSolutionChanged(SolverScope<Solution_> solverScope) {
     if (!isConstructed || workingEntityListRevision == null) {
       return;
     }
-    var scoreDirector = stepScope.getScoreDirector();
-    if (scoreDirector.isWorkingEntityListDirty(workingEntityListRevision)) {
-      var solverScope = stepScope.getPhaseScope().getSolverScope();
+    var scoreDirector = solverScope.getScoreDirector();
+    // Entity revisions are local to each director and can coincide after an environment-mode swap.
+    if (scoreDirector != cachedScoreDirector
+        || scoreDirector.isWorkingEntityListDirty(workingEntityListRevision)) {
       selectionCacheLifecycleListener.disposeCache(solverScope);
+      clearCacheContext();
       selectionCacheLifecycleListener.constructCache(solverScope);
-      workingEntityListRevision = scoreDirector.getWorkingEntityListRevision();
+      isConstructed = true;
+      updateCacheContext(solverScope);
     }
   }
 

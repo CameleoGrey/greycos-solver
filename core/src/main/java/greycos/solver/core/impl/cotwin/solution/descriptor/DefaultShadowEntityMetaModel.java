@@ -1,11 +1,14 @@
 package greycos.solver.core.impl.cotwin.solution.descriptor;
 
+import static greycos.solver.core.impl.cotwin.solution.descriptor.DefaultGenuineEntityMetaModel.ENTITY_META_MODEL_COMPARATOR;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import greycos.solver.core.preview.api.cotwin.metamodel.PlanningEntityMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.ShadowEntityMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.ShadowVariableMetaModel;
@@ -63,6 +66,11 @@ public final class DefaultShadowEntityMetaModel<Solution_, Entity_>
               .formatted(variable.name(), type.getCanonicalName()));
     }
     variables.add(shadowVariable);
+  }
+
+  @Override
+  public int compareTo(PlanningEntityMetaModel<Solution_, Entity_> other) {
+    return ENTITY_META_MODEL_COMPARATOR.compare(this, other);
   }
 
   @Override

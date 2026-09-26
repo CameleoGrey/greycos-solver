@@ -60,8 +60,8 @@ public final class ShadowVariableUpdateHelper<Solution_> {
         SolutionDescriptor.buildSolutionDescriptor(
             solutionClass, entityClassSet.toArray(new Class<?>[0]));
     try (var scoreDirector = new InternalScoreDirector.Builder<>(solutionDescriptor).build()) {
-      // When we have a solution, we can reuse the logic from ShadowVariableSupport to update all
-      // variable types
+      // When we have a solution, we can reuse the logic from VariableSupport to update all variable
+      // types
       scoreDirector.setWorkingSolution(solution);
     }
   }
@@ -312,13 +312,17 @@ public final class ShadowVariableUpdateHelper<Solution_> {
           Solution_, Score_, InternalScoreDirectorFactory<Solution_, Score_>> {
 
     public InternalScoreDirectorFactory(
-        SolutionDescriptor<Solution_> solutionDescriptor, EnvironmentMode environmentMode) {
-      super(solutionDescriptor, environmentMode);
+        SolutionDescriptor<Solution_> solutionDescriptor, EnvironmentMode globalEnvironmentMode) {
+      super(solutionDescriptor, globalEnvironmentMode);
     }
 
+    /**
+     * Score directors are built directly through {@link InternalScoreDirector.Builder}, never
+     * through this factory; the inherited no-arg variant funnels into this one.
+     */
     @Override
     public AbstractScoreDirector.AbstractScoreDirectorBuilder<Solution_, Score_, ?, ?>
-        createScoreDirectorBuilder() {
+        createScoreDirectorBuilder(EnvironmentMode environmentMode) {
       throw new UnsupportedOperationException();
     }
   }
@@ -338,7 +342,7 @@ public final class ShadowVariableUpdateHelper<Solution_> {
     }
 
     @Override
-    public InnerScore<Score_> calculateScore() {
+    public InnerScore<Score_> innerCalculateScore() {
       throw new UnsupportedOperationException();
     }
 
@@ -362,7 +366,9 @@ public final class ShadowVariableUpdateHelper<Solution_> {
 
       public Builder(SolutionDescriptor<Solution_> solutionDescriptor) {
         // We use PHASE_ASSERT by default
-        super(new InternalScoreDirectorFactory<>(solutionDescriptor, EnvironmentMode.PHASE_ASSERT));
+        super(
+            new InternalScoreDirectorFactory<>(solutionDescriptor, EnvironmentMode.PHASE_ASSERT),
+            EnvironmentMode.PHASE_ASSERT);
         withConstraintMatchPolicy(DISABLED);
         withLookUpEnabled(false);
         withExpectShadowVariablesInCorrectState(false);

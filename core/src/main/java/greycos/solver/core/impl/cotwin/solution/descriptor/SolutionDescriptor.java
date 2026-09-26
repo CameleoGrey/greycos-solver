@@ -60,6 +60,7 @@ import greycos.solver.core.impl.cotwin.solution.cloner.FieldAccessingSolutionClo
 import greycos.solver.core.impl.cotwin.solution.cloner.gizmo.GizmoSolutionCloner;
 import greycos.solver.core.impl.cotwin.solution.cloner.gizmo.GizmoSolutionClonerFactory;
 import greycos.solver.core.impl.cotwin.variable.declarative.DeclarativeShadowVariableDescriptor;
+import greycos.solver.core.impl.cotwin.variable.declarative.ShadowVariablesInconsistentVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
@@ -68,10 +69,12 @@ import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.util.MutableInt;
 import greycos.solver.core.impl.util.MutableLong;
+import greycos.solver.core.preview.api.cotwin.metamodel.GenuineEntityMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningSolutionMetaModel;
 import greycos.solver.core.preview.api.cotwin.solution.diff.PlanningSolutionDiff;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,8 +147,9 @@ public final class SolutionDescriptor<Solution_> {
 
     solutionDescriptor.processUnannotatedFieldsAndMethods(descriptorPolicy);
     solutionDescriptor.processAnnotations(descriptorPolicy);
-    // Before iterating over the entity classes, we need to read the inheritance chain,
-    // add all parent and child classes, and sort them.
+    // Before iterating over the entity classes, we need to read the inheritance chain, add all
+    // parent and child classes,
+    // and sort them.
     var updatedEntityClassList = new ArrayList<>(entityClassList);
     for (var entityClass : entityClassList) {
       var inheritedEntityClasses = extractInheritedClasses(entityClass);
@@ -262,10 +266,6 @@ public final class SolutionDescriptor<Solution_> {
     return !extractAnnotatedMembers(solutionClass).isEmpty();
   }
 
-  // ************************************************************************
-  // Non-static members
-  // ************************************************************************
-
   private final Class<Solution_> solutionClass;
   private final MemberAccessorFactory memberAccessorFactory;
 
@@ -296,7 +296,7 @@ public final class SolutionDescriptor<Solution_> {
   private SolutionCloner<Solution_> solutionCloner;
   private List<EntityDescriptor<Solution_>> genuineEntityDescriptorList;
   private List<BasicVariableDescriptor<Solution_>> basicVariableDescriptorList;
-  private List<ListVariableDescriptor<Solution_>> listVariableDescriptorList;
+  private @Nullable ListVariableDescriptor<Solution_> listVariableDescriptor;
   private List<DeclarativeShadowVariableDescriptor<Solution_>>
       declarativeShadowVariableDescriptorList;
 
@@ -661,8 +661,7 @@ public final class SolutionDescriptor<Solution_> {
     }
 
     problemFactOrEntityClassSet = collectEntityAndProblemFactClasses();
-    listVariableDescriptorList = findListVariableDescriptors();
-    validateListVariableDescriptors();
+    listVariableDescriptor = findListVariableDescriptor();
 
     // And finally log the successful completion of processing.
     if (LOGGER.isTraceEnabled()) {
@@ -680,17 +679,6 @@ public final class SolutionDescriptor<Solution_> {
       }
     }
     initSolutionCloner(descriptorPolicy);
-  }
-
-  private void validateListVariableDescriptors() {
-    if (listVariableDescriptorList.isEmpty()) {
-      return;
-    }
-    if (listVariableDescriptorList.size() > 1) {
-      throw new UnsupportedOperationException(
-          "Defining multiple list variables (%s) across the model is currently not supported."
-              .formatted(listVariableDescriptorList));
-    }
   }
 
   private SequencedSet<Class<?>> collectEntityAndProblemFactClasses() {
@@ -724,17 +712,27 @@ public final class SolutionDescriptor<Solution_> {
     return problemFactOrEntityClassStream.collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
-  private List<ListVariableDescriptor<Solution_>> findListVariableDescriptors() {
-    return getGenuineEntityDescriptors().stream()
-        .map(EntityDescriptor::getGenuineVariableDescriptorList)
-        .flatMap(Collection::stream)
-        .flatMap(
-            e ->
-                e instanceof ListVariableDescriptor<Solution_> listVariableDescriptor
-                    ? Stream.of(listVariableDescriptor)
-                    : Stream.empty())
-        .distinct()
-        .toList();
+  private @Nullable ListVariableDescriptor<Solution_> findListVariableDescriptor() {
+    var listVariableDescriptorList =
+        getGenuineEntityDescriptors().stream()
+            .map(EntityDescriptor::getGenuineVariableDescriptorList)
+            .flatMap(Collection::stream)
+            .flatMap(
+                e ->
+                    e instanceof ListVariableDescriptor<Solution_> listVariableDescriptor
+                        ? Stream.of(listVariableDescriptor)
+                        : Stream.empty())
+            .distinct()
+            .toList();
+    if (listVariableDescriptorList.isEmpty()) {
+      return null;
+    }
+    if (listVariableDescriptorList.size() > 1) {
+      throw new UnsupportedOperationException(
+          "Defining multiple list variables (%s) across the model is currently not supported."
+              .formatted(listVariableDescriptorList));
+    }
+    return listVariableDescriptorList.getFirst();
   }
 
   private void initSolutionCloner(DescriptorPolicy descriptorPolicy) {
@@ -802,16 +800,12 @@ public final class SolutionDescriptor<Solution_> {
   }
 
   public ListVariableDescriptor<Solution_> getListVariableDescriptor() {
-    return listVariableDescriptorList.isEmpty() ? null : listVariableDescriptorList.getFirst();
+    return listVariableDescriptor;
   }
 
   public SolutionCloner<Solution_> getSolutionCloner() {
     return solutionCloner;
   }
-
-  // ************************************************************************
-  // Model methods
-  // ************************************************************************
 
   public PlanningSolutionMetaModel<Solution_> getMetaModel() {
     if (planningSolutionMetaModel == null) {
@@ -825,12 +819,16 @@ public final class SolutionDescriptor<Solution_> {
           if (variableDescriptor.isListVariable()) {
             var listVariableDescriptor = (ListVariableDescriptor<Solution_>) variableDescriptor;
             var listVariableMetaModel =
-                new DefaultPlanningListVariableMetaModel<>(entityMetaModel, listVariableDescriptor);
+                new DefaultPlanningListVariableMetaModel<>(
+                    (GenuineEntityMetaModel<Solution_, Object>) entityMetaModel,
+                    listVariableDescriptor);
             entityMetaModel.addVariable(listVariableMetaModel);
           } else {
             var basicVariableDescriptor = (BasicVariableDescriptor<Solution_>) variableDescriptor;
             var basicVariableMetaModel =
-                new DefaultPlanningVariableMetaModel<>(entityMetaModel, basicVariableDescriptor);
+                new DefaultPlanningVariableMetaModel<>(
+                    (GenuineEntityMetaModel<Solution_, Object>) entityMetaModel,
+                    basicVariableDescriptor);
             entityMetaModel.addVariable(basicVariableMetaModel);
           }
         }
@@ -980,10 +978,6 @@ public final class SolutionDescriptor<Solution_> {
   public LookUpStrategyResolver getLookUpStrategyResolver() {
     return lookUpStrategyResolver;
   }
-
-  // ************************************************************************
-  // Extraction methods
-  // ************************************************************************
 
   /**
    * @param solution never null
@@ -1185,6 +1179,15 @@ public final class SolutionDescriptor<Solution_> {
             .distinct()
             .toList();
     return declarativeShadowVariableDescriptorList;
+  }
+
+  public boolean hasAnyShadowVariablesInconsistentMember() {
+    return entityDescriptorMap.values().stream()
+        .flatMap(entityDescriptor -> entityDescriptor.getShadowVariableDescriptors().stream())
+        .anyMatch(
+            shadowVariableDescriptor ->
+                shadowVariableDescriptor
+                    instanceof ShadowVariablesInconsistentVariableDescriptor<Solution_>);
   }
 
   public Stream<Object> extractAllEntitiesStream(Solution_ solution) {

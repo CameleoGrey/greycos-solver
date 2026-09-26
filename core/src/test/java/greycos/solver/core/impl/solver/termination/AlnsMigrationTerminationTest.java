@@ -146,6 +146,7 @@ class AlnsMigrationTerminationTest {
       this.followingOutcome = followingOutcome;
       var clock = mock(Clock.class);
       when(clock.millis()).thenAnswer(ignored -> now.get());
+      when(clock.instant()).thenAnswer(ignored -> java.time.Instant.ofEpochMilli(now.get()));
       var config =
           PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class)
               .withEasyScoreCalculatorClass(ValueScoreCalculator.class)
@@ -177,10 +178,13 @@ class AlnsMigrationTerminationTest {
                       .withCustomClass(ScriptedRepair.class));
       var recaller = infrastructure.getBestSolutionRecaller();
       var phase =
-          new DefaultAlnsPhase.Builder<>(0, "", phaseTermination, alnsConfig, recaller).build();
+          new DefaultAlnsPhase.Builder<>(
+                  0, EnvironmentMode.NO_ASSERT, "", phaseTermination, alnsConfig, recaller)
+              .build();
       solver =
           new DefaultSolver<>(
               EnvironmentMode.NO_ASSERT,
+              infrastructure.getScoreDirectorFactory(),
               infrastructure::getRandomSource,
               recaller,
               plumbing,

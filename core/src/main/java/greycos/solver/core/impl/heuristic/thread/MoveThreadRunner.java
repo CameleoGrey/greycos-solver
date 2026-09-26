@@ -69,7 +69,9 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
           }
           long start = pipeline.diagnosticsEnabled ? System.nanoTime() : 0;
           Move<Solution_> step = next.step.rebase(director.getMoveDirector());
-          director.getMoveDirector().execute(step);
+          // A replay delta may be an ALNS intermediate state with inconsistent shadows.
+          // Preserve its structural score so the coordinator can reject invalid candidates.
+          director.getMoveDirector().executeAllowingStructurallyFlawedSolutions(step);
           @SuppressWarnings("unchecked")
           var expected = (InnerScore<Score_>) next.stepScore;
           workingScore = expected == null ? director.calculateScore() : expected;

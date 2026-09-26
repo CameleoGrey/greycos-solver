@@ -1,6 +1,5 @@
 package greycos.solver.benchmark.impl;
 
-import java.util.HashMap;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
@@ -12,13 +11,13 @@ import greycos.solver.core.api.solver.SolutionUpdatePolicy;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.impl.solver.DefaultSolver;
 import greycos.solver.core.impl.solver.DefaultSolverFactory;
+import greycos.solver.core.impl.solver.monitoring.SolverTags;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tags;
 
 public class SubSingleBenchmarkRunner<Solution_>
     implements Callable<SubSingleBenchmarkRunner<Solution_>> {
@@ -84,9 +83,8 @@ public class SubSingleBenchmarkRunner<Solution_>
       solverConfig.offerRandomSeedFromSubSingleIndex(
           subSingleBenchmarkResult.getSubSingleBenchmarkIndex());
     }
-    var subSingleBenchmarkTagMap = new HashMap<String, String>();
     var runId = UUID.randomUUID().toString();
-    subSingleBenchmarkTagMap.put("greycos.benchmark.run", runId);
+    var subSingleBenchmarkSolverTags = SolverTags.withProblemId(runId);
     solverConfig = new SolverConfig(solverConfig);
     randomSeed = solverConfig.getRandomSeed();
 
@@ -99,7 +97,7 @@ public class SubSingleBenchmarkRunner<Solution_>
         new StatisticRegistry<Solution_>(
             solverFactory.getSolutionDescriptor().getScoreDefinition());
     Metrics.addRegistry(statisticRegistry);
-    var runTag = Tags.of("greycos.benchmark.run", runId);
+    var runTag = subSingleBenchmarkSolverTags.asTags();
     subSingleBenchmarkResult
         .getEffectiveSubSingleStatisticMap()
         .forEach(
@@ -109,7 +107,7 @@ public class SubSingleBenchmarkRunner<Solution_>
             });
 
     var solver = (DefaultSolver<Solution_>) solverFactory.buildSolver();
-    solver.setMonitorTagMap(subSingleBenchmarkTagMap);
+    solver.setMonitorTags(subSingleBenchmarkSolverTags);
     solver.addPhaseLifecycleListener(statisticRegistry);
     var solution = solver.solve(problem);
 

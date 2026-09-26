@@ -46,6 +46,11 @@ public interface Score<Score_ extends Score<Score_>> extends Comparable<Score_>,
     return (Score_) this;
   }
 
+  /** The structural component; zero for a sound solution and negative for an inconsistent one. */
+  default long structuralScore() {
+    return 0L;
+  }
+
   /**
    * Returns a Score whose value is (this + addend).
    *
@@ -67,7 +72,9 @@ public interface Score<Score_ extends Score<Score_>> extends Comparable<Score_>,
    * floored (as defined by {@link Math#floor(double)}).
    *
    * <p>If the implementation has a scale/precision, then the unspecified scale/precision of the
-   * double multiplicand should have no impact on the returned scale/precision.
+   * double multiplicand should have no impact on the returned scale/precision, and the returned
+   * scale/precision is never coarser than 0 (whole units), even if this Score's own scale/precision
+   * is coarser than that.
    *
    * @param multiplicand value to be multiplied by this Score.
    * @return this * multiplicand
@@ -79,7 +86,9 @@ public interface Score<Score_ extends Score<Score_>> extends Comparable<Score_>,
    * (as defined by {@link Math#floor(double)}).
    *
    * <p>If the implementation has a scale/precision, then the unspecified scale/precision of the
-   * double divisor should have no impact on the returned scale/precision.
+   * double divisor should have no impact on the returned scale/precision, and the returned
+   * scale/precision is never coarser than 0 (whole units), even if this Score's own scale/precision
+   * is coarser than that.
    *
    * @param divisor value by which this Score is to be divided
    * @return this / divisor
@@ -91,7 +100,9 @@ public interface Score<Score_ extends Score<Score_>> extends Comparable<Score_>,
    * (as defined by {@link Math#floor(double)}).
    *
    * <p>If the implementation has a scale/precision, then the unspecified scale/precision of the
-   * double exponent should have no impact on the returned scale/precision.
+   * double exponent should have no impact on the returned scale/precision, and the returned
+   * scale/precision is never coarser than 0 (whole units), even if this Score's own scale/precision
+   * is coarser than that.
    *
    * @param exponent value by which this Score is to be powered
    * @return this ^ exponent
@@ -158,10 +169,11 @@ public interface Score<Score_ extends Score<Score_>> extends Comparable<Score_>,
   }
 
   /**
-   * A {@link PlanningSolution} is feasible if it has no broken hard constraints. Simple scores
-   * ({@link SimpleScore}, {@link SimpleBigDecimalScore}) are always feasible.
+   * A {@link PlanningSolution} is feasible if it is structurally sound and has no broken hard
+   * constraints. Simple scores ({@link SimpleScore}, {@link SimpleBigDecimalScore}) have no hard
+   * levels and only check the structural component.
    *
-   * @return true if the hard score is 0 or higher.
+   * @return true if the structural score and all hard score levels are 0 or higher.
    */
   boolean isFeasible();
 

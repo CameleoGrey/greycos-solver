@@ -2,7 +2,6 @@ package greycos.solver.core.impl.solver;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -16,8 +15,10 @@ import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.phase.Phase;
+import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
+import greycos.solver.core.impl.solver.monitoring.SolverTags;
 import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -25,7 +26,6 @@ import greycos.solver.core.impl.solver.termination.BasicPlumbingTermination;
 import greycos.solver.core.impl.solver.termination.UniversalTermination;
 
 import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tags;
 
 /**
  * Default implementation for {@link Solver}.
@@ -36,15 +36,10 @@ import io.micrometer.core.instrument.Tags;
  */
 public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
 
-  protected final EnvironmentMode environmentMode;
-  protected final Supplier<RandomSource> randomFactory;
-
-  protected BasicPlumbingTermination<Solution_> basicPlumbingTermination;
-
-  protected final AtomicBoolean solving = new AtomicBoolean(false);
-
-  protected final SolverScope<Solution_> solverScope;
-
+  private final Supplier<RandomSource> randomFactory;
+  private final BasicPlumbingTermination<Solution_> basicPlumbingTermination;
+  private final AtomicBoolean solving = new AtomicBoolean(false);
+  private final SolverScope<Solution_> solverScope;
   private final String moveThreadCountDescription;
 
   // ************************************************************************
@@ -52,7 +47,8 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
   // ************************************************************************
 
   public DefaultSolver(
-      EnvironmentMode environmentMode,
+      EnvironmentMode globalEnvironmentMode,
+      ScoreDirectorFactory<Solution_, ?> scoreDirectorFactory,
       Supplier<RandomSource> randomFactory,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       BasicPlumbingTermination<Solution_> basicPlumbingTermination,
@@ -60,8 +56,8 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
       List<Phase<Solution_>> phaseList,
       SolverScope<Solution_> solverScope,
       String moveThreadCountDescription) {
-    super(bestSolutionRecaller, termination, phaseList);
-    this.environmentMode = environmentMode;
+    super(
+        globalEnvironmentMode, scoreDirectorFactory, bestSolutionRecaller, termination, phaseList);
     this.randomFactory = randomFactory;
     this.basicPlumbingTermination = basicPlumbingTermination;
     this.solverScope = solverScope;
@@ -69,16 +65,8 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
     this.moveThreadCountDescription = moveThreadCountDescription;
   }
 
-  public EnvironmentMode getEnvironmentMode() {
-    return environmentMode;
-  }
-
   public RandomSource getRandomSource() {
     return randomFactory.get();
-  }
-
-  public ScoreDirectorFactory<Solution_, ?> getScoreDirectorFactory() {
-    return solverScope.getScoreDirector().getScoreDirectorFactory();
   }
 
   public SolverScope<Solution_> getSolverScope() {
@@ -146,14 +134,8 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
     return basicPlumbingTermination.isEveryProblemChangeProcessed();
   }
 
-  public void setMonitorTagMap(Map<String, String> monitorTagMap) {
-    var monitoringTags =
-        Objects.requireNonNullElse(monitorTagMap, Collections.<String, String>emptyMap())
-            .entrySet()
-            .stream()
-            .map(entry -> Tags.of(entry.getKey(), entry.getValue()))
-            .reduce(Tags.empty(), Tags::and);
-    solverScope.setMonitoringTags(monitoringTags);
+  public void setMonitorTags(SolverTags solverTags) {
+    solverScope.setMonitoringTags(solverTags.asTags());
   }
 
   // ************************************************************************
@@ -167,37 +149,39 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
     var errorCounter = Metrics.counter(SolverMetric.ERROR_COUNT.getMeterId());
 
     try {
+      prepareForSolving(solverScope);
       solverScope.setInitialSolution(
           Objects.requireNonNull(problem, "The problem must not be null."));
-    } catch (Exception e) {
-      errorCounter.increment();
-      throw e;
-    }
-    solverScope.setSolver(this);
-    outerSolvingStarted(solverScope);
+      solverScope.setSolver(this);
+      outerSolvingStarted(solverScope);
 
-    var restartSolver = true;
-    while (restartSolver) {
-      var sample = solveLengthTimer.start();
-      try {
-        // solvingStarted will call registerSolverSpecificMetrics(), since
-        // the solverScope need to be fully initialized to calculate the
-        // problem's scale metrics
-        solvingStarted(solverScope);
-        runPhases(solverScope);
-        solvingEnded(solverScope);
-      } catch (Exception e) {
-        errorCounter.increment();
-        solvingError(solverScope, e);
-        throw e;
-      } finally {
-        sample.stop();
-        unregisterSolverSpecificMetrics();
+      var restartSolver = true;
+      while (restartSolver) {
+        var sample = solveLengthTimer.start();
+        try {
+          // The scope must be initialized before problem scale metrics can be registered.
+          solvingStarted(solverScope);
+          runPhases(solverScope);
+          solvingEnded(solverScope);
+        } finally {
+          sample.stop();
+          unregisterSolverSpecificMetrics();
+        }
+        restartSolver = checkProblemChanges();
       }
-      restartSolver = checkProblemChanges();
+      outerSolvingEnded(solverScope);
+      return solverScope.getBestSolution();
+    } catch (Exception failure) {
+      errorCounter.increment();
+      try {
+        solvingError(solverScope, failure);
+      } catch (Exception cleanupFailure) {
+        failure.addSuppressed(cleanupFailure);
+      }
+      throw failure;
+    } finally {
+      solving.set(false);
     }
-    outerSolvingEnded(solverScope);
-    return solverScope.getBestSolution();
   }
 
   public void outerSolvingStarted(SolverScope<Solution_> solverScope) {
@@ -209,7 +193,7 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
-    assertCorrectSolutionState();
+    assertCorrectSolutionState(solverScope.getBestSolution());
     solverScope.startingNow();
     solverScope.getScoreDirector().resetCalculationCount();
     super.solvingStarted(solverScope);
@@ -220,20 +204,20 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
     // Update the best solution, since problem's shadows and score were updated
     bestSolutionRecaller.updateBestSolutionAndFireIfInitialized(
         solverScope, EventProducerId.solvingStarted());
-
-    logger.info(
-        "Solving {}: time spent ({}), best score ({}), "
-            + "environment mode ({}), move thread count ({}), random ({}).",
-        (startingSolverCount == 1 ? "started" : "restarted"),
-        solverScope.calculateTimeMillisSpentUpToNow(),
-        solverScope.getBestScore().raw(),
-        environmentMode.name(),
-        moveThreadCountDescription,
-        randomFactory);
     if (logger.isInfoEnabled()) { // Formatting is expensive here.
+      logger.info(
+          "Solving {}: time spent ({}), best score ({}), "
+              + "default environment mode ({}), move thread count ({}), random ({}).",
+          (startingSolverCount == 1 ? "started" : "restarted"),
+          solverScope.calculateTimeMillisSpentUpToNow(),
+          solverScope.getBestScore().raw(),
+          globalEnvironmentMode.name(),
+          moveThreadCountDescription,
+          randomFactory);
       var problemSizeStatistics = solverScope.getProblemSizeStatistics();
       logger.info(
-          "Problem scale: genuine entity count ({}), genuine variable count ({}), approximate value count ({}), approximate problem scale ({}).",
+          "Problem scale: genuine entity count ({}), genuine variable count ({}), approximate value"
+              + " count ({}), approximate problem scale ({}).",
           problemSizeStatistics.entityCount(),
           problemSizeStatistics.variableCount(),
           problemSizeStatistics.approximateValueCount(),
@@ -274,15 +258,14 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
     solverScope.getSolverMetricSet().forEach(solverMetric -> solverMetric.unregister(this));
   }
 
-  private void assertCorrectSolutionState() {
-    var bestSolution = solverScope.getBestSolution();
+  private void assertCorrectSolutionState(Solution_ solution) {
     solverScope
         .getSolutionDescriptor()
-        .visitAllProblemFacts(bestSolution, this::assertNonNullPlanningId);
+        .visitAllProblemFacts(solution, this::assertNonNullPlanningId);
     solverScope
         .getSolutionDescriptor()
         .visitAllEntities(
-            bestSolution,
+            solution,
             entity -> {
               assertNonNullPlanningId(entity);
               // Ensure correct state of pinning properties.
@@ -293,8 +276,7 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
               }
               var listVariableDescriptor = entityDescriptor.getListVariableDescriptor();
               var pinIndex = listVariableDescriptor.getFirstUnpinnedIndex(entity);
-              if (entityDescriptor.isMovable(
-                  solverScope.getScoreDirector().getWorkingSolution(), entity)) {
+              if (entityDescriptor.isMovable(solution, entity)) {
                 if (pinIndex < 0) {
                   throw new IllegalStateException(
                       "The movable planning entity (%s) has a pin index (%s) which is negative."
@@ -362,10 +344,8 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
         solverScope.getBestScore().raw(),
         solverScope.getMoveEvaluationSpeed(),
         phaseList.size(),
-        environmentMode.name(),
+        globalEnvironmentMode.name(),
         moveThreadCountDescription);
-    // Must be kept open for doProblemChange
-    solverScope.getScoreDirector().close();
     solving.set(false);
   }
 
@@ -374,25 +354,40 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
     if (!restartSolver) {
       return false;
     } else {
+      // The score director is created and closed during the phase events.
+      // This check occurs after all phases have been completed,
+      // which means the score director is already closed.
+      // As a result,
+      // we need to recreate the score director to apply any real-time changes to the problem.
+      prepareForProblemChanges(solverScope);
       var problemChangeQueue = basicPlumbingTermination.startProblemChangesProcessing();
-      solverScope.setWorkingSolutionFromBestSolution();
-
       var stepIndex = 0;
-      var problemChange = problemChangeQueue.poll();
-      while (problemChange != null) {
-        problemChange.doChange(
-            solverScope.getWorkingSolution(), solverScope.getProblemChangeDirector());
-        solverScope.getScoreDirector().updateShadowVariables();
-        logger.debug("    Real-time problem change applied; step index ({}).", stepIndex);
-        stepIndex++;
-        problemChange = problemChangeQueue.poll();
+      InnerScore<?> score;
+      try {
+        var problemChange = problemChangeQueue.poll();
+        while (problemChange != null) {
+          problemChange.doChange(
+              solverScope.getWorkingSolution(), solverScope.getProblemChangeDirector());
+          solverScope.getScoreDirector().updateShadowVariables();
+          logger.debug("    Real-time problem change applied; step index ({}).", stepIndex);
+          stepIndex++;
+          problemChange = problemChangeQueue.poll();
+        }
+        // Fail fast if any changed facts have invalid planning IDs or pinned assignments.
+        InnerScoreDirector<Solution_, ?> scoreDirector = solverScope.getScoreDirector();
+        assertCorrectSolutionState(scoreDirector.getWorkingSolution());
+        score = scoreDirector.calculateScore();
+        if (score.isStructurallyFlawed()) {
+          scoreDirector.unassignInconsistentEntities();
+          score = scoreDirector.calculateScore();
+          if (score.isStructurallyFlawed()) {
+            throw new IllegalStateException(
+                "The changed problem remains inconsistent after unassigning involved entities.");
+          }
+        }
+      } finally {
+        basicPlumbingTermination.endProblemChangesProcessing();
       }
-      // All PFCs are processed, fail fast if any of the new facts have null planning IDs.
-      InnerScoreDirector<Solution_, ?> scoreDirector = solverScope.getScoreDirector();
-      assertCorrectSolutionState();
-      // Everything is fine, proceed.
-      var score = scoreDirector.calculateScore();
-      basicPlumbingTermination.endProblemChangesProcessing();
       bestSolutionRecaller.updateBestSolutionAndFireIfInitialized(
           solverScope, EventProducerId.problemChange());
       logger.info(

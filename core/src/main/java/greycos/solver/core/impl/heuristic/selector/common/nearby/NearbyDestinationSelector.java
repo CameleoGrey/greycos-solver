@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.random.RandomGenerator;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
@@ -8,7 +9,7 @@ import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 import greycos.solver.core.config.heuristic.selector.list.DestinationSelectorConfig;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
@@ -50,9 +51,10 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
   // Initialized in phaseStarted(), after child selector caches are available.
   private @Nullable NearbyDistanceMatrix<Object, Object> distanceMatrix;
   private @Nullable NearbyDistanceMatrixDemand<Object, Object> distanceMatrixDemand;
+  private @Nullable SupplyManager distanceMatrixSupplyManager;
   private boolean eagerInitialized = false;
 
-  private @Nullable ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
+  private @Nullable ListVariableState<Solution_, Object, Object> listVariableState;
 
   public NearbyDestinationSelector(
       @NonNull DestinationSelectorConfig config,
@@ -134,12 +136,10 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
-    if (distanceMatrix != null || distanceMatrixDemand != null || listVariableStateSupply != null) {
+    if (distanceMatrix != null || distanceMatrixDemand != null || listVariableState != null) {
       throw new IllegalStateException("The nearby destination selector is already solving.");
     }
     super.solvingStarted(solverScope);
-    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
-    listVariableStateSupply = supplyManager.demand(listVariableDescriptor.getStateDemand());
     distanceMatrix = null;
     distanceMatrixDemand = null;
     eagerInitialized = false;
@@ -150,7 +150,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
     @SuppressWarnings("unchecked")
     var castedDistanceMeter = (NearbyDistanceMeter<Object, Object>) nearbyDistanceMeter;
 
-    distanceMatrixDemand =
+    var demand =
         new NearbyDistanceMatrixDemand<>(
             castedDistanceMeter,
             nearbyRandom,
@@ -162,44 +162,65 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
             this::calculateOriginSizeEstimate,
             origin -> new CombinedDestinationIterator(),
             origin -> calculateDestinationSize());
-    distanceMatrix = supplyManager.demand(distanceMatrixDemand);
+    distanceMatrix = supplyManager.demand(demand);
+    distanceMatrixDemand = demand;
+    distanceMatrixSupplyManager = supplyManager;
   }
 
   @Override
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
-    super.phaseStarted(phaseScope);
-    if (distanceMatrix == null) {
-      if (distanceMatrixDemand != null) {
-        throw new IllegalStateException(
-            "The nearby distance matrix demand exists without its supply.");
+    try {
+      super.phaseStarted(phaseScope);
+      listVariableState =
+          phaseScope.getScoreDirector().getListVariableState(listVariableDescriptor);
+      if (distanceMatrix == null) {
+        initializeDistanceMatrix(phaseScope.getScoreDirector().getSupplyManager());
       }
-      initializeDistanceMatrix(phaseScope.getScoreDirector().getSupplyManager());
-    }
-    if (eagerInitialization && !eagerInitialized) {
-      initializeAllOrigins();
-      eagerInitialized = true;
+      if (eagerInitialization && !eagerInitialized) {
+        initializeAllOrigins();
+        eagerInitialized = true;
+      }
+    } catch (RuntimeException | Error failure) {
+      try {
+        releaseDistanceMatrix();
+      } catch (RuntimeException | Error cleanupFailure) {
+        failure.addSuppressed(cleanupFailure);
+      }
+      throw failure;
     }
   }
 
   @Override
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
-    super.phaseEnded(phaseScope);
-    eagerInitialized = false;
+    try {
+      super.phaseEnded(phaseScope);
+    } finally {
+      releaseDistanceMatrix();
+    }
   }
 
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
-    super.solvingEnded(solverScope);
-    var supplyManager = solverScope.getScoreDirector().getSupplyManager();
-    if (distanceMatrixDemand != null) {
-      if (!supplyManager.cancel(distanceMatrixDemand)) {
-        throw new IllegalStateException("The nearby distance matrix demand is not active.");
-      }
-      distanceMatrixDemand = null;
+    try {
+      super.solvingEnded(solverScope);
+    } finally {
+      releaseDistanceMatrix();
     }
-    listVariableStateSupply = null;
-    distanceMatrix = null; // Allow GC to free memory
+  }
+
+  private void releaseDistanceMatrix() {
+    var demand = distanceMatrixDemand;
+    var supplyManager = distanceMatrixSupplyManager;
+    // The solver may already use another director. Release through the owner and clear first
+    // so repeated cleanup remains safe, including when cancellation itself fails.
+    distanceMatrixDemand = null;
+    distanceMatrixSupplyManager = null;
+    distanceMatrix = null;
+    listVariableState = null;
     eagerInitialized = false;
+    if (demand != null && !Objects.requireNonNull(supplyManager).cancel(demand)) {
+      throw new IllegalStateException("The nearby distance matrix demand is not active.");
+    }
   }
 
   @Override
@@ -504,11 +525,11 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
           destination, listVariableDescriptor.getFirstUnpinnedIndex(destination));
     } else {
       // Value-based destination: position after the value's current position
-      if (listVariableStateSupply == null) {
+      if (listVariableState == null) {
         throw new IllegalStateException(
-            "listVariableStateSupply is null. Make sure solvingStarted() was called.");
+            "listVariableState is null. Make sure solvingStarted() was called.");
       }
-      var positionInList = listVariableStateSupply.getElementPosition(destination).ensureAssigned();
+      var positionInList = listVariableState.getElementPosition(destination).ensureAssigned();
       return ElementPosition.of(positionInList.entity(), positionInList.index() + 1);
     }
   }

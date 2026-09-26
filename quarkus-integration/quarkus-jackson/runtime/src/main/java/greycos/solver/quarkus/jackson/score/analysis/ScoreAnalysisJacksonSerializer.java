@@ -24,6 +24,12 @@ public final class ScoreAnalysisJacksonSerializer<Score_ extends Score<Score_>>
     gen.writeStringField("score", value.score().toString());
     gen.writeBooleanField("initialized", value.isSolutionInitialized());
 
+    if (value.structuralFlawAnalysis() != null) {
+      gen.writeObjectField(
+          "structuralFlawAnalysis",
+          Map.of("variableLoops", value.structuralFlawAnalysis().getVariableLoops()));
+    }
+
     List<Map<String, Object>> result = new ArrayList<>();
     value
         .constraintMap()

@@ -107,6 +107,7 @@ class ListSwapMoveTest {
 
   @Test
   void doMove() {
+    when(innerScoreDirector.isLastVariableUpdateSuccessful()).thenReturn(true);
     var solution = new TestdataListSolution();
     TestdataListEntity e1 = new TestdataListEntity("e1", v1, v2);
     TestdataListEntity e2 = new TestdataListEntity("e2", v3);

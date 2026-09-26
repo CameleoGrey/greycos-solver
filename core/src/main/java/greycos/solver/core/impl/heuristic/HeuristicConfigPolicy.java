@@ -138,37 +138,52 @@ public class HeuristicConfigPolicy<Solution_> {
     return new Builder<Solution_>()
         .withPreviewFeatureSet(previewFeatureSet)
         .withEnvironmentMode(environmentMode)
+        .withLogIndentation(logIndentation)
         .withMoveThreadCount(moveThreadCount)
         .withMoveThreadBufferSize(moveThreadBufferSize)
         .withConstraintStreamProfilingEnabled(constraintStreamProfilingEnabled)
         .withThreadFactoryClass(threadFactoryClass)
-        .withNearbyDistanceMeterClass(nearbyDistanceMeterClass)
-        .withRandom(random)
         .withInitializingScoreTrend(initializingScoreTrend)
         .withSolutionDescriptor(solutionDescriptor)
         .withClassInstanceCache(classInstanceCache)
-        .withLogIndentation(logIndentation);
+        .withNearbyDistanceMeterClass(nearbyDistanceMeterClass)
+        .withRandom(random);
   }
 
   public HeuristicConfigPolicy<Solution_> copyConfigPolicy() {
-    return cloneBuilder()
-        .withEntitySorterManner(entitySorterManner)
-        .withValueSorterManner(valueSorterManner)
-        .withReinitializeVariableFilterEnabled(reinitializeVariableFilterEnabled)
-        .withUnassignedValuesAllowed(unassignedValuesAllowed)
-        .build();
+    return copyConfigPolicy(null);
   }
 
-  public HeuristicConfigPolicy<Solution_> createPhaseConfigPolicy() {
-    return cloneBuilder().build();
+  public HeuristicConfigPolicy<Solution_> copyConfigPolicy(EnvironmentMode environmentMode) {
+    var builder =
+        cloneBuilder()
+            .withEntitySorterManner(entitySorterManner)
+            .withValueSorterManner(valueSorterManner)
+            .withReinitializeVariableFilterEnabled(reinitializeVariableFilterEnabled)
+            .withUnassignedValuesAllowed(unassignedValuesAllowed);
+    if (environmentMode != null) {
+      builder.withEnvironmentMode(environmentMode);
+    }
+    return builder.build();
+  }
+
+  public HeuristicConfigPolicy<Solution_> copyPhaseConfigPolicy() {
+    return copyPhaseConfigPolicy(null);
+  }
+
+  public HeuristicConfigPolicy<Solution_> copyPhaseConfigPolicy(EnvironmentMode environmentMode) {
+    var builder = cloneBuilder();
+    if (environmentMode != null) {
+      builder.withEnvironmentMode(environmentMode);
+    }
+    return builder.build();
   }
 
   public HeuristicConfigPolicy<Solution_> copyConfigPolicyWithoutNearbySetting() {
     return cloneBuilder().withNearbyDistanceMeterClass(null).build();
   }
 
-  public HeuristicConfigPolicy<Solution_> createChildThreadConfigPolicy(
-      ChildThreadType childThreadType) {
+  public HeuristicConfigPolicy<Solution_> copyChildThreadConfigPolicy() {
     return cloneBuilder().withLogIndentation(logIndentation + "        ").build();
   }
 
@@ -282,7 +297,7 @@ public class HeuristicConfigPolicy<Solution_> {
   public static class Builder<Solution_> {
 
     private Set<PreviewFeature> previewFeatureSet;
-    private EnvironmentMode environmentMode;
+    private EnvironmentMode environmentMode = EnvironmentMode.PHASE_ASSERT;
     private Integer moveThreadCount;
     private Integer moveThreadBufferSize;
     private boolean constraintStreamProfilingEnabled;

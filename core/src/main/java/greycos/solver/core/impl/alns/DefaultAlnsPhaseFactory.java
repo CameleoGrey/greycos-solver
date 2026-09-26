@@ -20,7 +20,8 @@ public final class DefaultAlnsPhaseFactory<Solution_>
       HeuristicConfigPolicy<Solution_> solverConfigPolicy,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
-    var policy = solverConfigPolicy.createPhaseConfigPolicy();
+    var environmentMode = resolveEnvironmentMode(solverConfigPolicy);
+    var policy = solverConfigPolicy.copyPhaseConfigPolicy(environmentMode);
     var moveThreadCount =
         resolveMoveThreadCount(phaseConfig.getMoveThreadCount(), policy.getMoveThreadCount(), true);
     if (moveThreadCount != null && policy.isConstraintStreamProfilingEnabled()) {
@@ -30,6 +31,7 @@ public final class DefaultAlnsPhaseFactory<Solution_>
     var builder =
         new DefaultAlnsPhase.Builder<>(
                 phaseIndex,
+                environmentMode,
                 policy.getLogIndentation(),
                 buildPhaseTermination(policy, solverTermination),
                 phaseConfig.copyConfig(),
@@ -40,6 +42,6 @@ public final class DefaultAlnsPhaseFactory<Solution_>
     if (moveThreadCount != null) {
       builder.withThreadFactory(policy.buildThreadFactory(ChildThreadType.MOVE_THREAD));
     }
-    return builder.enableAssertions(policy.getEnvironmentMode()).build();
+    return builder.enableAssertions().build();
   }
 }

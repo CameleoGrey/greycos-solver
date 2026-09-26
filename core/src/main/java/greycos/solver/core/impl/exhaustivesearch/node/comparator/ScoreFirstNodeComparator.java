@@ -28,7 +28,7 @@ public class ScoreFirstNodeComparator<Solution_>
       return scoreComparison;
     }
     // Investigate better optimistic bound first
-    var optimisticBoundComparison = a.getOptimisticBound().compareTo(b.getOptimisticBound());
+    var optimisticBoundComparison = NodeComparatorUtils.compareOptimisticBounds(a, b);
     if (optimisticBoundComparison != 0) {
       return optimisticBoundComparison;
     }

@@ -69,6 +69,7 @@ class GeneralPackageRenameMigrationRecipeTest implements RewriteTest {
                     "package greycos.solver.core.impl.domain.valuerange.buildin.primboolean; public class BooleanValueRange {}",
                     "package greycos.solver.core.impl.domain.valuerange.buildin.primint; public class IntValueRange {}",
                     "package greycos.solver.core.impl.domain.valuerange.buildin.collection; public class ListValueRange {}",
+                    "package greycos.solver.core.impl.domain.valuerange.buildin.collection; public class SetValueRange {}",
                     "package greycos.solver.core.impl.domain.valuerange.buildin.primlong; public class LongValueRange {}",
                     "package greycos.solver.core.impl.domain.valuerange.buildin.temporal; public class TemporalValueRange {}",
                     "package greycos.solver.core.impl.domain.valuerange.buildin; public class EmptyValueRange {}"));
@@ -290,6 +291,7 @@ class GeneralPackageRenameMigrationRecipeTest implements RewriteTest {
                         import greycos.solver.core.impl.domain.valuerange.buildin.primboolean.BooleanValueRange;
                         import greycos.solver.core.impl.domain.valuerange.buildin.primint.IntValueRange;
                         import greycos.solver.core.impl.domain.valuerange.buildin.collection.ListValueRange;
+                        import greycos.solver.core.impl.domain.valuerange.buildin.collection.SetValueRange;
                         import greycos.solver.core.impl.domain.valuerange.buildin.primlong.LongValueRange;
                         import greycos.solver.core.impl.domain.valuerange.buildin.temporal.TemporalValueRange;
                         import greycos.solver.core.impl.domain.valuerange.buildin.EmptyValueRange;
@@ -300,6 +302,7 @@ class GeneralPackageRenameMigrationRecipeTest implements RewriteTest {
                                 BooleanValueRange booleanValueRange;
                                 IntValueRange intValueRange;
                                 ListValueRange listValueRange;
+                                SetValueRange setValueRange;
                                 LongValueRange longValueRange;
                                 TemporalValueRange temporalValueRange;
                                 EmptyValueRange emptyValueRange;
@@ -307,14 +310,15 @@ class GeneralPackageRenameMigrationRecipeTest implements RewriteTest {
             """
                         package greycos;
 
-                        import greycos.solver.core.impl.cotwin.valuerange.BigDecimalValueRange;
-                        import greycos.solver.core.impl.cotwin.valuerange.BigIntegerValueRange;
-                        import greycos.solver.core.impl.cotwin.valuerange.BooleanValueRange;
-                        import greycos.solver.core.impl.cotwin.valuerange.IntValueRange;
-                        import greycos.solver.core.impl.cotwin.valuerange.ListValueRange;
-                        import greycos.solver.core.impl.cotwin.valuerange.LongValueRange;
-                        import greycos.solver.core.impl.cotwin.valuerange.TemporalValueRange;
-                        import greycos.solver.core.impl.cotwin.valuerange.EmptyValueRange;
+                        import greycos.solver.core.impl.cotwin.valuerange.buildin.bigdecimal.BigDecimalValueRange;
+                        import greycos.solver.core.impl.cotwin.valuerange.buildin.biginteger.BigIntegerValueRange;
+                        import greycos.solver.core.impl.cotwin.valuerange.buildin.primboolean.BooleanValueRange;
+                        import greycos.solver.core.impl.cotwin.valuerange.buildin.primint.IntValueRange;
+                        import greycos.solver.core.impl.cotwin.valuerange.buildin.collection.ListValueRange;
+                        import greycos.solver.core.impl.cotwin.valuerange.buildin.collection.SetValueRange;
+                        import greycos.solver.core.impl.cotwin.valuerange.buildin.primlong.LongValueRange;
+                        import greycos.solver.core.impl.cotwin.valuerange.buildin.temporal.TemporalValueRange;
+                        import greycos.solver.core.impl.cotwin.valuerange.buildin.EmptyValueRange;
 
                         public class Test {
                                 BigDecimalValueRange bigDecimalValueRange;
@@ -322,6 +326,7 @@ class GeneralPackageRenameMigrationRecipeTest implements RewriteTest {
                                 BooleanValueRange booleanValueRange;
                                 IntValueRange intValueRange;
                                 ListValueRange listValueRange;
+                                SetValueRange setValueRange;
                                 LongValueRange longValueRange;
                                 TemporalValueRange temporalValueRange;
                                 EmptyValueRange emptyValueRange;

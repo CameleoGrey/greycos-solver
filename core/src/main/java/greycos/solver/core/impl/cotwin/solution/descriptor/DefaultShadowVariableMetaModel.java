@@ -1,10 +1,13 @@
 package greycos.solver.core.impl.cotwin.solution.descriptor;
 
+import static greycos.solver.core.impl.cotwin.solution.descriptor.DefaultPlanningVariableMetaModel.VARIABLE_META_MODEL_COMPARATOR;
+
 import java.util.Objects;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningEntityMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.ShadowVariableMetaModel;
+import greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -34,8 +37,7 @@ public record DefaultShadowVariableMetaModel<Solution_, Entity_, Value_>(
   @Override
   public boolean equals(Object o) {
     // Do not use entity in equality checks;
-    // If an entity is subclassed, that subclass will have it
-    // own distinct VariableMetaModel
+    // If an entity is subclassed, that subclass will have it own distinct VariableMetaModel
     if (o instanceof DefaultShadowVariableMetaModel<?, ?, ?> that) {
       return Objects.equals(variableDescriptor, that.variableDescriptor);
     }
@@ -45,6 +47,11 @@ public record DefaultShadowVariableMetaModel<Solution_, Entity_, Value_>(
   @Override
   public int hashCode() {
     return Objects.hashCode(variableDescriptor);
+  }
+
+  @Override
+  public int compareTo(VariableMetaModel<Solution_, Entity_, Value_> other) {
+    return VARIABLE_META_MODEL_COMPARATOR.compare(this, other);
   }
 
   @Override

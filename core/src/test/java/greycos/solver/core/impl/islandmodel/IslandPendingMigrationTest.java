@@ -148,6 +148,10 @@ class IslandPendingMigrationTest {
   @SuppressWarnings("unchecked")
   private static <Solution_> IslandSolver<Solution_> islandSolver() {
     return new IslandSolver<>(
-        mock(BestSolutionRecaller.class), mock(BasicPlumbingTermination.class), List.of());
+        greycos.solver.core.config.solver.EnvironmentMode.PHASE_ASSERT,
+        mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+        mock(BestSolutionRecaller.class),
+        mock(BasicPlumbingTermination.class),
+        List.of());
   }
 }

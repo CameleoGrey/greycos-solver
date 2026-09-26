@@ -69,6 +69,7 @@ module greycos.solver.core {
   exports greycos.solver.core.preview.api.move.builtin;
   exports greycos.solver.core.preview.api.move.test;
   exports greycos.solver.core.preview.api.neighborhood;
+  exports greycos.solver.core.preview.api.neighborhood.stream.dataset.sample;
   exports greycos.solver.core.preview.api.neighborhood.stream;
   exports greycos.solver.core.preview.api.neighborhood.stream.dataset;
   exports greycos.solver.core.preview.api.neighborhood.stream.enumerating;
@@ -76,7 +77,7 @@ module greycos.solver.core {
   exports greycos.solver.core.preview.api.neighborhood.stream.enumerating.function;
   exports greycos.solver.core.preview.api.neighborhood.stream.function;
   exports greycos.solver.core.preview.api.neighborhood.stream.joiner;
-  exports greycos.solver.core.preview.api.neighborhood.stream.sampling;
+  exports greycos.solver.core.preview.api.neighborhood.stream.picking;
   exports greycos.solver.core.preview.api.neighborhood.test;
 
   // Shared implementation packages used by other public modules.
@@ -105,7 +106,8 @@ module greycos.solver.core {
   exports greycos.solver.core.impl.score.stream.common;
   exports greycos.solver.core.impl.score.stream.test;
   exports greycos.solver.core.impl.solver;
-  exports greycos.solver.core.impl.solver.monitoring;
+  exports greycos.solver.core.impl.solver.monitoring to
+      greycos.solver.benchmark;
   exports greycos.solver.core.impl.solver.scope;
   exports greycos.solver.core.impl.solver.termination;
   exports greycos.solver.core.impl.solver.thread;

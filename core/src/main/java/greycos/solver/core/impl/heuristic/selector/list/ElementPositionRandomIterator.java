@@ -4,7 +4,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.random.RandomGenerator;
 
-import greycos.solver.core.impl.cotwin.variable.ListVariableStateSupply;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
@@ -15,7 +15,7 @@ import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 
 final class ElementPositionRandomIterator<Solution_> implements Iterator<ElementPosition> {
 
-  private final ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply;
+  private final ListVariableState<Solution_, Object, Object> listVariableState;
   private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final EntitySelector<Solution_> entitySelector;
   private final Iterator<Object> replayingValueIterator;
@@ -30,7 +30,7 @@ final class ElementPositionRandomIterator<Solution_> implements Iterator<Element
   private boolean hasNextValue = false;
 
   public ElementPositionRandomIterator(
-      ListVariableStateSupply<Solution_, Object, Object> listVariableStateSupply,
+      ListVariableState<Solution_, Object, Object> listVariableState,
       EntitySelector<Solution_> entitySelector,
       Iterator<Object> replayingValueIterator,
       IterableValueSelector<Solution_> valueSelector,
@@ -38,8 +38,8 @@ final class ElementPositionRandomIterator<Solution_> implements Iterator<Element
       long totalSize,
       boolean allowsUnassignedValues,
       boolean maybeMovableValues) {
-    this.listVariableStateSupply = listVariableStateSupply;
-    this.listVariableDescriptor = listVariableStateSupply.getSourceVariableDescriptor();
+    this.listVariableState = listVariableState;
+    this.listVariableDescriptor = listVariableState.getSourceVariableDescriptor();
     this.entitySelector = entitySelector;
     this.replayingValueIterator = replayingValueIterator;
     this.valueSelector = valueSelector;
@@ -148,7 +148,7 @@ final class ElementPositionRandomIterator<Solution_> implements Iterator<Element
               entity, listVariableDescriptor.getFirstUnpinnedIndex(entity) + randomIndex);
         }
       } else {
-        var elementPosition = listVariableStateSupply.getElementPosition(value);
+        var elementPosition = listVariableState.getElementPosition(value);
         if (elementPosition instanceof PositionInList positionInList) {
           // +1 to include the destination after the final element in the list.
           return ElementPosition.of(positionInList.entity(), positionInList.index() + 1);

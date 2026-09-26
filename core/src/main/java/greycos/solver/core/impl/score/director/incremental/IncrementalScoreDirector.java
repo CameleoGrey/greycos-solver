@@ -13,6 +13,7 @@ import greycos.solver.core.api.score.calculator.ConstraintMatchRegistry;
 import greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
 import greycos.solver.core.api.score.stream.ConstraintJustification;
 import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
@@ -86,8 +87,8 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
   }
 
   @Override
-  public InnerScore<Score_> calculateScore() {
-    shadowVariableSupport.assertShadowVariablesAreUpToDate();
+  public InnerScore<Score_> innerCalculateScore() {
+    variableSupport.assertShadowVariablesAreUpToDate();
     var score =
         Objects.requireNonNull(
             incrementalScoreCalculator.calculateScore(),
@@ -298,7 +299,13 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
     private @Nullable IncrementalScoreCalculator<Solution_, Score_> incrementalScoreCalculator;
 
     public Builder(IncrementalScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory) {
-      super(scoreDirectorFactory);
+      this(scoreDirectorFactory, scoreDirectorFactory.getGlobalEnvironmentMode());
+    }
+
+    public Builder(
+        IncrementalScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory,
+        EnvironmentMode environmentMode) {
+      super(scoreDirectorFactory, environmentMode);
     }
 
     public Builder<Solution_, Score_> withIncrementalScoreCalculator(

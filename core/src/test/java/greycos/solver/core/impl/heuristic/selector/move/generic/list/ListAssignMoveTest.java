@@ -49,6 +49,7 @@ class ListAssignMoveTest {
 
   @Test
   void doMove() {
+    when(innerScoreDirector.isLastVariableUpdateSuccessful()).thenReturn(true);
     var solution = new TestdataListSolution();
     var v1 = new TestdataListValue("1");
     var v2 = new TestdataListValue("2");

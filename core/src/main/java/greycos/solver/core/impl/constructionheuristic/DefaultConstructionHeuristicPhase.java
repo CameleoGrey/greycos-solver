@@ -214,12 +214,13 @@ public class DefaultConstructionHeuristicPhase<Solution_>
     if (decider.isLoggingEnabled() && logger.isInfoEnabled()) {
       logger.info(
           """
-          {}Construction Heuristic phase ({}) ended: time spent ({}), best score ({}), \
+          {}Construction Heuristic phase ({}) ended: time spent ({}), environment mode ({}), best score ({}), \
           {}move evaluation speed ({}/sec), step total ({}).\
           """,
           logIndentation,
           phaseIndex,
           phaseScope.calculateSolverTimeMillisSpentUpToNow(),
+          environmentMode.name(),
           phaseScope.getBestScore().raw(),
           // Multithreaded solving uses "effective" move evaluation speed, since not all evaluated
           // moves
@@ -255,7 +256,8 @@ public class DefaultConstructionHeuristicPhase<Solution_>
   }
 
   public static class DefaultConstructionHeuristicPhaseBuilder<Solution_>
-      extends AbstractPossiblyInitializingPhaseBuilder<Solution_> {
+      extends AbstractPossiblyInitializingPhaseBuilder<
+          Solution_, DefaultConstructionHeuristicPhase<Solution_>> {
 
     private final EntityPlacer<Solution_> entityPlacer;
     private final ConstructionHeuristicDecider<Solution_> decider;
@@ -263,20 +265,14 @@ public class DefaultConstructionHeuristicPhase<Solution_>
     public DefaultConstructionHeuristicPhaseBuilder(
         int phaseIndex,
         boolean lastInitializingPhase,
+        EnvironmentMode environmentMode,
         String logIndentation,
         PhaseTermination<Solution_> phaseTermination,
         EntityPlacer<Solution_> entityPlacer,
         ConstructionHeuristicDecider<Solution_> decider) {
-      super(phaseIndex, lastInitializingPhase, logIndentation, phaseTermination);
+      super(phaseIndex, lastInitializingPhase, environmentMode, logIndentation, phaseTermination);
       this.entityPlacer = entityPlacer;
       this.decider = decider;
-    }
-
-    @Override
-    public DefaultConstructionHeuristicPhaseBuilder<Solution_> enableAssertions(
-        EnvironmentMode environmentMode) {
-      super.enableAssertions(environmentMode);
-      return this;
     }
 
     public EntityPlacer<Solution_> getEntityPlacer() {

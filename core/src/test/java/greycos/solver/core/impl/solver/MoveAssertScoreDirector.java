@@ -6,6 +6,7 @@ import java.util.function.Consumer;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import greycos.solver.core.impl.score.director.AbstractScoreDirector;
@@ -40,7 +41,7 @@ public final class MoveAssertScoreDirector<Solution_, Score_ extends Score<Score
   }
 
   @Override
-  public InnerScore<Score_> calculateScore() {
+  public InnerScore<Score_> innerCalculateScore() {
     if (!isDerived && firstTrigger) {
       moveSolutionConsumer.accept(getWorkingSolution());
       firstTrigger = false;
@@ -69,8 +70,10 @@ public final class MoveAssertScoreDirector<Solution_, Score_ extends Score<Score
     private Consumer<Solution_> moveSolutionConsumer;
     @Nullable private MoveRepository<Solution_> moveRepository;
 
-    public Builder(MoveAssertScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory) {
-      super(scoreDirectorFactory);
+    public Builder(
+        MoveAssertScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory,
+        EnvironmentMode environmentMode) {
+      super(scoreDirectorFactory, environmentMode);
     }
 
     public Builder<Solution_, Score_> withMoveSolutionConsumer(

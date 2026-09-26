@@ -10,7 +10,7 @@ import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import greycos.solver.core.preview.api.move.Move;
 
-public class ChangeMoveSelector<Solution_> extends GenericMoveSelector<Solution_> {
+public class ChangeMoveSelector<Solution_> extends AbstractGenericMoveSelector<Solution_> {
 
   protected final EntitySelector<Solution_> entitySelector;
   protected final ValueSelector<Solution_> valueSelector;

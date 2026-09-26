@@ -1,5 +1,8 @@
 package greycos.solver.core.impl.cotwin.variable.declarative;
 
+import java.util.List;
+
+import greycos.solver.core.api.score.analysis.VariableLoop;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.Supply;
@@ -61,7 +64,11 @@ public final class DefaultShadowVariableSession<Solution_> implements Supply {
         toIndex);
   }
 
-  public void updateVariables() {
-    graph.updateChanged();
+  public boolean updateVariables() {
+    return graph.updateChanged();
+  }
+
+  public List<VariableLoop> getVariableLoops() {
+    return graph.getVariableLoops();
   }
 }

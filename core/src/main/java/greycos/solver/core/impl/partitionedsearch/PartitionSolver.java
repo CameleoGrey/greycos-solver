@@ -4,7 +4,9 @@ import java.util.List;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.solver.change.ProblemChange;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.phase.Phase;
+import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
 import greycos.solver.core.impl.solver.AbstractSolver;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -28,12 +30,14 @@ public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
   private final int partIndex;
 
   public PartitionSolver(
+      EnvironmentMode environmentMode,
+      ScoreDirectorFactory<Solution_, ?> scoreDirectorFactory,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       UniversalTermination<Solution_> termination,
       List<Phase<Solution_>> phaseList,
       SolverScope<Solution_> solverScope,
       int partIndex) {
-    super(bestSolutionRecaller, termination, phaseList);
+    super(environmentMode, scoreDirectorFactory, bestSolutionRecaller, termination, phaseList);
     this.solverScope = solverScope;
     this.partIndex = partIndex;
     // Child phases must notify the child solver, not the parent solver.
@@ -50,6 +54,13 @@ public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
       runPhases(solverScope);
       solvingEnded(solverScope);
       return solverScope.getBestSolution();
+    } catch (Exception failure) {
+      try {
+        solvingError(solverScope, failure);
+      } catch (Exception cleanupFailure) {
+        failure.addSuppressed(cleanupFailure);
+      }
+      throw failure;
     } finally {
       solverScope.destroyYielding();
     }
@@ -85,12 +96,6 @@ public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
   public void addProblemChanges(@NonNull List<ProblemChange<Solution_>> problemChangeList) {
     throw new UnsupportedOperationException(
         "The PartitionSolver does not support problem changes.");
-  }
-
-  @Override
-  public void solvingEnded(SolverScope<Solution_> solverScope) {
-    super.solvingEnded(solverScope);
-    solverScope.getScoreDirector().close();
   }
 
   public long getScoreCalculationCount() {

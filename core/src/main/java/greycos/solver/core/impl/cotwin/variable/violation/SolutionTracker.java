@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 
 public final class SolutionTracker<Solution_> {
   private final SolutionDescriptor<Solution_> solutionDescriptor;
@@ -25,7 +24,8 @@ public final class SolutionTracker<Solution_> {
   VariableSnapshotTotal<Solution_> beforeFromScratchVariables;
 
   public SolutionTracker(
-      SolutionDescriptor<Solution_> solutionDescriptor, SupplyManager supplyManager) {
+      SolutionDescriptor<Solution_> solutionDescriptor,
+      TrackerResolver<Solution_> trackerResolver) {
     this.solutionDescriptor = solutionDescriptor;
     basicVariableTrackers = new ArrayList<>();
     listVariableTrackers = new ArrayList<>();
@@ -33,14 +33,12 @@ public final class SolutionTracker<Solution_> {
       for (var variableDescriptor : entityDescriptor.getDeclaredVariableDescriptors()) {
         if (variableDescriptor
             instanceof ListVariableDescriptor<Solution_> listVariableDescriptor) {
-          listVariableTrackers.add(new ListVariableTracker<>(listVariableDescriptor));
+          listVariableTrackers.add(trackerResolver.getListVariableTracker(listVariableDescriptor));
         } else {
-          basicVariableTrackers.add(new BasicVariableTracker<>(variableDescriptor));
+          basicVariableTrackers.add(trackerResolver.getBasicVariableTracker(variableDescriptor));
         }
       }
     }
-    basicVariableTrackers.forEach(tracker -> supplyManager.demand(tracker.demand()));
-    listVariableTrackers.forEach(tracker -> supplyManager.demand(tracker.demand()));
   }
 
   public Solution_ getBeforeMoveSolution() {
@@ -113,6 +111,11 @@ public final class SolutionTracker<Solution_> {
     return out;
   }
 
+  // Test purposes
+  List<BasicVariableTracker<Solution_>> getBasicVariableTrackers() {
+    return basicVariableTrackers;
+  }
+
   public record SolutionCorruptionResult(boolean isCorrupted, String message) {
     public static SolutionCorruptionResult untracked() {
       return new SolutionCorruptionResult(false, "");
@@ -136,45 +139,45 @@ public final class SolutionTracker<Solution_> {
     if (!changedBetweenBeforeAndUndo.isEmpty()) {
       out.append(
           """
-                    Variables that are different between before and undo:
-                    %s
-                    """
+          Variables that are different between before and undo:
+          %s
+          """
               .formatted(formatList(changedBetweenBeforeAndUndo)));
     }
 
     if (!changedBetweenBeforeAndScratch.isEmpty()) {
       out.append(
           """
-                    Variables that are different between from scratch and before:
-                    %s
-                    """
+          Variables that are different between from scratch and before:
+          %s
+          """
               .formatted(formatList(changedBetweenBeforeAndScratch)));
     }
 
     if (!changedBetweenUndoAndScratch.isEmpty()) {
       out.append(
           """
-                    Variables that are different between from scratch and undo:
-                    %s
-                    """
+          Variables that are different between from scratch and undo:
+          %s
+          """
               .formatted(formatList(changedBetweenUndoAndScratch)));
     }
 
     if (!missingEventsForward.isEmpty()) {
       out.append(
           """
-                    Missing shadow variable update events for actual move:
-                    %s
-                    """
+          Missing shadow variable update events for actual move:
+          %s
+          """
               .formatted(formatList(missingEventsForward)));
     }
 
     if (!missingEventsBackward.isEmpty()) {
       out.append(
           """
-                    Missing shadow variable update events for undo move:")
-                    %s
-                    """
+          Missing shadow variable update events for undo move:")
+          %s
+          """
               .formatted(formatList(missingEventsBackward)));
     }
 
@@ -184,7 +187,8 @@ public final class SolutionTracker<Solution_> {
     } else {
       return new SolutionCorruptionResult(
           false,
-          "Genuine and shadow variables agree with from scratch calculation after the undo move and match the state prior to the move.");
+          "Genuine and shadow variables agree with from scratch calculation after the undo move and"
+              + " match the state prior to the move.");
     }
   }
 
