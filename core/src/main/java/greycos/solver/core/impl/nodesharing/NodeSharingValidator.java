@@ -1,319 +1,187 @@
 package greycos.solver.core.impl.nodesharing;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Executable;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.HashSet;
+import java.util.Set;
 
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.ConstantDynamic;
 import org.objectweb.asm.Handle;
-import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.InvokeDynamicInsnNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 
-/**
- * Validates ConstraintProvider classes for automatic node sharing compatibility.
- *
- * <p>Why: Node sharing requires bytecode transformation, which has prerequisites. How: Validates
- * class is not final, has no final methods, and avoids non-public external access. What: Ensures
- * transformation can succeed before attempting bytecode modification.
- */
+/** Checks the prerequisites for preserving provider behavior in a generated subclass. */
 public final class NodeSharingValidator {
 
-  public static void validate(Class<?> constraintProviderClass) {
-    if (Modifier.isFinal(constraintProviderClass.getModifiers())) {
+  public static void validate(Class<?> providerClass) {
+    if (Modifier.isFinal(providerClass.getModifiers())) {
       throw new IllegalArgumentException(
           "ConstraintProvider class %s must not be final for automatic node sharing."
-              .formatted(constraintProviderClass.getName()));
+              .formatted(providerClass.getName()));
     }
-
-    validateNoFinalMethods(constraintProviderClass);
-    validateNoNonPublicExternalAccess(constraintProviderClass);
-  }
-
-  private static void validateNoFinalMethods(Class<?> clazz) {
-    for (Method method : clazz.getDeclaredMethods()) {
+    if (providerClass.isSealed()) {
+      throw new IllegalArgumentException(
+          ("ConstraintProvider class %s must not be sealed for automatic node sharing; "
+                  + "the generated subclass must be permitted.")
+              .formatted(providerClass.getName()));
+    }
+    for (Method method : providerClass.getDeclaredMethods()) {
       if (Modifier.isFinal(method.getModifiers())) {
         throw new IllegalArgumentException(
             "ConstraintProvider method %s.%s must not be final for automatic node sharing."
-                .formatted(clazz.getName(), method.getName()));
+                .formatted(providerClass.getName(), method.getName()));
       }
     }
   }
 
-  private static void validateNoNonPublicExternalAccess(Class<?> constraintProviderClass) {
-    String classFileName = constraintProviderClass.getName().replace('.', '/') + ".class";
-    try (InputStream is =
-        constraintProviderClass.getClassLoader().getResourceAsStream(classFileName)) {
-      if (is == null) {
-        throw new IllegalStateException(
-            "Cannot find class file for " + constraintProviderClass.getName());
+  static void validateCopiedMethod(Class<?> providerClass, MethodNode method) {
+    validateCopiedMethod(
+        providerClass,
+        method,
+        new StackObservationAnalyzer(
+            providerClass, NodeSharingTransformer.readClassFile(providerClass)));
+  }
+
+  static void validateCopiedMethod(
+      Class<?> providerClass,
+      MethodNode method,
+      StackObservationAnalyzer stackObservationAnalyzer) {
+    var stackObservation =
+        stackObservationAnalyzer.inspectMethod(
+            Type.getInternalName(providerClass), method.name, method.desc);
+    if (stackObservation.observationPath() != null) {
+      throw unsupported(
+          providerClass, method, "stack inspection through " + stackObservation.observationPath());
+    }
+    for (AbstractInsnNode instruction : method.instructions) {
+      if (instruction instanceof InvokeDynamicInsnNode dynamic) {
+        String owner = dynamic.bsm.getOwner();
+        String name = dynamic.bsm.getName();
+        boolean lambda =
+            owner.equals("java/lang/invoke/LambdaMetafactory")
+                && (name.equals("metafactory") || name.equals("altMetafactory"));
+        boolean concat =
+            owner.equals("java/lang/invoke/StringConcatFactory")
+                && (name.equals("makeConcat") || name.equals("makeConcatWithConstants"));
+        if (!lambda && !concat) {
+          throw unsupported(
+              providerClass, method, "custom invokedynamic bootstrap " + owner + "." + name);
+        }
+        for (Object argument : dynamic.bsmArgs) {
+          if (argument instanceof ConstantDynamic) {
+            throw unsupported(providerClass, method, "dynamic bootstrap constants");
+          } else if (argument instanceof Handle handle
+              && LambdaImplementationCanonicalizer.inspectsStack(
+                  handle.getOwner(), handle.getName(), handle.getDesc())) {
+            throw unsupported(
+                providerClass,
+                method,
+                "stack-inspecting method reference " + handle.getOwner() + "." + handle.getName());
+          } else if (argument instanceof Handle handle
+              && handle.getTag() >= Opcodes.H_INVOKEVIRTUAL
+              && isCallerSensitive(
+                  providerClass,
+                  new MethodInsnNode(
+                      Opcodes.INVOKESTATIC,
+                      handle.getOwner(),
+                      handle.getName(),
+                      handle.getDesc(),
+                      handle.isInterface()))) {
+            throw unsupported(
+                providerClass,
+                method,
+                "caller-sensitive method reference " + handle.getOwner() + "." + handle.getName());
+          }
+        }
+      } else if (instruction instanceof LdcInsnNode constant
+          && (constant.cst instanceof ConstantDynamic || constant.cst instanceof Handle)) {
+        throw unsupported(providerClass, method, "dynamic constants or method-handle constants");
+      } else if (instruction instanceof MethodInsnNode invocation) {
+        if (LambdaImplementationCanonicalizer.inspectsStack(
+            invocation.owner, invocation.name, invocation.desc)) {
+          throw unsupported(
+              providerClass,
+              method,
+              "stack inspection through " + invocation.owner + "." + invocation.name);
+        }
+        if (isCallerSensitive(providerClass, invocation)) {
+          throw unsupported(
+              providerClass,
+              method,
+              "caller-sensitive invocation " + invocation.owner + "." + invocation.name);
+        }
+      } else if (instruction.getOpcode() == Opcodes.JSR || instruction.getOpcode() == Opcodes.RET) {
+        throw unsupported(providerClass, method, "legacy jsr/ret bytecode");
       }
-      ClassReader reader = new ClassReader(is.readAllBytes());
-      reader.accept(
-          new NonPublicAccessVisitor(constraintProviderClass),
-          ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-    } catch (IOException e) {
+    }
+  }
+
+  private static boolean isCallerSensitive(Class<?> providerClass, MethodInsnNode invocation) {
+    if (invocation.name.equals("<init>")) {
+      return false;
+    }
+    try {
+      ClassLoader loader = providerClass.getClassLoader();
+      Class<?> owner = Class.forName(invocation.owner.replace('/', '.'), false, loader);
+      MethodType methodType = MethodType.fromMethodDescriptorString(invocation.desc, loader);
+      Method target =
+          findMethod(owner, invocation.name, methodType.parameterArray(), new HashSet<>());
+      if (target == null) {
+        // Signature-polymorphic MethodHandle calls have no reflected method with this descriptor.
+        return false;
+      }
+      for (var annotation : target.getDeclaredAnnotations()) {
+        String name = annotation.annotationType().getName();
+        if (name.equals("jdk.internal.reflect.CallerSensitive")
+            || name.equals("sun.reflect.CallerSensitive")) {
+          return true;
+        }
+      }
+      return false;
+    } catch (ClassNotFoundException | TypeNotPresentException e) {
       throw new IllegalStateException(
-          "Failed to read class file for " + constraintProviderClass.getName(), e);
+          ("Cannot resolve method %s.%s%s while validating automatic node sharing for %s. "
+                  + "Make its declaring class and signature types available to the provider class loader.")
+              .formatted(
+                  invocation.owner, invocation.name, invocation.desc, providerClass.getName()),
+          e);
     }
   }
 
-  private static final class NonPublicAccessVisitor extends ClassVisitor {
-
-    private final Class<?> constraintProviderClass;
-    private final String providerInternalName;
-
-    private NonPublicAccessVisitor(Class<?> constraintProviderClass) {
-      super(Opcodes.ASM9);
-      this.constraintProviderClass = constraintProviderClass;
-      this.providerInternalName = constraintProviderClass.getName().replace('.', '/');
+  private static Method findMethod(
+      Class<?> owner, String name, Class<?>[] parameters, Set<Class<?>> visited) {
+    if (owner == null || !visited.add(owner)) {
+      return null;
     }
-
-    @Override
-    public FieldVisitor visitField(
-        int access, String name, String descriptor, String signature, Object value) {
-      validateTypeDescriptor(descriptor);
-      return super.visitField(access, name, descriptor, signature, value);
-    }
-
-    @Override
-    public MethodVisitor visitMethod(
-        int access, String name, String descriptor, String signature, String[] exceptions) {
-      validateMethodDescriptor(descriptor);
-      return new MethodVisitor(Opcodes.ASM9) {
-        @Override
-        public void visitTypeInsn(int opcode, String type) {
-          validateReferencedType(type);
-        }
-
-        @Override
-        public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-          validateReferencedField(owner, name);
-          validateTypeDescriptor(descriptor);
-        }
-
-        @Override
-        public void visitMethodInsn(
-            int opcode, String owner, String name, String descriptor, boolean isInterface) {
-          validateReferencedMethod(owner, name, descriptor);
-          validateMethodDescriptor(descriptor);
-        }
-
-        @Override
-        public void visitLdcInsn(Object value) {
-          if (value instanceof Type type) {
-            validateType(type);
-          }
-        }
-
-        @Override
-        public void visitInvokeDynamicInsn(
-            String name,
-            String descriptor,
-            Handle bootstrapMethodHandle,
-            Object... bootstrapMethodArguments) {
-          validateMethodDescriptor(descriptor);
-          validateHandle(bootstrapMethodHandle);
-          for (Object argument : bootstrapMethodArguments) {
-            if (argument instanceof Type type) {
-              validateType(type);
-            } else if (argument instanceof Handle handle) {
-              validateHandle(handle);
-            }
-          }
-        }
-      };
-    }
-
-    private void validateReferencedType(String internalName) {
-      validateType(Type.getObjectType(internalName));
-    }
-
-    private void validateMethodDescriptor(String descriptor) {
-      for (Type argumentType : Type.getArgumentTypes(descriptor)) {
-        validateType(argumentType);
+    try {
+      return owner.getDeclaredMethod(name, parameters);
+    } catch (NoSuchMethodException e) {
+      Method inherited = findMethod(owner.getSuperclass(), name, parameters, visited);
+      if (inherited != null) {
+        return inherited;
       }
-      validateType(Type.getReturnType(descriptor));
-    }
-
-    private void validateTypeDescriptor(String descriptor) {
-      validateType(Type.getType(descriptor));
-    }
-
-    private void validateType(Type type) {
-      switch (type.getSort()) {
-        case Type.ARRAY -> validateType(type.getElementType());
-        case Type.OBJECT -> {
-          Class<?> referencedClass = resolveClass(type.getClassName());
-          if (referencedClass != null
-              && referencedClass != constraintProviderClass
-              && !Modifier.isPublic(referencedClass.getModifiers())) {
-            throw new IllegalArgumentException(
-                "ConstraintProvider class %s must not access non-public class %s for automatic node sharing."
-                    .formatted(constraintProviderClass.getName(), referencedClass.getName()));
-          }
-        }
-        default -> {
-          // Primitive and void types are always safe.
-        }
-      }
-    }
-
-    private void validateReferencedField(String ownerInternalName, String fieldName) {
-      if (providerInternalName.equals(ownerInternalName)) {
-        return;
-      }
-      Class<?> ownerClass = resolveInternalName(ownerInternalName);
-      if (ownerClass == null) {
-        return;
-      }
-      if (!Modifier.isPublic(ownerClass.getModifiers())) {
-        throw new IllegalArgumentException(
-            "ConstraintProvider class %s must not access non-public class %s for automatic node sharing."
-                .formatted(constraintProviderClass.getName(), ownerClass.getName()));
-      }
-      var field = ReflectionResolver.findField(ownerClass, fieldName);
-      if (field != null && !Modifier.isPublic(field.getModifiers())) {
-        throw new IllegalArgumentException(
-            "ConstraintProvider class %s must not access non-public field %s.%s for automatic node sharing."
-                .formatted(constraintProviderClass.getName(), ownerClass.getName(), fieldName));
-      }
-    }
-
-    private void validateReferencedMethod(
-        String ownerInternalName, String methodName, String descriptor) {
-      if (providerInternalName.equals(ownerInternalName)) {
-        return;
-      }
-      Class<?> ownerClass = resolveInternalName(ownerInternalName);
-      if (ownerClass == null) {
-        return;
-      }
-      if (!Modifier.isPublic(ownerClass.getModifiers())) {
-        throw new IllegalArgumentException(
-            "ConstraintProvider class %s must not access non-public class %s for automatic node sharing."
-                .formatted(constraintProviderClass.getName(), ownerClass.getName()));
-      }
-      Executable executable =
-          "<init>".equals(methodName)
-              ? ReflectionResolver.findConstructor(ownerClass, descriptor)
-              : ReflectionResolver.findMethod(ownerClass, methodName, descriptor);
-      if (executable != null && !Modifier.isPublic(executable.getModifiers())) {
-        throw new IllegalArgumentException(
-            "ConstraintProvider class %s must not access non-public method %s.%s for automatic node sharing."
-                .formatted(constraintProviderClass.getName(), ownerClass.getName(), methodName));
-      }
-    }
-
-    private void validateHandle(Handle handle) {
-      switch (handle.getTag()) {
-        case Opcodes.H_GETFIELD, Opcodes.H_GETSTATIC, Opcodes.H_PUTFIELD, Opcodes.H_PUTSTATIC ->
-            validateReferencedField(handle.getOwner(), handle.getName());
-        default -> validateReferencedMethod(handle.getOwner(), handle.getName(), handle.getDesc());
-      }
-    }
-
-    private Class<?> resolveInternalName(String internalName) {
-      return resolveClass(internalName.replace('/', '.'));
-    }
-
-    private Class<?> resolveClass(String className) {
-      try {
-        return Class.forName(className, false, constraintProviderClass.getClassLoader());
-      } catch (ClassNotFoundException e) {
-        return null;
-      }
-    }
-  }
-
-  private static final class ReflectionResolver {
-
-    private static java.lang.reflect.Field findField(Class<?> ownerClass, String fieldName) {
-      Class<?> current = ownerClass;
-      while (current != null) {
-        try {
-          return current.getDeclaredField(fieldName);
-        } catch (NoSuchFieldException e) {
-          current = current.getSuperclass();
+      for (Class<?> iface : owner.getInterfaces()) {
+        inherited = findMethod(iface, name, parameters, visited);
+        if (inherited != null) {
+          return inherited;
         }
       }
       return null;
     }
+  }
 
-    private static java.lang.reflect.Executable findConstructor(
-        Class<?> ownerClass, String descriptor) {
-      Class<?>[] parameterTypes = resolveParameterTypes(ownerClass.getClassLoader(), descriptor);
-      if (parameterTypes == null) {
-        return null;
-      }
-      try {
-        return ownerClass.getDeclaredConstructor(parameterTypes);
-      } catch (NoSuchMethodException e) {
-        return null;
-      }
-    }
-
-    private static java.lang.reflect.Executable findMethod(
-        Class<?> ownerClass, String methodName, String descriptor) {
-      Class<?>[] parameterTypes = resolveParameterTypes(ownerClass.getClassLoader(), descriptor);
-      if (parameterTypes == null) {
-        return null;
-      }
-      Class<?> current = ownerClass;
-      while (current != null) {
-        try {
-          return current.getDeclaredMethod(methodName, parameterTypes);
-        } catch (NoSuchMethodException e) {
-          for (Class<?> iface : current.getInterfaces()) {
-            try {
-              return iface.getDeclaredMethod(methodName, parameterTypes);
-            } catch (NoSuchMethodException ignored) {
-              // Continue searching.
-            }
-          }
-          current = current.getSuperclass();
-        }
-      }
-      return null;
-    }
-
-    private static Class<?>[] resolveParameterTypes(ClassLoader classLoader, String descriptor) {
-      Type[] argumentTypes = Type.getArgumentTypes(descriptor);
-      Class<?>[] parameterTypes = new Class<?>[argumentTypes.length];
-      for (int i = 0; i < argumentTypes.length; i++) {
-        Class<?> parameterType = resolveType(classLoader, argumentTypes[i]);
-        if (parameterType == null) {
-          return null;
-        }
-        parameterTypes[i] = parameterType;
-      }
-      return parameterTypes;
-    }
-
-    private static Class<?> resolveType(ClassLoader classLoader, Type type) {
-      return switch (type.getSort()) {
-        case Type.BOOLEAN -> boolean.class;
-        case Type.BYTE -> byte.class;
-        case Type.CHAR -> char.class;
-        case Type.DOUBLE -> double.class;
-        case Type.FLOAT -> float.class;
-        case Type.INT -> int.class;
-        case Type.LONG -> long.class;
-        case Type.SHORT -> short.class;
-        case Type.VOID -> void.class;
-        default -> {
-          try {
-            yield Class.forName(type.getClassName(), false, classLoader);
-          } catch (ClassNotFoundException e) {
-            yield null;
-          }
-        }
-      };
-    }
+  private static IllegalArgumentException unsupported(
+      Class<?> providerClass, MethodNode method, String operation) {
+    return new IllegalArgumentException(
+        ("ConstraintProvider method %s.%s%s uses %s, which cannot be relocated safely for automatic node sharing. "
+                + "\nMaybe remove caller-dependent behavior from constraint construction, or disable constraintStreamAutomaticNodeSharing.")
+            .formatted(providerClass.getName(), method.name, method.desc, operation));
   }
 
   private NodeSharingValidator() {}

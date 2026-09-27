@@ -54,15 +54,14 @@ class AutomaticNodeSharingBehaviorTest {
     assertThat(transformedPredicates).hasSize(2);
     assertThat(transformedPredicates.get(0)).isSameAs(transformedPredicates.get(1));
     assertThat(transformedClass.getDeclaredFields())
-        .filteredOn(field -> field.getName().startsWith("$"))
+        .filteredOn(field -> Predicate.class.isAssignableFrom(field.getType()))
         .hasSize(1);
     assertThat(transformedClass.getDeclaredFields())
-        .filteredOn(field -> field.getName().startsWith("$"))
+        .filteredOn(field -> Predicate.class.isAssignableFrom(field.getType()))
         .allSatisfy(
             field -> {
               assertThat(Modifier.isPrivate(field.getModifiers())).isTrue();
               assertThat(Modifier.isStatic(field.getModifiers())).isTrue();
-              assertThat(Modifier.isFinal(field.getModifiers())).isTrue();
             });
     assertThat(transformedPredicates.get(0).test("x")).isTrue();
     assertThat(transformedPredicates.get(0).test("")).isFalse();
@@ -80,7 +79,7 @@ class AutomaticNodeSharingBehaviorTest {
 
     assertThat(predicates).hasSize(3);
     assertThat(transformedClass.getDeclaredFields())
-        .filteredOn(field -> field.getName().startsWith("$"))
+        .filteredOn(field -> Predicate.class.isAssignableFrom(field.getType()))
         .isEmpty();
     assertThat(predicates.get(0).test("123456")).isTrue();
     assertThat(predicates.get(0).test("12345")).isFalse();

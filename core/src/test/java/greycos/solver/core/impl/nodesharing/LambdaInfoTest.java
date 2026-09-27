@@ -10,6 +10,18 @@ import org.junit.jupiter.api.Test;
 class LambdaInfoTest {
 
   @Test
+  void retainsTheAuthoritativeKey() {
+    LambdaKey key =
+        new LambdaKey(
+            "java.util.function.Predicate",
+            "example/Provider.test",
+            "(Ljava/lang/Object;)Z",
+            List.of());
+    LambdaInfo info = new LambdaInfo("defineConstraints", 0, key);
+    assertThat(info.getKey()).isSameAs(key);
+  }
+
+  @Test
   void getKeyReturnsMatchingLambdaKey() {
     List<Object> capturedArgs = List.of("captured");
     LambdaInfo info =

@@ -85,6 +85,8 @@ public class GreyCOSSolverBeanFactory implements ApplicationContextAware, Enviro
   public <Solution_> SolverFactory<Solution_> getSolverFactory() {
     failInjectionWithMultipleSolvers(SolverFactory.class.getName());
     SolverConfig solverConfig = context.getBean(SolverConfig.class);
+    GreyCOSSolverNativeSupport.assertNodeSharingSupported(
+        solverConfig, "runtime SolverConfig bean");
     if (solverConfig.getSolutionClass() == null) {
       return null;
     }
@@ -196,6 +198,8 @@ public class GreyCOSSolverBeanFactory implements ApplicationContextAware, Enviro
         return new UnsupportedConstraintVerifier<>(noConstraintProviderErrorMsg);
       }
 
+      GreyCOSSolverNativeSupport.assertNodeSharingSupported(
+          solverConfig, "runtime SolverConfig bean");
       return ConstraintVerifier.create(solverConfig);
     }
   }

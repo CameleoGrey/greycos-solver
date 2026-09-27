@@ -63,7 +63,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.NativeDetector;
 import org.springframework.core.env.Environment;
 
 @Configuration(proxyBeanMethods = false)
@@ -292,6 +291,7 @@ public class GreyCOSSolverAutoConfiguration
             solverProperties ->
                 applyScoreDirectorFactoryProperties(entityScanner, solverConfig, solverProperties),
             () -> applyScoreDirectorFactoryProperties(entityScanner, solverConfig));
+    GreyCOSSolverNativeSupport.assertNodeSharingSupported(solverConfig, solverName);
   }
 
   private void applyScoreDirectorFactoryProperties(
@@ -301,10 +301,6 @@ public class GreyCOSSolverAutoConfiguration
     applyScoreDirectorFactoryProperties(entityScanner, solverConfig);
     var automaticNodeSharing = solverProperties.getConstraintStreamAutomaticNodeSharing();
     if (automaticNodeSharing != null) {
-      if (automaticNodeSharing && NativeDetector.inNativeImage()) {
-        throw new UnsupportedOperationException(
-            "Constraint stream automatic node sharing is unsupported in a Spring native image.");
-      }
       Objects.requireNonNull(solverConfig.getScoreDirectorFactoryConfig())
           .setConstraintStreamAutomaticNodeSharing(automaticNodeSharing);
     }
@@ -332,8 +328,13 @@ public class GreyCOSSolverAutoConfiguration
 
   private void applyScoreDirectorFactoryProperties(
       IncludeAbstractClassesEntityScanner entityScanner, SolverConfig solverConfig) {
-    if (solverConfig.getScoreDirectorFactoryConfig() == null) {
+    var scoreDirectorFactoryConfig = solverConfig.getScoreDirectorFactoryConfig();
+    if (scoreDirectorFactoryConfig == null) {
       solverConfig.setScoreDirectorFactoryConfig(defaultScoreDirectoryFactoryConfig(entityScanner));
+    } else if (scoreDirectorFactoryConfig.getEasyScoreCalculatorClass() == null
+        && scoreDirectorFactoryConfig.getConstraintProviderClass() == null
+        && scoreDirectorFactoryConfig.getIncrementalScoreCalculatorClass() == null) {
+      scoreDirectorFactoryConfig.inherit(defaultScoreDirectoryFactoryConfig(entityScanner));
     }
   }
 

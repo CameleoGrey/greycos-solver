@@ -3,19 +3,14 @@ package greycos.solver.core.impl.nodesharing;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Key for identifying functionally equivalent lambdas to enable deduplication.
- *
- * <p>Why: Need to determine which lambdas are identical and can be shared. How: Combines functional
- * interface type, implementation method, and captured arguments. What: Used as map key to group
- * identical lambdas for node sharing.
- */
+/** Immutable identity of a lambda call site, including its complete linkage contract. */
 public final class LambdaKey {
 
   private final String functionalInterfaceType;
   private final String implementationMethod;
   private final String implementationMethodType;
   private final List<Object> capturedArguments;
+  private final Object identity;
 
   public LambdaKey(
       String functionalInterfaceType,
@@ -26,6 +21,24 @@ public final class LambdaKey {
     this.implementationMethod = Objects.requireNonNull(implementationMethod);
     this.implementationMethodType = Objects.requireNonNull(implementationMethodType);
     this.capturedArguments = List.copyOf(capturedArguments);
+    this.identity =
+        List.of(
+            this.functionalInterfaceType,
+            this.implementationMethod,
+            this.implementationMethodType,
+            this.capturedArguments);
+  }
+
+  LambdaKey(
+      String functionalInterfaceType,
+      String implementationMethod,
+      String implementationMethodType,
+      Object callSiteIdentity) {
+    this.functionalInterfaceType = Objects.requireNonNull(functionalInterfaceType);
+    this.implementationMethod = Objects.requireNonNull(implementationMethod);
+    this.implementationMethodType = Objects.requireNonNull(implementationMethodType);
+    this.capturedArguments = List.of();
+    this.identity = Objects.requireNonNull(callSiteIdentity);
   }
 
   public String getFunctionalInterfaceType() {
@@ -53,16 +66,12 @@ public final class LambdaKey {
       return false;
     }
     LambdaKey lambdaKey = (LambdaKey) o;
-    return Objects.equals(functionalInterfaceType, lambdaKey.functionalInterfaceType)
-        && Objects.equals(implementationMethod, lambdaKey.implementationMethod)
-        && Objects.equals(implementationMethodType, lambdaKey.implementationMethodType)
-        && Objects.equals(capturedArguments, lambdaKey.capturedArguments);
+    return identity.equals(lambdaKey.identity);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        functionalInterfaceType, implementationMethod, implementationMethodType, capturedArguments);
+    return identity.hashCode();
   }
 
   @Override

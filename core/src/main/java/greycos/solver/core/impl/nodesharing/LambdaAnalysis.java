@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.nodesharing;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -16,7 +17,9 @@ public final class LambdaAnalysis {
   private final Map<LambdaKey, List<LambdaInfo>> shareableLambdas;
 
   public LambdaAnalysis(Map<LambdaKey, List<LambdaInfo>> shareableLambdas) {
-    this.shareableLambdas = Map.copyOf(shareableLambdas);
+    Map<LambdaKey, List<LambdaInfo>> copy = new LinkedHashMap<>();
+    shareableLambdas.forEach((key, value) -> copy.put(key, List.copyOf(value)));
+    this.shareableLambdas = Collections.unmodifiableMap(copy);
   }
 
   public Map<LambdaKey, List<LambdaInfo>> getShareableLambdas() {

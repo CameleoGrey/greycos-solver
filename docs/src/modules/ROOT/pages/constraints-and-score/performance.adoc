@@ -312,7 +312,13 @@ The code on the hot path of your application needs to be as fast as possible.
 
 [#enableAutomaticNodeSharing]
 == Enable automatic node sharing
-You should xref:advanced-features/advanced-features.adoc#automaticNodeSharing[enable automatic node sharing] as it can significantly speed up score calculation.
+Consider xref:advanced-features/advanced-features.adoc#automaticNodeSharing[automatic node sharing]
+when multiple constraints repeat the same stream operations with equivalent captureless lambdas or method references.
+Sharing those nodes reduces repeated work.
+Compare move evaluation speed and memory use with the feature enabled and disabled on representative problems;
+the benefit depends on how much work the constraints can share.
+Review the provider and module-access requirements before enabling it.
+The feature is unavailable in native images.
 
 [#benchmark]
 == Benchmark

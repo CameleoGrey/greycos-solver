@@ -7,11 +7,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
+import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.stream.Constraint;
 import greycos.solver.core.api.score.stream.ConstraintFactory;
 import greycos.solver.core.api.score.stream.ConstraintProvider;
 import greycos.solver.core.api.score.stream.uni.UniConstraintBuilder;
 import greycos.solver.core.api.score.stream.uni.UniConstraintStream;
+import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
+import greycos.solver.core.testcotwin.TestdataEntity;
+import greycos.solver.core.testcotwin.TestdataSolution;
+import greycos.solver.core.testcotwin.TestdataValue;
 
 import org.junit.jupiter.api.Test;
 
@@ -65,14 +71,13 @@ class NodeSharingIntegrationTest {
   }
 
   @Test
-  void noLambdaProviderReturnsOriginalBytecode() throws ReflectiveOperationException {
+  void noLambdaProviderReturnsOriginalClass() throws ReflectiveOperationException {
     DefaultConstraintProviderNodeSharer sharer = new DefaultConstraintProviderNodeSharer();
 
     Class<? extends ConstraintProvider> transformedClass =
         sharer.buildNodeSharedConstraintProvider(NoLambdaConstraintProvider.class);
 
-    // Even though no transformation occurred, a class should still be returned
-    assertThat(transformedClass).isNotNull();
+    assertThat(transformedClass).isSameAs(NoLambdaConstraintProvider.class);
 
     ConstraintProvider transformedInstance =
         transformedClass.getDeclaredConstructor().newInstance();
@@ -95,17 +100,21 @@ class NodeSharingIntegrationTest {
 
   @Test
   void transformationPreservesBehavior() throws ReflectiveOperationException {
-    DefaultConstraintProviderNodeSharer sharer = new DefaultConstraintProviderNodeSharer();
+    var transformedClass =
+        new DefaultConstraintProviderNodeSharer()
+            .buildNodeSharedConstraintProvider(ScoreSharingProviders.ConcatenationProvider.class);
+    var transformedInstance = transformedClass.getDeclaredConstructor().newInstance();
+    var scoreFactory =
+        new BavetConstraintStreamScoreDirectorFactory<TestdataSolution, SimpleScore>(
+            TestdataSolution.buildSolutionDescriptor(),
+            transformedInstance,
+            EnvironmentMode.NO_ASSERT);
+    var value = new TestdataValue("value");
 
-    Class<? extends ConstraintProvider> transformedClass =
-        sharer.buildNodeSharedConstraintProvider(SimpleConstraintProvider.class);
-
-    ConstraintProvider transformedInstance =
-        transformedClass.getDeclaredConstructor().newInstance();
-
-    // Verify the transformed instance is a valid ConstraintProvider
-    // (Full behavioral testing is done by ConstraintStreamNodeSharingTest)
-    assertThat(transformedInstance).isInstanceOf(ConstraintProvider.class);
+    assertThat(scoreFactory.fireAndForget(new TestdataEntity("x", value)).extractScore())
+        .isEqualTo(SimpleScore.of(-1));
+    assertThat(scoreFactory.fireAndForget(new TestdataEntity("y", value)).extractScore())
+        .isEqualTo(SimpleScore.ZERO);
   }
 
   @Test

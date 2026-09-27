@@ -3,7 +3,7 @@ package greycos.solver.core.impl.nodesharing;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,7 +41,7 @@ public final class ConstraintProviderAnalyzer {
       byte[] classBytecode = is.readAllBytes();
       ClassReader reader = new ClassReader(classBytecode);
       LambdaImplementationCanonicalizer implementationCanonicalizer =
-          new LambdaImplementationCanonicalizer(className, classBytecode);
+          new LambdaImplementationCanonicalizer(constraintProviderClass, classBytecode);
       List<LambdaInfo> allLambdas = new ArrayList<>();
 
       reader.accept(
@@ -50,7 +50,9 @@ public final class ConstraintProviderAnalyzer {
             public MethodVisitor visitMethod(
                 int access, String name, String descriptor, String signature, String[] exceptions) {
 
-              if ((access & Opcodes.ACC_SYNTHETIC) != 0 || (access & Opcodes.ACC_BRIDGE) != 0) {
+              if ((access & (Opcodes.ACC_SYNTHETIC | Opcodes.ACC_BRIDGE)) != 0
+                  || "<init>".equals(name)
+                  || "<clinit>".equals(name)) {
                 return null;
               }
 
@@ -63,7 +65,7 @@ public final class ConstraintProviderAnalyzer {
               };
             }
           },
-          ClassReader.EXPAND_FRAMES);
+          ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
 
       return groupIdenticalLambdas(allLambdas);
 
@@ -74,7 +76,7 @@ public final class ConstraintProviderAnalyzer {
   }
 
   private LambdaAnalysis groupIdenticalLambdas(List<LambdaInfo> lambdas) {
-    Map<LambdaKey, List<LambdaInfo>> grouped = new HashMap<>();
+    Map<LambdaKey, List<LambdaInfo>> grouped = new LinkedHashMap<>();
 
     for (LambdaInfo lambda : lambdas) {
       if (!lambda.getCapturedArguments().isEmpty()) {

@@ -2,6 +2,13 @@ package greycos.solver.core.impl.nodesharing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.Serializable;
+import java.util.function.Predicate;
+
+import greycos.solver.core.api.score.stream.Constraint;
+import greycos.solver.core.api.score.stream.ConstraintFactory;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
+
 import org.junit.jupiter.api.Test;
 
 class ConstraintProviderAnalyzerTest {
@@ -79,5 +86,52 @@ class ConstraintProviderAnalyzerTest {
 
     assertThat(analysis.getShareableLambdaGroupCount()).isZero();
     assertThat(analysis.getShareableLambdaCount()).isZero();
+  }
+
+  @Test
+  void serializableLambdasNeverFallBackIntoShareableGroups() {
+    assertThat(
+            new ConstraintProviderAnalyzer(SerializableProvider.class)
+                .analyze()
+                .hasShareableLambdas())
+        .isFalse();
+  }
+
+  @Test
+  void constructorAndStaticInitializerSitesAreNotCountedAsTransformableDuplicates() {
+    assertThat(
+            new ConstraintProviderAnalyzer(InitializationOnlyProvider.class)
+                .analyze()
+                .hasShareableLambdas())
+        .isFalse();
+  }
+
+  static class SerializableProvider implements ConstraintProvider {
+    Predicate<String> first() {
+      return (Predicate<String> & Serializable) String::isEmpty;
+    }
+
+    Predicate<String> second() {
+      return (Predicate<String> & Serializable) String::isEmpty;
+    }
+
+    @Override
+    public Constraint[] defineConstraints(ConstraintFactory factory) {
+      return new Constraint[0];
+    }
+  }
+
+  static class InitializationOnlyProvider implements ConstraintProvider {
+    static final Predicate<String> FIRST = value -> value.isEmpty();
+    final Predicate<String> second;
+
+    InitializationOnlyProvider() {
+      second = value -> value.isEmpty();
+    }
+
+    @Override
+    public Constraint[] defineConstraints(ConstraintFactory factory) {
+      return new Constraint[0];
+    }
   }
 }

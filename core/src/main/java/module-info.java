@@ -226,5 +226,6 @@ module greycos.solver.core {
   requires micrometer.core;
   requires org.jspecify;
   requires org.objectweb.asm;
+  requires org.objectweb.asm.tree;
   requires org.slf4j;
 }

@@ -1,11 +1,18 @@
 package greycos.solver.quarkus;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
 
 import jakarta.inject.Inject;
 
+import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.solver.SolutionManager;
+import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.config.solver.SolverConfig;
-import greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusConstraintProvider;
+import greycos.solver.quarkus.testcotwin.nodesharing.TestdataQuarkusNodeSharingConstraintProvider;
 import greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusEntity;
 import greycos.solver.quarkus.testcotwin.normal.TestdataQuarkusSolution;
 
@@ -30,14 +37,38 @@ public class GreyCOSProcessorNodeSharingTest {
                       .addClasses(
                           TestdataQuarkusEntity.class,
                           TestdataQuarkusSolution.class,
-                          TestdataQuarkusConstraintProvider.class)
+                          TestdataQuarkusNodeSharingConstraintProvider.class)
                       .addAsResource("greycos/solver/quarkus/solverConfigWithNodeSharing.xml"));
 
   @Inject SolverConfig solverConfig;
+  @Inject SolverFactory<TestdataQuarkusSolution> solverFactory;
+  @Inject SolutionManager<TestdataQuarkusSolution, SimpleScore> solutionManager;
 
   @Test
-  void enabledInSolverConfig() {
+  void enabledInSolverConfigSharesNodesAndPreservesProviderState() {
     assertTrue(
         solverConfig.getScoreDirectorFactoryConfig().getConstraintStreamAutomaticNodeSharing());
+    assertEquals(
+        TestdataQuarkusNodeSharingConstraintProvider.class,
+        solverConfig.getScoreDirectorFactoryConfig().getConstraintProviderClass());
+    assertNotNull(solverFactory.buildSolver());
+
+    var blocked = new TestdataQuarkusEntity();
+    blocked.setValue("blocked");
+    var allowed = new TestdataQuarkusEntity();
+    allowed.setValue("allowed");
+    var problem = new TestdataQuarkusSolution();
+    problem.setValueList(List.of("blocked", "allowed"));
+    problem.setEntityList(List.of(blocked, allowed));
+
+    TestdataQuarkusNodeSharingConstraintProvider.blockedValue = "blocked";
+    TestdataQuarkusNodeSharingConstraintProvider.predicateCalls = 0;
+    assertEquals(SimpleScore.of(-3), solutionManager.update(problem));
+    assertEquals(2, TestdataQuarkusNodeSharingConstraintProvider.predicateCalls);
+
+    TestdataQuarkusNodeSharingConstraintProvider.blockedValue = "absent";
+    TestdataQuarkusNodeSharingConstraintProvider.predicateCalls = 0;
+    assertEquals(SimpleScore.ZERO, solutionManager.update(problem));
+    assertEquals(2, TestdataQuarkusNodeSharingConstraintProvider.predicateCalls);
   }
 }

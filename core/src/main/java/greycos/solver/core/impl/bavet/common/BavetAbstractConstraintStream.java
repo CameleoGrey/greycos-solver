@@ -15,6 +15,7 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.Constraint;
 import greycos.solver.core.api.score.stream.ConstraintFactory;
 import greycos.solver.core.api.score.stream.ConstraintMetadata;
+import greycos.solver.core.api.score.stream.ConstraintProvider;
 import greycos.solver.core.api.score.stream.ConstraintStream;
 import greycos.solver.core.api.score.stream.bi.BiConstraintStream;
 import greycos.solver.core.api.score.stream.quad.QuadConstraintStream;
@@ -69,7 +70,9 @@ public abstract class BavetAbstractConstraintStream<Solution_>
   }
 
   private static ConstraintNodeLocation determineStreamLocation() {
-    return StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+    return StackWalker.getInstance(
+            Set.of(
+                StackWalker.Option.RETAIN_CLASS_REFERENCE, StackWalker.Option.SHOW_HIDDEN_FRAMES))
         .walk(
             stack ->
                 stack
@@ -83,14 +86,30 @@ public abstract class BavetAbstractConstraintStream<Solution_>
                             ConstraintStream.class.isAssignableFrom(stackFrame.getDeclaringClass())
                                 || ConstraintFactory.class.isAssignableFrom(
                                     stackFrame.getDeclaringClass()))
-                    .map(
-                        stackFrame ->
-                            new ConstraintNodeLocation(
-                                stackFrame.getClassName(),
-                                stackFrame.getMethodName(),
-                                stackFrame.getLineNumber()))
+                    .map(BavetAbstractConstraintStream::sourceLocation)
                     .findFirst()
                     .orElseGet(ConstraintNodeLocation::unknown));
+  }
+
+  private static ConstraintNodeLocation sourceLocation(StackWalker.StackFrame frame) {
+    var sourceClass = frame.getDeclaringClass();
+    var methodName = frame.getMethodName();
+    if (sourceClass.isHidden()
+        && ConstraintProvider.class.isAssignableFrom(sourceClass)
+        && sourceClass.getSuperclass() != null
+        && ConstraintProvider.class.isAssignableFrom(sourceClass.getSuperclass())) {
+      sourceClass = sourceClass.getSuperclass();
+      // Generated helper names retain the original name between the prefix and unique suffix.
+      var helperPrefix = "$greycos$helper$";
+      if (methodName.startsWith(helperPrefix)) {
+        var generatedMethodName = methodName;
+        if (Arrays.stream(sourceClass.getDeclaredMethods())
+            .noneMatch(method -> method.getName().equals(generatedMethodName))) {
+          methodName = methodName.substring(helperPrefix.length(), methodName.lastIndexOf('$'));
+        }
+      }
+    }
+    return new ConstraintNodeLocation(sourceClass.getName(), methodName, frame.getLineNumber());
   }
 
   @Override

@@ -743,12 +743,18 @@ on all planning entity and planning value classes to enable solution cloning and
 [#automaticNodeSharing]
 === Automatic node sharing
 
-When a `ConstraintProvider` does an operation for multiple constraints (such as finding all shifts corresponding to an employee), that work can be shared.
-This can significantly improve move evaluation speed if the repeated operation is computationally expensive:
+When a `ConstraintProvider` repeats an operation in multiple constraints, such as finding all shifts for an employee,
+node sharing can perform that work once.
+Automatic node sharing identifies eligible equivalent lambdas and method references so more constraint stream nodes can be shared.
+The effect on move evaluation speed and memory use depends on the constraints and problem; measure it with your own workload:
 
 image::advanced-features/nodeSharingValueProposition.png[align="center"]
 
 ==== Configuration
+
+Automatic node sharing is disabled by default.
+It is available in plain Java, Spring Boot and Quarkus JVM applications.
+It is unsupported in native images; enabling it there causes startup to fail.
 
 [tabs]
 ====
@@ -787,24 +793,84 @@ quarkus.greycos.solver.constraint-stream-automatic-node-sharing=true
 
 [IMPORTANT]
 ====
-To use automatic node sharing outside Quarkus, your `ConstraintProvider` class must meet several restrictions so a valid subclass can be generated:
+The same provider requirements apply in plain Java, Spring Boot and Quarkus JVM applications:
 
-- The `ConstraintProvider` class cannot be final.
-- The `ConstraintProvider` class cannot have any final methods.
-- The `ConstraintProvider` class cannot access non-public classes, methods or fields outside the provider itself.
+* The `ConstraintProvider` class cannot be final or sealed.
+* The `ConstraintProvider` class cannot declare final methods.
+* The provider's class file must be available to its class loader.
+* When a generated subclass is needed, the provider cannot implement `java.io.Serializable`.
+* When a generated subclass is needed, a provider in a named Java module must open its package to the GreyCOS core module.
 
-GreyCOS validates these requirements while building the solver factory.
-If transformation is requested but cannot be completed, solver creation fails with the transformation cause;
-it does not silently run the original provider.
-
-Debugging breakpoints put inside your constraints will not be respected, because the `ConstraintProvider` class will be transformed when this feature is enabled.
+GreyCOS validates the provider and analyzes its bytecode while building the solver factory.
+If analysis finds no eligible repeated lambdas or method references, the original provider class is used without transformation.
+If a required transformation cannot be completed, solver creation fails with the provider name, cause and suggested remedy.
+Unsupported bytecode and missing module access are errors; there is no fallback after a transformation failure.
 ====
+
+For example, when both the application and GreyCOS use named modules, add this directive to the application's `module-info.java`:
+
+[source,java,options="nowrap"]
+----
+opens org.acme.constraints to greycos.solver.core;
+----
+
+Alternatively, open the package at launch with `--add-opens my.application/org.acme.constraints=greycos.solver.core`.
+If GreyCOS is on the class path, use `--add-opens my.application/org.acme.constraints=ALL-UNNAMED` instead.
+Replace the module and package names with those reported in the startup exception.
+
+==== Eligible lambdas and provider behavior
+
+Automatic node sharing considers ordinary lambdas and method references that capture no values.
+It compares the functional interface, method types and complete implementation information.
+For lambda bodies that can be compared safely, this includes instruction operands, control flow, exception handlers,
+typed constants and bootstrap arguments.
+Method references retain the identity of their target method.
+Matching source text alone does not establish equivalence, and a hash collision cannot make two implementations equivalent.
+
+GreyCOS also checks available application helper methods for stack observation, following calls and method references
+without initializing the helper classes.
+Lambdas that capture stack traces, inspect the stack through helpers, or depend on helper bytecode that cannot be analyzed
+retain their original implementation identity.
+An unsafe lambda does not prevent unrelated eligible lambdas from sharing.
+This analysis inspects available method declarations; it does not prove the behavior of every runtime override or reflective call.
+Callbacks and their dynamically selected callees must not depend on the caller's stack.
+If a constraint-building method selected for copying calls a stack-observing helper,
+solver creation fails with the method and helper chain.
+
+Lambdas that capture values, including `this`, remain unshared.
+Lambdas using the extended lambda bootstrap, such as serializable lambdas or lambdas with additional marker interfaces,
+also remain unshared.
+Their captured values, serialization behavior and additional interfaces are preserved when other sites in the provider are shared.
+The provider itself must be non-serializable when transformation is required:
+Java object serialization cannot resolve hidden provider classes, including provider instances captured by serializable lambdas.
+GreyCOS detects this condition at startup and reports how to change the provider or disable the feature.
+
+GreyCOS generates a hidden subclass of the original provider in the same class loader, package and module,
+with access to the original provider's private members.
+Provider instances remain assignable to the configured provider class; `getClass()` returns the generated subclass.
+Use the original class literal when code needs the configured provider's class identity.
+The subclass delegates construction to the original constructors and keeps the original instance fields and static fields.
+The original static initializer runs once, and existing static configuration remains visible.
+Lambda implementation methods remain in the original class.
+Each shared lambda is created and cached when its first original call site executes.
+Concurrent access publishes one instance per group, using a separate lock for each group.
+Calls from original constructors can initialize that group's lambda at its original point in construction.
+Defining the generated class does not create the shared lambdas or initialize their functional interfaces early.
+Private constraint-building helpers and superclass calls retain their receiver and dispatch behavior.
+Ordinary method references to copied private or static helpers use bridges to those helpers,
+so eligible stream operations inside them can share too.
+Serializable and marker-interface references keep their original targets and serialization behavior;
+they do not use these bridges.
+
+Breakpoints in copied constraint-building methods may not bind to the hidden subclass.
+Breakpoints in original constructors and lambda implementation methods can still apply, subject to debugger support.
+Disable automatic node sharing when you need to step through the original constraint-building methods.
 
 ==== What is node sharing?
 
 When using xref:constraints-and-score/score-calculation.adoc#constraintStreams[constraint streams], each xref:constraints-and-score/score-calculation.adoc#constraintStreamsBuildingBlocks[building block] forms a node in the score calculation network.
 When two building blocks are functionally equivalent, they can share the same node in the network.
-Sharing nodes allows the operation to be performed only once instead of multiple times, improving the performance of the solver.
+Sharing nodes allows the operation to be performed once for those building blocks, reducing repeated work during score calculation.
 To be functionally equivalent, the following must be true:
 
 * The building blocks must represent the same operation.
@@ -861,22 +927,21 @@ Counterintuitively, the building blocks produced by these seemingly identical me
 [source,java,options="nowrap"]
 ----
 UniConstraintStream<Shift> a(ConstraintFactory constraintFactory) {
-    return factory.forEach(Shift.class)
+    return constraintFactory.forEach(Shift.class)
                   .filter(shift -> shift.getEmployee().getName().equals("Ann"));
 }
 
 UniConstraintStream<Shift> b(ConstraintFactory constraintFactory) {
-    return factory.forEach(Shift.class)
+    return constraintFactory.forEach(Shift.class)
                   .filter(shift -> shift.getEmployee().getName().equals("Ann"));
 }
 ----
 
 The Java Virtual Machine is free to (and often does) create different instances of functionally equivalent lambdas.
-This severely limits the effectiveness of node sharing, since the only way to know two lambdas are equal is to compare their references.
+Constraint Streams compare lambda instances, so separately created instances can prevent otherwise equivalent nodes from being shared.
 
-When automatic node sharing is used, the `ConstraintProvider` class is transformed so
-captureless lambdas are accessed via a cached static final field.
-Lambdas that capture instance state or runtime arguments are left untouched to preserve semantics.
+When automatic node sharing finds eligible equivalent lambda sites,
+the generated subclass uses a shared cached instance for those sites.
 Consider the following input class:
 
 [source,java,options="nowrap"]
@@ -891,14 +956,14 @@ public class MyConstraintProvider implements ConstraintProvider {
     }
 
     Constraint a(ConstraintFactory constraintFactory) {
-        return factory.forEach(Shift.class)
+        return constraintFactory.forEach(Shift.class)
                       .filter(shift -> shift.getEmployee().getName().equals("Ann"))
                       .penalize(SimpleScore.ONE)
                       .asConstraint("a");
     }
 
     Constraint b(ConstraintFactory constraintFactory) {
-        return factory.forEach(Shift.class)
+        return constraintFactory.forEach(Shift.class)
                       .filter(shift -> shift.getEmployee().getName().equals("Ann"))
                       .penalize(SimpleScore.ONE)
                       .asConstraint("b");
@@ -906,13 +971,19 @@ public class MyConstraintProvider implements ConstraintProvider {
 }
 ----
 
-When automatic node sharing is enabled, the class will be transformed to look like this:
+The following simplified source illustrates the generated subclass.
+The actual class is hidden, and its cached predicate calls the original lambda implementation:
 
 [source,java,options="nowrap"]
 ----
-public class MyConstraintProvider implements ConstraintProvider {
+class GeneratedConstraintProvider extends MyConstraintProvider {
     private static final Predicate<Shift> $predicate1 = shift -> shift.getEmployee().getName().equals("Ann");
 
+    GeneratedConstraintProvider() {
+        super();
+    }
+
+    @Override
     public Constraint[] defineConstraints(ConstraintFactory constraintFactory) {
         return new Constraint[] {
             a(constraintFactory),
@@ -920,15 +991,17 @@ public class MyConstraintProvider implements ConstraintProvider {
         };
     }
 
+    @Override
     Constraint a(ConstraintFactory constraintFactory) {
-        return factory.forEach(Shift.class)
+        return constraintFactory.forEach(Shift.class)
                       .filter($predicate1)
                       .penalize(SimpleScore.ONE)
                       .asConstraint("a");
     }
 
+    @Override
     Constraint b(ConstraintFactory constraintFactory) {
-        return factory.forEach(Shift.class)
+        return constraintFactory.forEach(Shift.class)
                       .filter($predicate1)
                       .penalize(SimpleScore.ONE)
                       .asConstraint("b");
@@ -936,9 +1009,9 @@ public class MyConstraintProvider implements ConstraintProvider {
 }
 ----
 
-This transformation means that debugging breakpoints placed inside the original `ConstraintProvider` will not be honored in the transformed `ConstraintProvider`.
-
-From the above, you can see how this feature allows building blocks to share functionally equivalent parents, without needing the `ConstraintProvider` to be written in an awkward way.
+Both filters now receive the same predicate instance and have the same parent stream, so they can share one filter node.
+This reduces repeated predicate evaluations.
+It does not by itself establish a throughput or memory improvement; benchmark the enabled and disabled configurations on representative problems.
 
 
 [#throttlingBestSolutionEvents]

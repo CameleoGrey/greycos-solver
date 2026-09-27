@@ -17,7 +17,7 @@ class DefaultConstraintProviderNodeSharerTest {
         sharer.buildNodeSharedConstraintProvider(SimpleConstraintProvider.class);
 
     assertThat(result).isNotNull();
-    assertThat(result.getName()).isEqualTo(SimpleConstraintProvider.class.getName());
+    assertThat(result.getSuperclass()).isSameAs(SimpleConstraintProvider.class);
   }
 
   @Test
@@ -28,7 +28,7 @@ class DefaultConstraintProviderNodeSharerTest {
         sharer.buildNodeSharedConstraintProvider(ComplexConstraintProvider.class);
 
     assertThat(result).isNotNull();
-    assertThat(result.getName()).isEqualTo(ComplexConstraintProvider.class.getName());
+    assertThat(result.getSuperclass()).isSameAs(ComplexConstraintProvider.class);
   }
 
   @Test
@@ -38,8 +38,8 @@ class DefaultConstraintProviderNodeSharerTest {
     Class<? extends ConstraintProvider> result =
         sharer.buildNodeSharedConstraintProvider(NoLambdaConstraintProvider.class);
 
-    // Should return a class (even though no transformation occurred)
-    assertThat(result).isNotNull();
+    // No equivalent groups means there is no reason to define another class.
+    assertThat(result).isSameAs(NoLambdaConstraintProvider.class);
     assertThat(result.getName()).isEqualTo(NoLambdaConstraintProvider.class.getName());
   }
 
@@ -70,7 +70,7 @@ class DefaultConstraintProviderNodeSharerTest {
     Class<? extends ConstraintProvider> result =
         sharer.buildNodeSharedConstraintProvider(SimpleConstraintProvider.class);
 
-    // Result should be a different class instance (loaded by different classloader)
+    // The generated class is a true subtype of the original provider.
     assertThat(result).isNotSameAs(SimpleConstraintProvider.class);
   }
 

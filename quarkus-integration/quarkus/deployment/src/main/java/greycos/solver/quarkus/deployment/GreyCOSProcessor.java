@@ -1143,9 +1143,13 @@ class GreyCOSProcessor {
 
   protected void applyScoreDirectorFactoryProperties(
       IndexView indexView, SolverConfig solverConfig) {
-    if (solverConfig.getScoreDirectorFactoryConfig() == null) {
-      var scoreDirectorFactoryConfig = defaultScoreDirectoryFactoryConfig(indexView);
-      solverConfig.setScoreDirectorFactoryConfig(scoreDirectorFactoryConfig);
+    var scoreDirectorFactoryConfig = solverConfig.getScoreDirectorFactoryConfig();
+    if (scoreDirectorFactoryConfig == null) {
+      solverConfig.setScoreDirectorFactoryConfig(defaultScoreDirectoryFactoryConfig(indexView));
+    } else if (scoreDirectorFactoryConfig.getEasyScoreCalculatorClass() == null
+        && scoreDirectorFactoryConfig.getConstraintProviderClass() == null
+        && scoreDirectorFactoryConfig.getIncrementalScoreCalculatorClass() == null) {
+      scoreDirectorFactoryConfig.inherit(defaultScoreDirectoryFactoryConfig(indexView));
     }
   }
 

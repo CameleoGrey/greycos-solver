@@ -75,9 +75,14 @@ public sealed class BavetConstraintStreamScoreDirectorFactory<
       var nodeSharer = new DefaultConstraintProviderNodeSharer();
       Class<? extends ConstraintProvider> transformedClass =
           nodeSharer.buildNodeSharedConstraintProvider(providedConstraintProviderClass);
-      LOGGER.info(
-          "Successfully applied node sharing transformation. Transformed class: {}",
-          transformedClass.getName());
+      if (transformedClass == providedConstraintProviderClass) {
+        LOGGER.debug(
+            "No eligible duplicate lambdas found in {}", providedConstraintProviderClass.getName());
+      } else {
+        LOGGER.info(
+            "Successfully applied node sharing transformation. Transformed class: {}",
+            transformedClass.getName());
+      }
       return transformedClass;
     } else {
       return providedConstraintProviderClass;

@@ -1,78 +1,48 @@
 package greycos.solver.core.impl.nodesharing;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import greycos.solver.core.api.score.stream.ConstraintProvider;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
- * Transforms ConstraintProvider classes to enable automatic lambda node sharing.
- *
- * <p>Why: Sharing identical lambdas across constraint streams reduces memory and improves
- * performance. How: Validates class requirements, transforms bytecode using ASM, loads transformed
- * class. What: Public API for creating node-shared ConstraintProvider instances.
+ * Builds a subclass which shares equivalent stateless lambdas without duplicating provider state.
  */
 public final class DefaultConstraintProviderNodeSharer {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(DefaultConstraintProviderNodeSharer.class);
+  /* ClassValue permits the provider and its defining loader to be unloaded together. Its value is
+   * a holder because computeValue may race; generation and class definition must happen only once. */
+  private static final ClassValue<Transformation> TRANSFORMATIONS =
+      new ClassValue<>() {
+        @Override
+        protected Transformation computeValue(Class<?> type) {
+          return new Transformation();
+        }
+      };
 
-  private static final Object BOOTSTRAP_CLASS_LOADER_KEY = new Object();
-
-  private final Map<Object, NodeSharedClassLoader> classLoaderMap;
-
-  public DefaultConstraintProviderNodeSharer() {
-    this.classLoaderMap = new ConcurrentHashMap<>();
-  }
-
+  @SuppressWarnings("unchecked")
   public <T extends ConstraintProvider> Class<T> buildNodeSharedConstraintProvider(
       Class<T> constraintProviderClass) {
-
-    LOGGER.debug("Starting node sharing transformation for {}", constraintProviderClass.getName());
-    try {
-      NodeSharingValidator.validate(constraintProviderClass);
-      LOGGER.debug("Validation passed for {}", constraintProviderClass.getName());
-
-      NodeSharingTransformer transformer = new NodeSharingTransformer(constraintProviderClass);
-      byte[] transformedBytecode = transformer.transform();
-      LOGGER.debug("Bytecode transformation completed for {}", constraintProviderClass.getName());
-
-      Class<T> transformedClass =
-          getClassLoader(constraintProviderClass)
-              .defineNodeSharedClass(constraintProviderClass, transformedBytecode);
-      LOGGER.info(
-          "Successfully created node-shared ConstraintProvider: {} -> {}",
-          constraintProviderClass.getSimpleName(),
-          transformedClass.getSimpleName());
-
-      return transformedClass;
-
-    } catch (IllegalArgumentException e) {
-      LOGGER.warn(
-          "Validation failed for {}: {}", constraintProviderClass.getName(), e.getMessage());
-      throw e;
-    } catch (Exception e) {
-      LOGGER.error(
-          "Node sharing transformation failed for {}: {}",
-          constraintProviderClass.getName(),
-          e.getMessage(),
-          e);
-      throw new IllegalStateException(
-          "Failed to create node-shared ConstraintProvider for "
-              + constraintProviderClass.getName()
-              + ". Error: "
-              + e.getMessage(),
-          e);
+    var transformation = TRANSFORMATIONS.get(constraintProviderClass);
+    synchronized (transformation) {
+      if (transformation.result == null) {
+        NodeSharingValidator.validate(constraintProviderClass);
+        try {
+          transformation.result = new NodeSharingTransformer(constraintProviderClass).transform();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+          throw e;
+        } catch (ReflectiveOperationException | LinkageError e) {
+          throw new IllegalStateException(
+              "Failed to create node-shared ConstraintProvider for "
+                  + constraintProviderClass.getName()
+                  + ". Correct the reported provider or module-access problem, or disable "
+                  + "constraintStreamAutomaticNodeSharing. Cause: "
+                  + e.getMessage(),
+              e);
+        }
+      }
+      return (Class<T>) transformation.result;
     }
   }
 
-  private NodeSharedClassLoader getClassLoader(Class<?> constraintProviderClass) {
-    ClassLoader parentClassLoader = constraintProviderClass.getClassLoader();
-    Object cacheKey = parentClassLoader == null ? BOOTSTRAP_CLASS_LOADER_KEY : parentClassLoader;
-    return classLoaderMap.computeIfAbsent(
-        cacheKey, ignored -> new NodeSharedClassLoader(parentClassLoader));
+  private static final class Transformation {
+    private Class<?> result;
   }
 }

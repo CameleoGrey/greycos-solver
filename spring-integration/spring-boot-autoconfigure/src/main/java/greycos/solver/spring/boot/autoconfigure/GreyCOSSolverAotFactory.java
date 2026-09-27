@@ -42,6 +42,8 @@ public class GreyCOSSolverAotFactory implements EnvironmentAware {
   @SuppressWarnings("unused") // Referenced by GreyCOSSolverAutoConfiguration as a String.
   public SolverConfig solverConfigSupplier(String solverConfigXml) {
     SolverConfigIO solverConfigIO = new SolverConfigIO();
-    return solverConfigIO.read(new StringReader(solverConfigXml));
+    var solverConfig = solverConfigIO.read(new StringReader(solverConfigXml));
+    GreyCOSSolverNativeSupport.assertNodeSharingSupported(solverConfig, "AOT runtime");
+    return solverConfig;
   }
 }

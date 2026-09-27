@@ -14,10 +14,7 @@ public final class LambdaInfo {
 
   private final String methodName;
   private final int instructionOffset;
-  private final String functionalInterfaceType;
-  private final String implementationMethod;
-  private final String implementationMethodType;
-  private final List<Object> capturedArguments;
+  private final LambdaKey key;
 
   public LambdaInfo(
       String methodName,
@@ -26,12 +23,20 @@ public final class LambdaInfo {
       String implementationMethod,
       String implementationMethodType,
       List<Object> capturedArguments) {
+    this(
+        methodName,
+        instructionOffset,
+        new LambdaKey(
+            functionalInterfaceType,
+            implementationMethod,
+            implementationMethodType,
+            capturedArguments));
+  }
+
+  public LambdaInfo(String methodName, int instructionOffset, LambdaKey key) {
     this.methodName = Objects.requireNonNull(methodName);
     this.instructionOffset = instructionOffset;
-    this.functionalInterfaceType = Objects.requireNonNull(functionalInterfaceType);
-    this.implementationMethod = Objects.requireNonNull(implementationMethod);
-    this.implementationMethodType = Objects.requireNonNull(implementationMethodType);
-    this.capturedArguments = List.copyOf(capturedArguments);
+    this.key = Objects.requireNonNull(key);
   }
 
   public String getMethodName() {
@@ -43,24 +48,23 @@ public final class LambdaInfo {
   }
 
   public String getFunctionalInterfaceType() {
-    return functionalInterfaceType;
+    return key.getFunctionalInterfaceType();
   }
 
   public String getImplementationMethod() {
-    return implementationMethod;
+    return key.getImplementationMethod();
   }
 
   public String getImplementationMethodType() {
-    return implementationMethodType;
+    return key.getImplementationMethodType();
   }
 
   public List<Object> getCapturedArguments() {
-    return capturedArguments;
+    return key.getCapturedArguments();
   }
 
   public LambdaKey getKey() {
-    return new LambdaKey(
-        functionalInterfaceType, implementationMethod, implementationMethodType, capturedArguments);
+    return key;
   }
 
   @Override
@@ -74,21 +78,12 @@ public final class LambdaInfo {
     LambdaInfo lambdaInfo = (LambdaInfo) o;
     return instructionOffset == lambdaInfo.instructionOffset
         && Objects.equals(methodName, lambdaInfo.methodName)
-        && Objects.equals(functionalInterfaceType, lambdaInfo.functionalInterfaceType)
-        && Objects.equals(implementationMethod, lambdaInfo.implementationMethod)
-        && Objects.equals(implementationMethodType, lambdaInfo.implementationMethodType)
-        && Objects.equals(capturedArguments, lambdaInfo.capturedArguments);
+        && key.equals(lambdaInfo.key);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        methodName,
-        instructionOffset,
-        functionalInterfaceType,
-        implementationMethod,
-        implementationMethodType,
-        capturedArguments);
+    return Objects.hash(methodName, instructionOffset, key);
   }
 
   @Override
@@ -99,17 +94,8 @@ public final class LambdaInfo {
         + '\''
         + ", instructionOffset="
         + instructionOffset
-        + ", functionalInterfaceType='"
-        + functionalInterfaceType
-        + '\''
-        + ", implementationMethod='"
-        + implementationMethod
-        + '\''
-        + ", implementationMethodType='"
-        + implementationMethodType
-        + '\''
-        + ", capturedArguments="
-        + capturedArguments
+        + ", key="
+        + key
         + '}';
   }
 }
