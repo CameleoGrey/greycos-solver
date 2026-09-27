@@ -15,6 +15,8 @@
     <url>https://github.com/CameleoGrey/greycos-solver</url>
 
     <properties>
+    <!-- Build and test this application locally without publishing it. -->
+    <maven.deploy.skip>true</maven.deploy.skip>
         <!-- Code of integration tests should not be a part of test coverage reports. -->
         <sonar.coverage.exclusions>**/*</sonar.coverage.exclusions>
     </properties>

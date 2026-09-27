@@ -133,6 +133,24 @@
   <build>
     <plugins>
       <plugin>
+        <!-- Other modules use the shared test fixtures in this JAR. -->
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>test-jar</id>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+            <configuration>
+              <skipIfEmpty>true</skipIfEmpty>
+              <excludes>
+                <exclude>**/logback-test.xml</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>jaxb2-maven-plugin</artifactId>
         <configuration>

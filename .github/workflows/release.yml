@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (MAJOR.MINOR.PATCH, e.g. 0.11.15)'
+        description: 'Release version (MAJOR.MINOR.PATCH, e.g. 0.12.0)'
         required: true
       sourceBranch:
         description: 'Branch to cut the release from'
@@ -36,7 +36,6 @@ jobs:
       MAVEN_ARGS: "--no-transfer-progress --batch-mode"
       RELEASE_BRANCH_NAME: "__greycos_release_branch__"
       RELEASE_VERSION: ${{ github.event.inputs.version }}
-      DRY_RUN: ${{ github.event.inputs.dryRun }}
 
     steps:
       - name: Validate release version
@@ -60,6 +59,9 @@ jobs:
           java-version: '25'
           distribution: 'temurin'
           cache: 'maven'
+
+      - name: Test Maven Central release guards
+        run: python3 -B -m unittest discover -s .github/scripts -p 'test_verify_central_*.py'
 
       - name: Check release state
         shell: bash
@@ -142,12 +144,31 @@ jobs:
           done < <(git diff --cached --name-only)
 
           git commit -m "build: release version $RELEASE_VERSION"
-          if [[ "$DRY_RUN" == "false" ]]; then
-            git push --set-upstream origin "$RELEASE_BRANCH_NAME"
-          fi
 
       - name: Verify Maven Central staging repository
         run: .github/scripts/verify-central-staging.sh "$RELEASE_VERSION"
+
+      - name: Assemble signed Maven Central bundle without uploading
+        uses: jreleaser/release-action@90ac653bb9c79d11179e65d81499f3f34527dcd5 # 2.5.0
+        with:
+          version: 1.25.0
+          setup-java: false
+          arguments: deploy --dry-run
+        env:
+          JRELEASER_DRY_RUN: 'true'
+          JRELEASER_PROJECT_VERSION: ${{ github.event.inputs.version }}
+          JRELEASER_GITHUB_TOKEN: ${{ github.token }}
+          JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+          JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
+          JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
+          JRELEASER_MAVENCENTRAL_STAGE: UPLOAD
+
+      - name: Verify signed Maven Central bundle
+        run: python3 -B .github/scripts/verify-central-bundle.py "$RELEASE_VERSION"
+
+      - name: Push verified release branch
+        if: ${{ github.event.inputs.dryRun == 'false' }}
+        run: git push --set-upstream origin "$RELEASE_BRANCH_NAME"
 
       - name: Run JReleaser
         uses: jreleaser/release-action@90ac653bb9c79d11179e65d81499f3f34527dcd5 # 2.5.0
@@ -173,4 +194,6 @@ jobs:
             out/jreleaser/trace.log
             out/jreleaser/output.properties
             target/central-staging-manifest.txt
+            target/central-bundle-manifest.txt
+            target/central-bundle-report.json
           if-no-files-found: warn
