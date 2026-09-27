@@ -36,9 +36,4 @@ final class RuinRecreateConstructionHeuristicPhaseFactory<Solution_>
       HeuristicConfigPolicy<Solution_> configPolicy, PhaseTermination<Solution_> termination) {
     return new RuinRecreateConstructionHeuristicDecider<>(termination, buildForager(configPolicy));
   }
-
-  Integer resolvePhaseMoveThreadCount(
-      String phaseMoveThreadCount, Integer solverMoveThreadCount, boolean enforceMaximum) {
-    return resolveMoveThreadCount(phaseMoveThreadCount, solverMoveThreadCount, enforceMaximum);
-  }
 }

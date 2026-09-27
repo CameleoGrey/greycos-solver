@@ -319,7 +319,7 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   @Override
-  public void solvingError(SolverScope<Solution_> solverScope, Exception exception) {
+  public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
     super.solvingError(solverScope, exception);
     decider.solvingError(solverScope, exception);
   }

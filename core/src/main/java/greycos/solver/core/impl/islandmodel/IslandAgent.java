@@ -104,14 +104,19 @@ public class IslandAgent<Solution_> implements Runnable {
       islandSolver.runPhases(islandScope);
       islandSolver.solvingEnded(islandScope);
       markAsDead();
-    } catch (Exception e) {
+    } catch (Exception | Error e) {
       try {
         islandScope.getSolver().solvingError(islandScope, e);
-      } catch (Exception cleanupException) {
-        e.addSuppressed(cleanupException);
+      } catch (Throwable cleanupException) {
+        if (cleanupException != e) {
+          e.addSuppressed(cleanupException);
+        }
       }
       LOGGER.error("Agent {} encountered unexpected error", agentId, e);
       markAsDead();
+      if (e instanceof Error error) {
+        throw error;
+      }
       throw new IllegalStateException("Island agent " + agentId + " failed.", e);
     } finally {
       completionLatch.countDown();

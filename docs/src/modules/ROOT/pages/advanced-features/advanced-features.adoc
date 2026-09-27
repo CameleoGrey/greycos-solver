@@ -455,12 +455,18 @@ even though the actual compute time needed will be less.
 
 [NOTE]
 ====
-Multi-threaded solving is _still reproducible_, as long as the resolved `moveThreadCount` is stable.
-A run of the same solver configuration on 2 machines with a different number of CPUs,
-is still reproducible, unless the `moveThreadCount` is set to `AUTO` or a function of `availableProcessorCount`.
+Multi-threaded solving preserves reproducibility when the resolved `moveThreadCount` is stable
+and the xref:using-greycos-solver/running-the-solver.adoc#environmentModeReproducibility[environment mode's reproducibility requirements] are met.
+Use the same seed, ordered inputs and reproducible termination conditions when comparing runs.
+`AUTO` or a function of `availableProcessorCount` may resolve to different worker counts on different machines.
 ====
 
 ===== Advanced configuration
+
+Construction heuristic and local search phases inherit the solver's `moveThreadCount`.
+A phase can override it, including `NONE` to evaluate moves on the solver thread.
+The effective phase setting also controls isolation of nested ruin/recreate state;
+disabling workers in the nested construction heuristic does not allow concurrent outer moves to share that state.
 
 Move workers retain separate incremental working solutions and evaluate candidates concurrently.
 The solver thread consumes results in selection order and makes all acceptance decisions.
@@ -472,8 +478,12 @@ The candidate window is `moveThreadCount * moveThreadBufferSize`, with a default
 A larger window can keep workers busy when evaluation times vary, but also increases serial move generation
 and candidates discarded when foraging stops early.
 Compare useful move evaluations, completed steps and solution quality when tuning the worker count and buffer.
-The score-calculation count also includes worker setup, speculative calculations and coordinator accounting,
-and therefore is not a count of useful evaluated moves.
+The final score-calculation count includes actual coordinator and worker calculations,
+including worker setup, replay and speculative calculations.
+A consumed worker result is credited once: its logical coordinator credit is subtracted from the worker total
+when that total is added at phase shutdown.
+Calculation-count termination uses the coordinator's logical budget, so speculative work does not consume that budget.
+The final score-calculation count is therefore not a count of useful evaluated moves.
 
 For separate diagnostic runs, `-Dgreycos.solver.moveThreadDiagnostics=true` enables sampled worker timings
 and coordinator wait timings. The internal deciders expose final pipeline counters after the phase ends;
@@ -496,6 +506,7 @@ There are additional parameters you can supply to your `solverConfig.xml`:
 
 To run in an environment that doesn't like arbitrary thread creation,
 use `threadFactoryClass` to plug in a <<customThreadFactory,custom thread factory>>.
+The factory must return a thread for every requested worker; returning `null` fails phase startup.
 
 
 [#partitionedSearch]

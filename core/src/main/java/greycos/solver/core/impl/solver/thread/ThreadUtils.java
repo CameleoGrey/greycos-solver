@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.solver.thread;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -22,6 +23,18 @@ public class ThreadUtils {
 
   public static int getDefaultShutdownTimeout() {
     return defaultShutdownTimeoutSeconds;
+  }
+
+  /** Rejects a missing worker immediately, so startup can clean up any workers already created. */
+  public static ThreadFactory requireNonNullThreads(ThreadFactory threadFactory, String name) {
+    return runnable -> {
+      var worker = threadFactory.newThread(runnable);
+      if (worker == null) {
+        throw new IllegalStateException(
+            name + " thread factory (" + threadFactory + ") returned null instead of a worker.");
+      }
+      return worker;
+    };
   }
 
   public static void shutdownAwaitOrKill(

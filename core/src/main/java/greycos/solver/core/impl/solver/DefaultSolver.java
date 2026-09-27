@@ -171,12 +171,14 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
       }
       outerSolvingEnded(solverScope);
       return solverScope.getBestSolution();
-    } catch (Exception failure) {
+    } catch (Exception | Error failure) {
       errorCounter.increment();
       try {
         solvingError(solverScope, failure);
-      } catch (Exception cleanupFailure) {
-        failure.addSuppressed(cleanupFailure);
+      } catch (Throwable cleanupFailure) {
+        if (cleanupFailure != failure) {
+          failure.addSuppressed(cleanupFailure);
+        }
       }
       throw failure;
     } finally {

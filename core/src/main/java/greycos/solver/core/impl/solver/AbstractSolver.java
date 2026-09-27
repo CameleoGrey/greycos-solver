@@ -133,11 +133,17 @@ public abstract class AbstractSolver<Solution_> implements Solver<Solution_> {
     solverContextManager.solvingEnded(solverScope);
   }
 
-  public void solvingError(SolverScope<Solution_> solverScope, Exception exception) {
+  public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
     try {
       phaseLifecycleSupport.fireSolvingError(solverScope, exception);
       for (var phase : phaseList) {
-        phase.solvingError(solverScope, exception);
+        try {
+          phase.solvingError(solverScope, exception);
+        } catch (Throwable cleanupFailure) {
+          if (cleanupFailure != exception) {
+            exception.addSuppressed(cleanupFailure);
+          }
+        }
       }
     } finally {
       solverContextManager.solvingError(solverScope, exception);

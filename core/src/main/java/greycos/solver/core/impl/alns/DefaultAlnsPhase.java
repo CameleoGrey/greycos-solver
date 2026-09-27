@@ -103,11 +103,11 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
     AlnsRepairAttemptExecutor<Solution_, Score_> attempts = null;
     moveEvaluationDiagnostics = null;
     repairAttemptDiagnostics = null;
-    try (var resources = new ResourceScope();
-        var ownedContext =
-            context =
-                new DefaultAlnsContext<Solution_, Score_>(
-                    director, random, () -> polling.checkProbe() || budget.exhausted())) {
+    var resources = new ResourceScope();
+    try {
+      context =
+          new DefaultAlnsContext<>(
+              director, random, () -> polling.checkProbe() || budget.exhausted());
       context.configureTermination(
           () -> {
             polling.logicalProbeConsumed();
@@ -315,19 +315,28 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
       phaseFailure = failure;
       throw failure;
     } finally {
-      if (context != null) {
-        scope.addChildThreadsScoreCalculationCount(context.additionalCalculationCount());
-        moveEvaluationDiagnostics = context.moveEvaluationDiagnostics();
-        if (moveEvaluationDiagnostics != null) {
-          logger.debug(
-              "{}ALNS move evaluation diagnostics: {}", logIndentation, moveEvaluationDiagnostics);
+      try {
+        closeResources(context, resources, phaseFailure);
+      } catch (RuntimeException | Error cleanupFailure) {
+        phaseFailure = cleanupFailure;
+        throw cleanupFailure;
+      } finally {
+        if (context != null) {
+          scope.addChildThreadsScoreCalculationCount(context.additionalCalculationCount());
+          moveEvaluationDiagnostics = context.moveEvaluationDiagnostics();
+          if (moveEvaluationDiagnostics != null) {
+            logger.debug(
+                "{}ALNS move evaluation diagnostics: {}",
+                logIndentation,
+                moveEvaluationDiagnostics);
+          }
         }
+        if (attempts != null) {
+          scope.addChildThreadsScoreCalculationCount(attempts.getAdditionalCalculationCount());
+          repairAttemptDiagnostics = attempts.getDiagnostics();
+        }
+        finishPhase(scope, phaseFailure);
       }
-      if (attempts != null) {
-        scope.addChildThreadsScoreCalculationCount(attempts.getAdditionalCalculationCount());
-        repairAttemptDiagnostics = attempts.getDiagnostics();
-      }
-      finishPhase(scope, phaseFailure);
     }
     logger.info(
         "{}ALNS phase ({}) ended: time spent ({}), best score ({}), trials ({}).",
@@ -336,6 +345,34 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
         solverScope.calculateTimeMillisSpentUpToNow(),
         solverScope.getBestScore(),
         scope.getNextStepIndex());
+  }
+
+  private static void closeResources(
+      DefaultAlnsContext<?, ?> context, ResourceScope resources, Throwable originalFailure) {
+    // Try-with-resources would replace the original failure when close throws the same instance.
+    Throwable failure = originalFailure;
+    try {
+      if (context != null) context.close();
+    } catch (RuntimeException | Error cleanupFailure) {
+      if (failure == null) {
+        failure = cleanupFailure;
+      } else if (failure != cleanupFailure) {
+        failure.addSuppressed(cleanupFailure);
+      }
+    }
+    try {
+      resources.close();
+    } catch (RuntimeException | Error cleanupFailure) {
+      if (failure == null) {
+        failure = cleanupFailure;
+      } else if (failure != cleanupFailure) {
+        failure.addSuppressed(cleanupFailure);
+      }
+    }
+    if (originalFailure == null) {
+      if (failure instanceof Error error) throw error;
+      if (failure instanceof RuntimeException exception) throw exception;
+    }
   }
 
   private <Score_ extends Score<Score_>> void logTrial(
@@ -826,21 +863,27 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
 
     @Override
     public void close() {
-      RuntimeException failure = null;
+      Throwable failure = null;
       for (var closeable : resources.reversed()) {
         try {
           closeable.close();
-        } catch (Exception exception) {
+        } catch (Exception | Error exception) {
           if (failure == null) {
             failure =
-                new IllegalStateException("Failed to close an ALNS operator or policy.", exception);
-          } else {
+                exception instanceof Error
+                    ? exception
+                    : new IllegalStateException(
+                        "Failed to close an ALNS operator or policy.", exception);
+          } else if (failure != exception) {
             failure.addSuppressed(exception);
           }
         }
       }
+      if (failure instanceof Error error) {
+        throw error;
+      }
       if (failure != null) {
-        throw failure;
+        throw (RuntimeException) failure;
       }
     }
   }

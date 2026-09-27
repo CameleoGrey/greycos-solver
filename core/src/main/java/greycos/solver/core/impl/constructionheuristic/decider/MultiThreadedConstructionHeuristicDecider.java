@@ -15,6 +15,7 @@ import greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
+import greycos.solver.core.impl.solver.thread.ThreadUtils;
 import greycos.solver.core.preview.api.move.Move;
 
 /**
@@ -38,6 +39,7 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   protected ExecutorService executor;
   protected MoveEvaluationPipeline<Solution_> moveEvaluationPipeline;
   private MoveEvaluationPipeline.Diagnostics moveEvaluationDiagnostics;
+  private long transferredCalculationCount;
 
   public MultiThreadedConstructionHeuristicDecider(
       String logIndentation,
@@ -55,6 +57,7 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   @Override
   public void phaseStarted(ConstructionHeuristicPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
+    transferredCalculationCount = 0;
     executor = createThreadPoolExecutor();
     moveEvaluationPipeline = createMoveEvaluationPipeline(phaseScope.getPhaseIndex());
     moveEvaluationPipeline.setTerminationCheck(() -> termination.isPhaseTerminated(phaseScope));
@@ -79,7 +82,9 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   public void phaseEnded(ConstructionHeuristicPhaseScope<Solution_> phaseScope) {
     super.phaseEnded(phaseScope);
     moveEvaluationPipeline.close();
-    phaseScope.addChildThreadsScoreCalculationCount(moveEvaluationPipeline.getCalculationCount());
+    // Consumed scores already count toward coordinator termination; add only the remaining work.
+    phaseScope.addChildThreadsScoreCalculationCount(
+        moveEvaluationPipeline.getCalculationCount() - transferredCalculationCount);
     moveEvaluationDiagnostics = moveEvaluationPipeline.getDiagnostics();
     logger.debug("{}Move evaluation diagnostics: {}", logIndentation, moveEvaluationDiagnostics);
     moveEvaluationPipeline = null;
@@ -90,7 +95,7 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   }
 
   @Override
-  public void solvingError(SolverScope<Solution_> solverScope, Exception exception) {
+  public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
     super.solvingError(solverScope, exception);
     if (moveEvaluationPipeline != null) {
       moveEvaluationPipeline.abort();
@@ -98,9 +103,9 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   }
 
   protected ExecutorService createThreadPoolExecutor() {
-    ExecutorService threadPoolExecutor =
-        Executors.newFixedThreadPool(moveThreadCount, threadFactory);
-    return threadPoolExecutor;
+    return Executors.newFixedThreadPool(
+        moveThreadCount,
+        ThreadUtils.requireNonNullThreads(threadFactory, "Construction Heuristic"));
   }
 
   @Override
@@ -112,11 +117,14 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     int selectMoveIndex = 0;
     int nextForagingMoveIndex = 0;
     int movesInPlay = 0;
+    boolean terminatedPrematurely = false;
 
     while (moveIterator.hasNext() || movesInPlay > 0) {
       boolean hasNextMove = moveIterator.hasNext();
       if (movesInPlay > 0 && (selectMoveIndex >= selectedMoveBufferSize || !hasNextMove)) {
-        if (forageResult(stepScope, stepIndex, nextForagingMoveIndex)) {
+        var forageResult = forageResult(stepScope, stepIndex, nextForagingMoveIndex);
+        if (forageResult != ForageResult.CONTINUE) {
+          terminatedPrematurely = forageResult == ForageResult.TERMINATED;
           break;
         }
         nextForagingMoveIndex++;
@@ -137,7 +145,11 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
 
     moveEvaluationPipeline.cancelStep();
 
-    pickMove(stepScope);
+    // A partial CH step can worsen an optional assignment before its no-change move is considered.
+    // Only complete evaluation or an intentional forager early pick may commit a move.
+    if (!terminatedPrematurely) {
+      pickMove(stepScope);
+    }
 
     if (stepScope.getStep() != null) {
       var scoreDirector = stepScope.getScoreDirector();
@@ -149,18 +161,18 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     }
   }
 
-  private boolean forageResult(
+  private ForageResult forageResult(
       ConstructionHeuristicStepScope<Solution_> stepScope, int stepIndex, int expectedMoveIndex) {
     MoveEvaluationPipeline.Result<Solution_> result;
     try {
       result = moveEvaluationPipeline.take();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return true;
+      return ForageResult.TERMINATED;
     }
 
     if (result == null) {
-      return true;
+      return ForageResult.TERMINATED;
     }
 
     if (stepIndex != result.stepIndex()) {
@@ -196,14 +208,23 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     } else {
       moveScope.setScore(result.score());
       moveScope.getScoreDirector().incrementCalculationCount();
+      transferredCalculationCount++;
       forager.addMove(moveScope);
       if (forager.isQuitEarly()) {
-        return true;
+        return ForageResult.PICK_EARLY;
       }
     }
 
     stepScope.getPhaseScope().getSolverScope().checkYielding();
-    return termination.isPhaseTerminated(stepScope.getPhaseScope());
+    return termination.isPhaseTerminated(stepScope.getPhaseScope())
+        ? ForageResult.TERMINATED
+        : ForageResult.CONTINUE;
+  }
+
+  private enum ForageResult {
+    CONTINUE,
+    PICK_EARLY,
+    TERMINATED
   }
 
   @Override

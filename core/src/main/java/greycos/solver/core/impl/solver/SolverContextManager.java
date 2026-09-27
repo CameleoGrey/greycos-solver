@@ -131,7 +131,9 @@ public class SolverContextManager<Solution_, Score_ extends Score<Score_>>
         try {
           release(newSolverContext.scoreDirector());
         } catch (RuntimeException | Error closeFailure) {
-          failure.addSuppressed(closeFailure);
+          if (closeFailure != failure) {
+            failure.addSuppressed(closeFailure);
+          }
         }
         throw failure;
       }
@@ -154,7 +156,7 @@ public class SolverContextManager<Solution_, Score_ extends Score<Score_>>
     currentContext = firstPhaseContext;
     try {
       loadContext(solverScope, bestSolutionRecaller, null, firstPhaseContext);
-    } catch (RuntimeException failure) {
+    } catch (RuntimeException | Error failure) {
       solvingError(solverScope, failure);
       throw failure;
     }
@@ -174,7 +176,9 @@ public class SolverContextManager<Solution_, Score_ extends Score<Score_>>
       close(solverScope);
     } catch (RuntimeException | Error releaseException) {
       // The caller is on its way to rethrowing the real failure; this must not take its place.
-      exception.addSuppressed(releaseException);
+      if (releaseException != exception) {
+        exception.addSuppressed(releaseException);
+      }
     }
   }
 

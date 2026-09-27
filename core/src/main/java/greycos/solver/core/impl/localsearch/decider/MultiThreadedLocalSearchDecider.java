@@ -17,6 +17,7 @@ import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
+import greycos.solver.core.impl.solver.thread.ThreadUtils;
 import greycos.solver.core.preview.api.move.Move;
 
 /**
@@ -39,6 +40,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   protected ExecutorService executor;
   protected MoveEvaluationPipeline<Solution_> moveEvaluationPipeline;
   private MoveEvaluationPipeline.Diagnostics moveEvaluationDiagnostics;
+  private long transferredCalculationCount;
 
   public MultiThreadedLocalSearchDecider(
       String logIndentation,
@@ -58,6 +60,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   @Override
   public void phaseStarted(LocalSearchPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
+    transferredCalculationCount = 0;
     executor = createThreadPoolExecutor();
     moveEvaluationPipeline = createMoveEvaluationPipeline(phaseScope.getPhaseIndex());
     moveEvaluationPipeline.setTerminationCheck(() -> termination.isPhaseTerminated(phaseScope));
@@ -82,7 +85,9 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   public void phaseEnded(LocalSearchPhaseScope<Solution_> phaseScope) {
     super.phaseEnded(phaseScope);
     moveEvaluationPipeline.close();
-    phaseScope.addChildThreadsScoreCalculationCount(moveEvaluationPipeline.getCalculationCount());
+    // Consumed scores already count toward coordinator termination; add only the remaining work.
+    phaseScope.addChildThreadsScoreCalculationCount(
+        moveEvaluationPipeline.getCalculationCount() - transferredCalculationCount);
     moveEvaluationDiagnostics = moveEvaluationPipeline.getDiagnostics();
     logger.debug("{}Move evaluation diagnostics: {}", logIndentation, moveEvaluationDiagnostics);
     moveEvaluationPipeline = null;
@@ -93,7 +98,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   }
 
   @Override
-  public void solvingError(SolverScope<Solution_> solverScope, Exception exception) {
+  public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
     super.solvingError(solverScope, exception);
     if (moveEvaluationPipeline != null) {
       moveEvaluationPipeline.abort();
@@ -101,7 +106,8 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   }
 
   protected ExecutorService createThreadPoolExecutor() {
-    return Executors.newFixedThreadPool(moveThreadCount, threadFactory);
+    return Executors.newFixedThreadPool(
+        moveThreadCount, ThreadUtils.requireNonNullThreads(threadFactory, "Local Search"));
   }
 
   @Override
@@ -204,6 +210,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     } else {
       moveScope.setScore(result.score());
       moveScope.getScoreDirector().incrementCalculationCount();
+      transferredCalculationCount++;
       boolean accepted = acceptor.isAccepted(moveScope);
       moveScope.setAccepted(accepted);
       logger.trace(

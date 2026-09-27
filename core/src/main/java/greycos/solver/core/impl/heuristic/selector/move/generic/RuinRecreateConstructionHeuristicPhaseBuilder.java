@@ -44,15 +44,10 @@ public final class RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>
                 (SolverTermination<Solution_>)
                     TerminationFactory.<Solution_>create(new TerminationConfig())
                         .buildTermination(solverConfigPolicy));
-    var phaseMoveThreadCount = constructionHeuristicConfig.getMoveThreadCount();
-    var effectiveMoveThreadCount =
-        phaseMoveThreadCount == null
-            ? solverConfigPolicy.getMoveThreadCount()
-            : constructionHeuristicPhaseFactory.resolvePhaseMoveThreadCount(
-                phaseMoveThreadCount, solverConfigPolicy.getMoveThreadCount(), true);
-    if (effectiveMoveThreadCount != null && effectiveMoveThreadCount >= 1) {
-      builder.multithreaded = true;
-    }
+    // The enclosing phase's workers share this builder even if nested CH explicitly selects NONE.
+    builder.multithreaded =
+        solverConfigPolicy.getMoveThreadCount() != null
+            || builder.configPolicy.getMoveThreadCount() != null;
     return builder;
   }
 
@@ -84,11 +79,12 @@ public final class RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>
    * Consequently, the list {@code elementsToRecreate} used by {@code getEntityPlacer} or the {@code
    * decider}, will be shared between the main and move threads. This sharing can lead to race
    * conditions. The method creates a new copy of the builder and the decider to avoid race
-   * conditions.
+   * conditions. Copy on every execution when threading is enabled, because some score director
+   * implementations do not identify move-worker directors as derived.
    */
   public RuinRecreateConstructionHeuristicPhaseBuilder<Solution_> ensureThreadSafe(
       InnerScoreDirector<Solution_, ?> scoreDirector) {
-    if (multithreaded && scoreDirector.isDerived()) {
+    if (multithreaded) {
       return new RuinRecreateConstructionHeuristicPhaseBuilder<>(
           configPolicy,
           constructionHeuristicPhaseFactory,

@@ -66,7 +66,15 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
     var environmentMode = resolveEnvironmentMode(solverConfigPolicy);
-    var phaseConfigPolicy = solverConfigPolicy.copyPhaseConfigPolicy(environmentMode);
+    var moveThreadCount =
+        resolveMoveThreadCount(
+            phaseConfig.getMoveThreadCount(), solverConfigPolicy.getMoveThreadCount(), true);
+    var phaseConfigPolicy =
+        solverConfigPolicy
+            .cloneBuilder()
+            .withEnvironmentMode(environmentMode)
+            .withMoveThreadCount(moveThreadCount)
+            .build();
     var phaseTermination = buildPhaseTermination(phaseConfigPolicy, solverTermination);
     var decider = buildDecider(phaseConfigPolicy, phaseTermination);
     return new DefaultLocalSearchPhase.Builder<>(
@@ -190,9 +198,7 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
           """
               .formatted(moveRepository, moveRepository.isNeverEnding(), forager));
     }
-    var moveThreadCount =
-        resolveMoveThreadCount(
-            phaseConfig.getMoveThreadCount(), configPolicy.getMoveThreadCount(), true);
+    var moveThreadCount = configPolicy.getMoveThreadCount();
     var environmentMode = configPolicy.getEnvironmentMode();
     var decider =
         moveThreadCount == null

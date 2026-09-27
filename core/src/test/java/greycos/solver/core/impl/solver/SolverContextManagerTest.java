@@ -233,6 +233,19 @@ class SolverContextManagerTest {
   }
 
   @Test
+  void solvingErrorDoesNotSuppressTheOriginalErrorOnItself() {
+    var scope = new SolverScope<TestdataSolution>();
+    InnerScoreDirector<TestdataSolution, SimpleScore> director = mock(InnerScoreDirector.class);
+    var failure = new AssertionError("The same failure from solve and director close");
+    doThrow(failure).when(director).close();
+    scope.setScoreDirector(director);
+    var manager = buildManager(GLOBAL_MODE);
+
+    assertThatCode(() -> manager.solvingError(scope, failure)).doesNotThrowAnyException();
+    assertThat(failure.getSuppressed()).isEmpty();
+  }
+
+  @Test
   void solvingErrorBeforeSolvingStartedDoesNotThrow() {
     var solverScope = buildSolverScope();
     var manager = buildManager(GLOBAL_MODE);

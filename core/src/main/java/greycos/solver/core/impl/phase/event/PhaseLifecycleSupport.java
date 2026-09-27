@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.phase.event;
 
+import java.util.List;
+
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.solver.event.AbstractEventSupport;
@@ -45,9 +47,15 @@ public final class PhaseLifecycleSupport<Solution_>
     }
   }
 
-  public void fireSolvingError(SolverScope<Solution_> solverScope, Exception exception) {
-    for (PhaseLifecycleListener<Solution_> listener : getEventListeners()) {
-      listener.solvingError(solverScope, exception);
+  public void fireSolvingError(SolverScope<Solution_> solverScope, Throwable exception) {
+    for (PhaseLifecycleListener<Solution_> listener : List.copyOf(getEventListeners())) {
+      try {
+        listener.solvingError(solverScope, exception);
+      } catch (Throwable cleanupFailure) {
+        if (cleanupFailure != exception) {
+          exception.addSuppressed(cleanupFailure);
+        }
+      }
     }
   }
 }

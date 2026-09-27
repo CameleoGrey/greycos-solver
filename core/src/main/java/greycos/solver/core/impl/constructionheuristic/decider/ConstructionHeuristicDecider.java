@@ -83,7 +83,7 @@ public class ConstructionHeuristicDecider<Solution_> {
     forager.solvingEnded(solverScope);
   }
 
-  public void solvingError(SolverScope<Solution_> solverScope, Exception exception) {
+  public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
     // Overridable by a subclass.
   }
 

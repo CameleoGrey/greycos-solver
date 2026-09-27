@@ -2776,7 +2776,7 @@ class DefaultSolverTest {
         new PhaseLifecycleListenerAdapter<TestdataListSolution>() {
           @Override
           public void solvingError(
-              SolverScope<TestdataListSolution> solverScope, Exception exception) {
+              SolverScope<TestdataListSolution> solverScope, Throwable exception) {
             workingSolutionSeenByListener.set(solverScope.getScoreDirector().getWorkingSolution());
           }
         });

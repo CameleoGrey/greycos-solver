@@ -182,9 +182,9 @@ class IslandLifecycleRegressionTest {
             List.of(phase));
 
     assertThatThrownBy(() -> solver.solvingEnded(scope)).isSameAs(failure);
-    assertThatThrownBy(() -> solver.solvingError(scope, failure)).isSameAs(errorCleanupFailure);
+    solver.solvingError(scope, failure);
 
-    assertThat(failure.getSuppressed()).containsExactly(closeFailure);
+    assertThat(failure.getSuppressed()).containsExactly(closeFailure, errorCleanupFailure);
     verify(phase).solvingEnded(scope);
     verify(phase).solvingError(scope, failure);
     verify(director).close();

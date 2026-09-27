@@ -16,6 +16,7 @@ import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationSource;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.solver.thread.ThreadUtils;
 import greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.Nullable;
@@ -261,15 +262,7 @@ final class AlnsProbeEvaluator<Solution_, Score_ extends Score<Score_>> implemen
     int count = Objects.requireNonNull(workerCount);
     var executor =
         Executors.newFixedThreadPool(
-            count,
-            runnable -> {
-              var worker = threadFactory.newThread(runnable);
-              if (worker == null) {
-                throw new IllegalStateException(
-                    "ALNS thread factory returned null instead of a worker.");
-              }
-              return worker;
-            });
+            count, ThreadUtils.requireNonNullThreads(threadFactory, "ALNS"));
     try {
       pipeline =
           new MoveEvaluationPipeline<>(

@@ -62,10 +62,14 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
             phaseConfig.getValueSorterManner(),
             constructionHeuristicType_.getDefaultValueSorterManner());
     var environmentMode = resolveEnvironmentMode(solverConfigPolicy);
+    var moveThreadCount =
+        resolveMoveThreadCount(
+            phaseConfig.getMoveThreadCount(), solverConfigPolicy.getMoveThreadCount(), true);
     var phaseConfigPolicyBuilder =
         solverConfigPolicy
             .cloneBuilder()
             .withEnvironmentMode(environmentMode)
+            .withMoveThreadCount(moveThreadCount)
             .withReinitializeVariableFilterEnabled(true)
             .withUnassignedValuesAllowed(true)
             .withEntitySorterManner(entitySorterManner)
@@ -199,9 +203,7 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
   protected ConstructionHeuristicDecider<Solution_> buildDecider(
       HeuristicConfigPolicy<Solution_> configPolicy, PhaseTermination<Solution_> termination) {
     var forager = buildForager(configPolicy);
-    var moveThreadCount =
-        resolveMoveThreadCount(
-            phaseConfig.getMoveThreadCount(), configPolicy.getMoveThreadCount(), true);
+    var moveThreadCount = configPolicy.getMoveThreadCount();
     var decider =
         (moveThreadCount == null)
             ? new ConstructionHeuristicDecider<>(

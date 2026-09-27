@@ -16,10 +16,13 @@ public interface SolverLifecycleListener<Solution_> extends EventListener {
   void solvingEnded(SolverScope<Solution_> solverScope);
 
   /**
-   * Invoked in case of an exception in the {@link greycos.solver.core.api.solver.Solver} run. In
-   * that case, the {@link #solvingEnded(SolverScope)} is never called. For internal purposes only.
+   * Invoked when the {@link greycos.solver.core.api.solver.Solver} run fails, including with an
+   * {@link Error}. The solver's error dispatch continues through its registered solver listeners
+   * and phases even if cleanup fails; distinct cleanup failures are suppressed on the original
+   * failure, which remains the primary cause. The normal {@link #solvingEnded(SolverScope)}
+   * lifecycle is not completed on this path. For internal purposes only.
    */
-  default void solvingError(SolverScope<Solution_> solverScope, Exception exception) {
+  default void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
     // no-op
   }
 }
