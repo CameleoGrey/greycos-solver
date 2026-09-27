@@ -80,6 +80,17 @@ class ThrottlingSolverEventListenerTest {
   }
 
   @Test
+  void of_throwsOnDurationOverflow() {
+    SolverEventListener<String> delegate = mock(SolverEventListener.class);
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () -> ThrottlingSolverEventListener.of(delegate, Duration.ofSeconds(Long.MAX_VALUE)))
+        .withMessageContaining("too large")
+        .withCauseInstanceOf(ArithmeticException.class);
+  }
+
+  @Test
   void singleEvent_deliveredAfterThrottleDuration() throws InterruptedException {
     SolverEventListener<String> delegate = mock(SolverEventListener.class);
     var event = createEvent("solution1");
@@ -133,7 +144,7 @@ class ThrottlingSolverEventListenerTest {
   }
 
   @Test
-  void continuousRapidEvents_deliverPeriodically() throws InterruptedException {
+  void separateBursts_deliverLatestEventFromEachBurst() throws InterruptedException {
     SolverEventListener<String> delegate = mock(SolverEventListener.class);
     var deliveryCount = new AtomicInteger(0);
     var lastDeliveredEvent = new AtomicReference<BestSolutionChangedEvent<String>>();

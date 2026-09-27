@@ -46,10 +46,21 @@ public final class ThrottlingSolverEventListener<Solution_>
     eventDispatcher.submit(event);
   }
 
+  /**
+   * Ends throttling and waits for pending delivery to finish, preserving the caller's interrupt
+   * status. Calls from a solver manager consumer or any throttler callback request termination and
+   * return so delivery can finish after callbacks return. Further events are delivered
+   * synchronously.
+   */
   public void terminateAndDeliverPending() {
     eventDispatcher.terminateAndDeliverPending();
   }
 
+  /**
+   * Ends throttling and releases its scheduler after pending delivery finishes. Calls from a solver
+   * manager consumer or any throttler callback return before shutdown completes. Other callers wait
+   * for completion even when interrupted, with their interrupt status restored before returning.
+   */
   @Override
   public void close() {
     eventDispatcher.close();

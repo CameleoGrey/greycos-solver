@@ -80,11 +80,21 @@ public interface SolverJobBuilder<Solution_> {
   /**
    * Sets a throttled best solution consumer.
    *
-   * <p>The delegate consumer will receive at most one event per {@code throttleDuration}. If
-   * multiple events arrive during the interval, only the last one seen so far is delivered. Under a
-   * sustained stream of rapid best solution updates, the latest event is delivered once per
-   * throttle interval until the stream subsides. The final best solution is always delivered
-   * regardless of throttle.
+   * <p>The first event waits for {@code throttleDuration}. During solving, the delegate receives at
+   * most one event per interval. If multiple events arrive during the interval, only the latest
+   * pending solution is delivered. Continuous updates do not postpone the pending delivery.
+   * Completion flushes the latest pending solution without waiting for the interval, before the
+   * final best solution consumer is called.
+   *
+   * <p>Each submitted job has independent throttling state, including jobs submitted through the
+   * same builder. Its event consumers run serially on the job's consumer thread. Problem-change
+   * futures complete only after a solution containing those changes has been consumed. If the
+   * delegate throws, the associated futures complete exceptionally and the configured exception
+   * handler is called; later events can still be delivered.
+   *
+   * <p>Closing the manager waits for accepted deliveries to finish, even if the closing thread is
+   * interrupted, and restores its interrupt status afterward. A close requested from an event
+   * consumer returns before cleanup finishes so that the current callback can return.
    *
    * <p>This is useful to prevent system overload during rapid solution improvement phases, where
    * hundreds of best solution events may arrive within seconds.
@@ -103,7 +113,8 @@ public interface SolverJobBuilder<Solution_> {
    * }</pre>
    *
    * @param delegate the actual consumer to call with throttled events
-   * @param throttleDuration minimum time between event deliveries; must be positive
+   * @param throttleDuration minimum time between event deliveries during solving; must be positive
+   *     and representable in nanoseconds
    * @return this
    */
   @NonNull

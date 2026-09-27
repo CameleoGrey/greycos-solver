@@ -22,9 +22,11 @@ final class ThrottledEventDispatcher<Event_> implements AutoCloseable {
   private final long throttleNanos;
   private final ScheduledThreadPoolExecutor scheduler;
   private final Object stateLock = new Object();
+  private final Object deliveryLock = new Object();
 
   private @Nullable Event_ pendingEvent = null;
   private @Nullable ScheduledFuture<?> scheduledDelivery = null;
+  private @Nullable Future<?> drainFuture = null;
   private State state = State.ACTIVE;
 
   ThrottledEventDispatcher(
@@ -61,39 +63,39 @@ final class ThrottledEventDispatcher<Event_> implements AutoCloseable {
   }
 
   void terminateAndDeliverPending() {
-    ScheduledFuture<?> futureToCancel;
+    waitForCompletion(requestTermination(), false);
+  }
+
+  private Future<?> requestTermination() {
     synchronized (stateLock) {
-      while (state == State.TERMINATING) {
-        try {
-          stateLock.wait();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return;
+      if (drainFuture == null) {
+        state = State.TERMINATING;
+        if (scheduledDelivery != null) {
+          scheduledDelivery.cancel(false);
+          scheduledDelivery = null;
         }
+        // Publish the drain before another caller can shut down the scheduler.
+        drainFuture = scheduler.submit(this::drainPendingEventsAndTerminate);
       }
-      if (state == State.TERMINATED) {
-        return;
-      }
-      state = State.TERMINATING;
-      futureToCancel = scheduledDelivery;
-      scheduledDelivery = null;
+      return drainFuture;
     }
-    if (futureToCancel != null) {
-      futureToCancel.cancel(false);
-    }
-    waitForDrainToComplete(scheduler.submit(this::drainPendingEventsAndTerminate));
   }
 
   @Override
   public void close() {
-    terminateAndDeliverPending();
-    shutdownScheduler();
+    var terminationFuture = requestTermination();
+    scheduler.shutdown();
+    waitForCompletion(terminationFuture, true);
   }
 
   boolean isTerminated() {
     synchronized (stateLock) {
       return state == State.TERMINATED;
     }
+  }
+
+  long getThrottleNanos() {
+    return throttleNanos;
   }
 
   private void deliverScheduledEvent() {
@@ -125,7 +127,6 @@ final class ThrottledEventDispatcher<Event_> implements AutoCloseable {
         pendingEvent = null;
         if (event == null) {
           state = State.TERMINATED;
-          stateLock.notifyAll();
           return;
         }
       }
@@ -134,25 +135,53 @@ final class ThrottledEventDispatcher<Event_> implements AutoCloseable {
   }
 
   private void deliverEvent(Event_ event) {
-    try {
-      delegate.accept(event);
-    } catch (Throwable throwable) {
-      logger.warn(
-          "A throttled best solution event consumer/listener failed; the event is considered delivered.",
-          throwable);
+    // Also serialize synchronous deliveries after throttling has terminated.
+    synchronized (deliveryLock) {
+      try {
+        SolverEventThreadContext.run(() -> delegate.accept(event));
+      } catch (Throwable throwable) {
+        logger.warn(
+            "A throttled best solution event consumer/listener failed; the event is considered delivered.",
+            throwable);
+      }
     }
   }
 
-  private void waitForDrainToComplete(Future<?> drainFuture) {
+  private void waitForCompletion(Future<?> terminationFuture, boolean waitForScheduler) {
+    if (SolverEventThreadContext.isActive()) {
+      // Waiting from another event delivery worker can create a cycle between callbacks.
+      return;
+    }
+    boolean interrupted = false;
     try {
-      drainFuture.get();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.warn(
-          "Interrupted while waiting for throttled best solution events to finish delivering.", e);
-    } catch (ExecutionException e) {
-      logger.warn(
-          "Failed while draining throttled best solution events during termination.", e.getCause());
+      while (true) {
+        try {
+          terminationFuture.get();
+          break;
+        } catch (InterruptedException e) {
+          interrupted = true;
+        } catch (ExecutionException e) {
+          logger.warn(
+              "Failed while draining throttled best solution events during termination.",
+              e.getCause());
+          break;
+        }
+      }
+      if (waitForScheduler) {
+        while (true) {
+          try {
+            if (scheduler.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)) {
+              break;
+            }
+          } catch (InterruptedException e) {
+            interrupted = true;
+          }
+        }
+      }
+    } finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 
@@ -161,24 +190,12 @@ final class ThrottledEventDispatcher<Event_> implements AutoCloseable {
     executor.setRemoveOnCancelPolicy(true);
     ThreadFactory threadFactory =
         runnable -> {
-          Thread thread = new Thread(runnable, threadName);
+          Thread thread = new Thread(() -> SolverEventThreadContext.run(runnable), threadName);
           thread.setDaemon(true);
           return thread;
         };
     executor.setThreadFactory(threadFactory);
     return executor;
-  }
-
-  private void shutdownScheduler() {
-    scheduler.shutdown();
-    try {
-      if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-        scheduler.shutdownNow();
-      }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      scheduler.shutdownNow();
-    }
   }
 
   private static long validateThrottleDuration(Duration throttleDuration) {

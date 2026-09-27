@@ -1017,8 +1017,8 @@ It does not by itself establish a throughput or memory improvement; benchmark th
 [#throttlingBestSolutionEvents]
 === Throttling best solution events in `SolverManager`
 
-This feature helps you avoid overloading your system with best solution events,
-especially in the early phase of the solving process when the solver is typically improving the solution very rapidly.
+Throttling limits how often your consumer processes best solution events.
+This reduces callback work when the solver improves solutions faster than your application needs updates.
 
 To enable event throttling, use `withThrottledBestSolutionEventConsumer(...)`
 when starting a new `SolverJob` using `SolverManager`:
@@ -1031,7 +1031,7 @@ import java.time.Duration;
 
 public class TimetableService {
 
-    private SolverManager<Timetable, Long> solverManager;
+    private SolverManager<Timetable> solverManager;
 
     public String solve(Timetable problem) {
         String jobId = ...;
@@ -1050,20 +1050,28 @@ public class TimetableService {
 }
 ----
 
-This will ensure that your system will never receive more than one best solution event per second.
-Some other important points to note:
+During solving, this consumer receives at most one event per second.
+Completion flushes the latest pending event immediately, so the final delivery may arrive sooner.
 
-- If multiple events arrive during the pre-defined 1-second interval, only the last event in that interval will be delivered.
-- If best solution events keep arriving continuously, the latest event will be delivered once per throttle interval.
-- When the `SolverJob` terminates, the last event received will be delivered regardless of the throttle,
-unless it was already delivered before.
-- If your consumer throws an exception, GreyCOS Solver will still count the event as delivered and continue throttling future events.
-- If the system is too occupied to start and execute new threads,
-event delivery will be delayed until a thread can be started.
+* The first event waits for the configured interval.
+Updates replace the pending solution without postponing its delivery.
+Continuous input therefore still produces periodic updates.
+* Each job has independent throttling state, including jobs started from the same builder.
+The job's event consumers run serially on its consumer thread.
+A slow callback or an occupied thread can delay delivery.
+* A problem-change future completes after a solution containing that change has been consumed.
+Coalescing solutions retains the completion obligations for all changes they contain.
+* A failed callback completes its associated problem-change futures exceptionally and invokes the configured exception handler.
+The event is considered attempted, and later best solution events can still be delivered.
+* Closing the manager drains accepted deliveries before releasing consumer resources.
+If the closing thread is interrupted, cleanup still waits for callbacks to return and then restores the interrupt flag.
+A close requested inside a callback returns before cleanup finishes; the pending delivery and cleanup follow that callback.
+
+Throttling reduces consumer work. The solver still finds and clones best solutions and produces its normal internal events.
 
 [NOTE]
 ====
-If you are using the `ThrottlingBestSolutionEventConsumer` for intermediate best solutions
-together with a final best solution consumer,
-both these consumers will receive the final best solution.
+When both a throttled best solution consumer and a final best solution consumer are configured,
+the latest pending best solution is consumed before the final consumer runs.
+An event already delivered to the best solution consumer is not delivered to it again during the flush.
 ====

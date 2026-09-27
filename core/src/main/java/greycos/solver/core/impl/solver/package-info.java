@@ -11,8 +11,9 @@
  * interval overwrite previous pending events, only the last event in each interval is delivered,
  * and the final best solution is always delivered regardless of the throttle interval.
  *
- * <p>The consumer is thread-safe, uses atomic references for consistency, and implements
- * AutoCloseable for proper resource cleanup.
+ * <p>Managed jobs throttle delivery on their consumer executor and acknowledge problem changes
+ * after the delegate returns. Each job has independent throttling state. Standalone wrappers
+ * implement AutoCloseable to drain pending events and release their scheduler.
  *
  * @since 1.30.0
  */

@@ -22,11 +22,12 @@ public final class ThrottlingBestSolutionEventConsumer<Solution_>
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ThrottlingBestSolutionEventConsumer.class);
 
+  private final Consumer<NewBestSolutionEvent<Solution_>> delegate;
   private final ThrottledEventDispatcher<NewBestSolutionEvent<Solution_>> eventDispatcher;
 
   private ThrottlingBestSolutionEventConsumer(
       Consumer<NewBestSolutionEvent<Solution_>> delegate, Duration throttleDuration) {
-    Objects.requireNonNull(delegate, "delegate must not be null");
+    this.delegate = Objects.requireNonNull(delegate, "delegate must not be null");
     this.eventDispatcher =
         new ThrottledEventDispatcher<>(
             LOGGER, delegate, throttleDuration, "throttling-consumer-scheduler");
@@ -45,10 +46,21 @@ public final class ThrottlingBestSolutionEventConsumer<Solution_>
     eventDispatcher.submit(event);
   }
 
+  /**
+   * Ends throttling and waits for pending delivery to finish, preserving the caller's interrupt
+   * status. Calls from a solver manager consumer or any throttler callback request termination and
+   * return so delivery can finish after callbacks return. Further events are delivered
+   * synchronously.
+   */
   public void terminateAndDeliverPending() {
     eventDispatcher.terminateAndDeliverPending();
   }
 
+  /**
+   * Ends throttling and releases its scheduler after pending delivery finishes. Calls from a solver
+   * manager consumer or any throttler callback return before shutdown completes. Other callers wait
+   * for completion even when interrupted, with their interrupt status restored before returning.
+   */
   @Override
   public void close() {
     eventDispatcher.close();
@@ -56,5 +68,13 @@ public final class ThrottlingBestSolutionEventConsumer<Solution_>
 
   boolean isTerminated() {
     return eventDispatcher.isTerminated();
+  }
+
+  Consumer<NewBestSolutionEvent<Solution_>> getDelegate() {
+    return delegate;
+  }
+
+  long getThrottleNanos() {
+    return eventDispatcher.getThrottleNanos();
   }
 }

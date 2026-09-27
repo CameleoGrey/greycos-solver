@@ -78,6 +78,19 @@ class ThrottlingBestSolutionEventConsumerTest {
   }
 
   @Test
+  void of_throwsOnDurationOverflow() {
+    Consumer<NewBestSolutionEvent<String>> delegate = mock(Consumer.class);
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                ThrottlingBestSolutionEventConsumer.of(
+                    delegate, Duration.ofSeconds(Long.MAX_VALUE)))
+        .withMessageContaining("too large")
+        .withCauseInstanceOf(ArithmeticException.class);
+  }
+
+  @Test
   void singleEvent_deliveredAfterThrottleDuration() throws InterruptedException {
     Consumer<NewBestSolutionEvent<String>> delegate = mock(Consumer.class);
     var event = createEvent("solution1");
@@ -131,7 +144,7 @@ class ThrottlingBestSolutionEventConsumerTest {
   }
 
   @Test
-  void continuousRapidEvents_deliverPeriodically() throws InterruptedException {
+  void separateBursts_deliverLatestEventFromEachBurst() throws InterruptedException {
     Consumer<NewBestSolutionEvent<String>> delegate = mock(Consumer.class);
     var deliveryCount = new AtomicInteger(0);
     var lastDeliveredEvent = new AtomicReference<NewBestSolutionEvent<String>>();
