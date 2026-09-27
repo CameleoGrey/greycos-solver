@@ -18,6 +18,7 @@ abstract sealed class AbstractUniversalTermination<Solution_> extends AbstractTe
         MoveCountTermination,
         PartitionTermination,
         ScoreCalculationCountTermination,
+        SharedScoreTermination,
         TimeMillisSpentTermination,
         UnimprovedTimeMillisSpentScoreDifferenceThresholdTermination,
         UnimprovedTimeMillisSpentTermination {

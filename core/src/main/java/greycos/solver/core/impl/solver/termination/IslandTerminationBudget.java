@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.ToLongFunction;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
@@ -27,16 +28,24 @@ public final class IslandTerminationBudget<Solution_> {
   private final Function<IslandSequenceTermination<Solution_>, Node<Solution_>> nodeFactory;
   private final List<ThresholdMonitor> thresholdMonitors = new ArrayList<>();
   private volatile Progress progress;
-  private @Nullable InnerScore<?> startingScore;
 
   public IslandTerminationBudget(
       TerminationConfig config,
       HeuristicConfigPolicy<Solution_> configPolicy,
       Clock clock,
       long phaseStartMillis) {
+    this(config, configPolicy, clock, phaseStartMillis, null);
+  }
+
+  public IslandTerminationBudget(
+      TerminationConfig config,
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      Clock clock,
+      long phaseStartMillis,
+      @Nullable Score<?> solverFirstInitializedScore) {
     this.clock = Objects.requireNonNull(clock);
     this.phaseStartMillis = phaseStartMillis;
-    progress = new Progress(null, phaseStartMillis, -1, null);
+    progress = new Progress(null, phaseStartMillis, -1, null, null, solverFirstInitializedScore);
     var definition =
         TerminationFactory.<Solution_>create(Objects.requireNonNull(config))
             .buildTermination(Objects.requireNonNull(configPolicy));
@@ -46,6 +55,12 @@ public final class IslandTerminationBudget<Solution_> {
   public IslandSequenceTermination<Solution_> createIslandTermination(
       SolverScope<Solution_> scope) {
     return new IslandSequenceTermination<>(this, Objects.requireNonNull(scope));
+  }
+
+  /** Bind inherited score targets to this population without changing the termination tree. */
+  public SolverTermination<Solution_> createChildSolverTermination(
+      SolverTermination<Solution_> definition, SolverScope<Solution_> childScope) {
+    return IslandTerminationBinding.copy(definition, childScope, this::progress);
   }
 
   /**
@@ -60,10 +75,19 @@ public final class IslandTerminationBudget<Solution_> {
         || previous.score() != null && compare(score, previous.score()) <= 0) {
       return;
     }
-    if (startingScore == null) {
-      startingScore = score;
-    }
-    var next = new Progress(score, timestampMillis, version, previous.searchStartMillis());
+    var initializedScore = score.isFullyAssigned() ? score.raw() : null;
+    var next =
+        new Progress(
+            score,
+            timestampMillis,
+            version,
+            previous.searchStartMillis(),
+            previous.phaseFirstInitializedScore() == null
+                ? initializedScore
+                : previous.phaseFirstInitializedScore(),
+            previous.solverFirstInitializedScore() == null
+                ? initializedScore
+                : previous.solverFirstInitializedScore());
     for (var monitor : thresholdMonitors) {
       monitor.improved(next);
     }
@@ -77,7 +101,12 @@ public final class IslandTerminationBudget<Solution_> {
     var previous = progress;
     var next =
         new Progress(
-            previous.score(), previous.bestTimeMillis(), previous.version(), clock.millis());
+            previous.score(),
+            previous.bestTimeMillis(),
+            previous.version(),
+            clock.millis(),
+            previous.phaseFirstInitializedScore(),
+            previous.solverFirstInitializedScore());
     for (var monitor : thresholdMonitors) {
       monitor.start(next);
     }
@@ -161,32 +190,43 @@ public final class IslandTerminationBudget<Solution_> {
     if (definition instanceof BestScoreTermination
         || definition instanceof BestScoreFeasibleTermination) {
       return island ->
-          new LeafNode<>((PhaseTermination<Solution_>) definition, island.globalScope(), false);
+          new LeafNode<>(
+              new SharedScoreTermination<>(definition, island::globalProgress, false),
+              island.globalScope(),
+              false);
     }
-    if (definition instanceof StepCountTermination
-        || definition instanceof MoveCountTermination
-        || definition instanceof ScoreCalculationCountTermination) {
-      return island ->
-          new LeafNode<>((PhaseTermination<Solution_>) definition, island.workScope(), false);
+    if (definition instanceof StepCountTermination<Solution_> steps) {
+      return workNode(IslandWorkQuota.Snapshot::completedSteps, steps.getStepCountLimit());
     }
-    if (definition instanceof UnimprovedStepCountTermination) {
-      return island ->
-          new LeafNode<>((PhaseTermination<Solution_>) definition, island.searchScope(), true);
+    if (definition instanceof MoveCountTermination<Solution_> moves) {
+      return workNode(IslandWorkQuota.Snapshot::moveEvaluationCount, moves.getMoveCountLimit());
     }
-    if (definition instanceof DiminishedReturnsTermination diminished) {
-      return island -> {
-        DiminishedReturnsTermination<Solution_, ?> copy =
-            new DiminishedReturnsTermination<>(
-                diminished.getSlidingWindowNanos()
-                    / DiminishedReturnsTermination.NANOS_PER_MILLISECOND,
-                diminished.getMinimumImprovementRatio());
-        var node = new LeafNode<Solution_>(copy, island.searchScope(), true);
-        island.addStatefulTermination(copy);
-        return node;
-      };
+    if (definition instanceof ScoreCalculationCountTermination<Solution_> scores) {
+      return workNode(
+          IslandWorkQuota.Snapshot::scoreCalculationCount, scores.getScoreCalculationCountLimit());
+    }
+    if (definition instanceof UnimprovedStepCountTermination
+        || definition instanceof DiminishedReturnsTermination) {
+      return island -> island.bindSearchTermination((PhaseTermination<Solution_>) definition);
     }
     throw new IllegalArgumentException(
         "Unsupported outer island termination: " + definition.getClass().getSimpleName());
+  }
+
+  private Function<IslandSequenceTermination<Solution_>, Node<Solution_>> workNode(
+      ToLongFunction<IslandWorkQuota.Snapshot> counter, long limit) {
+    return island ->
+        new Node<>() {
+          @Override
+          public boolean isTerminated() {
+            return counter.applyAsLong(island.workProgress()) >= limit;
+          }
+
+          @Override
+          public double gradient() {
+            return ratio(counter.applyAsLong(island.workProgress()), limit);
+          }
+        };
   }
 
   private long idleMillis(Progress snapshot) {
@@ -209,7 +249,9 @@ public final class IslandTerminationBudget<Solution_> {
       @Nullable InnerScore<?> score,
       long bestTimeMillis,
       long version,
-      @Nullable Long searchStartMillis) {}
+      @Nullable Long searchStartMillis,
+      @Nullable Score<?> phaseFirstInitializedScore,
+      @Nullable Score<?> solverFirstInitializedScore) {}
 
   interface Node<Solution_> {
     boolean isTerminated();
@@ -395,7 +437,8 @@ public final class IslandTerminationBudget<Solution_> {
     @Override
     @SuppressWarnings("unchecked")
     public <Score_ extends Score<Score_>> InnerScore<Score_> getStartingScore() {
-      return (InnerScore<Score_>) IslandTerminationBudget.this.startingScore;
+      var score = progressSolverScope.snapshot.phaseFirstInitializedScore();
+      return score == null ? null : InnerScore.fullyAssigned((Score_) score);
     }
 
     @Override

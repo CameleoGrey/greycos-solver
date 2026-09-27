@@ -814,13 +814,41 @@ With `compareGlobalEnabled` enabled by default, each island checks the shared gl
 Ring migration is controlled separately by `migrationFrequency`, whose default is `Integer.MAX_VALUE`.
 Choose a smaller value to exchange solutions around the ring more frequently.
 Migration copies planning assignments, respects pinned entities and list prefixes, and updates list assignment shadows.
+Evaluating an adopted solution consumes one local-search move evaluation, including for move-count termination and monitoring.
 
 Termination configured on `islandModel` spans the inner phase sequence.
 Each island receives its own cumulative step, move-evaluation, and score-calculation quota.
 Elapsed time is shared, and unimproved elapsed time follows strict improvements of the shared global best.
 Inner phase limits remain independent.
+Score-calculation quotas count logical evaluations consumed by the search; additional speculative worker calculations
+are included in reported work but do not consume these quotas.
+Solver-level `bestScoreLimit` and `bestScoreFeasible` observe the shared best even when migration and global-best adoption
+are disabled. AND/OR combinations retain their configured logic, so a reached score target within AND still requires
+its other conditions. Score-based progress uses the first initialized score in its solver or island-phase scope;
+construction inside an island establishes that baseline when it first produces an initialized solution.
 See xref:optimization-algorithms/alns.adoc#alnsIslandTermination[enclosing island termination]
 for the interaction between quotas, inner limits, and AND/OR conditions.
+
+==== Nested islands
+
+Java configuration supports placing an `IslandModelPhaseConfig` in another island phase's `phaseConfigList`.
+The XML configuration does not expose this composition.
+An improvement found by a nested island is considered for every enclosing island population's shared best.
+The outer solver retains the best result even when the nested island phase is the final inner phase.
+
+Each outer island's work quota includes the combined work of its descendants.
+For example, if an outer island has a step limit of `100` and completes `30` steps before starting two nested islands,
+those nested islands share the remaining `70` steps; they do not each receive `70`.
+Completed descendant work stays consumed when the outer island resumes its next phase.
+The nested phase can impose additional independent limits on each of its islands.
+Search steps in descendants also contribute to the outer island's unimproved-step and diminished-returns history.
+For partitioned descendants, the enclosing improvement history follows merged full-problem scores.
+An enclosing idle clock starts when an actual descendant local-search or ALNS phase starts, not when a nested
+island container starts construction.
+
+Termination remains cooperative. Work already in progress can finish beyond a shared quota before the next
+termination checkpoint. Nesting also multiplies the number of search workers, so choose counts against the
+available CPU and memory budget.
 
 ==== Best-solution events and solver reuse
 
@@ -851,6 +879,9 @@ Reported totals and speeds describe aggregate work; termination quotas retain th
 New solves and problem-change restarts reset the totals.
 
 Micrometer uses `island.id=root` for root metrics and an island ID for each island's metrics.
+Islands directly under the root solver retain numeric IDs such as `0` and `1`.
+Islands below another child solver use their full source path, such as
+`phase-0/island-0/phase-1/island-1`, so simultaneous nested islands have distinct meters.
 Move-type counts and picked-move score differences are available for island execution.
 Solve duration, error counts, and JVM memory describe the enclosing solve or process.
 

@@ -1,8 +1,10 @@
 package greycos.solver.core.impl.islandmodel;
 
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
+import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.director.InnerScore;
+import greycos.solver.core.impl.solver.scope.SolverScope;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,54 +29,40 @@ public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<
 
   @Override
   public void stepEnded(AbstractStepScope<Solution_> stepScope) {
-    var phaseScope = stepScope.getPhaseScope();
-    var solverScope = phaseScope.getSolverScope();
+    publishCurrentBest(stepScope.getPhaseScope().getSolverScope());
+  }
 
+  @Override
+  public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
+    publishCurrentBest(phaseScope.getSolverScope());
+  }
+
+  /** Publishes a final best even when a child phase has no step lifecycle of its own. */
+  public void publishCurrentBest(SolverScope<Solution_> solverScope) {
     var bestSolution = solverScope.getBestSolution();
     var bestScore = solverScope.getBestScore();
 
-    if (bestSolution == null || bestScore == null) {
+    if (bestSolution == null
+        || bestScore == null
+        || bestScore.isStructurallyFlawed()
+        || previousBestScore != null && compareInnerScores(bestScore, previousBestScore) <= 0) {
       return;
     }
 
-    boolean shouldUpdate = shouldUpdateGlobalBest(stepScope, bestScore);
-
-    if (shouldUpdate) {
-      previousBestScore = bestScore;
-      // Construction heuristics temporarily retain the mutable working solution as their best.
-      // Publish an island-owned snapshot before another construction step changes it.
-      var publishedSolution =
-          bestSolution == solverScope.getWorkingSolution()
-              ? solverScope.getScoreDirector().cloneSolution(bestSolution)
-              : bestSolution;
-      boolean updated = globalState.tryUpdate(publishedSolution, bestScore);
-
-      if (updated) {
-        long timeSpentMs = solverScope.getTimeMillisSpent();
-        LOGGER.debug(
-            "Agent {} updated global best (score: {}, time spent: {} ms, step index: {})",
-            agentId,
-            bestScore.raw(),
-            timeSpentMs,
-            stepScope.getStepIndex());
-      }
+    previousBestScore = bestScore;
+    // Construction heuristics temporarily retain the mutable working solution as their best.
+    // Publish an island-owned snapshot before another construction step changes it.
+    var publishedSolution =
+        bestSolution == solverScope.getWorkingSolution()
+            ? solverScope.getScoreDirector().cloneSolution(bestSolution)
+            : bestSolution;
+    if (globalState.tryUpdate(publishedSolution, bestScore)) {
+      LOGGER.debug(
+          "Agent {} updated global best (score: {}, time spent: {} ms)",
+          agentId,
+          bestScore.raw(),
+          solverScope.getTimeMillisSpent());
     }
-  }
-
-  private boolean shouldUpdateGlobalBest(
-      AbstractStepScope<Solution_> stepScope, InnerScore<?> currentBestScore) {
-    if (previousBestScore == null) {
-      return true;
-    }
-
-    Boolean bestScoreImproved = stepScope.getBestScoreImproved();
-    if (bestScoreImproved != null && bestScoreImproved) {
-      return true;
-    }
-
-    int comparisonResult = compareInnerScores(currentBestScore, previousBestScore);
-
-    return comparisonResult > 0;
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})

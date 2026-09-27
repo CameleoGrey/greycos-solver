@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -24,10 +25,12 @@ import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.SolverConfig;
+import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.alns.AlnsPhaseScope;
 import greycos.solver.core.impl.alns.AlnsStepScope;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline;
 import greycos.solver.core.impl.localsearch.decider.LocalSearchDecider;
 import greycos.solver.core.impl.localsearch.decider.MultiThreadedLocalSearchDecider;
@@ -44,6 +47,7 @@ import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.DefaultSolver;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.BasicPlumbingTermination;
+import greycos.solver.core.impl.solver.termination.IslandTerminationBudget;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
 import greycos.solver.core.testcotwin.list.TestdataListEntity;
 import greycos.solver.core.testcotwin.list.TestdataListSolution;
@@ -464,6 +468,7 @@ class SolutionSyncMoveTest {
   @SuppressWarnings("unchecked")
   void improvingGlobalMigrantIsCorrectInLocalSearch(boolean threaded) {
     var scope = optionalScope();
+    scope.setSolverMetricSet(EnumSet.of(SolverMetric.MOVE_COUNT_PER_TYPE));
     var before = new int[][] {{0, 1}, {}};
     var after = new int[][] {{0}, {}};
     scope.setInitialSolution(optionalProblem(before));
@@ -471,6 +476,16 @@ class SolutionSyncMoveTest {
       scope.setBestScore(director.calculateScore());
       var phase = new LocalSearchPhaseScope<>(scope, 0);
       phase.reset();
+      var budget =
+          new IslandTerminationBudget<TestdataAllowsUnassignedValuesListSolution>(
+              new TerminationConfig().withMoveCountLimit(1L),
+              mock(HeuristicConfigPolicy.class),
+              scope.getClock(),
+              scope.getClock().millis());
+      var quota = budget.createIslandTermination(scope);
+      quota.solvingStarted(scope);
+      quota.phaseStarted(phase);
+      assertThat(quota.isPhaseTerminated(phase)).isFalse();
       queueGlobalMigrant(new LocalSearchStepScope<>(phase), after);
       var termination =
           PhaseTermination.bridge(
@@ -498,6 +513,14 @@ class SolutionSyncMoveTest {
         var step = new LocalSearchStepScope<>(phase);
         decider.decideNextStep(step);
         assertThat(step.getScore()).isEqualTo(InnerScore.fullyAssigned(SimpleScore.of(-5)));
+        assertThat(step.getSelectedMoveCount()).isEqualTo(1L);
+        assertThat(step.getAcceptedMoveCount()).isEqualTo(1L);
+        assertThat(scope.getMoveEvaluationCount()).isEqualTo(1L);
+        assertThat(scope.getReportedMoveEvaluationCount()).isEqualTo(1L);
+        assertThat(scope.getMoveEvaluationCountPerType())
+            .containsOnlyKeys(step.getStep().describe())
+            .containsEntry(step.getStep().describe(), 1L);
+        assertThat(quota.isPhaseTerminated(phase)).isTrue();
         assertOptionalState(director, before);
         director.executeMove(step.getStep());
         assertOptionalState(director, after);

@@ -1,10 +1,16 @@
 package greycos.solver.core.impl.islandmodel;
 
+import java.util.List;
+
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
+import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
+import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.phase.AbstractPhaseFactory;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
+import greycos.solver.core.impl.solver.termination.IslandTerminationBinding;
 import greycos.solver.core.impl.solver.termination.SolverTermination;
+import greycos.solver.core.impl.solver.termination.TerminationFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +36,11 @@ public class DefaultIslandModelPhaseFactory<Solution_>
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
 
-    validateConfig(phaseConfig);
+    var configurationPath = "phase[" + phaseIndex + "].islandModel";
+    validateConfig(phaseConfig, configurationPath);
+    validateConfigList(phaseConfig.getPhaseConfigList(), configurationPath);
+    validateTerminationConfigs(phaseConfig, solverConfigPolicy, configurationPath);
+    IslandTerminationBinding.validate(solverTermination, "solver.termination");
 
     int islandCount =
         phaseConfig.getIslandCount() != null
@@ -63,10 +73,7 @@ public class DefaultIslandModelPhaseFactory<Solution_>
             ? phaseConfig.getMigrationTimeout()
             : IslandModelPhaseConfig.DEFAULT_MIGRATION_TIMEOUT;
 
-    // IslandModelPhaseConfig now extends LocalSearchPhaseConfig, so each island runs
-    // the same local search configuration with independent random seeds and solution states
-    LOGGER.debug(
-        "Building island model with {} islands, inheriting LocalSearchPhaseConfig", islandCount);
+    LOGGER.debug("Building island model with {} independent agents", islandCount);
 
     var environmentMode = resolveEnvironmentMode(solverConfigPolicy);
     var phaseConfigPolicy = solverConfigPolicy.copyPhaseConfigPolicy(environmentMode);
@@ -86,7 +93,56 @@ public class DefaultIslandModelPhaseFactory<Solution_>
         .build();
   }
 
-  private void validateConfig(IslandModelPhaseConfig config) {
+  /** Validate Java-configured descendants before any enclosing phase starts worker threads. */
+  public static void validateConfigList(
+      List<? extends PhaseConfig> phases, String configurationPath) {
+    if (phases == null) {
+      return;
+    }
+    for (int index = 0; index < phases.size(); index++) {
+      var phase = phases.get(index);
+      var childPath = configurationPath + ".phase[" + index + "]";
+      if (phase instanceof IslandModelPhaseConfig island) {
+        childPath += ".islandModel";
+        validateConfig(island, childPath);
+        validateConfigList(island.getPhaseConfigList(), childPath);
+      } else if (phase instanceof PartitionedSearchPhaseConfig partition) {
+        validateConfigList(partition.getPhaseConfigList(), childPath + ".partitionedSearch");
+      }
+    }
+  }
+
+  private void validateTerminationConfigs(
+      PhaseConfig<?> phase,
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      String configurationPath) {
+    if (phase.getTerminationConfig() != null) {
+      try {
+        TerminationFactory.<Solution_>create(phase.getTerminationConfig())
+            .buildTermination(configPolicy);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException(
+            "Invalid termination at (" + configurationPath + ".termination): " + e.getMessage(), e);
+      } catch (IllegalStateException e) {
+        throw new IllegalStateException(
+            "Invalid termination at (" + configurationPath + ".termination): " + e.getMessage(), e);
+      }
+    }
+    List<? extends PhaseConfig> children = null;
+    if (phase instanceof IslandModelPhaseConfig island) {
+      children = island.getPhaseConfigList();
+    } else if (phase instanceof PartitionedSearchPhaseConfig partition) {
+      children = partition.getPhaseConfigList();
+    }
+    if (children != null) {
+      for (int index = 0; index < children.size(); index++) {
+        validateTerminationConfigs(
+            children.get(index), configPolicy, configurationPath + ".phase[" + index + "]");
+      }
+    }
+  }
+
+  private static void validateConfig(IslandModelPhaseConfig config, String configurationPath) {
     int islandCount =
         config.getIslandCount() != null
             ? config.getIslandCount()
@@ -94,37 +150,60 @@ public class DefaultIslandModelPhaseFactory<Solution_>
 
     if (islandCount < 1) {
       throw new IllegalArgumentException(
-          "Island count must be at least 1, but was: " + islandCount);
+          "Island count must be at least 1, but was: "
+              + islandCount
+              + " at ("
+              + configurationPath
+              + ".islandCount).");
     }
 
     if (islandCount > 100) {
       throw new IllegalArgumentException(
-          "Island count must not exceed 100, but was: " + islandCount);
+          "Island count must not exceed 100, but was: "
+              + islandCount
+              + " at ("
+              + configurationPath
+              + ".islandCount).");
     }
 
     Integer migrationFrequency = config.getMigrationFrequency();
     if (migrationFrequency != null && migrationFrequency < 1) {
       throw new IllegalArgumentException(
-          "Migration frequency must be at least 1, but was: " + migrationFrequency);
+          "Migration frequency must be at least 1, but was: "
+              + migrationFrequency
+              + " at ("
+              + configurationPath
+              + ".migrationFrequency).");
     }
 
     Integer receiveGlobalUpdateFrequency = config.getReceiveGlobalUpdateFrequency();
     if (receiveGlobalUpdateFrequency != null && receiveGlobalUpdateFrequency < 1) {
       throw new IllegalArgumentException(
           "Receive global update frequency must be at least 1, but was: "
-              + receiveGlobalUpdateFrequency);
+              + receiveGlobalUpdateFrequency
+              + " at ("
+              + configurationPath
+              + ".receiveGlobalUpdateFrequency).");
     }
 
     Integer compareGlobalFrequency = config.getCompareGlobalFrequency();
     if (compareGlobalFrequency != null && compareGlobalFrequency < 1) {
       throw new IllegalArgumentException(
-          "Compare global frequency must be at least 1, but was: " + compareGlobalFrequency);
+          "Compare global frequency must be at least 1, but was: "
+              + compareGlobalFrequency
+              + " at ("
+              + configurationPath
+              + ".compareGlobalFrequency).");
     }
 
     Long migrationTimeout = config.getMigrationTimeout();
     if (migrationTimeout != null && migrationTimeout < 1) {
       throw new IllegalArgumentException(
-          "Migration timeout must be at least 1, but was: " + migrationTimeout);
+          "Migration timeout must be at least 1, but was: "
+              + migrationTimeout
+              + " at ("
+              + configurationPath
+              + ".migrationTimeout).");
     }
   }
 }

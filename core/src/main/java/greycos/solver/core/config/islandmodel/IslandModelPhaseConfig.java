@@ -56,6 +56,12 @@ import org.jspecify.annotations.Nullable;
  * sequence, including construction and custom phases. They are not divided among islands or reset
  * between inner phases. Explicit inner-phase limits remain independent. AND/OR termination
  * composition is preserved, and repeated solves create fresh budgets.
+ *
+ * <p>Java configuration permits nested island phases. Their combined descendant work consumes the
+ * enclosing island's remaining quota; each nested island additionally observes its own phase
+ * limits. Logical score calculations consume quotas, while additional speculative worker work is
+ * reported separately. Nested improvements propagate to enclosing populations without requiring
+ * migration or a later search step. The XML configuration does not expose nested island phases.
  */
 @XmlType(
     propOrder = {

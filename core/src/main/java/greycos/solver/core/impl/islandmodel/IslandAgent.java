@@ -83,14 +83,13 @@ public class IslandAgent<Solution_> implements Runnable {
       islandScope.setWorkingRandom(random);
       islandScope.setInitialSolution(initialSolution);
 
+      var globalBestUpdater = new GlobalBestUpdater<Solution_>(globalState, agentId);
       for (Phase<Solution_> phase : phases) {
         if (phase instanceof LocalSearchPhase || phase instanceof AlnsPhase) {
           MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
           phase.addPhaseLifecycleListener(migrationTrigger);
         }
 
-        GlobalBestUpdater<Solution_> globalBestUpdater =
-            new GlobalBestUpdater<>(globalState, agentId);
         phase.addPhaseLifecycleListener(globalBestUpdater);
 
         if (config.isCompareGlobalEnabled()
@@ -108,6 +107,7 @@ public class IslandAgent<Solution_> implements Runnable {
       var islandSolver = (IslandSolver<Solution_>) islandScope.getSolver();
       islandSolver.solvingStarted(islandScope);
       islandSolver.runPhases(islandScope);
+      globalBestUpdater.publishCurrentBest(islandScope);
       islandSolver.solvingEnded(islandScope);
       markAsDead();
     } catch (Exception | Error e) {
@@ -242,8 +242,7 @@ public class IslandAgent<Solution_> implements Runnable {
 
     boolean sent = sender.replace(updateToSend);
     if (!sent) {
-      LOGGER.trace(
-          "Agent {} dropped migration update due to concurrent channel contention", agentId);
+      LOGGER.trace("Agent {} dropped migration update because its channel is closed", agentId);
     }
     return updateToSend;
   }

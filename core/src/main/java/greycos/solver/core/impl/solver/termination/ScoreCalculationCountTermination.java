@@ -23,6 +23,10 @@ final class ScoreCalculationCountTermination<Solution_>
     }
   }
 
+  long getScoreCalculationCountLimit() {
+    return scoreCalculationCountLimit;
+  }
+
   @Override
   public boolean isSolverTerminated(SolverScope<Solution_> solverScope) {
     return isTerminated(solverScope.getScoreDirector());

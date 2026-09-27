@@ -104,6 +104,7 @@ public class LocalSearchDecider<Solution_> {
       resetOnPendingMove = pending.requiresReset();
       var move = pending.move();
       var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
+      stepScope.getPhaseScope().addMoveEvaluationCount(move, 1L);
       stepScope.setStep(move);
       if (logger.isDebugEnabled()) {
         stepScope.setStepString(move.toString());

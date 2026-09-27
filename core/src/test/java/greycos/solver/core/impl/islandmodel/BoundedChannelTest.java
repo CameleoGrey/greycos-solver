@@ -1,11 +1,17 @@
 package greycos.solver.core.impl.islandmodel;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
+@Timeout(10)
 class BoundedChannelTest {
 
   @Test
@@ -91,5 +97,81 @@ class BoundedChannelTest {
     boolean replaced = channel.replace("new");
     assertThat(replaced).isTrue();
     assertThat(channel.receive()).isEqualTo("new");
+  }
+
+  @Test
+  void closingWakesAReceiverWithoutWaitingForItsTimeout() throws Exception {
+    var channel = new BoundedChannel<String>(1);
+    var received = new FutureTask<>(() -> channel.tryReceive(1, TimeUnit.DAYS));
+    var receiver = new Thread(received, "closing-island-channel-receiver");
+    receiver.start();
+    try {
+      await()
+          .untilAsserted(
+              () -> assertThat(receiver.getState()).isEqualTo(Thread.State.TIMED_WAITING));
+
+      channel.close();
+
+      assertThat(received.get(5, TimeUnit.SECONDS)).isNull();
+      assertThat(channel.receive()).isNull();
+      assertThat(channel.trySend("late")).isFalse();
+      assertThat(channel.replace("late")).isFalse();
+    } finally {
+      channel.close();
+      receiver.interrupt();
+      receiver.join(5000);
+      assertThat(receiver.isAlive()).isFalse();
+    }
+  }
+
+  @Test
+  void closingWakesAForwarderBlockedOnAFullChannel() throws Exception {
+    var channel = new BoundedChannel<String>(1);
+    channel.send("pending");
+    var forwarded = new FutureTask<>(() -> channel.send("forwarded", 1, TimeUnit.DAYS));
+    var sender = new Thread(forwarded, "closing-island-channel-forwarder");
+    sender.start();
+    try {
+      await()
+          .untilAsserted(() -> assertThat(sender.getState()).isEqualTo(Thread.State.TIMED_WAITING));
+
+      channel.close();
+      channel.close();
+
+      assertThat(forwarded.get(5, TimeUnit.SECONDS)).isFalse();
+      assertThat(channel.isEmpty()).isTrue();
+      assertThat(channel.capacity()).isEqualTo(1);
+      assertThat(channel.send("late", 1, TimeUnit.DAYS)).isFalse();
+      assertThatThrownBy(() -> channel.send("late"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("closed island channel");
+    } finally {
+      channel.close();
+      sender.interrupt();
+      sender.join(5000);
+      assertThat(sender.isAlive()).isFalse();
+    }
+  }
+
+  @Test
+  void interruptionReleasesABlockedReceiver() throws Exception {
+    var channel = new BoundedChannel<String>(1);
+    var received = new FutureTask<>(channel::receive);
+    var receiver = new Thread(received, "interrupted-island-channel-receiver");
+    receiver.start();
+    try {
+      await().untilAsserted(() -> assertThat(receiver.getState()).isEqualTo(Thread.State.WAITING));
+      receiver.interrupt();
+
+      assertThatThrownBy(() -> received.get(5, TimeUnit.SECONDS))
+          .isInstanceOf(ExecutionException.class)
+          .hasCauseInstanceOf(InterruptedException.class);
+      assertThat(channel.trySend("still open")).isTrue();
+    } finally {
+      channel.close();
+      receiver.interrupt();
+      receiver.join(5000);
+      assertThat(receiver.isAlive()).isFalse();
+    }
   }
 }

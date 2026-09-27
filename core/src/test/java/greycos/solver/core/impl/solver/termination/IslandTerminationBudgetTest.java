@@ -150,6 +150,7 @@ class IslandTerminationBudgetTest {
     var initial = InnerScore.fullyAssigned(HardSoftScore.of(-2, 0));
     budget.bestScoreImproved(initial, 1_000, 0);
     var scope = new SolverScope<TestdataSolution>(clock);
+    scope.setScoreDirector(mock(InnerScoreDirector.class));
     scope.setBestScore(initial);
     var bridge = budget.createIslandTermination(scope);
     bridge.solvingStarted(scope);

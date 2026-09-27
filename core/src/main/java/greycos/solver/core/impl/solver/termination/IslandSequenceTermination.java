@@ -1,23 +1,19 @@
 package greycos.solver.core.impl.solver.termination;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import greycos.solver.core.impl.alns.AlnsPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.phase.custom.scope.CustomPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
-import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
 
 import org.jspecify.annotations.Nullable;
 
 /**
- * Thread-confined bridge from an island's inner phases to its enclosing sequence budget. The bound
- * scopes never change when another inner phase starts, and no public step event is synthesized.
+ * Thread-confined evaluator of an island sequence budget. Descendant evaluators share the original
+ * island's cumulative work and history, while retaining their own phase applicability and latch.
  */
 public final class IslandSequenceTermination<Solution_>
     extends AbstractUniversalTermination<Solution_>
@@ -25,16 +21,14 @@ public final class IslandSequenceTermination<Solution_>
 
   private final IslandTerminationBudget<Solution_> budget;
   private final SolverScope<Solution_> solverScope;
-  private final SequenceScope workScope;
-  private final SequenceScope searchScope;
+  private final IslandWorkQuota<Solution_> quota;
+  private final boolean scoresComparableToOwner;
+  private final IslandWorkQuota<Solution_>.@Nullable Member member;
   private final IslandTerminationBudget<Solution_>.ProgressScope globalScope;
   private final IslandTerminationBudget.Node<Solution_> root;
-  private final List<PhaseTermination<Solution_>> statefulTerminations = new ArrayList<>();
   private IslandTerminationBudget.Progress globalProgress;
+  private IslandWorkQuota.Snapshot workProgress;
   private @Nullable AbstractPhaseScope<Solution_> currentPhase;
-  private @Nullable AbstractStepScope<Solution_> lastStartedStep;
-  private @Nullable AbstractStepScope<Solution_> lastEndedStep;
-  private @Nullable InnerScore<?> localBestScore;
   private boolean started;
   private boolean ended;
   private boolean terminated;
@@ -42,21 +36,28 @@ public final class IslandSequenceTermination<Solution_>
 
   IslandSequenceTermination(
       IslandTerminationBudget<Solution_> budget, SolverScope<Solution_> scope) {
+    this(budget, scope, new IslandWorkQuota<>(scope, budget.phaseStartMillis()), true, true);
+  }
+
+  private IslandSequenceTermination(
+      IslandTerminationBudget<Solution_> budget,
+      SolverScope<Solution_> scope,
+      IslandWorkQuota<Solution_> quota,
+      boolean contributes,
+      boolean scoresComparableToOwner) {
     this.budget = budget;
     solverScope = scope;
-    workScope = new SequenceScope();
-    searchScope = new SequenceScope();
+    this.quota = quota;
+    this.scoresComparableToOwner = scoresComparableToOwner;
+    member = contributes ? quota.register(scope) : null;
+    workProgress = quota.snapshot();
     globalScope = budget.newProgressScope();
     globalProgress = budget.progress();
     root = budget.bind(this);
   }
 
-  AbstractPhaseScope<Solution_> workScope() {
-    return workScope;
-  }
-
-  AbstractPhaseScope<Solution_> searchScope() {
-    return searchScope;
+  IslandWorkQuota.Snapshot workProgress() {
+    return workProgress;
   }
 
   AbstractPhaseScope<Solution_> globalScope() {
@@ -67,8 +68,9 @@ public final class IslandSequenceTermination<Solution_>
     return globalProgress;
   }
 
-  void addStatefulTermination(PhaseTermination<Solution_> termination) {
-    statefulTerminations.add(termination);
+  IslandTerminationBudget.Node<Solution_> bindSearchTermination(
+      PhaseTermination<Solution_> definition) {
+    return quota.bindSearchTermination(definition);
   }
 
   @Override
@@ -81,11 +83,9 @@ public final class IslandSequenceTermination<Solution_>
           "An island sequence budget must remain bound to its original solver scope.");
     }
     started = true;
-    workScope.reset();
-    searchScope.reset();
-    localBestScore = solverScope.getBestScore();
-    for (var termination : statefulTerminations) {
-      termination.phaseStarted(searchScope);
+    if (member != null) {
+      quota.start(scoresComparableToOwner ? solverScope.getBestScore() : null);
+      publishWork();
     }
   }
 
@@ -99,66 +99,46 @@ public final class IslandSequenceTermination<Solution_>
     if (phaseScope instanceof LocalSearchPhaseScope || phaseScope instanceof AlnsPhaseScope) {
       budget.searchStarted();
     }
-    // A construction phase may initialize the local best before the first search phase starts.
-    recordLocalBest();
+    if (member != null) {
+      if (scoresComparableToOwner) {
+        quota.recordBest(solverScope.getBestScore());
+      }
+      publishWork();
+    }
   }
 
   @Override
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
-    // Retain the last phase's applicability until the phase runner checks the sequence guard.
-    // In particular, an exhausted search budget must prevent starting a later inner phase.
+    publishWork();
+    // Retain applicability until the runner checks the sequence guard for the next phase.
   }
 
   @Override
   public void stepStarted(AbstractStepScope<Solution_> stepScope) {
-    if (lastStartedStep == stepScope) {
-      return;
-    }
-    lastStartedStep = stepScope;
-    if (isSearchPhase(stepScope.getPhaseScope())) {
-      var step = searchScope.nextStep();
-      for (var termination : statefulTerminations) {
-        termination.stepStarted(step);
-      }
+    if (member != null) {
+      quota.stepStarted(member, stepScope, isSearchPhase(stepScope.getPhaseScope()));
+      publishWork();
     }
   }
 
   @Override
   public void stepEnded(AbstractStepScope<Solution_> stepScope) {
-    if (lastEndedStep == stepScope) {
-      return;
-    }
-    lastEndedStep = stepScope;
-    workScope.completeStep();
-    if (isSearchPhase(stepScope.getPhaseScope())) {
-      var step = searchScope.completeStep();
-      recordLocalBest();
-      for (var termination : statefulTerminations) {
-        termination.stepEnded(step);
-      }
-    } else {
-      recordLocalBest();
+    if (member != null) {
+      quota.stepEnded(
+          member,
+          stepScope,
+          isSearchPhase(stepScope.getPhaseScope()),
+          scoresComparableToOwner ? solverScope.getBestScore() : null);
+      publishWork();
     }
   }
 
   @Override
   public void bestScoreImproved(AbstractStepScope<Solution_> stepScope) {
-    // Local adoption can improve an island without completing a search step. Global idle history
-    // is updated exclusively by the shared publication callback, never by this notification.
-    recordLocalBest();
-    if (isSearchPhase(stepScope.getPhaseScope())) {
-      for (var termination : statefulTerminations) {
-        termination.bestScoreImproved(searchScope.getLastCompletedStepScope());
-      }
-    }
-  }
-
-  private void recordLocalBest() {
-    var score = solverScope.getBestScore();
-    if (score != null
-        && (localBestScore == null || IslandTerminationBudget.compare(score, localBestScore) > 0)) {
-      localBestScore = score;
-      searchScope.setBestSolutionStepIndex(searchScope.getLastCompletedStepScope().getStepIndex());
+    // Only shared strict publications update global idle history. Local history belongs to the
+    // original island and must survive nested starts and the retirement of descendant solvers.
+    if (member != null && scoresComparableToOwner) {
+      quota.bestScoreImproved(solverScope.getBestScore(), isSearchPhase(stepScope.getPhaseScope()));
     }
   }
 
@@ -167,7 +147,21 @@ public final class IslandSequenceTermination<Solution_>
         && !(scope instanceof CustomPhaseScope);
   }
 
-  private void refreshGlobalProgress() {
+  /** Publish only on this evaluator's owning solver thread, before its director is closed. */
+  public void publishWork() {
+    if (member != null) {
+      workProgress =
+          quota.publish(
+              member,
+              solverScope.getMoveEvaluationCount(),
+              solverScope.getScoreDirector().getCalculationCount());
+    } else {
+      workProgress = quota.snapshot();
+    }
+  }
+
+  private void refreshProgress() {
+    publishWork();
     globalProgress = budget.progress();
     globalScope.update(globalProgress);
   }
@@ -175,8 +169,6 @@ public final class IslandSequenceTermination<Solution_>
   @Override
   public boolean isSolverTerminated(SolverScope<Solution_> scope) {
     if (budget.hasSharedHistory()) {
-      // Keep history predicates and the immutable global snapshot on the same publication version
-      // for the complete AND/OR expression. Ordinary elapsed/idle graphs need no monitor.
       synchronized (budget) {
         return evaluateTermination();
       }
@@ -185,16 +177,15 @@ public final class IslandSequenceTermination<Solution_>
   }
 
   private boolean evaluateTermination() {
-    if (terminated) {
-      return true;
+    synchronized (quota) {
+      // Keep publishing after the latch: final in-flight work still belongs to enclosing quotas.
+      refreshProgress();
+      if (!terminated && root.applicable(searchActive) && root.isTerminated()) {
+        // Only the complete expression latches; idle leaves within AND may become false again.
+        terminated = true;
+      }
+      return terminated;
     }
-    refreshGlobalProgress();
-    if (root.applicable(searchActive) && root.isTerminated()) {
-      // Only the complete expression latches. An idle leaf within AND may become false again
-      // after another island improves before this island has consumed its own work quota.
-      terminated = true;
-    }
-    return terminated;
   }
 
   @Override
@@ -213,11 +204,10 @@ public final class IslandSequenceTermination<Solution_>
   }
 
   private double evaluateGradient() {
-    if (terminated) {
-      return 1.0;
+    synchronized (quota) {
+      refreshProgress();
+      return terminated ? 1.0 : root.applicable(searchActive) ? root.gradient() : 0.0;
     }
-    refreshGlobalProgress();
-    return root.applicable(searchActive) ? root.gradient() : 0.0;
   }
 
   @Override
@@ -231,9 +221,8 @@ public final class IslandSequenceTermination<Solution_>
       return;
     }
     ended = true;
-    for (var termination : statefulTerminations) {
-      termination.phaseEnded(searchScope);
-    }
+    publishWork();
+    // Descendants may finish independently. Retain their work and the owner's shared history.
   }
 
   @Override
@@ -242,58 +231,32 @@ public final class IslandSequenceTermination<Solution_>
     if (scope == solverScope) {
       return this;
     }
-    return budget.createIslandTermination(scope);
+    publishWork();
+    // MOVE workers already credit consumed calculations to their owner. Register solver scopes
+    // only; counting MOVE directors would count speculative or already credited work twice.
+    return new IslandSequenceTermination<>(
+        budget,
+        scope,
+        quota,
+        childThreadType == ChildThreadType.PART_THREAD,
+        scoresComparableToOwner);
+  }
+
+  /**
+   * A partition solves only part of the owner's problem. Its work belongs to the inherited quota,
+   * but only the parent's merged full-problem score may update the owner's search history.
+   */
+  IslandSequenceTermination<Solution_> createPartitionChildTermination(
+      SolverScope<Solution_> scope) {
+    if (scope == solverScope) {
+      throw new IllegalArgumentException("A partition child must use its own solver scope.");
+    }
+    // A partition definition may be rebound by a descendant thread. Do not inspect the source
+    // evaluator's mutable solver scope here; its own lifecycle callbacks publish its work.
+    return new IslandSequenceTermination<>(budget, scope, quota, true, false);
   }
 
   boolean supportedForRepairAttempts() {
     return root.supportsRepairAttempts();
-  }
-
-  private final class SequenceScope extends AbstractPhaseScope<Solution_> {
-    private int completedSteps;
-    private SequenceStep lastStep = new SequenceStep(this, -1);
-
-    private SequenceScope() {
-      super(IslandSequenceTermination.this.solverScope, 0);
-      startingSystemTimeMillis = budget.phaseStartMillis();
-    }
-
-    SequenceStep nextStep() {
-      var step = new SequenceStep(this, completedSteps);
-      step.setScore(solverScope.getBestScore());
-      return step;
-    }
-
-    SequenceStep completeStep() {
-      lastStep = nextStep();
-      if (completedSteps != Integer.MAX_VALUE) {
-        completedSteps++;
-      }
-      return lastStep;
-    }
-
-    @Override
-    public AbstractStepScope<Solution_> getLastCompletedStepScope() {
-      return lastStep;
-    }
-
-    @Override
-    public int getNextStepIndex() {
-      return completedSteps;
-    }
-  }
-
-  private final class SequenceStep extends AbstractStepScope<Solution_> {
-    private final SequenceScope scope;
-
-    private SequenceStep(SequenceScope scope, int index) {
-      super(index);
-      this.scope = scope;
-    }
-
-    @Override
-    public AbstractPhaseScope<Solution_> getPhaseScope() {
-      return scope;
-    }
   }
 }

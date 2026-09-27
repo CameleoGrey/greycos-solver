@@ -19,6 +19,7 @@ public final class GlobalBestPropagator<Solution_>
   private final EventProducerId eventProducerId;
   private final int capacity;
   private final ArrayDeque<Runnable> publications = new ArrayDeque<>();
+  private final IslandCoordinatorSignal signal = new IslandCoordinatorSignal();
   private boolean closed;
   private InnerScore<?> lastKnownBestScore;
 
@@ -52,6 +53,10 @@ public final class GlobalBestPropagator<Solution_>
     globalState.setPublicationObserver(this);
   }
 
+  IslandCoordinatorSignal getSignal() {
+    return signal;
+  }
+
   public void stop() {
     // Release publishers before acquiring the shared-state lock: one may hold it while enqueuing.
     synchronized (publications) {
@@ -59,6 +64,7 @@ public final class GlobalBestPropagator<Solution_>
       publications.clear();
       publications.notifyAll();
     }
+    signal.signal();
     globalState.setPublicationObserver(null);
   }
 
@@ -70,6 +76,7 @@ public final class GlobalBestPropagator<Solution_>
 
   public void enqueue(Runnable publication) {
     Objects.requireNonNull(publication);
+    boolean enqueued = false;
     synchronized (publications) {
       while (!closed && publications.size() == capacity) {
         try {
@@ -81,7 +88,11 @@ public final class GlobalBestPropagator<Solution_>
       }
       if (!closed) {
         publications.addLast(publication);
+        enqueued = true;
       }
+    }
+    if (enqueued) {
+      signal.signal();
     }
   }
 

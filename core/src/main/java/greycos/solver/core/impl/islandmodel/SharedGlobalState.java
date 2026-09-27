@@ -57,6 +57,7 @@ public class SharedGlobalState<Solution_> {
   private Clock clock = Clock.systemUTC();
   private Consumer<BestSolutionSnapshot<Solution_>> progressObserver;
   private Consumer<BestSolutionSnapshot<Solution_>> publicationObserver;
+  private SharedGlobalState<Solution_> enclosingGlobalState;
 
   private final List<Consumer<BestSolutionSnapshot<Solution_>>> observers =
       new CopyOnWriteArrayList<>();
@@ -101,6 +102,12 @@ public class SharedGlobalState<Solution_> {
         progressObserver.accept(updatedSnapshot);
       }
       bestSnapshot = updatedSnapshot;
+      // Nested islands solve the same problem. Forward the immutable accepted best directly;
+      // reading or modifying the enclosing solver scope would cross thread ownership boundaries.
+      // Always acquire state locks from child to parent, before local mailbox backpressure.
+      if (enclosingGlobalState != null) {
+        enclosingGlobalState.tryUpdate(candidate, candidateScore);
+      }
       // Queue accepted publications in the same order as the shared termination history.
       if (publicationObserver != null) {
         publicationObserver.accept(updatedSnapshot);
@@ -157,9 +164,20 @@ public class SharedGlobalState<Solution_> {
   }
 
   void reset(Clock clock, Consumer<BestSolutionSnapshot<Solution_>> progressObserver) {
+    reset(clock, progressObserver, null);
+  }
+
+  void reset(
+      Clock clock,
+      Consumer<BestSolutionSnapshot<Solution_>> progressObserver,
+      SharedGlobalState<Solution_> enclosingGlobalState) {
+    if (enclosingGlobalState == this) {
+      throw new IllegalArgumentException("An island state cannot enclose itself.");
+    }
     synchronized (lock) {
       this.clock = Objects.requireNonNull(clock);
       this.progressObserver = progressObserver;
+      this.enclosingGlobalState = enclosingGlobalState;
       bestSnapshot = null;
       closed = false;
     }
@@ -176,6 +194,7 @@ public class SharedGlobalState<Solution_> {
     synchronized (lock) {
       progressObserver = null;
       publicationObserver = null;
+      enclosingGlobalState = null;
     }
   }
 

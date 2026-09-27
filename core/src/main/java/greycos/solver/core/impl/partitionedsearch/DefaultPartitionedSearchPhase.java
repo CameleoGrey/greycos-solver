@@ -389,10 +389,6 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
         BestSolutionRecallerFactory.create()
             .buildBestSolutionRecaller(configPolicy.getEnvironmentMode());
 
-    UniversalTermination<Solution_> partTermination =
-        UniversalTermination.or(
-            childThreadPlumbingTermination, terminationBudget.createChildTermination(solverScope));
-
     List<PhaseConfig> effectivePhaseConfigList = phaseConfigList;
     if (effectivePhaseConfigList == null || effectivePhaseConfigList.isEmpty()) {
       effectivePhaseConfigList =
@@ -404,6 +400,10 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     partSolverScope.setRunnableThreadSemaphore(runnablePartThreadSemaphore);
 
     try {
+      UniversalTermination<Solution_> partTermination =
+          UniversalTermination.or(
+              childThreadPlumbingTermination,
+              terminationBudget.createChildTermination(partSolverScope));
       var partConfigPolicy =
           configPolicy
               .copyChildThreadConfigPolicy()

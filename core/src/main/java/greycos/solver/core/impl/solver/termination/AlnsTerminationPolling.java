@@ -99,6 +99,7 @@ public final class AlnsTerminationPolling<Solution_> {
         || termination instanceof ChildThreadPlumbingTermination
         || termination instanceof BestScoreTermination
         || termination instanceof BestScoreFeasibleTermination
+        || termination instanceof SharedScoreTermination
         || termination instanceof ScoreCalculationCountTermination
         || termination instanceof MoveCountTermination
         || termination instanceof StepCountTermination

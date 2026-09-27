@@ -17,6 +17,7 @@ import greycos.solver.core.impl.solver.termination.UniversalTermination;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /** Minimal solver implementation for island agents. Does not support solve() or problem changes. */
 @NullMarked
@@ -25,6 +26,7 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_>
 
   private SolverScope<Solution_> solverScope;
   private boolean metricsFinished;
+  private final @Nullable SharedGlobalState<Solution_> enclosingGlobalState;
 
   @Override
   public SolverScope<Solution_> getSolverScope() {
@@ -127,8 +129,29 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_>
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       UniversalTermination<Solution_> globalTermination,
       List<Phase<Solution_>> phaseList) {
+    this(
+        environmentMode,
+        scoreDirectorFactory,
+        bestSolutionRecaller,
+        globalTermination,
+        phaseList,
+        null);
+  }
+
+  IslandSolver(
+      EnvironmentMode environmentMode,
+      ScoreDirectorFactory<Solution_, ?> scoreDirectorFactory,
+      BestSolutionRecaller<Solution_> bestSolutionRecaller,
+      UniversalTermination<Solution_> globalTermination,
+      List<Phase<Solution_>> phaseList,
+      @Nullable SharedGlobalState<Solution_> enclosingGlobalState) {
     super(
         environmentMode, scoreDirectorFactory, bestSolutionRecaller, globalTermination, phaseList);
+    this.enclosingGlobalState = enclosingGlobalState;
+  }
+
+  @Nullable SharedGlobalState<Solution_> getEnclosingGlobalState() {
+    return enclosingGlobalState;
   }
 
   @Override

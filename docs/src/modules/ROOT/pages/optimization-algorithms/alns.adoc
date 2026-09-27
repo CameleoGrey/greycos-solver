@@ -988,6 +988,11 @@ per island across that island's inner phases. If its first phase uses `30`, its 
 the remaining `70`. An inner limit of `10` ends only that inner phase; it does not stop a peer island
 that still has work available. For ALNS, one completed trial is one step and one move evaluation;
 insertion probes and credited repair-attempt queries consume the score-calculation quota.
+Additional speculative worker calculations are reported as work but do not consume the logical quota.
+If Java configuration nests islands, descendant work contributes to the enclosing island's remaining quota once.
+Nested phase limits remain independent: two nested children share their parent's remaining work allowance,
+while each child also observes its own configured limits. Descendant local-search and ALNS phases start the
+enclosing idle clock; a nested island container running only construction does not.
 
 AND/OR combinations retain their configured logic. A zero elapsed or work limit is checked before
 the first custom command runs; no command runs if the complete expression is already satisfied.

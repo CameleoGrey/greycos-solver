@@ -20,6 +20,10 @@ final class MoveCountTermination<Solution_> extends AbstractUniversalTermination
     }
   }
 
+  long getMoveCountLimit() {
+    return moveCountLimit;
+  }
+
   @Override
   public boolean isSolverTerminated(SolverScope<Solution_> solverScope) {
     return isTerminated(solverScope);

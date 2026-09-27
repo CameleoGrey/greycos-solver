@@ -3,9 +3,10 @@ package greycos.solver.core.impl.islandmodel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -36,7 +37,6 @@ import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecallerFactory;
 import greycos.solver.core.impl.solver.scope.SolverScope;
-import greycos.solver.core.impl.solver.termination.ChildThreadSupportingTermination;
 import greycos.solver.core.impl.solver.termination.IslandTerminationBudget;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
 import greycos.solver.core.impl.solver.termination.SolverTermination;
@@ -122,12 +122,16 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
                   islandModelConfig.getTerminationConfig(), TerminationConfig::new),
               configPolicy,
               solverScope.getClock(),
-              phaseScope.getStartingSystemTimeMillis());
+              phaseScope.getStartingSystemTimeMillis(),
+              solverScope.getStartingInitializedScore());
       runState.reset(
           solverScope.getClock(),
           snapshot ->
               outerBudget.bestScoreImproved(
-                  snapshot.getInnerScore(), snapshot.getTimestampMillis(), snapshot.getVersion()));
+                  snapshot.getInnerScore(), snapshot.getTimestampMillis(), snapshot.getVersion()),
+          solverScope.getSolver() instanceof IslandSolver<Solution_> islandSolver
+              ? islandSolver.getEnclosingGlobalState()
+              : null);
       warnAboutPotentialThreadOversubscription();
 
       var initialSolution = solverScope.getBestSolution();
@@ -203,8 +207,10 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
             configPolicy.buildThreadFactory(ChildThreadType.PART_THREAD), "Island Model");
     var executor = Executors.newFixedThreadPool(islandCount, threadFactory);
     solverScope.getWorkerRegistry().registerExecutor(executor, "island phase " + phaseIndex);
-    var completionService = new ExecutorCompletionService<Void>(executor);
-    var completionLatch = new CountDownLatch(islandCount);
+    Queue<Future<Void>> completedTasks = new ConcurrentLinkedQueue<>();
+    var channels = new ArrayList<BoundedChannel<AgentUpdate<Solution_>>>(islandCount);
+    var completionLatch =
+        new IslandCompletionTracker(islandCount, () -> channels.forEach(BoundedChannel::close));
     var futures = new ArrayList<Future<Void>>(islandCount);
     var agents = new ArrayList<IslandAgent<Solution_>>(islandCount);
     Throwable failure = null;
@@ -212,7 +218,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
     try {
       LOGGER.info("Creating {} island agents with ring topology...", islandCount);
-      var channels = new ArrayList<BoundedChannel<AgentUpdate<Solution_>>>(islandCount);
       for (int i = 0; i < islandCount; i++) {
         channels.add(new BoundedChannel<>(1));
       }
@@ -252,7 +257,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           var agentConfigPolicy = createAgentConfigPolicy(agentRandom);
           var agentTermination =
               UniversalTermination.or(
-                  createAgentTermination(agentScope),
+                  outerBudget.createChildSolverTermination(solverTermination, agentScope),
                   outerBudget.createIslandTermination(agentScope));
           var agentRecaller =
               BestSolutionRecallerFactory.create()
@@ -264,7 +269,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
                   solverScope.getSolver().getScoreDirectorFactory(),
                   agentRecaller,
                   toUniversalTermination(agentTermination),
-                  agentPhases);
+                  agentPhases,
+                  runState);
           agentScope.setSolver(islandSolver);
           var initialSolution =
               solverScope.getScoreDirector().cloneSolution(solverScope.getBestSolution());
@@ -281,7 +287,9 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
                   runState);
           // Keep ownership even if submission fails or cancellation wins before run() starts.
           agents.add(agent);
-          futures.add(completionService.submit(agent, null));
+          var task = new IslandTask(agent, completedTasks, propagator.getSignal());
+          futures.add(task);
+          executor.execute(task);
         } catch (RuntimeException | Error startupFailure) {
           if (agent == null) {
             try {
@@ -294,18 +302,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         }
       }
 
-      int completed = 0;
-      while (completed < islandCount) {
-        solverScope.checkYielding();
-        int drained = propagator.drain();
-        var future = completionService.poll(drained == 0 ? 50L : 0L, TimeUnit.MILLISECONDS);
-        if (future != null) {
-          future.get();
-          completed++;
-        }
-      }
-      // No publisher remains; one bounded batch contains all remaining publications.
-      propagator.drain();
+      awaitAgents(solverScope, propagator, completedTasks, islandCount);
       LOGGER.info("All {} island agents completed", islandCount);
     } catch (InterruptedException e) {
       restoreInterrupt = true;
@@ -323,6 +320,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     } finally {
       if (failure != null) {
         propagator.stop();
+        channels.forEach(BoundedChannel::close);
         for (var future : futures) future.cancel(true);
         for (var agent : agents) {
           try {
@@ -339,6 +337,46 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       restoreInterrupt |= awaitAgentExecutorTermination(executor);
       if (restoreInterrupt) Thread.currentThread().interrupt();
     }
+  }
+
+  static <Solution_> void awaitAgents(
+      SolverScope<Solution_> solverScope,
+      GlobalBestPropagator<Solution_> propagator,
+      Queue<Future<Void>> completedTasks,
+      int islandCount)
+      throws InterruptedException, ExecutionException {
+    var signal = propagator.getSignal();
+    int completed = 0;
+    while (completed < islandCount) {
+      solverScope.checkYielding();
+      if (Thread.interrupted()) {
+        throw new InterruptedException("Interrupted while waiting for island agents.");
+      }
+      // Observe before checking either queue so an event between checking and waiting is retained.
+      long observedGeneration = signal.generation();
+      completed += collectCompletedAgents(completedTasks);
+      int drained = propagator.drain();
+      completed += collectCompletedAgents(completedTasks);
+      if (completed < islandCount && drained == 0) {
+        // An enclosing partition must not hold a runnable permit while this coordinator sleeps.
+        // The next loop's checkYielding() reacquires it, including after a concurrent signal.
+        solverScope.destroyYielding();
+        signal.awaitChange(observedGeneration);
+      }
+    }
+    // No publisher remains; one bounded batch contains all remaining publications.
+    propagator.drain();
+  }
+
+  private static int collectCompletedAgents(Queue<Future<Void>> completedTasks)
+      throws InterruptedException, ExecutionException {
+    int completed = 0;
+    Future<Void> future;
+    while ((future = completedTasks.poll()) != null) {
+      future.get();
+      completed++;
+    }
+    return completed;
   }
 
   private boolean awaitAgentExecutorTermination(ExecutorService executor) {
@@ -478,19 +516,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     }
   }
 
-  private SolverTermination<Solution_> createAgentTermination(SolverScope<Solution_> solverScope) {
-    var childTermination =
-        ChildThreadSupportingTermination.assertChildThreadSupport(solverTermination)
-            .createChildThreadTermination(solverScope, ChildThreadType.PART_THREAD);
-    if (childTermination instanceof SolverTermination<?> solverChildTermination) {
-      @SuppressWarnings("unchecked")
-      var castTermination = (SolverTermination<Solution_>) solverChildTermination;
-      return castTermination;
-    }
-    throw new IllegalStateException(
-        "Child termination (" + childTermination + ") does not implement SolverTermination.");
-  }
-
   private UniversalTermination<Solution_> toUniversalTermination(
       SolverTermination<Solution_> termination) {
     if (termination instanceof UniversalTermination<?> universalTermination) {
@@ -517,8 +542,11 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   private SolverScope<Solution_> createAgentSolverScope(
       SolverScope<Solution_> parentScope, int agentId) {
     var agentScope = parentScope.createChildThreadSolverScope(ChildThreadType.PART_THREAD);
-    agentScope.setMonitoringTags(
-        parentScope.getMonitoringTags().and("island.id", Integer.toString(agentId)));
+    var islandId =
+        parentScope.getWorkerPath().isEmpty()
+            ? Integer.toString(agentId)
+            : parentScope.getWorkerPath() + "phase-" + phaseIndex + "/island-" + agentId;
+    agentScope.setMonitoringTags(parentScope.getMonitoringTags().and("island.id", islandId));
     var scoreDirector = agentScope.getScoreDirector();
     scoreDirector.resetCalculationCount();
     agentScope.setProblemChangeDirector(new DefaultProblemChangeDirector<>(scoreDirector));

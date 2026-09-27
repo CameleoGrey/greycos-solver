@@ -66,9 +66,9 @@ public final class PartitionTerminationBudget<Solution_> {
   }
 
   public UniversalTermination<Solution_> createChildTermination(
-      SolverScope<Solution_> parentSolverScope) {
+      SolverScope<Solution_> childSolverScope) {
     var localLeaves = new ArrayList<Termination<Solution_>>();
-    var root = definition.bind(parentSolverScope, localLeaves);
+    var root = definition.bind(childSolverScope, localLeaves);
     return new PartitionTermination<>(this, root, List.copyOf(localLeaves));
   }
 
@@ -138,9 +138,11 @@ public final class PartitionTerminationBudget<Solution_> {
       public Node<Solution_> bind(
           SolverScope<Solution_> scope, List<Termination<Solution_>> leaves) {
         var copy =
-            ChildThreadSupportingTermination
-                .<Solution_, SolverScope<Solution_>>assertChildThreadSupport(termination)
-                .createChildThreadTermination(scope, ChildThreadType.PART_THREAD);
+            termination instanceof IslandSequenceTermination<Solution_> island
+                ? island.createPartitionChildTermination(scope)
+                : ChildThreadSupportingTermination
+                    .<Solution_, SolverScope<Solution_>>assertChildThreadSupport(termination)
+                    .createChildThreadTermination(scope, ChildThreadType.PART_THREAD);
         leaves.add(copy);
         return new LocalNode<>(copy, solverOrigin);
       }
