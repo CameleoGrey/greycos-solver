@@ -5,6 +5,7 @@ import java.util.function.ToDoubleFunction;
 import jakarta.xml.bind.annotation.XmlEnum;
 
 import greycos.solver.core.api.solver.Solver;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSupport;
 import greycos.solver.core.impl.solver.monitoring.statistic.BestScoreStatistic;
 import greycos.solver.core.impl.solver.monitoring.statistic.BestSolutionMutationCountStatistic;
 import greycos.solver.core.impl.solver.monitoring.statistic.MemoryUseStatistic;
@@ -23,9 +24,11 @@ public enum SolverMetric {
   SOLVE_DURATION("greycos.solver.solve.duration", false),
   ERROR_COUNT("greycos.solver.errors", false),
   SCORE_CALCULATION_COUNT(
-      "greycos.solver.score.calculation.count", SolverScope::getScoreCalculationCount, false),
+      "greycos.solver.score.calculation.count",
+      SolverScope::getReportedScoreCalculationCount,
+      false),
   MOVE_EVALUATION_COUNT(
-      "greycos.solver.move.evaluation.count", SolverScope::getMoveEvaluationCount, false),
+      "greycos.solver.move.evaluation.count", SolverScope::getReportedMoveEvaluationCount, false),
   PROBLEM_ENTITY_COUNT(
       "greycos.solver.problem.entities",
       solverScope -> solverScope.getProblemSizeStatistics().entityCount(),
@@ -109,11 +112,18 @@ public enum SolverMetric {
 
   @SuppressWarnings("unchecked")
   public void register(@NonNull Solver<?> solver) {
-    registerFunction.register(solver);
+    var scope = SolverMetricSupport.scope(solver);
+    if ("root".equals(scope.getMetricSource())) {
+      // Explicit registration after solving remains supported for inspecting final root totals.
+      registerFunction.register(solver);
+    } else {
+      scope.getMetricRun().publish(() -> registerFunction.register(solver));
+    }
   }
 
   @SuppressWarnings("unchecked")
   public void unregister(@NonNull Solver<?> solver) {
-    registerFunction.unregister(solver);
+    var scope = SolverMetricSupport.scope(solver);
+    scope.getMetricRun().cleanup(() -> registerFunction.unregister(solver));
   }
 }

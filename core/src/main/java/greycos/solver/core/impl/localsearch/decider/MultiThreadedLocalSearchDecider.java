@@ -62,9 +62,19 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     super.phaseStarted(phaseScope);
     transferredCalculationCount = 0;
     executor = createThreadPoolExecutor();
-    moveEvaluationPipeline = createMoveEvaluationPipeline(phaseScope.getPhaseIndex());
-    moveEvaluationPipeline.setTerminationCheck(() -> termination.isPhaseTerminated(phaseScope));
-    moveEvaluationPipeline.start(phaseScope.getScoreDirector());
+    phaseScope.getSolverScope().getWorkerRegistry().registerExecutor(executor, "Local Search");
+    try {
+      moveEvaluationPipeline = createMoveEvaluationPipeline(phaseScope.getPhaseIndex());
+      moveEvaluationPipeline.setTerminationCheck(() -> termination.isPhaseTerminated(phaseScope));
+      moveEvaluationPipeline.start(phaseScope.getScoreDirector());
+    } catch (RuntimeException | Error failure) {
+      try {
+        executor.shutdownNow();
+      } catch (RuntimeException | Error cleanupFailure) {
+        if (cleanupFailure != failure) failure.addSuppressed(cleanupFailure);
+      }
+      throw failure;
+    }
   }
 
   protected MoveEvaluationPipeline<Solution_> createMoveEvaluationPipeline(int phaseIndex) {
@@ -95,6 +105,13 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
 
   public MoveEvaluationPipeline.Diagnostics getMoveEvaluationDiagnostics() {
     return moveEvaluationDiagnostics;
+  }
+
+  @Override
+  public long getUncreditedCalculationCount() {
+    return moveEvaluationPipeline == null
+        ? 0L
+        : Math.max(0L, moveEvaluationPipeline.getCalculationCount() - transferredCalculationCount);
   }
 
   @Override

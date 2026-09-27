@@ -16,6 +16,16 @@ public class ConstraintMatchTotalStepScoreStatisticPoint extends StatisticPoint 
       ConstraintRef constraintRef,
       int constraintMatchCount,
       Score scoreTotal) {
+    this(timeMillisSpent, constraintRef, constraintMatchCount, scoreTotal, null);
+  }
+
+  public ConstraintMatchTotalStepScoreStatisticPoint(
+      long timeMillisSpent,
+      ConstraintRef constraintRef,
+      int constraintMatchCount,
+      Score scoreTotal,
+      String source) {
+    super(source);
     this.timeMillisSpent = timeMillisSpent;
     this.constraintRef = constraintRef;
     this.constraintMatchCount = constraintMatchCount;

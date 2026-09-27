@@ -5,15 +5,78 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
+import java.util.List;
+
 import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.director.InnerScore;
+import greycos.solver.core.impl.solver.scope.SolverScope;
+import greycos.solver.core.impl.solver.thread.ChildThreadType;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class DiminishedReturnsTerminationTest {
+
+  @ParameterizedTest
+  @ValueSource(longs = {0, 1, 100, 30_000})
+  void childThreadCopyPreservesWindowAndStartsWithFreshHistory(long windowMillis) {
+    var parent = new DiminishedReturnsTermination<Object, SimpleScore>(windowMillis, 0.25);
+    var score = InnerScore.fullyAssigned(SimpleScore.ZERO);
+    var windowNanos = windowMillis * NANOS_PER_MILLISECOND;
+    parent.start(0, score);
+    assertThat(parent.isTerminated(windowNanos, score)).isTrue();
+
+    for (var threadType : ChildThreadType.values()) {
+      var child = childOf(parent, threadType);
+      assertThat(child).isNotSameAs(parent);
+      assertThat(child.getSlidingWindowNanos()).isEqualTo(windowNanos);
+      assertThat(child.getMinimumImprovementRatio()).isEqualTo(0.25);
+      assertThat(child.isGracePeriodStarted()).isFalse();
+      assertThat(child.isTerminated(windowNanos, score)).isFalse();
+
+      long childStart = windowNanos + 1;
+      child.start(childStart, score);
+      if (windowNanos > 0) {
+        assertThat(child.isTerminated(childStart + windowNanos - 1, score)).isFalse();
+      }
+      assertThat(child.isTerminated(childStart + windowNanos, score)).isTrue();
+    }
+  }
+
+  @Test
+  void childThreadCopyKeepsIndependentImprovementHistory() {
+    var parent = new DiminishedReturnsTermination<Object, HardSoftScore>(10, 1.0);
+    var child = childOf(parent, ChildThreadType.PART_THREAD);
+    var initial = InnerScore.fullyAssigned(HardSoftScore.of(-1, 0));
+    var firstImprovement = InnerScore.fullyAssigned(HardSoftScore.of(-1, 2));
+    var secondImprovement = InnerScore.fullyAssigned(HardSoftScore.of(-1, 4));
+    for (var termination : List.of(parent, child)) {
+      termination.start(0, initial);
+      assertThat(termination.isTerminated(10 * NANOS_PER_MILLISECOND, firstImprovement)).isFalse();
+      termination.step(11 * NANOS_PER_MILLISECOND, secondImprovement);
+      assertThat(termination.isTerminated(20 * NANOS_PER_MILLISECOND, secondImprovement)).isFalse();
+    }
+
+    var harderImprovement = InnerScore.fullyAssigned(HardSoftScore.of(0, -10));
+    child.step(21 * NANOS_PER_MILLISECOND, harderImprovement);
+    assertThat(child.isTerminated(21 * NANOS_PER_MILLISECOND, harderImprovement)).isFalse();
+    assertThat(parent.isTerminated(21 * NANOS_PER_MILLISECOND, secondImprovement)).isTrue();
+    assertThat(child.isTerminated(31 * NANOS_PER_MILLISECOND - 1, harderImprovement)).isFalse();
+    assertThat(child.isTerminated(31 * NANOS_PER_MILLISECOND, harderImprovement)).isTrue();
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <Score_ extends Score<Score_>>
+      DiminishedReturnsTermination<Object, Score_> childOf(
+          DiminishedReturnsTermination<Object, Score_> parent, ChildThreadType threadType) {
+    return (DiminishedReturnsTermination<Object, Score_>)
+        parent.createChildThreadTermination(new SolverScope<>(), threadType);
+  }
 
   @Test
   void testNoImprovementInGraceTerminates() {

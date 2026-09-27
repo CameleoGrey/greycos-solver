@@ -30,6 +30,7 @@ import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationSource;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.solver.thread.SolverWorkerRegistry;
 import greycos.solver.core.preview.api.move.Move;
 
 /** Framework context for one sequential island. Acceptance never re-executes an operator. */
@@ -161,6 +162,22 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
       ThreadFactory threadFactory,
       int phaseIndex,
       EnvironmentMode environmentMode) {
+    configureMoveThreads(
+        threadCount,
+        bufferSize,
+        threadFactory,
+        phaseIndex,
+        environmentMode,
+        new SolverWorkerRegistry());
+  }
+
+  void configureMoveThreads(
+      Integer threadCount,
+      int bufferSize,
+      ThreadFactory threadFactory,
+      int phaseIndex,
+      EnvironmentMode environmentMode,
+      SolverWorkerRegistry workerRegistry) {
     if (threadCount == null) return;
     probeEvaluator =
         new AlnsProbeEvaluator<>(
@@ -171,7 +188,8 @@ public final class DefaultAlnsContext<Solution_, Score_ extends Score<Score_>>
             phaseIndex,
             environmentMode,
             terminated,
-            waitTerminated);
+            waitTerminated,
+            workerRegistry);
     transaction.enableReplication(probeEvaluator::abort);
   }
 

@@ -1,7 +1,7 @@
 package greycos.solver.core.impl.solver.monitoring.statistic;
 
 import greycos.solver.core.api.solver.Solver;
-import greycos.solver.core.impl.solver.DefaultSolver;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSupport;
 
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
@@ -15,8 +15,9 @@ public class MemoryUseStatistic<Solution_> implements SolverStatistic<Solution_>
 
   @Override
   public void register(Solver<Solution_> solver) {
-    DefaultSolver<Solution_> defaultSolver = (DefaultSolver<Solution_>) solver;
-    new JvmMemoryMetrics(defaultSolver.getSolverScope().getMonitoringTags())
-        .bindTo(Metrics.globalRegistry);
+    var scope = SolverMetricSupport.scope(solver);
+    if ("root".equals(scope.getMetricSource())) {
+      new JvmMemoryMetrics(scope.getMonitoringTags()).bindTo(Metrics.globalRegistry);
+    }
   }
 }

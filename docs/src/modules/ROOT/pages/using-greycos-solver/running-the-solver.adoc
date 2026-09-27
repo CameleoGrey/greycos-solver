@@ -528,6 +528,13 @@ to collect these metrics every N local search steps.
 The default value is `1` (collect every step), and the solver always flushes
 the latest value at local search phase end.
 
+For the xref:advanced-features/advanced-features.adoc#islandModel[island model], metrics tagged
+`island.id=root` report aggregate score-calculation and move-evaluation counts across the enclosing solver,
+all islands, and their move workers. Each island also has metrics tagged with its own `island.id`,
+including move-type counts and picked-move score differences.
+Aggregate counts do not change the cumulative termination quotas assigned to each island.
+Solve duration, error counts, and JVM memory remain scoped to the enclosing solve or process.
+
 The following metrics are available:
 
 - `SOLVE_DURATION` (default, Micrometer meter id: "greycos.solver.solve.duration"):

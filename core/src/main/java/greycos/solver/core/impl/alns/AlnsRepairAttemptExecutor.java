@@ -18,6 +18,7 @@ import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
+import greycos.solver.core.impl.solver.thread.SolverWorkerRegistry;
 import greycos.solver.core.impl.solver.thread.ThreadUtils;
 import greycos.solver.core.preview.api.move.Move;
 
@@ -36,6 +37,7 @@ final class AlnsRepairAttemptExecutor<Solution_, Score_ extends Score<Score_>>
   private final int concurrency;
   private final int attemptCount;
   private final ThreadFactory threadFactory;
+  private final SolverWorkerRegistry workerRegistry;
   private final EnvironmentMode environmentMode;
   private final Thread coordinator = Thread.currentThread();
   private final List<Worker> workers = new ArrayList<>();
@@ -57,6 +59,22 @@ final class AlnsRepairAttemptExecutor<Solution_, Score_ extends Score<Score_>>
       ThreadFactory threadFactory,
       EnvironmentMode environmentMode,
       int attemptCount) {
+    this(
+        parent,
+        workerCount,
+        threadFactory,
+        environmentMode,
+        attemptCount,
+        new SolverWorkerRegistry());
+  }
+
+  AlnsRepairAttemptExecutor(
+      InnerScoreDirector<Solution_, Score_> parent,
+      @Nullable Integer workerCount,
+      ThreadFactory threadFactory,
+      EnvironmentMode environmentMode,
+      int attemptCount,
+      SolverWorkerRegistry workerRegistry) {
     if (attemptCount < 2 || workerCount != null && workerCount < 1) {
       throw new IllegalArgumentException(
           "Repair attempts require at least two attempts and positive workers.");
@@ -66,6 +84,7 @@ final class AlnsRepairAttemptExecutor<Solution_, Score_ extends Score<Score_>>
     concurrency = synchronous ? 1 : Math.min(workerCount, attemptCount);
     this.attemptCount = attemptCount;
     this.threadFactory = Objects.requireNonNull(threadFactory);
+    this.workerRegistry = Objects.requireNonNull(workerRegistry);
     this.environmentMode = Objects.requireNonNull(environmentMode);
   }
 
@@ -180,7 +199,15 @@ final class AlnsRepairAttemptExecutor<Solution_, Score_ extends Score<Score_>>
           worker.thread =
               Objects.requireNonNull(
                   threadFactory.newThread(worker), "Repair-attempt thread factory returned null.");
-          worker.thread.start();
+          workerRegistry.registerThread(worker.thread, "ALNS repair attempts");
+          try {
+            worker.thread.start();
+          } catch (RuntimeException | Error failure) {
+            if (worker.thread.getState() == Thread.State.NEW) {
+              workerRegistry.unregisterThread(worker.thread);
+            }
+            throw failure;
+          }
         }
       }
       AlnsTerminationException cancelled = null;
@@ -462,7 +489,7 @@ final class AlnsRepairAttemptExecutor<Solution_, Score_ extends Score<Score_>>
     @Nullable DefaultAlnsContext<Solution_, Score_> context;
     @Nullable InnerScore<Score_> baselineScore;
     @Nullable Task activeTask;
-    long calculationCount;
+    volatile long calculationCount;
     boolean released;
 
     Worker(int index, long initialVersion) {
@@ -486,6 +513,7 @@ final class AlnsRepairAttemptExecutor<Solution_, Score_ extends Score<Score_>>
             });
       }
       context.enableReplayRecording();
+      calculationCount = director.getCalculationCount();
       ready = true;
       LockSupport.unpark(coordinator);
     }
@@ -593,6 +621,11 @@ final class AlnsRepairAttemptExecutor<Solution_, Score_ extends Score<Score_>>
         } catch (Throwable cleanupFailure) {
           fail(cleanupFailure);
         } finally {
+          try {
+            calculationCount = director.getCalculationCount();
+          } catch (Throwable countFailure) {
+            fail(countFailure);
+          }
           activeTask = null;
           task.publish();
           task.done = true;

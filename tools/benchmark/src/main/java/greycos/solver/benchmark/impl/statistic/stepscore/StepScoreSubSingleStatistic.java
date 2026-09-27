@@ -38,7 +38,10 @@ public class StepScoreSubSingleStatistic<Solution_>
                 score ->
                     pointList.add(
                         new StepScoreStatisticPoint(
-                            timeMillisSpent, score.raw(), score.isFullyAssigned()))));
+                            timeMillisSpent,
+                            score.raw(),
+                            score.isFullyAssigned(),
+                            registry.getSampleSource()))));
   }
 
   // ************************************************************************
@@ -56,6 +59,7 @@ public class StepScoreSubSingleStatistic<Solution_>
     return new StepScoreStatisticPoint(
         Long.parseLong(csvLine.get(0)),
         scoreDefinition.parseScore(csvLine.get(1)),
-        Boolean.parseBoolean(csvLine.get(2)));
+        Boolean.parseBoolean(csvLine.get(2)),
+        StatisticPoint.readSource(csvLine, 3));
   }
 }

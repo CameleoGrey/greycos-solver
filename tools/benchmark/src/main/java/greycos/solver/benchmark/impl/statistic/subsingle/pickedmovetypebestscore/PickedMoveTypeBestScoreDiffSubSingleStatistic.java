@@ -10,8 +10,6 @@ import greycos.solver.benchmark.impl.result.SubSingleBenchmarkResult;
 import greycos.solver.benchmark.impl.statistic.PureSubSingleStatistic;
 import greycos.solver.benchmark.impl.statistic.StatisticRegistry;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
-import greycos.solver.core.impl.alns.AlnsStepScope;
-import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 
 import io.micrometer.core.instrument.Tag;
@@ -35,18 +33,15 @@ public class PickedMoveTypeBestScoreDiffSubSingleStatistic<Solution_>
     registry.addListener(
         SolverMetric.PICKED_MOVE_TYPE_BEST_SCORE_DIFF,
         (timeMillisSpent, stepScope) -> {
-          if (stepScope instanceof LocalSearchStepScope || stepScope instanceof AlnsStepScope) {
-            String moveType =
-                stepScope instanceof AlnsStepScope<Solution_> alnsStepScope
-                    ? alnsStepScope.getOperatorPairId()
-                    : ((LocalSearchStepScope<Solution_>) stepScope).getStep().describe();
+          String moveType = registry.getMoveType(stepScope);
+          if (moveType != null) {
             registry.extractScoreFromMeters(
                 SolverMetric.PICKED_MOVE_TYPE_BEST_SCORE_DIFF,
                 runTag.and(Tag.of("move.type", moveType)),
                 score ->
                     pointList.add(
                         new PickedMoveTypeBestScoreDiffStatisticPoint(
-                            timeMillisSpent, moveType, score.raw())));
+                            timeMillisSpent, moveType, score.raw(), registry.getSampleSource())));
           }
         });
   }
@@ -61,7 +56,10 @@ public class PickedMoveTypeBestScoreDiffSubSingleStatistic<Solution_>
   protected PickedMoveTypeBestScoreDiffStatisticPoint createPointFromCsvLine(
       ScoreDefinition<?> scoreDefinition, List<String> csvLine) {
     return new PickedMoveTypeBestScoreDiffStatisticPoint(
-        Long.parseLong(csvLine.get(0)), csvLine.get(1), scoreDefinition.parseScore(csvLine.get(2)));
+        Long.parseLong(csvLine.get(0)),
+        csvLine.get(1),
+        scoreDefinition.parseScore(csvLine.get(2)),
+        PickedMoveTypeBestScoreDiffStatisticPoint.readSource(csvLine, 3));
   }
 
   @Override
@@ -70,7 +68,7 @@ public class PickedMoveTypeBestScoreDiffSubSingleStatistic<Solution_>
         new ArrayList<>(BenchmarkReport.CHARTED_SCORE_LEVEL_SIZE);
     for (PickedMoveTypeBestScoreDiffStatisticPoint point : getPointList()) {
       long timeMillisSpent = point.getTimeMillisSpent();
-      String moveType = point.getMoveType();
+      String moveType = point.getSeriesLabel(point.getMoveType());
       double[] levelValues = point.getBestScoreDiff().toLevelDoubles();
       for (int i = 0; i < levelValues.length && i < BenchmarkReport.CHARTED_SCORE_LEVEL_SIZE; i++) {
         if (i >= builderList.size()) {

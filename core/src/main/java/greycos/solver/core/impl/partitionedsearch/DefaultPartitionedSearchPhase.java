@@ -126,6 +126,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     PartitionQueue<Solution_> partitionQueue = new PartitionQueue<>(partCount);
 
     ExecutorService executor = createThreadPoolExecutor(partCount);
+    solverScope.getWorkerRegistry().registerExecutor(executor, "Partitioned Search");
 
     ChildThreadPlumbingTermination<Solution_> childThreadPlumbingTermination =
         new ChildThreadPlumbingTermination<>();

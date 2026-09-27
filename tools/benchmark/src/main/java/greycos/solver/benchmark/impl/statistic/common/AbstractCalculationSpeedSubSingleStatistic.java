@@ -10,7 +10,6 @@ import greycos.solver.benchmark.impl.statistic.ProblemBasedSubSingleStatistic;
 import greycos.solver.benchmark.impl.statistic.StatisticRegistry;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
-import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
 
 import io.micrometer.core.instrument.Tags;
 
@@ -51,8 +50,10 @@ public abstract class AbstractCalculationSpeedSubSingleStatistic<Solution_>
 
           @Override
           public void accept(Long timeMillisSpent) {
-            if (timeMillisSpent >= nextTimeMillisThreshold) {
-              var countNumber = SolverMetricUtil.getGaugeValue(registry, solverMetric, runTag);
+            if (timeMillisSpent >= nextTimeMillisThreshold
+                || (registry.isFinalSample()
+                    && (pointList.isEmpty() || timeMillisSpent > lastTimeMillisSpent))) {
+              var countNumber = registry.getGaugeValue(solverMetric, runTag);
               if (countNumber != null) {
                 var moveEvaluationCount = countNumber.longValue();
                 var countInterval = moveEvaluationCount - lastCalculationCount.get();

@@ -51,10 +51,11 @@ public class StepScoreProblemStatistic extends ProblemStatistic<LineChart<Long, 
               builderList.add(new LineChart.Builder<>());
             }
             var builder = builderList.get(i);
+            var seriesLabel = point.getSeriesLabel(solverLabel);
             if (singleBenchmarkResult.getSolverBenchmarkResult().isFavorite()) {
-              builder.markFavorite(solverLabel);
+              builder.markFavorite(seriesLabel);
             }
-            builder.add(solverLabel, timeMillisSpent, levelValues[i]);
+            builder.add(seriesLabel, timeMillisSpent, levelValues[i]);
           }
         }
       }

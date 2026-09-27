@@ -958,6 +958,15 @@ New solves and problem-change restarts build fresh runtime state.
 Fixed seeds and fixed trial budgets support reproducible single-island runs;
 concurrent island scheduling can change when migrants become available.
 
+Best-solution event listeners run on the enclosing solve thread and receive initialized global improvements.
+ALNS operator callbacks still run on their owning island thread.
+Listener failures cancel the solve. If a worker survives the shutdown timeout, the same solver rejects
+another solve until that worker exits, including nested probe and repair-attempt workers.
+See xref:advanced-features/advanced-features.adoc#islandModel[island event delivery and solver reuse].
+
+[#alnsIslandTermination]
+=== Enclosing island termination
+
 Termination configured directly on `islandModel` applies to generated local search and to every
 explicit inner phase, including ALNS. An inner phase can have its own additional termination;
 ending that inner phase does not reset the enclosing budget.
@@ -1020,6 +1029,12 @@ The existing picked-move score charts identify proposals by their destroy/repair
 A rejected proposal has zero incumbent step-score change.
 Constraint-match step metrics follow the configured sampling interval, with a final sample at phase end;
 new-best constraint values are captured when that best is produced.
+
+With islands, root totals and benchmark throughput include every island and its move workers.
+These reported totals do not pool the per-island termination quotas.
+Benchmark best-score history follows global improvements; step scores, moves per step, constraint-match histories,
+and picked-move score differences use separate series for each island phase and island ID.
+Their CSV exports include a `source` column when island samples are present.
 
 Enable `ALNS_STATISTICS` to record trial outcomes, consumed scoring-probe counts, selected destruction and recovery counts,
 repair duration, and learned operator weights under `greycos.solver.alns`.

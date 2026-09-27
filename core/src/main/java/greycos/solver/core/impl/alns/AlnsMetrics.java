@@ -27,6 +27,10 @@ public final class AlnsMetrics<Solution_> {
   private Tags phaseTags;
 
   public void phaseStarted(AlnsPhaseScope<Solution_> phaseScope) {
+    phaseScope.getSolverScope().getMetricRun().publish(() -> phaseStartedActive(phaseScope));
+  }
+
+  private void phaseStartedActive(AlnsPhaseScope<Solution_> phaseScope) {
     var solverScope = phaseScope.getSolverScope();
     phaseTags =
         solverScope
@@ -51,6 +55,14 @@ public final class AlnsMetrics<Solution_> {
   }
 
   public void record(AlnsStepScope<Solution_> stepScope) {
+    stepScope
+        .getPhaseScope()
+        .getSolverScope()
+        .getMetricRun()
+        .publish(() -> recordActive(stepScope));
+  }
+
+  private void recordActive(AlnsStepScope<Solution_> stepScope) {
     var phaseScope = stepScope.getPhaseScope();
     var solverScope = phaseScope.getSolverScope();
     selectedCount.set(1L);
@@ -81,6 +93,11 @@ public final class AlnsMetrics<Solution_> {
   }
 
   public void recordWeights(SolverScope<Solution_> solverScope, Map<String, Double> weights) {
+    solverScope.getMetricRun().publish(() -> recordWeightsActive(solverScope, weights));
+  }
+
+  private void recordWeightsActive(
+      SolverScope<Solution_> solverScope, Map<String, Double> weights) {
     if (!solverScope.isMetricEnabled(SolverMetric.ALNS_STATISTICS)) {
       return;
     }
@@ -105,6 +122,10 @@ public final class AlnsMetrics<Solution_> {
   }
 
   public void phaseEnded(AlnsPhaseScope<Solution_> phaseScope) {
+    phaseScope.getSolverScope().getMetricRun().publish(() -> phaseEndedActive(phaseScope));
+  }
+
+  private void phaseEndedActive(AlnsPhaseScope<Solution_> phaseScope) {
     sampleConstraints(phaseScope, true, false);
   }
 
@@ -112,6 +133,13 @@ public final class AlnsMetrics<Solution_> {
    * Refreshes score summaries after migration without attributing work or reward to an operator.
    */
   public void incumbentChanged(AlnsPhaseScope<Solution_> phaseScope, boolean bestImproved) {
+    phaseScope
+        .getSolverScope()
+        .getMetricRun()
+        .publish(() -> incumbentChangedActive(phaseScope, bestImproved));
+  }
+
+  private void incumbentChangedActive(AlnsPhaseScope<Solution_> phaseScope, boolean bestImproved) {
     sampleConstraints(phaseScope, true, bestImproved);
   }
 

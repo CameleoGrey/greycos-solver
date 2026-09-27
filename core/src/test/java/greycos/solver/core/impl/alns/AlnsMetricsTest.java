@@ -29,6 +29,7 @@ import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.DefaultSolver;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricRun;
 import greycos.solver.core.impl.solver.monitoring.SolverTags;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.testcotwin.TestdataConstraintProvider;
@@ -257,6 +258,7 @@ class AlnsMetricsTest {
       try {
         @SuppressWarnings("unchecked")
         SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
+        when(solverScope.getMetricRun()).thenReturn(new SolverMetricRun());
         when(solverScope.getMonitoringTags()).thenReturn(SolverTags.withProblemId(tag).asTags());
         when(solverScope.isMetricEnabled(SolverMetric.ALNS_STATISTICS)).thenReturn(true);
         var phaseScope = new AlnsPhaseScope<>(solverScope, 0);

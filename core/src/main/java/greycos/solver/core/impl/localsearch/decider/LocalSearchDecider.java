@@ -64,6 +64,11 @@ public class LocalSearchDecider<Solution_> {
     return forager;
   }
 
+  /** Worker calculations not yet credited to the local director; used only for reporting. */
+  public long getUncreditedCalculationCount() {
+    return 0L;
+  }
+
   public void enableAssertions(EnvironmentMode environmentMode) {
     assertMoveScoreFromScratch = environmentMode.isFullyAsserted();
     assertExpectedUndoMoveScore = environmentMode.isIntrusivelyAsserted();

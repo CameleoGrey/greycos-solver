@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.solver.monitoring.statistic;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,8 +17,9 @@ import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
-import greycos.solver.core.impl.solver.DefaultSolver;
+import greycos.solver.core.impl.solver.AbstractSolver;
 import greycos.solver.core.impl.solver.monitoring.ScoreLevels;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSupport;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
 
 import io.micrometer.core.instrument.Tags;
@@ -25,26 +27,28 @@ import io.micrometer.core.instrument.Tags;
 public class PickedMoveStepScoreDiffStatistic<Solution_> implements SolverStatistic<Solution_> {
 
   private final Map<Solver<Solution_>, PhaseLifecycleListenerAdapter<Solution_>>
-      solverToPhaseLifecycleListenerMap = new WeakHashMap<>();
+      solverToPhaseLifecycleListenerMap = Collections.synchronizedMap(new WeakHashMap<>());
 
   @Override
   public void unregister(Solver<Solution_> solver) {
     var listener = solverToPhaseLifecycleListenerMap.remove(solver);
     if (listener != null) {
-      ((DefaultSolver<Solution_>) solver).removePhaseLifecycleListener(listener);
+      ((AbstractSolver<Solution_>) solver).removePhaseLifecycleListener(listener);
     }
   }
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   @Override
   public void register(Solver<Solution_> solver) {
-    var defaultSolver = (DefaultSolver<Solution_>) solver;
+    var defaultSolver = (AbstractSolver<Solution_>) solver;
     var scoreDirectorFactory = defaultSolver.getScoreDirectorFactory();
     var solutionDescriptor = scoreDirectorFactory.getSolutionDescriptor();
     var listener =
         new PickedMoveStepScoreDiffStatisticListener(solutionDescriptor.getScoreDefinition());
-    solverToPhaseLifecycleListenerMap.put(solver, listener);
-    defaultSolver.addPhaseLifecycleListener(listener);
+    var guardedListener =
+        SolverMetricSupport.guardedPhaseListener(SolverMetricSupport.scope(solver), listener);
+    solverToPhaseLifecycleListenerMap.put(solver, guardedListener);
+    defaultSolver.addPhaseLifecycleListener(guardedListener);
   }
 
   private static class PickedMoveStepScoreDiffStatisticListener<

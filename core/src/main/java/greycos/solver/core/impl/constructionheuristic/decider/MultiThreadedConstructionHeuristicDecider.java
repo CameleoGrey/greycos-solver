@@ -59,9 +59,22 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
     super.phaseStarted(phaseScope);
     transferredCalculationCount = 0;
     executor = createThreadPoolExecutor();
-    moveEvaluationPipeline = createMoveEvaluationPipeline(phaseScope.getPhaseIndex());
-    moveEvaluationPipeline.setTerminationCheck(() -> termination.isPhaseTerminated(phaseScope));
-    moveEvaluationPipeline.start(phaseScope.getScoreDirector());
+    phaseScope
+        .getSolverScope()
+        .getWorkerRegistry()
+        .registerExecutor(executor, "Construction Heuristic");
+    try {
+      moveEvaluationPipeline = createMoveEvaluationPipeline(phaseScope.getPhaseIndex());
+      moveEvaluationPipeline.setTerminationCheck(() -> termination.isPhaseTerminated(phaseScope));
+      moveEvaluationPipeline.start(phaseScope.getScoreDirector());
+    } catch (RuntimeException | Error failure) {
+      try {
+        executor.shutdownNow();
+      } catch (RuntimeException | Error cleanupFailure) {
+        if (cleanupFailure != failure) failure.addSuppressed(cleanupFailure);
+      }
+      throw failure;
+    }
   }
 
   protected MoveEvaluationPipeline<Solution_> createMoveEvaluationPipeline(int phaseIndex) {

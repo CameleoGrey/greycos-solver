@@ -10,7 +10,6 @@ import greycos.solver.benchmark.impl.statistic.StatisticPoint;
 import greycos.solver.benchmark.impl.statistic.StatisticRegistry;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
-import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
 
 import io.micrometer.core.instrument.Tags;
 
@@ -63,9 +62,9 @@ public class MemoryUseSubSingleStatistic<Solution_>
     @Override
     public void accept(Long timeMillisSpent) {
       if (timeMillisSpent >= nextTimeMillisThreshold) {
-        var memoryUse = SolverMetricUtil.getGaugeValue(registry, SolverMetric.MEMORY_USE, tags);
+        var memoryUse = registry.getGaugeValue(SolverMetric.MEMORY_USE, tags);
         if (memoryUse != null) {
-          var max = SolverMetricUtil.getGaugeValue(registry, "jvm.memory.max", tags);
+          var max = registry.getGaugeValue("jvm.memory.max", tags);
           pointList.add(
               new MemoryUseStatisticPoint(timeMillisSpent, memoryUse.longValue(), max.longValue()));
         }

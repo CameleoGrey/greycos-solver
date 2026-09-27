@@ -40,6 +40,7 @@ import greycos.solver.core.impl.phase.AbstractPhase;
 import greycos.solver.core.impl.phase.PhaseType;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSamples;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.AlnsTerminationPolling;
@@ -134,10 +135,16 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
                     moveThreadCount,
                     threadFactory == null ? Thread::new : threadFactory,
                     environmentMode,
-                    config.getRepairAttemptCount()));
+                    config.getRepairAttemptCount(),
+                    solverScope.getWorkerRegistry()));
       } else {
         context.configureMoveThreads(
-            moveThreadCount, moveThreadBufferSize, threadFactory, phaseIndex, environmentMode);
+            moveThreadCount,
+            moveThreadBufferSize,
+            threadFactory,
+            phaseIndex,
+            environmentMode,
+            solverScope.getWorkerRegistry());
       }
       var initial = director.calculateScore();
       if (!initial.isFullyAssigned()) {
@@ -304,6 +311,11 @@ public final class DefaultAlnsPhase<Solution_> extends AbstractPhase<Solution_>
         acceptance.stepEnded(after);
         metrics.recordWeights(solverScope, selection.weights());
         stepEnded(step);
+        SolverMetricSamples.publishIslandStep(
+            solverScope,
+            step,
+            context.additionalCalculationCount()
+                + (attempts == null ? 0L : attempts.getAdditionalCalculationCount()));
         scope.setLastCompletedStepScope(step);
       }
     } catch (AlnsTerminationException cancelled) {

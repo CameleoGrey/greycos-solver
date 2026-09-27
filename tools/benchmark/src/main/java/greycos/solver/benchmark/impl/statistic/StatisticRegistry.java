@@ -3,7 +3,9 @@ package greycos.solver.benchmark.impl.statistic;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -14,11 +16,14 @@ import java.util.stream.Collectors;
 
 import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.alns.AlnsStepScope;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSample;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 
@@ -34,8 +39,11 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
 
   List<Consumer<SolverScope<Solution_>>> solverMeterListenerList = new ArrayList<>();
   List<BiConsumer<Long, AbstractStepScope<Solution_>>> stepMeterListenerList = new ArrayList<>();
-  List<BiConsumer<Long, AbstractStepScope<Solution_>>> bestSolutionMeterListenerList =
-      new ArrayList<>();
+  private final Map<SolverMetric, List<BiConsumer<Long, AbstractStepScope<Solution_>>>>
+      metricListeners = new EnumMap<>(SolverMetric.class);
+  private SolverMetricSample currentSample;
+  private final Consumer<SolverMetricSample> sampleListener = this::accept;
+  private SolverScope<Solution_> attachedSolverScope;
   AbstractStepScope<Solution_> bestSolutionStepScope = null;
   long bestSolutionChangedTimestamp = Long.MIN_VALUE;
   boolean lastStepImprovedSolution = false;
@@ -69,15 +77,35 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
     }
   }
 
+  public void attach(SolverScope<Solution_> solverScope) {
+    if (attachedSolverScope != null) {
+      throw new IllegalStateException("The statistic registry is already attached to a solver.");
+    }
+    attachedSolverScope = solverScope;
+    solverScope.addMetricSampleListener(sampleListener);
+  }
+
+  public void detach() {
+    if (attachedSolverScope != null) {
+      attachedSolverScope.removeMetricSampleListener(sampleListener);
+      attachedSolverScope = null;
+    }
+  }
+
+  @Override
+  public void close() {
+    detach();
+    super.close();
+  }
+
   public void addListener(SolverMetric metric, Consumer<Long> listener) {
     addListener(metric, (timestamp, stepScope) -> listener.accept(timestamp));
   }
 
   public void addListener(
       SolverMetric metric, BiConsumer<Long, AbstractStepScope<Solution_>> listener) {
-    if (metric.isMetricBestSolutionBased()) {
-      bestSolutionMeterListenerList.add(listener);
-    } else {
+    metricListeners.computeIfAbsent(metric, ignored -> new ArrayList<>()).add(listener);
+    if (!metric.isMetricBestSolutionBased()) {
       stepMeterListenerList.add(listener);
     }
   }
@@ -87,6 +115,11 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
   }
 
   public Set<Meter.Id> getMeterIds(SolverMetric metric, Tags runId) {
+    if (currentSample != null) {
+      return currentSample.measurements().keySet().stream()
+          .filter(id -> id.getName().startsWith(metric.getMeterId()))
+          .collect(Collectors.toSet());
+    }
     return Search.in(this)
         .name(name -> name.startsWith(metric.getMeterId()))
         .tags(runId)
@@ -98,17 +131,23 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
 
   public void extractScoreFromMeters(
       SolverMetric metric, Tags runId, Consumer<InnerScore<?>> scoreConsumer) {
+    if (currentSample != null
+        && currentSample.stepScore() != null
+        && (metric == SolverMetric.STEP_SCORE
+            || (metric == SolverMetric.BEST_SCORE
+                && currentSample.kind() == SolverMetricSample.Kind.BEST))) {
+      scoreConsumer.accept(currentSample.stepScore());
+      return;
+    }
     var score =
         SolverMetricUtil.extractScore(
             metric,
             scoreDefinition,
             id -> {
-              var scoreLevelGauge = this.find(id).tags(runId).gauge();
-              if (scoreLevelGauge != null && Double.isFinite(scoreLevelGauge.value())) {
-                return scoreLevelNumberConverter.apply(scoreLevelGauge.value());
-              } else {
-                return null;
-              }
+              var value = getGaugeValue(id, runId);
+              return value != null && Double.isFinite(value.doubleValue())
+                  ? scoreLevelNumberConverter.apply(value)
+                  : null;
             });
     if (score != null) {
       scoreConsumer.accept(score);
@@ -134,8 +173,7 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
                   // Get the count gauge (add constraint ID to the run tags)
                   score -> {
                     var count =
-                        SolverMetricUtil.getGaugeValue(
-                            this,
+                        getGaugeValue(
                             SolverMetricUtil.getGaugeName(metric, "count"),
                             constraintMatchTotalRunId);
                     if (count != null) {
@@ -149,17 +187,92 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
   public void extractMoveCountPerType(
       SolverScope<Solution_> solverScope, ObjLongConsumer<String> gaugeConsumer) {
     solverScope
-        .getMoveCountTypes()
-        .forEach(
-            type -> {
-              var gauge =
-                  this.find(SolverMetric.MOVE_COUNT_PER_TYPE.getMeterId() + "." + type)
-                      .tags(solverScope.getMonitoringTags())
-                      .gauge();
-              if (gauge != null) {
-                gaugeConsumer.accept(type, (long) gauge.value());
-              }
-            });
+        .getReportedMoveCountsByType()
+        .forEach((type, count) -> gaugeConsumer.accept(type, count));
+  }
+
+  /** Returns values from the immutable island sample while that sample is being consumed. */
+  public Number getGaugeValue(SolverMetric metric, Tags tags) {
+    return getGaugeValue(metric.getMeterId(), tags);
+  }
+
+  public Number getGaugeValue(String meterName, Tags tags) {
+    if (currentSample != null) {
+      if (meterName.startsWith("jvm.memory.")) {
+        return SolverMetricUtil.getGaugeValue(this, meterName, tags);
+      }
+      if (meterName.equals(SolverMetric.SCORE_CALCULATION_COUNT.getMeterId())) {
+        return currentSample.work().scoreCalculationCount();
+      }
+      if (meterName.equals(SolverMetric.MOVE_EVALUATION_COUNT.getMeterId())) {
+        return currentSample.work().moveEvaluationCount();
+      }
+      return currentSample.gaugeValue(meterName, tags);
+    }
+    return SolverMetricUtil.getGaugeValue(this, meterName, tags);
+  }
+
+  public String getSampleSource() {
+    return currentSample == null || "root".equals(currentSample.source())
+        ? null
+        : currentSample.source();
+  }
+
+  public String getMoveType(AbstractStepScope<Solution_> stepScope) {
+    if (currentSample != null) {
+      return currentSample.moveType();
+    }
+    if (stepScope instanceof AlnsStepScope<Solution_> alnsStepScope) {
+      return alnsStepScope.getOperatorPairId();
+    }
+    if (stepScope instanceof LocalSearchStepScope<Solution_> localSearchStepScope) {
+      return localSearchStepScope.getStep().describe();
+    }
+    return null;
+  }
+
+  public boolean isFinalSample() {
+    return currentSample != null
+        && currentSample.kind() == SolverMetricSample.Kind.FINAL
+        && "root".equals(currentSample.source());
+  }
+
+  /** Called on the coordinator thread; child scopes and live gauges never escape their owners. */
+  public void accept(SolverMetricSample sample) {
+    currentSample = sample;
+    try {
+      switch (sample.kind()) {
+        case STEP -> {
+          metricListeners.forEach(
+              (metric, listeners) -> {
+                boolean localBest =
+                    metric == SolverMetric.PICKED_MOVE_TYPE_BEST_SCORE_DIFF
+                        || metric == SolverMetric.CONSTRAINT_MATCH_TOTAL_BEST_SCORE;
+                if (!metric.isMetricBestSolutionBased()
+                    || (localBest && sample.bestScoreImproved())) {
+                  listeners.forEach(listener -> listener.accept(sample.timeMillisSpent(), null));
+                }
+              });
+        }
+        case BEST -> {
+          notifyMetric(SolverMetric.BEST_SCORE, sample.timeMillisSpent());
+          notifyMetric(SolverMetric.BEST_SOLUTION_MUTATION, sample.timeMillisSpent());
+        }
+        case FINAL -> {
+          notifyMetric(SolverMetric.SCORE_CALCULATION_COUNT, sample.timeMillisSpent());
+          notifyMetric(SolverMetric.MOVE_EVALUATION_COUNT, sample.timeMillisSpent());
+          notifyMetric(SolverMetric.MEMORY_USE, sample.timeMillisSpent());
+        }
+      }
+    } finally {
+      currentSample = null;
+    }
+  }
+
+  private void notifyMetric(SolverMetric metric, long timestamp) {
+    metricListeners
+        .getOrDefault(metric, List.of())
+        .forEach(listener -> listener.accept(timestamp, null));
   }
 
   @Override
@@ -190,10 +303,22 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
   @Override
   public void stepStarted(AbstractStepScope<Solution_> stepScope) {
     if (lastStepImprovedSolution) {
-      bestSolutionMeterListenerList.forEach(
-          listener -> listener.accept(bestSolutionChangedTimestamp, bestSolutionStepScope));
+      notifyDeferredBestListeners();
       lastStepImprovedSolution = false;
     }
+  }
+
+  private void notifyDeferredBestListeners() {
+    metricListeners.forEach(
+        (metric, listeners) -> {
+          if (metric.isMetricBestSolutionBased()
+              && (attachedSolverScope == null
+                  || (metric != SolverMetric.BEST_SCORE
+                      && metric != SolverMetric.BEST_SOLUTION_MUTATION))) {
+            listeners.forEach(
+                listener -> listener.accept(bestSolutionChangedTimestamp, bestSolutionStepScope));
+          }
+        });
   }
 
   @Override
@@ -209,8 +334,7 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
     if (lastStepImprovedSolution) {
-      bestSolutionMeterListenerList.forEach(
-          listener -> listener.accept(bestSolutionChangedTimestamp, bestSolutionStepScope));
+      notifyDeferredBestListeners();
       lastStepImprovedSolution = false;
     }
     solverMeterListenerList.forEach(listener -> listener.accept(solverScope));

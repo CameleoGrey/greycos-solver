@@ -3,7 +3,7 @@ package greycos.solver.core.impl.solver.monitoring.statistic;
 import java.util.function.ToDoubleFunction;
 
 import greycos.solver.core.api.solver.Solver;
-import greycos.solver.core.impl.solver.DefaultSolver;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSupport;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 
 import io.micrometer.core.instrument.Meter;
@@ -21,13 +21,13 @@ public class SolverScopeStatistic<Solution_> implements SolverStatistic<Solution
 
   @Override
   public void register(Solver<Solution_> solver) {
-    SolverScope<Solution_> solverScope = ((DefaultSolver<Solution_>) solver).getSolverScope();
+    SolverScope<Solution_> solverScope = SolverMetricSupport.scope(solver);
     Metrics.gauge(meterId, solverScope.getMonitoringTags(), solverScope, metricFunction);
   }
 
   @Override
   public void unregister(Solver<Solution_> solver) {
-    SolverScope<Solution_> solverScope = ((DefaultSolver<Solution_>) solver).getSolverScope();
+    SolverScope<Solution_> solverScope = SolverMetricSupport.scope(solver);
     Metrics.globalRegistry.remove(
         new Meter.Id(meterId, solverScope.getMonitoringTags(), null, null, Meter.Type.GAUGE));
   }

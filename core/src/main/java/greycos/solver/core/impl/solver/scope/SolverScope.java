@@ -9,9 +9,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.score.Score;
@@ -25,11 +27,16 @@ import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.AbstractSolver;
 import greycos.solver.core.impl.solver.change.DefaultProblemChangeDirector;
+import greycos.solver.core.impl.solver.monitoring.IslandWorkAccounting;
 import greycos.solver.core.impl.solver.monitoring.ScoreLevels;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricRun;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSample;
+import greycos.solver.core.impl.solver.monitoring.SolverWorkSnapshot;
 import greycos.solver.core.impl.solver.random.DefaultRandomSource;
 import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
+import greycos.solver.core.impl.solver.thread.SolverWorkerRegistry;
 import greycos.solver.core.preview.api.move.Move;
 
 import io.micrometer.core.instrument.Tags;
@@ -40,6 +47,16 @@ import io.micrometer.core.instrument.Tags;
 public class SolverScope<Solution_> {
 
   private final Clock clock;
+  private SolverWorkerRegistry workerRegistry = new SolverWorkerRegistry();
+  private SolverMetricRun metricRun = new SolverMetricRun();
+  private IslandWorkAccounting islandWorkAccounting = new IslandWorkAccounting();
+  private String metricSource = "root";
+  private String workerPath = "";
+  private int childScopeCount;
+  private boolean reportIslandWork = true;
+  private CopyOnWriteArrayList<Consumer<SolverMetricSample>> metricSampleListeners =
+      new CopyOnWriteArrayList<>();
+  private Consumer<SolverMetricSample> metricSamplePublisher;
 
   // Solution-derived fields have the potential for race conditions.
   private final AtomicReference<ProblemSizeStatistics> problemSizeStatistics =
@@ -93,6 +110,99 @@ public class SolverScope<Solution_> {
 
   public SolverScope(Clock clock) {
     this.clock = Objects.requireNonNull(clock);
+  }
+
+  public SolverMetricRun getMetricRun() {
+    return metricRun;
+  }
+
+  public void setMetricRun(SolverMetricRun metricRun) {
+    this.metricRun = Objects.requireNonNull(metricRun);
+  }
+
+  public IslandWorkAccounting getIslandWorkAccounting() {
+    return islandWorkAccounting;
+  }
+
+  public void setIslandWorkAccounting(IslandWorkAccounting accounting) {
+    islandWorkAccounting = Objects.requireNonNull(accounting);
+  }
+
+  public String getMetricSource() {
+    return metricSource;
+  }
+
+  public String getWorkerPath() {
+    return workerPath;
+  }
+
+  public void setWorkerPath(String workerPath) {
+    this.workerPath = Objects.requireNonNull(workerPath);
+  }
+
+  public boolean hasMetricSamplePublisher() {
+    return metricSamplePublisher != null;
+  }
+
+  public void setMetricSource(String source) {
+    metricSource = Objects.requireNonNull(source);
+  }
+
+  public void addMetricSampleListener(Consumer<SolverMetricSample> listener) {
+    metricSampleListeners.add(Objects.requireNonNull(listener));
+  }
+
+  public void removeMetricSampleListener(Consumer<SolverMetricSample> listener) {
+    metricSampleListeners.remove(listener);
+  }
+
+  public boolean hasMetricSampleListeners() {
+    return !metricSampleListeners.isEmpty();
+  }
+
+  public void setMetricSamplePublisher(Consumer<SolverMetricSample> publisher) {
+    metricSamplePublisher = publisher;
+  }
+
+  public void publishMetricSample(SolverMetricSample sample) {
+    // Never hold the metric publication guard while a child waits for mailbox capacity.
+    if (metricSamplePublisher != null) {
+      metricSamplePublisher.accept(sample);
+    } else {
+      for (var listener : metricSampleListeners) listener.accept(sample);
+    }
+  }
+
+  public boolean isRootScope() {
+    return reportIslandWork;
+  }
+
+  public long getReportedScoreCalculationCount() {
+    return getScoreCalculationCount()
+        + (reportIslandWork ? islandWorkAccounting.snapshot().scoreCalculationCount() : 0L);
+  }
+
+  public long getReportedMoveEvaluationCount() {
+    return getMoveEvaluationCount()
+        + (reportIslandWork ? islandWorkAccounting.snapshot().moveEvaluationCount() : 0L);
+  }
+
+  public Map<String, Long> getReportedMoveCountsByType() {
+    var local = new SolverWorkSnapshot(0L, 0L, getMoveEvaluationCountPerType());
+    return (reportIslandWork ? local.plus(islandWorkAccounting.snapshot()) : local)
+        .moveCountsByType();
+  }
+
+  public long getReportedScoreCalculationSpeed() {
+    return getSpeed(getReportedScoreCalculationCount(), getTimeMillisSpent());
+  }
+
+  public long getReportedMoveEvaluationSpeed() {
+    return getSpeed(getReportedMoveEvaluationCount(), getTimeMillisSpent());
+  }
+
+  public SolverWorkerRegistry getWorkerRegistry() {
+    return workerRegistry;
   }
 
   public Clock getClock() {
@@ -332,6 +442,9 @@ public class SolverScope<Solution_> {
     startingSystemTimeMillis.set(getClock().millis());
     resetAtomicLongTimeMillis(endingSystemTimeMillis);
     this.moveEvaluationCount = 0L;
+    this.childScopeCount = 0;
+    this.childThreadsScoreCalculationCount = 0L;
+    this.moveEvaluationCountPerTypeMap.clear();
   }
 
   public Long getBestSolutionTimeMillisSpent() {
@@ -405,6 +518,13 @@ public class SolverScope<Solution_> {
 
   public SolverScope<Solution_> createChildThreadSolverScope(ChildThreadType childThreadType) {
     SolverScope<Solution_> childThreadSolverScope = new SolverScope<>(clock);
+    childThreadSolverScope.workerRegistry = workerRegistry;
+    childThreadSolverScope.workerPath = workerPath + "child-" + childScopeCount++ + "/";
+    childThreadSolverScope.metricRun = metricRun;
+    childThreadSolverScope.islandWorkAccounting = islandWorkAccounting;
+    childThreadSolverScope.metricSampleListeners = metricSampleListeners;
+    childThreadSolverScope.metricSource = metricSource;
+    childThreadSolverScope.reportIslandWork = false;
     childThreadSolverScope.bestSolution.set(null);
     childThreadSolverScope.bestScore.set(null);
     childThreadSolverScope.monitoringTags = monitoringTags;

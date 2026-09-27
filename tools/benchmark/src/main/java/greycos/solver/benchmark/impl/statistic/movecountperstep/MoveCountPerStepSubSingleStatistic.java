@@ -9,7 +9,6 @@ import greycos.solver.benchmark.impl.statistic.StatisticPoint;
 import greycos.solver.benchmark.impl.statistic.StatisticRegistry;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
-import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
 
 import io.micrometer.core.instrument.Tags;
 
@@ -34,16 +33,19 @@ public class MoveCountPerStepSubSingleStatistic<Solution_>
         SolverMetric.MOVE_COUNT_PER_STEP,
         timeMillisSpent -> {
           var accepted =
-              SolverMetricUtil.getGaugeValue(
-                  registry, SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".accepted", runTag);
+              registry.getGaugeValue(
+                  SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".accepted", runTag);
           if (accepted != null) {
             var selected =
-                SolverMetricUtil.getGaugeValue(
-                    registry, SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".selected", runTag);
+                registry.getGaugeValue(
+                    SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".selected", runTag);
             if (selected != null) {
               pointList.add(
                   new MoveCountPerStepStatisticPoint(
-                      timeMillisSpent, accepted.longValue(), selected.longValue()));
+                      timeMillisSpent,
+                      accepted.longValue(),
+                      selected.longValue(),
+                      registry.getSampleSource()));
             }
           }
         });
@@ -64,6 +66,7 @@ public class MoveCountPerStepSubSingleStatistic<Solution_>
     return new MoveCountPerStepStatisticPoint(
         Long.parseLong(csvLine.get(0)),
         Long.parseLong(csvLine.get(1)),
-        Long.parseLong(csvLine.get(2)));
+        Long.parseLong(csvLine.get(2)),
+        StatisticPoint.readSource(csvLine, 3));
   }
 }

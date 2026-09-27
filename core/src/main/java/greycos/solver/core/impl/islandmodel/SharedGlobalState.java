@@ -52,9 +52,11 @@ public class SharedGlobalState<Solution_> {
   }
 
   private volatile BestSolutionSnapshot<Solution_> bestSnapshot;
+  private volatile boolean closed;
   private final Object lock = new Object();
   private Clock clock = Clock.systemUTC();
   private Consumer<BestSolutionSnapshot<Solution_>> progressObserver;
+  private Consumer<BestSolutionSnapshot<Solution_>> publicationObserver;
 
   private final List<Consumer<BestSolutionSnapshot<Solution_>>> observers =
       new CopyOnWriteArrayList<>();
@@ -62,7 +64,7 @@ public class SharedGlobalState<Solution_> {
   public boolean tryUpdate(Solution_ candidate, InnerScore<?> candidateScore) {
     Objects.requireNonNull(candidate, "Candidate solution cannot be null");
     Objects.requireNonNull(candidateScore, "Candidate score cannot be null");
-    if (candidateScore.isStructurallyFlawed()) {
+    if (closed || candidateScore.isStructurallyFlawed()) {
       return false;
     }
 
@@ -76,6 +78,9 @@ public class SharedGlobalState<Solution_> {
 
     BestSolutionSnapshot<Solution_> updatedSnapshot;
     synchronized (lock) {
+      if (closed) {
+        return false;
+      }
       currentSnapshot = bestSnapshot;
       if (currentSnapshot != null) {
         int comparison = compareScores(candidateScore, currentSnapshot.getInnerScore());
@@ -96,6 +101,10 @@ public class SharedGlobalState<Solution_> {
         progressObserver.accept(updatedSnapshot);
       }
       bestSnapshot = updatedSnapshot;
+      // Queue accepted publications in the same order as the shared termination history.
+      if (publicationObserver != null) {
+        publicationObserver.accept(updatedSnapshot);
+      }
     }
     notifyObservers(updatedSnapshot);
     return true;
@@ -152,6 +161,21 @@ public class SharedGlobalState<Solution_> {
       this.clock = Objects.requireNonNull(clock);
       this.progressObserver = progressObserver;
       bestSnapshot = null;
+      closed = false;
+    }
+  }
+
+  void setPublicationObserver(Consumer<BestSolutionSnapshot<Solution_>> observer) {
+    synchronized (lock) {
+      publicationObserver = observer;
+    }
+  }
+
+  void close() {
+    closed = true;
+    synchronized (lock) {
+      progressObserver = null;
+      publicationObserver = null;
     }
   }
 

@@ -18,6 +18,10 @@ import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
+import greycos.solver.core.impl.solver.monitoring.IslandWorkAccounting;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricRun;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSamples;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricScopeProvider;
 import greycos.solver.core.impl.solver.monitoring.SolverTags;
 import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
@@ -34,7 +38,8 @@ import io.micrometer.core.instrument.Metrics;
  * @see Solver
  * @see AbstractSolver
  */
-public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
+public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
+    implements SolverMetricScopeProvider<Solution_> {
 
   private final Supplier<RandomSource> randomFactory;
   private final BasicPlumbingTermination<Solution_> basicPlumbingTermination;
@@ -82,19 +87,19 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
   }
 
   public long getScoreCalculationCount() {
-    return solverScope.getScoreCalculationCount();
+    return solverScope.getReportedScoreCalculationCount();
   }
 
   public long getMoveEvaluationCount() {
-    return solverScope.getMoveEvaluationCount();
+    return solverScope.getReportedMoveEvaluationCount();
   }
 
   public long getScoreCalculationSpeed() {
-    return solverScope.getScoreCalculationSpeed();
+    return solverScope.getReportedScoreCalculationSpeed();
   }
 
   public long getMoveEvaluationSpeed() {
-    return solverScope.getMoveEvaluationSpeed();
+    return solverScope.getReportedMoveEvaluationSpeed();
   }
 
   @Override
@@ -144,6 +149,8 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
 
   @Override
   public final Solution_ solve(Solution_ problem) {
+    // A rejected reuse must not reset or clean up state still owned by previous workers.
+    solverScope.getWorkerRegistry().assertNoActiveWorkers();
     // No tags for these metrics; they are global
     var solveLengthTimer = Metrics.more().longTaskTimer(SolverMetric.SOLVE_DURATION.getMeterId());
     var errorCounter = Metrics.counter(SolverMetric.ERROR_COUNT.getMeterId());
@@ -158,14 +165,34 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
       var restartSolver = true;
       while (restartSolver) {
         var sample = solveLengthTimer.start();
+        Throwable runFailure = null;
         try {
           // The scope must be initialized before problem scale metrics can be registered.
           solvingStarted(solverScope);
           runPhases(solverScope);
           solvingEnded(solverScope);
+          solverScope.publishMetricSample(SolverMetricSamples.captureFinal(solverScope, "root"));
+        } catch (RuntimeException | Error failure) {
+          runFailure = failure;
+          throw failure;
         } finally {
-          sample.stop();
-          unregisterSolverSpecificMetrics();
+          solverScope.getMetricRun().seal();
+          solverScope.getIslandWorkAccounting().seal();
+          try {
+            sample.stop();
+          } catch (RuntimeException | Error cleanupFailure) {
+            if (runFailure == null) runFailure = cleanupFailure;
+            else if (runFailure != cleanupFailure) runFailure.addSuppressed(cleanupFailure);
+          }
+          try {
+            solverScope.getMetricRun().cleanup(this::unregisterSolverSpecificMetrics);
+          } catch (RuntimeException | Error cleanupFailure) {
+            if (runFailure == null) throw cleanupFailure;
+            if (runFailure != cleanupFailure) runFailure.addSuppressed(cleanupFailure);
+          }
+          // Timer failures on an otherwise successful run must not be hidden.
+          if (runFailure instanceof RuntimeException exception) throw exception;
+          if (runFailure instanceof Error error) throw error;
         }
         restartSolver = checkProblemChanges();
       }
@@ -196,6 +223,8 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
     assertCorrectSolutionState(solverScope.getBestSolution());
+    solverScope.setMetricRun(new SolverMetricRun());
+    solverScope.setIslandWorkAccounting(new IslandWorkAccounting());
     solverScope.startingNow();
     solverScope.getScoreDirector().resetCalculationCount();
     super.solvingStarted(solverScope);
@@ -344,7 +373,7 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_> {
             + "phase total ({}), environment mode ({}), move thread count ({}).",
         solverScope.getTimeMillisSpent(),
         solverScope.getBestScore().raw(),
-        solverScope.getMoveEvaluationSpeed(),
+        solverScope.getReportedMoveEvaluationSpeed(),
         phaseList.size(),
         globalEnvironmentMode.name(),
         moveThreadCountDescription);

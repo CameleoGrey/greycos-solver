@@ -723,20 +723,69 @@ and the <<partitionedSearch,Partition Search threads>> with it:
 [#islandModel]
 === Island model
 
-The island model is a parallel evolutionary computation paradigm that enhances solution quality by running multiple independent searches in parallel.
-
-Islands operate as separate agents, each running the same phases with independent random seeds and solution states.
-These islands periodically exchange their best solutions through migration in a ring topology,
-allowing better solutions to propagate across the population.
-
-This approach can significantly improve solution quality on complex optimization problems
-by maintaining diversity in the search process and enabling parallel exploration of different areas of the solution space.
+The island model runs several searches concurrently, each with its own working solution and random stream.
+Each island runs the same configured phase sequence and can adopt better solutions from other islands.
+Compare solution quality and resource use on representative problems before choosing the island count and migration settings.
 
 [IMPORTANT]
 ====
 The island model requires xref:using-greycos-solver/modeling-planning-problems.adoc#planningId[`@PlanningId` annotations]
 on all planning entity and planning value classes to enable solution cloning and migration.
 ====
+
+==== Migration and termination
+
+The default `islandCount` is `4`.
+With `compareGlobalEnabled` enabled by default, each island checks the shared global best every
+`receiveGlobalUpdateFrequency` completed local-search steps or ALNS trials; the default is `400`.
+Ring migration is controlled separately by `migrationFrequency`, whose default is `Integer.MAX_VALUE`.
+Choose a smaller value to exchange solutions around the ring more frequently.
+Migration copies planning assignments, respects pinned entities and list prefixes, and updates list assignment shadows.
+
+Termination configured on `islandModel` spans the inner phase sequence.
+Each island receives its own cumulative step, move-evaluation, and score-calculation quota.
+Elapsed time is shared, and unimproved elapsed time follows strict improvements of the shared global best.
+Inner phase limits remain independent.
+See xref:optimization-algorithms/alns.adoc#alnsIslandTermination[enclosing island termination]
+for the interaction between quotas, inner limits, and AND/OR conditions.
+
+==== Best-solution events and solver reuse
+
+Island best-solution listeners run on the thread executing the enclosing `Solver.solve()` call.
+They receive initialized improvements of the shared global best in publication order.
+Partial construction progress stays internal.
+The event time records when the improvement was published, even if its callback runs later.
+Pending improvements are delivered before a successful solve returns.
+
+Callbacks run synchronously. A slow listener delays further delivery and can make islands wait
+when the bounded publication queue is full.
+A listener exception or error fails the solve and cancels the other islands.
+The failed run stops delivering events, including events from workers that finish later.
+The shared idle clock advances when an improvement is published, independently of callback delivery.
+
+Cancellation is cooperative. Custom work that does not respond to interruption can outlive the shutdown timeout.
+While any worker from the previous solve remains alive, another `solve()` call on the same solver
+throws `IllegalStateException` naming the outstanding worker groups.
+This includes nested construction, local-search, partition, and ALNS workers.
+Reuse is allowed after all previous workers have exited.
+
+==== Monitoring and benchmarks
+
+Root score-calculation and move-evaluation totals include work from all islands and their move workers,
+including completed islands from earlier phases in the same solve.
+Live totals use cumulative snapshots published at completed steps or trials and lifecycle boundaries.
+Reported totals and speeds describe aggregate work; termination quotas retain the per-island meanings above.
+New solves and problem-change restarts reset the totals.
+
+Micrometer uses `island.id=root` for root metrics and an island ID for each island's metrics.
+Move-type counts and picked-move score differences are available for island execution.
+Solve duration, error counts, and JVM memory describe the enclosing solve or process.
+
+Benchmark totals and throughput include aggregate work, and best-score history follows the shared global best.
+Step scores, moves per step, constraint-match histories, and picked-move score differences remain
+separate series identified by their island phase and island ID.
+CSV exports for those series append a `source` column when island samples are present;
+the benchmark reader also accepts files without that column.
 
 
 [#automaticNodeSharing]

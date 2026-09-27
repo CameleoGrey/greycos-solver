@@ -20,6 +20,7 @@ import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.monitoring.ScoreLevels;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSamples;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
@@ -81,18 +82,23 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
     var phaseScope = new LocalSearchPhaseScope<>(solverScope, phaseIndex);
     phaseStarted(phaseScope);
 
-    if (solverScope.isMetricEnabled(SolverMetric.MOVE_COUNT_PER_STEP)) {
-      acceptedMoveCountPerStep.set(0L);
-      selectedMoveCountPerStep.set(0L);
-      SolverMetricUtil.rebindGauge(
-          SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".accepted",
-          solverScope.getMonitoringTags(),
-          acceptedMoveCountPerStep);
-      SolverMetricUtil.rebindGauge(
-          SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".selected",
-          solverScope.getMonitoringTags(),
-          selectedMoveCountPerStep);
-    }
+    solverScope
+        .getMetricRun()
+        .publish(
+            () -> {
+              if (solverScope.isMetricEnabled(SolverMetric.MOVE_COUNT_PER_STEP)) {
+                acceptedMoveCountPerStep.set(0L);
+                selectedMoveCountPerStep.set(0L);
+                SolverMetricUtil.rebindGauge(
+                    SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".accepted",
+                    solverScope.getMonitoringTags(),
+                    acceptedMoveCountPerStep);
+                SolverMetricUtil.rebindGauge(
+                    SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".selected",
+                    solverScope.getMonitoringTags(),
+                    selectedMoveCountPerStep);
+              }
+            });
 
     while (!phaseTermination.isPhaseTerminated(phaseScope)) {
       var stepScope = new LocalSearchStepScope<>(phaseScope);
@@ -167,6 +173,10 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
     super.stepEnded(stepScope);
     decider.stepEnded(stepScope);
     collectMetrics(stepScope);
+    SolverMetricSamples.publishIslandStep(
+        stepScope.getPhaseScope().getSolverScope(),
+        stepScope,
+        decider.getUncreditedCalculationCount());
     var phaseScope = stepScope.getPhaseScope();
     if (logger.isDebugEnabled()) {
       if (stepScope.getAcceptedMoveCount() == 0 && phaseTermination.isPhaseTerminated(phaseScope)) {
@@ -199,6 +209,14 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   private void collectMetrics(LocalSearchStepScope<Solution_> stepScope) {
+    stepScope
+        .getPhaseScope()
+        .getSolverScope()
+        .getMetricRun()
+        .publish(() -> collectMetricsActive(stepScope));
+  }
+
+  private void collectMetricsActive(LocalSearchStepScope<Solution_> stepScope) {
     var solverScope = stepScope.getPhaseScope().getSolverScope();
     if (solverScope.isMetricEnabled(SolverMetric.MOVE_COUNT_PER_STEP)) {
       acceptedMoveCountPerStep.set(stepScope.getAcceptedMoveCount());
@@ -208,6 +226,13 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
   }
 
   private void collectConstraintMatchTotalMetrics(
+      SolverScope<Solution_> solverScope, long stepIndex, boolean force) {
+    solverScope
+        .getMetricRun()
+        .publish(() -> collectConstraintMatchTotalMetricsActive(solverScope, stepIndex, force));
+  }
+
+  private void collectConstraintMatchTotalMetricsActive(
       SolverScope<Solution_> solverScope, long stepIndex, boolean force) {
     if (!isConstraintMatchMetricEnabled(solverScope)) {
       return;

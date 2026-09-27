@@ -2,6 +2,7 @@ package greycos.solver.core.impl.islandmodel;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -75,8 +76,11 @@ final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
   @Override
   protected void doMoveOnGenuineVariables(ScoreDirector<Solution_> scoreDirector) {
     var castScoreDirector = (VariableDescriptorAwareScoreDirector<Solution_>) scoreDirector;
+    // Validate the entire list update before changing even the basic variables. A later pinned
+    // prefix mismatch must not leave an earlier entity partially synchronized.
+    var preparedListChanges = prepareListChanges(castScoreDirector);
     applyBasicChanges(castScoreDirector);
-    applyListChanges(castScoreDirector);
+    applyListChanges(castScoreDirector, preparedListChanges);
   }
 
   private void applyBasicChanges(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
@@ -96,11 +100,18 @@ final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
     }
   }
 
-  private void applyListChanges(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
+  private List<PreparedListChanges<Solution_>> prepareListChanges(
+      VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
     var workingSolution = scoreDirector.getWorkingSolution();
+    var preparedListChanges = new ArrayList<PreparedListChanges<Solution_>>();
     for (Map.Entry<ListVariableDescriptor<Solution_>, List<ListChangeRecord<?>>> entry :
         listChangeMap.entrySet()) {
       ListVariableDescriptor<Solution_> variableDescriptor = entry.getKey();
+      var changes = new ArrayList<PreparedListChange>();
+      var oldValues = new ArrayList<Object>();
+      var targetValues = new ArrayList<Object>();
+      var oldValueSet = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
+      var targetValueSet = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
       for (ListChangeRecord<?> changeRecord : entry.getValue()) {
         Object entity = changeRecord.entity();
         if (!variableDescriptor.getEntityDescriptor().isMovable(workingSolution, entity)) {
@@ -136,15 +147,79 @@ final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
                     + ").");
           }
         }
-        int oldSize = currentList.size();
-        scoreDirector.beforeListVariableChanged(variableDescriptor, entity, fromIndex, oldSize);
-        currentList.subList(fromIndex, oldSize).clear();
-        currentList.addAll(targetList.subList(fromIndex, targetList.size()));
+        changes.add(
+            new PreparedListChange(entity, currentList, targetList, fromIndex, currentList.size()));
+        for (var value : currentList.subList(fromIndex, currentList.size())) {
+          if (oldValueSet.add(value)) {
+            oldValues.add(value);
+          }
+        }
+        for (var value : targetList.subList(fromIndex, targetList.size())) {
+          if (targetValueSet.add(value)) {
+            targetValues.add(value);
+          }
+        }
+      }
+      if (!changes.isEmpty()) {
+        // Compare assignment membership across all entities, not per list. Values transferred
+        // between lists remain assigned and must not receive unassignment notifications.
+        oldValues.removeIf(targetValueSet::contains);
+        targetValues.removeIf(oldValueSet::contains);
+        preparedListChanges.add(
+            new PreparedListChanges<>(variableDescriptor, changes, targetValues, oldValues));
+      }
+    }
+    return preparedListChanges;
+  }
+
+  private void applyListChanges(
+      VariableDescriptorAwareScoreDirector<Solution_> scoreDirector,
+      List<PreparedListChanges<Solution_>> preparedListChanges) {
+    for (var prepared : preparedListChanges) {
+      var variableDescriptor = prepared.variableDescriptor();
+      for (var value : prepared.assignedValues()) {
+        scoreDirector.beforeListVariableElementAssigned(variableDescriptor, value);
+      }
+      for (var value : prepared.unassignedValues()) {
+        scoreDirector.beforeListVariableElementUnassigned(variableDescriptor, value);
+      }
+      for (var change : prepared.changes()) {
+        scoreDirector.beforeListVariableChanged(
+            variableDescriptor, change.entity(), change.fromIndex(), change.oldSize());
+      }
+      for (var change : prepared.changes()) {
+        change.currentList().subList(change.fromIndex(), change.oldSize()).clear();
+        change
+            .currentList()
+            .addAll(change.targetList().subList(change.fromIndex(), change.targetList().size()));
+      }
+      for (var change : prepared.changes()) {
         scoreDirector.afterListVariableChanged(
-            variableDescriptor, entity, fromIndex, currentList.size());
+            variableDescriptor, change.entity(), change.fromIndex(), change.currentList().size());
+      }
+      // Keep assignment notifications outside the list-change brackets, as in the built-in
+      // replacement move. The recorder then restores both list contents and assignment state.
+      for (var value : prepared.unassignedValues()) {
+        scoreDirector.afterListVariableElementUnassigned(variableDescriptor, value);
+      }
+      for (var value : prepared.assignedValues()) {
+        scoreDirector.afterListVariableElementAssigned(variableDescriptor, value);
       }
     }
   }
+
+  private record PreparedListChanges<Solution_>(
+      ListVariableDescriptor<Solution_> variableDescriptor,
+      List<PreparedListChange> changes,
+      List<Object> assignedValues,
+      List<Object> unassignedValues) {}
+
+  private record PreparedListChange(
+      Object entity,
+      List<Object> currentList,
+      List<Object> targetList,
+      int fromIndex,
+      int oldSize) {}
 
   @Override
   public boolean isMoveDoable(ScoreDirector<Solution_> scoreDirector) {

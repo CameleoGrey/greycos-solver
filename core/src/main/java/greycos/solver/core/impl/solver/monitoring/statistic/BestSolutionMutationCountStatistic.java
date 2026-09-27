@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.solver.monitoring.statistic;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -10,16 +11,18 @@ import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.solution.mutation.MutationCounter;
 import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
-import greycos.solver.core.impl.solver.DefaultSolver;
+import greycos.solver.core.impl.solver.AbstractSolver;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSupport;
 
 import org.jspecify.annotations.NonNull;
 
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Metrics;
 
 public class BestSolutionMutationCountStatistic<Solution_> implements SolverStatistic<Solution_> {
 
   private final Map<Solver<Solution_>, SolverEventListener<Solution_>> solverToEventListenerMap =
-      new WeakHashMap<>();
+      Collections.synchronizedMap(new WeakHashMap<>());
 
   @Override
   public void unregister(Solver<Solution_> solver) {
@@ -31,19 +34,25 @@ public class BestSolutionMutationCountStatistic<Solution_> implements SolverStat
 
   @Override
   public void register(Solver<Solution_> solver) {
-    DefaultSolver<Solution_> defaultSolver = (DefaultSolver<Solution_>) solver;
+    AbstractSolver<Solution_> defaultSolver = (AbstractSolver<Solution_>) solver;
     ScoreDirectorFactory<Solution_, ?> scoreDirectorFactory =
         defaultSolver.getScoreDirectorFactory();
     SolutionDescriptor<Solution_> solutionDescriptor = scoreDirectorFactory.getSolutionDescriptor();
     MutationCounter<Solution_> mutationCounter = new MutationCounter<>(solutionDescriptor);
+    var tags = SolverMetricSupport.scope(solver).getMonitoringTags();
+    Metrics.globalRegistry.removeByPreFilterId(
+        new Meter.Id(
+            SolverMetric.BEST_SOLUTION_MUTATION.getMeterId(), tags, null, null, Meter.Type.GAUGE));
     BestSolutionMutationCountStatisticListener<Solution_> listener =
         Metrics.gauge(
             SolverMetric.BEST_SOLUTION_MUTATION.getMeterId(),
-            defaultSolver.getSolverScope().getMonitoringTags(),
+            tags,
             new BestSolutionMutationCountStatisticListener<>(mutationCounter),
             BestSolutionMutationCountStatisticListener::getMutationCount);
-    solverToEventListenerMap.put(solver, listener);
-    solver.addEventListener(listener);
+    var guardedListener =
+        SolverMetricSupport.guardedEventListener(SolverMetricSupport.scope(solver), listener);
+    solverToEventListenerMap.put(solver, guardedListener);
+    solver.addEventListener(guardedListener);
   }
 
   private static class BestSolutionMutationCountStatisticListener<Solution_>

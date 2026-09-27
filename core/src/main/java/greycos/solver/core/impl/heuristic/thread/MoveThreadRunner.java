@@ -20,7 +20,7 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
   volatile int appliedStepIndex = -1;
   volatile Thread thread;
   volatile boolean waiting;
-  long calculationCount;
+  volatile long calculationCount;
   long evaluated;
   long scored;
   long samples;
@@ -53,6 +53,7 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
       var epoch = mailbox;
       MoveEvaluationSource<Solution_> source = null;
       MoveEvaluationSource<Solution_> rebasedSource = null;
+      calculationCount = director.getCalculationCount();
       appliedStepIndex = epoch.stepIndex;
       pipeline.acknowledge();
       while (!pipeline.aborting) {
@@ -93,6 +94,7 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
           epoch = next;
           source = null;
           rebasedSource = null;
+          calculationCount = director.getCalculationCount();
           // No accesses to the previous epoch may occur after this release acknowledgement.
           appliedStepIndex = epoch.stepIndex;
           pipeline.acknowledge();
@@ -149,6 +151,7 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
               samples++;
             }
             slot.score = score;
+            calculationCount = director.getCalculationCount();
             slot.completedIndex = moveIndex;
             // Never touch the slot after publishing: the coordinator may immediately reuse it.
             pipeline.resultPublished(epoch, moveIndex);

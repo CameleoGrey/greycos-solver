@@ -13,6 +13,30 @@ public abstract class StatisticPoint {
   private static final Pattern DOUBLE_QUOTE = Pattern.compile("\"\"");
   private static final Pattern SINGLE_QUOTE = Pattern.compile("\"");
 
+  private final String source;
+
+  protected StatisticPoint() {
+    this(null);
+  }
+
+  protected StatisticPoint(String source) {
+    this.source = source;
+  }
+
+  public String getSource() {
+    return source;
+  }
+
+  public String getSeriesLabel(String label) {
+    return source == null ? label : label + " [" + source + "]";
+  }
+
+  public static String readSource(List<String> csvLine, int originalColumnCount) {
+    return csvLine.size() > originalColumnCount && !csvLine.get(originalColumnCount).isEmpty()
+        ? csvLine.get(originalColumnCount)
+        : null;
+  }
+
   public abstract String toCsvLine();
 
   public static String buildCsvLineWithLongs(long timeMillisSpent, long... values) {

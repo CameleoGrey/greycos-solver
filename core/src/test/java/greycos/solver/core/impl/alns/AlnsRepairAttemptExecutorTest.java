@@ -35,6 +35,7 @@ import greycos.solver.core.impl.heuristic.thread.MoveThreadingWorkload.Workload;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
+import greycos.solver.core.impl.solver.thread.SolverWorkerRegistry;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -49,6 +50,26 @@ class AlnsRepairAttemptExecutorTest {
   private static final AlnsRepairOperatorConfig REPAIR =
       new AlnsRepairOperatorConfig().withType(AlnsRepairOperatorType.RANDOMIZED_GREEDY).withTopK(3);
   private static final long[] SEEDS = {31, 7, 99, 4, 81};
+
+  @Test
+  void rawRepairWorkersRemainRegisteredUntilTheyExit() {
+    try (var fixture = new Fixture<>(new BasicWorkload(), 2, EnvironmentMode.NO_ASSERT)) {
+      var targets = fixture.destroy();
+      fixture.executor.evaluate(fixture.context, targets, REPAIR, SEEDS);
+
+      long physical =
+          fixture.children.stream().mapToLong(InnerScoreDirector::getCalculationCount).sum();
+      assertThat(fixture.executor.getAdditionalCalculationCount())
+          .isEqualTo(physical - fixture.executor.getDiagnostics().creditedQueries())
+          .isNotNegative();
+
+      assertThatThrownBy(fixture.workerRegistry::assertNoActiveWorkers)
+          .hasMessageContaining("ALNS repair attempts");
+      fixture.executor.close();
+      fixture.workerRegistry.assertNoActiveWorkers();
+      fixture.context.rollback();
+    }
+  }
 
   static Stream<Arguments> shapesAndAssertions() {
     return Stream.of("basic", "list", "mixed")
@@ -282,6 +303,7 @@ class AlnsRepairAttemptExecutorTest {
     final AlnsRepairAttemptExecutor<S, SimpleScore> executor;
     final List<InnerScoreDirector<S, SimpleScore>> children = new CopyOnWriteArrayList<>();
     final List<Thread> threads = new CopyOnWriteArrayList<>();
+    final SolverWorkerRegistry workerRegistry = new SolverWorkerRegistry();
     final AtomicLong calculationLimit = new AtomicLong(Long.MAX_VALUE);
     final AtomicBoolean forcedTermination = new AtomicBoolean();
     final AtomicBoolean cancelWhenChildCreated = new AtomicBoolean();
@@ -348,7 +370,8 @@ class AlnsRepairAttemptExecutorTest {
                 return thread;
               },
               mode,
-              SEEDS.length);
+              SEEDS.length,
+              workerRegistry);
     }
 
     List<AlnsTarget<S>> destroy() {

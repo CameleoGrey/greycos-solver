@@ -42,7 +42,8 @@ public class ConstraintMatchTotalBestScoreSubSingleStatistic<Solution_>
                             timeMillisSpent,
                             constraintSummary.constraintRef(),
                             constraintSummary.count(),
-                            constraintSummary.score()))));
+                            constraintSummary.score(),
+                            registry.getSampleSource()))));
   }
 
   @Override
@@ -58,7 +59,8 @@ public class ConstraintMatchTotalBestScoreSubSingleStatistic<Solution_>
         Long.parseLong(csvLine.get(0)),
         ConstraintRef.of(csvLine.get(1)),
         Integer.parseInt(csvLine.get(2)),
-        scoreDefinition.parseScore(csvLine.get(3)));
+        scoreDefinition.parseScore(csvLine.get(3)),
+        ConstraintMatchTotalBestScoreStatisticPoint.readSource(csvLine, 4));
   }
 
   @Override
@@ -73,7 +75,7 @@ public class ConstraintMatchTotalBestScoreSubSingleStatistic<Solution_>
           builderList.add(new LineChart.Builder<>());
         }
         LineChart.Builder<Long, Double> builder = builderList.get(i);
-        String seriesLabel = point.getConstraintRef().id() + " weight";
+        String seriesLabel = point.getSeriesLabel(point.getConstraintRef().id() + " weight");
         // Only add changes
         double lastValue =
             (builder.count(seriesLabel) == 0) ? 0.0 : builder.getLastValue(seriesLabel);

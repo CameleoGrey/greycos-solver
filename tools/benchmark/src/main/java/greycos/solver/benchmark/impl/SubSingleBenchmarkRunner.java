@@ -64,6 +64,14 @@ public class SubSingleBenchmarkRunner<Solution_>
   @Override
   public SubSingleBenchmarkRunner<Solution_> call() {
     MDC.put(NAME_MDC, subSingleBenchmarkResult.getName());
+    try {
+      return runBenchmark();
+    } finally {
+      MDC.remove(NAME_MDC);
+    }
+  }
+
+  private SubSingleBenchmarkRunner<Solution_> runBenchmark() {
     var runtime = Runtime.getRuntime();
     var singleBenchmarkResult = subSingleBenchmarkResult.getSingleBenchmarkResult();
     var problemBenchmarkResult = singleBenchmarkResult.getProblemBenchmarkResult();
@@ -96,30 +104,34 @@ public class SubSingleBenchmarkRunner<Solution_>
     var statisticRegistry =
         new StatisticRegistry<Solution_>(
             solverFactory.getSolutionDescriptor().getScoreDefinition());
-    Metrics.addRegistry(statisticRegistry);
-    var runTag = subSingleBenchmarkSolverTags.asTags();
-    subSingleBenchmarkResult
-        .getEffectiveSubSingleStatisticMap()
-        .forEach(
-            (statisticType, subSingleStatistic) -> {
-              subSingleStatistic.open(statisticRegistry, runTag);
-              subSingleStatistic.initPointList();
-            });
-
     var solver = (DefaultSolver<Solution_>) solverFactory.buildSolver();
     solver.setMonitorTags(subSingleBenchmarkSolverTags);
-    solver.addPhaseLifecycleListener(statisticRegistry);
-    var solution = solver.solve(problem);
-
-    solver.removePhaseLifecycleListener(statisticRegistry);
-    Metrics.removeRegistry(statisticRegistry);
+    var runTag = subSingleBenchmarkSolverTags.asTags();
+    Solution_ solution;
+    Metrics.addRegistry(statisticRegistry);
+    try {
+      subSingleBenchmarkResult
+          .getEffectiveSubSingleStatisticMap()
+          .forEach(
+              (statisticType, statistic) -> {
+                statistic.open(statisticRegistry, runTag);
+                statistic.initPointList();
+              });
+      solver.addPhaseLifecycleListener(statisticRegistry);
+      statisticRegistry.attach(solver.getSolverScope());
+      solution = solver.solve(problem);
+      for (var statistic : subSingleBenchmarkResult.getEffectiveSubSingleStatisticMap().values()) {
+        statistic.close(statisticRegistry, runTag);
+        statistic.hibernatePointList();
+      }
+    } finally {
+      statisticRegistry.detach();
+      solver.removePhaseLifecycleListener(statisticRegistry);
+      Metrics.removeRegistry(statisticRegistry);
+      statisticRegistry.close();
+    }
     var timeMillisSpent = solver.getTimeMillisSpent();
 
-    for (var subSingleStatistic :
-        subSingleBenchmarkResult.getEffectiveSubSingleStatisticMap().values()) {
-      subSingleStatistic.close(statisticRegistry, runTag);
-      subSingleStatistic.hibernatePointList();
-    }
     if (!warmUp) {
       var solverScope = solver.getSolverScope();
       var solutionDescriptor = solverScope.getSolutionDescriptor();
@@ -127,8 +139,9 @@ public class SubSingleBenchmarkRunner<Solution_>
       subSingleBenchmarkResult.setScore(
           solutionDescriptor.getScore(solution), solverScope.isBestSolutionInitialized());
       subSingleBenchmarkResult.setTimeMillisSpent(timeMillisSpent);
-      subSingleBenchmarkResult.setScoreCalculationCount(solverScope.getScoreCalculationCount());
-      subSingleBenchmarkResult.setMoveEvaluationCount(solverScope.getMoveEvaluationCount());
+      subSingleBenchmarkResult.setScoreCalculationCount(
+          solverScope.getReportedScoreCalculationCount());
+      subSingleBenchmarkResult.setMoveEvaluationCount(solverScope.getReportedMoveEvaluationCount());
 
       var solutionManager = SolutionManager.create(solverFactory);
       var isConstraintMatchEnabled =
@@ -142,7 +155,6 @@ public class SubSingleBenchmarkRunner<Solution_>
 
       problemBenchmarkResult.writeSolution(subSingleBenchmarkResult, solution);
     }
-    MDC.remove(NAME_MDC);
     return this;
   }
 

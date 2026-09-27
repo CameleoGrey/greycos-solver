@@ -4,6 +4,7 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.api.solver.event.SolverEventListener;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSamples;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 
 /**
@@ -34,6 +35,9 @@ public class SolverEventSupport<Solution_>
       do {
         it.next().bestSolutionChanged(event);
       } while (it.hasNext());
+    }
+    if (solverScope.isRootScope() && solverScope.hasMetricSampleListeners()) {
+      solverScope.publishMetricSample(SolverMetricSamples.captureBest(solverScope, "root"));
     }
   }
 }

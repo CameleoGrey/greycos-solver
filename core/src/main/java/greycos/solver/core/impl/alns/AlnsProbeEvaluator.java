@@ -16,6 +16,7 @@ import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationSource;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.solver.thread.SolverWorkerRegistry;
 import greycos.solver.core.impl.solver.thread.ThreadUtils;
 import greycos.solver.core.preview.api.move.Move;
 
@@ -34,6 +35,7 @@ final class AlnsProbeEvaluator<Solution_, Score_ extends Score<Score_>> implemen
   private final @Nullable Integer workerCount;
   private final int bufferSize;
   private final ThreadFactory threadFactory;
+  private final SolverWorkerRegistry workerRegistry;
   private final int phaseIndex;
   private final EnvironmentMode environmentMode;
   private final BooleanSupplier terminated;
@@ -75,6 +77,28 @@ final class AlnsProbeEvaluator<Solution_, Score_ extends Score<Score_>> implemen
       EnvironmentMode environmentMode,
       BooleanSupplier terminated,
       BooleanSupplier waitTerminated) {
+    this(
+        parent,
+        workerCount,
+        bufferSize,
+        threadFactory,
+        phaseIndex,
+        environmentMode,
+        terminated,
+        waitTerminated,
+        new SolverWorkerRegistry());
+  }
+
+  AlnsProbeEvaluator(
+      InnerScoreDirector<Solution_, Score_> parent,
+      @Nullable Integer workerCount,
+      int bufferSize,
+      ThreadFactory threadFactory,
+      int phaseIndex,
+      EnvironmentMode environmentMode,
+      BooleanSupplier terminated,
+      BooleanSupplier waitTerminated,
+      SolverWorkerRegistry workerRegistry) {
     if (workerCount != null && workerCount < 1 || bufferSize < 1) {
       throw new IllegalArgumentException(
           "ALNS worker count and candidate capacity must be positive.");
@@ -88,6 +112,7 @@ final class AlnsProbeEvaluator<Solution_, Score_ extends Score<Score_>> implemen
     this.bufferSize =
         workerCount == null ? bufferSize : Math.multiplyExact(workerCount, bufferSize);
     this.threadFactory = Objects.requireNonNull(threadFactory);
+    this.workerRegistry = Objects.requireNonNull(workerRegistry);
     this.phaseIndex = phaseIndex;
     this.environmentMode = Objects.requireNonNull(environmentMode);
     this.terminated = Objects.requireNonNull(terminated);
@@ -263,6 +288,7 @@ final class AlnsProbeEvaluator<Solution_, Score_ extends Score<Score_>> implemen
     var executor =
         Executors.newFixedThreadPool(
             count, ThreadUtils.requireNonNullThreads(threadFactory, "ALNS"));
+    workerRegistry.registerExecutor(executor, "ALNS probes");
     try {
       pipeline =
           new MoveEvaluationPipeline<>(

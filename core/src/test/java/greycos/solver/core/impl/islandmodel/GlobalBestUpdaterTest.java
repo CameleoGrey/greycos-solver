@@ -22,6 +22,8 @@ import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
+import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.DefaultSolver;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -131,9 +133,17 @@ class GlobalBestUpdaterTest {
                 .withPhaseConfigList(List.of(new ConstructionHeuristicPhaseConfig())));
     var solver = (DefaultSolver<Solution_>) SolverFactory.<Solution_>create(config).buildSolver();
     var snapshots = new CopyOnWriteArrayList<SharedGlobalState.BestSolutionSnapshot<Solution_>>();
-    ((DefaultIslandModelPhase<Solution_>) solver.getPhaseList().getFirst())
-        .getGlobalState()
-        .addObserver(snapshots::add);
+    solver.addPhaseLifecycleListener(
+        new PhaseLifecycleListenerAdapter<>() {
+          @Override
+          public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
+            if (phaseScope instanceof IslandModelPhaseScope<?>) {
+              ((DefaultIslandModelPhase<Solution_>) solver.getPhaseList().getFirst())
+                  .getGlobalState()
+                  .addObserver(snapshots::add);
+            }
+          }
+        });
     var done = new AtomicBoolean();
     var readerStarted = new CountDownLatch(1);
     try (var executor = Executors.newSingleThreadExecutor()) {

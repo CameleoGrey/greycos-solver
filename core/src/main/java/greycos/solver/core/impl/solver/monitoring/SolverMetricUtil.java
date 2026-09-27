@@ -47,12 +47,22 @@ public final class SolverMetricUtil {
               System.arraycopy(levelValues, 0, initialLevels, 0, levelValues.length);
               var result = new ScoreLevels(innerScore.unassignedCount(), initialLevels);
 
+              Metrics.globalRegistry.removeByPreFilterId(
+                  new Meter.Id(
+                      getGaugeName(metric, UNASSIGNED_COUNT_LABEL),
+                      tags,
+                      null,
+                      null,
+                      Meter.Type.GAUGE));
               Metrics.gauge(
                   getGaugeName(metric, UNASSIGNED_COUNT_LABEL),
                   tags,
                   result.unassignedCount,
                   AtomicInteger::doubleValue);
               for (var i = 0; i < levelValues.length; i++) {
+                Metrics.globalRegistry.removeByPreFilterId(
+                    new Meter.Id(
+                        getGaugeName(metric, levelLabels[i]), tags, null, null, Meter.Type.GAUGE));
                 Metrics.gauge(
                     getGaugeName(metric, levelLabels[i]),
                     tags,

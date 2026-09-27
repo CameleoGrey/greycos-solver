@@ -19,6 +19,12 @@ public class PickedMoveTypeBestScoreDiffStatisticPoint extends StatisticPoint {
 
   public PickedMoveTypeBestScoreDiffStatisticPoint(
       long timeMillisSpent, String moveType, Score bestScoreDiff) {
+    this(timeMillisSpent, moveType, bestScoreDiff, null);
+  }
+
+  public PickedMoveTypeBestScoreDiffStatisticPoint(
+      long timeMillisSpent, String moveType, Score bestScoreDiff, String source) {
+    super(source);
     this.timeMillisSpent = timeMillisSpent;
     this.moveType = moveType;
     this.bestScoreDiff = bestScoreDiff;

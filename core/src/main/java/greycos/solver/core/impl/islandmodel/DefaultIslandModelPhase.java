@@ -31,6 +31,7 @@ import greycos.solver.core.impl.solver.AbstractSolver;
 import greycos.solver.core.impl.solver.ClassInstanceCache;
 import greycos.solver.core.impl.solver.change.DefaultProblemChangeDirector;
 import greycos.solver.core.impl.solver.event.SolverEventSupport;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSamples;
 import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecallerFactory;
@@ -60,12 +61,10 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   private final boolean compareGlobalEnabled;
   private final int receiveGlobalUpdateFrequency;
   private final long migrationTimeout;
-  private final SharedGlobalState<Solution_> globalState;
-  private SolverScope<Solution_> solverScope; // Cache for solution cloning
+  private volatile SharedGlobalState<Solution_> globalState;
   private final HeuristicConfigPolicy<Solution_> configPolicy;
   private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
   private final SolverTermination<Solution_> solverTermination;
-  private GlobalBestPropagator<Solution_> globalBestPropagator;
 
   private DefaultIslandModelPhase(Builder<Solution_> builder) {
     super(builder);
@@ -103,6 +102,10 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   public void solve(SolverScope<Solution_> solverScope) {
     var phaseScope = new IslandModelPhaseScope<>(solverScope, phaseIndex);
     boolean phaseLifecycleStarted = false;
+    var runState = new SharedGlobalState<Solution_>();
+    globalState = runState;
+    GlobalBestPropagator<Solution_> propagator = null;
+    Throwable failure = null;
     try {
       LOGGER.info(
           "{}Island Model phase ({}) starting with {} islands",
@@ -113,7 +116,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       phaseStarted(phaseScope);
       phaseLifecycleStarted = true;
 
-      this.solverScope = solverScope;
       var outerBudget =
           new IslandTerminationBudget<Solution_>(
               Objects.requireNonNullElseGet(
@@ -121,7 +123,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
               configPolicy,
               solverScope.getClock(),
               phaseScope.getStartingSystemTimeMillis());
-      globalState.reset(
+      runState.reset(
           solverScope.getClock(),
           snapshot ->
               outerBudget.bestScoreImproved(
@@ -133,25 +135,26 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       if (innerScore == null) {
         innerScore = solverScope.calculateScore();
       }
-      globalState.tryUpdate(initialSolution, innerScore);
+      runState.tryUpdate(initialSolution, innerScore);
 
-      globalBestPropagator =
+      propagator =
           new GlobalBestPropagator<>(
-              globalState,
+              runState,
               solverScope,
               getSolverEventSupport(solverScope),
-              new PhaseEventProducerId(getPhaseType(), phaseIndex));
-      globalBestPropagator.start();
+              new PhaseEventProducerId(getPhaseType(), phaseIndex),
+              islandCount);
+      propagator.start();
 
-      createAndRunAgents(solverScope, outerBudget);
+      createAndRunAgents(solverScope, outerBudget, runState, propagator);
 
-      var globalBest = globalState.getBestSolution();
+      var globalBest = runState.getBestSolution();
       if (globalBest != null) {
         LOGGER.info(
             "{}Island Model phase ({}) ended. Global best score: {}",
             logIndentation,
             phaseIndex,
-            globalState.getBestScore());
+            runState.getBestScore());
         solverScope.setInitialSolution(globalBest);
       } else {
         LOGGER.warn(
@@ -161,7 +164,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       }
       phaseScope.endingNow();
 
-    } catch (Exception e) {
+    } catch (RuntimeException | Error e) {
+      failure = e;
       LOGGER.error(
           "{}Island Model phase ({}) encountered error",
           logIndentation,
@@ -170,40 +174,76 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           e);
       throw e;
     } finally {
-      if (globalBestPropagator != null) {
-        globalBestPropagator.stop();
+      if (propagator != null) {
+        propagator.stop();
       }
-      globalState.clearProgressObserver();
+      runState.close();
       if (phaseLifecycleStarted) {
-        phaseEnded(phaseScope);
+        try {
+          phaseEnded(phaseScope);
+        } catch (RuntimeException | Error cleanupFailure) {
+          if (failure == null) {
+            throw cleanupFailure;
+          }
+          if (cleanupFailure != failure) {
+            failure.addSuppressed(cleanupFailure);
+          }
+        }
       }
     }
   }
 
   private void createAndRunAgents(
-      SolverScope<Solution_> solverScope, IslandTerminationBudget<Solution_> outerBudget) {
-    var threadFactory = configPolicy.buildThreadFactory(ChildThreadType.PART_THREAD);
+      SolverScope<Solution_> solverScope,
+      IslandTerminationBudget<Solution_> outerBudget,
+      SharedGlobalState<Solution_> runState,
+      GlobalBestPropagator<Solution_> propagator) {
+    var threadFactory =
+        ThreadUtils.requireNonNullThreads(
+            configPolicy.buildThreadFactory(ChildThreadType.PART_THREAD), "Island Model");
     var executor = Executors.newFixedThreadPool(islandCount, threadFactory);
+    solverScope.getWorkerRegistry().registerExecutor(executor, "island phase " + phaseIndex);
     var completionService = new ExecutorCompletionService<Void>(executor);
     var completionLatch = new CountDownLatch(islandCount);
     var futures = new ArrayList<Future<Void>>(islandCount);
-    boolean completedSuccessfully = false;
+    var agents = new ArrayList<IslandAgent<Solution_>>(islandCount);
+    Throwable failure = null;
     boolean restoreInterrupt = false;
 
     try {
       LOGGER.info("Creating {} island agents with ring topology...", islandCount);
-
       var channels = new ArrayList<BoundedChannel<AgentUpdate<Solution_>>>(islandCount);
       for (int i = 0; i < islandCount; i++) {
         channels.add(new BoundedChannel<>(1));
       }
-
       for (int i = 0; i < islandCount; i++) {
-        var receiver = channels.get(i);
-        var sender = channels.get((i + 1) % islandCount);
-
         var agentScope = createAgentSolverScope(solverScope, i);
+        IslandAgent<Solution_> agent = null;
         try {
+          var source = solverScope.getWorkerPath() + "phase-" + phaseIndex + "/island-" + i;
+          agentScope.setWorkerPath(source + "/");
+          agentScope.setMetricSource(source);
+          solverScope.getIslandWorkAccounting().register(source);
+          var accounting = solverScope.getIslandWorkAccounting();
+          agentScope.setMetricSamplePublisher(
+              sample -> {
+                if (!solverScope.hasMetricSampleListeners()) {
+                  // Reporting without a benchmark subscriber does not synchronize every search step
+                  // with the coordinator. Only immutable cumulative counters cross this boundary.
+                  accounting.publish(sample.source(), sample.work());
+                } else if (solverScope.hasMetricSamplePublisher()) {
+                  // Nested islands forward the unchanged local snapshot to the outer coordinator.
+                  solverScope.publishMetricSample(sample);
+                } else {
+                  propagator.enqueue(
+                      () -> {
+                        if (accounting.publish(sample.source(), sample.work())) {
+                          solverScope.publishMetricSample(
+                              sample.withWork(SolverMetricSamples.reportedWork(solverScope)));
+                        }
+                      });
+                }
+              });
           var agentRandom = agentScope.getWorkingRandom();
           var agentConfigPolicy = createAgentConfigPolicy(agentRandom);
           var agentTermination =
@@ -222,53 +262,77 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
                   toUniversalTermination(agentTermination),
                   agentPhases);
           agentScope.setSolver(islandSolver);
-          var initialSolution = deepCloneSolution(solverScope.getBestSolution());
-          var agent =
+          var initialSolution =
+              solverScope.getScoreDirector().cloneSolution(solverScope.getBestSolution());
+          agent =
               createAgent(
                   i,
-                  sender,
-                  receiver,
+                  channels.get((i + 1) % islandCount),
+                  channels.get(i),
                   agentPhases,
                   agentScope,
                   initialSolution,
                   completionLatch,
-                  agentRandom);
+                  agentRandom,
+                  runState);
+          // Keep ownership even if submission fails or cancellation wins before run() starts.
+          agents.add(agent);
           futures.add(completionService.submit(agent, null));
-        } catch (RuntimeException | Error failure) {
-          // Ownership transfers to the agent only after successful submission.
-          try {
-            agentScope.getScoreDirector().close();
-          } catch (Exception cleanupFailure) {
-            failure.addSuppressed(cleanupFailure);
+        } catch (RuntimeException | Error startupFailure) {
+          if (agent == null) {
+            try {
+              agentScope.getScoreDirector().close();
+            } catch (RuntimeException | Error cleanupFailure) {
+              if (cleanupFailure != startupFailure) startupFailure.addSuppressed(cleanupFailure);
+            }
           }
-          throw failure;
+          throw startupFailure;
         }
       }
 
-      for (int i = 0; i < islandCount; i++) {
-        completionService.take().get();
+      int completed = 0;
+      while (completed < islandCount) {
+        int drained = propagator.drain();
+        var future = completionService.poll(drained == 0 ? 50L : 0L, TimeUnit.MILLISECONDS);
+        if (future != null) {
+          future.get();
+          completed++;
+        }
       }
-      completedSuccessfully = true;
+      // No publisher remains; one bounded batch contains all remaining publications.
+      propagator.drain();
       LOGGER.info("All {} island agents completed", islandCount);
-
     } catch (InterruptedException e) {
       restoreInterrupt = true;
-      throw new IllegalStateException("Interrupted while waiting for island agents.", e);
+      var interrupted =
+          new IllegalStateException("Interrupted while waiting for island agents.", e);
+      failure = interrupted;
+      throw interrupted;
     } catch (ExecutionException e) {
-      throw new IllegalStateException("Island agent failed.", e.getCause());
+      var agentFailure = new IllegalStateException("Island agent failed.", e.getCause());
+      failure = agentFailure;
+      throw agentFailure;
+    } catch (RuntimeException | Error e) {
+      failure = e;
+      throw e;
     } finally {
-      if (!completedSuccessfully) {
-        for (var future : futures) {
-          future.cancel(true);
+      if (failure != null) {
+        propagator.stop();
+        for (var future : futures) future.cancel(true);
+        for (var agent : agents) {
+          try {
+            agent.cancelBeforeStart();
+          } catch (RuntimeException | Error cleanupFailure) {
+            if (cleanupFailure != failure) failure.addSuppressed(cleanupFailure);
+          }
         }
+        for (int i = agents.size(); i < islandCount; i++) completionLatch.countDown();
         executor.shutdownNow();
       } else {
         executor.shutdown();
       }
       restoreInterrupt |= awaitAgentExecutorTermination(executor);
-      if (restoreInterrupt) {
-        Thread.currentThread().interrupt();
-      }
+      if (restoreInterrupt) Thread.currentThread().interrupt();
     }
   }
 
@@ -296,7 +360,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       SolverScope<Solution_> agentScope,
       Solution_ initialSolution,
       CountDownLatch completionLatch,
-      RandomSource agentRandom) {
+      RandomSource agentRandom,
+      SharedGlobalState<Solution_> runState) {
     var config =
         IslandModelConfig.builder()
             .withIslandCount(islandCount)
@@ -310,7 +375,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         agentId,
         agentPhases,
         initialSolution,
-        globalState,
+        runState,
         sender,
         receiver,
         config,
@@ -453,17 +518,6 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     scoreDirector.resetCalculationCount();
     agentScope.setProblemChangeDirector(new DefaultProblemChangeDirector<>(scoreDirector));
     return agentScope;
-  }
-
-  @SuppressWarnings("unchecked")
-  private Solution_ deepCloneSolution(Solution_ solution) {
-    if (solution == null) {
-      throw new IllegalStateException("Solution to clone cannot be null");
-    }
-    if (solverScope == null) {
-      throw new IllegalStateException("Solver scope not set for solution cloning");
-    }
-    return solverScope.getScoreDirector().cloneSolution(solution);
   }
 
   public SharedGlobalState<Solution_> getGlobalState() {

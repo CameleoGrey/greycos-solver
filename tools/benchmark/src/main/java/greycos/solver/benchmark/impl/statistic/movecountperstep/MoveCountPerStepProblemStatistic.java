@@ -45,13 +45,19 @@ public class MoveCountPerStepProblemStatistic extends ProblemStatistic<LineChart
         List<MoveCountPerStepStatisticPoint> list = subSingleStatistic.getPointList();
         for (MoveCountPerStepStatisticPoint point : list) {
           long timeMillisSpent = point.getTimeMillisSpent();
-          builder.add(acceptedSeriesLabel, timeMillisSpent, point.getAcceptedMoveCount());
-          builder.add(selectedSeriesLabel, timeMillisSpent, point.getSelectedMoveCount());
+          builder.add(
+              point.getSeriesLabel(acceptedSeriesLabel),
+              timeMillisSpent,
+              point.getAcceptedMoveCount());
+          builder.add(
+              point.getSeriesLabel(selectedSeriesLabel),
+              timeMillisSpent,
+              point.getSelectedMoveCount());
+          if (singleBenchmarkResult.getSolverBenchmarkResult().isFavorite()) {
+            builder.markFavorite(point.getSeriesLabel(acceptedSeriesLabel));
+            builder.markFavorite(point.getSeriesLabel(selectedSeriesLabel));
+          }
         }
-      }
-      if (singleBenchmarkResult.getSolverBenchmarkResult().isFavorite()) {
-        builder.markFavorite(acceptedSeriesLabel);
-        builder.markFavorite(selectedSeriesLabel);
       }
     }
     return singletonList(

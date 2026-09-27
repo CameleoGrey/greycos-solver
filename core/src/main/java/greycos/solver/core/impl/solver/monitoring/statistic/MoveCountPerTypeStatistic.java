@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.solver.monitoring.statistic;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -10,7 +11,9 @@ import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
-import greycos.solver.core.impl.solver.DefaultSolver;
+import greycos.solver.core.impl.solver.AbstractSolver;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSupport;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
 
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Metrics;
@@ -19,23 +22,27 @@ import io.micrometer.core.instrument.Tags;
 public class MoveCountPerTypeStatistic<Solution_> implements SolverStatistic<Solution_> {
 
   private final Map<Solver<Solution_>, PhaseLifecycleListenerAdapter<Solution_>>
-      solverToPhaseLifecycleListenerMap = new WeakHashMap<>();
+      solverToPhaseLifecycleListenerMap = Collections.synchronizedMap(new WeakHashMap<>());
 
   @Override
   public void unregister(Solver<Solution_> solver) {
     var listener = solverToPhaseLifecycleListenerMap.remove(solver);
     if (listener != null) {
-      ((DefaultSolver<Solution_>) solver).removePhaseLifecycleListener(listener);
-      ((MoveCountPerTypeStatisticListener<Solution_>) listener).unregister(solver);
+      ((AbstractSolver<Solution_>) solver).removePhaseLifecycleListener(listener);
+      ((MoveCountPerTypeStatisticListener<Solution_>)
+              ((SolverMetricSupport.GuardedPhaseListener<Solution_>) listener).delegate())
+          .unregister(solver);
     }
   }
 
   @Override
   public void register(Solver<Solution_> solver) {
-    var defaultSolver = (DefaultSolver<Solution_>) solver;
+    var defaultSolver = (AbstractSolver<Solution_>) solver;
     var listener = new MoveCountPerTypeStatistic.MoveCountPerTypeStatisticListener<Solution_>();
-    solverToPhaseLifecycleListenerMap.put(solver, listener);
-    defaultSolver.addPhaseLifecycleListener(listener);
+    var guardedListener =
+        SolverMetricSupport.guardedPhaseListener(SolverMetricSupport.scope(solver), listener);
+    solverToPhaseLifecycleListenerMap.put(solver, guardedListener);
+    defaultSolver.addPhaseLifecycleListener(guardedListener);
   }
 
   private static class MoveCountPerTypeStatisticListener<Solution_>
@@ -47,28 +54,21 @@ public class MoveCountPerTypeStatistic<Solution_> implements SolverStatistic<Sol
       // The metric must be collected when the phase ends instead of when the solver ends
       // because there is no guarantee this listener will run the phase event before the
       // StatisticRegistry listener
-      var moveCountPerType = phaseScope.getSolverScope().getMoveEvaluationCountPerType();
+      var moveCountPerType = phaseScope.getSolverScope().getReportedMoveCountsByType();
       var tags = phaseScope.getSolverScope().getMonitoringTags();
       moveCountPerType.forEach(
           (type, count) -> {
             var key = SolverMetric.MOVE_COUNT_PER_TYPE.getMeterId() + "." + type;
-            var counter = Metrics.gauge(key, tags, new AtomicLong(0L));
-            if (counter != null) {
-              counter.set(count);
-            }
-            registerMoveCountPerType(tags, key, counter);
-          });
-    }
-
-    private void registerMoveCountPerType(Tags tag, String key, AtomicLong count) {
-      tagsToMoveCountMap.compute(
-          tag,
-          (tags, countMap) -> {
-            if (countMap == null) {
-              countMap = new HashMap<>();
-            }
-            countMap.put(key, count);
-            return countMap;
+            var counters = tagsToMoveCountMap.computeIfAbsent(tags, ignored -> new HashMap<>());
+            var counter =
+                counters.computeIfAbsent(
+                    key,
+                    ignored -> {
+                      var value = new AtomicLong();
+                      SolverMetricUtil.rebindGauge(key, tags, value);
+                      return value;
+                    });
+            counter.set(count);
           });
     }
 

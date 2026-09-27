@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.solver.monitoring.statistic;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,9 +9,10 @@ import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.event.SolverEventListener;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.score.director.InnerScore;
-import greycos.solver.core.impl.solver.DefaultSolver;
+import greycos.solver.core.impl.solver.AbstractSolver;
 import greycos.solver.core.impl.solver.event.DefaultBestSolutionChangedEvent;
 import greycos.solver.core.impl.solver.monitoring.ScoreLevels;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSupport;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
 
 import io.micrometer.core.instrument.Tags;
@@ -19,7 +21,7 @@ public class BestScoreStatistic<Solution_> implements SolverStatistic<Solution_>
 
   private final Map<Tags, ScoreLevels> tagsToBestScoreMap = new ConcurrentHashMap<>();
   private final Map<Solver<Solution_>, SolverEventListener<Solution_>> solverToEventListenerMap =
-      new WeakHashMap<>();
+      Collections.synchronizedMap(new WeakHashMap<>());
 
   @Override
   public void unregister(Solver<Solution_> solver) {
@@ -31,14 +33,13 @@ public class BestScoreStatistic<Solution_> implements SolverStatistic<Solution_>
   }
 
   private static Tags extractTags(Solver<?> solver) {
-    var defaultSolver = (DefaultSolver<?>) solver;
-    return defaultSolver.getSolverScope().getMonitoringTags();
+    return SolverMetricSupport.scope(solver).getMonitoringTags();
   }
 
   @Override
   public void register(Solver<Solution_> solver) {
-    var defaultSolver = (DefaultSolver<Solution_>) solver;
-    var scoreDefinition = defaultSolver.getSolverScope().getScoreDefinition();
+    var defaultSolver = (AbstractSolver<Solution_>) solver;
+    var scoreDefinition = SolverMetricSupport.scope(solver).getScoreDefinition();
     var tags = extractTags(solver);
     SolverEventListener<Solution_> listener =
         event -> {
@@ -51,7 +52,9 @@ public class BestScoreStatistic<Solution_> implements SolverStatistic<Solution_>
               InnerScore.withUnassignedCount(
                   event.getNewBestScore(), castEvent.getUnassignedCount()));
         };
-    solverToEventListenerMap.put(defaultSolver, listener);
-    defaultSolver.addEventListener(listener);
+    var guardedListener =
+        SolverMetricSupport.guardedEventListener(SolverMetricSupport.scope(solver), listener);
+    solverToEventListenerMap.put(defaultSolver, guardedListener);
+    defaultSolver.addEventListener(guardedListener);
   }
 }

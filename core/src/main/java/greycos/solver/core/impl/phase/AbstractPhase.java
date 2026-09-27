@@ -6,7 +6,9 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.alns.AlnsStepScope;
 import greycos.solver.core.impl.localsearch.DefaultLocalSearchPhase;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleSupport;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
@@ -15,6 +17,7 @@ import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.solver.exception.ScoreCorruptionException;
 import greycos.solver.core.impl.solver.exception.VariableCorruptionException;
 import greycos.solver.core.impl.solver.monitoring.ScoreLevels;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSamples;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
@@ -219,9 +222,23 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
     }
     phaseTermination.stepEnded(stepScope);
     phaseLifecycleSupport.fireStepEnded(stepScope);
+    // LS and ALNS finish collecting their metrics after this superclass callback.
+    if (!isNested()
+        && !(stepScope instanceof LocalSearchStepScope)
+        && !(stepScope instanceof AlnsStepScope)) {
+      SolverMetricSamples.publishIslandStep(stepScope.getPhaseScope().getSolverScope(), stepScope);
+    }
   }
 
   private static <Solution_> void collectMetrics(AbstractStepScope<Solution_> stepScope) {
+    stepScope
+        .getPhaseScope()
+        .getSolverScope()
+        .getMetricRun()
+        .publish(() -> collectMetricsActive(stepScope));
+  }
+
+  private static <Solution_> void collectMetricsActive(AbstractStepScope<Solution_> stepScope) {
     var solverScope = stepScope.getPhaseScope().getSolverScope();
     if (solverScope.isMetricEnabled(SolverMetric.STEP_SCORE)
         && stepScope.getScore().isFullyAssigned()) {

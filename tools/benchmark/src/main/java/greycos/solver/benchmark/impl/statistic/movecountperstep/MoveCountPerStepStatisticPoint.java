@@ -10,6 +10,12 @@ public class MoveCountPerStepStatisticPoint extends StatisticPoint {
 
   public MoveCountPerStepStatisticPoint(
       long timeMillisSpent, long acceptedMoveCount, long selectedMoveCount) {
+    this(timeMillisSpent, acceptedMoveCount, selectedMoveCount, null);
+  }
+
+  public MoveCountPerStepStatisticPoint(
+      long timeMillisSpent, long acceptedMoveCount, long selectedMoveCount, String source) {
+    super(source);
     this.timeMillisSpent = timeMillisSpent;
     this.acceptedMoveCount = acceptedMoveCount;
     this.selectedMoveCount = selectedMoveCount;

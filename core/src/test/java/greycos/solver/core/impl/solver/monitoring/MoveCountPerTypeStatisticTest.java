@@ -34,20 +34,23 @@ class MoveCountPerTypeStatisticTest extends AbstractMeterTest {
       Metrics.addRegistry(registry);
       try {
         DefaultSolver<TestdataSolution> solver = mock(DefaultSolver.class);
+        var rootTags = SolverTags.withProblemId("owned").asTags();
+        SolverScope<TestdataSolution> rootScope = scope(rootTags);
+        when(solver.getSolverScope()).thenReturn(rootScope);
         var statistic = new MoveCountPerTypeStatistic<TestdataSolution>();
         statistic.register(solver);
         ArgumentCaptor<PhaseLifecycleListener<TestdataSolution>> listenerCaptor =
             ArgumentCaptor.forClass(PhaseLifecycleListener.class);
         verify(solver).addPhaseLifecycleListener(listenerCaptor.capture());
-        var rootTags = SolverTags.withProblemId("owned").asTags();
-        SolverScope<TestdataSolution> rootScope = scope(rootTags);
-        when(solver.getSolverScope()).thenReturn(rootScope);
         listenerCaptor.getValue().phaseEnded(new LocalSearchPhaseScope<>(rootScope, 0));
         listenerCaptor
             .getValue()
             .phaseEnded(new LocalSearchPhaseScope<>(scope(rootTags.and("island.id", "0")), 0));
         var foreignTags = SolverTags.withProblemId("other").asTags();
         var meterName = SolverMetric.MOVE_COUNT_PER_TYPE.getMeterId() + ".ChangeMove";
+        when(rootScope.getReportedMoveCountsByType()).thenReturn(Map.of("ChangeMove", 5L));
+        listenerCaptor.getValue().phaseEnded(new LocalSearchPhaseScope<>(rootScope, 1));
+        assertThat(registry.find(meterName).tags(rootTags).gauge().value()).isEqualTo(5);
         var foreignCounter = new AtomicLong(7);
         Metrics.gauge(meterName, foreignTags, foreignCounter);
         assertThat(registry.find(meterName).gauges()).hasSize(3);
@@ -73,7 +76,8 @@ class MoveCountPerTypeStatisticTest extends AbstractMeterTest {
   private static SolverScope<TestdataSolution> scope(Tags tags) {
     SolverScope<TestdataSolution> scope = mock(SolverScope.class);
     when(scope.getMonitoringTags()).thenReturn(tags);
-    when(scope.getMoveEvaluationCountPerType()).thenReturn(Map.of("ChangeMove", 3L));
+    when(scope.getReportedMoveCountsByType()).thenReturn(Map.of("ChangeMove", 3L));
+    when(scope.getMetricRun()).thenReturn(new SolverMetricRun());
     return scope;
   }
 }

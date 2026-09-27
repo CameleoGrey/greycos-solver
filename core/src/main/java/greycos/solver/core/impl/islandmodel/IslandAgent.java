@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import greycos.solver.core.impl.alns.AlnsPhase;
 import greycos.solver.core.impl.localsearch.LocalSearchPhase;
@@ -34,6 +35,8 @@ public class IslandAgent<Solution_> implements Runnable {
   private final RandomSource random;
   private final SolverScope<Solution_> islandScope;
   private final CountDownLatch completionLatch;
+  private final AtomicReference<ExecutionState> executionState =
+      new AtomicReference<>(ExecutionState.NEW);
 
   private volatile AgentStatus status = AgentStatus.ALIVE;
   private volatile BitSet aliveBits;
@@ -67,6 +70,9 @@ public class IslandAgent<Solution_> implements Runnable {
 
   @Override
   public void run() {
+    if (!executionState.compareAndSet(ExecutionState.NEW, ExecutionState.RUNNING)) {
+      return;
+    }
     try {
       islandScope.transferWorkingRandomOwnershipToCurrentThread();
       LOGGER.info("Agent {} started with {} phases", agentId, phases.size());
@@ -119,11 +125,31 @@ public class IslandAgent<Solution_> implements Runnable {
       }
       throw new IllegalStateException("Island agent " + agentId + " failed.", e);
     } finally {
+      executionState.set(ExecutionState.CLOSED);
       completionLatch.countDown();
     }
 
     awaitAllAgentsAndRelayMigrations();
     LOGGER.info("Agent {} terminated", agentId);
+  }
+
+  /** Claims cleanup only when cancellation prevented the agent from entering its lifecycle. */
+  public void cancelBeforeStart() {
+    if (!executionState.compareAndSet(ExecutionState.NEW, ExecutionState.CLOSED)) {
+      return;
+    }
+    try {
+      markAsDead();
+      islandScope.getScoreDirector().close();
+    } finally {
+      completionLatch.countDown();
+    }
+  }
+
+  private enum ExecutionState {
+    NEW,
+    RUNNING,
+    CLOSED
   }
 
   void checkAndPerformMigration() {

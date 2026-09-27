@@ -40,6 +40,7 @@ import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
+import greycos.solver.core.impl.solver.thread.SolverWorkerRegistry;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -416,6 +417,26 @@ class AlnsThreadedContextTest {
         .orElseThrow();
   }
 
+  @Test
+  void probePoolRemainsRegisteredUntilItsWorkersExit() {
+    try (var fixture = new Fixture<>(new BasicWorkload(), 2, EnvironmentMode.NO_ASSERT)) {
+      fixture.context.beginTrial();
+      fixture.context.evaluateRemovals(fixture.context.targets().subList(0, 4));
+
+      long physical =
+          fixture.children.stream().mapToLong(InnerScoreDirector::getCalculationCount).sum();
+      assertThat(fixture.context.additionalCalculationCount())
+          .isEqualTo(physical - 4)
+          .isNotNegative();
+
+      assertThatThrownBy(fixture.workerRegistry::assertNoActiveWorkers)
+          .hasMessageContaining("ALNS probes");
+      fixture.context.rollback();
+      fixture.context.close();
+      fixture.workerRegistry.assertNoActiveWorkers();
+    }
+  }
+
   private static final class Fixture<S> implements AutoCloseable {
     private final Workload<S> workload;
     private final S solution;
@@ -424,6 +445,7 @@ class AlnsThreadedContextTest {
     private final DefaultAlnsContext<S, SimpleScore> context;
     private final List<InnerScoreDirector<S, SimpleScore>> children = new CopyOnWriteArrayList<>();
     private final List<Thread> threads = new CopyOnWriteArrayList<>();
+    private final SolverWorkerRegistry workerRegistry = new SolverWorkerRegistry();
     private final AtomicInteger cloneCount = new AtomicInteger();
 
     @SuppressWarnings("unchecked")
@@ -472,7 +494,8 @@ class AlnsThreadedContextTest {
             return thread;
           },
           0,
-          mode);
+          mode,
+          workerRegistry);
     }
 
     @Override

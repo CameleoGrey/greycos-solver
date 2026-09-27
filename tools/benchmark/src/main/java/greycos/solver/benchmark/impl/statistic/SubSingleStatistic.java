@@ -114,10 +114,20 @@ public abstract class SubSingleStatistic<Solution_, StatisticPoint_ extends Stat
     File csvFile = getCsvFile();
     try (BufferedWriter writer =
         Files.newBufferedWriter(csvFile.toPath(), StandardCharsets.UTF_8)) {
+      boolean includeSource = getPointList().stream().anyMatch(point -> point.getSource() != null);
       writer.append(getCsvHeader());
+      if (includeSource) {
+        writer.append(',').append(StatisticPoint.buildCsvLine("source"));
+      }
       writer.newLine();
       for (StatisticPoint point : getPointList()) {
         writer.append(point.toCsvLine());
+        if (includeSource) {
+          writer
+              .append(',')
+              .append(
+                  StatisticPoint.buildCsvLine(point.getSource() == null ? "" : point.getSource()));
+        }
         writer.newLine();
       }
       if (subSingleBenchmarkResult.hasAnyFailure()) {
@@ -152,7 +162,8 @@ public abstract class SubSingleStatistic<Solution_, StatisticPoint_ extends Stat
     try (BufferedReader reader =
         Files.newBufferedReader(csvFile.toPath(), StandardCharsets.UTF_8)) {
       String line = reader.readLine();
-      if (!getCsvHeader().equals(line)) {
+      if (!getCsvHeader().equals(line)
+          && !(getCsvHeader() + "," + StatisticPoint.buildCsvLine("source")).equals(line)) {
         throw new IllegalStateException(
             "The read line ("
                 + line

@@ -28,6 +28,7 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import greycos.solver.core.api.score.SimpleScore;
@@ -47,6 +48,32 @@ class MoveEvaluationPipelineTest {
 
   private static final Duration TIMEOUT = Duration.ofSeconds(10);
   private static final InnerScore<SimpleScore> ZERO = InnerScore.fullyAssigned(SimpleScore.ZERO);
+
+  @Test
+  void calculationCountsAreVisibleBeforeWorkerShutdown() throws Exception {
+    try (var fixture = new Fixture(1, 1)) {
+      var calculations = new AtomicLong(1);
+      var child = fixture.children.getFirst();
+      when(child.getCalculationCount()).thenAnswer(invocation -> calculations.get());
+      var candidate = move();
+      fixture.evaluate(
+          candidate,
+          () -> {
+            calculations.incrementAndGet();
+            return ZERO;
+          });
+      fixture.start();
+      assertThat(fixture.pipeline.getCalculationCount()).isEqualTo(1);
+
+      fixture.pipeline.submit(0, candidate);
+      assertThat(fixture.pipeline.takeScore(0, 0)).isEqualTo(ZERO);
+      assertThat(fixture.pipeline.getCalculationCount()).isEqualTo(2);
+      verify(child, never()).close();
+
+      fixture.pipeline.close();
+      assertThat(fixture.pipeline.getCalculationCount()).isEqualTo(2);
+    }
+  }
 
   @Test
   void rangeClaimsShortenAtPublicationAndKeepIndividualMovesSingle() {
@@ -608,9 +635,9 @@ class MoveEvaluationPipelineTest {
     var closeFailure = new IllegalArgumentException("close failure");
     try (var fixture = new Fixture(1, 1)) {
       var child = fixture.children.get(0);
-      when(child.getCalculationCount()).thenThrow(countFailure);
       doThrow(closeFailure).when(child).close();
       fixture.start();
+      when(child.getCalculationCount()).thenThrow(countFailure);
       assertThatThrownBy(fixture.pipeline::close)
           .isInstanceOf(IllegalStateException.class)
           .hasCause(countFailure);

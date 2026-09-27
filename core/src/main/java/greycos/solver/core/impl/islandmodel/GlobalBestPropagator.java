@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.islandmodel;
 
+import java.util.ArrayDeque;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -8,96 +9,114 @@ import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.event.SolverEventSupport;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 
-/**
- * Propagates global best solution updates from SharedGlobalState to main solver scope.
- *
- * <p>This ensures that:
- *
- * <ul>
- *   <li>Main solver's best solution is updated during solving (not just at end)
- *   <li>BestSolutionChangedEvent events are fired for user listeners
- *   <li>Termination criteria based on best score work correctly
- * </ul>
- *
- * @param <Solution_> solution type
- */
-public class GlobalBestPropagator<Solution_>
+/** Bounded publication mailbox. Only the enclosing solve thread drains it and calls listeners. */
+public final class GlobalBestPropagator<Solution_>
     implements Consumer<SharedGlobalState.BestSolutionSnapshot<Solution_>> {
 
   private final SharedGlobalState<Solution_> globalState;
   private final SolverScope<Solution_> mainSolverScope;
   private final SolverEventSupport<Solution_> solverEventSupport;
   private final EventProducerId eventProducerId;
-  private final Object updateLock = new Object();
-
-  private volatile InnerScore<?> lastKnownBestScore;
+  private final int capacity;
+  private final ArrayDeque<Runnable> publications = new ArrayDeque<>();
+  private boolean closed;
+  private InnerScore<?> lastKnownBestScore;
 
   public GlobalBestPropagator(
       SharedGlobalState<Solution_> globalState,
       SolverScope<Solution_> mainSolverScope,
       SolverEventSupport<Solution_> solverEventSupport,
       EventProducerId eventProducerId) {
+    this(globalState, mainSolverScope, solverEventSupport, eventProducerId, 1);
+  }
+
+  public GlobalBestPropagator(
+      SharedGlobalState<Solution_> globalState,
+      SolverScope<Solution_> mainSolverScope,
+      SolverEventSupport<Solution_> solverEventSupport,
+      EventProducerId eventProducerId,
+      int capacity) {
     this.globalState = Objects.requireNonNull(globalState);
     this.mainSolverScope = Objects.requireNonNull(mainSolverScope);
     this.solverEventSupport = Objects.requireNonNull(solverEventSupport);
     this.eventProducerId = Objects.requireNonNull(eventProducerId);
+    if (capacity < 1) {
+      throw new IllegalArgumentException(
+          "Publication capacity (%d) must be positive.".formatted(capacity));
+    }
+    this.capacity = capacity;
+    lastKnownBestScore = mainSolverScope.getBestScore();
   }
 
   public void start() {
-    globalState.addObserver(this);
+    globalState.setPublicationObserver(this);
   }
 
   public void stop() {
-    globalState.removeObserver(this);
+    // Release publishers before acquiring the shared-state lock: one may hold it while enqueuing.
+    synchronized (publications) {
+      closed = true;
+      publications.clear();
+      publications.notifyAll();
+    }
+    globalState.setPublicationObserver(null);
   }
 
   @Override
   public void accept(SharedGlobalState.BestSolutionSnapshot<Solution_> snapshot) {
-    if (snapshot == null) {
+    Objects.requireNonNull(snapshot);
+    enqueue(() -> propagate(snapshot));
+  }
+
+  public void enqueue(Runnable publication) {
+    Objects.requireNonNull(publication);
+    synchronized (publications) {
+      while (!closed && publications.size() == capacity) {
+        try {
+          publications.wait();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new IllegalStateException("Interrupted while publishing island progress.", e);
+        }
+      }
+      if (!closed) {
+        publications.addLast(publication);
+      }
+    }
+  }
+
+  /** Drain one bounded batch so continuous publications cannot starve failure detection. */
+  public int drain() {
+    for (int i = 0; i < capacity; i++) {
+      Runnable publication;
+      synchronized (publications) {
+        publication = publications.pollFirst();
+        publications.notifyAll();
+      }
+      if (publication == null) {
+        return i;
+      }
+      publication.run();
+    }
+    return capacity;
+  }
+
+  private void propagate(SharedGlobalState.BestSolutionSnapshot<Solution_> snapshot) {
+    var score = snapshot.getInnerScore();
+    if (lastKnownBestScore != null && compareScores(score, lastKnownBestScore) <= 0) {
       return;
     }
-
-    var newGlobalBest = snapshot.getSolution();
-    var newGlobalBestScore = snapshot.getInnerScore();
-
-    synchronized (updateLock) {
-      if (!shouldUpdateMainSolverScope(newGlobalBestScore)) {
-        return;
-      }
-
-      var clonedSolution =
-          updateMainSolverScope(newGlobalBest, newGlobalBestScore, snapshot.getTimestampMillis());
-      lastKnownBestScore = newGlobalBestScore;
-      fireBestSolutionChangedEvent(clonedSolution);
+    var clonedSolution = mainSolverScope.getScoreDirector().cloneSolution(snapshot.getSolution());
+    if (score.isFullyAssigned() && !mainSolverScope.isBestSolutionInitialized()) {
+      mainSolverScope.setStartingInitializedScore(score.raw());
     }
-  }
-
-  private boolean shouldUpdateMainSolverScope(InnerScore<?> newGlobalBestScore) {
-    if (lastKnownBestScore == null) {
-      return true;
-    }
-
-    int comparisonResult = compareScores(newGlobalBestScore, lastKnownBestScore);
-    return comparisonResult > 0;
-  }
-
-  private Solution_ updateMainSolverScope(
-      Solution_ newBestSolution, InnerScore<?> newBestScore, long timestampMillis) {
-    var clonedSolution = mainSolverScope.getScoreDirector().cloneSolution(newBestSolution);
-
-    // Update main solver scope
     mainSolverScope.setBestSolution(clonedSolution);
-
-    @SuppressWarnings("unchecked")
-    var innerScore = (InnerScore<?>) newBestScore;
-    mainSolverScope.setBestScore(innerScore);
-
-    mainSolverScope.setBestSolutionTimeMillis(timestampMillis);
-    return clonedSolution;
-  }
-
-  private void fireBestSolutionChangedEvent(Solution_ newBestSolution) {
-    solverEventSupport.fireBestSolutionChanged(mainSolverScope, eventProducerId, newBestSolution);
+    mainSolverScope.setBestScore(score);
+    mainSolverScope.setBestSolutionTimeMillis(snapshot.getTimestampMillis());
+    lastKnownBestScore = score;
+    if (score.isFullyAssigned()) {
+      solverEventSupport.fireBestSolutionChanged(mainSolverScope, eventProducerId, clonedSolution);
+    }
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})

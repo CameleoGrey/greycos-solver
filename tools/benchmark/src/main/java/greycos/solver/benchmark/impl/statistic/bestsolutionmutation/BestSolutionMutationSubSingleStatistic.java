@@ -9,7 +9,6 @@ import greycos.solver.benchmark.impl.statistic.StatisticPoint;
 import greycos.solver.benchmark.impl.statistic.StatisticRegistry;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
-import greycos.solver.core.impl.solver.monitoring.SolverMetricUtil;
 
 import io.micrometer.core.instrument.Tags;
 
@@ -33,8 +32,7 @@ public class BestSolutionMutationSubSingleStatistic<Solution_>
     registry.addListener(
         SolverMetric.BEST_SOLUTION_MUTATION,
         timestamp -> {
-          var mutationCount =
-              SolverMetricUtil.getGaugeValue(registry, SolverMetric.BEST_SOLUTION_MUTATION, runTag);
+          var mutationCount = registry.getGaugeValue(SolverMetric.BEST_SOLUTION_MUTATION, runTag);
           if (mutationCount != null) {
             pointList.add(
                 new BestSolutionMutationStatisticPoint(timestamp, mutationCount.intValue()));
