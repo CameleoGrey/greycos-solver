@@ -113,6 +113,19 @@ public abstract class AbstractMoveSelectorFactory<
     return null;
   }
 
+  /**
+   * Resolves implicit entity and variable selection before decorators such as nearby selection copy
+   * a move configuration. Composite children are unfolded by their own factories.
+   */
+  public MoveSelectorConfig<?> unfoldMoveSelectorConfig(
+      HeuristicConfigPolicy<Solution_> configPolicy) {
+    var unfoldedConfig = buildUnfoldedMoveSelectorConfig(configPolicy);
+    return unfoldedConfig == null
+        ? config
+        : MoveSelectorFactory.<Solution_>create(unfoldedConfig)
+            .unfoldMoveSelectorConfig(configPolicy);
+  }
+
   protected static <T> T checkUnfolded(String configPropertyName, T configProperty) {
     if (configProperty == null) {
       throw new IllegalStateException(

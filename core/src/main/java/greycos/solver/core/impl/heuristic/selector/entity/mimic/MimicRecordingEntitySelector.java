@@ -10,6 +10,7 @@ import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionListIterator;
+import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySelectionSource;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 
 public final class MimicRecordingEntitySelector<Solution_>
@@ -20,10 +21,23 @@ public final class MimicRecordingEntitySelector<Solution_>
 
   private final List<MimicReplayingEntitySelector<Solution_>> replayingEntitySelectorList;
 
+  private final NearbySelectionSource<Solution_, EntitySelector<Solution_>> nearbySelectionSource;
+
   public MimicRecordingEntitySelector(EntitySelector<Solution_> childEntitySelector) {
-    this.childEntitySelector = childEntitySelector;
+    this(new NearbySelectionSource<>(childEntitySelector, childEntitySelector, null));
+  }
+
+  public MimicRecordingEntitySelector(
+      NearbySelectionSource<Solution_, EntitySelector<Solution_>> nearbySelectionSource) {
+    this.nearbySelectionSource = nearbySelectionSource;
+    this.childEntitySelector = nearbySelectionSource.selector();
     phaseLifecycleSupport.addEventListener(childEntitySelector);
     replayingEntitySelectorList = new ArrayList<>();
+  }
+
+  @Override
+  public NearbySelectionSource<Solution_, EntitySelector<Solution_>> getNearbySelectionSource() {
+    return nearbySelectionSource;
   }
 
   @Override

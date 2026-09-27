@@ -1,27 +1,34 @@
 package greycos.solver.core.impl.heuristic.selector.entity.nearby;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ListIterator;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
-import greycos.solver.core.impl.heuristic.selector.common.iterator.ListIterable;
+import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMatrix;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMatrixDemand;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
+import greycos.solver.core.impl.neighborhood.stream.FilteringIterator;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import greycos.solver.core.impl.score.director.ScoreDirector;
+import greycos.solver.core.impl.score.director.ValueRangeManager;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /** Abstract base for nearby entity selectors. */
-abstract class AbstractNearbyEntitySelector<Solution_>
+public abstract class AbstractNearbyEntitySelector<Solution_>
     extends AbstractDemandEnabledSelector<Solution_> implements EntitySelector<Solution_> {
 
   protected final @NonNull EntitySelector<Solution_> childEntitySelector;
@@ -37,6 +44,39 @@ abstract class AbstractNearbyEntitySelector<Solution_>
   protected @Nullable NearbyDistanceMatrix<Object, Object> distanceMatrix;
   private @Nullable NearbyDistanceMatrixDemand<Object, Object> distanceMatrixDemand;
   private @Nullable SupplyManager distanceMatrixSupplyManager;
+  private @Nullable EntitySelector<Solution_> valueRangeEntityOriginSelector;
+  private @Nullable IterableValueSelector<Solution_> valueRangeValueOriginSelector;
+  private @Nullable ValueRangeManager<Solution_> valueRangeManager;
+  private List<BasicVariableDescriptor<Solution_>> entityRangeVariables = List.of();
+  private @Nullable SelectionFilter<Solution_, Object> selectionFilter;
+  private @Nullable ScoreDirector<Solution_> scoreDirector;
+
+  public final void configureSelectionFilter(SelectionFilter<Solution_, Object> filter) {
+    selectionFilter = filter;
+  }
+
+  private boolean hasRangeFiltering() {
+    return valueRangeEntityOriginSelector != null || valueRangeValueOriginSelector != null;
+  }
+
+  private boolean acceptsCandidate(Object candidate) {
+    return selectionFilter == null
+        || selectionFilter.accept(Objects.requireNonNull(scoreDirector), candidate);
+  }
+
+  public final void configureValueRangeFiltering(EntitySelector<Solution_> originSelector) {
+    valueRangeEntityOriginSelector = originSelector;
+    phaseLifecycleSupport.addEventListener(originSelector);
+  }
+
+  public final void configureValueRangeFiltering(IterableValueSelector<Solution_> originSelector) {
+    valueRangeValueOriginSelector = originSelector;
+    phaseLifecycleSupport.addEventListener(originSelector);
+  }
+
+  private boolean hasDynamicFiltering() {
+    return selectionFilter != null || hasRangeFiltering();
+  }
 
   protected AbstractNearbyEntitySelector(
       @NonNull EntitySelector<Solution_> childEntitySelector,
@@ -108,13 +148,13 @@ abstract class AbstractNearbyEntitySelector<Solution_>
         new NearbyDistanceMatrixDemand<>(
             castedDistanceMeter,
             nearbyRandom,
-            calculateEffectiveMaxNearbySortSize(),
-            true,
+            hasDynamicFiltering() ? Integer.MAX_VALUE : calculateEffectiveMaxNearbySortSize(),
+            false,
             childEntitySelector,
             originSelectorKey,
             demandType,
             this::calculateOriginSizeEstimate,
-            origin -> childEntitySelector.endingIterator(),
+            this::endingDestinations,
             origin -> calculateDestinationSize());
     distanceMatrix = supplyManager.demand(demand);
     distanceMatrixDemand = demand;
@@ -125,6 +165,17 @@ abstract class AbstractNearbyEntitySelector<Solution_>
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
     try {
       super.phaseStarted(phaseScope);
+      scoreDirector = phaseScope.getScoreDirector();
+      if (hasRangeFiltering()) {
+        valueRangeManager = phaseScope.getScoreDirector().getValueRangeManager();
+        if (valueRangeEntityOriginSelector != null) {
+          entityRangeVariables =
+              getEntityDescriptor().getGenuineBasicVariableDescriptorList().stream()
+                  .filter(variable -> !variable.canExtractValueRangeFromSolution())
+                  .map(variable -> (BasicVariableDescriptor<Solution_>) variable)
+                  .toList();
+        }
+      }
       if (distanceMatrix == null) {
         initializeDistanceMatrix(phaseScope.getScoreDirector().getSupplyManager());
       }
@@ -168,6 +219,9 @@ abstract class AbstractNearbyEntitySelector<Solution_>
     distanceMatrixDemand = null;
     distanceMatrixSupplyManager = null;
     distanceMatrix = null;
+    valueRangeManager = null;
+    scoreDirector = null;
+    entityRangeVariables = List.of();
     eagerInitialized = false;
     if (demand != null && !Objects.requireNonNull(supplyManager).cancel(demand)) {
       throw new IllegalStateException("The nearby distance matrix demand is not active.");
@@ -192,8 +246,175 @@ abstract class AbstractNearbyEntitySelector<Solution_>
     return getDistanceMatrix().getDestination(origin, nearbyIndex);
   }
 
-  protected int getDestinationSizeMaximumAdjustment() {
-    return 0;
+  protected boolean excludeOrigin() {
+    return false;
+  }
+
+  private Iterator<Object> endingDestinations(Object origin) {
+    var iterator = childEntitySelector.endingIterator();
+    if (!excludeOrigin()) {
+      return iterator;
+    }
+    return new Iterator<>() {
+      private Object next;
+      private boolean ready;
+
+      @Override
+      public boolean hasNext() {
+        while (!ready && iterator.hasNext()) {
+          Object candidate = iterator.next();
+          if (candidate != origin) {
+            next = candidate;
+            ready = true;
+          }
+        }
+        return ready;
+      }
+
+      @Override
+      public Object next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        ready = false;
+        return next;
+      }
+    };
+  }
+
+  protected abstract Iterator<Object> originIterator();
+
+  @Override
+  public final Iterator<Object> iterator() {
+    return nearbyIterator(randomSelection);
+  }
+
+  private Iterator<Object> nearbyIterator(boolean randomSelection) {
+    var originIterator = originIterator();
+    return new Iterator<>() {
+      private Object origin;
+      private boolean prepared;
+      private boolean originSelected;
+      private int nearbySize;
+      private int populationSize;
+      private int index;
+      private Object rangeOrigin;
+      private List<Object> eligibleDestinations;
+
+      private void prepare() {
+        if (prepared || (!randomSelection && originSelected)) {
+          return;
+        }
+        if (originIterator.hasNext()) {
+          Object nextOrigin = originIterator.next();
+          if (origin != nextOrigin) {
+            origin = nextOrigin;
+            nearbySize = getNearbySize(origin);
+            populationSize = getDistanceMatrix().getDestinationPopulationSize(origin);
+            index = 0;
+          }
+        }
+        if (hasDynamicFiltering() && origin != null) {
+          if (hasRangeFiltering()) {
+            var rangeOriginIterator =
+                valueRangeEntityOriginSelector == null
+                    ? Objects.requireNonNull(valueRangeValueOriginSelector).iterator()
+                    : valueRangeEntityOriginSelector.iterator();
+            if (rangeOriginIterator.hasNext()) {
+              rangeOrigin = rangeOriginIterator.next();
+            }
+          }
+          if (randomSelection) {
+            eligibleDestinations = new ArrayList<>();
+            populationSize = 0;
+            int limit = calculateEffectiveMaxNearbySortSize();
+            int storedSize = getNearbySize(origin);
+            for (int destinationIndex = 0; destinationIndex < storedSize; destinationIndex++) {
+              Object candidate = getNearbyDestination(origin, destinationIndex);
+              if (isEligible(rangeOrigin, candidate)) {
+                populationSize++;
+                if (eligibleDestinations.size() < limit) {
+                  eligibleDestinations.add(candidate);
+                }
+                if (eligibleDestinations.size() == limit
+                    && !Objects.requireNonNull(nearbyRandom).requiresPopulationSize()) {
+                  break;
+                }
+              }
+            }
+            nearbySize = eligibleDestinations.size();
+          }
+        }
+        originSelected = true;
+        prepared = true;
+      }
+
+      @Override
+      public boolean hasNext() {
+        prepare();
+        if (origin == null) {
+          return false;
+        }
+        if (!randomSelection && hasDynamicFiltering()) {
+          while (index < nearbySize
+              && !isEligible(rangeOrigin, getNearbyDestination(origin, index))) {
+            index++;
+          }
+        }
+        return randomSelection ? nearbySize > 0 : index < nearbySize;
+      }
+
+      @Override
+      public Object next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        if (randomSelection) {
+          prepared = false;
+          return destination(
+              Objects.requireNonNull(nearbyRandom)
+                  .nextInt(workingRandom, populationSize, nearbySize));
+        }
+        return destination(index++);
+      }
+
+      private Object destination(int destinationIndex) {
+        return eligibleDestinations == null
+            ? getNearbyDestination(origin, destinationIndex)
+            : eligibleDestinations.get(destinationIndex);
+      }
+    };
+  }
+
+  private boolean isEligible(Object source, Object candidate) {
+    return acceptsCandidate(candidate) && (!hasRangeFiltering() || isReachable(source, candidate));
+  }
+
+  private boolean isReachable(Object source, Object candidate) {
+    if (source == null) {
+      return false;
+    }
+    var manager = Objects.requireNonNull(valueRangeManager);
+    if (valueRangeEntityOriginSelector == null) {
+      var descriptor = getEntityDescriptor().getListVariableDescriptor();
+      return manager
+          .getFromEntity(descriptor.getValueRangeDescriptor(), candidate)
+          .contains(source);
+    }
+    if (source == candidate) {
+      return false;
+    }
+    for (var descriptor : entityRangeVariables) {
+      if (!manager
+              .getFromEntity(descriptor.getValueRangeDescriptor(), source)
+              .contains(descriptor.getValue(candidate))
+          || !manager
+              .getFromEntity(descriptor.getValueRangeDescriptor(), candidate)
+              .contains(descriptor.getValue(source))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private void initializeAllOrigins() {
@@ -235,16 +456,7 @@ abstract class AbstractNearbyEntitySelector<Solution_>
     if (!randomSelection || nearbyRandom == null) {
       return maxNearbySortSize;
     }
-    int distributionMaximum = nearbyRandom.getOverallSizeMaximum();
-    int adjustment = getDestinationSizeMaximumAdjustment();
-    if (adjustment > 0 && distributionMaximum < Integer.MAX_VALUE) {
-      if (distributionMaximum > Integer.MAX_VALUE - adjustment) {
-        distributionMaximum = Integer.MAX_VALUE;
-      } else {
-        distributionMaximum += adjustment;
-      }
-    }
-    return Math.min(maxNearbySortSize, distributionMaximum);
+    return Math.min(maxNearbySortSize, nearbyRandom.getOverallSizeMaximum());
   }
 
   @Override
@@ -259,30 +471,27 @@ abstract class AbstractNearbyEntitySelector<Solution_>
 
   @Override
   public boolean isNeverEnding() {
-    return childEntitySelector.isNeverEnding();
+    return randomSelection;
   }
 
   @Override
   public Iterator<Object> endingIterator() {
-    return childEntitySelector.endingIterator();
+    var iterator = childEntitySelector.endingIterator();
+    return selectionFilter == null
+        ? iterator
+        : new FilteringIterator<>(iterator, this::acceptsCandidate);
   }
 
   @Override
   public ListIterator<Object> listIterator() {
-    if (childEntitySelector instanceof ListIterable) {
-      return ((ListIterable<Object>) childEntitySelector).listIterator();
-    }
-    throw new UnsupportedOperationException(
-        getClass().getSimpleName() + " does not support listIterator()");
+    return listIterator(0);
   }
 
   @Override
   public ListIterator<Object> listIterator(int index) {
-    if (childEntitySelector instanceof ListIterable) {
-      return ((ListIterable<Object>) childEntitySelector).listIterator(index);
-    }
-    throw new UnsupportedOperationException(
-        getClass().getSimpleName() + " does not support listIterator(int)");
+    var destinations = new ArrayList<Object>();
+    nearbyIterator(false).forEachRemaining(destinations::add);
+    return destinations.listIterator(index);
   }
 
   @Override
@@ -293,22 +502,28 @@ abstract class AbstractNearbyEntitySelector<Solution_>
     if (!(o instanceof AbstractNearbyEntitySelector<?> that)) {
       return false;
     }
-    return Objects.equals(childEntitySelector, that.childEntitySelector)
+    return Objects.equals(selectionFilter, that.selectionFilter)
+        && Objects.equals(childEntitySelector, that.childEntitySelector)
         && Objects.equals(nearbyDistanceMeter, that.nearbyDistanceMeter)
         && Objects.equals(nearbyRandom, that.nearbyRandom)
         && randomSelection == that.randomSelection
         && maxNearbySortSize == that.maxNearbySortSize
-        && eagerInitialization == that.eagerInitialization;
+        && eagerInitialization == that.eagerInitialization
+        && Objects.equals(valueRangeEntityOriginSelector, that.valueRangeEntityOriginSelector)
+        && Objects.equals(valueRangeValueOriginSelector, that.valueRangeValueOriginSelector);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
+        selectionFilter,
         childEntitySelector,
         nearbyDistanceMeter,
         nearbyRandom,
         randomSelection,
         maxNearbySortSize,
-        eagerInitialization);
+        eagerInitialization,
+        valueRangeEntityOriginSelector,
+        valueRangeValueOriginSelector);
   }
 }

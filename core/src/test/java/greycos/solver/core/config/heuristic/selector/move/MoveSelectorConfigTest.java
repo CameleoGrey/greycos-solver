@@ -7,6 +7,7 @@ import java.util.Random;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
+import greycos.solver.core.config.heuristic.selector.list.DestinationSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.composite.CartesianProductMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.factory.MoveIteratorFactoryConfig;
@@ -26,6 +27,85 @@ import greycos.solver.core.testcotwin.list.TestDistanceMeter;
 import org.junit.jupiter.api.Test;
 
 class MoveSelectorConfigTest {
+
+  @Test
+  void nearbyCopyRemapsInternalRecorderReferences() {
+    var config =
+        new ListChangeMoveSelectorConfig()
+            .withValueSelectorConfig(new ValueSelectorConfig().withId("origin"))
+            .withDestinationSelectorConfig(
+                new DestinationSelectorConfig()
+                    .withEntitySelectorConfig(new EntitySelectorConfig().withId("destination"))
+                    .withValueSelectorConfig(
+                        new ValueSelectorConfig().withMimicSelectorRef("origin")));
+    var originalConfig = config.copyConfig();
+
+    var nearbyConfig = config.enableNearbySelection(TestDistanceMeter.class, new Random(0));
+
+    var copiedOriginId = nearbyConfig.getValueSelectorConfig().getId();
+    assertThat(copiedOriginId).isNotEqualTo("origin");
+    assertThat(
+            nearbyConfig
+                .getDestinationSelectorConfig()
+                .getValueSelectorConfig()
+                .getMimicSelectorRef())
+        .isEqualTo(copiedOriginId);
+    assertThat(
+            nearbyConfig
+                .getDestinationSelectorConfig()
+                .getNearbySelectionConfig()
+                .getOriginValueSelectorConfig()
+                .getMimicSelectorRef())
+        .isEqualTo(copiedOriginId);
+    assertThat(nearbyConfig.getDestinationSelectorConfig().getEntitySelectorConfig().getId())
+        .isNotEqualTo("destination");
+    assertThat(config).usingRecursiveComparison().isEqualTo(originalConfig);
+    assertThat(config.enableNearbySelection(TestDistanceMeter.class, new Random(0)))
+        .usingRecursiveComparison()
+        .isEqualTo(nearbyConfig);
+  }
+
+  @Test
+  void nearbyCopyPreservesExternalEntityOriginReference() {
+    var config =
+        new ChangeMoveSelectorConfig()
+            .withEntitySelectorConfig(new EntitySelectorConfig().withMimicSelectorRef("external"));
+    var originalConfig = config.copyConfig();
+
+    var nearbyConfig = config.enableNearbySelection(TestDistanceMeter.class, new Random(0));
+
+    assertThat(nearbyConfig.getEntitySelectorConfig().getId()).isNull();
+    assertThat(nearbyConfig.getEntitySelectorConfig().getMimicSelectorRef()).isEqualTo("external");
+    assertThat(
+            nearbyConfig
+                .getValueSelectorConfig()
+                .getNearbySelectionConfig()
+                .getOriginEntitySelectorConfig()
+                .getMimicSelectorRef())
+        .isEqualTo("external");
+    assertThat(config).usingRecursiveComparison().isEqualTo(originalConfig);
+  }
+
+  @Test
+  void nearbyCopyPreservesExternalValueOriginReference() {
+    var config =
+        new ListSwapMoveSelectorConfig()
+            .withValueSelectorConfig(new ValueSelectorConfig().withMimicSelectorRef("external"));
+    var originalConfig = config.copyConfig();
+
+    var nearbyConfig = config.enableNearbySelection(TestDistanceMeter.class, new Random(0));
+
+    assertThat(nearbyConfig.getValueSelectorConfig().getId()).isNull();
+    assertThat(nearbyConfig.getValueSelectorConfig().getMimicSelectorRef()).isEqualTo("external");
+    assertThat(
+            nearbyConfig
+                .getSecondaryValueSelectorConfig()
+                .getNearbySelectionConfig()
+                .getOriginValueSelectorConfig()
+                .getMimicSelectorRef())
+        .isEqualTo("external");
+    assertThat(config).usingRecursiveComparison().isEqualTo(originalConfig);
+  }
 
   @Test
   void assertEnableNearbyForChangeMoveSelectorConfig() {

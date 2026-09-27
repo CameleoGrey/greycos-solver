@@ -46,6 +46,10 @@ public final class DestinationSelectorFactory<Solution_>
       String entityValueRangeRecorderId,
       boolean isExhaustiveSearch) {
     var selectionOrder = SelectionOrder.fromRandomSelectionBoolean(randomSelection);
+    if (config.getNearbySelectionConfig() != null) {
+      return buildNearbyDestinationSelector(
+          configPolicy, minimumCacheType, selectionOrder, entityValueRangeRecorderId);
+    }
     var entitySelectorConfig =
         Objects.requireNonNull(config.getEntitySelectorConfig()).copyConfig();
     var hasSortManner =
@@ -103,12 +107,7 @@ public final class DestinationSelectorFactory<Solution_>
             valueSelector,
             selectionOrder.toRandomSelectionBoolean(),
             isExhaustiveSearch);
-    return applyNearbySelection(
-        configPolicy,
-        minimumCacheType,
-        selectionOrder,
-        baseDestinationSelector,
-        entityValueRangeRecorderId != null);
+    return baseDestinationSelector;
   }
 
   private IterableValueSelector<Solution_> buildIterableValueSelector(
@@ -168,156 +167,89 @@ public final class DestinationSelectorFactory<Solution_>
             .buildValueSelector(configPolicy, entityDescriptor, minimumCacheType, selectionOrder);
   }
 
-  private DestinationSelector<Solution_> applyNearbySelection(
+  private DestinationSelector<Solution_> buildNearbyDestinationSelector(
       HeuristicConfigPolicy<Solution_> configPolicy,
       SelectionCacheType minimumCacheType,
       SelectionOrder selectionOrder,
-      ElementDestinationSelector<Solution_> destinationSelector,
-      boolean enableEntityValueRange) {
-    NearbySelectionConfig nearbySelectionConfig = config.getNearbySelectionConfig();
-    if (nearbySelectionConfig == null) {
-      return destinationSelector;
-    }
-    // The nearby selector will implement its own logic to filter out unreachable elements.
-    // It requires the child selectors to not be FilteringEntityValueRangeSelector or
-    // FilteringValueRangeSelector,
-    // as it needs to iterate over all available values to construct the distance matrix.
-    if (enableEntityValueRange) {
-      var entitySelector =
+      String entityValueRangeRecorderId) {
+    NearbySelectionConfig nearbySelectionConfig =
+        Objects.requireNonNull(config.getNearbySelectionConfig());
+    nearbySelectionConfig.validateNearby(minimumCacheType, selectionOrder);
+    // Build a stable geographic population without origin-dependent range wrappers. The nearby
+    // selector checks the current destination's range after resolving its current list position.
+    var entitySource =
+        EntitySelectorFactory.<Solution_>create(
+                Objects.requireNonNull(config.getEntitySelectorConfig()))
+            .buildEntitySelectorForNearby(configPolicy, minimumCacheType, selectionOrder);
+    var entitySelector = entitySource.selector();
+    var valueSource =
+        ValueSelectorFactory.<Solution_>create(
+                Objects.requireNonNull(config.getValueSelectorConfig()))
+            .buildValueSelectorForNearby(
+                configPolicy,
+                entitySelector.getEntityDescriptor(),
+                minimumCacheType,
+                selectionOrder);
+    var valueSelector = valueSource.selector();
+
+    // Build origin selector from nearby selection config
+    EntitySelector<Solution_> originEntitySelector = null;
+    SubListSelector<Solution_> originSubListSelector = null;
+    IterableValueSelector<Solution_> originValueSelector = null;
+
+    if (nearbySelectionConfig.getOriginEntitySelectorConfig() != null) {
+      originEntitySelector =
           EntitySelectorFactory.<Solution_>create(
-                  Objects.requireNonNull(config.getEntitySelectorConfig()))
+                  nearbySelectionConfig.getOriginEntitySelectorConfig())
               .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
-      var valueSelector =
-          ValueSelectorFactory.<Solution_>create(
-                  Objects.requireNonNull(config.getValueSelectorConfig()))
-              .buildValueSelector(
-                  configPolicy,
-                  entitySelector.getEntityDescriptor(),
-                  minimumCacheType,
-                  selectionOrder,
-                  configPolicy.isReinitializeVariableFilterEnabled(),
-                  ValueSelectorFactory.ListValueFilteringType.ACCEPT_ASSIGNED,
-                  null,
-                  false);
-
-      // Build origin selector from nearby selection config
-      EntitySelector<Solution_> originEntitySelector = null;
-      SubListSelector<Solution_> originSubListSelector = null;
-      IterableValueSelector<Solution_> originValueSelector = null;
-
-      if (nearbySelectionConfig.getOriginEntitySelectorConfig() != null) {
-        originEntitySelector =
-            EntitySelectorFactory.<Solution_>create(
-                    nearbySelectionConfig.getOriginEntitySelectorConfig())
-                .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
-      } else if (nearbySelectionConfig.getOriginSubListSelectorConfig() != null) {
-        originSubListSelector =
-            SubListSelectorFactory.<Solution_>create(
-                    nearbySelectionConfig.getOriginSubListSelectorConfig())
-                .buildSubListSelector(
-                    configPolicy, entitySelector, minimumCacheType, selectionOrder);
-      } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {
-        originValueSelector =
-            (IterableValueSelector<Solution_>)
-                ValueSelectorFactory.<Solution_>create(
-                        nearbySelectionConfig.getOriginValueSelectorConfig())
-                    .buildValueSelector(
-                        configPolicy,
-                        entitySelector.getEntityDescriptor(),
-                        minimumCacheType,
-                        selectionOrder);
-      } else {
-        throw new IllegalArgumentException(
-            "The destinationSelectorConfig (%s) with nearbySelectionConfig (%s) requires one of originEntitySelectorConfig, originSubListSelectorConfig, or originValueSelectorConfig."
-                .formatted(config, nearbySelectionConfig));
-      }
-
-      var updatedDestinationSelector =
-          new ElementDestinationSelector<>(
-              entitySelector,
-              (IterableValueSelector<Solution_>) valueSelector,
-              selectionOrder.toRandomSelectionBoolean());
-      return new NearbyDestinationSelector<>(
-          config,
-          configPolicy,
-          nearbySelectionConfig,
-          minimumCacheType,
-          selectionOrder,
-          updatedDestinationSelector,
-          entitySelector,
-          (IterableValueSelector<Solution_>) valueSelector,
-          originEntitySelector,
-          originSubListSelector,
-          originValueSelector);
+    } else if (nearbySelectionConfig.getOriginSubListSelectorConfig() != null) {
+      originSubListSelector =
+          SubListSelectorFactory.<Solution_>create(
+                  nearbySelectionConfig.getOriginSubListSelectorConfig())
+              .buildSubListSelector(configPolicy, entitySelector, minimumCacheType, selectionOrder);
+    } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {
+      originValueSelector =
+          (IterableValueSelector<Solution_>)
+              ValueSelectorFactory.<Solution_>create(
+                      nearbySelectionConfig.getOriginValueSelectorConfig())
+                  .buildValueSelector(
+                      configPolicy,
+                      entitySelector.getEntityDescriptor(),
+                      minimumCacheType,
+                      selectionOrder);
     } else {
-      // When enableEntityValueRange is false, we need to rebuild the selectors without filters
-      // for nearby selection to work properly
-      var entitySelector =
-          EntitySelectorFactory.<Solution_>create(
-                  Objects.requireNonNull(config.getEntitySelectorConfig()))
-              .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
-      var valueSelector =
-          ValueSelectorFactory.<Solution_>create(
-                  Objects.requireNonNull(config.getValueSelectorConfig()))
-              .buildValueSelector(
-                  configPolicy,
-                  entitySelector.getEntityDescriptor(),
-                  minimumCacheType,
-                  selectionOrder,
-                  configPolicy.isReinitializeVariableFilterEnabled(),
-                  ValueSelectorFactory.ListValueFilteringType.ACCEPT_ASSIGNED,
-                  null,
-                  false);
-
-      // Build origin selector from nearby selection config
-      EntitySelector<Solution_> originEntitySelector = null;
-      SubListSelector<Solution_> originSubListSelector = null;
-      IterableValueSelector<Solution_> originValueSelector = null;
-
-      if (nearbySelectionConfig.getOriginEntitySelectorConfig() != null) {
-        originEntitySelector =
-            EntitySelectorFactory.<Solution_>create(
-                    nearbySelectionConfig.getOriginEntitySelectorConfig())
-                .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
-      } else if (nearbySelectionConfig.getOriginSubListSelectorConfig() != null) {
-        originSubListSelector =
-            SubListSelectorFactory.<Solution_>create(
-                    nearbySelectionConfig.getOriginSubListSelectorConfig())
-                .buildSubListSelector(
-                    configPolicy, entitySelector, minimumCacheType, selectionOrder);
-      } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {
-        originValueSelector =
-            (IterableValueSelector<Solution_>)
-                ValueSelectorFactory.<Solution_>create(
-                        nearbySelectionConfig.getOriginValueSelectorConfig())
-                    .buildValueSelector(
-                        configPolicy,
-                        entitySelector.getEntityDescriptor(),
-                        minimumCacheType,
-                        selectionOrder);
-      } else {
-        throw new IllegalArgumentException(
-            "The destinationSelectorConfig (%s) with nearbySelectionConfig (%s) requires one of originEntitySelectorConfig, originSubListSelectorConfig, or originValueSelectorConfig."
-                .formatted(config, nearbySelectionConfig));
-      }
-
-      var updatedDestinationSelector =
-          new ElementDestinationSelector<>(
-              entitySelector,
-              (IterableValueSelector<Solution_>) valueSelector,
-              selectionOrder.toRandomSelectionBoolean());
-      return new NearbyDestinationSelector<>(
-          config,
-          configPolicy,
-          nearbySelectionConfig,
-          minimumCacheType,
-          selectionOrder,
-          updatedDestinationSelector,
-          entitySelector,
-          (IterableValueSelector<Solution_>) valueSelector,
-          originEntitySelector,
-          originSubListSelector,
-          originValueSelector);
+      throw new IllegalArgumentException(
+          "The destinationSelectorConfig (%s) with nearbySelectionConfig (%s) requires one of originEntitySelectorConfig, originSubListSelectorConfig, or originValueSelectorConfig."
+              .formatted(config, nearbySelectionConfig));
     }
+
+    var updatedDestinationSelector =
+        new ElementDestinationSelector<>(
+            entitySelector,
+            (IterableValueSelector<Solution_>) valueSelector,
+            selectionOrder.toRandomSelectionBoolean());
+    var nearbySelector =
+        new NearbyDestinationSelector<>(
+            config,
+            configPolicy,
+            nearbySelectionConfig,
+            minimumCacheType,
+            selectionOrder,
+            updatedDestinationSelector,
+            entitySelector,
+            (IterableValueSelector<Solution_>) valueSelector,
+            originEntitySelector,
+            originSubListSelector,
+            originValueSelector,
+            originEntitySelector == null
+                ? null
+                : buildReplayingValueSelector(
+                    configPolicy,
+                    entitySelector.getEntityDescriptor(),
+                    minimumCacheType,
+                    selectionOrder,
+                    entityValueRangeRecorderId));
+    nearbySelector.configureSelectionSources(entitySource, valueSource);
+    return nearbySelector;
   }
 }

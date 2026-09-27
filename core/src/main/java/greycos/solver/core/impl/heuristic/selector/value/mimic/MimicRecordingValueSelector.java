@@ -8,6 +8,7 @@ import java.util.Objects;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
+import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySelectionSource;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 
 public class MimicRecordingValueSelector<Solution_> extends AbstractDemandEnabledSelector<Solution_>
@@ -17,10 +18,25 @@ public class MimicRecordingValueSelector<Solution_> extends AbstractDemandEnable
 
   protected final List<MimicReplayingValueSelector<Solution_>> replayingValueSelectorList;
 
+  private final NearbySelectionSource<Solution_, IterableValueSelector<Solution_>>
+      nearbySelectionSource;
+
   public MimicRecordingValueSelector(IterableValueSelector<Solution_> childValueSelector) {
-    this.childValueSelector = childValueSelector;
+    this(new NearbySelectionSource<>(childValueSelector, childValueSelector, null));
+  }
+
+  public MimicRecordingValueSelector(
+      NearbySelectionSource<Solution_, IterableValueSelector<Solution_>> nearbySelectionSource) {
+    this.nearbySelectionSource = nearbySelectionSource;
+    this.childValueSelector = nearbySelectionSource.selector();
     phaseLifecycleSupport.addEventListener(childValueSelector);
     replayingValueSelectorList = new ArrayList<>();
+  }
+
+  @Override
+  public NearbySelectionSource<Solution_, IterableValueSelector<Solution_>>
+      getNearbySelectionSource() {
+    return nearbySelectionSource;
   }
 
   @Override

@@ -132,7 +132,8 @@ public class ListChangeMoveSelectorFactory<Solution_>
     return new ListChangeMoveSelector<>(
         (IterableValueSelector<Solution_>) sourceValueSelector,
         destinationSelector,
-        randomSelection);
+        randomSelection,
+        destinationSelectorConfig.getNearbySelectionConfig() != null);
   }
 
   @Override

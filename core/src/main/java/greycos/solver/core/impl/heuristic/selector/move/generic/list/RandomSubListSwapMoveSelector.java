@@ -3,6 +3,7 @@ package greycos.solver.core.impl.heuristic.selector.move.generic.list;
 import java.util.Iterator;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractRandomSwapIterator;
 import greycos.solver.core.impl.heuristic.selector.list.SubList;
 import greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
@@ -16,11 +17,20 @@ public class RandomSubListSwapMoveSelector<Solution_>
   private final SubListSelector<Solution_> rightSubListSelector;
   private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final boolean selectReversingMoveToo;
+  private final boolean originDependentRightSelection;
 
   public RandomSubListSwapMoveSelector(
       SubListSelector<Solution_> leftSubListSelector,
       SubListSelector<Solution_> rightSubListSelector,
       boolean selectReversingMoveToo) {
+    this(leftSubListSelector, rightSubListSelector, selectReversingMoveToo, false);
+  }
+
+  public RandomSubListSwapMoveSelector(
+      SubListSelector<Solution_> leftSubListSelector,
+      SubListSelector<Solution_> rightSubListSelector,
+      boolean selectReversingMoveToo,
+      boolean originDependentRightSelection) {
     this.leftSubListSelector = leftSubListSelector;
     this.rightSubListSelector = rightSubListSelector;
     this.listVariableDescriptor = leftSubListSelector.getVariableDescriptor();
@@ -36,6 +46,7 @@ public class RandomSubListSwapMoveSelector<Solution_>
               + ").");
     }
     this.selectReversingMoveToo = selectReversingMoveToo;
+    this.originDependentRightSelection = originDependentRightSelection;
 
     phaseLifecycleSupport.addEventListener(leftSubListSelector);
     phaseLifecycleSupport.addEventListener(rightSubListSelector);
@@ -43,7 +54,12 @@ public class RandomSubListSwapMoveSelector<Solution_>
 
   @Override
   public Iterator<Move<Solution_>> iterator() {
-    return new AbstractRandomSwapIterator<>(leftSubListSelector, rightSubListSelector) {
+    return new AbstractRandomSwapIterator<>(
+        leftSubListSelector,
+        rightSubListSelector,
+        originDependentRightSelection && rightSubListSelector.getSize() > 0
+            ? SelectorBasedNoChangeMove::getInstance
+            : null) {
       @Override
       protected Move<Solution_> newSwapSelection(
           SubList leftSubSelection, SubList rightSubSelection) {

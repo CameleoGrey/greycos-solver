@@ -5,6 +5,7 @@ import java.util.List;
 
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractOriginalSwapIterator;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.AbstractRandomSwapIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
@@ -16,16 +17,27 @@ public class SwapMoveSelector<Solution_> extends AbstractGenericMoveSelector<Sol
   protected final EntitySelector<Solution_> rightEntitySelector;
   protected final List<? extends GenuineVariableDescriptor<Solution_>> variableDescriptorList;
   protected final boolean randomSelection;
+  private final boolean originDependentRightSelection;
 
   public SwapMoveSelector(
       EntitySelector<Solution_> leftEntitySelector,
       EntitySelector<Solution_> rightEntitySelector,
       List<? extends GenuineVariableDescriptor<Solution_>> variableDescriptorList,
       boolean randomSelection) {
+    this(leftEntitySelector, rightEntitySelector, variableDescriptorList, randomSelection, false);
+  }
+
+  public SwapMoveSelector(
+      EntitySelector<Solution_> leftEntitySelector,
+      EntitySelector<Solution_> rightEntitySelector,
+      List<? extends GenuineVariableDescriptor<Solution_>> variableDescriptorList,
+      boolean randomSelection,
+      boolean originDependentRightSelection) {
     this.leftEntitySelector = leftEntitySelector;
     this.rightEntitySelector = rightEntitySelector;
     this.variableDescriptorList = variableDescriptorList;
     this.randomSelection = randomSelection;
+    this.originDependentRightSelection = originDependentRightSelection;
     EntityDescriptor<Solution_> leftEntityDescriptor = leftEntitySelector.getEntityDescriptor();
     EntityDescriptor<Solution_> rightEntityDescriptor = rightEntitySelector.getEntityDescriptor();
     if (!leftEntityDescriptor.getEntityClass().equals(rightEntityDescriptor.getEntityClass())) {
@@ -100,7 +112,12 @@ public class SwapMoveSelector<Solution_> extends AbstractGenericMoveSelector<Sol
         }
       };
     } else {
-      return new AbstractRandomSwapIterator<>(leftEntitySelector, rightEntitySelector) {
+      return new AbstractRandomSwapIterator<>(
+          leftEntitySelector,
+          rightEntitySelector,
+          originDependentRightSelection && rightEntitySelector.getSize() > 0
+              ? SelectorBasedNoChangeMove::getInstance
+              : null) {
         @Override
         protected Move<Solution_> newSwapSelection(
             Object leftSubSelection, Object rightSubSelection) {

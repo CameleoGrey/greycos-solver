@@ -10,6 +10,7 @@ import greycos.solver.core.impl.AbstractFromConfigFactory;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandomFactory;
+import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySelectionSource;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySelectionTuning;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySubListSelector;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
@@ -49,12 +50,13 @@ public final class SubListSelectorFactory<Solution_>
               .formatted(config, inheritedSelectionOrder));
     }
 
-    var valueSelector =
+    var valueSource =
         buildIterableValueSelector(
             configPolicy,
             entitySelector.getEntityDescriptor(),
             minimumCacheType,
             inheritedSelectionOrder);
+    var valueSelector = valueSource.selector();
 
     var minimumSubListSize =
         Objects.requireNonNullElse(config.getMinimumSubListSize(), DEFAULT_MINIMUM_SUB_LIST_SIZE);
@@ -70,7 +72,8 @@ public final class SubListSelectorFactory<Solution_>
             entitySelector,
             minimumCacheType,
             inheritedSelectionOrder,
-            baseSubListSelector);
+            baseSubListSelector,
+            valueSource);
 
     subListSelector = applyMimicRecording(configPolicy, subListSelector);
 
@@ -117,19 +120,12 @@ public final class SubListSelectorFactory<Solution_>
       EntitySelector<Solution_> entitySelector,
       SelectionCacheType minimumCacheType,
       SelectionOrder resolvedSelectionOrder,
-      RandomSubListSelector<Solution_> subListSelector) {
+      RandomSubListSelector<Solution_> subListSelector,
+      NearbySelectionSource<Solution_, IterableValueSelector<Solution_>> valueSource) {
     var nearbySelectionConfig = config.getNearbySelectionConfig();
     if (nearbySelectionConfig == null) {
       return subListSelector;
     }
-    if (NearbySelectionTuning.hasRandomDistributionLimit(nearbySelectionConfig)
-        && config.getMinimumSubListSize() != null
-        && config.getMinimumSubListSize() > 1) {
-      throw new IllegalArgumentException(
-          "Using minimumSubListSize (%s) is not allowed together with a nearby distribution limit."
-              .formatted(config.getMinimumSubListSize()));
-    }
-
     nearbySelectionConfig.validateNearby(minimumCacheType, resolvedSelectionOrder);
 
     var randomSelection = resolvedSelectionOrder.toRandomSelectionBoolean();
@@ -160,21 +156,25 @@ public final class SubListSelectorFactory<Solution_>
             .buildSubListSelector(
                 configPolicy, entitySelector, minimumCacheType, resolvedSelectionOrder);
 
-    return new NearbySubListSelector<>(
-        subListSelector,
-        originSubListSelector,
-        nearbyDistanceMeter,
-        nearbyRandom,
-        randomSelection,
-        maxNearbySortSize,
-        eagerInitialization);
+    var nearbySelector =
+        new NearbySubListSelector<>(
+            subListSelector,
+            originSubListSelector,
+            nearbyDistanceMeter,
+            nearbyRandom,
+            randomSelection,
+            maxNearbySortSize,
+            eagerInitialization);
+    nearbySelector.configureSelectionSource(valueSource);
+    return nearbySelector;
   }
 
-  private IterableValueSelector<Solution_> buildIterableValueSelector(
-      HeuristicConfigPolicy<Solution_> configPolicy,
-      EntityDescriptor<Solution_> entityDescriptor,
-      SelectionCacheType minimumCacheType,
-      SelectionOrder inheritedSelectionOrder) {
+  private NearbySelectionSource<Solution_, IterableValueSelector<Solution_>>
+      buildIterableValueSelector(
+          HeuristicConfigPolicy<Solution_> configPolicy,
+          EntityDescriptor<Solution_> entityDescriptor,
+          SelectionCacheType minimumCacheType,
+          SelectionOrder inheritedSelectionOrder) {
     ValueSelectorConfig valueSelectorConfig =
         config != null ? config.getValueSelectorConfig() : null;
     if (valueSelectorConfig == null) {
@@ -186,10 +186,16 @@ public final class SubListSelectorFactory<Solution_>
       var variableName = entityDescriptor.getGenuineListVariableDescriptor().getVariableName();
       valueSelectorConfig.setVariableName(variableName);
     }
+    if (config.getNearbySelectionConfig() != null) {
+      return ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
+          .buildValueSelectorForNearby(
+              configPolicy, entityDescriptor, minimumCacheType, inheritedSelectionOrder);
+    }
     ValueSelector<Solution_> valueSelector =
         ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
             .buildValueSelector(
                 configPolicy, entityDescriptor, minimumCacheType, inheritedSelectionOrder);
-    return (IterableValueSelector<Solution_>) valueSelector;
+    var iterableValueSelector = (IterableValueSelector<Solution_>) valueSelector;
+    return new NearbySelectionSource<>(iterableValueSelector, iterableValueSelector, null);
   }
 }

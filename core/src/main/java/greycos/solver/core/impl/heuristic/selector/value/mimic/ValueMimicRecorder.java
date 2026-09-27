@@ -3,10 +3,19 @@ package greycos.solver.core.impl.heuristic.selector.value.mimic;
 import java.util.Iterator;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySelectionSource;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 
+import org.jspecify.annotations.Nullable;
+
 public interface ValueMimicRecorder<Solution_> {
+
+  /** Stable population and live filter captured by the source factory, when available. */
+  default @Nullable NearbySelectionSource<Solution_, IterableValueSelector<Solution_>>
+      getNearbySelectionSource() {
+    return null;
+  }
 
   /**
    * @param replayingValueSelector never null

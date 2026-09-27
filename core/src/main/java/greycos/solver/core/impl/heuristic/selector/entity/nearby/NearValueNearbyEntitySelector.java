@@ -1,8 +1,6 @@
 package greycos.solver.core.impl.heuristic.selector.entity.nearby;
 
 import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.random.RandomGenerator;
 
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandom;
@@ -65,16 +63,12 @@ public final class NearValueNearbyEntitySelector<Solution_>
 
   @Override
   public boolean isNeverEnding() {
-    return randomSelection || childEntitySelector.isNeverEnding();
+    return randomSelection;
   }
 
   @Override
-  public @NonNull Iterator<Object> iterator() {
-    if (randomSelection) {
-      return new RandomNearbyEntityIterator(workingRandom);
-    } else {
-      return new OriginalNearbyEntityIterator();
-    }
+  protected @NonNull Iterator<Object> originIterator() {
+    return originValueSelector.iterator();
   }
 
   @Override
@@ -100,93 +94,5 @@ public final class NearValueNearbyEntitySelector<Solution_>
     return "NearValueNearbyEntitySelector("
         + getEntityDescriptor().getEntityClass().getSimpleName()
         + ")";
-  }
-
-  // ************************************************************************
-  // Inner classes
-  // ************************************************************************
-
-  private class RandomNearbyEntityIterator implements Iterator<Object> {
-
-    private final RandomGenerator workingRandom;
-    private final Iterator<Object> replayingOriginIterator;
-    private Object origin = null;
-    private Object cachedOrigin = null;
-    private int cachedNearbySize = -1;
-
-    public RandomNearbyEntityIterator(RandomGenerator workingRandom) {
-      this.workingRandom = workingRandom;
-      this.replayingOriginIterator = originValueSelector.iterator();
-    }
-
-    @Override
-    public boolean hasNext() {
-      return origin != null || replayingOriginIterator.hasNext();
-    }
-
-    @Override
-    public Object next() {
-      if (replayingOriginIterator.hasNext()) {
-        origin = replayingOriginIterator.next();
-      }
-      if (origin == null) {
-        throw new NoSuchElementException();
-      }
-      if (nearbyRandom == null) {
-        throw new IllegalStateException("The random nearby distribution is not configured.");
-      }
-      if (origin != cachedOrigin) {
-        cachedOrigin = origin;
-        cachedNearbySize = getNearbySize(origin);
-      }
-      if (cachedNearbySize <= 0) {
-        throw new NoSuchElementException();
-      }
-      int nearbyIndex = nearbyRandom.nextInt(workingRandom, cachedNearbySize);
-      return getNearbyDestination(origin, nearbyIndex);
-    }
-  }
-
-  private class OriginalNearbyEntityIterator implements Iterator<Object> {
-
-    private final Iterator<Object> replayingOriginIterator;
-    private int nearbySize = -1;
-    private int index = 0;
-    private boolean originSelected = false;
-    private boolean originIsNotEmpty;
-    private Object origin = null;
-
-    public OriginalNearbyEntityIterator() {
-      this.replayingOriginIterator = originValueSelector.iterator();
-    }
-
-    private void selectOrigin() {
-      if (originSelected) {
-        return;
-      }
-      originIsNotEmpty = replayingOriginIterator.hasNext();
-      if (originIsNotEmpty) {
-        origin = replayingOriginIterator.next();
-        nearbySize = getNearbySize(origin);
-      }
-      originSelected = true;
-    }
-
-    @Override
-    public boolean hasNext() {
-      selectOrigin();
-      return originIsNotEmpty && index < nearbySize;
-    }
-
-    @Override
-    public Object next() {
-      selectOrigin();
-      if (!originIsNotEmpty || nearbySize <= 0 || index >= nearbySize) {
-        throw new NoSuchElementException();
-      }
-      Object result = getNearbyDestination(origin, index);
-      index++;
-      return result;
-    }
   }
 }

@@ -103,7 +103,12 @@ public final class KOptListMoveSelectorFactory<Solution_>
     var valueSelector =
         ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
             .buildValueSelector(
-                configPolicy, entityDescriptor, minimumCacheType, inheritedSelectionOrder);
+                configPolicy,
+                entityDescriptor,
+                minimumCacheType,
+                inheritedSelectionOrder,
+                false,
+                ValueSelectorFactory.ListValueFilteringType.ACCEPT_ASSIGNED);
     if (valueSelector instanceof IterableValueSelector<Solution_> iterableValueSelector) {
       return iterableValueSelector;
     }

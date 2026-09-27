@@ -5,12 +5,136 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
+
+import greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 
 import org.junit.jupiter.api.Test;
 
 /** Tests for {@link NearbyDistanceMatrix}. */
 class NearbyDistanceMatrixTest {
+
+  @Test
+  void retainsPopulationBeforeTruncationForBlockRatio() {
+    var destinations = IntStream.range(0, 1000).boxed().toList();
+    var nearbyRandom = new BlockDistributionNearbyRandom(1, 100, 0.5, 0.0);
+    var matrix =
+        new NearbyDistanceMatrix<Integer, Integer>(
+            (origin, destination) -> destination,
+            1,
+            origin -> destinations.iterator(),
+            origin -> destinations.size(),
+            nearbyRandom.getOverallSizeMaximum());
+
+    assertThat(matrix.getDestinationPopulationSize(0)).isEqualTo(1000);
+    assertThat(matrix.getDestinationSize(0)).isEqualTo(100);
+    int selectedRank =
+        nearbyRandom.nextInt(
+            lastRankRandom(), matrix.getDestinationPopulationSize(0), matrix.getDestinationSize(0));
+    assertThat(matrix.getDestination(0, selectedRank)).isEqualTo(99);
+  }
+
+  @Test
+  void uniformExplorationIncludesEntirePopulationWithoutExplicitSortCap() {
+    var config =
+        new NearbySelectionConfig()
+            .withBlockDistributionSizeMaximum(100)
+            .withBlockDistributionUniformDistributionProbability(1.0);
+    var nearbyRandom = NearbyRandomFactory.create(config).buildNearbyRandom(true);
+    var destinations = IntStream.range(0, 2000).boxed().toList();
+    var matrix =
+        new NearbyDistanceMatrix<Integer, Integer>(
+            (origin, destination) -> destination,
+            1,
+            origin -> destinations.iterator(),
+            origin -> destinations.size(),
+            Math.min(
+                NearbySelectionTuning.calculateMaxNearbySortSize(config),
+                nearbyRandom.getOverallSizeMaximum()));
+
+    int selectedRank =
+        nearbyRandom.nextInt(
+            lastRankRandom(), matrix.getDestinationPopulationSize(0), matrix.getDestinationSize(0));
+    assertThat(matrix.getDestination(0, selectedRank)).isEqualTo(1999);
+  }
+
+  @Test
+  void repeatedEagerInitializationReusesCachedRow() {
+    var destinations = List.of(3, 1, 2);
+    var distanceCalls = new AtomicInteger();
+    var matrix =
+        new NearbyDistanceMatrix<Integer, Integer>(
+            (origin, destination) -> {
+              distanceCalls.incrementAndGet();
+              return destination;
+            },
+            1,
+            destinations,
+            origin -> destinations.size());
+
+    matrix.addAllDestinations(0);
+    matrix.addAllDestinations(0);
+    assertThat(matrix.getDestination(0, 0)).isEqualTo(1);
+    assertThat(matrix.getDestinationPopulationSize(0)).isEqualTo(3);
+    assertThat(distanceCalls).hasValue(3);
+  }
+
+  @Test
+  void partialSortMatchesStableReferenceIncludingTies() {
+    var random = new Random(37);
+    for (int size = 2; size <= 50; size++) {
+      var destinations = IntStream.range(0, size).boxed().toList();
+      var distances = random.ints(size, 0, 7).toArray();
+      var expected =
+          destinations.stream().sorted(Comparator.comparingInt(value -> distances[value])).toList();
+      for (int limit = 1; limit < size; limit++) {
+        var matrix =
+            new NearbyDistanceMatrix<Integer, Integer>(
+                (origin, destination) -> distances[destination],
+                1,
+                origin -> destinations.iterator(),
+                origin -> destinations.size(),
+                limit);
+        assertThat(matrix.getDestinationSize(0)).isEqualTo(limit);
+        assertThat(matrix.getDestinationPopulationSize(0)).isEqualTo(size);
+        for (int rank = 0; rank < limit; rank++) {
+          assertThat(matrix.getDestination(0, rank)).isEqualTo(expected.get(rank));
+        }
+      }
+    }
+  }
+
+  @Test
+  void nonStrictPopulationIsActualSizeAndStillRespectsCap() {
+    var destinations = List.of(5, 4, 3, 2, 1);
+    for (int estimate : new int[] {0, 1, 10}) {
+      var matrix =
+          new NearbyDistanceMatrix<Integer, Integer>(
+              (origin, destination) -> destination,
+              1,
+              origin -> destinations.iterator(),
+              origin -> estimate,
+              2,
+              false);
+      assertThat(matrix.getDestinationPopulationSize(0)).isEqualTo(5);
+      assertThat(matrix.getDestinationSize(0)).isEqualTo(2);
+      assertThat(matrix.getDestination(0, 0)).isEqualTo(1);
+      assertThat(matrix.getDestination(0, 1)).isEqualTo(2);
+    }
+  }
+
+  private static Random lastRankRandom() {
+    return new Random(0) {
+      @Override
+      public int nextInt(int bound) {
+        return bound - 1;
+      }
+    };
+  }
 
   static class Point {
     final double x;

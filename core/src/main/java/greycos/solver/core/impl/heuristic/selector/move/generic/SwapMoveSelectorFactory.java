@@ -81,7 +81,11 @@ public class SwapMoveSelectorFactory<Solution_>
         deduceBasicVariableDescriptorList(entityDescriptor, config.getVariableNameIncludeList());
 
     return new SwapMoveSelector<>(
-        leftEntitySelector, rightEntitySelector, variableDescriptorList, randomSelection);
+        leftEntitySelector,
+        rightEntitySelector,
+        variableDescriptorList,
+        randomSelection,
+        secondaryEntitySelectorConfig.getNearbySelectionConfig() != null);
   }
 
   @Override

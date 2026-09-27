@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.random.RandomGenerator;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.list.DestinationSelector;
 import greycos.solver.core.impl.heuristic.selector.list.SubList;
@@ -16,7 +17,9 @@ class RandomSubListChangeMoveIterator<Solution_>
     extends UpcomingSelectionIterator<Move<Solution_>> {
 
   private final Iterator<SubList> subListIterator;
-  private final Iterator<ElementPosition> destinationIterator;
+  private final DestinationSelector<Solution_> destinationSelector;
+  private final boolean originDependentDestinationSelection;
+  private Iterator<ElementPosition> destinationIterator;
   private final ListVariableDescriptor<Solution_> listVariableDescriptor;
   private final RandomGenerator workingRandom;
   private final boolean selectReversingMoveToo;
@@ -26,7 +29,19 @@ class RandomSubListChangeMoveIterator<Solution_>
       DestinationSelector<Solution_> destinationSelector,
       RandomGenerator workingRandom,
       boolean selectReversingMoveToo) {
+    this(subListSelector, destinationSelector, workingRandom, selectReversingMoveToo, false);
+  }
+
+  RandomSubListChangeMoveIterator(
+      SubListSelector<Solution_> subListSelector,
+      DestinationSelector<Solution_> destinationSelector,
+      RandomGenerator workingRandom,
+      boolean selectReversingMoveToo,
+      boolean originDependentDestinationSelection) {
     this.subListIterator = subListSelector.iterator();
+    this.destinationSelector = destinationSelector;
+    this.originDependentDestinationSelection =
+        originDependentDestinationSelection && destinationSelector.getSize() > 0;
     this.destinationIterator = destinationSelector.iterator();
     this.listVariableDescriptor = subListSelector.getVariableDescriptor();
     this.workingRandom = workingRandom;
@@ -41,11 +56,20 @@ class RandomSubListChangeMoveIterator<Solution_>
     // The inner node may need the outer iterator to select the next value first
     var subList = subListIterator.next();
     if (!destinationIterator.hasNext()) {
-      return noUpcomingSelection();
+      if (originDependentDestinationSelection) {
+        destinationIterator = destinationSelector.iterator();
+        if (!destinationIterator.hasNext()) {
+          return SelectorBasedNoChangeMove.getInstance();
+        }
+      } else {
+        return noUpcomingSelection();
+      }
     }
     var destination = findUnpinnedDestination(destinationIterator, listVariableDescriptor);
     if (destination == null) {
-      return noUpcomingSelection();
+      return originDependentDestinationSelection
+          ? SelectorBasedNoChangeMove.getInstance()
+          : noUpcomingSelection();
     } else if (destination instanceof PositionInList destinationElement) {
       var reversing = selectReversingMoveToo && workingRandom.nextBoolean();
       return new SelectorBasedSubListChangeMove<>(

@@ -25,12 +25,12 @@ The following advanced features are available in GreyCOS Solver:
 [#nearbySelection]
 === Nearby selection
 
-In some use cases (such as TSP and VRP, but also in other cases),
-changing entities to nearby values or swapping nearby entities leads to better results faster.
+Nearby selection gives closer entities or values a higher probability of selection.
+For problems such as TSP and VRP, this can improve solution quality within the available solving time.
 
 image::advanced-features/nearbySelectionMotivation.png[align="center"]
 
-This can *heavily increase scalability* and improve solution quality:
+The benefit depends on the distance meter, neighborhood, and dataset; measure it on representative problems:
 
 image::advanced-features/nearbySelectionValueProposition.png[align="center"]
 
@@ -57,7 +57,9 @@ public interface NearbyDistanceMeter<Origin_, Destination_> {
 
 The `Origin_` and `Destination_` types are determined by the selectors carrying `nearbySelection`.
 For a basic variable, `Origin_` is the planning entity and `Destination_` may be a planning value or entity.
-For a list variable, `Origin_` is always a planning value, while `Destination_` may be a planning value or entity.
+For a list variable, `Origin_` is a planning value, while `Destination_` may be a planning value or entity.
+A sublist origin is represented by its first planning value at the time the sublist is selected.
+The meter receives that value, not a `SubList` object.
 For example, in vehicle routing the distance meter must accept both `Customer` and `Vehicle` destinations:
 
 [tabs]
@@ -78,8 +80,10 @@ public class CustomerNearbyDistanceMeter implements NearbyDistanceMeter<Customer
 
 [NOTE]
 ====
-`NearbyDistanceMeter` implementations are expected to be stateless.
-The solver may choose to reuse them in different contexts.
+`NearbyDistanceMeter` implementations must be stateless and thread-safe.
+Distances are cached during a solver phase, so calculate them from facts that remain constant during that phase,
+such as customer coordinates, rather than from changing route positions or planning variables.
+The solver may reuse the meter in different contexts.
 
 The Nearby configuration is not enabled for the Construction Heuristics
 because the method will analyze all possible moves.
@@ -103,7 +107,9 @@ set `nearbyDistanceMeterClass` at solver level:
 ----
 
 The default Local Search neighborhood then includes Change, Swap, Change with Nearby and Swap with Nearby.
-For a mixed basic/list model, configure nearby selection explicitly on the basic-variable move selectors.
+Solver-level automatic nearby configuration also supports mixed basic/list models.
+Its distance meter must accept the origin and destination types used by both kinds of variable.
+Use explicit move-selector configuration when different variables require different distance meters.
 
 For advanced configuration, add `nearbySelection` to a change move's `valueSelector`
 or a swap move's `secondaryEntitySelector` and use mimic selection to identify the origin:
@@ -158,7 +164,8 @@ xref:optimization-algorithms/move-selector-reference.adoc#changeMoveSelector[Cha
 xref:optimization-algorithms/move-selector-reference.adoc#swapMoveSelector[Swap],
 Change with Nearby,
 Swap with Nearby,
-and xref:optimization-algorithms/move-selector-reference.adoc#kOptListMoveSelector[K-OPT] with Nearby.
+xref:optimization-algorithms/move-selector-reference.adoc#kOptListMoveSelector[K-OPT],
+and K-OPT with Nearby.
 
 ===== Advanced configuration for local search
 
@@ -213,68 +220,10 @@ to specify which destination, value, or subList should be nearby the selection.
 
 ==== Nearby selection with a chained variable
 
-To quickly configure nearby selection with a chained planning variable,
-add `nearbyDistanceMeterClass` element to your configuration file.
-The following enables nearby selection with a chained variable
-for the local search:
-
-[source,xml,options="nowrap"]
-----
-<?xml version="1.0" encoding="UTF-8"?>
-<solver xmlns="https://greycos.ai/xsd/solver">
-    ...
-    <nearbyDistanceMeterClass>org.acme.vehiclerouting.domain.solver.nearby.CustomerNearbyDistanceMeter</nearbyDistanceMeterClass>
-    ...
-</solver>
-----
-
-By default, the following move selectors are included:
-
-- xref:optimization-algorithms/move-selector-reference.adoc#changeMoveSelector[Change],
-- xref:optimization-algorithms/move-selector-reference.adoc#swapMoveSelector[Swap],
-- Change with Nearby,
-- Swap with Nearby
-- and xref:optimization-algorithms/move-selector-reference.adoc#tailChainSwapMoveSelector[Tail Chain Swap] with Nearby.
-
-===== Advanced configuration for local search
-
-To customize the move selectors,
-add a `nearbySelection` element in the `entitySelector` or `valueSelector`
-and use xref:optimization-algorithms/overview.adoc#mimicSelection[mimic selection]
-to specify which entity should be nearby the selection.
-
-[source,xml,options="nowrap"]
-----
-    <unionMoveSelector>
-      <changeMoveSelector>
-        <entitySelector id="entitySelector1"/>
-        <valueSelector>
-          <nearbySelection>
-            <originEntitySelector mimicSelectorRef="entitySelector1"/>
-            <nearbyDistanceMeterClass>...CustomerNearbyDistanceMeter</nearbyDistanceMeterClass>
-          </nearbySelection>
-        </valueSelector>
-      </changeMoveSelector>
-      <swapMoveSelector>
-        <entitySelector id="entitySelector2"/>
-        <secondaryEntitySelector>
-          <nearbySelection>
-            <originEntitySelector mimicSelectorRef="entitySelector2"/>
-            <nearbyDistanceMeterClass>...CustomerNearbyDistanceMeter</nearbyDistanceMeterClass>
-          </nearbySelection>
-        </secondaryEntitySelector>
-      </swapMoveSelector>
-      <tailChainSwapMoveSelector>
-        <entitySelector id="entitySelector3"/>
-        <valueSelector>
-          <nearbySelection>
-            <originEntitySelector mimicSelectorRef="entitySelector3"/>
-            <nearbyDistanceMeterClass>...CustomerNearbyDistanceMeter</nearbyDistanceMeterClass>
-          </nearbySelection>
-        </valueSelector>
-      </tailChainSwapMoveSelector>
-    </unionMoveSelector>
-----
+The current planning-variable API supports basic and list variables.
+Represent routes as planning list variables and configure nearby selection as described in
+<<listVariableNearbySelection,Nearby selection with a list variable>>.
+Legacy chained-variable and `tailChainSwapMoveSelector` configurations are not supported.
 
 ==== Power-tweaking distribution type
 
@@ -289,7 +238,7 @@ to back your choices by extensive xref:using-greycos-solver/benchmarking-and-twe
 
 The following ``NearbySelectionDistributionType``s are supported:
 
-* `PARABOLIC_DISTRIBUTION` (default): Nearest elements are selected with a higher probability.
+* `PARABOLIC_DISTRIBUTION`: Nearest elements are selected with a higher probability.
 +
 [source,xml,options="nowrap"]
 ----
@@ -317,7 +266,7 @@ only set the distribution type (so without a `distributionSizeMaximum` parameter
     <blockDistributionSizeMaximum>20</blockDistributionSizeMaximum>
   </nearbySelection>
 ----
-* ``LINEAR_DISTRIBUTION``: Nearest elements are selected with a higher probability. The probability decreases linearly.
+* ``LINEAR_DISTRIBUTION`` (default): Nearest elements are selected with a higher probability. The probability decreases linearly.
 +
 [source,xml,options="nowrap"]
 ----
@@ -334,6 +283,45 @@ only set the distribution type (so without a `distributionSizeMaximum` parameter
     <betaDistributionBeta>5</betaDistributionBeta>
   </nearbySelection>
 ----
+
+
+The distribution type may be omitted when its parameters identify it unambiguously.
+For example, `parabolicDistributionSizeMaximum` selects the parabolic distribution.
+Supplying parameters from more than one distribution is invalid.
+Beta parameters must be finite and positive.
+The block size ratio and uniform distribution probability must be finite and between 0 and 1, inclusive.
+Invalid parameters are rejected when the solver is built.
+
+For block selection, `blockDistributionSizeRatio` applies to the full eligible population before
+`blockDistributionSizeMinimum` and `blockDistributionSizeMaximum` are applied.
+With 1,000 eligible destinations, a ratio of 0.5 and a maximum of 100 select the nearest 100.
+`blockDistributionUniformDistributionProbability` allows a uniform sample from the eligible population,
+including destinations outside that block.
+
+===== Distance caching and explicit truncation
+
+Distance rows are initialized lazily and reused during a phase.
+A bounded distribution can retain only the nearest candidates, but constructing a row still evaluates
+the distance to every candidate. This is not a spatial index.
+Setting `eagerInitialization` to `true` initializes enumerable origins at phase start;
+it does not change the distribution or repeat rows already initialized by a shared selector.
+For a sublist origin, eager initialization enumerates the planning values that can represent its first element.
+
+`maxNearbySortSize` is an optional explicit cap on the retained neighborhood for random selection.
+Leaving it unset preserves the distribution's full support; there is no automatic 1,000-destination cutoff.
+Setting it limits which destinations can be selected, including uniform exploration, so it can change solution quality.
+When eligibility can change during a phase, the solver retains a full distance row and applies the cap
+after checking the current custom filters, assignments, and entity-specific ranges.
+Changes in eligibility reuse the cached distances; they do not permanently remove candidates from the row.
+Pinned, filtered-out, or unreachable destinations do not consume the eligible neighborhood.
+For nearby sublists, a configured value filter applies to the first value of the candidate sublist;
+the selected length must also satisfy the sublist bounds and both entity ranges.
+The unassignment option, when supported by the planning variable, remains available separately from distance ranks.
+Original-order nearby selection visits destinations in distance order without random truncation.
+
+Bounded linear, parabolic, and beta sampling can stop checking candidates once the eligible neighborhood is full.
+Block sampling and the unassignment probability still require the complete eligible population count.
+Full distance rows may therefore remain necessary even when a small sampling cap is configured.
 
 
 [#multithreadedSolving]

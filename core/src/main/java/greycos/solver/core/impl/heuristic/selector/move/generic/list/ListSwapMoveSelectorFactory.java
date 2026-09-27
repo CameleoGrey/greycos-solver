@@ -92,7 +92,11 @@ public class ListSwapMoveSelectorFactory<Solution_>
               .formatted(leftValueSelector, rightValueSelector));
     }
 
-    return new ListSwapMoveSelector<>(leftValueSelector, rightValueSelector, randomSelection);
+    return new ListSwapMoveSelector<>(
+        leftValueSelector,
+        rightValueSelector,
+        randomSelection,
+        secondaryValueSelectorConfig.getNearbySelectionConfig() != null);
   }
 
   private IterableValueSelector<Solution_> buildIterableValueSelector(

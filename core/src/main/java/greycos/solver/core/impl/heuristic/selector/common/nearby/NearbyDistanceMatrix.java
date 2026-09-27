@@ -20,11 +20,13 @@ import org.jspecify.annotations.NonNull;
 public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
 
   private final @NonNull NearbyDistanceMeter<Origin, Destination> nearbyDistanceMeter;
-  private final @NonNull Map<Origin, Destination[]> originToDestinationsMap;
+  private final @NonNull Map<Origin, DestinationRow<Destination>> originToDestinationsMap;
   private final @NonNull Function<Origin, Iterator<Destination>> destinationIteratorProvider;
   private final @NonNull ToIntFunction<Origin> destinationSizeFunction;
   private final int maxNearbySortSize;
   private final boolean strictDestinationSize;
+
+  private record DestinationRow<Destination>(Destination[] destinations, int populationSize) {}
 
   public NearbyDistanceMatrix(
       @NonNull NearbyDistanceMeter<Origin, Destination> nearbyDistanceMeter,
@@ -90,24 +92,30 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
     this.strictDestinationSize = strictDestinationSize;
   }
 
+  /** Initializes the origin's row if absent, allowing eager selectors to reuse a shared matrix. */
   public void addAllDestinations(@NonNull Origin origin) {
-    originToDestinationsMap.put(origin, computeDestinations(origin));
+    getOrComputeDestinations(origin);
   }
 
   public @NonNull Object getDestination(@NonNull Origin origin, int nearbyIndex) {
-    Destination[] destinations = getOrComputeDestinations(origin);
+    Destination[] destinations = getOrComputeDestinations(origin).destinations();
     return destinations[nearbyIndex];
   }
 
   public int getDestinationSize(@NonNull Origin origin) {
-    return getOrComputeDestinations(origin).length;
+    return getOrComputeDestinations(origin).destinations().length;
   }
 
-  private Destination[] getOrComputeDestinations(@NonNull Origin origin) {
+  /** Returns the actual enumerated destination count before the nearest-destination storage cap. */
+  public int getDestinationPopulationSize(@NonNull Origin origin) {
+    return getOrComputeDestinations(origin).populationSize();
+  }
+
+  private DestinationRow<Destination> getOrComputeDestinations(@NonNull Origin origin) {
     return originToDestinationsMap.computeIfAbsent(origin, this::computeDestinations);
   }
 
-  private Destination[] computeDestinations(@NonNull Origin origin) {
+  private DestinationRow<Destination> computeDestinations(@NonNull Origin origin) {
     int destinationSize = destinationSizeFunction.applyAsInt(origin);
     if (destinationSize < 0) {
       throw new IllegalStateException(
@@ -124,7 +132,7 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
   }
 
   @SuppressWarnings("unchecked")
-  private Destination[] computeFullSort(@NonNull Origin origin, int destinationSize) {
+  private DestinationRow<Destination> computeFullSort(@NonNull Origin origin, int destinationSize) {
     Object[] destinationBuffer = destinationSize == 0 ? new Object[0] : new Object[destinationSize];
     double[] distanceBuffer = destinationSize == 0 ? new double[0] : new double[destinationSize];
     Iterator<Destination> destinationIterator = destinationIteratorProvider.apply(origin);
@@ -155,13 +163,17 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
     if (actualSize > 1) {
       heapSortByDistance(destinationBuffer, distanceBuffer, actualSize);
     }
-    Destination[] sorted = (Destination[]) new Object[actualSize];
-    System.arraycopy(destinationBuffer, 0, sorted, 0, actualSize);
-    return sorted;
+    // A non-strict size estimate can be smaller than the actual population. Respect the explicit
+    // cap even when that underestimate led us to choose a full sort.
+    int retainedSize = Math.min(actualSize, maxNearbySortSize);
+    Destination[] sorted = (Destination[]) new Object[retainedSize];
+    System.arraycopy(destinationBuffer, 0, sorted, 0, retainedSize);
+    return new DestinationRow<>(sorted, actualSize);
   }
 
   @SuppressWarnings("unchecked")
-  private Destination[] computePartialSort(@NonNull Origin origin, int k, int expectedSize) {
+  private DestinationRow<Destination> computePartialSort(
+      @NonNull Origin origin, int k, int expectedSize) {
     Object[] heapDestinations = new Object[k];
     double[] heapDistances = new double[k];
     int[] heapInsertionOrders = new int[k];
@@ -205,21 +217,21 @@ public final class NearbyDistanceMatrix<Origin, Destination> implements Supply {
 
     if (heapSize < 2) {
       if (heapSize == heapDestinations.length) {
-        return (Destination[]) heapDestinations;
+        return new DestinationRow<>((Destination[]) heapDestinations, actualSize);
       }
       Destination[] result = (Destination[]) new Object[heapSize];
       if (heapSize > 0) {
         System.arraycopy(heapDestinations, 0, result, 0, heapSize);
       }
-      return result;
+      return new DestinationRow<>(result, actualSize);
     }
     heapSortByDistanceThenOrder(heapDestinations, heapDistances, heapInsertionOrders, heapSize);
     if (heapSize == heapDestinations.length) {
-      return (Destination[]) heapDestinations;
+      return new DestinationRow<>((Destination[]) heapDestinations, actualSize);
     }
     Destination[] result = (Destination[]) new Object[heapSize];
     System.arraycopy(heapDestinations, 0, result, 0, heapSize);
-    return result;
+    return new DestinationRow<>(result, actualSize);
   }
 
   private static int growCapacity(int previousCapacity) {

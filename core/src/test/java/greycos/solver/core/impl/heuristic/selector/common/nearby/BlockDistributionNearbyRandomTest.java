@@ -5,7 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Random;
 
+import greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
+
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class BlockDistributionNearbyRandomTest {
 
@@ -41,7 +45,8 @@ class BlockDistributionNearbyRandomTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> new BlockDistributionNearbyRandom(5, 50, -0.1, 0.2));
-    assertEquals("The sizeRatio (-0.1) must be between 0.0 and 1.0.", exception.getMessage());
+    assertEquals(
+        "The sizeRatio (-0.1) must be finite and between 0.0 and 1.0.", exception.getMessage());
   }
 
   @Test
@@ -50,7 +55,8 @@ class BlockDistributionNearbyRandomTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> new BlockDistributionNearbyRandom(5, 50, 1.1, 0.2));
-    assertEquals("The sizeRatio (1.1) must be between 0.0 and 1.0.", exception.getMessage());
+    assertEquals(
+        "The sizeRatio (1.1) must be finite and between 0.0 and 1.0.", exception.getMessage());
   }
 
   @Test
@@ -60,7 +66,7 @@ class BlockDistributionNearbyRandomTest {
             IllegalArgumentException.class,
             () -> new BlockDistributionNearbyRandom(5, 50, 0.1, -0.1));
     assertEquals(
-        "The uniformDistributionProbability (-0.1) must be between 0.0 and 1.0.",
+        "The uniformDistributionProbability (-0.1) must be finite and between 0.0 and 1.0.",
         exception.getMessage());
   }
 
@@ -71,7 +77,52 @@ class BlockDistributionNearbyRandomTest {
             IllegalArgumentException.class,
             () -> new BlockDistributionNearbyRandom(5, 50, 0.1, 1.1));
     assertEquals(
-        "The uniformDistributionProbability (1.1) must be between 0.0 and 1.0.",
+        "The uniformDistributionProbability (1.1) must be finite and between 0.0 and 1.0.",
+        exception.getMessage());
+  }
+
+  @ParameterizedTest
+  @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+  void rejectsNonFiniteParametersBeforeSampling(double value) {
+    var ratioException =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new BlockDistributionNearbyRandom(1, 40, value, 0.0));
+    assertEquals(
+        "The sizeRatio (" + value + ") must be finite and between 0.0 and 1.0.",
+        ratioException.getMessage());
+    var probabilityException =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new BlockDistributionNearbyRandom(1, 40, 1.0, value));
+    assertEquals(
+        "The uniformDistributionProbability ("
+            + value
+            + ") must be finite and between 0.0 and 1.0.",
+        probabilityException.getMessage());
+  }
+
+  @ParameterizedTest
+  @ValueSource(doubles = {0.0, 1.0})
+  void acceptsProbabilityAndRatioBoundaries(double value) {
+    var random = new BlockDistributionNearbyRandom(1, 40, value, value);
+
+    int expectedMaximum = value == 0.0 ? 40 : Integer.MAX_VALUE;
+    assertEquals(expectedMaximum, random.getOverallSizeMaximum());
+  }
+
+  @Test
+  void factoryRejectsNonFiniteConfigurationBeforeSampling() {
+    var config =
+        new NearbySelectionConfig().withBlockDistributionUniformDistributionProbability(Double.NaN);
+
+    var exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> NearbyRandomFactory.create(config).buildNearbyRandom(true));
+
+    assertEquals(
+        "The uniformDistributionProbability (NaN) must be finite and between 0.0 and 1.0.",
         exception.getMessage());
   }
 
@@ -113,6 +164,37 @@ class BlockDistributionNearbyRandomTest {
         throw new AssertionError("Result " + result + " is out of range [0, 5)");
       }
     }
+  }
+
+  @Test
+  void truncatedPopulationUsesOriginalRatio() {
+    var random = new BlockDistributionNearbyRandom(1, 100, 0.5, 0.0);
+    var rng =
+        new Random(0) {
+          @Override
+          public int nextInt(int bound) {
+            return bound - 1;
+          }
+        };
+
+    assertEquals(99, random.nextInt(rng, 1000, 100));
+    assertEquals(49, random.nextInt(rng, 100, 100));
+    assertEquals(24, random.nextInt(rng, 1000, 25));
+  }
+
+  @Test
+  void uniformExplorationRespectsExplicitRetainedLimit() {
+    var random = new BlockDistributionNearbyRandom(1, 100, 0.5, 1.0);
+    var rng =
+        new Random(0) {
+          @Override
+          public int nextInt(int bound) {
+            return bound - 1;
+          }
+        };
+
+    assertEquals(1999, random.nextInt(rng, 2000, 2000));
+    assertEquals(249, random.nextInt(rng, 2000, 250));
   }
 
   @Test

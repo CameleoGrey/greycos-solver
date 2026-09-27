@@ -15,11 +15,11 @@ public final class BetaDistributionNearbyRandom implements NearbyRandom {
   private final @NonNull BetaDistribution betaDistribution;
 
   public BetaDistributionNearbyRandom(double alpha, double beta) {
-    if (alpha <= 0.0) {
-      throw new IllegalArgumentException("The alpha (" + alpha + ") must be positive.");
+    if (!Double.isFinite(alpha) || alpha <= 0.0) {
+      throw new IllegalArgumentException("The alpha (" + alpha + ") must be finite and positive.");
     }
-    if (beta <= 0.0) {
-      throw new IllegalArgumentException("The beta (" + beta + ") must be positive.");
+    if (!Double.isFinite(beta) || beta <= 0.0) {
+      throw new IllegalArgumentException("The beta (" + beta + ") must be finite and positive.");
     }
     this.betaDistribution = new BetaDistribution(alpha, beta);
   }
@@ -33,6 +33,11 @@ public final class BetaDistributionNearbyRandom implements NearbyRandom {
       next = nearbySize - 1;
     }
     return next;
+  }
+
+  @Override
+  public boolean requiresPopulationSize() {
+    return false;
   }
 
   @Override

@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -21,12 +23,70 @@ import java.util.stream.IntStream;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class KOptListMoveIteratorTest {
+
+  @ParameterizedTest
+  @ValueSource(ints = {2, 3})
+  void exhaustedAssignedOriginsProduceANonDoableAttempt(int k) {
+    var mocks = createMockKOptListMoveIterator(k, k, new int[] {1});
+    when(mocks.originSelector.iterator()).thenAnswer(ignored -> iteratorForValues());
+
+    assertThat(mocks.kOptListMoveIterator.next()).isSameAs(SelectorBasedNoChangeMove.getInstance());
+    assertThat(mocks.kOptListMoveIterator.next()).isSameAs(SelectorBasedNoChangeMove.getInstance());
+    verify(mocks.valueSelector, never()).iterator();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void freshSelectorsRecoverAfterAssignedOriginsOrCandidatesBecomeAvailable(boolean candidates) {
+    var mocks = createMockKOptListMoveIterator(3, 3, new int[] {1});
+    setupValidOddSequentialKOptMove(mocks, 3, "entity", "entity", "entity");
+    var emptySelector = candidates ? mocks.valueSelector : mocks.originSelector;
+    when(emptySelector.iterator()).thenAnswer(ignored -> iteratorForValues());
+
+    assertThat(mocks.kOptListMoveIterator.next()).isSameAs(SelectorBasedNoChangeMove.getInstance());
+
+    // A later attempt sees current assignments; it must not reuse the exhausted child iterator.
+    var expected = setupValidOddSequentialKOptMove(mocks, 3, "entity", "entity", "entity");
+    var move = mocks.kOptListMoveIterator.next();
+    assertThat(move).isInstanceOf(KOptListMove.class);
+    expected.verify((KOptListMove<?>) move);
+  }
+
+  @Test
+  void nullDuringAShortListRetryDoesNotCreateAnUnboundedLoop() {
+    var mocks = createMockKOptListMoveIterator(3, 3, new int[] {1});
+    when(mocks.listVariableState.getInverseSingleton("value")).thenReturn("entity");
+    when(mocks.listVariableDescriptor.getUnpinnedSubListSize("entity")).thenReturn(1);
+    when(mocks.originSelector.iterator())
+        .thenReturn(
+            new Iterator<>() {
+              private int count;
+
+              @Override
+              public boolean hasNext() {
+                return true;
+              }
+
+              @Override
+              public Object next() {
+                if (++count > 21) {
+                  throw new AssertionError("Origin retries must remain bounded.");
+                }
+                return count == 1 ? "value" : null;
+              }
+            });
+
+    assertThat(mocks.kOptListMoveIterator.next()).isSameAs(SelectorBasedNoChangeMove.getInstance());
+  }
 
   private static class KOptListMoveIteratorMockData {
     int minK;

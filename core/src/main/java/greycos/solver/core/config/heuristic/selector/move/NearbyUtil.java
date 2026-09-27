@@ -1,5 +1,6 @@
 package greycos.solver.core.config.heuristic.selector.move;
 
+import java.util.HashMap;
 import java.util.random.RandomGenerator;
 
 import greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
@@ -23,10 +24,14 @@ public final class NearbyUtil {
       @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
       @NonNull RandomGenerator random) {
     var nearbyConfig = changeMoveSelectorConfig.copyConfig();
+    makeEntitySelectorIdsUnique(random, nearbyConfig.getEntitySelectorConfig());
+    makeValueSelectorIdsUnique(random, nearbyConfig.getValueSelectorConfig());
     var entityConfig = configureEntitySelector(nearbyConfig.getEntitySelectorConfig(), random);
     var valueConfig =
         configureValueSelector(
-            nearbyConfig.getValueSelectorConfig(), entityConfig.getId(), distanceMeter);
+            nearbyConfig.getValueSelectorConfig(),
+            getRecordingSelectorId(entityConfig),
+            distanceMeter);
     return nearbyConfig.withEntitySelectorConfig(entityConfig).withValueSelectorConfig(valueConfig);
   }
 
@@ -35,9 +40,23 @@ public final class NearbyUtil {
     if (entitySelectorConfig == null) {
       entitySelectorConfig = new EntitySelectorConfig();
     }
-    var entitySelectorId = ConfigUtils.addRandomSuffix("entitySelector", random);
-    entitySelectorConfig.withId(entitySelectorId);
+    if (entitySelectorConfig.getId() == null
+        && entitySelectorConfig.getMimicSelectorRef() == null) {
+      entitySelectorConfig.withId(ConfigUtils.addRandomSuffix("entitySelector", random));
+    }
     return entitySelectorConfig;
+  }
+
+  private static String getRecordingSelectorId(EntitySelectorConfig selectorConfig) {
+    return selectorConfig.getMimicSelectorRef() == null
+        ? selectorConfig.getId()
+        : selectorConfig.getMimicSelectorRef();
+  }
+
+  private static String getRecordingSelectorId(ValueSelectorConfig selectorConfig) {
+    return selectorConfig.getMimicSelectorRef() == null
+        ? selectorConfig.getId()
+        : selectorConfig.getMimicSelectorRef();
   }
 
   private static ValueSelectorConfig configureValueSelector(
@@ -76,13 +95,18 @@ public final class NearbyUtil {
       @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
       @NonNull RandomGenerator random) {
     var nearbyConfig = swapMoveSelectorConfig.copyConfig();
+    makeEntitySelectorIdsUnique(
+        random,
+        nearbyConfig.getEntitySelectorConfig(),
+        nearbyConfig.getSecondaryEntitySelectorConfig());
     var entityConfig = configureEntitySelector(nearbyConfig.getEntitySelectorConfig(), random);
     var secondaryConfig = nearbyConfig.getSecondaryEntitySelectorConfig();
     if (secondaryConfig == null) {
       secondaryConfig = new EntitySelectorConfig();
+      secondaryConfig.setEntityClass(entityConfig.getEntityClass());
     }
     secondaryConfig.withNearbySelectionConfig(
-        configureNearbySelectionWithEntity(entityConfig.getId(), distanceMeter));
+        configureNearbySelectionWithEntity(getRecordingSelectorId(entityConfig), distanceMeter));
     return nearbyConfig
         .withEntitySelectorConfig(entityConfig)
         .withSecondaryEntitySelectorConfig(secondaryConfig);
@@ -93,13 +117,16 @@ public final class NearbyUtil {
       @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
       @NonNull RandomGenerator random) {
     var nearbyConfig = listChangeMoveSelectorConfig.copyConfig();
-    var valueConfig = configureValueSelector(nearbyConfig.getValueSelectorConfig(), random);
     var destinationConfig = nearbyConfig.getDestinationSelectorConfig();
     if (destinationConfig == null) {
       destinationConfig = new DestinationSelectorConfig();
     }
+    makeEntitySelectorIdsUnique(random, destinationConfig.getEntitySelectorConfig());
+    makeValueSelectorIdsUnique(
+        random, nearbyConfig.getValueSelectorConfig(), destinationConfig.getValueSelectorConfig());
+    var valueConfig = configureValueSelector(nearbyConfig.getValueSelectorConfig(), random);
     destinationConfig.withNearbySelectionConfig(
-        configureNearbySelectionWithValue(valueConfig.getId(), distanceMeter));
+        configureNearbySelectionWithValue(getRecordingSelectorId(valueConfig), distanceMeter));
     nearbyConfig
         .withValueSelectorConfig(valueConfig)
         .withDestinationSelectorConfig(destinationConfig);
@@ -136,8 +163,9 @@ public final class NearbyUtil {
     if (valueSelectorConfig == null) {
       valueSelectorConfig = new ValueSelectorConfig();
     }
-    var valueSelectorId = ConfigUtils.addRandomSuffix("valueSelector", random);
-    valueSelectorConfig.withId(valueSelectorId);
+    if (valueSelectorConfig.getId() == null && valueSelectorConfig.getMimicSelectorRef() == null) {
+      valueSelectorConfig.withId(ConfigUtils.addRandomSuffix("valueSelector", random));
+    }
     return valueSelectorConfig;
   }
 
@@ -146,6 +174,10 @@ public final class NearbyUtil {
       @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
       @NonNull RandomGenerator random) {
     var nearbyConfig = listSwapMoveSelectorConfig.copyConfig();
+    makeValueSelectorIdsUnique(
+        random,
+        nearbyConfig.getValueSelectorConfig(),
+        nearbyConfig.getSecondaryValueSelectorConfig());
     var valueConfig = configureValueSelector(nearbyConfig.getValueSelectorConfig(), random);
     var secondaryConfig =
         configureSecondaryValueSelector(
@@ -161,9 +193,11 @@ public final class NearbyUtil {
       Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter) {
     if (secondaryValueSelectorConfig == null) {
       secondaryValueSelectorConfig = new ValueSelectorConfig();
+      secondaryValueSelectorConfig.setVariableName(primaryValueSelectorConfig.getVariableName());
     }
     secondaryValueSelectorConfig.withNearbySelectionConfig(
-        configureNearbySelectionWithValue(primaryValueSelectorConfig.getId(), distanceMeter));
+        configureNearbySelectionWithValue(
+            getRecordingSelectorId(primaryValueSelectorConfig), distanceMeter));
     return secondaryValueSelectorConfig;
   }
 
@@ -172,11 +206,57 @@ public final class NearbyUtil {
       @NonNull Class<? extends NearbyDistanceMeter<?, ?>> distanceMeter,
       @NonNull RandomGenerator random) {
     var nearbyConfig = kOptListMoveSelectorConfig.copyConfig();
+    makeValueSelectorIdsUnique(
+        random, nearbyConfig.getOriginSelectorConfig(), nearbyConfig.getValueSelectorConfig());
     var originConfig = configureValueSelector(nearbyConfig.getOriginSelectorConfig(), random);
     var valueConfig =
         configureSecondaryValueSelector(
             nearbyConfig.getValueSelectorConfig(), originConfig, distanceMeter);
     return nearbyConfig.withOriginSelectorConfig(originConfig).withValueSelectorConfig(valueConfig);
+  }
+
+  // The original move remains in the union. Its copied recorders need different IDs, and
+  // references inside the copy must follow the renamed recorders. External references stay intact.
+  private static void makeEntitySelectorIdsUnique(
+      RandomGenerator random, EntitySelectorConfig... selectorConfigs) {
+    var idMap = new HashMap<String, String>();
+    for (var selectorConfig : selectorConfigs) {
+      if (selectorConfig != null
+          && selectorConfig.getId() != null
+          && !selectorConfig.getId().isEmpty()) {
+        selectorConfig.setId(
+            idMap.computeIfAbsent(
+                selectorConfig.getId(), id -> ConfigUtils.addRandomSuffix(id, random)));
+      }
+    }
+    for (var selectorConfig : selectorConfigs) {
+      if (selectorConfig != null && selectorConfig.getMimicSelectorRef() != null) {
+        selectorConfig.setMimicSelectorRef(
+            idMap.getOrDefault(
+                selectorConfig.getMimicSelectorRef(), selectorConfig.getMimicSelectorRef()));
+      }
+    }
+  }
+
+  private static void makeValueSelectorIdsUnique(
+      RandomGenerator random, ValueSelectorConfig... selectorConfigs) {
+    var idMap = new HashMap<String, String>();
+    for (var selectorConfig : selectorConfigs) {
+      if (selectorConfig != null
+          && selectorConfig.getId() != null
+          && !selectorConfig.getId().isEmpty()) {
+        selectorConfig.setId(
+            idMap.computeIfAbsent(
+                selectorConfig.getId(), id -> ConfigUtils.addRandomSuffix(id, random)));
+      }
+    }
+    for (var selectorConfig : selectorConfigs) {
+      if (selectorConfig != null && selectorConfig.getMimicSelectorRef() != null) {
+        selectorConfig.setMimicSelectorRef(
+            idMap.getOrDefault(
+                selectorConfig.getMimicSelectorRef(), selectorConfig.getMimicSelectorRef()));
+      }
+    }
   }
 
   private NearbyUtil() {

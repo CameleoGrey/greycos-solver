@@ -213,11 +213,11 @@ class NearEntityNearbyEntitySelectorTest {
 
     var iterator = entitySelector.iterator();
     assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
-    workingRandom.assertIntBoundJustRequested(1);
+    workingRandom.assertIntBoundJustRequested(2);
     assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
-    workingRandom.assertIntBoundJustRequested(1);
+    workingRandom.assertIntBoundJustRequested(2);
     assertThat(((TestdataEntity) iterator.next()).getCode()).isEqualTo("Spain");
-    workingRandom.assertIntBoundJustRequested(1);
+    workingRandom.assertIntBoundJustRequested(2);
 
     entitySelector.stepEnded(stepScopeA1);
     entitySelector.phaseEnded(phaseScopeA);

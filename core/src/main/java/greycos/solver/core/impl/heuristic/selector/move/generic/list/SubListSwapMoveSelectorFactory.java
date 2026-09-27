@@ -59,6 +59,9 @@ public class SubListSwapMoveSelectorFactory<Solution_>
         Objects.requireNonNullElse(config.getSelectReversingMoveToo(), true);
 
     return new RandomSubListSwapMoveSelector<>(
-        leftSubListSelector, rightSubListSelector, selectReversingMoveToo);
+        leftSubListSelector,
+        rightSubListSelector,
+        selectReversingMoveToo,
+        secondarySubListSelectorConfig.getNearbySelectionConfig() != null);
   }
 }

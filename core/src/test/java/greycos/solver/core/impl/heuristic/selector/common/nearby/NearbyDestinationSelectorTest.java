@@ -2,7 +2,6 @@ package greycos.solver.core.impl.heuristic.selector.common.nearby;
 
 import static greycos.solver.core.impl.heuristic.HeuristicConfigPolicyTestUtils.buildHeuristicConfigPolicy;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -146,7 +145,7 @@ class NearbyDestinationSelectorTest {
   }
 
   @Test
-  void eagerInitializationRejectsNonEnumerableSubListOrigin() {
+  void eagerInitializationAcceptsSubListOriginsEnumerableAsValues() {
     ListVariableDescriptor<TestdataListSolution> listVariableDescriptor =
         TestdataListEntity.buildVariableDescriptorForValueList();
     EntityDescriptor<TestdataListSolution> entityDescriptor =
@@ -172,8 +171,7 @@ class NearbyDestinationSelectorTest {
     nearbySelectionConfig.setNearbyDistanceMeterClass(TestNearbyDistanceMeter.class);
     nearbySelectionConfig.setEagerInitialization(true);
 
-    assertThatIllegalArgumentException()
-        .isThrownBy(
+    assertThatCode(
             () ->
                 new NearbyDestinationSelector<>(
                     new DestinationSelectorConfig(),
@@ -187,7 +185,7 @@ class NearbyDestinationSelectorTest {
                     null,
                     originSubListSelector,
                     null))
-        .withMessageContainingAll("Eager nearby initialization", "subList", "lazily");
+        .doesNotThrowAnyException();
   }
 
   public static final class TestNearbyDistanceMeter implements NearbyDistanceMeter<Object, Object> {

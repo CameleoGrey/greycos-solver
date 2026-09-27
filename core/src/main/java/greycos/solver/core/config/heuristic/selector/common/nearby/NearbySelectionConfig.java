@@ -182,6 +182,11 @@ public final class NearbySelectionConfig extends SelectorConfig<NearbySelectionC
     this.betaDistributionBeta = betaDistributionBeta;
   }
 
+  /**
+   * Optional limit on the nearest candidates retained for random nearby selection. If null, the
+   * distribution determines its complete selection range. An explicit limit can exclude farther
+   * candidates, including candidates otherwise reachable through uniform exploration.
+   */
   public @Nullable Integer getMaxNearbySortSize() {
     return maxNearbySortSize;
   }

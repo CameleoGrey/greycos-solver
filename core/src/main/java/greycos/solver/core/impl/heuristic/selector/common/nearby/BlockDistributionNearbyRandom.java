@@ -6,8 +6,9 @@ import java.util.random.RandomGenerator;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Block distribution for nearby selection. Selects uniformly from first k elements where k =
- * max(sizeMinimum, min(sizeMaximum, nearbySize * sizeRatio)).
+ * Block distribution for nearby selection. Selects uniformly from the nearest block, whose size is
+ * derived from the full population ratio and constrained by the configured minimum and maximum. The
+ * block cannot exceed the available retained destinations.
  */
 public final class BlockDistributionNearbyRandom implements NearbyRandom {
 
@@ -34,20 +35,27 @@ public final class BlockDistributionNearbyRandom implements NearbyRandom {
               + sizeMinimum
               + ").");
     }
-    if (sizeRatio < 0.0 || sizeRatio > 1.0) {
+    if (!Double.isFinite(sizeRatio) || sizeRatio < 0.0 || sizeRatio > 1.0) {
       throw new IllegalArgumentException(
-          "The sizeRatio (" + sizeRatio + ") must be between 0.0 and 1.0.");
+          "The sizeRatio (" + sizeRatio + ") must be finite and between 0.0 and 1.0.");
     }
-    if (uniformDistributionProbability < 0.0 || uniformDistributionProbability > 1.0) {
+    if (!Double.isFinite(uniformDistributionProbability)
+        || uniformDistributionProbability < 0.0
+        || uniformDistributionProbability > 1.0) {
       throw new IllegalArgumentException(
           "The uniformDistributionProbability ("
               + uniformDistributionProbability
-              + ") must be between 0.0 and 1.0.");
+              + ") must be finite and between 0.0 and 1.0.");
     }
   }
 
   @Override
   public int nextInt(@NonNull RandomGenerator random, int nearbySize) {
+    return nextInt(random, nearbySize, nearbySize);
+  }
+
+  @Override
+  public int nextInt(@NonNull RandomGenerator random, int populationSize, int nearbySize) {
     if (uniformDistributionProbability > 0.0) {
       if (random.nextDouble() < uniformDistributionProbability) {
         return random.nextInt(nearbySize);
@@ -55,19 +63,17 @@ public final class BlockDistributionNearbyRandom implements NearbyRandom {
     }
     int size;
     if (sizeRatio < 1.0) {
-      size = (int) (nearbySize * sizeRatio);
+      size = (int) (populationSize * sizeRatio);
       if (size < sizeMinimum) {
         size = sizeMinimum;
-        if (size > nearbySize) {
-          size = nearbySize;
-        }
       }
     } else {
-      size = nearbySize;
+      size = populationSize;
     }
     if (size > sizeMaximum) {
       size = sizeMaximum;
     }
+    size = Math.min(size, nearbySize);
     return random.nextInt(size);
   }
 

@@ -6,6 +6,7 @@ import java.util.Iterator;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.impl.cotwin.variable.ListVariableState;
+import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import greycos.solver.core.preview.api.move.Move;
@@ -17,14 +18,27 @@ public class RandomListSwapIterator<Solution_> extends UpcomingSelectionIterator
 
   private final ListVariableState<Solution_, Object, Object> listVariableState;
   private final Iterator<Object> leftValueIterator;
-  private final Iterator<Object> rightValueIterator;
+  private final IterableValueSelector<Solution_> rightValueSelector;
+  private final boolean originDependentRightSelection;
+  private Iterator<Object> rightValueIterator;
 
   public RandomListSwapIterator(
       ListVariableState<Solution_, Object, Object> listVariableState,
       IterableValueSelector<Solution_> leftValueSelector,
       IterableValueSelector<Solution_> rightValueSelector) {
+    this(listVariableState, leftValueSelector, rightValueSelector, false);
+  }
+
+  public RandomListSwapIterator(
+      ListVariableState<Solution_, Object, Object> listVariableState,
+      IterableValueSelector<Solution_> leftValueSelector,
+      IterableValueSelector<Solution_> rightValueSelector,
+      boolean originDependentRightSelection) {
     this.listVariableState = listVariableState;
     this.leftValueIterator = leftValueSelector.iterator();
+    this.rightValueSelector = rightValueSelector;
+    this.originDependentRightSelection =
+        originDependentRightSelection && rightValueSelector.getSize() > 0;
     this.rightValueIterator = rightValueSelector.iterator();
   }
 
@@ -36,7 +50,14 @@ public class RandomListSwapIterator<Solution_> extends UpcomingSelectionIterator
     var upcomingLeftValue = leftValueIterator.next();
     // The right iterator may depend on a selected value from the left iterator
     if (!rightValueIterator.hasNext()) {
-      return noUpcomingSelection();
+      if (originDependentRightSelection) {
+        rightValueIterator = rightValueSelector.iterator();
+        if (!rightValueIterator.hasNext()) {
+          return SelectorBasedNoChangeMove.getInstance();
+        }
+      } else {
+        return noUpcomingSelection();
+      }
     }
     var upcomingRightValue = rightValueIterator.next();
     return buildSwapMove(listVariableState, upcomingLeftValue, upcomingRightValue);

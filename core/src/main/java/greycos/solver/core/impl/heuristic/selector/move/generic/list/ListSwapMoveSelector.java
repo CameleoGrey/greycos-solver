@@ -14,11 +14,20 @@ public final class ListSwapMoveSelector<Solution_>
   private final IterableValueSelector<Solution_> leftValueSelector;
   private final IterableValueSelector<Solution_> rightValueSelector;
   private final boolean randomSelection;
+  private final boolean originDependentRightSelection;
 
   public ListSwapMoveSelector(
       IterableValueSelector<Solution_> leftValueSelector,
       IterableValueSelector<Solution_> rightValueSelector,
       boolean randomSelection) {
+    this(leftValueSelector, rightValueSelector, randomSelection, false);
+  }
+
+  public ListSwapMoveSelector(
+      IterableValueSelector<Solution_> leftValueSelector,
+      IterableValueSelector<Solution_> rightValueSelector,
+      boolean randomSelection,
+      boolean originDependentRightSelection) {
     super((ListVariableDescriptor<Solution_>) leftValueSelector.getVariableDescriptor());
     this.leftValueSelector =
         filterPinnedListPlanningVariableValuesWithIndex(
@@ -27,6 +36,7 @@ public final class ListSwapMoveSelector<Solution_>
         filterPinnedListPlanningVariableValuesWithIndex(
             rightValueSelector, this::getListVariableState);
     this.randomSelection = randomSelection;
+    this.originDependentRightSelection = originDependentRightSelection;
 
     phaseLifecycleSupport.addEventListener(this.leftValueSelector);
     phaseLifecycleSupport.addEventListener(this.rightValueSelector);
@@ -35,7 +45,8 @@ public final class ListSwapMoveSelector<Solution_>
   @Override
   public Iterator<Move<Solution_>> iterator() {
     if (randomSelection) {
-      return new RandomListSwapIterator<>(listVariableState, leftValueSelector, rightValueSelector);
+      return new RandomListSwapIterator<>(
+          listVariableState, leftValueSelector, rightValueSelector, originDependentRightSelection);
     } else {
       return new OriginalListSwapIterator<>(
           listVariableState, leftValueSelector, rightValueSelector);

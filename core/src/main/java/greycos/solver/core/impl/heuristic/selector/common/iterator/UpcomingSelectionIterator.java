@@ -27,14 +27,14 @@ public abstract class UpcomingSelectionIterator<S> extends SelectionIterator<S> 
 
   private void readAndRecheckUpcomingValue() {
     if (!upcomingCreated) {
-      upcomingSelection = createUpcomingSelection();
-      upcomingCreated = true;
       if (recheckUpcomingSelection) {
-        // We ensure that the variable remains consistent if "discardUpcomingSelection" was called
-        // previously.
-        hasUpcomingSelection = upcomingSelection != null;
+        // Discard can revive an exhausted iterator. Only noUpcomingSelection() marks exhaustion;
+        // null itself can be a legitimate selection, such as an unassigned planning value.
+        hasUpcomingSelection = true;
         recheckUpcomingSelection = false;
       }
+      upcomingSelection = createUpcomingSelection();
+      upcomingCreated = true;
     }
   }
 
@@ -46,10 +46,10 @@ public abstract class UpcomingSelectionIterator<S> extends SelectionIterator<S> 
 
   @Override
   public S next() {
+    readAndRecheckUpcomingValue();
     if (!hasUpcomingSelection) {
       throw new NoSuchElementException();
     }
-    readAndRecheckUpcomingValue();
     upcomingCreated = false;
     return upcomingSelection;
   }
@@ -78,10 +78,9 @@ public abstract class UpcomingSelectionIterator<S> extends SelectionIterator<S> 
   }
 
   /**
-   * Some destination iterators, such as nearby destination iterators, may return even elements
-   * which are pinned. This is because the nearby matrix always picks from all nearby elements, and
-   * is unaware of any pinning. This means that later we need to filter out the pinned elements, so
-   * that moves aren't generated for them.
+   * Checks destination positions against pinning before moves are generated. Built-in nearby
+   * selectors exclude pinned candidates before limiting the neighborhood; this check also protects
+   * move generation when another destination selector supplies a pinned position.
    *
    * @param destinationIterator never null
    * @param listVariableDescriptor never null

@@ -16,17 +16,27 @@ public final class ListChangeMoveSelector<Solution_>
   private final IterableValueSelector<Solution_> sourceValueSelector;
   private final DestinationSelector<Solution_> destinationSelector;
   private final boolean randomSelection;
+  private final boolean originDependentDestinationSelection;
 
   public ListChangeMoveSelector(
       IterableValueSelector<Solution_> sourceValueSelector,
       DestinationSelector<Solution_> destinationSelector,
       boolean randomSelection) {
+    this(sourceValueSelector, destinationSelector, randomSelection, false);
+  }
+
+  public ListChangeMoveSelector(
+      IterableValueSelector<Solution_> sourceValueSelector,
+      DestinationSelector<Solution_> destinationSelector,
+      boolean randomSelection,
+      boolean originDependentDestinationSelection) {
     super((ListVariableDescriptor<Solution_>) sourceValueSelector.getVariableDescriptor());
     this.sourceValueSelector =
         filterPinnedListPlanningVariableValuesWithIndex(
             sourceValueSelector, this::getListVariableState);
     this.destinationSelector = destinationSelector;
     this.randomSelection = randomSelection;
+    this.originDependentDestinationSelection = originDependentDestinationSelection;
     phaseLifecycleSupport.addEventListener(this.sourceValueSelector);
     phaseLifecycleSupport.addEventListener(this.destinationSelector);
   }
@@ -57,7 +67,10 @@ public final class ListChangeMoveSelector<Solution_>
   public Iterator<Move<Solution_>> iterator() {
     if (randomSelection) {
       return new RandomListChangeIterator<>(
-          listVariableState, sourceValueSelector, destinationSelector);
+          listVariableState,
+          sourceValueSelector,
+          destinationSelector,
+          originDependentDestinationSelection);
     } else {
       return new OriginalListChangeIterator<>(
           listVariableState, sourceValueSelector, destinationSelector);

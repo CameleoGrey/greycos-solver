@@ -33,6 +33,11 @@ public final class ParabolicDistributionNearbyRandom implements NearbyRandom {
   }
 
   @Override
+  public boolean requiresPopulationSize() {
+    return false;
+  }
+
+  @Override
   public int getOverallSizeMaximum() {
     return sizeMaximum;
   }

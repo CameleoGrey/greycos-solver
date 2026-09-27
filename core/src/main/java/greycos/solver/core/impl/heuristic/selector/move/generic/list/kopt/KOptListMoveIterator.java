@@ -116,7 +116,7 @@ final class KOptListMoveIterator<Solution_, Node_>
     var pickedValues = (Node_[]) new Object[2 * k + 1];
     var originIterator = (Iterator<Node_>) originSelector.iterator();
 
-    pickedValues[1] = originIterator.next();
+    pickedValues[1] = getNextNodeOrNull(originIterator);
     if (pickedValues[1] == null) {
       return null;
     }
@@ -125,13 +125,11 @@ final class KOptListMoveIterator<Solution_, Node_>
         && listVariableDescriptor.getUnpinnedSubListSize(
                 listVariableState.getInverseSingleton(pickedValues[1]))
             < 2) {
-      do {
-        if (!originIterator.hasNext()) {
-          return null;
-        }
-        pickedValues[1] = originIterator.next();
-        remainingAttempts--;
-      } while ((pickedValues[1] == null));
+      pickedValues[1] = getNextNodeOrNull(originIterator);
+      if (pickedValues[1] == null) {
+        return null;
+      }
+      remainingAttempts--;
     }
 
     if (remainingAttempts == 0) {
@@ -266,9 +264,7 @@ final class KOptListMoveIterator<Solution_, Node_>
     if (!iterator.hasNext()) {
       return null;
     }
-    // This may still be null.
-    // Either due to filtering the underlying iterator,
-    // or due to the underlying iterator returning null.
+    // The underlying iterator may explicitly return null as a selection.
     return iterator.next();
   }
 

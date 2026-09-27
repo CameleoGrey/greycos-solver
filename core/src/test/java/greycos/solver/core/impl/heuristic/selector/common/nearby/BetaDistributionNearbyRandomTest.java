@@ -5,7 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Random;
 
+import greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
+
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class BetaDistributionNearbyRandomTest {
 
@@ -20,7 +24,7 @@ class BetaDistributionNearbyRandomTest {
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class, () -> new BetaDistributionNearbyRandom(0.0, 5.0));
-    assertEquals("The alpha (0.0) must be positive.", exception.getMessage());
+    assertEquals("The alpha (0.0) must be finite and positive.", exception.getMessage());
   }
 
   @Test
@@ -28,7 +32,34 @@ class BetaDistributionNearbyRandomTest {
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class, () -> new BetaDistributionNearbyRandom(1.0, 0.0));
-    assertEquals("The beta (0.0) must be positive.", exception.getMessage());
+    assertEquals("The beta (0.0) must be finite and positive.", exception.getMessage());
+  }
+
+  @ParameterizedTest
+  @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+  void rejectsNonFiniteParametersBeforeSampling(double value) {
+    var alphaException =
+        assertThrows(
+            IllegalArgumentException.class, () -> new BetaDistributionNearbyRandom(value, 5.0));
+    assertEquals(
+        "The alpha (" + value + ") must be finite and positive.", alphaException.getMessage());
+    var betaException =
+        assertThrows(
+            IllegalArgumentException.class, () -> new BetaDistributionNearbyRandom(1.0, value));
+    assertEquals(
+        "The beta (" + value + ") must be finite and positive.", betaException.getMessage());
+  }
+
+  @Test
+  void factoryRejectsNonFiniteConfigurationBeforeSampling() {
+    var config = new NearbySelectionConfig().withBetaDistributionAlpha(Double.NaN);
+
+    var exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> NearbyRandomFactory.create(config).buildNearbyRandom(true));
+
+    assertEquals("The alpha (NaN) must be finite and positive.", exception.getMessage());
   }
 
   @Test

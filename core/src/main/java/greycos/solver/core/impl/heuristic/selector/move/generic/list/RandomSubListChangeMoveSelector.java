@@ -13,14 +13,24 @@ public class RandomSubListChangeMoveSelector<Solution_>
   private final SubListSelector<Solution_> subListSelector;
   private final DestinationSelector<Solution_> destinationSelector;
   private final boolean selectReversingMoveToo;
+  private final boolean originDependentDestinationSelection;
 
   public RandomSubListChangeMoveSelector(
       SubListSelector<Solution_> subListSelector,
       DestinationSelector<Solution_> destinationSelector,
       boolean selectReversingMoveToo) {
+    this(subListSelector, destinationSelector, selectReversingMoveToo, false);
+  }
+
+  public RandomSubListChangeMoveSelector(
+      SubListSelector<Solution_> subListSelector,
+      DestinationSelector<Solution_> destinationSelector,
+      boolean selectReversingMoveToo,
+      boolean originDependentDestinationSelection) {
     this.subListSelector = subListSelector;
     this.destinationSelector = destinationSelector;
     this.selectReversingMoveToo = selectReversingMoveToo;
+    this.originDependentDestinationSelection = originDependentDestinationSelection;
 
     phaseLifecycleSupport.addEventListener(subListSelector);
     phaseLifecycleSupport.addEventListener(destinationSelector);
@@ -29,7 +39,11 @@ public class RandomSubListChangeMoveSelector<Solution_>
   @Override
   public Iterator<Move<Solution_>> iterator() {
     return new RandomSubListChangeMoveIterator<>(
-        subListSelector, destinationSelector, workingRandom, selectReversingMoveToo);
+        subListSelector,
+        destinationSelector,
+        workingRandom,
+        selectReversingMoveToo,
+        originDependentDestinationSelection);
   }
 
   @Override

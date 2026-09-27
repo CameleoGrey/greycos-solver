@@ -1,18 +1,26 @@
 package greycos.solver.core.impl.heuristic.selector.common.nearby;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 
 import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.heuristic.selector.AbstractSelector;
+import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
+import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.list.RandomSubListSelector;
 import greycos.solver.core.impl.heuristic.selector.list.SubList;
 import greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
+import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
+import greycos.solver.core.impl.neighborhood.stream.FilteringIterator;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 
 import org.jspecify.annotations.NonNull;
@@ -37,7 +45,35 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
   private @Nullable NearbyDistanceMatrixDemand<Object, Object> distanceMatrixDemand;
   private @Nullable SupplyManager distanceMatrixSupplyManager;
   private @Nullable ListVariableState<Solution_, Object, Object> listVariableState;
+  private @Nullable InnerScoreDirector<Solution_, ?> scoreDirector;
   private boolean eagerInitialized = false;
+  private @Nullable IterableValueSelector<Solution_> populationValueSelector;
+  private @Nullable SelectionFilter<Solution_, Object> selectionFilter;
+  private @Nullable Supplier<Set<Object>> membershipSupplier;
+
+  public void configureSelectionSource(
+      NearbySelectionSource<Solution_, IterableValueSelector<Solution_>> source) {
+    populationValueSelector = source.populationSelector();
+    selectionFilter = source.liveFilter();
+    membershipSupplier = source.membershipSupplier();
+  }
+
+  private Iterator<Object> endingDestinations() {
+    var iterator =
+        populationValueSelector == null
+            ? childSubListSelector.endingValueIterator()
+            : populationValueSelector.endingIterator(null);
+    if (!listVariableDescriptor.supportsPinning()) {
+      return iterator;
+    }
+    return new FilteringIterator<>(iterator, value -> !getListVariableState().isPinned(value));
+  }
+
+  private boolean acceptsCandidate(Object candidate, @Nullable Set<Object> membership) {
+    return (membership == null || membership.contains(candidate))
+        && (selectionFilter == null
+            || selectionFilter.accept(Objects.requireNonNull(scoreDirector), candidate));
+  }
 
   public NearbySubListSelector(
       @NonNull RandomSubListSelector<Solution_> childSubListSelector,
@@ -93,13 +129,17 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
         new NearbyDistanceMatrixDemand<>(
             castedDistanceMeter,
             nearbyRandom,
-            calculateEffectiveMaxNearbySortSize(),
-            true,
-            childSubListSelector,
+            // Assignment and the number of following elements may change after every move.
+            // Retain all distances when those conditions can remove candidates before the cap.
+            requiresDynamicEligibility()
+                ? Integer.MAX_VALUE
+                : calculateEffectiveMaxNearbySortSize(),
+            false,
+            populationValueSelector == null ? childSubListSelector : populationValueSelector,
             originSubListSelector,
             getClass().getSimpleName(),
             this::calculateOriginSizeEstimate,
-            origin -> childSubListSelector.endingValueIterator(),
+            origin -> endingDestinations(),
             origin -> calculateDestinationSize());
     distanceMatrix = supplyManager.demand(demand);
     distanceMatrixDemand = demand;
@@ -110,8 +150,8 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
     try {
       super.phaseStarted(phaseScope);
-      listVariableState =
-          phaseScope.getScoreDirector().getListVariableState(listVariableDescriptor);
+      scoreDirector = phaseScope.getScoreDirector();
+      listVariableState = scoreDirector.getListVariableState(listVariableDescriptor);
       if (distanceMatrix == null) {
         initializeDistanceMatrix(phaseScope.getScoreDirector().getSupplyManager());
       }
@@ -156,6 +196,7 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
     distanceMatrixSupplyManager = null;
     distanceMatrix = null;
     listVariableState = null;
+    scoreDirector = null;
     eagerInitialized = false;
     if (demand != null && !Objects.requireNonNull(supplyManager).cancel(demand)) {
       throw new IllegalStateException("The nearby distance matrix demand is not active.");
@@ -181,7 +222,7 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
 
   @Override
   public boolean isNeverEnding() {
-    return randomSelection || childSubListSelector.isNeverEnding();
+    return randomSelection;
   }
 
   @Override
@@ -223,8 +264,15 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
   }
 
   private @Nullable SubList buildNearbySubList(
-      @NonNull Object origin, int nearbyIndex, @Nullable RandomGenerator random) {
+      @NonNull Object origin,
+      int nearbyIndex,
+      @Nullable RandomGenerator random,
+      @NonNull SubList originSubList,
+      @Nullable Set<Object> membership) {
     Object nearbyElement = getDistanceMatrix().getDestination(origin, nearbyIndex);
+    if (random == null && !acceptsCandidate(nearbyElement, membership)) {
+      return null;
+    }
     var stateSupply = getListVariableState();
     Object nearbyEntity = stateSupply.getInverseSingleton(nearbyElement);
     int nearbyIndexInEntity = stateSupply.getIndexOrElse(nearbyElement, -1);
@@ -235,7 +283,15 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
     if (availableListSize < minimumSubListSize) {
       return null;
     }
-    int maximumSubListSize = Math.min(this.maximumSubListSize, availableListSize);
+    int maximumSubListSize =
+        maximumAcceptedSubListSize(
+            originSubList,
+            nearbyEntity,
+            nearbyIndexInEntity,
+            Math.min(this.maximumSubListSize, availableListSize));
+    if (maximumSubListSize < minimumSubListSize) {
+      return null;
+    }
     int subListSize = minimumSubListSize;
     if (random != null && maximumSubListSize > minimumSubListSize) {
       subListSize += random.nextInt(maximumSubListSize - minimumSubListSize + 1);
@@ -243,8 +299,15 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
     return new SubList(nearbyEntity, nearbyIndexInEntity, subListSize);
   }
 
-  private boolean isNearbySubListCandidateValid(@NonNull Object origin, int nearbyIndex) {
+  private boolean isNearbySubListCandidateValid(
+      @NonNull Object origin,
+      int nearbyIndex,
+      @NonNull SubList originSubList,
+      @Nullable Set<Object> membership) {
     Object nearbyElement = getDistanceMatrix().getDestination(origin, nearbyIndex);
+    if (!acceptsCandidate(nearbyElement, membership)) {
+      return false;
+    }
     var stateSupply = getListVariableState();
     Object nearbyEntity = stateSupply.getInverseSingleton(nearbyElement);
     int nearbyIndexInEntity = stateSupply.getIndexOrElse(nearbyElement, -1);
@@ -252,28 +315,72 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
       return false;
     }
     int availableListSize = listVariableDescriptor.getListSize(nearbyEntity) - nearbyIndexInEntity;
-    return availableListSize >= minimumSubListSize;
+    return availableListSize >= minimumSubListSize
+        && maximumAcceptedSubListSize(
+                originSubList, nearbyEntity, nearbyIndexInEntity, minimumSubListSize)
+            >= minimumSubListSize;
   }
 
-  private int[] buildNextValidNearbyIndexMap(@NonNull Object origin, int nearbySize) {
-    int[] nextValidNearbyIndexMap = new int[nearbySize];
-    int nextValidIndex = -1;
-    for (int nearbyIndex = nearbySize - 1; nearbyIndex >= 0; nearbyIndex--) {
-      if (isNearbySubListCandidateValid(origin, nearbyIndex)) {
-        nextValidIndex = nearbyIndex;
-      }
-      nextValidNearbyIndexMap[nearbyIndex] = nextValidIndex;
+  private int maximumAcceptedSubListSize(
+      SubList originSubList, Object destinationEntity, int destinationIndex, int maximumSize) {
+    if (listVariableDescriptor.canExtractValueRangeFromSolution()) {
+      return maximumSize;
     }
-    if (nextValidIndex == -1) {
-      return nextValidNearbyIndexMap;
-    }
-    int firstValidNearbyIndex = nextValidNearbyIndexMap[0];
-    for (int nearbyIndex = 0; nearbyIndex < nearbySize; nearbyIndex++) {
-      if (nextValidNearbyIndexMap[nearbyIndex] == -1) {
-        nextValidNearbyIndexMap[nearbyIndex] = firstValidNearbyIndex;
+    var valueRangeManager = Objects.requireNonNull(scoreDirector).getValueRangeManager();
+    var destinationRange =
+        valueRangeManager.getFromEntity(
+            listVariableDescriptor.getValueRangeDescriptor(), destinationEntity);
+    for (int index = originSubList.fromIndex(); index < originSubList.getToIndex(); index++) {
+      if (!destinationRange.contains(
+          listVariableDescriptor.getElement(originSubList.entity(), index))) {
+        return 0;
       }
     }
-    return nextValidNearbyIndexMap;
+    var sourceRange =
+        valueRangeManager.getFromEntity(
+            listVariableDescriptor.getValueRangeDescriptor(), originSubList.entity());
+    // Every selected length must be legal in both directions. A value outside the source range
+    // ends the eligible prefix, even if later values would individually be accepted.
+    for (int length = 0; length < maximumSize; length++) {
+      if (!sourceRange.contains(
+          listVariableDescriptor.getElement(destinationEntity, destinationIndex + length))) {
+        return length;
+      }
+    }
+    return maximumSize;
+  }
+
+  private boolean requiresDynamicEligibility() {
+    return selectionFilter != null
+        || membershipSupplier != null
+        || minimumSubListSize > 1
+        || listVariableDescriptor.allowsUnassignedValues()
+        || !listVariableDescriptor.canExtractValueRangeFromSolution();
+  }
+
+  private record NearbyCandidates(int[] indices, int populationSize) {}
+
+  private NearbyCandidates collectEligibleNearbyIndices(Object origin, SubList originSubList) {
+    var matrix = getDistanceMatrix();
+    int nearbySize = matrix.getDestinationSize(origin);
+    int[] indices = new int[Math.min(nearbySize, calculateEffectiveMaxNearbySortSize())];
+    int size = 0;
+    int populationSize = 0;
+    var membership = membershipSupplier == null ? null : membershipSupplier.get();
+    for (int index = 0; index < nearbySize; index++) {
+      if (isNearbySubListCandidateValid(origin, index, originSubList, membership)) {
+        populationSize++;
+        if (size < indices.length) {
+          indices[size++] = index;
+        }
+        if (size == indices.length
+            && randomSelection
+            && !Objects.requireNonNull(nearbyRandom).requiresPopulationSize()) {
+          break;
+        }
+      }
+    }
+    return new NearbyCandidates(Arrays.copyOf(indices, size), populationSize);
   }
 
   private static int toIntSize(long size, String selectorLabel) {
@@ -293,7 +400,11 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
   }
 
   private int calculateDestinationSize() {
-    return toIntSize(childSubListSelector.getValueCount(), "childSubListSelector");
+    return toIntSize(
+        populationValueSelector == null
+            ? childSubListSelector.getValueCount()
+            : populationValueSelector.getSize(),
+        "childSubListSelector");
   }
 
   private int calculateEffectiveMaxNearbySortSize() {
@@ -303,16 +414,11 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
     return Math.min(maxNearbySortSize, nearbyRandom.getOverallSizeMaximum());
   }
 
-  private class RandomNearbySubListIterator implements Iterator<SubList> {
+  private class RandomNearbySubListIterator extends UpcomingSelectionIterator<SubList> {
 
     private final RandomGenerator random;
     private final Iterator<SubList> replayingOriginIterator;
-
-    private @Nullable SubList originSubList = null;
-    private @Nullable SubList cachedOriginSubList = null;
-    private @Nullable Object cachedOrigin = null;
-    private int cachedNearbySize = -1;
-    private int[] cachedNextValidNearbyIndexMap = new int[0];
+    private @Nullable SubList originSubList;
 
     private RandomNearbySubListIterator(RandomGenerator random) {
       this.random = random;
@@ -320,52 +426,38 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
     }
 
     @Override
-    public boolean hasNext() {
-      return originSubList != null || replayingOriginIterator.hasNext();
-    }
-
-    @Override
-    public SubList next() {
-      if (nearbyRandom == null) {
-        throw new IllegalStateException("nearbyRandom is null but randomSelection is true");
-      }
+    protected SubList createUpcomingSelection() {
       if (replayingOriginIterator.hasNext()) {
         originSubList = replayingOriginIterator.next();
       }
       if (originSubList == null) {
-        throw new NoSuchElementException();
+        return noUpcomingSelection();
       }
-
-      if (originSubList != cachedOriginSubList) {
-        cachedOriginSubList = originSubList;
-        cachedOrigin = firstElement(originSubList);
-        cachedNearbySize = getDistanceMatrix().getDestinationSize(cachedOrigin);
-        cachedNextValidNearbyIndexMap =
-            buildNextValidNearbyIndexMap(cachedOrigin, cachedNearbySize);
-      }
-      if (cachedNearbySize <= 0 || cachedOrigin == null) {
-        throw new NoSuchElementException();
-      }
-
-      int startIndex = nearbyRandom.nextInt(random, cachedNearbySize);
-      int nearbyIndex = cachedNextValidNearbyIndexMap[startIndex];
-      if (nearbyIndex >= 0) {
-        SubList nearbySubList = buildNearbySubList(cachedOrigin, nearbyIndex, random);
-        if (nearbySubList != null) {
-          return nearbySubList;
+      Object origin = firstElement(originSubList);
+      var matrix = getDistanceMatrix();
+      int nearbyIndex;
+      if (requiresDynamicEligibility()) {
+        // Candidate validity depends on current assignment and list length, not only distance.
+        // Re-evaluate it before sampling instead of caching a stale successor map.
+        var candidates = collectEligibleNearbyIndices(origin, originSubList);
+        if (candidates.indices().length == 0) {
+          return noUpcomingSelection();
         }
-      }
-      cachedNextValidNearbyIndexMap = buildNextValidNearbyIndexMap(cachedOrigin, cachedNearbySize);
-      nearbyIndex = cachedNextValidNearbyIndexMap[startIndex];
-      if (nearbyIndex >= 0) {
-        SubList nearbySubList = buildNearbySubList(cachedOrigin, nearbyIndex, random);
-        if (nearbySubList != null) {
-          return nearbySubList;
+        int selectedIndex =
+            Objects.requireNonNull(nearbyRandom)
+                .nextInt(random, candidates.populationSize(), candidates.indices().length);
+        nearbyIndex = candidates.indices()[selectedIndex];
+      } else {
+        int nearbySize = matrix.getDestinationSize(origin);
+        if (nearbySize == 0) {
+          return noUpcomingSelection();
         }
+        nearbyIndex =
+            Objects.requireNonNull(nearbyRandom)
+                .nextInt(random, matrix.getDestinationPopulationSize(origin), nearbySize);
       }
-
-      throw new NoSuchElementException(
-          "No valid nearby subList could be built for origin (%s).".formatted(cachedOrigin));
+      SubList selected = buildNearbySubList(origin, nearbyIndex, random, originSubList, null);
+      return selected == null ? noUpcomingSelection() : selected;
     }
   }
 
@@ -404,8 +496,10 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
       if (upcomingSubList != null) {
         return true;
       }
+      var membership = membershipSupplier == null ? null : membershipSupplier.get();
       while (nearbyIndex < nearbySize) {
-        SubList candidate = buildNearbySubList(origin, nearbyIndex, null);
+        SubList candidate =
+            buildNearbySubList(origin, nearbyIndex, null, originSubList, membership);
         nearbyIndex++;
         if (candidate != null) {
           upcomingSubList = candidate;

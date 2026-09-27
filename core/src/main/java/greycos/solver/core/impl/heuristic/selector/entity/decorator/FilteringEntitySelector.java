@@ -26,6 +26,12 @@ public final class FilteringEntitySelector<Solution_>
     return new FilteringEntitySelector<>(childEntitySelector, filter);
   }
 
+  /** Preserves the child node when another selector uses it as its stable population. */
+  public static <Solution_> FilteringEntitySelector<Solution_> ofPreservingChild(
+      EntitySelector<Solution_> childEntitySelector, SelectionFilter<Solution_, Object> filter) {
+    return new FilteringEntitySelector<>(childEntitySelector, filter);
+  }
+
   private final EntitySelector<Solution_> childEntitySelector;
   private final SelectionFilter<Solution_, Object> selectionFilter;
   private final boolean bailOutEnabled;

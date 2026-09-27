@@ -1,8 +1,12 @@
 package greycos.solver.core.impl.heuristic.selector.common.iterator;
 
 import java.util.Iterator;
+import java.util.Objects;
+import java.util.function.Supplier;
 
 import greycos.solver.core.preview.api.move.Move;
+
+import org.jspecify.annotations.Nullable;
 
 public abstract class AbstractRandomSwapIterator<
         Solution_, Move_ extends Move<Solution_>, SubSelection_>
@@ -10,14 +14,23 @@ public abstract class AbstractRandomSwapIterator<
 
   protected final Iterable<SubSelection_> leftSubSelector;
   protected final Iterable<SubSelection_> rightSubSelector;
+  private final @Nullable Supplier<? extends Move_> emptyRightSelectionSupplier;
 
   protected Iterator<SubSelection_> leftSubSelectionIterator;
   protected Iterator<SubSelection_> rightSubSelectionIterator;
 
   public AbstractRandomSwapIterator(
       Iterable<SubSelection_> leftSubSelector, Iterable<SubSelection_> rightSubSelector) {
+    this(leftSubSelector, rightSubSelector, null);
+  }
+
+  public AbstractRandomSwapIterator(
+      Iterable<SubSelection_> leftSubSelector,
+      Iterable<SubSelection_> rightSubSelector,
+      @Nullable Supplier<? extends Move_> emptyRightSelectionSupplier) {
     this.leftSubSelector = leftSubSelector;
     this.rightSubSelector = rightSubSelector;
+    this.emptyRightSelectionSupplier = emptyRightSelectionSupplier;
     leftSubSelectionIterator = this.leftSubSelector.iterator();
     rightSubSelectionIterator = this.rightSubSelector.iterator();
     // Don't do hasNext() in constructor (to avoid upcoming selections breaking mimic recording)
@@ -40,6 +53,11 @@ public abstract class AbstractRandomSwapIterator<
     if (!rightSubSelectionIterator.hasNext()) {
       rightSubSelectionIterator = rightSubSelector.iterator();
       if (!rightSubSelectionIterator.hasNext()) {
+        // An origin-dependent secondary can be empty for this origin only. Return a non-doable
+        // attempt so the next request selects another origin; move filtering bounds retries.
+        if (emptyRightSelectionSupplier != null) {
+          return Objects.requireNonNull(emptyRightSelectionSupplier.get());
+        }
         return noUpcomingSelection();
       }
     }

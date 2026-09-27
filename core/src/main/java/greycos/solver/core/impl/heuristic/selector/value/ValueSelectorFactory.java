@@ -3,9 +3,13 @@ package greycos.solver.core.impl.heuristic.selector.value;
 import static greycos.solver.core.config.heuristic.selector.common.SelectionOrder.SORTED;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
@@ -23,6 +27,7 @@ import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFil
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyRandomFactory;
+import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySelectionSource;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbySelectionTuning;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
@@ -39,6 +44,8 @@ import greycos.solver.core.impl.heuristic.selector.value.decorator.ShufflingValu
 import greycos.solver.core.impl.heuristic.selector.value.decorator.UnassignedListValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.mimic.MimicRecordingValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.mimic.MimicReplayingValueSelector;
+import greycos.solver.core.impl.heuristic.selector.value.mimic.ValueMimicRecorder;
+import greycos.solver.core.impl.heuristic.selector.value.nearby.AbstractNearbyValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.nearby.NearEntityNearbyValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.nearby.NearValueNearbyValueSelector;
 import greycos.solver.core.impl.solver.ClassInstanceCache;
@@ -59,11 +66,11 @@ public class ValueSelectorFactory<Solution_>
       HeuristicConfigPolicy<Solution_> configPolicy, EntityDescriptor<Solution_> entityDescriptor) {
     var variableName = config.getVariableName();
     var mimicSelectorRef = config.getMimicSelectorRef();
-    if (variableName != null) {
+    if (mimicSelectorRef != null) {
+      return resolveMimicVariableDescriptor(configPolicy, entityDescriptor);
+    } else if (variableName != null) {
       return getVariableDescriptorForName(
           downcastEntityDescriptor(configPolicy, entityDescriptor), variableName);
-    } else if (mimicSelectorRef != null) {
-      return configPolicy.getValueMimicRecorder(mimicSelectorRef).getVariableDescriptor();
     } else {
       return null;
     }
@@ -126,17 +133,73 @@ public class ValueSelectorFactory<Solution_>
       ListValueFilteringType listValueFilteringType,
       String entityValueRangeRecorderId,
       boolean assertBothSides) {
-    var variableDescriptor =
-        deduceGenuineVariableDescriptor(
-            downcastEntityDescriptor(configPolicy, entityDescriptor), config.getVariableName());
+    return buildValueSelectorSource(
+            configPolicy,
+            entityDescriptor,
+            minimumCacheType,
+            inheritedSelectionOrder,
+            applyReinitializeVariableFiltering,
+            listValueFilteringType,
+            entityValueRangeRecorderId,
+            assertBothSides)
+        .selector();
+  }
+
+  public NearbySelectionSource<Solution_, IterableValueSelector<Solution_>>
+      buildValueSelectorForNearby(
+          HeuristicConfigPolicy<Solution_> configPolicy,
+          EntityDescriptor<Solution_> entityDescriptor,
+          SelectionCacheType minimumCacheType,
+          SelectionOrder inheritedSelectionOrder) {
+    var source =
+        buildValueSelectorSource(
+            configPolicy,
+            entityDescriptor,
+            minimumCacheType,
+            inheritedSelectionOrder,
+            false,
+            ListValueFilteringType.NONE,
+            null,
+            false);
+    if (!(source.selector() instanceof IterableValueSelector<Solution_> selector)
+        || !(source.populationSelector()
+            instanceof IterableValueSelector<Solution_> populationSelector)) {
+      throw new IllegalArgumentException(
+          "The valueSelectorConfig (%s) for nearby selection needs to be based on an IterableValueSelector (%s)."
+              .formatted(config, source.selector()));
+    }
+    return new NearbySelectionSource<>(
+        selector, populationSelector, source.liveFilter(), source.membershipSupplier());
+  }
+
+  private NearbySelectionSource<Solution_, ValueSelector<Solution_>> buildValueSelectorSource(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      EntityDescriptor<Solution_> entityDescriptor,
+      SelectionCacheType minimumCacheType,
+      SelectionOrder inheritedSelectionOrder,
+      boolean applyReinitializeVariableFiltering,
+      ListValueFilteringType listValueFilteringType,
+      String entityValueRangeRecorderId,
+      boolean assertBothSides) {
     if (config.getMimicSelectorRef() != null) {
+      var variableDescriptor = resolveMimicVariableDescriptor(configPolicy, entityDescriptor);
       var valueSelector = buildMimicReplaying(configPolicy);
+      var recordedSource = getMimicRecorder(configPolicy).getNearbySelectionSource();
+      var populationSelector =
+          recordedSource == null ? valueSelector : recordedSource.populationSelector();
       valueSelector =
           applyReinitializeVariableFiltering(
               applyReinitializeVariableFiltering, variableDescriptor, valueSelector);
       valueSelector = applyDowncasting(valueSelector);
-      return valueSelector;
+      return new NearbySelectionSource<>(
+          valueSelector,
+          populationSelector,
+          recordedSource == null ? null : recordedSource.liveFilter(),
+          recordedSource == null ? null : recordedSource.membershipSupplier());
     }
+    var variableDescriptor =
+        deduceGenuineVariableDescriptor(
+            downcastEntityDescriptor(configPolicy, entityDescriptor), config.getVariableName());
     var resolvedCacheType = SelectionCacheType.resolve(config.getCacheType(), minimumCacheType);
     var resolvedSelectionOrder =
         SelectionOrder.resolve(config.getSelectionOrder(), inheritedSelectionOrder);
@@ -163,16 +226,23 @@ public class ValueSelectorFactory<Solution_>
             sorter,
             SelectionCacheType.max(minimumCacheType, resolvedCacheType),
             randomSelection);
+    var populationSelector = valueSelector;
+    SelectionFilter<Solution_, Object> liveFilter =
+        config.getFilterClass() == null
+            ? null
+            : instanceCache.newInstance(config, "filterClass", config.getFilterClass());
     if (nearbySelectionConfig != null) {
-      // TODO Static filtering (such as movableEntitySelectionFilter) should affect nearbySelection
-      // too
       valueSelector =
           applyNearbySelection(
               configPolicy,
               entityDescriptor,
               minimumCacheType,
               resolvedSelectionOrder,
-              valueSelector);
+              valueSelector,
+              entityValueRangeRecorderId,
+              assertBothSides,
+              listValueFilteringType,
+              liveFilter);
     } else {
       /*
        * The nearby selector will implement its own logic to filter out unreachable elements.
@@ -190,7 +260,9 @@ public class ValueSelectorFactory<Solution_>
               entityValueRangeRecorderId,
               assertBothSides);
     }
-    valueSelector = applyFiltering(valueSelector, instanceCache);
+    if (nearbySelectionConfig == null && liveFilter != null) {
+      valueSelector = FilteringValueSelector.of(valueSelector, liveFilter);
+    }
     valueSelector =
         applyProbability(resolvedCacheType, resolvedSelectionOrder, valueSelector, instanceCache);
     valueSelector = applyShuffling(resolvedCacheType, resolvedSelectionOrder, valueSelector);
@@ -199,12 +271,65 @@ public class ValueSelectorFactory<Solution_>
     valueSelector =
         applyListValueFiltering(
             configPolicy, listValueFilteringType, variableDescriptor, valueSelector);
-    valueSelector = applyMimicRecording(configPolicy, valueSelector);
+    Supplier<Set<Object>> membershipSupplier = null;
+    if (nearbySelectionConfig == null && config.getSelectedCountLimit() != null) {
+      var membershipSelector = valueSelector;
+      membershipSupplier =
+          () -> {
+            Set<Object> membership = Collections.newSetFromMap(new IdentityHashMap<>());
+            membershipSelector.endingIterator(null).forEachRemaining(membership::add);
+            return membership;
+          };
+    }
+    valueSelector =
+        applyMimicRecording(
+            configPolicy, valueSelector, populationSelector, liveFilter, membershipSupplier);
     valueSelector =
         applyReinitializeVariableFiltering(
             applyReinitializeVariableFiltering, variableDescriptor, valueSelector);
     valueSelector = applyDowncasting(valueSelector);
-    return valueSelector;
+    return new NearbySelectionSource<>(
+        valueSelector, populationSelector, liveFilter, membershipSupplier);
+  }
+
+  private ValueMimicRecorder<Solution_> getMimicRecorder(
+      HeuristicConfigPolicy<Solution_> configPolicy) {
+    var valueMimicRecorder = configPolicy.getValueMimicRecorder(config.getMimicSelectorRef());
+    if (valueMimicRecorder == null) {
+      throw new IllegalArgumentException(
+          "The valueSelectorConfig (%s) has a mimicSelectorRef (%s) for which no valueSelector with that id exists (in its solver phase)."
+              .formatted(config, config.getMimicSelectorRef()));
+    }
+    return valueMimicRecorder;
+  }
+
+  private GenuineVariableDescriptor<Solution_> resolveMimicVariableDescriptor(
+      HeuristicConfigPolicy<Solution_> configPolicy, EntityDescriptor<Solution_> entityDescriptor) {
+    var recordedDescriptor = getMimicRecorder(configPolicy).getVariableDescriptor();
+    var contextualDescriptor = downcastEntityDescriptor(configPolicy, entityDescriptor);
+    var variableName = config.getVariableName();
+    if (variableName != null && !variableName.equals(recordedDescriptor.getVariableName())) {
+      throw new IllegalArgumentException(
+          "The valueSelectorConfig (%s) with mimicSelectorRef (%s) uses variableName (%s), but the recording selector uses variableName (%s)."
+              .formatted(
+                  config,
+                  config.getMimicSelectorRef(),
+                  variableName,
+                  recordedDescriptor.getVariableName()));
+    }
+    // Inherited variables retain the descriptor of their declaring entity class.
+    if (contextualDescriptor.getGenuineVariableDescriptor(recordedDescriptor.getVariableName())
+        != recordedDescriptor) {
+      throw new IllegalArgumentException(
+          "The valueSelectorConfig (%s) with mimicSelectorRef (%s) uses entityClass (%s), but the recording selector uses variableName (%s) from entityClass (%s)."
+              .formatted(
+                  config,
+                  config.getMimicSelectorRef(),
+                  contextualDescriptor.getEntityClass().getName(),
+                  recordedDescriptor.getVariableName(),
+                  recordedDescriptor.getEntityDescriptor().getEntityClass().getName()));
+    }
+    return recordedDescriptor;
   }
 
   protected ValueSelector<Solution_> buildMimicReplaying(
@@ -225,13 +350,7 @@ public class ValueSelectorFactory<Solution_>
           "The valueSelectorConfig (%s) with mimicSelectorRef (%s) has another property that is not null."
               .formatted(config, config.getMimicSelectorRef()));
     }
-    var valueMimicRecorder = configPolicy.getValueMimicRecorder(config.getMimicSelectorRef());
-    if (valueMimicRecorder == null) {
-      throw new IllegalArgumentException(
-          "The valueSelectorConfig (%s) has a mimicSelectorRef (%s) for which no valueSelector with that id exists (in its solver phase)."
-              .formatted(config, config.getMimicSelectorRef()));
-    }
-    return new MimicReplayingValueSelector<>(valueMimicRecorder);
+    return new MimicReplayingValueSelector<>(getMimicRecorder(configPolicy));
   }
 
   protected EntityDescriptor<Solution_> downcastEntityDescriptor(
@@ -599,7 +718,11 @@ public class ValueSelectorFactory<Solution_>
       EntityDescriptor<Solution_> entityDescriptor,
       SelectionCacheType minimumCacheType,
       SelectionOrder resolvedSelectionOrder,
-      ValueSelector<Solution_> valueSelector) {
+      ValueSelector<Solution_> valueSelector,
+      String entityValueRangeRecorderId,
+      boolean assertBothSides,
+      ListValueFilteringType listValueFilteringType,
+      SelectionFilter<Solution_, Object> liveFilter) {
     var nearbySelectionConfig = config.getNearbySelectionConfig();
     var randomSelection = resolvedSelectionOrder.toRandomSelectionBoolean();
     var instanceCache = configPolicy.getClassInstanceCache();
@@ -618,6 +741,7 @@ public class ValueSelectorFactory<Solution_>
     boolean eagerInitialization =
         NearbySelectionTuning.isEagerInitialization(nearbySelectionConfig);
 
+    AbstractNearbyValueSelector<Solution_, ?> nearbySelector;
     if (nearbySelectionConfig.getOriginEntitySelectorConfig() != null) {
       var originEntitySelector =
           EntitySelectorFactory.<Solution_>create(
@@ -631,14 +755,15 @@ public class ValueSelectorFactory<Solution_>
                 + valueSelector
                 + ").");
       }
-      return new NearEntityNearbyValueSelector<>(
-          (IterableValueSelector<Solution_>) valueSelector,
-          originEntitySelector,
-          nearbyDistanceMeter,
-          nearbyRandom,
-          randomSelection,
-          maxNearbySortSize,
-          eagerInitialization);
+      nearbySelector =
+          new NearEntityNearbyValueSelector<>(
+              (IterableValueSelector<Solution_>) valueSelector,
+              originEntitySelector,
+              nearbyDistanceMeter,
+              nearbyRandom,
+              randomSelection,
+              maxNearbySortSize,
+              eagerInitialization);
     } else if (nearbySelectionConfig.getOriginValueSelectorConfig() != null) {
       var originValueSelector =
           ValueSelectorFactory.<Solution_>create(
@@ -661,14 +786,15 @@ public class ValueSelectorFactory<Solution_>
                 + originValueSelector
                 + ").");
       }
-      return new NearValueNearbyValueSelector<>(
-          (IterableValueSelector<Solution_>) valueSelector,
-          (IterableValueSelector<Solution_>) originValueSelector,
-          nearbyDistanceMeter,
-          nearbyRandom,
-          randomSelection,
-          maxNearbySortSize,
-          eagerInitialization);
+      nearbySelector =
+          new NearValueNearbyValueSelector<>(
+              (IterableValueSelector<Solution_>) valueSelector,
+              (IterableValueSelector<Solution_>) originValueSelector,
+              nearbyDistanceMeter,
+              nearbyRandom,
+              randomSelection,
+              maxNearbySortSize,
+              eagerInitialization);
     } else {
       throw new IllegalArgumentException(
           "The valueSelectorConfig ("
@@ -677,10 +803,31 @@ public class ValueSelectorFactory<Solution_>
               + nearbySelectionConfig
               + ") requires an originEntitySelector or an originValueSelector.");
     }
+    if (entityValueRangeRecorderId != null) {
+      var rangeOriginConfig =
+          new ValueSelectorConfig().withMimicSelectorRef(entityValueRangeRecorderId);
+      if (entityDescriptor.hasBothListAndBasicVariables()) {
+        rangeOriginConfig.setVariableName(valueSelector.getVariableDescriptor().getVariableName());
+      }
+      var rangeOrigin =
+          (IterableValueSelector<Solution_>)
+              ValueSelectorFactory.<Solution_>create(rangeOriginConfig)
+                  .buildValueSelector(
+                      configPolicy, entityDescriptor, minimumCacheType, resolvedSelectionOrder);
+      nearbySelector.configureValueRangeFiltering(rangeOrigin, assertBothSides);
+    }
+    nearbySelector.configureListValueFiltering(
+        listValueFilteringType, configPolicy.isUnassignedValuesAllowed());
+    nearbySelector.configureSelectionFilter(liveFilter);
+    return nearbySelector;
   }
 
   private ValueSelector<Solution_> applyMimicRecording(
-      HeuristicConfigPolicy<Solution_> configPolicy, ValueSelector<Solution_> valueSelector) {
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      ValueSelector<Solution_> valueSelector,
+      ValueSelector<Solution_> populationSelector,
+      SelectionFilter<Solution_, Object> liveFilter,
+      Supplier<Set<Object>> membershipSupplier) {
     var id = config.getId();
     if (id != null) {
       if (id.isEmpty()) {
@@ -700,7 +847,12 @@ public class ValueSelectorFactory<Solution_>
                     ValueRangeProvider.class.getSimpleName()));
       }
       var mimicRecordingValueSelector =
-          new MimicRecordingValueSelector<>((IterableValueSelector<Solution_>) valueSelector);
+          new MimicRecordingValueSelector<>(
+              new NearbySelectionSource<>(
+                  (IterableValueSelector<Solution_>) valueSelector,
+                  (IterableValueSelector<Solution_>) populationSelector,
+                  liveFilter,
+                  membershipSupplier));
       configPolicy.addValueMimicRecorder(id, mimicRecordingValueSelector);
       valueSelector = mimicRecordingValueSelector;
     }
