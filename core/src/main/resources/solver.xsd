@@ -798,6 +798,7 @@
             <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
             <xs:element name="customPhase" type="tns:customPhaseConfig"/>
             <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
+            <xs:element name="islandModel" type="tns:islandModelPhaseConfig"/>
             <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
             <xs:element name="partitionedSearch" type="tns:partitionedSearchPhaseConfig"/>
           </xs:choice>

@@ -46,9 +46,9 @@ public class PartitionSolver<Solution_> extends AbstractSolver<Solution_> {
 
   @Override
   public Solution_ solve(Solution_ initialSolution) {
-    solverScope.transferWorkingRandomOwnershipToCurrentThread();
-    solverScope.initializeYielding();
     try {
+      solverScope.transferWorkingRandomOwnershipToCurrentThread();
+      solverScope.initializeYielding();
       solverScope.setBestSolution(initialSolution);
       solvingStarted(solverScope);
       runPhases(solverScope);

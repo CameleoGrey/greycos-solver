@@ -33,8 +33,6 @@ import org.junit.jupiter.api.Timeout;
  */
 class DefaultPartitionedSearchPhaseTest {
 
-  // Existing tests (above)
-
   @Test
   @Timeout(10)
   void phaseStartedExposesPartCount() {
@@ -96,14 +94,15 @@ class DefaultPartitionedSearchPhaseTest {
 
     System.setProperty("testPartitionSize", String.valueOf(partSize));
     try {
-      // Create a custom partitioner that respects runnablePartThreadLimit
-      SolverFactory<TestdataSolution> solverFactory = createSolverFactory(false, "2");
+      SolverFactory<TestdataSolution> solverFactory =
+          createSolverFactory(false, SolverConfig.MOVE_THREAD_COUNT_NONE, "2");
       Solver<TestdataSolution> solver = solverFactory.buildSolver();
 
       TestdataSolution solution = solver.solve(createSolution(entityCount, 5));
 
       assertThat(solution).isNotNull();
-      assertThat(solution.getScore().isSolutionInitialized()).isTrue();
+      assertThat(solution.getEntityList())
+          .allSatisfy(entity -> assertThat(entity.getValue()).isNotNull());
     } finally {
       System.clearProperty("testPartitionSize");
     }
@@ -124,7 +123,8 @@ class DefaultPartitionedSearchPhaseTest {
       TestdataSolution solution = solver.solve(createSolution(entityCount, 5));
 
       assertThat(solution).isNotNull();
-      assertThat(solution.getScore().isSolutionInitialized()).isTrue();
+      assertThat(solution.getEntityList())
+          .allSatisfy(entity -> assertThat(entity.getValue()).isNotNull());
     } finally {
       System.clearProperty("testPartitionSize");
     }
@@ -144,7 +144,8 @@ class DefaultPartitionedSearchPhaseTest {
       TestdataSolution solution = solver.solve(createSolution(entityCount, 5));
 
       assertThat(solution).isNotNull();
-      assertThat(solution.getScore().isSolutionInitialized()).isTrue();
+      assertThat(solution.getEntityList())
+          .allSatisfy(entity -> assertThat(entity.getValue()).isNotNull());
     } finally {
       System.clearProperty("testPartitionSize");
     }
@@ -165,7 +166,8 @@ class DefaultPartitionedSearchPhaseTest {
       TestdataSolution solution = solver.solve(createSolution(entityCount, 10));
 
       assertThat(solution).isNotNull();
-      assertThat(solution.getScore().isSolutionInitialized()).isTrue();
+      assertThat(solution.getEntityList())
+          .allSatisfy(entity -> assertThat(entity.getValue()).isNotNull());
     } finally {
       System.clearProperty("testPartitionSize");
     }
@@ -186,20 +188,44 @@ class DefaultPartitionedSearchPhaseTest {
       TestdataSolution solution = solver.solve(createSolution(entityCount, 8));
 
       assertThat(solution).isNotNull();
-      assertThat(solution.getScore().isSolutionInitialized()).isTrue();
+      assertThat(solution.getEntityList())
+          .allSatisfy(entity -> assertThat(entity.getValue()).isNotNull());
     } finally {
       System.clearProperty("testPartitionSize");
     }
   }
 
+  @Test
+  @Timeout(10)
+  void singleValueStillInitializesEveryEntity() {
+    var config =
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class)
+            .withPhases(
+                new PartitionedSearchPhaseConfig()
+                    .withSolutionPartitionerClass(TestdataSolutionPartitioner.class)
+                    .withPhaseConfigs(new ConstructionHeuristicPhaseConfig()));
+    var problem = createSolution(3, 1);
+    var result = SolverFactory.<TestdataSolution>create(config).buildSolver().solve(problem);
+    assertThat(result.getEntityList())
+        .hasSize(3)
+        .allSatisfy(
+            entity -> assertThat(entity.getValue()).isSameAs(result.getValueList().getFirst()));
+  }
+
   private static SolverFactory<TestdataSolution> createSolverFactory(
       boolean infinite, String moveThreadCount) {
+    return createSolverFactory(infinite, moveThreadCount, null);
+  }
+
+  private static SolverFactory<TestdataSolution> createSolverFactory(
+      boolean infinite, String moveThreadCount, String runnablePartThreadLimit) {
     SolverConfig solverConfig =
         PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
     solverConfig.setMoveThreadCount(moveThreadCount);
 
     PartitionedSearchPhaseConfig partitionedSearchPhaseConfig = new PartitionedSearchPhaseConfig();
     partitionedSearchPhaseConfig.setSolutionPartitionerClass(TestdataSolutionPartitioner.class);
+    partitionedSearchPhaseConfig.setRunnablePartThreadLimit(runnablePartThreadLimit);
 
     ConstructionHeuristicPhaseConfig constructionHeuristicPhaseConfig =
         new ConstructionHeuristicPhaseConfig();

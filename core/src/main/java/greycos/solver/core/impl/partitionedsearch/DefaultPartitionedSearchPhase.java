@@ -1,12 +1,19 @@
 package greycos.solver.core.impl.partitionedsearch;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.IntFunction;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
@@ -19,6 +26,7 @@ import greycos.solver.core.impl.partitionedsearch.event.PartitionedSearchPhaseLi
 import greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
 import greycos.solver.core.impl.partitionedsearch.queue.PartitionQueue;
 import greycos.solver.core.impl.partitionedsearch.scope.PartitionChangeMove;
+import greycos.solver.core.impl.partitionedsearch.scope.PartitionOwnership;
 import greycos.solver.core.impl.partitionedsearch.scope.PartitionedSearchPhaseScope;
 import greycos.solver.core.impl.partitionedsearch.scope.PartitionedSearchStepScope;
 import greycos.solver.core.impl.phase.AbstractPhase;
@@ -30,6 +38,7 @@ import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecallerFactory;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.ChildThreadPlumbingTermination;
+import greycos.solver.core.impl.solver.termination.PartitionTerminationBudget;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
 import greycos.solver.core.impl.solver.termination.SolverTermination;
 import greycos.solver.core.impl.solver.termination.UniversalTermination;
@@ -88,22 +97,17 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
 
   @Override
   public void solve(SolverScope<Solution_> solverScope) {
-    var hasAnythingToImprove =
-        solverScope.getProblemSizeStatistics().approximateProblemSizeLog() != 0.0;
-    if (!hasAnythingToImprove) {
-      logger.info(
-          "{}Partitioned Search phase ({}) has no entities or values to move.",
-          logIndentation,
-          phaseIndex);
-      return;
-    }
-
     var phaseScope = new PartitionedSearchPhaseScope<>(solverScope, phaseIndex);
     // Partitioning uses the phase's director, while listeners receive the populated scope.
     solverScope.getSolver().prepareForPhase(phaseScope);
     List<Solution_> partList =
-        solutionPartitioner.splitWorkingSolution(
-            phaseScope.getScoreDirector(), runnablePartThreadLimit);
+        Objects.requireNonNull(
+            solutionPartitioner.splitWorkingSolution(
+                phaseScope.getScoreDirector(), runnablePartThreadLimit),
+            "The solutionPartitioner ("
+                + solutionPartitioner
+                + ") returned a null partition list.");
+    var ownership = PartitionOwnership.validate(phaseScope.getScoreDirector(), partList);
 
     int partCount = partList.size();
     phaseScope.setPartCount(partCount);
@@ -123,123 +127,254 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
         phaseIndex,
         partCount);
 
-    PartitionQueue<Solution_> partitionQueue = new PartitionQueue<>(partCount);
-
-    ExecutorService executor = createThreadPoolExecutor(partCount);
-    solverScope.getWorkerRegistry().registerExecutor(executor, "Partitioned Search");
-
-    ChildThreadPlumbingTermination<Solution_> childThreadPlumbingTermination =
-        new ChildThreadPlumbingTermination<>();
-
-    Semaphore runnablePartThreadSemaphore =
-        runnablePartThreadLimit == null ? null : new Semaphore(runnablePartThreadLimit, true);
-
-    try {
-      submitPartitionSolverTasks(
-          executor,
-          partList,
-          solverScope,
-          childThreadPlumbingTermination,
-          runnablePartThreadSemaphore,
-          partitionQueue);
-
-      for (PartitionChangeMove<Solution_> step : partitionQueue) {
-        PartitionedSearchStepScope<Solution_> stepScope =
-            new PartitionedSearchStepScope<>(phaseScope);
-        stepStarted(stepScope);
-        stepScope.setStep(step);
-        doStep(stepScope);
-        stepEnded(stepScope);
-        phaseScope.setLastCompletedStepScope(stepScope);
-      }
-
-      childThreadPlumbingTermination.terminateChildren();
-
-      ThreadUtils.shutdownAwaitOrKill(executor, logIndentation, "Partitioned Search");
-
-      phaseScope.addChildThreadsScoreCalculationCount(partitionQueue.getPartsCalculationCount());
-
-      phaseScope.endingNow();
-
-      logger.info(
-          "{}Partitioned Search phase ({}) ended: time spent ({}), best score ({}),"
-              + " move evaluation speed ({}/sec), step total ({}).",
-          logIndentation,
-          phaseIndex,
-          phaseScope.getPhaseTimeMillisSpent(),
-          phaseScope.getBestScore().raw(),
-          phaseScope.getPhaseScoreCalculationSpeed(),
-          phaseScope.getNextStepIndex());
-
-    } finally {
-      if (!executor.isTerminated()) {
-        childThreadPlumbingTermination.terminateChildren();
-        ThreadUtils.shutdownAwaitOrKill(executor, logIndentation, "Partitioned Search");
-      }
-    }
-
+    var terminationBudget = new PartitionTerminationBudget<>(phaseTermination, phaseScope);
+    phaseScope.addChildThreadsScoreCalculationCount(
+        runPartitionTasks(partList, phaseScope, ownership, terminationBudget));
+    phaseScope.endingNow();
+    logger.info(
+        "{}Partitioned Search phase ({}) ended: time spent ({}), best score ({}),"
+            + " move evaluation speed ({}/sec), step total ({}).",
+        logIndentation,
+        phaseIndex,
+        phaseScope.getPhaseTimeMillisSpent(),
+        phaseScope.getBestScore().raw(),
+        phaseScope.getPhaseScoreCalculationSpeed(),
+        phaseScope.getNextStepIndex());
     phaseEnded(phaseScope);
   }
 
-  private ExecutorService createThreadPoolExecutor(int partCount) {
-    ThreadPoolExecutor threadPoolExecutor =
-        (ThreadPoolExecutor) Executors.newFixedThreadPool(partCount, threadFactory);
-    if (threadPoolExecutor.getMaximumPoolSize() < partCount) {
-      throw new IllegalStateException(
-          "The threadPoolExecutor's maximumPoolSize ("
-              + threadPoolExecutor.getMaximumPoolSize()
-              + ") is less than partCount ("
-              + partCount
-              + "), so some partitions will starve.\n"
-              + "Normally this is impossible because the threadPoolExecutor should be unbounded."
-              + " Use runnablePartThreadLimit ("
-              + runnablePartThreadLimit
-              + ") instead to avoid CPU hogging and live locks.");
-    }
-    return threadPoolExecutor;
-  }
-
-  private void submitPartitionSolverTasks(
-      ExecutorService executor,
+  private long runPartitionTasks(
       List<Solution_> partList,
-      SolverScope<Solution_> solverScope,
-      ChildThreadPlumbingTermination<Solution_> childThreadPlumbingTermination,
-      Semaphore runnablePartThreadSemaphore,
-      PartitionQueue<Solution_> partitionQueue) {
-
-    int partIndex = 0;
-    for (Solution_ part : partList) {
-      final int currentPartIndex = partIndex++;
-
-      PartitionSolver<Solution_> partitionSolver =
-          buildPartitionSolver(
-              currentPartIndex,
-              solverScope,
-              childThreadPlumbingTermination,
-              runnablePartThreadSemaphore,
-              partitionQueue);
-
+      PartitionedSearchPhaseScope<Solution_> phaseScope,
+      PartitionOwnership<Solution_> ownership,
+      PartitionTerminationBudget<Solution_> terminationBudget) {
+    var solverScope = phaseScope.getSolverScope();
+    var partitionQueue = new PartitionQueue<Solution_>(partList.size());
+    var executor =
+        Executors.newFixedThreadPool(
+            partList.size(),
+            ThreadUtils.requireNonNullThreads(threadFactory, "Partitioned Search"));
+    solverScope.getWorkerRegistry().registerExecutor(executor, "Partitioned Search");
+    var completionService = new ExecutorCompletionService<Long>(executor);
+    var tasks = new ArrayList<PartitionTask<Solution_>>(partList.size());
+    var futures = new ArrayList<Future<Long>>(partList.size());
+    var pendingTasks = new IdentityHashMap<Future<Long>, PartitionTask<Solution_>>();
+    var childTermination = new ChildThreadPlumbingTermination<Solution_>();
+    var semaphore =
+        runnablePartThreadLimit == null ? null : new Semaphore(runnablePartThreadLimit, true);
+    long calculationCount = 0L;
+    Throwable failure = null;
+    try {
+      for (int partIndex = 0; partIndex < partList.size(); partIndex++) {
+        solverScope.checkYielding();
+        if (Thread.currentThread().isInterrupted()) {
+          throw new InterruptedException("The parent solver thread was interrupted.");
+        }
+        terminationBudget.refresh();
+        if (terminationBudget.isDefinitelyTerminated()) {
+          break;
+        }
+        var childSolver =
+            buildPartitionSolver(
+                partIndex,
+                solverScope,
+                childTermination,
+                semaphore,
+                partitionQueue,
+                terminationBudget);
+        var task = new PartitionTask<>(childSolver, partList.get(partIndex));
+        // Retain ownership before submission: a rejected or cancelled task never closes itself.
+        tasks.add(task);
+        var future = completionService.submit(task);
+        futures.add(future);
+        pendingTasks.put(future, task);
+      }
+      while (!pendingTasks.isEmpty()) {
+        solverScope.checkYielding();
+        if (Thread.currentThread().isInterrupted()) {
+          throw new InterruptedException("The parent solver thread was interrupted.");
+        }
+        terminationBudget.refresh();
+        if (terminationBudget.isDefinitelyTerminated()
+            || childTermination.isSolverTerminated(solverScope)) {
+          break;
+        }
+        Future<Long> completed;
+        while ((completed = completionService.poll()) != null) {
+          var task = pendingTasks.remove(completed);
+          calculationCount += completedCalculationCount(completed, task.getPartIndex());
+        }
+        var move = partitionQueue.poll(pendingTasks.isEmpty() ? 0L : 10L);
+        if (move != null) {
+          applyPartitionMove(move, phaseScope, ownership);
+          terminationBudget.refresh();
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      var interrupted =
+          new IllegalStateException("Solver thread was interrupted in Partitioned Search.", e);
+      failure = interrupted;
+      throw interrupted;
+    } catch (RuntimeException | Error e) {
+      failure = e;
+      throw e;
+    } finally {
+      if (failure != null) {
+        partitionQueue.stopAcceptingMoves();
+      }
+      childTermination.terminateChildren();
       try {
-        executor.submit(
-            () -> {
-              try {
-                partitionSolver.solve(part);
-                long partCalculationCount = partitionSolver.getScoreCalculationCount();
-                partitionQueue.addFinish(currentPartIndex, partCalculationCount);
-              } catch (Throwable throwable) {
-                partitionQueue.addExceptionThrown(currentPartIndex, throwable);
-              }
-            });
-      } catch (RuntimeException | Error failure) {
-        // Ownership transfers to the partition thread only after successful submission.
-        try {
-          partitionSolver.getSolverScope().getScoreDirector().close();
-        } catch (RuntimeException | Error cleanupFailure) {
+        stopAndAwaitPartitions(executor, tasks, futures, partitionQueue, failure != null);
+      } catch (RuntimeException | Error cleanupFailure) {
+        partitionQueue.stopAcceptingMoves();
+        if (failure == null) {
+          throw cleanupFailure;
+        }
+        if (cleanupFailure != failure) {
           failure.addSuppressed(cleanupFailure);
         }
-        throw failure;
       }
     }
+    // Cooperative termination may have completed additional futures while the executor shut down.
+    // Observe every result, including failures that happened after the parent requested
+    // termination.
+    try {
+      for (var entry : pendingTasks.entrySet()) {
+        calculationCount +=
+            completedCalculationCount(entry.getKey(), entry.getValue().getPartIndex());
+      }
+    } finally {
+      partitionQueue.stopAcceptingMoves();
+    }
+    // A cooperatively terminated construction/custom phase may publish its result only at its
+    // end. No producer remains now, so this bounded final batch includes those last improvements.
+    try {
+      PartitionChangeMove<Solution_> move;
+      while ((move = partitionQueue.poll(0L)) != null) {
+        applyPartitionMove(move, phaseScope, ownership);
+        terminationBudget.refresh();
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Solver thread was interrupted in Partitioned Search.", e);
+    }
+    return calculationCount;
+  }
+
+  private long completedCalculationCount(Future<Long> future, int partIndex) {
+    try {
+      return future.get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Solver thread was interrupted in Partitioned Search.", e);
+    } catch (ExecutionException e) {
+      throw new IllegalStateException(
+          "The partition child thread with partIndex ("
+              + partIndex
+              + ") has thrown an exception."
+              + " Relayed here in the parent thread.",
+          e.getCause());
+    } catch (CancellationException e) {
+      throw new IllegalStateException(
+          "The partition task with partIndex (" + partIndex + ") was cancelled unexpectedly.", e);
+    }
+  }
+
+  private void stopAndAwaitPartitions(
+      ExecutorService executor,
+      List<PartitionTask<Solution_>> tasks,
+      List<Future<Long>> futures,
+      PartitionQueue<Solution_> partitionQueue,
+      boolean abort) {
+    boolean interrupted = Thread.interrupted();
+    RuntimeException shutdownFailure = null;
+    try {
+      if (abort || interrupted) {
+        partitionQueue.stopAcceptingMoves();
+        shutdownFailure = new IllegalStateException("Partitioned Search worker cleanup failed.");
+        cancelPartitionTasks(executor, tasks, futures, shutdownFailure);
+        if (shutdownFailure.getSuppressed().length == 0) {
+          shutdownFailure = null;
+        }
+      } else {
+        executor.shutdown();
+      }
+      long deadline =
+          System.nanoTime() + TimeUnit.SECONDS.toNanos(ThreadUtils.getDefaultShutdownTimeout());
+      while (!executor.isTerminated()) {
+        long remaining = deadline - System.nanoTime();
+        if (remaining <= 0L) {
+          partitionQueue.stopAcceptingMoves();
+          var timeout =
+              new IllegalStateException(
+                  "Partitioned Search workers did not stop within "
+                      + ThreadUtils.getDefaultShutdownTimeout()
+                      + " seconds; forcing cancellation.");
+          cancelPartitionTasks(executor, tasks, futures, timeout);
+          if (shutdownFailure != null) {
+            timeout.addSuppressed(shutdownFailure);
+          }
+          throw timeout;
+        }
+        try {
+          executor.awaitTermination(remaining, TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+          interrupted = true;
+          partitionQueue.stopAcceptingMoves();
+          var interruption =
+              new IllegalStateException("Partitioned Search worker cleanup was interrupted.", e);
+          if (shutdownFailure == null) {
+            shutdownFailure = interruption;
+          } else {
+            shutdownFailure.addSuppressed(interruption);
+          }
+          cancelPartitionTasks(executor, tasks, futures, shutdownFailure);
+        }
+      }
+      if (shutdownFailure != null) {
+        throw shutdownFailure;
+      }
+    } finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  private void cancelPartitionTasks(
+      ExecutorService executor,
+      List<PartitionTask<Solution_>> tasks,
+      List<Future<Long>> futures,
+      Throwable failure) {
+    for (var future : futures) {
+      future.cancel(true);
+    }
+    for (var task : tasks) {
+      try {
+        task.cancelBeforeStart();
+      } catch (RuntimeException | Error cleanupFailure) {
+        if (cleanupFailure != failure) {
+          failure.addSuppressed(cleanupFailure);
+        }
+      }
+    }
+    executor.shutdownNow();
+  }
+
+  private void applyPartitionMove(
+      PartitionChangeMove<Solution_> move,
+      PartitionedSearchPhaseScope<Solution_> phaseScope,
+      PartitionOwnership<Solution_> ownership) {
+    var parentDirector = phaseScope.getScoreDirector();
+    var step = move.rebase(parentDirector);
+    ownership.validateMove(step, parentDirector);
+    var stepScope = new PartitionedSearchStepScope<>(phaseScope);
+    stepStarted(stepScope);
+    stepScope.setStep(step);
+    doStep(stepScope);
+    stepEnded(stepScope);
+    phaseScope.setLastCompletedStepScope(stepScope);
   }
 
   private PartitionSolver<Solution_> buildPartitionSolver(
@@ -247,7 +382,8 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
       SolverScope<Solution_> solverScope,
       ChildThreadPlumbingTermination<Solution_> childThreadPlumbingTermination,
       Semaphore runnablePartThreadSemaphore,
-      PartitionQueue<Solution_> partitionQueue) {
+      PartitionQueue<Solution_> partitionQueue,
+      PartitionTerminationBudget<Solution_> terminationBudget) {
 
     BestSolutionRecaller<Solution_> bestSolutionRecaller =
         BestSolutionRecallerFactory.create()
@@ -255,9 +391,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
 
     UniversalTermination<Solution_> partTermination =
         UniversalTermination.or(
-            childThreadPlumbingTermination,
-            phaseTermination.createChildThreadTermination(
-                solverScope, ChildThreadType.PART_THREAD));
+            childThreadPlumbingTermination, terminationBudget.createChildTermination(solverScope));
 
     List<PhaseConfig> effectivePhaseConfigList = phaseConfigList;
     if (effectivePhaseConfigList == null || effectivePhaseConfigList.isEmpty()) {
@@ -295,10 +429,8 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
             InnerScoreDirector<Solution_, ?> childScoreDirector =
                 partSolverScope.getScoreDirector();
             PartitionChangeMove<Solution_> move =
-                PartitionChangeMove.createMove(childScoreDirector, partIndex);
-
-            InnerScoreDirector<Solution_, ?> parentScoreDirector = solverScope.getScoreDirector();
-            move = move.rebase(parentScoreDirector);
+                PartitionChangeMove.createMove(
+                    childScoreDirector, bestSolutionChangedEvent.getNewBestSolution(), partIndex);
 
             partitionQueue.addMove(partIndex, move);
           });

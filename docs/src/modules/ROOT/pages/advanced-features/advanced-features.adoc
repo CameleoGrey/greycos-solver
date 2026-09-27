@@ -515,20 +515,22 @@ The factory must return a thread for every requested worker; returning `null` fa
 [#partitionedSearchAlgorithm]
 ===== Algorithm description
 
-It is often more efficient to partition large data sets (usually above 5000 planning entities)
-into smaller pieces and solve them separately.
-Partition Search is <<multithreadedSolving,multi-threaded>>,
-so it provides a performance boost on multi-core machines due to higher CPU utilization.
-Additionally, even when only using one CPU, it finds an initial solution faster,
-because the search space sum of a partitioned Construction Heuristic is far less than its non-partitioned variant.
+Partitioned Search divides a problem into smaller problems and solves them in separate threads.
+It can reduce the time to an initial solution when the partitions have smaller value ranges or
+cheaper score calculations. Parallel execution can provide an additional benefit.
+The result depends on the partitioner, constraints, problem size, and available CPUs.
+Cloning, synchronization, and merging add overhead; partitioning can be slower when only one part
+thread is runnable. Splitting entities while retaining their complete value ranges does not
+necessarily reduce the number of construction moves.
 
-However, **partitioning does lead to suboptimal results**, even if the pieces are solved optimally, as shown below:
+Restricting assignments to partitions can exclude better solutions,
+even when each restricted problem is solved optimally, as shown below:
 
 image::advanced-features/mapReduceIsTerribleForTsp.png[align="center"]
 
-It effectively trades a short term gain in solution quality for long term loss.
-One way to compensate for this loss,
-is to run a non-partitioned Local Search after the Partitioned Search phase.
+A faster initial solution can therefore come with worse final solution quality.
+Running a non-partitioned Local Search after the Partitioned Search phase allows assignments
+to improve across the original boundaries.
 
 [NOTE]
 ====
@@ -572,7 +574,7 @@ Advanced configuration:
   </partitionedSearch>
 ----
 
-The `runnablePartThreadLimit` allows limiting CPU usage to avoid hanging your machine, see below.
+The `runnablePartThreadLimit` limits concurrently runnable partition threads, see below.
 
 To run in an environment that doesn't like arbitrary thread creation,
 plug in a <<customThreadFactory,custom thread factory>>.
@@ -586,6 +588,8 @@ and slows down the xref:constraints-and-score/performance.adoc#moveEvaluationSpe
 Just like a `<solver>` element,
 the `<partitionedSearch>` element can contain one or more xref:optimization-algorithms/overview.adoc#solverPhase[phases].
 Each of those phases will be run on each partition.
+Basic variables, list variables, and mixed basic/list models are supported.
+Nested island phases can be configured through Java or XML.
 
 A common configuration is to first run a Partitioned Search phase
 (which includes a Construction Heuristic and a Local Search)
@@ -605,6 +609,37 @@ followed by a non-partitioned Local Search phase:
   </partitionedSearch>
   <localSearch/>
 ----
+
+A partition phase may precede another phase when it has a configured outer termination or all of
+its child phases can terminate independently. This includes partitioned construction alone,
+followed by global Local Search. A score target still needs to be reached for its termination
+condition to stop the search.
+With no child phases configured, each partition uses Construction Heuristic followed by Local Search.
+Provide a solver or phase termination, or terminate the solver through its API.
+
+[#partitionedSearchTermination]
+===== Termination
+
+Termination settings retain their configured AND/OR composition. Their scopes are:
+
+[cols="1,2",options="header"]
+|===
+|Setting on the solver or enclosing partition phase |Evaluation
+|Spent time |Measured from the parent solver or partition-phase start, respectively.
+|Best score or feasible best score |Uses the merged parent's best score and initialization state.
+|Step and work counts |Each partition retains its own counters; work is not summed across partitions.
+|Unimproved time, score-difference thresholds, unimproved steps, diminished returns
+|Each partition retains its own improvement history and the setting's normal phase applicability.
+|===
+
+Termination configured directly on a child phase remains local to that phase.
+For example, an outer `OR` of spent time and a work limit stops all children when time expires;
+an outer `AND` also requires each child's work limit to be reached.
+Supported custom terminations retain their child-thread cloning contract.
+
+`terminateEarly()` requests cooperative cancellation. The parent observes worker completion and
+failures even when no improvements are published. A custom phase command must check its termination
+context regularly; the solver cannot safely force arbitrary user code to finish.
 
 
 [#partitioningASolution]
@@ -636,7 +671,41 @@ public interface SolutionPartitioner<Solution_> {
 
 The `size()` of the returned `List` is the `partCount` (the number of partitions).
 This can be decided dynamically, for example, based on the size of the non-partitioned solution.
-The `partCount` is unrelated to the `runnablePartThreadLimit`.
+The solver takes `partCount` from that list independently of `runnablePartThreadLimit`.
+A partitioner may use the supplied limit when choosing its partition count; keep the count fixed
+when measuring the effect of different runnable limits.
+
+The partitioner is responsible for producing independent subproblems:
+
+* Each movable planning entity belongs to exactly one partition. Keep its planning ID unchanged.
+* Basic-variable values and immutable problem facts may be shared. Each partition must retain the
+  facts and ranges needed to evaluate its constraints correctly.
+* For a list variable, give each assignable value to exactly one partition's value range, including
+  values that are initially unassigned. Keep an assigned value with the partition containing its
+  current holder. Values may move between holders inside that partition.
+* In mixed models, a list value that also has genuine basic variables must have the same owner for
+  both kinds of assignment.
+* Preserve entity pinning and pinned list prefixes. Consistent pinned context may occur in more
+  than one partition, but it must not become movable in another partition.
+
+For example, when partitioning vehicle lists, put a vehicle, its assigned visits, and the visits
+available for insertion into the same subproblem. Divide initially unassigned visits between those
+subproblems. A visit cannot be offered to two independent partitions.
+
+The solver validates structural ownership before starting workers and validates each incoming
+assignment before changing the parent. Invalid partitions fail with the partition, entity or value,
+and the violated requirement. Structural validation cannot determine whether a constraint couples
+otherwise separate partitions; the partitioner author must check that relationship.
+Basic-variable assignments are checked against both the partition and parent entity's ranges;
+compact numeric ranges are tested by membership without enumerating all their values.
+
+Each child works on a planning clone. Published list assignments are copied before the child
+continues searching. The parent rebases the assignments, updates shadow variables, and recalculates
+the combined score before retaining a new best solution.
+
+`RoundRobinPartitioner` is a testing utility for independent basic-variable entities with
+problem-fact value ranges. It does not provide generic list or entity-reference partitioning;
+use a partitioner designed for those models.
 
 To configure values of a `SolutionPartitioner` dynamically in the solver configuration
 (so the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] can tweak those parameters),
@@ -656,49 +725,53 @@ add the `solutionPartitionerCustomProperties` element and use xref:using-greycos
 [#runnablePartThreadLimit]
 ===== Runnable part thread limit
 
-When running a multi-threaded solver, such as Partitioned Search, CPU power can quickly become a scarce resource,
-which can cause other processes or threads to hang or freeze.
-However, GreyCOS Solver has a system to prevent CPU starving of
-other processes (such as an SSH connection in production or your IDE in development)
-or other threads (such as the servlet threads that handle REST requests).
-
-As explained in xref:integration/integration.adoc#sizingHardwareAndSoftware[sizing hardware and software],
-each solver (including each child solver) does no IO during `solve()` and therefore saturates one CPU core completely.
-In Partitioned Search, every partition always has its own thread, called a part thread.
-It is impossible for two partitions to share a thread,
-because of xref:optimization-algorithms/overview.adoc#asynchronousTermination[asynchronous termination]:
-the second thread would never run.
-Every part thread will try to consume one CPU core entirely, so if there are more partitions than CPU cores,
-this will probably hang the system.
-`Thread.setPriority()` is often too weak to solve this hogging problem, so another approach is used.
-
-The `runnablePartThreadLimit` parameter specifies how many part threads are runnable at the same time.
-The other part threads will temporarily block and therefore will not consume any CPU power.
-*This parameter basically specifies how many CPU cores are donated to GreyCOS Solver.*
-All part threads share the CPU cores in a round-robin manner
-to consume (more or less) the same number of CPU cycles:
+Each partition has its own thread and score director. The `runnablePartThreadLimit` parameter
+limits how many part threads may run at once. Other part threads wait for a permit.
+Fair permit acquisition shares execution opportunities at cooperative yield points:
 
 image::advanced-features/partitionedSearchThreading.png[align="center"]
 
 The following `runnablePartThreadLimit` options are supported:
 
-* `UNLIMITED`: Allow GreyCOS Solver to occupy all CPU cores, do not avoid hogging.
-Useful if a no hogging CPU policy is configured on the OS level.
-* `AUTO` (default): Let GreyCOS Solver decide how many CPU cores to occupy. This formula is based on experience.
-It does not hog all CPU cores on a multi-core machine.
-* Static number: The number of CPU cores to consume. For example:
+* `UNLIMITED`: Do not limit runnable part threads.
+* `AUTO` (default): Use `max(1, availableProcessors - 2)` runnable part threads.
+* Static number: The maximum number of concurrently runnable part threads. For example:
 +
 [source,xml,options="nowrap"]
 ----
 <runnablePartThreadLimit>2</runnablePartThreadLimit>
 ----
 
-[WARNING]
-====
-If the `runnablePartThreadLimit` is equal to or higher than the number of available processors,
-the host is likely to hang or freeze,
-unless there is an OS specific policy in place to avoid GreyCOS Solver from hogging all the CPU processors.
-====
+This is not a limit on all solver workers or CPU consumption. The parent also performs work;
+move threads and nested islands can create additional runnable workers.
+Account for those workers and other applications when choosing the limit.
+The limit also does not reduce the number of allocated partition threads or score directors.
+
+[#partitionedSearchBenchmark]
+===== Measuring effectiveness
+
+Compare time to a fully assigned solution and final score on the same data, seeds, time budget,
+environment mode, and thread settings. Check assignment completeness separately from the raw score.
+Use an independent score calculation to verify the merged result.
+
+The examples module includes `examples.cloudbalancing.CloudBalancingPartitionedBenchmark`.
+It compares ordinary search with four partitions and either one or four runnable part threads,
+disables move threads, rotates measurement order, and recalculates scores directly from resource
+totals. Its arguments are computer count, process count, warmup seconds per mode, measurement
+seconds per solve, and number of measured seeds:
+
+[source,bash]
+----
+./mvnw -B -pl core -am install -DskipTests
+./mvnw -B -f examples/pom.xml compile exec:java \
+  -Dexec.mainClass=examples.cloudbalancing.CloudBalancingPartitionedBenchmark \
+  -Dexec.args="400 1200 5 10 3"
+----
+
+Compare the `RESULT,measure` CSV records. A first-assignment time of `-1` means no fully assigned
+solution was published within the budget. Compare final scores only after checking the assigned
+process count. A short run on one dataset does not establish a general speedup or a problem-size
+threshold at which partitioning becomes preferable.
 
 
 [#customThreadFactory]

@@ -1789,6 +1789,8 @@
                         
             <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
                         
+            <xs:element name="islandModel" type="tns:islandModelPhaseConfig"/>
+                        
             <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
                         
             <xs:element name="partitionedSearch" type="tns:partitionedSearchPhaseConfig"/>

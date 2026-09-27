@@ -23,6 +23,7 @@ import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
 
@@ -209,20 +210,28 @@ class AlnsTerminationPollingTest {
   }
 
   @Test
+  @Timeout(5)
   void yieldingRefreshesAfterResumingEvenWithoutConsumedProbes() {
     var fixture = new Fixture();
     fixture.solverScope.setRunnableThreadSemaphore(
-        new Semaphore(0) {
+        new Semaphore(1) {
           @Override
           public void acquire() throws InterruptedException {
             super.acquire();
             fixture.clock.now += 50;
           }
         });
-    var polling = fixture.polling(new TimeMillisSpentTermination<>(100));
-    assertThat(polling.checkProbe()).isFalse();
-    assertThat(polling.checkProbe()).isTrue();
-    assertThat(fixture.clock.reads).isEqualTo(2);
+    fixture.solverScope.initializeYielding();
+    // Start from the phase's clock after acquiring the initial permit, as a real child solver does.
+    fixture.clock.now = 1_100;
+    try {
+      var polling = fixture.polling(new TimeMillisSpentTermination<>(100));
+      assertThat(polling.checkProbe()).isFalse();
+      assertThat(polling.checkProbe()).isTrue();
+      assertThat(fixture.clock.reads).isEqualTo(2);
+    } finally {
+      fixture.solverScope.destroyYielding();
+    }
   }
 
   @Test

@@ -14,6 +14,7 @@ import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
 import greycos.solver.core.impl.phase.AbstractPhaseFactory;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
+import greycos.solver.core.impl.solver.termination.PartitionTerminationBudget;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
 import greycos.solver.core.impl.solver.termination.SolverTermination;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
@@ -57,6 +58,8 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
 
     PhaseTermination<Solution_> phaseTermination =
         buildPhaseTermination(phaseConfigPolicy, solverTermination);
+    PartitionTerminationBudget.validate(
+        phaseTermination, "phase[" + phaseIndex + "].partitionedSearch.termination");
 
     Integer resolvedActiveThreadCount =
         resolveActiveThreadCount(phaseConfig.getRunnablePartThreadLimit());

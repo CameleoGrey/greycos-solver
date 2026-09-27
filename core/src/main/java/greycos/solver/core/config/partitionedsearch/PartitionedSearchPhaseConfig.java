@@ -13,6 +13,7 @@ import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
+import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
@@ -55,6 +56,9 @@ public final class PartitionedSearchPhaseConfig extends PhaseConfig<PartitionedS
     @XmlElement(
         name = ExhaustiveSearchPhaseConfig.XML_ELEMENT_NAME,
         type = ExhaustiveSearchPhaseConfig.class),
+    @XmlElement(
+        name = IslandModelPhaseConfig.XML_ELEMENT_NAME,
+        type = IslandModelPhaseConfig.class),
     @XmlElement(
         name = LocalSearchPhaseConfig.XML_ELEMENT_NAME,
         type = LocalSearchPhaseConfig.class),

@@ -217,6 +217,10 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         channels.add(new BoundedChannel<>(1));
       }
       for (int i = 0; i < islandCount; i++) {
+        solverScope.checkYielding();
+        if (Thread.currentThread().isInterrupted()) {
+          throw new InterruptedException("Interrupted while creating island agents.");
+        }
         var agentScope = createAgentSolverScope(solverScope, i);
         IslandAgent<Solution_> agent = null;
         try {
@@ -292,6 +296,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
       int completed = 0;
       while (completed < islandCount) {
+        solverScope.checkYielding();
         int drained = propagator.drain();
         var future = completionService.poll(drained == 0 ? 50L : 0L, TimeUnit.MILLISECONDS);
         if (future != null) {

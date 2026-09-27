@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 import greycos.solver.core.api.solver.change.ProblemChange;
 import greycos.solver.core.config.solver.EnvironmentMode;
@@ -23,6 +24,67 @@ import org.junit.jupiter.api.Test;
 
 /** Tests for {@link PartitionSolver}. */
 class PartitionSolverTest {
+
+  @Test
+  void failureBeforeSolvingStartedClosesScoreDirector() {
+    var scope = new SolverScope<TestdataSolution>();
+    @SuppressWarnings("unchecked")
+    InnerScoreDirector<TestdataSolution, ?> director = mock(InnerScoreDirector.class);
+    scope.setScoreDirector(director);
+    var solver =
+        new PartitionSolver<>(
+            EnvironmentMode.NO_ASSERT,
+            mock(greycos.solver.core.impl.score.director.ScoreDirectorFactory.class),
+            BestSolutionRecallerFactory.create()
+                .<TestdataSolution>buildBestSolutionRecaller(EnvironmentMode.NO_ASSERT),
+            new ChildThreadPlumbingTermination<>(),
+            List.of(),
+            scope,
+            0);
+
+    // No random source was installed, so ownership transfer fails before solvingStarted().
+    assertThatThrownBy(() -> solver.solve(new TestdataSolution()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("DefaultRandomSource");
+    verify(director).close();
+  }
+
+  @Test
+  void interruptedInitialAcquisitionDoesNotCreateSemaphorePermits() {
+    var scope = new SolverScope<TestdataSolution>();
+    var semaphore = new Semaphore(0);
+    scope.setRunnableThreadSemaphore(semaphore);
+    Thread.currentThread().interrupt();
+    try {
+      scope.initializeYielding();
+      scope.checkYielding();
+      scope.destroyYielding();
+      assertThat(semaphore.availablePermits()).isZero();
+      assertThat(Thread.currentThread().isInterrupted()).isTrue();
+    } finally {
+      Thread.interrupted();
+    }
+  }
+
+  @Test
+  void interruptedYieldReleasesOnlyTheOwnedPermit() {
+    var scope = new SolverScope<TestdataSolution>();
+    var semaphore = new Semaphore(1);
+    scope.setRunnableThreadSemaphore(semaphore);
+    scope.initializeYielding();
+    assertThat(semaphore.availablePermits()).isZero();
+    Thread.currentThread().interrupt();
+    try {
+      scope.checkYielding();
+      scope.checkYielding();
+      scope.destroyYielding();
+      scope.destroyYielding();
+      assertThat(semaphore.availablePermits()).isEqualTo(1);
+      assertThat(Thread.currentThread().isInterrupted()).isTrue();
+    } finally {
+      Thread.interrupted();
+    }
+  }
 
   @Test
   void constructorAndGetters() {

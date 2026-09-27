@@ -78,19 +78,21 @@ public final class AlnsTerminationPolling<Solution_> {
     return supported;
   }
 
-  private boolean isSupported(Termination<Solution_> termination) {
-    if (termination instanceof IslandSequenceTermination<Solution_> island) {
+  static boolean isSupported(Termination<?> termination) {
+    if (termination instanceof PartitionTermination<?> partition) {
+      return partition.supportedForRepairAttempts();
+    }
+    if (termination instanceof IslandSequenceTermination<?> island) {
       return island.supportedForRepairAttempts();
     }
-    if (termination instanceof AbstractCompositeTermination<Solution_> composite) {
-      return composite.terminationList.stream().allMatch(this::isSupported);
+    if (termination instanceof AbstractCompositeTermination<?> composite) {
+      return composite.terminationList.stream().allMatch(AlnsTerminationPolling::isSupported);
     }
-    if (termination instanceof SolverBridgePhaseTermination<Solution_> bridge) {
+    if (termination instanceof SolverBridgePhaseTermination<?> bridge) {
       return isSupported(bridge.solverTermination);
     }
     if (termination.getClass() == PhaseToSolverTerminationBridge.class) {
-      return isSupported(
-          ((PhaseToSolverTerminationBridge<Solution_>) termination).getSolverTermination());
+      return isSupported(((PhaseToSolverTerminationBridge<?>) termination).getSolverTermination());
     }
     return isTimePredicate(termination)
         || termination instanceof BasicPlumbingTermination

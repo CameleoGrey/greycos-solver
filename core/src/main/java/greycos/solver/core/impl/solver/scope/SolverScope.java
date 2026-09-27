@@ -80,6 +80,9 @@ public class SolverScope<Solution_> {
   /** Used for capping CPU power usage in multithreaded scenarios. */
   private Semaphore runnableThreadSemaphore = null;
 
+  // Accessed only by the solver thread that acquires and releases the permit.
+  private boolean runnableThreadPermitHeld;
+
   private long childThreadsScoreCalculationCount = 0L;
 
   private long moveEvaluationCount = 0L;
@@ -564,6 +567,7 @@ public class SolverScope<Solution_> {
     if (runnableThreadSemaphore != null) {
       try {
         runnableThreadSemaphore.acquire();
+        runnableThreadPermitHeld = true;
       } catch (InterruptedException e) {
         // TODO it will take a while before the BasicPlumbingTermination is called
         // The BasicPlumbingTermination will terminate the solver.
@@ -585,9 +589,13 @@ public class SolverScope<Solution_> {
    */
   public void checkYielding() {
     if (runnableThreadSemaphore != null) {
-      runnableThreadSemaphore.release();
+      if (runnableThreadPermitHeld) {
+        runnableThreadPermitHeld = false;
+        runnableThreadSemaphore.release();
+      }
       try {
         runnableThreadSemaphore.acquire();
+        runnableThreadPermitHeld = true;
       } catch (InterruptedException e) {
         // The BasicPlumbingTermination will terminate the solver.
         Thread.currentThread().interrupt();
@@ -596,7 +604,8 @@ public class SolverScope<Solution_> {
   }
 
   public void destroyYielding() {
-    if (runnableThreadSemaphore != null) {
+    if (runnableThreadSemaphore != null && runnableThreadPermitHeld) {
+      runnableThreadPermitHeld = false;
       runnableThreadSemaphore.release();
     }
   }

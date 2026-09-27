@@ -123,7 +123,18 @@ public interface PhaseFactory<Solution_> {
       return true;
     }
     TerminationConfig terminationConfig = phaseConfig.getTerminationConfig();
-    return (terminationConfig != null && terminationConfig.isConfigured());
+    if (terminationConfig != null && terminationConfig.isConfigured()) {
+      return true;
+    }
+    if (phaseConfig instanceof PartitionedSearchPhaseConfig partitionedSearchPhaseConfig) {
+      var childPhaseConfigList = partitionedSearchPhaseConfig.getPhaseConfigList();
+      // An unspecified or empty list defaults to construction heuristic and unterminated local
+      // search.
+      return childPhaseConfigList != null
+          && !childPhaseConfigList.isEmpty()
+          && childPhaseConfigList.stream().allMatch(PhaseFactory::canTerminate);
+    }
+    return false;
   }
 
   static boolean requiresInitializedSolution(PhaseConfig<?> phaseConfig) {
