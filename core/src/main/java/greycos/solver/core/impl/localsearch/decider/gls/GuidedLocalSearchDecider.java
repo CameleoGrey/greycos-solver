@@ -299,98 +299,104 @@ public final class GuidedLocalSearchDecider<Solution_>
 
   @Override
   public void decideNextStep(LocalSearchStepScope<Solution_> stepScope) {
-    if (pipeline != null) pipeline.startNextStep(stepScope.getStepIndex());
-    if (terminated(stepScope)) {
-      stepScope.setNoStepReason(NoStepReason.TERMINATED);
-      return;
-    }
-    var pending = stepScope.getPhaseScope().getSolverScope().consumePendingMove();
-    if (pending != null) {
-      resetOnPendingMove = pending.requiresReset();
-      var score =
-          stepScope.getScoreDirector().executeTemporaryMove(pending.move(), assertFromScratch);
-      stepScope.getPhaseScope().addMoveEvaluationCount(pending.move(), 1L);
-      stepScope.setSelectedMoveCount(1L);
-      select(stepScope, new Candidate<>(pending.move(), score, GuidedLocalSearchNumber.ZERO, 0));
-      return;
-    }
-    InnerScore<?> currentScore = stepScope.getPhaseScope().getLastCompletedStepScope().getScore();
-    if (allLevels()) tracker.markBaseline();
-    var currentPenalty = aggregate(tracker, focusLevel, scale());
-    if (assertFromScratch) tracker.assertFromScratch();
-    int unproductiveRounds = 0;
-    int emptyFocusLevels = 0;
-    while (!terminated(stepScope)) {
-      var result = runRound(stepScope, currentScore, currentPenalty, false, null);
-      if (result.terminated()) {
+    var scoreDirector = stepScope.getScoreDirector();
+    scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(true);
+    try {
+      if (pipeline != null) pipeline.startNextStep(stepScope.getStepIndex());
+      if (terminated(stepScope)) {
         stepScope.setNoStepReason(NoStepReason.TERMINATED);
         return;
       }
-      if (result.selected() != null) {
-        select(stepScope, result.selected());
+      var pending = stepScope.getPhaseScope().getSolverScope().consumePendingMove();
+      if (pending != null) {
+        resetOnPendingMove = pending.requiresReset();
+        var score =
+            stepScope.getScoreDirector().executeTemporaryMove(pending.move(), assertFromScratch);
+        stepScope.getPhaseScope().addMoveEvaluationCount(pending.move(), 1L);
+        stepScope.setSelectedMoveCount(1L);
+        select(stepScope, new Candidate<>(pending.move(), score, GuidedLocalSearchNumber.ZERO, 0));
         return;
       }
-      if (result.retained() == null) {
-        emptyRounds++;
-        if (searchMode == GuidedLocalSearchSearchMode.EXHAUSTIVE) {
-          stepScope.setNoStepReason(NoStepReason.NO_ADMISSIBLE_MOVE);
+      InnerScore<?> currentScore = stepScope.getPhaseScope().getLastCompletedStepScope().getScore();
+      if (allLevels()) tracker.markBaseline();
+      var currentPenalty = aggregate(tracker, focusLevel, scale());
+      if (assertFromScratch) tracker.assertFromScratch();
+      int unproductiveRounds = 0;
+      int emptyFocusLevels = 0;
+      while (!terminated(stepScope)) {
+        var result = runRound(stepScope, currentScore, currentPenalty, false, null);
+        if (result.terminated()) {
+          stepScope.setNoStepReason(NoStepReason.TERMINATED);
           return;
         }
-        if (++unproductiveRounds >= maxUnproductiveRounds) {
-          stepScope.setNoStepReason(NoStepReason.SAMPLE_EXHAUSTED);
+        if (result.selected() != null) {
+          select(stepScope, result.selected());
           return;
         }
-        continue;
-      }
-      unproductiveRounds = 0;
-      if (!awaitQuiescence(stepScope)) return;
-      int incrementedFeatures;
-      if (allLevels()) {
-        var scale = calibrations.get(focusLevel).freezeAtPenaltyUpdate();
-        incrementedFeatures =
-            penalties()
-                .incrementMaximumUtility(
-                    tracker.automaticFeatures(), tracker.customFeatures(focusLevel), scale);
-      } else {
-        incrementedFeatures = penalties().incrementMaximumUtility(tracker.activeFeatures());
-      }
-      if (incrementedFeatures == 0) {
-        if (allLevels() && ++emptyFocusLevels < penaltyTables.size()) {
-          advanceFocus();
-          currentPenalty = aggregate(tracker, focusLevel, scale());
+        if (result.retained() == null) {
+          emptyRounds++;
+          if (searchMode == GuidedLocalSearchSearchMode.EXHAUSTIVE) {
+            stepScope.setNoStepReason(NoStepReason.NO_ADMISSIBLE_MOVE);
+            return;
+          }
+          if (++unproductiveRounds >= maxUnproductiveRounds) {
+            stepScope.setNoStepReason(NoStepReason.SAMPLE_EXHAUSTED);
+            return;
+          }
           continue;
         }
-        stepScope.setNoStepReason(NoStepReason.NO_PENALIZABLE_FEATURES);
+        unproductiveRounds = 0;
+        if (!awaitQuiescence(stepScope)) return;
+        int incrementedFeatures;
+        if (allLevels()) {
+          var scale = calibrations.get(focusLevel).freezeAtPenaltyUpdate();
+          incrementedFeatures =
+              penalties()
+                  .incrementMaximumUtility(
+                      tracker.automaticFeatures(), tracker.customFeatures(focusLevel), scale);
+        } else {
+          incrementedFeatures = penalties().incrementMaximumUtility(tracker.activeFeatures());
+        }
+        if (incrementedFeatures == 0) {
+          if (allLevels() && ++emptyFocusLevels < penaltyTables.size()) {
+            advanceFocus();
+            currentPenalty = aggregate(tracker, focusLevel, scale());
+            continue;
+          }
+          stepScope.setNoStepReason(NoStepReason.NO_PENALIZABLE_FEATURES);
+          return;
+        }
+        penaltyUpdates++;
+        focusPenaltyUpdates++;
+        LOGGER.debug(
+            "{}GLS penalty update ({}), step ({}), focus level ({}), penalized features ({}), search mode ({}).",
+            logIndentation,
+            penalties().version(),
+            stepScope.getStepIndex(),
+            focusLevel,
+            incrementedFeatures,
+            searchMode);
+        updateTrackerPenalties();
+        currentPenalty = aggregate(tracker, focusLevel, scale());
+        var escape =
+            runRound(stepScope, currentScore, currentPenalty, true, result.retained().move());
+        if (escape.terminated()) {
+          stepScope.setNoStepReason(NoStepReason.TERMINATED);
+        } else if (escape.selected() != null) {
+          select(stepScope, escape.selected());
+        } else {
+          // A deterministic retained/re-enumerated move must remain admissible on unchanged state.
+          throw new IllegalStateException(
+              "Guided Local Search escape lost its previously admissible move at step ("
+                  + stepScope.getStepIndex()
+                  + "). Check move replay and feature-provider determinism.");
+        }
         return;
       }
-      penaltyUpdates++;
-      focusPenaltyUpdates++;
-      LOGGER.debug(
-          "{}GLS penalty update ({}), step ({}), focus level ({}), penalized features ({}), search mode ({}).",
-          logIndentation,
-          penalties().version(),
-          stepScope.getStepIndex(),
-          focusLevel,
-          incrementedFeatures,
-          searchMode);
-      updateTrackerPenalties();
-      currentPenalty = aggregate(tracker, focusLevel, scale());
-      var escape =
-          runRound(stepScope, currentScore, currentPenalty, true, result.retained().move());
-      if (escape.terminated()) {
-        stepScope.setNoStepReason(NoStepReason.TERMINATED);
-      } else if (escape.selected() != null) {
-        select(stepScope, escape.selected());
-      } else {
-        // A deterministic retained/re-enumerated move must remain admissible on unchanged state.
-        throw new IllegalStateException(
-            "Guided Local Search escape lost its previously admissible move at step ("
-                + stepScope.getStepIndex()
-                + "). Check move replay and feature-provider determinism.");
-      }
-      return;
+      stepScope.setNoStepReason(NoStepReason.TERMINATED);
+    } finally {
+      scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(false);
     }
-    stepScope.setNoStepReason(NoStepReason.TERMINATED);
   }
 
   private RoundResult<Solution_> runRound(
