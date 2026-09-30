@@ -11,4 +11,7 @@ import org.jspecify.annotations.NullMarked;
  */
 @NullMarked
 sealed interface QuadImpactHandler<A, B, C, D> extends ImpactHandler<QuadTuple<A, B, C, D>>
-    permits QuadBigDecimalImpactHandler, QuadLongImpactHandler {}
+    permits QuadBigDecimalImpactHandler,
+        QuadDoubleImpactHandler,
+        QuadFloatImpactHandler,
+        QuadLongImpactHandler {}

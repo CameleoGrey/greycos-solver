@@ -17,14 +17,22 @@ import greycos.solver.core.api.cotwin.solution.PlanningScore;
 import greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
 import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import greycos.solver.core.api.score.BendableBigDecimalScore;
+import greycos.solver.core.api.score.BendableDoubleScore;
+import greycos.solver.core.api.score.BendableFloatScore;
 import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardMediumSoftDoubleScore;
+import greycos.solver.core.api.score.HardMediumSoftFloatScore;
 import greycos.solver.core.api.score.HardMediumSoftScore;
 import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardSoftDoubleScore;
+import greycos.solver.core.api.score.HardSoftFloatScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.IBendableScore;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.SimpleBigDecimalScore;
+import greycos.solver.core.api.score.SimpleDoubleScore;
+import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.config.solver.PreviewFeature;
 import greycos.solver.core.config.util.ConfigUtils;
@@ -40,13 +48,21 @@ import greycos.solver.core.impl.cotwin.valuerange.descriptor.FromSolutionPropert
 import greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.score.definition.BendableBigDecimalScoreDefinition;
+import greycos.solver.core.impl.score.definition.BendableDoubleScoreDefinition;
+import greycos.solver.core.impl.score.definition.BendableFloatScoreDefinition;
 import greycos.solver.core.impl.score.definition.BendableScoreDefinition;
 import greycos.solver.core.impl.score.definition.HardMediumSoftBigDecimalScoreDefinition;
+import greycos.solver.core.impl.score.definition.HardMediumSoftDoubleScoreDefinition;
+import greycos.solver.core.impl.score.definition.HardMediumSoftFloatScoreDefinition;
 import greycos.solver.core.impl.score.definition.HardMediumSoftScoreDefinition;
 import greycos.solver.core.impl.score.definition.HardSoftBigDecimalScoreDefinition;
+import greycos.solver.core.impl.score.definition.HardSoftDoubleScoreDefinition;
+import greycos.solver.core.impl.score.definition.HardSoftFloatScoreDefinition;
 import greycos.solver.core.impl.score.definition.HardSoftScoreDefinition;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.definition.SimpleBigDecimalScoreDefinition;
+import greycos.solver.core.impl.score.definition.SimpleDoubleScoreDefinition;
+import greycos.solver.core.impl.score.definition.SimpleFloatScoreDefinition;
 import greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 
 import org.jspecify.annotations.NullMarked;
@@ -193,7 +209,19 @@ public class DescriptorPolicy {
                     bendableHardLevelsSize,
                     bendableSoftLevelsSize));
       }
-      if (scoreType.equals(SimpleScore.class)) {
+      if (scoreType.equals(SimpleFloatScore.class)) {
+        return (ScoreDefinition_) new SimpleFloatScoreDefinition();
+      } else if (scoreType.equals(HardSoftFloatScore.class)) {
+        return (ScoreDefinition_) new HardSoftFloatScoreDefinition();
+      } else if (scoreType.equals(HardMediumSoftFloatScore.class)) {
+        return (ScoreDefinition_) new HardMediumSoftFloatScoreDefinition();
+      } else if (scoreType.equals(SimpleDoubleScore.class)) {
+        return (ScoreDefinition_) new SimpleDoubleScoreDefinition();
+      } else if (scoreType.equals(HardSoftDoubleScore.class)) {
+        return (ScoreDefinition_) new HardSoftDoubleScoreDefinition();
+      } else if (scoreType.equals(HardMediumSoftDoubleScore.class)) {
+        return (ScoreDefinition_) new HardMediumSoftDoubleScoreDefinition();
+      } else if (scoreType.equals(SimpleScore.class)) {
         return (ScoreDefinition_) new SimpleScoreDefinition();
       } else if (scoreType.equals(SimpleBigDecimalScore.class)) {
         return (ScoreDefinition_) new SimpleBigDecimalScoreDefinition();
@@ -231,7 +259,13 @@ public class DescriptorPolicy {
                     bendableHardLevelsSize,
                     bendableSoftLevelsSize));
       }
-      if (scoreType.equals(BendableScore.class)) {
+      if (scoreType.equals(BendableFloatScore.class)) {
+        return (ScoreDefinition_)
+            new BendableFloatScoreDefinition(bendableHardLevelsSize, bendableSoftLevelsSize);
+      } else if (scoreType.equals(BendableDoubleScore.class)) {
+        return (ScoreDefinition_)
+            new BendableDoubleScoreDefinition(bendableHardLevelsSize, bendableSoftLevelsSize);
+      } else if (scoreType.equals(BendableScore.class)) {
         return (ScoreDefinition_)
             new BendableScoreDefinition(bendableHardLevelsSize, bendableSoftLevelsSize);
       } else if (scoreType.equals(BendableBigDecimalScore.class)) {

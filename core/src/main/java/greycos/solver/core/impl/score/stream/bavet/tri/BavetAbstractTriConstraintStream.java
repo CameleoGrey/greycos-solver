@@ -12,6 +12,8 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import greycos.solver.core.api.function.QuadFunction;
+import greycos.solver.core.api.function.ToDoubleTriFunction;
+import greycos.solver.core.api.function.ToFloatTriFunction;
 import greycos.solver.core.api.function.ToLongTriFunction;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.function.TriPredicate;
@@ -612,5 +614,27 @@ public abstract class BavetAbstractTriConstraintStream<Solution_, A, B, C>
   protected final QuadFunction<A, B, C, Score<?>, DefaultConstraintJustification>
       getDefaultJustificationMapping() {
     return createDefaultJustificationMapping();
+  }
+
+  @Override
+  public <Score_ extends Score<Score_>> TriConstraintBuilder<A, B, C, Score_> innerImpactFloat(
+      Score_ constraintWeight,
+      ToFloatTriFunction<A, B, C> matchWeigher,
+      ScoreImpactType scoreImpactType) {
+    var stream =
+        shareAndAddChild(
+            new BavetScoringTriConstraintStream<>(constraintFactory, this, matchWeigher));
+    return newTerminator(stream, constraintWeight, scoreImpactType);
+  }
+
+  @Override
+  public <Score_ extends Score<Score_>> TriConstraintBuilder<A, B, C, Score_> innerImpactDouble(
+      Score_ constraintWeight,
+      ToDoubleTriFunction<A, B, C> matchWeigher,
+      ScoreImpactType scoreImpactType) {
+    var stream =
+        shareAndAddChild(
+            new BavetScoringTriConstraintStream<>(constraintFactory, this, matchWeigher));
+    return newTerminator(stream, constraintWeight, scoreImpactType);
   }
 }

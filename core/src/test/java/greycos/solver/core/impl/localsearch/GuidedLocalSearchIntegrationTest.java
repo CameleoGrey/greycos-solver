@@ -41,6 +41,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChang
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchSearchMode;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchType;
@@ -322,6 +323,7 @@ class GuidedLocalSearchIntegrationTest {
                     .withLocalSearchType(LocalSearchType.GUIDED_LOCAL_SEARCH)
                     .withGuidedLocalSearchConfig(
                         new GuidedLocalSearchConfig()
+                            .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
                             .withFeatureProviderClass(PinnedListFeatures.class)
                             .withSearchMode(GuidedLocalSearchSearchMode.EXHAUSTIVE))
                     .withMoveSelectorConfig(
@@ -403,6 +405,7 @@ class GuidedLocalSearchIntegrationTest {
                     .withLocalSearchType(LocalSearchType.GUIDED_LOCAL_SEARCH)
                     .withGuidedLocalSearchConfig(
                         new GuidedLocalSearchConfig()
+                            .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
                             .withFeatureProviderClass(AcyclicFeatures.class)
                             .withSearchMode(GuidedLocalSearchSearchMode.EXHAUSTIVE))
                     .withMoveSelectorConfig(
@@ -498,6 +501,7 @@ class GuidedLocalSearchIntegrationTest {
 
   private static GuidedLocalSearchConfig guidance(int targetLevel) {
     return new GuidedLocalSearchConfig()
+        .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
         .withFeatureProviderClass(AssignmentFeatures.class)
         .withSearchMode(GuidedLocalSearchSearchMode.EXHAUSTIVE)
         .withTargetScoreLevelIndex(targetLevel)

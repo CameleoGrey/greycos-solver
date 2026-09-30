@@ -448,7 +448,15 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
     }
   }
 
+  public void workingSolutionMutationObserverChanged() {
+    if (listVariableState != null) {
+      listVariableState.workingSolutionMutationObserverChanged();
+    }
+  }
+
   public void close() {
+    // Release observer references even if another variable handler fails while closing.
+    workingSolutionMutationObserverChanged();
     for (var handler : listVariableChangeHandlerList) {
       handler.close();
     }

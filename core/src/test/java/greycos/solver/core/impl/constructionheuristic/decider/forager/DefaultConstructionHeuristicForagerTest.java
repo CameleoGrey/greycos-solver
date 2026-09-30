@@ -5,18 +5,39 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import greycos.solver.core.api.score.HardSoftDoubleScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicPickEarlyType;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicMoveScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
+import greycos.solver.core.impl.score.definition.HardSoftDoubleScoreDefinition;
 import greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
+import greycos.solver.core.impl.score.director.InnerScoreDirector;
 
 import org.junit.jupiter.api.Test;
 
 class DefaultConstructionHeuristicForagerTest<Solution_> {
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void floatingNonDeterioratingHardDoesNotSubtractSoftExtremes() {
+    var forager =
+        new DefaultConstructionHeuristicForager<Solution_>(
+            ConstructionHeuristicPickEarlyType.FIRST_FEASIBLE_SCORE_OR_NON_DETERIORATING_HARD);
+    var step =
+        buildStepScope(InnerScore.fullyAssigned(HardSoftDoubleScore.of(-0.5, -Double.MAX_VALUE)));
+    var move =
+        buildMoveScope(
+            step, InnerScore.fullyAssigned(HardSoftDoubleScore.of(-0.25, Double.MAX_VALUE)));
+    InnerScoreDirector<Solution_, HardSoftDoubleScore> director = mock(InnerScoreDirector.class);
+    doReturn(director).when(move).getScoreDirector();
+    when(director.getScoreDefinition()).thenReturn(new HardSoftDoubleScoreDefinition());
+    forager.checkPickEarly(move);
+    assertThat(forager.isQuitEarly()).isTrue();
+  }
 
   @Test
   void checkPickEarlyNever() {

@@ -11,4 +11,7 @@ import org.jspecify.annotations.NullMarked;
  */
 @NullMarked
 sealed interface UniImpactHandler<A> extends ImpactHandler<UniTuple<A>>
-    permits UniBigDecimalImpactHandler, UniLongImpactHandler {}
+    permits UniBigDecimalImpactHandler,
+        UniDoubleImpactHandler,
+        UniFloatImpactHandler,
+        UniLongImpactHandler {}

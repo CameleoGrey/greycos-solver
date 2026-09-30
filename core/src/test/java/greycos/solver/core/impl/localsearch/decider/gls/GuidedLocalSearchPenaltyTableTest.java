@@ -12,6 +12,34 @@ import org.junit.jupiter.api.Test;
 class GuidedLocalSearchPenaltyTableTest {
 
   @Test
+  void calibratedAutomaticUtilityCompetesWithCustomCostsInSameUnits() {
+    var table = new GuidedLocalSearchPenaltyTable<String>();
+    var automatic = Map.of("automatic", GuidedLocalSearchNumber.ONE);
+    var custom = Map.of("custom", GuidedLocalSearchNumber.of(2));
+    var scale = GuidedLocalSearchScale.of(new BigDecimal("4"));
+    assertThat(table.incrementMaximumUtility(automatic, custom, scale)).isOne();
+    assertThat(table.count("automatic")).isOne();
+    assertThat(table.count("custom")).isZero();
+    assertThat(table.incrementMaximumUtility(automatic, custom, scale)).isEqualTo(2);
+    assertThat(table.count("automatic")).isEqualTo(2);
+    assertThat(table.count("custom")).isOne();
+  }
+
+  @Test
+  void rationalUtilityDoesNotRoundRepeatingFractions() {
+    var table = new GuidedLocalSearchPenaltyTable<String>();
+    var scale = GuidedLocalSearchScale.of(GuidedLocalSearchNumber.ONE, 3);
+    table.incrementMaximumUtility(
+        Map.of("automatic", GuidedLocalSearchNumber.ONE),
+        Map.of(
+            "custom",
+            GuidedLocalSearchNumber.of(new BigDecimal("0.3333333333333333333333333333333333"))),
+        scale);
+    assertThat(table.count("automatic")).isOne();
+    assertThat(table.count("custom")).isZero();
+  }
+
+  @Test
   void incrementsAllExactMaximumUtilityTies() {
     var table = new GuidedLocalSearchPenaltyTable<String>();
     var active = Map.of("a", GuidedLocalSearchNumber.of(10), "b", GuidedLocalSearchNumber.of(5));

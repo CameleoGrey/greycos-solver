@@ -2,8 +2,10 @@ package greycos.solver.core.impl.score.stream.common.bi;
 
 import java.math.BigDecimal;
 import java.util.function.BiFunction;
+import java.util.function.ToDoubleBiFunction;
 import java.util.function.ToLongBiFunction;
 
+import greycos.solver.core.api.function.ToFloatBiFunction;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.DefaultConstraintJustification;
@@ -138,5 +140,51 @@ public interface InnerBiConstraintStream<A, B> extends BiConstraintStream<A, B> 
   <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> innerImpact(
       Score_ constraintWeight,
       BiFunction<A, B, BigDecimal> matchWeigher,
+      ScoreImpactType scoreImpactType);
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> penalizeFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatBiFunction<A, B> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.PENALTY);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> rewardFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatBiFunction<A, B> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.REWARD);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> impactFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatBiFunction<A, B> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.MIXED);
+  }
+
+  <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> innerImpactFloat(
+      Score_ constraintWeight,
+      ToFloatBiFunction<A, B> matchWeigher,
+      ScoreImpactType scoreImpactType);
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> penalizeDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleBiFunction<A, B> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.PENALTY);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> rewardDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleBiFunction<A, B> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.REWARD);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> impactDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleBiFunction<A, B> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.MIXED);
+  }
+
+  <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> innerImpactDouble(
+      Score_ constraintWeight,
+      ToDoubleBiFunction<A, B> matchWeigher,
       ScoreImpactType scoreImpactType);
 }

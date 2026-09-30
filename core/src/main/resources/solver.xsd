@@ -731,11 +731,25 @@
         <xs:sequence>
           <xs:element minOccurs="0" name="featureProviderClass" type="xs:string"/>
           <xs:element minOccurs="0" name="penaltyFactor" type="xs:decimal"/>
+          <xs:element minOccurs="0" name="guidanceMode" type="tns:guidedLocalSearchGuidanceMode"/>
           <xs:element minOccurs="0" name="targetScoreLevelIndex" type="xs:int"/>
+          <xs:element maxOccurs="unbounded" minOccurs="0" name="levelScale" type="tns:guidedLocalSearchLevelScaleConfig"/>
+          <xs:element minOccurs="0" name="focusStepLimit" type="xs:int"/>
+          <xs:element minOccurs="0" name="focusPenaltyUpdateLimit" type="xs:int"/>
           <xs:element minOccurs="0" name="searchMode" type="tns:guidedLocalSearchSearchMode"/>
           <xs:element minOccurs="0" name="sampleSize" type="xs:int"/>
           <xs:element minOccurs="0" name="maxUnproductiveRounds" type="xs:int"/>
           <xs:element minOccurs="0" name="resetPenaltiesOnNewBest" type="xs:boolean"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="guidedLocalSearchLevelScaleConfig">
+    <xs:complexContent>
+      <xs:extension base="tns:abstractConfig">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="scoreLevelIndex" type="xs:int"/>
+          <xs:element minOccurs="0" name="scale" type="xs:decimal"/>
         </xs:sequence>
       </xs:extension>
     </xs:complexContent>
@@ -1026,6 +1040,12 @@
       <xs:enumeration value="GREAT_DELUGE"/>
       <xs:enumeration value="VARIABLE_NEIGHBORHOOD_DESCENT"/>
       <xs:enumeration value="GUIDED_LOCAL_SEARCH"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="guidedLocalSearchGuidanceMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ALL_LEVELS"/>
+      <xs:enumeration value="FIXED_TARGET"/>
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="guidedLocalSearchSearchMode">

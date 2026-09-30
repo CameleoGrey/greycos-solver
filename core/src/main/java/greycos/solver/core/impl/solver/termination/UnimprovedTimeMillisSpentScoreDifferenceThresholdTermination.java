@@ -9,6 +9,7 @@ import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristi
 import greycos.solver.core.impl.phase.custom.scope.CustomPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import greycos.solver.core.impl.score.ScoreArithmetic;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
@@ -115,11 +116,11 @@ final class UnimprovedTimeMillisSpentScoreDifferenceThresholdTermination<Solutio
     for (var it = bestScoreImprovementHistoryQueue.iterator(); it.hasNext(); ) {
       var bestScoreImprovement = it.next();
       var bestScoreImprovementValue = bestScoreImprovement.value().raw();
-      var scoreDifference = bestScoreValue.subtract(bestScoreImprovementValue);
       var timeLimitNotYetReached =
           bestScoreImprovement.key() + unimprovedTimeMillisSpentLimit >= bestSolutionTimeMillis;
       var scoreImprovedOverThreshold =
-          scoreDifference.compareTo(unimprovedScoreDifferenceThreshold) >= 0;
+          ScoreArithmetic.differenceAtLeast(
+              bestScoreValue, bestScoreImprovementValue, unimprovedScoreDifferenceThreshold);
       if (scoreImprovedOverThreshold && timeLimitNotYetReached) {
         it.remove();
         var safeTimeMillis = bestSolutionTimeMillis + unimprovedTimeMillisSpentLimit;

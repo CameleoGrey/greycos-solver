@@ -2,8 +2,10 @@ package greycos.solver.core.impl.score.stream.bavet.uni;
 
 import java.math.BigDecimal;
 import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 import java.util.function.ToLongFunction;
 
+import greycos.solver.core.api.function.ToFloatFunction;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.stream.bavet.BavetConstraint;
@@ -33,6 +35,22 @@ final class BavetScoringUniConstraintStream<Solution_, A>
       Function<A, BigDecimal> bigDecimalMatchWeigher) {
     super(constraintFactory, parent);
     this.scoreImpact = new UniBigDecimalImpactHandler<>(bigDecimalMatchWeigher);
+  }
+
+  public BavetScoringUniConstraintStream(
+      BavetConstraintFactory<Solution_> constraintFactory,
+      BavetAbstractUniConstraintStream<Solution_, A> parent,
+      ToFloatFunction<A> matchWeigher) {
+    super(constraintFactory, parent);
+    this.scoreImpact = new UniFloatImpactHandler<>(matchWeigher);
+  }
+
+  public BavetScoringUniConstraintStream(
+      BavetConstraintFactory<Solution_> constraintFactory,
+      BavetAbstractUniConstraintStream<Solution_, A> parent,
+      ToDoubleFunction<A> matchWeigher) {
+    super(constraintFactory, parent);
+    this.scoreImpact = new UniDoubleImpactHandler<>(matchWeigher);
   }
 
   @Override

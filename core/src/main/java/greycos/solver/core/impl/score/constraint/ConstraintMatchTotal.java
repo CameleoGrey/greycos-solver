@@ -6,13 +6,16 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import greycos.solver.core.api.score.FloatingScoreAccumulator;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.ConstraintJustification;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.api.score.stream.DefaultConstraintJustification;
 import greycos.solver.core.api.solver.SolutionManager;
+import greycos.solver.core.impl.score.FloatingScoreSupport;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * If possible, prefer using {@link SolutionManager#analyze(Object)} instead.
@@ -28,11 +31,14 @@ public final class ConstraintMatchTotal<Score_ extends Score<Score_>>
 
   private final Set<ConstraintMatch<Score_>> constraintMatchSet = new LinkedHashSet<>();
   private Score_ score;
+  private final @Nullable FloatingScoreAccumulator<Score_> floatingAccumulator;
 
   public ConstraintMatchTotal(ConstraintRef constraintRef, Score_ constraintWeight) {
     this.constraintRef = requireNonNull(constraintRef);
     this.constraintWeight = requireNonNull(constraintWeight);
     this.score = constraintWeight.zero();
+    this.floatingAccumulator =
+        FloatingScoreSupport.isFloatingScore(score) ? FloatingScoreAccumulator.create(score) : null;
   }
 
   public ConstraintRef getConstraintRef() {
@@ -52,7 +58,7 @@ public final class ConstraintMatchTotal<Score_ extends Score<Score_>>
   }
 
   public Score_ getScore() {
-    return score;
+    return floatingAccumulator == null ? score : floatingAccumulator.extractScore();
   }
 
   // ************************************************************************
@@ -89,17 +95,27 @@ public final class ConstraintMatchTotal<Score_ extends Score<Score_>>
 
   public void addConstraintMatch(ConstraintMatch<Score_> constraintMatch) {
     var constraintMatchScore = constraintMatch.getScore();
-    this.score = this.score.add(constraintMatchScore);
-    constraintMatchSet.add(constraintMatch);
+    if (floatingAccumulator == null) {
+      this.score = this.score.add(constraintMatchScore);
+      constraintMatchSet.add(constraintMatch);
+    } else if (!constraintMatchSet.contains(constraintMatch)) {
+      // Validate the contribution before mutating the match set.
+      floatingAccumulator.add(constraintMatchScore);
+      constraintMatchSet.add(constraintMatch);
+    }
   }
 
   public void removeConstraintMatch(ConstraintMatch<Score_> constraintMatch) {
-    score = score.subtract(constraintMatch.getScore());
     var removed = constraintMatchSet.remove(constraintMatch);
     if (!removed) {
       throw new IllegalStateException(
           "The constraintMatchTotal (%s) could not remove constraintMatch (%s) from its constraintMatchSet (%s)."
               .formatted(this, constraintMatch, constraintMatchSet));
+    }
+    if (floatingAccumulator == null) {
+      score = score.subtract(constraintMatch.getScore());
+    } else {
+      floatingAccumulator.subtract(constraintMatch.getScore());
     }
   }
 
@@ -127,6 +143,6 @@ public final class ConstraintMatchTotal<Score_ extends Score<Score_>>
 
   @Override
   public String toString() {
-    return constraintRef + "=" + score;
+    return constraintRef + "=" + getScore();
   }
 }

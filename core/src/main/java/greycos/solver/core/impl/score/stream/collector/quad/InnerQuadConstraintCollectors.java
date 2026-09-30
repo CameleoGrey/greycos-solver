@@ -18,6 +18,8 @@ import java.util.function.ToIntFunction;
 
 import greycos.solver.core.api.function.QuadFunction;
 import greycos.solver.core.api.function.QuadPredicate;
+import greycos.solver.core.api.function.ToDoubleQuadFunction;
+import greycos.solver.core.api.function.ToFloatQuadFunction;
 import greycos.solver.core.api.function.ToLongQuadFunction;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.score.stream.common.ConnectedRangeChain;
@@ -27,6 +29,26 @@ import greycos.solver.core.api.score.stream.quad.QuadConstraintCollector;
 import greycos.solver.core.impl.score.stream.collector.AbstractReferenceAverageSlot;
 
 public final class InnerQuadConstraintCollectors {
+  public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Float> sumFloat(
+      ToFloatQuadFunction<? super A, ? super B, ? super C, ? super D> mapper) {
+    return new FloatQuadCollector<>(mapper, false);
+  }
+
+  public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Float> averageFloat(
+      ToFloatQuadFunction<? super A, ? super B, ? super C, ? super D> mapper) {
+    return new FloatQuadCollector<>(mapper, true);
+  }
+
+  public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Double> sumDouble(
+      ToDoubleQuadFunction<? super A, ? super B, ? super C, ? super D> mapper) {
+    return new DoubleQuadCollector<>(mapper, false);
+  }
+
+  public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Double> averageDouble(
+      ToDoubleQuadFunction<? super A, ? super B, ? super C, ? super D> mapper) {
+    return new DoubleQuadCollector<>(mapper, true);
+  }
+
   public static <A, B, C, D> QuadConstraintCollector<A, B, C, D, ?, Double> average(
       ToLongQuadFunction<? super A, ? super B, ? super C, ? super D> mapper) {
     return new AverageQuadCollector<>(mapper);

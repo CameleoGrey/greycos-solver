@@ -2,6 +2,8 @@ package greycos.solver.core.impl.score.stream.bavet.tri;
 
 import java.math.BigDecimal;
 
+import greycos.solver.core.api.function.ToDoubleTriFunction;
+import greycos.solver.core.api.function.ToFloatTriFunction;
 import greycos.solver.core.api.function.ToLongTriFunction;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.score.Score;
@@ -33,6 +35,22 @@ final class BavetScoringTriConstraintStream<Solution_, A, B, C>
       TriFunction<A, B, C, BigDecimal> bigDecimalMatchWeigher) {
     super(constraintFactory, parent);
     this.scoreImpact = new TriBigDecimalImpactHandler<>(bigDecimalMatchWeigher);
+  }
+
+  public BavetScoringTriConstraintStream(
+      BavetConstraintFactory<Solution_> constraintFactory,
+      BavetAbstractTriConstraintStream<Solution_, A, B, C> parent,
+      ToFloatTriFunction<A, B, C> matchWeigher) {
+    super(constraintFactory, parent);
+    this.scoreImpact = new TriFloatImpactHandler<>(matchWeigher);
+  }
+
+  public BavetScoringTriConstraintStream(
+      BavetConstraintFactory<Solution_> constraintFactory,
+      BavetAbstractTriConstraintStream<Solution_, A, B, C> parent,
+      ToDoubleTriFunction<A, B, C> matchWeigher) {
+    super(constraintFactory, parent);
+    this.scoreImpact = new TriDoubleImpactHandler<>(matchWeigher);
   }
 
   @Override

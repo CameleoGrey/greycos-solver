@@ -91,7 +91,7 @@ final class DefaultListVariableState<Solution_>
   @Override
   public void beforeListVariableChanged(
       InnerScoreDirector<Solution_, ?> scoreDirector, Object entity, int fromIndex, int toIndex) {
-    // No need to do anything.
+    stateCarrier.beforeListVariableChanged();
   }
 
   @Override
@@ -103,12 +103,18 @@ final class DefaultListVariableState<Solution_>
     // shadow var.
     // But only if the next element shadow var is externalized; otherwise, there is nothing to
     // update.
-    var firstChangeIndex = nextExternalized ? Math.max(0, fromIndex - 1) : fromIndex;
+    var firstChangeIndex =
+        nextExternalized || stateCarrier.tracksRelationships()
+            ? Math.max(0, fromIndex - 1)
+            : fromIndex;
     // Include the first element of the next part of the list, if any, for the previous element
     // shadow var.
     // But only if the previous element shadow var is externalized; otherwise, there is nothing to
     // update.
-    var lastChangeIndex = previousExternalized ? Math.min(toIndex + 1, elementCount) : toIndex;
+    var lastChangeIndex =
+        previousExternalized || stateCarrier.tracksRelationships()
+            ? Math.min(toIndex + 1, elementCount)
+            : toIndex;
     for (var index = firstChangeIndex; index < elementCount; index++) {
       var positionsDiffer = stateCarrier.changeElement(entity, assignedElements, index);
       if (!positionsDiffer && index >= lastChangeIndex) {
@@ -169,6 +175,17 @@ final class DefaultListVariableState<Solution_>
   @Override
   public ListVariableDescriptor<Solution_> getSourceVariableDescriptor() {
     return sourceVariableDescriptor;
+  }
+
+  @Override
+  public void workingSolutionMutationObserverChanged() {
+    stateCarrier.clearRelationships();
+  }
+
+  @Override
+  public void close() {
+    stateCarrier.clearRelationships();
+    workingSolution = null;
   }
 
   @Override

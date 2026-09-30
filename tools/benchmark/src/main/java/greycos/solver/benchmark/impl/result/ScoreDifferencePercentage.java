@@ -1,8 +1,11 @@
 package greycos.solver.benchmark.impl.result;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 import greycos.solver.core.api.score.Score;
@@ -12,6 +15,25 @@ public record ScoreDifferencePercentage(double[] percentageLevels) {
   public static <Score_ extends Score<Score_>>
       ScoreDifferencePercentage calculateScoreDifferencePercentage(
           Score_ baseScore, Score_ valueScore) {
+    if (FloatingBenchmarkScoreArithmetic.isFloating(baseScore)
+        || FloatingBenchmarkScoreArithmetic.isFloating(valueScore)) {
+      var baseLevels = baseScore.toLevelNumbers();
+      var valueLevels = valueScore.toLevelNumbers();
+      if (baseLevels.length != valueLevels.length) {
+        throw new IllegalStateException(
+            "The score percentage inputs must have the same level count.");
+      }
+      var percentages = new double[baseLevels.length];
+      for (int i = 0; i < percentages.length; i++) {
+        var base = FloatingBenchmarkScoreArithmetic.decimal(baseLevels[i]);
+        var difference = FloatingBenchmarkScoreArithmetic.decimal(valueLevels[i]).subtract(base);
+        percentages[i] =
+            base.signum() == 0
+                ? (difference.signum() == 0 ? 0.0 : difference.signum() * Double.POSITIVE_INFINITY)
+                : difference.divide(base.abs(), MathContext.DECIMAL128).doubleValue();
+      }
+      return new ScoreDifferencePercentage(percentages);
+    }
     double[] baseLevels = baseScore.toLevelDoubles();
     double[] valueLevels = valueScore.toLevelDoubles();
     if (baseLevels.length != valueLevels.length) {
@@ -31,6 +53,39 @@ public record ScoreDifferencePercentage(double[] percentageLevels) {
       percentageLevels[i] = calculateDifferencePercentage(baseLevels[i], valueLevels[i]);
     }
     return new ScoreDifferencePercentage(percentageLevels);
+  }
+
+  /**
+   * Averages native-floating report percentages without overflowing an intermediate finite sum.
+   * Undefined/unbounded percentage levels retain the existing IEEE infinity/NaN conventions.
+   */
+  static ScoreDifferencePercentage averageFloating(List<ScoreDifferencePercentage> values) {
+    int levels = values.getFirst().percentageLevels.length;
+    var average = new double[levels];
+    for (int i = 0; i < levels; i++) {
+      var total = BigDecimal.ZERO;
+      double nonFiniteTotal = 0.0;
+      boolean hasNonFinite = false;
+      for (var value : values) {
+        if (value.percentageLevels.length != levels) {
+          throw new IllegalStateException("The percentage inputs must have the same level count.");
+        }
+        double level = value.percentageLevels[i];
+        if (Double.isFinite(level)) {
+          total = total.add(new BigDecimal(level));
+        } else {
+          nonFiniteTotal += level;
+          hasNonFinite = true;
+        }
+      }
+      average[i] =
+          hasNonFinite
+              ? nonFiniteTotal
+              : total
+                  .divide(BigDecimal.valueOf(values.size()), MathContext.DECIMAL128)
+                  .doubleValue();
+    }
+    return new ScoreDifferencePercentage(average);
   }
 
   public static double calculateDifferencePercentage(double base, double value) {

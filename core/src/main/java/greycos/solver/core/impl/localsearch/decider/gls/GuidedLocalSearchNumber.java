@@ -49,11 +49,23 @@ public final class GuidedLocalSearchNumber implements Comparable<GuidedLocalSear
       case Integer number -> of(number.longValue());
       case Short number -> of(number.longValue());
       case Byte number -> of(number.longValue());
+      case Float number -> ofFloating(number.doubleValue());
+      case Double number -> ofFloating(number.doubleValue());
       default ->
           throw new IllegalArgumentException(
-              "GLS requires integral or BigDecimal numbers, but received (%s) of type (%s)."
+              "GLS requires integral, finite floating-point or BigDecimal numbers, but received (%s) of type (%s)."
                   .formatted(value, value.getClass().getName()));
     };
+  }
+
+  private static GuidedLocalSearchNumber ofFloating(double value) {
+    if (!Double.isFinite(value)) {
+      throw new IllegalArgumentException(
+          "GLS requires a finite score or cost, but received (" + value + ").");
+    }
+    // This constructor preserves the exact IEEE value; valueOf would instead use its decimal
+    // spelling.
+    return of(new BigDecimal(value));
   }
 
   public GuidedLocalSearchNumber add(GuidedLocalSearchNumber other) {

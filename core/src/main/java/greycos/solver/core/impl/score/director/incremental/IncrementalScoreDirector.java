@@ -6,6 +6,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.score.FloatingScoreAccumulator;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.calculator.AnalyzableIncrementalScoreCalculator;
 import greycos.solver.core.api.score.calculator.ConstraintMatchRegistration;
@@ -17,6 +18,7 @@ import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
+import greycos.solver.core.impl.score.FloatingScoreSupport;
 import greycos.solver.core.impl.score.constraint.ConstraintMatch;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
@@ -47,6 +49,7 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
   private final IncrementalScoreCalculator<Solution_, Score_> incrementalScoreCalculator;
   private final boolean constraintMatchEnabled;
   private Score_ totalScore;
+  private final @Nullable FloatingScoreAccumulator<Score_> floatingAccumulator;
   private final SortedMap<ConstraintRef, ConstraintMatchTotal<Score_>> constraintMatchTotalMap =
       new TreeMap<>();
 
@@ -57,6 +60,10 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
             builder.incrementalScoreCalculator, "The incrementalScoreCalculator must not be null.");
     this.constraintMatchEnabled = getConstraintMatchPolicy().isEnabled();
     this.totalScore = getScoreDefinition().getZeroScore();
+    this.floatingAccumulator =
+        FloatingScoreSupport.isFloatingScore(totalScore)
+            ? FloatingScoreAccumulator.create(totalScore)
+            : null;
     if (incrementalScoreCalculator
             instanceof
             AnalyzableIncrementalScoreCalculator<Solution_, Score_>
@@ -83,6 +90,9 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
   private void resetWorkingSolutionAndMaps(Solution_ workingSolution) {
     constraintMatchTotalMap.clear();
     totalScore = getScoreDefinition().getZeroScore();
+    if (floatingAccumulator != null) {
+      floatingAccumulator.clear();
+    }
     incrementalScoreCalculator.resetWorkingSolution(workingSolution);
   }
 
@@ -242,7 +252,11 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
     }
 
     var match = total.addConstraintMatch(justification, score);
-    totalScore = totalScore.add(score);
+    if (floatingAccumulator == null) {
+      totalScore = totalScore.add(score);
+    } else {
+      floatingAccumulator.add(score);
+    }
     var effectiveTotal = total;
     var canceled = new MutableReference<>(false);
     return new DefaultConstraintMatchRegistration<>(
@@ -253,14 +267,18 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
                 "Constraint match (%s) can only be canceled once.".formatted(match));
           }
           canceled.setValue(true);
-          totalScore = totalScore.subtract(score);
+          if (floatingAccumulator == null) {
+            totalScore = totalScore.subtract(score);
+          } else {
+            floatingAccumulator.subtract(score);
+          }
           effectiveTotal.removeConstraintMatch(match);
         });
   }
 
   @Override
   public Score_ totalScore() {
-    return totalScore;
+    return floatingAccumulator == null ? totalScore : floatingAccumulator.extractScore();
   }
 
   private record DefaultConstraintMatchRegistration<Score_ extends Score<Score_>>(

@@ -16,7 +16,6 @@ import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
-import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.AbstractSolver;
 import greycos.solver.core.impl.solver.monitoring.ScoreLevels;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricSupport;
@@ -86,29 +85,28 @@ public class PickedMoveStepScoreDiffStatistic<Solution_> implements SolverStatis
       } else if (stepScope instanceof AlnsStepScope<Solution_> alnsStepScope) {
         var trial = (AlnsTrialResult<Score_>) alnsStepScope.getTrialResult();
         recordDifference(
-            stepScope,
-            alnsStepScope.getOperatorPairId(),
-            trial.afterScore().subtract(trial.beforeScore()));
+            stepScope, alnsStepScope.getOperatorPairId(), trial.afterScore(), trial.beforeScore());
       }
     }
 
     private void recordStep(AbstractStepScope<Solution_> stepScope, String moveType) {
       var newStepScore = stepScope.<Score_>getScore().raw();
-      var stepScoreDiff = newStepScore.subtract(oldStepScore);
+      var previousScore = oldStepScore;
       oldStepScore = newStepScore;
-      recordDifference(stepScope, moveType, stepScoreDiff);
+      recordDifference(stepScope, moveType, newStepScore, previousScore);
     }
 
     private void recordDifference(
-        AbstractStepScope<Solution_> stepScope, String moveType, Score_ stepScoreDiff) {
+        AbstractStepScope<Solution_> stepScope, String moveType, Score_ after, Score_ before) {
       var tags =
           stepScope.getPhaseScope().getSolverScope().getMonitoringTags().and("move.type", moveType);
-      SolverMetricUtil.registerScore(
+      SolverMetricUtil.registerScoreDifference(
           SolverMetric.PICKED_MOVE_TYPE_STEP_SCORE_DIFF,
           tags,
           scoreDefinition,
           tagsToMoveScoreMap,
-          InnerScore.fullyAssigned(stepScoreDiff));
+          after,
+          before);
     }
   }
 }

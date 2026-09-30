@@ -17,6 +17,8 @@ import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 
 import greycos.solver.core.api.function.QuadFunction;
+import greycos.solver.core.api.function.ToDoubleTriFunction;
+import greycos.solver.core.api.function.ToFloatTriFunction;
 import greycos.solver.core.api.function.ToLongTriFunction;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.function.TriPredicate;
@@ -27,6 +29,26 @@ import greycos.solver.core.api.score.stream.tri.TriConstraintCollector;
 import greycos.solver.core.impl.score.stream.collector.AbstractReferenceAverageSlot;
 
 public final class InnerTriConstraintCollectors {
+  public static <A, B, C> TriConstraintCollector<A, B, C, ?, Float> sumFloat(
+      ToFloatTriFunction<? super A, ? super B, ? super C> mapper) {
+    return new FloatTriCollector<>(mapper, false);
+  }
+
+  public static <A, B, C> TriConstraintCollector<A, B, C, ?, Float> averageFloat(
+      ToFloatTriFunction<? super A, ? super B, ? super C> mapper) {
+    return new FloatTriCollector<>(mapper, true);
+  }
+
+  public static <A, B, C> TriConstraintCollector<A, B, C, ?, Double> sumDouble(
+      ToDoubleTriFunction<? super A, ? super B, ? super C> mapper) {
+    return new DoubleTriCollector<>(mapper, false);
+  }
+
+  public static <A, B, C> TriConstraintCollector<A, B, C, ?, Double> averageDouble(
+      ToDoubleTriFunction<? super A, ? super B, ? super C> mapper) {
+    return new DoubleTriCollector<>(mapper, true);
+  }
+
   public static <A, B, C> TriConstraintCollector<A, B, C, ?, Double> average(
       ToLongTriFunction<? super A, ? super B, ? super C> mapper) {
     return new AverageTriCollector<>(mapper);

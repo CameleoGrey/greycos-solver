@@ -7,6 +7,7 @@ import java.util.function.Function;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.score.ScoreArithmetic;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
 
@@ -37,7 +38,41 @@ public final class SolverMetricUtil {
       ScoreDefinition<Score_> scoreDefinition,
       Map<Tags, ScoreLevels> tagToScoreLevels,
       InnerScore<Score_> innerScore) {
-    var levelValues = innerScore.raw().toLevelNumbers();
+    registerScoreLevels(
+        metric,
+        tags,
+        scoreDefinition,
+        tagToScoreLevels,
+        innerScore.unassignedCount(),
+        innerScore.raw().toLevelNumbers());
+  }
+
+  /**
+   * Records differences even when finite score endpoints have an unrepresentable score difference.
+   */
+  public static <Score_ extends Score<Score_>> void registerScoreDifference(
+      SolverMetric metric,
+      Tags tags,
+      ScoreDefinition<Score_> scoreDefinition,
+      Map<Tags, ScoreLevels> tagToScoreLevels,
+      Score_ after,
+      Score_ before) {
+    registerScoreLevels(
+        metric,
+        tags,
+        scoreDefinition,
+        tagToScoreLevels,
+        0,
+        ScoreArithmetic.difference(after, before));
+  }
+
+  private static void registerScoreLevels(
+      SolverMetric metric,
+      Tags tags,
+      ScoreDefinition<?> scoreDefinition,
+      Map<Tags, ScoreLevels> tagToScoreLevels,
+      int unassignedCount,
+      Number[] levelValues) {
     var scoreLevels =
         tagToScoreLevels.computeIfAbsent(
             tags,
@@ -45,7 +80,7 @@ public final class SolverMetricUtil {
               var levelLabels = getLevelLabels(scoreDefinition);
               var initialLevels = new Number[levelLabels.length];
               System.arraycopy(levelValues, 0, initialLevels, 0, levelValues.length);
-              var result = new ScoreLevels(innerScore.unassignedCount(), initialLevels);
+              var result = new ScoreLevels(unassignedCount, initialLevels);
 
               Metrics.globalRegistry.removeByPreFilterId(
                   new Meter.Id(
@@ -72,7 +107,7 @@ public final class SolverMetricUtil {
               return result;
             });
 
-    scoreLevels.setUnassignedCount(innerScore.unassignedCount());
+    scoreLevels.setUnassignedCount(unassignedCount);
     for (var i = 0; i < levelValues.length; i++) {
       scoreLevels.setLevelValue(i, levelValues[i]);
     }

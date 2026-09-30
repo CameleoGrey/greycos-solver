@@ -2,19 +2,46 @@ package greycos.solver.core.impl.localsearch.decider.acceptor.simulatedannealing
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.Mockito.mock;
 
 import greycos.solver.core.api.score.HardMediumSoftScore;
+import greycos.solver.core.api.score.SimpleDoubleScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.localsearch.decider.acceptor.AbstractAcceptorTest;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.scope.SolverScope;
+import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.testutil.TestRandom;
 
 import org.junit.jupiter.api.Test;
 
 class SimulatedAnnealingAcceptorTest extends AbstractAcceptorTest {
+
+  @Test
+  void finiteEndpointsWithOverflowingDifferenceUseFiniteProbability() {
+    var acceptor = new SimulatedAnnealingAcceptor<>();
+    acceptor.setStartingTemperature(SimpleDoubleScore.of(Double.MAX_VALUE));
+    var solverScope = new SolverScope<>();
+    solverScope.setInitializedBestScore(SimpleDoubleScore.of(Double.MAX_VALUE));
+    var phaseScope = new LocalSearchPhaseScope<>(solverScope, 0);
+    var lastStep = new LocalSearchStepScope<>(phaseScope, -1);
+    lastStep.setInitializedScore(SimpleDoubleScore.of(Double.MAX_VALUE));
+    phaseScope.setLastCompletedStepScope(lastStep);
+    acceptor.phaseStarted(phaseScope);
+    var step = new LocalSearchStepScope<>(phaseScope);
+    step.setTimeGradient(0.0);
+    acceptor.stepStarted(step);
+    var move = new LocalSearchMoveScope<>(step, 0, mock(Move.class));
+    move.setInitializedScore(SimpleDoubleScore.of(-Double.MAX_VALUE));
+    // The loss divided by temperature is 2, so acceptance probability is exp(-2).
+    solverScope.setWorkingRandom(new TestRandom(0.13));
+    assertThat(acceptor.isAccepted(move)).isTrue();
+    solverScope.setWorkingRandom(new TestRandom(0.14));
+    assertThat(acceptor.isAccepted(move)).isFalse();
+  }
 
   @Test
   void lateAcceptanceSize() {

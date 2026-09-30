@@ -9,6 +9,8 @@ import java.util.function.Function;
 import greycos.solver.core.api.function.PentaFunction;
 import greycos.solver.core.api.function.QuadFunction;
 import greycos.solver.core.api.function.QuadPredicate;
+import greycos.solver.core.api.function.ToDoubleQuadFunction;
+import greycos.solver.core.api.function.ToFloatQuadFunction;
 import greycos.solver.core.api.function.ToLongQuadFunction;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.score.Score;
@@ -552,5 +554,27 @@ public abstract class BavetAbstractQuadConstraintStream<Solution_, A, B, C, D>
   protected final PentaFunction<A, B, C, D, Score<?>, DefaultConstraintJustification>
       getDefaultJustificationMapping() {
     return createDefaultJustificationMapping();
+  }
+
+  @Override
+  public <Score_ extends Score<Score_>> QuadConstraintBuilder<A, B, C, D, Score_> innerImpactFloat(
+      Score_ constraintWeight,
+      ToFloatQuadFunction<A, B, C, D> matchWeigher,
+      ScoreImpactType scoreImpactType) {
+    var stream =
+        shareAndAddChild(
+            new BavetScoringQuadConstraintStream<>(constraintFactory, this, matchWeigher));
+    return newTerminator(stream, constraintWeight, scoreImpactType);
+  }
+
+  @Override
+  public <Score_ extends Score<Score_>> QuadConstraintBuilder<A, B, C, D, Score_> innerImpactDouble(
+      Score_ constraintWeight,
+      ToDoubleQuadFunction<A, B, C, D> matchWeigher,
+      ScoreImpactType scoreImpactType) {
+    var stream =
+        shareAndAddChild(
+            new BavetScoringQuadConstraintStream<>(constraintFactory, this, matchWeigher));
+    return newTerminator(stream, constraintWeight, scoreImpactType);
   }
 }

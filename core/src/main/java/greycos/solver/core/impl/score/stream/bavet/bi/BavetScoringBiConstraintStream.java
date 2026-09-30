@@ -2,8 +2,10 @@ package greycos.solver.core.impl.score.stream.bavet.bi;
 
 import java.math.BigDecimal;
 import java.util.function.BiFunction;
+import java.util.function.ToDoubleBiFunction;
 import java.util.function.ToLongBiFunction;
 
+import greycos.solver.core.api.function.ToFloatBiFunction;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.stream.bavet.BavetConstraint;
@@ -33,6 +35,22 @@ final class BavetScoringBiConstraintStream<Solution_, A, B>
       BiFunction<A, B, BigDecimal> bigDecimalMatchWeigher) {
     super(constraintFactory, parent);
     this.scoreImpact = new BiBigDecimalImpactHandler<>(bigDecimalMatchWeigher);
+  }
+
+  public BavetScoringBiConstraintStream(
+      BavetConstraintFactory<Solution_> constraintFactory,
+      BavetAbstractBiConstraintStream<Solution_, A, B> parent,
+      ToFloatBiFunction<A, B> matchWeigher) {
+    super(constraintFactory, parent);
+    this.scoreImpact = new BiFloatImpactHandler<>(matchWeigher);
+  }
+
+  public BavetScoringBiConstraintStream(
+      BavetConstraintFactory<Solution_> constraintFactory,
+      BavetAbstractBiConstraintStream<Solution_, A, B> parent,
+      ToDoubleBiFunction<A, B> matchWeigher) {
+    super(constraintFactory, parent);
+    this.scoreImpact = new BiDoubleImpactHandler<>(matchWeigher);
   }
 
   @Override

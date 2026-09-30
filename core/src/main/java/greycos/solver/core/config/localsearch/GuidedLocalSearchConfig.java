@@ -1,8 +1,10 @@
 package greycos.solver.core.config.localsearch;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.function.Consumer;
 
+import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlType;
 
 import greycos.solver.core.api.localsearch.GuidedLocalSearchFeatureProvider;
@@ -20,7 +22,11 @@ import org.jspecify.annotations.Nullable;
     propOrder = {
       "featureProviderClass",
       "penaltyFactor",
+      "guidanceMode",
       "targetScoreLevelIndex",
+      "levelScaleList",
+      "focusStepLimit",
+      "focusPenaltyUpdateLimit",
       "searchMode",
       "sampleSize",
       "maxUnproductiveRounds",
@@ -31,15 +37,23 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
   // Keep defaults out of configuration objects so inheritance and XML round-trips preserve intent.
   private String featureProviderClass;
   private BigDecimal penaltyFactor;
+  private GuidedLocalSearchGuidanceMode guidanceMode;
   private Integer targetScoreLevelIndex;
+
+  @XmlElement(name = "levelScale")
+  private List<GuidedLocalSearchLevelScaleConfig> levelScaleList;
+
+  private Integer focusStepLimit;
+  private Integer focusPenaltyUpdateLimit;
   private GuidedLocalSearchSearchMode searchMode;
   private Integer sampleSize;
   private Integer maxUnproductiveRounds;
   private Boolean resetPenaltiesOnNewBest;
 
   /**
-   * Required provider of domain features and their costs. The provider must have a public no-arg
-   * constructor. Each solve and island owns independent feature sessions and penalty histories.
+   * Optional supplemental provider in ALL_LEVELS; required in FIXED_TARGET. The provider must have
+   * a public no-arg constructor. Each solve and island owns independent feature sessions and
+   * penalty histories.
    */
   @SuppressWarnings("rawtypes")
   public @Nullable Class<? extends GuidedLocalSearchFeatureProvider> getFeatureProviderClass() {
@@ -74,10 +88,68 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
     return this;
   }
 
+  /** Defaults to ALL_LEVELS unless an explicit target selects legacy FIXED_TARGET behavior. */
+  public @Nullable GuidedLocalSearchGuidanceMode getGuidanceMode() {
+    return guidanceMode;
+  }
+
+  public void setGuidanceMode(@Nullable GuidedLocalSearchGuidanceMode guidanceMode) {
+    this.guidanceMode = guidanceMode;
+  }
+
+  public @NonNull GuidedLocalSearchConfig withGuidanceMode(
+      @NonNull GuidedLocalSearchGuidanceMode guidanceMode) {
+    setGuidanceMode(guidanceMode);
+    return this;
+  }
+
+  public @Nullable List<GuidedLocalSearchLevelScaleConfig> getLevelScaleList() {
+    return levelScaleList;
+  }
+
+  public void setLevelScaleList(@Nullable List<GuidedLocalSearchLevelScaleConfig> levelScaleList) {
+    this.levelScaleList = levelScaleList;
+  }
+
+  public @NonNull GuidedLocalSearchConfig withLevelScaleList(
+      @NonNull List<GuidedLocalSearchLevelScaleConfig> levelScaleList) {
+    setLevelScaleList(levelScaleList);
+    return this;
+  }
+
+  /** Maximum committed moves per focus epoch in ALL_LEVELS; defaults to 64. */
+  public @Nullable Integer getFocusStepLimit() {
+    return focusStepLimit;
+  }
+
+  public void setFocusStepLimit(@Nullable Integer focusStepLimit) {
+    this.focusStepLimit = focusStepLimit;
+  }
+
+  public @NonNull GuidedLocalSearchConfig withFocusStepLimit(int focusStepLimit) {
+    setFocusStepLimit(focusStepLimit);
+    return this;
+  }
+
+  /** Maximum penalty updates per focus epoch in ALL_LEVELS; defaults to 8. */
+  public @Nullable Integer getFocusPenaltyUpdateLimit() {
+    return focusPenaltyUpdateLimit;
+  }
+
+  public void setFocusPenaltyUpdateLimit(@Nullable Integer focusPenaltyUpdateLimit) {
+    this.focusPenaltyUpdateLimit = focusPenaltyUpdateLimit;
+  }
+
+  public @NonNull GuidedLocalSearchConfig withFocusPenaltyUpdateLimit(int focusPenaltyUpdateLimit) {
+    setFocusPenaltyUpdateLimit(focusPenaltyUpdateLimit);
+    return this;
+  }
+
   /**
-   * Zero-based business-score level to guide; defaults to the last level. Structural and unassigned
-   * state, and business levels above the target, retain priority. A hard target may become
-   * infeasible during search. Feature costs must use the target level's units.
+   * Selects FIXED_TARGET when the guidance mode is unspecified. In FIXED_TARGET, defaults to the
+   * last level. Structural and unassigned state, and business levels above the target, retain
+   * priority. A hard target may become infeasible during search. Feature costs must use the target
+   * level's units.
    */
   public @Nullable Integer getTargetScoreLevelIndex() {
     return targetScoreLevelIndex;
@@ -125,7 +197,11 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
     return this;
   }
 
-  /** Positive bound on consecutive sampled rounds with no admissible candidate; defaults to 3. */
+  /**
+   * Positive bound on consecutive sampled rounds with no structurally valid, fully assigned
+   * candidate; FIXED_TARGET also requires preserving the protected score prefix. Defaults to 3.
+   * Exhaustive search stops after its first such completed round.
+   */
   public @Nullable Integer getMaxUnproductiveRounds() {
     return maxUnproductiveRounds;
   }
@@ -163,9 +239,18 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
             featureProviderClass, inheritedConfig.featureProviderClass);
     penaltyFactor =
         ConfigUtils.inheritOverwritableProperty(penaltyFactor, inheritedConfig.penaltyFactor);
+    guidanceMode =
+        ConfigUtils.inheritOverwritableProperty(guidanceMode, inheritedConfig.guidanceMode);
     targetScoreLevelIndex =
         ConfigUtils.inheritOverwritableProperty(
             targetScoreLevelIndex, inheritedConfig.targetScoreLevelIndex);
+    levelScaleList =
+        ConfigUtils.inheritMergeableListConfig(levelScaleList, inheritedConfig.levelScaleList);
+    focusStepLimit =
+        ConfigUtils.inheritOverwritableProperty(focusStepLimit, inheritedConfig.focusStepLimit);
+    focusPenaltyUpdateLimit =
+        ConfigUtils.inheritOverwritableProperty(
+            focusPenaltyUpdateLimit, inheritedConfig.focusPenaltyUpdateLimit);
     searchMode = ConfigUtils.inheritOverwritableProperty(searchMode, inheritedConfig.searchMode);
     sampleSize = ConfigUtils.inheritOverwritableProperty(sampleSize, inheritedConfig.sampleSize);
     maxUnproductiveRounds =

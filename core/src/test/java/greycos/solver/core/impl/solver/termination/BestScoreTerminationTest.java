@@ -13,9 +13,11 @@ import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardSoftBigDecimalScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.SimpleBigDecimalScore;
+import greycos.solver.core.api.score.SimpleDoubleScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
+import greycos.solver.core.impl.score.definition.SimpleDoubleScoreDefinition;
 import greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -24,6 +26,27 @@ import greycos.solver.core.testcotwin.TestdataSolution;
 import org.junit.jupiter.api.Test;
 
 class BestScoreTerminationTest {
+
+  @Test
+  void floatingGradientUsesWidenedDifferenceAndRatio() {
+    var termination =
+        new BestScoreTermination<>(
+            new SimpleDoubleScoreDefinition(),
+            SimpleDoubleScore.of(Double.MAX_VALUE),
+            new double[0]);
+    assertThat(
+            termination.calculateTimeGradient(
+                SimpleDoubleScore.of(-Double.MAX_VALUE),
+                SimpleDoubleScore.of(Double.MAX_VALUE),
+                SimpleDoubleScore.ZERO))
+        .isEqualTo(0.5);
+    assertThat(
+            termination.calculateTimeGradient(
+                SimpleDoubleScore.of(-Double.MAX_VALUE),
+                SimpleDoubleScore.of(Double.MAX_VALUE),
+                SimpleDoubleScore.of(Double.MAX_VALUE / 2)))
+        .isCloseTo(0.75, offset(1e-15));
+  }
 
   @Test
   void solveTermination() {

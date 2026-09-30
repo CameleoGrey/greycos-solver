@@ -11,6 +11,9 @@ import org.jspecify.annotations.NullMarked;
  * an undo followed by another candidate, may arrive before a flush. Track every dependency of
  * feature presence, key and cost; do not infer updates from the move implementation.
  *
+ * <p>The engine maintains automatic features separately in full-score exploration. This session
+ * reports only custom features; its keys cannot collide with the engine's automatic keys.
+ *
  * <p>The session is confined to its score director's thread. It must not mutate the solution or
  * retain a consumer/updater outside the invocation that received it.
  */

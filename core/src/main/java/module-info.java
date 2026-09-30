@@ -98,6 +98,8 @@ module greycos.solver.core {
   exports greycos.solver.core.impl.alns;
   exports greycos.solver.core.impl.phase.event;
   exports greycos.solver.core.impl.phase.scope;
+  exports greycos.solver.core.impl.score to
+      greycos.solver.benchmark;
   exports greycos.solver.core.impl.score.constraint;
   exports greycos.solver.core.impl.score.analysis to
       greycos.solver.jackson,

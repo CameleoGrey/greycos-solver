@@ -92,6 +92,51 @@ class MoveEvaluationPipelineMetadataTest {
   }
 
   @Test
+  void beforeEvaluationObservesIncumbentAfterUndoAndStepReplay() throws Exception {
+    try (var fixture = new Fixture(1, 1)) {
+      fixture.start();
+      fixture.pipeline.submit(0, fixture.changeTo(1), new TestContext(0));
+      fixture.pipeline.take();
+      fixture.pipeline.submit(1, fixture.changeTo(2), new TestContext(1));
+      fixture.pipeline.take();
+      assertThat(fixture.pipeline.awaitEvaluationQuiescence()).isTrue();
+      fixture.pipeline.cancelStep();
+      fixture.pipeline.applyStep(1, fixture.changeTo(1), SECOND_SCORE);
+      fixture.pipeline.startNextStep(1);
+      fixture.pipeline.submit(0, fixture.changeTo(2), new TestContext(2));
+      fixture.pipeline.take();
+      assertThat(fixture.baselines)
+          .containsExactly(
+              new TestMetadata("first", 0),
+              new TestMetadata("first", 1),
+              new TestMetadata("second", 2));
+      assertThat(fixture.pipeline.awaitEvaluationQuiescence()).isTrue();
+      fixture.assertWorkerValues("second");
+    }
+  }
+
+  @Test
+  void beforeEvaluationFailureLeavesIncumbentIntactAndClosesCollectors() {
+    try (var fixture = new Fixture(2, 1)) {
+      var failure = new IllegalArgumentException("baseline collection failed");
+      fixture.baselineActions.put(
+          7,
+          () -> {
+            throw failure;
+          });
+      fixture.start();
+      fixture.pipeline.submit(0, fixture.changeTo(1), new TestContext(7));
+      assertThatThrownBy(fixture.pipeline::take)
+          .isInstanceOf(IllegalStateException.class)
+          .hasCause(failure);
+      fixture.pipeline.abort();
+      assertThat(fixture.closedCollectors).hasValue(2);
+      assertThat(fixture.collections).hasValue(0);
+      fixture.assertWorkerValues("first");
+    }
+  }
+
+  @Test
   void createsOnePrivateCollectorPerWorkerAndClosesEachExactlyOnce() {
     try (var fixture = new Fixture(3, 1)) {
       fixture.start();
@@ -268,6 +313,7 @@ class MoveEvaluationPipelineMetadataTest {
       assertThat(result.score()).isNull();
       assertThat(result.metadata()).isNull();
       assertThat(fixture.collections).hasValue(0);
+      assertThat(fixture.baselines).containsExactly(new TestMetadata("first", 5));
     }
   }
 
@@ -365,6 +411,8 @@ class MoveEvaluationPipelineMetadataTest {
     private final AtomicInteger closedCollectors = new AtomicInteger();
     private final AtomicInteger collections = new AtomicInteger();
     private final ConcurrentHashMap<Integer, Runnable> actions = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, Runnable> baselineActions = new ConcurrentHashMap<>();
+    private final List<TestMetadata> baselines = new CopyOnWriteArrayList<>();
 
     private Fixture(int workers, int capacity) {
       var descriptor = TestdataSolution.buildSolutionDescriptor();
@@ -400,6 +448,19 @@ class MoveEvaluationPipelineMetadataTest {
             var workerSolution = director.getWorkingSolution();
             workerSolutions.add(workerSolution);
             return new CandidateMetadataCollector<>() {
+              @Override
+              public void beforeEvaluation(EvaluationContext context) {
+                int generation = ((TestContext) context).generation();
+                var action = baselineActions.get(generation);
+                if (action != null) {
+                  action.run();
+                }
+                baselines.add(
+                    new TestMetadata(
+                        workerSolution.getEntityList().getFirst().getValue().getCode(),
+                        generation));
+              }
+
               @Override
               public EvaluationMetadata collect(
                   SolutionView<TestdataSolution> view,

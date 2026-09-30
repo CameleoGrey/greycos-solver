@@ -686,6 +686,12 @@ public interface SingleConstraintAssertion {
    * this method returns only the <b>match weight</b> — the same number you would pass to assertion
    * methods like {@link #penalizesBy(int)} or {@link #rewardsWith(int)}.
    *
+   * <p>For native Float and Double scores, original match weights are accumulated exactly and
+   * rounded once to the match weigher's precision. If the rounded total exceeds that precision's
+   * finite range, the exact total is returned as a {@link BigDecimal}. Integral match weights
+   * remain exact. Rounding and underflow in the weighted score contribution do not affect this
+   * total.
+   *
    * <p>This is useful for comparing the <em>severity</em> of a constraint across scenarios without
    * needing to know the constraint weight.
    *
@@ -705,4 +711,196 @@ public interface SingleConstraintAssertion {
    *     rewards, negative for penalties, zero when there is no impact.
    */
   Number getImpact();
+
+  /** As defined by {@link #penalizesBy(BigDecimal)}, using the exact represented float value. */
+  default void penalizesBy(float matchWeightTotal) {
+    penalizesBy(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #penalizesBy(float)} with an assertion message. */
+  default void penalizesBy(@Nullable String message, float matchWeightTotal) {
+    if (!Float.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    penalizesBy(message, new BigDecimal((double) matchWeightTotal));
+  }
+
+  /** As defined by {@link #penalizesBy(BigDecimal)}, using the exact represented double value. */
+  default void penalizesBy(double matchWeightTotal) {
+    penalizesBy(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #penalizesBy(double)} with an assertion message. */
+  default void penalizesBy(@Nullable String message, double matchWeightTotal) {
+    if (!Double.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    penalizesBy(message, new BigDecimal((double) matchWeightTotal));
+  }
+
+  /** As defined by {@link #rewardsWith(BigDecimal)}, using the exact represented float value. */
+  default void rewardsWith(float matchWeightTotal) {
+    rewardsWith(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #rewardsWith(float)} with an assertion message. */
+  default void rewardsWith(@Nullable String message, float matchWeightTotal) {
+    if (!Float.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    rewardsWith(message, new BigDecimal((double) matchWeightTotal));
+  }
+
+  /** As defined by {@link #rewardsWith(BigDecimal)}, using the exact represented double value. */
+  default void rewardsWith(double matchWeightTotal) {
+    rewardsWith(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #rewardsWith(double)} with an assertion message. */
+  default void rewardsWith(@Nullable String message, double matchWeightTotal) {
+    if (!Double.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    rewardsWith(message, new BigDecimal((double) matchWeightTotal));
+  }
+
+  /**
+   * As defined by {@link #penalizesByMoreThan(BigDecimal)}, using the exact represented float
+   * value.
+   */
+  default void penalizesByMoreThan(float matchWeightTotal) {
+    penalizesByMoreThan(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #penalizesByMoreThan(float)} with an assertion message. */
+  default void penalizesByMoreThan(@Nullable String message, float matchWeightTotal) {
+    if (!Float.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    penalizesByMoreThan(message, new BigDecimal((double) matchWeightTotal));
+  }
+
+  /**
+   * As defined by {@link #penalizesByMoreThan(BigDecimal)}, using the exact represented double
+   * value.
+   */
+  default void penalizesByMoreThan(double matchWeightTotal) {
+    penalizesByMoreThan(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #penalizesByMoreThan(double)} with an assertion message. */
+  default void penalizesByMoreThan(@Nullable String message, double matchWeightTotal) {
+    if (!Double.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    penalizesByMoreThan(message, new BigDecimal((double) matchWeightTotal));
+  }
+
+  /**
+   * As defined by {@link #rewardsWithMoreThan(BigDecimal)}, using the exact represented float
+   * value.
+   */
+  default void rewardsWithMoreThan(float matchWeightTotal) {
+    rewardsWithMoreThan(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #rewardsWithMoreThan(float)} with an assertion message. */
+  default void rewardsWithMoreThan(@Nullable String message, float matchWeightTotal) {
+    if (!Float.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    rewardsWithMoreThan(message, new BigDecimal((double) matchWeightTotal));
+  }
+
+  /**
+   * As defined by {@link #rewardsWithMoreThan(BigDecimal)}, using the exact represented double
+   * value.
+   */
+  default void rewardsWithMoreThan(double matchWeightTotal) {
+    rewardsWithMoreThan(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #rewardsWithMoreThan(double)} with an assertion message. */
+  default void rewardsWithMoreThan(@Nullable String message, double matchWeightTotal) {
+    if (!Double.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    rewardsWithMoreThan(message, new BigDecimal((double) matchWeightTotal));
+  }
+
+  /**
+   * As defined by {@link #penalizesByLessThan(BigDecimal)}, using the exact represented float
+   * value.
+   */
+  default void penalizesByLessThan(float matchWeightTotal) {
+    penalizesByLessThan(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #penalizesByLessThan(float)} with an assertion message. */
+  default void penalizesByLessThan(@Nullable String message, float matchWeightTotal) {
+    if (!Float.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    penalizesByLessThan(message, new BigDecimal((double) matchWeightTotal));
+  }
+
+  /**
+   * As defined by {@link #penalizesByLessThan(BigDecimal)}, using the exact represented double
+   * value.
+   */
+  default void penalizesByLessThan(double matchWeightTotal) {
+    penalizesByLessThan(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #penalizesByLessThan(double)} with an assertion message. */
+  default void penalizesByLessThan(@Nullable String message, double matchWeightTotal) {
+    if (!Double.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    penalizesByLessThan(message, new BigDecimal((double) matchWeightTotal));
+  }
+
+  /**
+   * As defined by {@link #rewardsWithLessThan(BigDecimal)}, using the exact represented float
+   * value.
+   */
+  default void rewardsWithLessThan(float matchWeightTotal) {
+    rewardsWithLessThan(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #rewardsWithLessThan(float)} with an assertion message. */
+  default void rewardsWithLessThan(@Nullable String message, float matchWeightTotal) {
+    if (!Float.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    rewardsWithLessThan(message, new BigDecimal((double) matchWeightTotal));
+  }
+
+  /**
+   * As defined by {@link #rewardsWithLessThan(BigDecimal)}, using the exact represented double
+   * value.
+   */
+  default void rewardsWithLessThan(double matchWeightTotal) {
+    rewardsWithLessThan(null, matchWeightTotal);
+  }
+
+  /** As defined by {@link #rewardsWithLessThan(double)} with an assertion message. */
+  default void rewardsWithLessThan(@Nullable String message, double matchWeightTotal) {
+    if (!Double.isFinite(matchWeightTotal)) {
+      throw new IllegalArgumentException(
+          "The matchWeightTotal (" + matchWeightTotal + ") must be finite.");
+    }
+    rewardsWithLessThan(message, new BigDecimal((double) matchWeightTotal));
+  }
 }

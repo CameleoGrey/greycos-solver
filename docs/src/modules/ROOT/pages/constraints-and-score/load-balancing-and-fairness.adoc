@@ -181,9 +181,10 @@ When using fairness constraints,
 we recommend that you use one of the xref:constraints-and-score/overview.adoc#scoreType[score types] based on `BigDecimal`.
 We base our recommendation on the following reasons:
 
-- The unfairness value is a rational number.
-The corresponding floating-point type (`double`)
-is xref:constraints-and-score/overview.adoc#avoidFloatingPointNumbersInScoreCalculation[not suitable for score calculations].
+- The unfairness value is rounded to six decimal places.
+`BigDecimal` preserves those decimal units exactly.
+Native floating scores are also supported, with
+xref:constraints-and-score/overview.adoc#avoidFloatingPointNumbersInScoreCalculation[binary rounding semantics].
 - Rounding the unfairness value to the nearest integer would lose precision,
 causing a xref:constraints-and-score/performance.adoc#scoreTrap[score trap].
 Even a small difference in unfairness (such as between `1.000001` and `1.000002`)

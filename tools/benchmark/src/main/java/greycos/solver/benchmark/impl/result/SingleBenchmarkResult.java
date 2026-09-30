@@ -163,6 +163,7 @@ public class SingleBenchmarkResult implements BenchmarkResult {
     return scoreExplanationSummary;
   }
 
+  /** Native floating differences use the matching BigDecimal score type to avoid overflow. */
   public Score<?> getWinningScoreDifference() {
     return winningScoreDifference;
   }
@@ -222,6 +223,7 @@ public class SingleBenchmarkResult implements BenchmarkResult {
     return worst;
   }
 
+  /** Native floating totals use the matching BigDecimal score type to avoid overflow. */
   public Score<?> getTotalScore() {
     return totalScore;
   }
@@ -356,6 +358,7 @@ public class SingleBenchmarkResult implements BenchmarkResult {
     failureCount = 0;
     var firstNonFailure = true;
     totalScore = null;
+    Score firstScore = null;
     var successResultList = new ArrayList<>(subSingleBenchmarkResultList);
     // Do not rank a SubSingleBenchmarkResult that has a failure
     for (var it = successResultList.iterator(); it.hasNext(); ) {
@@ -366,17 +369,21 @@ public class SingleBenchmarkResult implements BenchmarkResult {
       } else {
         var isInitialized = subSingleBenchmarkResult.isInitialized();
         if (firstNonFailure) {
-          totalScore = subSingleBenchmarkResult.getAverageScore();
+          firstScore = subSingleBenchmarkResult.getAverageScore();
+          totalScore = FloatingBenchmarkScoreArithmetic.widen(firstScore);
           allScoresInitialized = isInitialized;
           firstNonFailure = false;
         } else {
-          totalScore = totalScore.add(subSingleBenchmarkResult.getAverageScore());
+          totalScore =
+              FloatingBenchmarkScoreArithmetic.add(
+                  totalScore, subSingleBenchmarkResult.getAverageScore());
           allScoresInitialized = allScoresInitialized || isInitialized;
         }
       }
     }
     if (!firstNonFailure) {
-      averageScore = totalScore.divide(getSuccessCount());
+      averageScore =
+          FloatingBenchmarkScoreArithmetic.average(totalScore, getSuccessCount(), firstScore);
     }
     determineRanking(successResultList);
   }

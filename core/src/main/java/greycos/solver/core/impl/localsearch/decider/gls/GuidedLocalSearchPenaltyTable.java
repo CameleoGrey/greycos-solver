@@ -37,30 +37,45 @@ public final class GuidedLocalSearchPenaltyTable<Key_> {
 
   /** Increments all positive-cost features tied for the exact maximum utility. */
   public int incrementMaximumUtility(Map<Key_, GuidedLocalSearchNumber> activeFeatures) {
+    return incrementMaximumUtility(activeFeatures, Map.of(), GuidedLocalSearchScale.ONE);
+  }
+
+  /** Compares calibrated automatic costs and custom costs in the same score-level units. */
+  public int incrementMaximumUtility(
+      Map<Key_, GuidedLocalSearchNumber> automaticFeatures,
+      Map<Key_, GuidedLocalSearchNumber> customFeatures,
+      GuidedLocalSearchScale automaticScale) {
     List<Key_> maximumKeys = new ArrayList<>();
     GuidedLocalSearchNumber maximumCost = GuidedLocalSearchNumber.ZERO;
     GuidedLocalSearchNumber maximumDenominator = GuidedLocalSearchNumber.ONE;
-    for (var entry : activeFeatures.entrySet()) {
-      var key = Objects.requireNonNull(entry.getKey());
-      var cost = Objects.requireNonNull(entry.getValue());
-      if (cost.signum() < 0) {
-        throw new IllegalArgumentException(
-            "GLS feature (%s) has negative cost (%s).".formatted(key, cost));
-      }
-      if (cost.signum() == 0) {
-        continue;
-      }
-      var utilityDenominator =
-          GuidedLocalSearchNumber.of(count(key)).add(GuidedLocalSearchNumber.ONE);
-      int comparison =
-          cost.multiply(maximumDenominator).compareTo(maximumCost.multiply(utilityDenominator));
-      if (comparison > 0) {
-        maximumKeys.clear();
-        maximumCost = cost;
-        maximumDenominator = utilityDenominator;
-      }
-      if (comparison >= 0) {
-        maximumKeys.add(key);
+    for (var features : List.of(automaticFeatures, customFeatures)) {
+      for (var entry : features.entrySet()) {
+        var key = Objects.requireNonNull(entry.getKey());
+        var cost =
+            Objects.requireNonNull(entry.getValue())
+                .multiply(
+                    features == automaticFeatures
+                        ? automaticScale.numerator()
+                        : automaticScale.denominator());
+        if (cost.signum() < 0) {
+          throw new IllegalArgumentException(
+              "GLS feature (%s) has negative cost (%s).".formatted(key, cost));
+        }
+        if (cost.signum() == 0) {
+          continue;
+        }
+        var utilityDenominator =
+            GuidedLocalSearchNumber.of(count(key)).add(GuidedLocalSearchNumber.ONE);
+        int comparison =
+            cost.multiply(maximumDenominator).compareTo(maximumCost.multiply(utilityDenominator));
+        if (comparison > 0) {
+          maximumKeys.clear();
+          maximumCost = cost;
+          maximumDenominator = utilityDenominator;
+        }
+        if (comparison >= 0) {
+          maximumKeys.add(key);
+        }
       }
     }
     if (maximumKeys.isEmpty()) {

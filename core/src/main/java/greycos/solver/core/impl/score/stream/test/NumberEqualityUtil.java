@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.function.BiPredicate;
 
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.impl.score.FloatingScoreSupport;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 
 final class NumberEqualityUtil {
@@ -22,6 +23,13 @@ final class NumberEqualityUtil {
    */
   public static <Score_ extends Score<Score_>> BiPredicate<Number, Number> getEqualityPredicate(
       ScoreDefinition<Score_> scoreDefinition, Number expectedImpact) {
+    if (scoreDefinition.getNumericType() == float.class
+        || scoreDefinition.getNumericType() == double.class
+        || expectedImpact instanceof Float
+        || expectedImpact instanceof Double) {
+      return (expected, actual) ->
+          FloatingScoreSupport.exact(expected).compareTo(FloatingScoreSupport.exact(actual)) == 0;
+    }
     if (expectedImpact instanceof Integer) {
       return getIntEqualityPredicate(scoreDefinition);
     } else if (expectedImpact instanceof Long) {
@@ -114,10 +122,14 @@ final class NumberEqualityUtil {
   public static Comparator<Number> getComparison(Number expectedImpact) {
     if (expectedImpact instanceof Integer
         || expectedImpact instanceof Long
-        || expectedImpact instanceof BigDecimal) {
+        || expectedImpact instanceof BigDecimal
+        || expectedImpact instanceof Float
+        || expectedImpact instanceof Double) {
       return Comparator.comparing(
           a -> {
-            if (a instanceof BigDecimal bigDecimal) {
+            if (a instanceof Float || a instanceof Double) {
+              return FloatingScoreSupport.exact(a);
+            } else if (a instanceof BigDecimal bigDecimal) {
               return bigDecimal;
             } else {
               return BigDecimal.valueOf(a.longValue());

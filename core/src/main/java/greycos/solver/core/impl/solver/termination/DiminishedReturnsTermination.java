@@ -5,11 +5,14 @@ import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristi
 import greycos.solver.core.impl.phase.custom.scope.CustomPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import greycos.solver.core.impl.score.FloatingScoreSupport;
+import greycos.solver.core.impl.score.ScoreArithmetic;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 final class DiminishedReturnsTermination<Solution_, Score_ extends Score<Score_>>
@@ -24,7 +27,7 @@ final class DiminishedReturnsTermination<Solution_, Score_ extends Score<Score_>
   private boolean isGracePeriodActive;
   private boolean isGracePeriodStarted = false;
   private long gracePeriodStartTimeNanos;
-  private double gracePeriodSoftestImprovementDouble;
+  private Number gracePeriodSoftestImprovement;
 
   private final DiminishedReturnsScoreRingBuffer<Score_> scoresByTime;
 
@@ -56,16 +59,16 @@ final class DiminishedReturnsTermination<Solution_, Score_ extends Score<Score_>
 
   /**
    * Returns the improvement in the softest level between the prior and current best scores as a
-   * double, or {@link Double#NaN} if there is a difference in any of their other levels.
+   * number, or null if there is a difference in any of their other levels.
    *
    * @param start the prior best score
    * @param end the current best score
-   * @return the softest level difference between end and start, or {@link Double#NaN} if a harder
-   *     level changed
+   * @return the softest level difference between end and start, or null if a harder level changed
    * @param <Score_> The score type
    */
-  private static <Score_ extends Score<Score_>> double softImprovementOrNaNForHarderChange(
-      InnerScore<Score_> start, InnerScore<Score_> end) {
+  private static <Score_ extends Score<Score_>>
+      @Nullable Number softImprovementOrNullForHarderChange(
+          InnerScore<Score_> start, InnerScore<Score_> end) {
     if (start.equals(end)) {
       // optimization: since most of the time the score the same,
       // we can use equals to avoid creating double arrays in the
@@ -74,16 +77,18 @@ final class DiminishedReturnsTermination<Solution_, Score_ extends Score<Score_>
     }
     if (start.unassignedCount() != end.unassignedCount()) {
       // init score improved
-      return Double.NaN;
+      return null;
     }
-    var scoreDiffs = end.raw().subtract(start.raw()).toLevelDoubles();
+    var scoreDiffs = ScoreArithmetic.difference(end.raw(), start.raw());
     var softestLevel = scoreDiffs.length - 1;
     for (int i = 0; i < softestLevel; i++) {
-      if (scoreDiffs[i] != 0.0) {
-        return Double.NaN;
+      if (scoreDiffs[i].doubleValue() != 0.0) {
+        return null;
       }
     }
-    return scoreDiffs[softestLevel];
+    return FloatingScoreSupport.isFloatingScore(start.raw())
+        ? scoreDiffs[softestLevel]
+        : scoreDiffs[softestLevel].doubleValue();
   }
 
   public void start(long startTime, InnerScore<Score_> startingScore) {
@@ -112,8 +117,8 @@ final class DiminishedReturnsTermination<Solution_, Score_ extends Score<Score_>
     }
     if (isGracePeriodActive) {
       // first score in scoresByTime = first score in grace period window
-      var endpointDiff = softImprovementOrNaNForHarderChange(scoresByTime.peekFirst(), endScore);
-      if (Double.isNaN(endpointDiff)) {
+      var endpointDiff = softImprovementOrNullForHarderChange(scoresByTime.peekFirst(), endScore);
+      if (endpointDiff == null) {
         resetGracePeriod(currentTime, endScore);
         return false;
       }
@@ -121,8 +126,8 @@ final class DiminishedReturnsTermination<Solution_, Score_ extends Score<Score_>
       if (timeElapsedNanos >= slidingWindowNanos) {
         // grace period over, record the reference diff
         isGracePeriodActive = false;
-        gracePeriodSoftestImprovementDouble = endpointDiff;
-        if (endpointDiff < 0.0) {
+        gracePeriodSoftestImprovement = endpointDiff;
+        if (endpointDiff.doubleValue() < 0.0) {
           // Should be impossible; the only cases where the best score improves
           // and have a lower softest level are if either a harder level or init score
           // improves, but if that happens, we reset the grace period.
@@ -130,27 +135,35 @@ final class DiminishedReturnsTermination<Solution_, Score_ extends Score<Score_>
               "Impossible state: The score deteriorated from (%s) to (%s) during the grace period."
                   .formatted(scoresByTime.peekFirst(), endScore));
         }
-        return endpointDiff == 0.0;
+        return endpointDiff.doubleValue() == 0.0;
       }
       return false;
     }
 
     var startScore =
         scoresByTime.pollLatestScoreBeforeTimeAndClearPrior(currentTime - slidingWindowNanos);
-    var scoreDiff = softImprovementOrNaNForHarderChange(startScore, endScore);
-    if (Double.isNaN(scoreDiff)) {
+    var scoreDiff = softImprovementOrNullForHarderChange(startScore, endScore);
+    if (scoreDiff == null) {
       resetGracePeriod(currentTime, endScore);
       return false;
     }
 
-    if (gracePeriodSoftestImprovementDouble == 0.0) {
+    if (gracePeriodSoftestImprovement.doubleValue() == 0.0) {
       // The termination may be queried multiple times, even after completion.
       // We must ensure the grace period improvement is greater than zero to avoid division by zero
       // errors.
       return true;
     }
 
-    return scoreDiff / gracePeriodSoftestImprovementDouble < minimumImprovementRatio;
+    if (scoreDiff instanceof java.math.BigDecimal) {
+      return FloatingScoreSupport.exact(scoreDiff)
+              .compareTo(
+                  FloatingScoreSupport.exact(gracePeriodSoftestImprovement)
+                      .multiply(FloatingScoreSupport.exact(minimumImprovementRatio)))
+          < 0;
+    }
+    return scoreDiff.doubleValue() / gracePeriodSoftestImprovement.doubleValue()
+        < minimumImprovementRatio;
   }
 
   @Override

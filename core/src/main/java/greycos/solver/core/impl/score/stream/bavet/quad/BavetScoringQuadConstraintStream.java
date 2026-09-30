@@ -3,6 +3,8 @@ package greycos.solver.core.impl.score.stream.bavet.quad;
 import java.math.BigDecimal;
 
 import greycos.solver.core.api.function.QuadFunction;
+import greycos.solver.core.api.function.ToDoubleQuadFunction;
+import greycos.solver.core.api.function.ToFloatQuadFunction;
 import greycos.solver.core.api.function.ToLongQuadFunction;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
@@ -33,6 +35,22 @@ final class BavetScoringQuadConstraintStream<Solution_, A, B, C, D>
       QuadFunction<A, B, C, D, BigDecimal> bigDecimalMatchWeigher) {
     super(constraintFactory, parent);
     this.scoreImpact = new QuadBigDecimalImpactHandler<>(bigDecimalMatchWeigher);
+  }
+
+  public BavetScoringQuadConstraintStream(
+      BavetConstraintFactory<Solution_> constraintFactory,
+      BavetAbstractQuadConstraintStream<Solution_, A, B, C, D> parent,
+      ToFloatQuadFunction<A, B, C, D> matchWeigher) {
+    super(constraintFactory, parent);
+    this.scoreImpact = new QuadFloatImpactHandler<>(matchWeigher);
+  }
+
+  public BavetScoringQuadConstraintStream(
+      BavetConstraintFactory<Solution_> constraintFactory,
+      BavetAbstractQuadConstraintStream<Solution_, A, B, C, D> parent,
+      ToDoubleQuadFunction<A, B, C, D> matchWeigher) {
+    super(constraintFactory, parent);
+    this.scoreImpact = new QuadDoubleImpactHandler<>(matchWeigher);
   }
 
   @Override

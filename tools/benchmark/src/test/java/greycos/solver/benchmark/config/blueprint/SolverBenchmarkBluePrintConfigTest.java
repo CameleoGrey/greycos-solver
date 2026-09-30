@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test;
 class SolverBenchmarkBluePrintConfigTest {
 
   @Test
-  void automaticBlueprintsDoNotInventGuidedLocalSearchProviders() {
+  void automaticBlueprintsIncludeGuidedLocalSearchWithoutRequiringProviders() {
+    boolean guidedLocalSearchFound = false;
     for (var type : SolverBenchmarkBluePrintType.values()) {
       var blueprints =
           new SolverBenchmarkBluePrintConfig()
@@ -20,12 +21,15 @@ class SolverBenchmarkBluePrintConfigTest {
       for (var blueprint : blueprints) {
         for (var phase : blueprint.getSolverConfig().getPhaseConfigList()) {
           if (phase instanceof LocalSearchPhaseConfig localSearch) {
-            assertThat(localSearch.getLocalSearchType())
-                .isNotEqualTo(LocalSearchType.GUIDED_LOCAL_SEARCH);
+            if (localSearch.getLocalSearchType() == LocalSearchType.GUIDED_LOCAL_SEARCH) {
+              guidedLocalSearchFound = true;
+              assertThat(localSearch.getGuidedLocalSearchConfig()).isNull();
+            }
           }
         }
       }
     }
+    assertThat(guidedLocalSearchFound).isTrue();
   }
 
   @Test

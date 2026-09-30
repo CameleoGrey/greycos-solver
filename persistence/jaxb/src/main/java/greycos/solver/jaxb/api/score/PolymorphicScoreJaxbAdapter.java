@@ -5,13 +5,21 @@ import jakarta.xml.bind.annotation.XmlValue;
 import jakarta.xml.bind.annotation.adapters.XmlAdapter;
 
 import greycos.solver.core.api.score.BendableBigDecimalScore;
+import greycos.solver.core.api.score.BendableDoubleScore;
+import greycos.solver.core.api.score.BendableFloatScore;
 import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardMediumSoftDoubleScore;
+import greycos.solver.core.api.score.HardMediumSoftFloatScore;
 import greycos.solver.core.api.score.HardMediumSoftScore;
 import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardSoftDoubleScore;
+import greycos.solver.core.api.score.HardSoftFloatScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.SimpleBigDecimalScore;
+import greycos.solver.core.api.score.SimpleDoubleScore;
+import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.api.score.SimpleScore;
 
 public class PolymorphicScoreJaxbAdapter
@@ -41,6 +49,22 @@ public class PolymorphicScoreJaxbAdapter
       return BendableScore.parseScore(scoreString);
     } else if (scoreClassName.equals(BendableBigDecimalScore.class.getName())) {
       return BendableBigDecimalScore.parseScore(scoreString);
+    } else if (scoreClassName.equals(SimpleFloatScore.class.getName())) {
+      return SimpleFloatScore.parseScore(scoreString);
+    } else if (scoreClassName.equals(SimpleDoubleScore.class.getName())) {
+      return SimpleDoubleScore.parseScore(scoreString);
+    } else if (scoreClassName.equals(HardSoftFloatScore.class.getName())) {
+      return HardSoftFloatScore.parseScore(scoreString);
+    } else if (scoreClassName.equals(HardSoftDoubleScore.class.getName())) {
+      return HardSoftDoubleScore.parseScore(scoreString);
+    } else if (scoreClassName.equals(HardMediumSoftFloatScore.class.getName())) {
+      return HardMediumSoftFloatScore.parseScore(scoreString);
+    } else if (scoreClassName.equals(HardMediumSoftDoubleScore.class.getName())) {
+      return HardMediumSoftDoubleScore.parseScore(scoreString);
+    } else if (scoreClassName.equals(BendableFloatScore.class.getName())) {
+      return BendableFloatScore.parseScore(scoreString);
+    } else if (scoreClassName.equals(BendableDoubleScore.class.getName())) {
+      return BendableDoubleScore.parseScore(scoreString);
     } else {
       throw new IllegalArgumentException(
           "Unrecognized scoreClassName ("

@@ -68,8 +68,9 @@ public interface Score<Score_ extends Score<Score_>> extends Comparable<Score_>,
   Score_ subtract(Score_ subtrahend);
 
   /**
-   * Returns a Score whose value is (this * multiplicand). When rounding is needed, it should be
-   * floored (as defined by {@link Math#floor(double)}).
+   * Returns a Score whose value is (this * multiplicand). Integral and decimal scores floor when
+   * rounding is needed (as defined by {@link Math#floor(double)}). Built-in Float and Double scores
+   * round the exact product to their binary precision using nearest, ties to even.
    *
    * <p>If the implementation has a scale/precision, then the unspecified scale/precision of the
    * double multiplicand should have no impact on the returned scale/precision, and the returned
@@ -82,8 +83,9 @@ public interface Score<Score_ extends Score<Score_>> extends Comparable<Score_>,
   Score_ multiply(double multiplicand);
 
   /**
-   * Returns a Score whose value is (this / divisor). When rounding is needed, it should be floored
-   * (as defined by {@link Math#floor(double)}).
+   * Returns a Score whose value is (this / divisor). Integral and decimal scores floor when
+   * rounding is needed (as defined by {@link Math#floor(double)}). Built-in Float and Double scores
+   * round the exact quotient to their binary precision using nearest, ties to even.
    *
    * <p>If the implementation has a scale/precision, then the unspecified scale/precision of the
    * double divisor should have no impact on the returned scale/precision, and the returned
@@ -96,8 +98,10 @@ public interface Score<Score_ extends Score<Score_>> extends Comparable<Score_>,
   Score_ divide(double divisor);
 
   /**
-   * Returns a Score whose value is (this ^ exponent). When rounding is needed, it should be floored
-   * (as defined by {@link Math#floor(double)}).
+   * Returns a Score whose value is (this ^ exponent). Integral and decimal scores floor when
+   * rounding is needed (as defined by {@link Math#floor(double)}). Built-in Float and Double scores
+   * use {@link StrictMath#pow(double, double)}; Float scores then round its binary64 result to
+   * binary32. Non-finite results are rejected.
    *
    * <p>If the implementation has a scale/precision, then the unspecified scale/precision of the
    * double exponent should have no impact on the returned scale/precision, and the returned

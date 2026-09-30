@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 
 import greycos.solver.core.api.function.PentaFunction;
 import greycos.solver.core.api.function.QuadFunction;
+import greycos.solver.core.api.function.ToDoubleQuadFunction;
+import greycos.solver.core.api.function.ToFloatQuadFunction;
 import greycos.solver.core.api.function.ToLongQuadFunction;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.DefaultConstraintJustification;
@@ -136,5 +138,60 @@ public interface InnerQuadConstraintStream<A, B, C, D> extends QuadConstraintStr
   <Score_ extends Score<Score_>> QuadConstraintBuilder<A, B, C, D, Score_> innerImpact(
       Score_ constraintWeight,
       QuadFunction<A, B, C, D, BigDecimal> matchWeigher,
+      ScoreImpactType scoreImpactType);
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>>
+      QuadConstraintBuilder<A, B, C, D, Score_> penalizeFloat(
+          @NonNull Score_ constraintWeight, @NonNull ToFloatQuadFunction<A, B, C, D> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.PENALTY);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>>
+      QuadConstraintBuilder<A, B, C, D, Score_> rewardFloat(
+          @NonNull Score_ constraintWeight, @NonNull ToFloatQuadFunction<A, B, C, D> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.REWARD);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>>
+      QuadConstraintBuilder<A, B, C, D, Score_> impactFloat(
+          @NonNull Score_ constraintWeight, @NonNull ToFloatQuadFunction<A, B, C, D> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.MIXED);
+  }
+
+  <Score_ extends Score<Score_>> QuadConstraintBuilder<A, B, C, D, Score_> innerImpactFloat(
+      Score_ constraintWeight,
+      ToFloatQuadFunction<A, B, C, D> matchWeigher,
+      ScoreImpactType scoreImpactType);
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>>
+      QuadConstraintBuilder<A, B, C, D, Score_> penalizeDouble(
+          @NonNull Score_ constraintWeight,
+          @NonNull ToDoubleQuadFunction<A, B, C, D> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.PENALTY);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>>
+      QuadConstraintBuilder<A, B, C, D, Score_> rewardDouble(
+          @NonNull Score_ constraintWeight,
+          @NonNull ToDoubleQuadFunction<A, B, C, D> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.REWARD);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>>
+      QuadConstraintBuilder<A, B, C, D, Score_> impactDouble(
+          @NonNull Score_ constraintWeight,
+          @NonNull ToDoubleQuadFunction<A, B, C, D> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.MIXED);
+  }
+
+  <Score_ extends Score<Score_>> QuadConstraintBuilder<A, B, C, D, Score_> innerImpactDouble(
+      Score_ constraintWeight,
+      ToDoubleQuadFunction<A, B, C, D> matchWeigher,
       ScoreImpactType scoreImpactType);
 }

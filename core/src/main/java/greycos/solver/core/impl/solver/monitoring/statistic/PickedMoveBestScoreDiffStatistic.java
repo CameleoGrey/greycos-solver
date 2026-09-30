@@ -16,7 +16,6 @@ import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
-import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.AbstractSolver;
 import greycos.solver.core.impl.solver.monitoring.ScoreLevels;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricSupport;
@@ -89,7 +88,8 @@ public class PickedMoveBestScoreDiffStatistic<Solution_, Score_ extends Score<Sc
           recordDifference(
               stepScope,
               alnsStepScope.getOperatorPairId(),
-              trial.bestAfterScore().subtract(trial.bestBeforeScore()));
+              trial.bestAfterScore(),
+              trial.bestBeforeScore());
         }
       }
     }
@@ -97,22 +97,23 @@ public class PickedMoveBestScoreDiffStatistic<Solution_, Score_ extends Score<Sc
     private void recordStep(AbstractStepScope<Solution_> stepScope, String moveType) {
       if (stepScope.getBestScoreImproved()) {
         var newBestScore = stepScope.<Score_>getScore().raw();
-        var bestScoreDiff = newBestScore.subtract(oldBestScore);
+        var previousScore = oldBestScore;
         oldBestScore = newBestScore;
-        recordDifference(stepScope, moveType, bestScoreDiff);
+        recordDifference(stepScope, moveType, newBestScore, previousScore);
       }
     }
 
     private void recordDifference(
-        AbstractStepScope<Solution_> stepScope, String moveType, Score_ bestScoreDiff) {
+        AbstractStepScope<Solution_> stepScope, String moveType, Score_ after, Score_ before) {
       var tags =
           stepScope.getPhaseScope().getSolverScope().getMonitoringTags().and("move.type", moveType);
-      SolverMetricUtil.registerScore(
+      SolverMetricUtil.registerScoreDifference(
           SolverMetric.PICKED_MOVE_TYPE_BEST_SCORE_DIFF,
           tags,
           scoreDefinition,
           tagsToMoveScoreMap,
-          InnerScore.fullyAssigned(bestScoreDiff));
+          after,
+          before);
     }
   }
 }

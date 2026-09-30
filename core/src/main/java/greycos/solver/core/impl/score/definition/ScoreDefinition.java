@@ -136,8 +136,9 @@ public interface ScoreDefinition<Score_ extends Score<Score_>> {
 
   /**
    * Return {@link Score} whose every level is the result of dividing the matching levels in this
-   * and the divisor. When rounding is needed, it is floored (as defined by {@link
-   * Math#floor(double)}).
+   * and the divisor. Integral and decimal scores round down when needed (as defined by {@link
+   * Math#floor(double)}). Float and Double scores round to their precision using nearest-even
+   * rounding.
    *
    * <p>If any of the levels in the divisor are equal to zero, the method behaves as if they were
    * equal to one instead.

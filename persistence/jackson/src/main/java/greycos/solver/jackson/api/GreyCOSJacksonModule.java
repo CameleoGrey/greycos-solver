@@ -2,13 +2,21 @@ package greycos.solver.jackson.api;
 
 import greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import greycos.solver.core.api.score.BendableBigDecimalScore;
+import greycos.solver.core.api.score.BendableDoubleScore;
+import greycos.solver.core.api.score.BendableFloatScore;
 import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardMediumSoftDoubleScore;
+import greycos.solver.core.api.score.HardMediumSoftFloatScore;
 import greycos.solver.core.api.score.HardMediumSoftScore;
 import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardSoftDoubleScore;
+import greycos.solver.core.api.score.HardSoftFloatScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.SimpleBigDecimalScore;
+import greycos.solver.core.api.score.SimpleDoubleScore;
+import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import greycos.solver.core.api.score.stream.ConstraintRef;
@@ -25,20 +33,36 @@ import greycos.solver.core.preview.api.cotwin.solution.diff.PlanningVariableDiff
 import greycos.solver.jackson.api.cotwin.solution.ConstraintWeightOverridesSerializer;
 import greycos.solver.jackson.api.score.BendableBigDecimalScoreJacksonDeserializer;
 import greycos.solver.jackson.api.score.BendableBigDecimalScoreJacksonSerializer;
+import greycos.solver.jackson.api.score.BendableDoubleScoreJacksonDeserializer;
+import greycos.solver.jackson.api.score.BendableDoubleScoreJacksonSerializer;
+import greycos.solver.jackson.api.score.BendableFloatScoreJacksonDeserializer;
+import greycos.solver.jackson.api.score.BendableFloatScoreJacksonSerializer;
 import greycos.solver.jackson.api.score.BendableScoreJacksonDeserializer;
 import greycos.solver.jackson.api.score.BendableScoreJacksonSerializer;
 import greycos.solver.jackson.api.score.HardMediumSoftBigDecimalScoreJacksonDeserializer;
 import greycos.solver.jackson.api.score.HardMediumSoftBigDecimalScoreJacksonSerializer;
+import greycos.solver.jackson.api.score.HardMediumSoftDoubleScoreJacksonDeserializer;
+import greycos.solver.jackson.api.score.HardMediumSoftDoubleScoreJacksonSerializer;
+import greycos.solver.jackson.api.score.HardMediumSoftFloatScoreJacksonDeserializer;
+import greycos.solver.jackson.api.score.HardMediumSoftFloatScoreJacksonSerializer;
 import greycos.solver.jackson.api.score.HardMediumSoftScoreJacksonDeserializer;
 import greycos.solver.jackson.api.score.HardMediumSoftScoreJacksonSerializer;
 import greycos.solver.jackson.api.score.HardSoftBigDecimalScoreJacksonDeserializer;
 import greycos.solver.jackson.api.score.HardSoftBigDecimalScoreJacksonSerializer;
+import greycos.solver.jackson.api.score.HardSoftDoubleScoreJacksonDeserializer;
+import greycos.solver.jackson.api.score.HardSoftDoubleScoreJacksonSerializer;
+import greycos.solver.jackson.api.score.HardSoftFloatScoreJacksonDeserializer;
+import greycos.solver.jackson.api.score.HardSoftFloatScoreJacksonSerializer;
 import greycos.solver.jackson.api.score.HardSoftScoreJacksonDeserializer;
 import greycos.solver.jackson.api.score.HardSoftScoreJacksonSerializer;
 import greycos.solver.jackson.api.score.PolymorphicScoreJacksonDeserializer;
 import greycos.solver.jackson.api.score.PolymorphicScoreJacksonSerializer;
 import greycos.solver.jackson.api.score.SimpleBigDecimalScoreJacksonDeserializer;
 import greycos.solver.jackson.api.score.SimpleBigDecimalScoreJacksonSerializer;
+import greycos.solver.jackson.api.score.SimpleDoubleScoreJacksonDeserializer;
+import greycos.solver.jackson.api.score.SimpleDoubleScoreJacksonSerializer;
+import greycos.solver.jackson.api.score.SimpleFloatScoreJacksonDeserializer;
+import greycos.solver.jackson.api.score.SimpleFloatScoreJacksonSerializer;
 import greycos.solver.jackson.api.score.SimpleScoreJacksonDeserializer;
 import greycos.solver.jackson.api.score.SimpleScoreJacksonSerializer;
 import greycos.solver.jackson.api.score.analysis.ScoreAnalysisJacksonSerializer;
@@ -109,6 +133,26 @@ public class GreyCOSJacksonModule extends SimpleModule {
     addSerializer(BendableBigDecimalScore.class, new BendableBigDecimalScoreJacksonSerializer());
     addDeserializer(
         BendableBigDecimalScore.class, new BendableBigDecimalScoreJacksonDeserializer());
+
+    addSerializer(SimpleFloatScore.class, new SimpleFloatScoreJacksonSerializer());
+    addDeserializer(SimpleFloatScore.class, new SimpleFloatScoreJacksonDeserializer());
+    addSerializer(SimpleDoubleScore.class, new SimpleDoubleScoreJacksonSerializer());
+    addDeserializer(SimpleDoubleScore.class, new SimpleDoubleScoreJacksonDeserializer());
+    addSerializer(HardSoftFloatScore.class, new HardSoftFloatScoreJacksonSerializer());
+    addDeserializer(HardSoftFloatScore.class, new HardSoftFloatScoreJacksonDeserializer());
+    addSerializer(HardSoftDoubleScore.class, new HardSoftDoubleScoreJacksonSerializer());
+    addDeserializer(HardSoftDoubleScore.class, new HardSoftDoubleScoreJacksonDeserializer());
+    addSerializer(HardMediumSoftFloatScore.class, new HardMediumSoftFloatScoreJacksonSerializer());
+    addDeserializer(
+        HardMediumSoftFloatScore.class, new HardMediumSoftFloatScoreJacksonDeserializer());
+    addSerializer(
+        HardMediumSoftDoubleScore.class, new HardMediumSoftDoubleScoreJacksonSerializer());
+    addDeserializer(
+        HardMediumSoftDoubleScore.class, new HardMediumSoftDoubleScoreJacksonDeserializer());
+    addSerializer(BendableFloatScore.class, new BendableFloatScoreJacksonSerializer());
+    addDeserializer(BendableFloatScore.class, new BendableFloatScoreJacksonDeserializer());
+    addSerializer(BendableDoubleScore.class, new BendableDoubleScoreJacksonSerializer());
+    addDeserializer(BendableDoubleScore.class, new BendableDoubleScoreJacksonDeserializer());
 
     // Constraint weights
     addSerializer(ConstraintRef.class, new ConstraintRefJacksonSerializer());

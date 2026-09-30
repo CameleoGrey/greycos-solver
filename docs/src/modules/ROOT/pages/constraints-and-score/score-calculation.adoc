@@ -342,6 +342,28 @@ This is an example of using a constraint match weight.
 By replacing the keyword `penalize` by `reward` in the name of these building blocks, you get operations that
 affect score in the opposite direction.
 
+Native float and double scores accept integral, float, and double match weighers.
+Use `penalizeFloat`, `rewardFloat`, or `impactFloat` for a float weigher;
+use the corresponding `Double` methods for a double weigher.
+These methods are available for all four stream arities.
+For example, a solution with a `HardSoftDoubleScore` can include:
+
+[source,java]
+----
+return factory.forEach(Visit.class)
+        .penalizeDouble(HardSoftDoubleScore.ONE_SOFT, Visit::getDistance)
+        .asConstraint("travel distance");
+----
+
+The constraint weight still determines the score precision.
+A double weigher used with a float score is multiplied exactly before the contribution rounds to float;
+the input is not first narrowed to float.
+Penalty and reward weighers must be finite and nonnegative; `impactFloat` and `impactDouble`
+also allow finite negative weights.
+Integral and decimal score types retain their existing supported weighers.
+See xref:constraints-and-score/overview.adoc#avoidFloatingPointNumbersInScoreCalculation[floating-score arithmetic]
+for contribution rounding and reversible accumulation.
+
 [#constraintAnatomy]
 ==== Anatomy of a constraint
 
@@ -800,9 +822,15 @@ Other variants of this collector:
 
 * `sumBigDecimal()` collects a `java.math.BigDecimal` value.
 * `sumBigInteger()` collects a `java.math.BigInteger` value.
+* `sumFloat()` collects finite `float` values, returning a `Float`.
+* `sumDouble()` collects finite `double` values, returning a `Double`.
 * `sumDuration()` collects a `java.time.Duration` value.
 * `sumPeriod()` collects a `java.time.Period` value.
 * a generic `sum()` variant for summing up custom types
+
+The float and double collectors maintain an exact sum of represented values and round only when read.
+Retraction restores the same result regardless of insertion order.
+An empty sum is positive zero; a non-finite final result raises an exception.
 
 
 [#collectorsAverage]
@@ -836,7 +864,13 @@ Other variants of this collector:
 
 * `averageBigDecimal()` collects a `java.math.BigDecimal` value, resulting in a `BigDecimal` average.
 * `averageBigInteger()` collects a `java.math.BigInteger` value, resulting in a `BigDecimal` average.
+* `averageFloat()` collects finite `float` values, returning a `Float` average.
+* `averageDouble()` collects finite `double` values, returning a `Double` average.
 * `averageDuration()` collects a `java.time.Duration` value, resulting in a `Duration` average.
+
+`averageFloat()` and `averageDouble()` divide the exact represented sum by the count before rounding.
+Their internal sum can exceed the score precision's finite range while the final average remains finite.
+An empty average is `null`.
 
 
 [#collectorsMinMax]

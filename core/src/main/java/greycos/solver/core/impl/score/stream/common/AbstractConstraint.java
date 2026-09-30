@@ -91,6 +91,29 @@ public abstract class AbstractConstraint<
     }
   }
 
+  public final void assertCorrectImpact(float impact) {
+    assertCorrectImpact((double) impact);
+  }
+
+  public final void assertCorrectImpact(double impact) {
+    if (!Double.isFinite(impact)) {
+      throw new IllegalStateException(
+          "Non-finite match weight ("
+              + impact
+              + ") for constraint ("
+              + getConstraintRef()
+              + "). Check constraint provider implementation.");
+    }
+    if (impact < 0.0 && scoreImpactType != ScoreImpactType.MIXED) {
+      throw new IllegalStateException(
+          "Negative match weight ("
+              + impact
+              + ") for constraint ("
+              + getConstraintRef()
+              + "). Check constraint provider implementation.");
+    }
+  }
+
   public final void assertCorrectImpact(BigDecimal impact) {
     if (impact.signum() >= 0) {
       return;

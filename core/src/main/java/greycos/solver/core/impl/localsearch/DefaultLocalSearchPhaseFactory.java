@@ -17,6 +17,8 @@ import greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelect
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchSearchMode;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchType;
@@ -41,6 +43,7 @@ import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForagerFa
 import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchDecider;
 import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchExhaustiveValidator;
 import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchNumber;
+import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchScoreComparator;
 import greycos.solver.core.impl.neighborhood.MixedMoveSelector;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.neighborhood.MoveSelectorBasedMoveRepository;
@@ -363,6 +366,7 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
   private SelectionOrder pickSelectionOrder() {
     return phaseConfig.getLocalSearchType() == LocalSearchType.VARIABLE_NEIGHBORHOOD_DESCENT
             || (phaseConfig.getLocalSearchType() == LocalSearchType.GUIDED_LOCAL_SEARCH
+                && phaseConfig.getGuidedLocalSearchConfig() != null
                 && phaseConfig.getGuidedLocalSearchConfig().getSearchMode()
                     == GuidedLocalSearchSearchMode.EXHAUSTIVE)
         ? SelectionOrder.ORIGINAL
@@ -378,9 +382,17 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
       }
       return;
     }
-    if (gls == null || gls.getFeatureProviderClass() == null) {
+    if (gls == null) gls = new GuidedLocalSearchConfig();
+    var guidanceMode = resolveGuidanceMode(gls);
+    if (guidanceMode == GuidedLocalSearchGuidanceMode.FIXED_TARGET
+        && gls.getFeatureProviderClass() == null) {
       throw new IllegalArgumentException(
-          "Guided Local Search requires guidedLocalSearch.featureProviderClass.");
+          "Guided Local Search FIXED_TARGET requires guidedLocalSearch.featureProviderClass.");
+    }
+    if (guidanceMode == GuidedLocalSearchGuidanceMode.ALL_LEVELS
+        && gls.getTargetScoreLevelIndex() != null) {
+      throw new IllegalArgumentException(
+          "Guided Local Search ALL_LEVELS cannot specify targetScoreLevelIndex. Remove the target or select FIXED_TARGET.");
     }
     if (phaseConfig.getAcceptorConfig() != null || phaseConfig.getForagerConfig() != null) {
       throw new IllegalArgumentException(
@@ -391,6 +403,8 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
           "The guidedLocalSearch penaltyFactor (" + gls.getPenaltyFactor() + ") must be positive.");
     }
     int levelCount = configPolicy.getScoreDefinition().getLevelsSize();
+    GuidedLocalSearchScoreComparator.requireSupportedScoreType(
+        configPolicy.getScoreDefinition().getScoreClass());
     for (Number level : configPolicy.getScoreDefinition().getZeroScore().toLevelNumbers()) {
       GuidedLocalSearchNumber.of(level);
     }
@@ -402,6 +416,42 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
               + ") must be between 0 and "
               + (levelCount - 1)
               + ".");
+    }
+    if (gls.getFocusStepLimit() != null && gls.getFocusStepLimit() <= 0
+        || gls.getFocusPenaltyUpdateLimit() != null && gls.getFocusPenaltyUpdateLimit() <= 0) {
+      throw new IllegalArgumentException(
+          "Guided Local Search focusStepLimit and focusPenaltyUpdateLimit must be positive.");
+    }
+    if (guidanceMode == GuidedLocalSearchGuidanceMode.FIXED_TARGET
+        && (gls.getLevelScaleList() != null
+            || gls.getFocusStepLimit() != null
+            || gls.getFocusPenaltyUpdateLimit() != null)) {
+      throw new IllegalArgumentException(
+          "Guided Local Search levelScale and focus limits require ALL_LEVELS.");
+    }
+    if (gls.getLevelScaleList() != null) {
+      var configuredLevels = new java.util.HashSet<Integer>();
+      for (var scale : gls.getLevelScaleList()) {
+        if (scale == null
+            || scale.getScoreLevelIndex() == null
+            || scale.getScoreLevelIndex() < 0
+            || scale.getScoreLevelIndex() >= levelCount
+            || scale.getScale() == null
+            || scale.getScale().signum() <= 0) {
+          throw new IllegalArgumentException(
+              "Guided Local Search levelScale ("
+                  + scale
+                  + ") requires scoreLevelIndex between 0 and "
+                  + (levelCount - 1)
+                  + " and a positive scale.");
+        }
+        if (!configuredLevels.add(scale.getScoreLevelIndex())) {
+          throw new IllegalArgumentException(
+              "Duplicate Guided Local Search levelScale for scoreLevelIndex ("
+                  + scale.getScoreLevelIndex()
+                  + ").");
+        }
+      }
     }
     if (gls.getSampleSize() != null && gls.getSampleSize() < 1) {
       throw new IllegalArgumentException("The guidedLocalSearch sampleSize must be positive.");
@@ -428,29 +478,39 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
       MoveRepository<Solution_> repository,
       HeuristicConfigPolicy<Solution_> configPolicy,
       PhaseTermination<Solution_> termination) {
-    var gls = phaseConfig.getGuidedLocalSearchConfig();
+    var gls =
+        Objects.requireNonNullElseGet(
+            phaseConfig.getGuidedLocalSearchConfig(), GuidedLocalSearchConfig::new);
     var mode = Objects.requireNonNullElse(gls.getSearchMode(), GuidedLocalSearchSearchMode.SAMPLED);
     if (mode == GuidedLocalSearchSearchMode.EXHAUSTIVE && repository.isNeverEnding()) {
       throw new IllegalArgumentException(
           "Guided Local Search EXHAUSTIVE requires a finite move repository.");
     }
     var threadCount = Objects.requireNonNullElse(configPolicy.getMoveThreadCount(), 0);
-    if (!GuidedLocalSearchFeatureProvider.class.isAssignableFrom(gls.getFeatureProviderClass())) {
+    if (gls.getFeatureProviderClass() != null
+        && !GuidedLocalSearchFeatureProvider.class.isAssignableFrom(
+            gls.getFeatureProviderClass())) {
       throw new IllegalArgumentException(
           "The guidedLocalSearch featureProviderClass must implement GuidedLocalSearchFeatureProvider.");
     }
     var provider =
-        ConfigUtils.newInstance(gls, "featureProviderClass", gls.getFeatureProviderClass());
+        gls.getFeatureProviderClass() == null
+            ? null
+            : ConfigUtils.newInstance(gls, "featureProviderClass", gls.getFeatureProviderClass());
     var decider =
         new GuidedLocalSearchDecider<Solution_>(
             configPolicy.getLogIndentation(),
             termination,
             repository,
             provider,
+            resolveGuidanceMode(gls),
             Objects.requireNonNullElse(gls.getPenaltyFactor(), new BigDecimal("0.1")),
             Objects.requireNonNullElse(
                 gls.getTargetScoreLevelIndex(),
                 configPolicy.getScoreDefinition().getLevelsSize() - 1),
+            gls.getLevelScaleList() == null ? List.of() : gls.getLevelScaleList(),
+            Objects.requireNonNullElse(gls.getFocusStepLimit(), 64),
+            Objects.requireNonNullElse(gls.getFocusPenaltyUpdateLimit(), 8),
             mode,
             Objects.requireNonNullElse(gls.getSampleSize(), 1000),
             Objects.requireNonNullElse(gls.getMaxUnproductiveRounds(), 3),
@@ -460,6 +520,14 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
             threadCount * Objects.requireNonNullElse(configPolicy.getMoveThreadBufferSize(), 10));
     decider.enableAssertions(configPolicy.getEnvironmentMode());
     return decider;
+  }
+
+  private static GuidedLocalSearchGuidanceMode resolveGuidanceMode(GuidedLocalSearchConfig config) {
+    return Objects.requireNonNullElse(
+        config.getGuidanceMode(),
+        config.getTargetScoreLevelIndex() == null
+            ? GuidedLocalSearchGuidanceMode.ALL_LEVELS
+            : GuidedLocalSearchGuidanceMode.FIXED_TARGET);
   }
 
   private UnionMoveSelectorConfig determineDefaultMoveSelectorConfig(

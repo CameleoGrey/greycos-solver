@@ -9,6 +9,7 @@ import java.util.List;
 
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.SimpleDoubleScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
@@ -21,6 +22,20 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class DiminishedReturnsTerminationTest {
+
+  @Test
+  void floatingGracePeriodMayImproveBeyondDoubleRange() {
+    var termination = new DiminishedReturnsTermination<Object, SimpleDoubleScore>(10, 0.2);
+    var initial = InnerScore.fullyAssigned(SimpleDoubleScore.of(-Double.MAX_VALUE));
+    var graceEnd = InnerScore.fullyAssigned(SimpleDoubleScore.of(Double.MAX_VALUE / 2));
+    var later = InnerScore.fullyAssigned(SimpleDoubleScore.of(Double.MAX_VALUE));
+    termination.start(0, initial);
+    assertThat(termination.isTerminated(10 * NANOS_PER_MILLISECOND, graceEnd)).isFalse();
+    termination.step(10 * NANOS_PER_MILLISECOND, graceEnd);
+    assertThat(termination.isTerminated(20 * NANOS_PER_MILLISECOND, later)).isFalse();
+    termination.step(20 * NANOS_PER_MILLISECOND, later);
+    assertThat(termination.isTerminated(30 * NANOS_PER_MILLISECOND, later)).isTrue();
+  }
 
   @ParameterizedTest
   @ValueSource(longs = {0, 1, 100, 30_000})

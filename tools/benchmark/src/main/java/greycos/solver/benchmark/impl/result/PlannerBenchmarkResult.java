@@ -362,7 +362,8 @@ public class PlannerBenchmarkResult {
             : MathUtils.approximateProblemScaleAsFormattedString(
                 (double) totalProblemScale / problemScaleCount / MathUtils.LOG_PRECISION,
                 Locale.getDefault());
-    Score_ totalScore = null;
+    Score totalScore = null;
+    Score_ firstScore = null;
     int solverBenchmarkCount = 0;
     boolean firstSolverBenchmarkResult = true;
     for (SolverBenchmarkResult solverBenchmarkResult : solverBenchmarkResultList) {
@@ -377,17 +378,21 @@ public class PlannerBenchmarkResult {
       Score_ score = (Score_) solverBenchmarkResult.getAverageScore();
       if (score != null) {
         ScoreDefinition<Score_> scoreDefinition = solverBenchmarkResult.getScoreDefinition();
-        if (totalScore != null && !scoreDefinition.isCompatibleArithmeticArgument(totalScore)) {
+        if (firstScore != null && !scoreDefinition.isCompatibleArithmeticArgument(firstScore)) {
           // Mixing different use cases with different score definitions.
           totalScore = null;
           break;
         }
-        totalScore = (totalScore == null) ? score : totalScore.add(score);
+        if (firstScore == null) {
+          firstScore = score;
+        }
+        totalScore = FloatingBenchmarkScoreArithmetic.add(totalScore, score);
         solverBenchmarkCount++;
       }
     }
     if (totalScore != null) {
-      averageScore = totalScore.divide(solverBenchmarkCount);
+      averageScore =
+          FloatingBenchmarkScoreArithmetic.average(totalScore, solverBenchmarkCount, firstScore);
     }
   }
 

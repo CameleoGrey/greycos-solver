@@ -1,6 +1,7 @@
 module greycos.solver.jackson {
   exports greycos.solver.jackson.api;
   exports greycos.solver.jackson.api.cotwin.solution;
+  exports greycos.solver.jackson.api.score;
   exports greycos.solver.jackson.api.score.analysis;
   exports greycos.solver.jackson.api.solver;
 

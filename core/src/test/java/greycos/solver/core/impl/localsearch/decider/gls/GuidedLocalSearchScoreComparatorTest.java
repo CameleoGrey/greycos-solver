@@ -75,6 +75,38 @@ class GuidedLocalSearchScoreComparatorTest {
   }
 
   @Test
+  void calibratedRationalPenaltyRetainsExactTies() {
+    var comparator = new GuidedLocalSearchScoreComparator(0, new BigDecimal("0.1"));
+    var left = InnerScore.fullyAssigned(SimpleScore.ONE);
+    var right = InnerScore.fullyAssigned(SimpleScore.ZERO);
+    var denominator = GuidedLocalSearchNumber.of(3);
+    assertThat(
+            comparator.compare(
+                left,
+                GuidedLocalSearchNumber.of(30),
+                right,
+                GuidedLocalSearchNumber.ZERO,
+                denominator))
+        .isZero();
+    assertThat(
+            comparator.compare(
+                left,
+                GuidedLocalSearchNumber.of(31),
+                right,
+                GuidedLocalSearchNumber.ZERO,
+                denominator))
+        .isNegative();
+    assertThat(
+            comparator.compare(
+                left,
+                GuidedLocalSearchNumber.of(29),
+                right,
+                GuidedLocalSearchNumber.ZERO,
+                denominator))
+        .isPositive();
+  }
+
+  @Test
   void allBuiltInScoresAndTargetsMatchIndependentDecimalOracle() {
     List<Function<long[], Score<?>>> factories =
         List.of(

@@ -7,8 +7,11 @@ import org.jspecify.annotations.NullMarked;
  *
  * <p>Select features that can usefully change, omitting known immutable features. For example,
  * route arcs inside a pinned prefix are fixed, but the outgoing boundary arc may still change.
- * Costs must be nonnegative and expressed in the configured target score level's units. There is no
- * automatic conversion from constraint matches or from hard to soft scores.
+ * Costs must be nonnegative. Scalar costs use the configured fixed target's units, or the last
+ * business level's units in full-score exploration. Score-vector costs use each level's own units.
+ * In full-score exploration, custom features supplement automatic assignment and adjacency
+ * features. In fixed-target mode this provider supplies all features. There is no automatic
+ * conversion from constraint matches or from hard to soft scores.
  *
  * <p>Providers may be shared by worker threads and therefore must be stateless or thread-safe. Each
  * working solution receives its own mutable session. Neither method may modify the solution.

@@ -28,7 +28,10 @@ import org.jspecify.annotations.Nullable;
 @NullMarked
 public sealed interface WeightedScoreImpacter<
         Score_ extends Score<Score_>, Context_ extends ScoreContext<Score_, ?>>
-    permits BigDecimalWeightedScoreImpacter, LongWeightedScoreImpacter {
+    permits BigDecimalWeightedScoreImpacter,
+        LongWeightedScoreImpacter,
+        FloatWeightedScoreImpacter,
+        DoubleWeightedScoreImpacter {
 
   static <Score_ extends Score<Score_>, Context_ extends ScoreContext<Score_, ?>>
       WeightedScoreImpacter<Score_, Context_> of(
@@ -49,6 +52,36 @@ public sealed interface WeightedScoreImpacter<
    */
   ScoreImpact<Score_> impactScore(
       long matchWeight, @Nullable ConstraintMatchSupplier<Score_> constraintMatchSupplier);
+
+  /**
+   * Applies a float match weight without converting it to an integral or decimal value.
+   *
+   * @param constraintMatchSupplier ignored unless constraint match enabled
+   */
+  default ScoreImpact<Score_> impactScore(
+      float matchWeight, @Nullable ConstraintMatchSupplier<Score_> constraintMatchSupplier) {
+    throw new UnsupportedOperationException(
+        "A float match weight (%s) requires a FloatScore or DoubleScore constraint weight; constraint (%s) uses (%s)."
+            .formatted(
+                matchWeight,
+                getContext().getConstraint().getConstraintRef(),
+                getContext().getConstraintWeight().getClass().getSimpleName()));
+  }
+
+  /**
+   * Applies a double match weight without converting it to an integral or decimal value.
+   *
+   * @param constraintMatchSupplier ignored unless constraint match enabled
+   */
+  default ScoreImpact<Score_> impactScore(
+      double matchWeight, @Nullable ConstraintMatchSupplier<Score_> constraintMatchSupplier) {
+    throw new UnsupportedOperationException(
+        "A double match weight (%s) requires a FloatScore or DoubleScore constraint weight; constraint (%s) uses (%s)."
+            .formatted(
+                matchWeight,
+                getContext().getConstraint().getConstraintRef(),
+                getContext().getConstraintWeight().getClass().getSimpleName()));
+  }
 
   /**
    * @param matchWeight never null

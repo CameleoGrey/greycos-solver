@@ -6,12 +6,20 @@ import jakarta.enterprise.inject.Produces;
 import greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.score.BendableBigDecimalScore;
+import greycos.solver.core.api.score.BendableDoubleScore;
+import greycos.solver.core.api.score.BendableFloatScore;
 import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardMediumSoftDoubleScore;
+import greycos.solver.core.api.score.HardMediumSoftFloatScore;
 import greycos.solver.core.api.score.HardMediumSoftScore;
 import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardSoftDoubleScore;
+import greycos.solver.core.api.score.HardSoftFloatScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.SimpleBigDecimalScore;
+import greycos.solver.core.api.score.SimpleDoubleScore;
+import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.solver.SolutionManager;
 import greycos.solver.core.api.solver.SolverFactory;
@@ -102,6 +110,76 @@ public class UnavailableGreyCOSBeanProvider {
   <Solution_>
       SolutionManager<Solution_, BendableBigDecimalScore>
           solutionManager_workaroundBendableBigDecimalScore() {
+    throw createException(SolutionManager.class);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, SimpleFloatScore> solutionManager_workaroundSimpleFloatScore() {
+    throw createException(SolutionManager.class);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, SimpleDoubleScore> solutionManager_workaroundSimpleDoubleScore() {
+    throw createException(SolutionManager.class);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, HardSoftFloatScore>
+          solutionManager_workaroundHardSoftFloatScore() {
+    throw createException(SolutionManager.class);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, HardSoftDoubleScore>
+          solutionManager_workaroundHardSoftDoubleScore() {
+    throw createException(SolutionManager.class);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, HardMediumSoftFloatScore>
+          solutionManager_workaroundHardMediumSoftFloatScore() {
+    throw createException(SolutionManager.class);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, HardMediumSoftDoubleScore>
+          solutionManager_workaroundHardMediumSoftDoubleScore() {
+    throw createException(SolutionManager.class);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, BendableFloatScore>
+          solutionManager_workaroundBendableFloatScore() {
+    throw createException(SolutionManager.class);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, BendableDoubleScore>
+          solutionManager_workaroundBendableDoubleScore() {
     throw createException(SolutionManager.class);
   }
 

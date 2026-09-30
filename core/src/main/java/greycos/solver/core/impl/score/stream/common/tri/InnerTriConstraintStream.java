@@ -3,6 +3,8 @@ package greycos.solver.core.impl.score.stream.common.tri;
 import java.math.BigDecimal;
 
 import greycos.solver.core.api.function.QuadFunction;
+import greycos.solver.core.api.function.ToDoubleTriFunction;
+import greycos.solver.core.api.function.ToFloatTriFunction;
 import greycos.solver.core.api.function.ToLongTriFunction;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.score.Score;
@@ -144,5 +146,55 @@ public interface InnerTriConstraintStream<A, B, C> extends TriConstraintStream<A
   <Score_ extends Score<Score_>> TriConstraintBuilder<A, B, C, Score_> innerImpact(
       Score_ constraintWeight,
       TriFunction<A, B, C, BigDecimal> matchWeigher,
+      ScoreImpactType scoreImpactType);
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>>
+      TriConstraintBuilder<A, B, C, Score_> penalizeFloat(
+          @NonNull Score_ constraintWeight, @NonNull ToFloatTriFunction<A, B, C> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.PENALTY);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> TriConstraintBuilder<A, B, C, Score_> rewardFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatTriFunction<A, B, C> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.REWARD);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> TriConstraintBuilder<A, B, C, Score_> impactFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatTriFunction<A, B, C> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.MIXED);
+  }
+
+  <Score_ extends Score<Score_>> TriConstraintBuilder<A, B, C, Score_> innerImpactFloat(
+      Score_ constraintWeight,
+      ToFloatTriFunction<A, B, C> matchWeigher,
+      ScoreImpactType scoreImpactType);
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>>
+      TriConstraintBuilder<A, B, C, Score_> penalizeDouble(
+          @NonNull Score_ constraintWeight, @NonNull ToDoubleTriFunction<A, B, C> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.PENALTY);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>>
+      TriConstraintBuilder<A, B, C, Score_> rewardDouble(
+          @NonNull Score_ constraintWeight, @NonNull ToDoubleTriFunction<A, B, C> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.REWARD);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>>
+      TriConstraintBuilder<A, B, C, Score_> impactDouble(
+          @NonNull Score_ constraintWeight, @NonNull ToDoubleTriFunction<A, B, C> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.MIXED);
+  }
+
+  <Score_ extends Score<Score_>> TriConstraintBuilder<A, B, C, Score_> innerImpactDouble(
+      Score_ constraintWeight,
+      ToDoubleTriFunction<A, B, C> matchWeigher,
       ScoreImpactType scoreImpactType);
 }

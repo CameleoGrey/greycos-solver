@@ -16,6 +16,8 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.ConstraintJustification;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.api.score.stream.test.SingleConstraintAssertion;
+import greycos.solver.core.impl.score.FloatingPointMath;
+import greycos.solver.core.impl.score.FloatingScoreSupport;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -280,8 +282,10 @@ public abstract sealed class AbstractSingleConstraintAssertion<
     assertNoImpact(message);
   }
 
-  private static void validateLessThanMatchWeighTotal(Number matchWeightTotal) {
-    if (matchWeightTotal.doubleValue() < 1) {
+  private void validateLessThanMatchWeighTotal(Number matchWeightTotal) {
+    if (FloatingScoreSupport.isFloatingScore(scoreDefinition.getZeroScore())
+        ? FloatingScoreSupport.exact(matchWeightTotal).signum() <= 0
+        : matchWeightTotal.doubleValue() < 1) {
       throw new IllegalArgumentException(
           "The matchWeightTotal (%s) must be greater than 0.".formatted(matchWeightTotal));
     }
@@ -496,16 +500,17 @@ public abstract sealed class AbstractSingleConstraintAssertion<
     if (constraintMatchTotalCollection.isEmpty()) {
       return new Pair<>(zero, zero);
     }
-    // We do not know the matchWeight, so we need to deduce it.
-    // Constraint matches give us a score, whose levels are in the form of (matchWeight *
-    // constraintWeight).
-    // Here, we strip the constraintWeight.
+    if (FloatingScoreSupport.isFloatingScore(zeroScore)) {
+      // Rounded products cannot be divided back into their original match weights.
+      return originalFloatingImpact();
+    }
+    // Existing score types deduce match weights by stripping the constraint weight.
     var totalMatchWeightedScore =
         constraintMatchTotalCollection.stream()
             .map(
-                matchScore ->
+                total ->
                     scoreDefinition.divideBySanitizedDivisor(
-                        matchScore.getScore(), matchScore.getConstraintWeight()))
+                        total.getScore(), total.getConstraintWeight()))
             .reduce(zeroScore, Score::add);
     // Each level of the resulting score now has to be the same number, the matchWeight.
     // Except for where the number is zero.
@@ -515,6 +520,41 @@ public abstract sealed class AbstractSingleConstraintAssertion<
     }
     var negatedDeducedImpact = retrieveImpact(totalMatchWeightedScore.negate(), zero);
     return new Pair<>(deducedImpact, negatedDeducedImpact);
+  }
+
+  private Pair<Number, Number> originalFloatingImpact() {
+    var total = BigDecimal.ZERO;
+    boolean hasFloat = false;
+    boolean hasDouble = false;
+    for (var constraintTotal : constraintMatchTotalCollection) {
+      for (var match : constraintTotal.getConstraintMatchSet()) {
+        var matchWeight =
+            requireNonNull(
+                match.getMatchWeight(),
+                () ->
+                    "The floating constraint match ("
+                        + match
+                        + ") does not retain its original match weight.");
+        total = total.add(FloatingScoreSupport.exact(matchWeight));
+        hasFloat |= matchWeight instanceof Float;
+        hasDouble |= matchWeight instanceof Double;
+      }
+    }
+    // Round once to the match weigher's precision, independently of constraint score precision.
+    // Integral weighers remain exact, including integers which float or double cannot represent.
+    try {
+      if (hasDouble) {
+        var impact = FloatingPointMath.toDouble(total);
+        return new Pair<>(impact, -impact);
+      } else if (hasFloat) {
+        var impact = FloatingPointMath.toFloat(total);
+        return new Pair<>(impact, -impact);
+      }
+    } catch (ArithmeticException overflow) {
+      // Match weights can exceed their source range while their weighted score remains finite.
+      // Keep the exact sum so equality and bounds assertions can still compare it.
+    }
+    return new Pair<>(total, total.negate());
   }
 
   private Number retrieveImpact(Score_ score, Number zero) {
@@ -604,7 +644,17 @@ public abstract sealed class AbstractSingleConstraintAssertion<
     return constraintMatchTotalCollection.stream()
         .mapToLong(
             constraintMatchTotal -> {
-              if (actualImpactType == ScoreImpactType.MIXED) {
+              if (actualImpactType == ScoreImpactType.MIXED
+                  && FloatingScoreSupport.isFloatingScore(zeroScore)) {
+                return constraintMatchTotal.getConstraintMatchSet().stream()
+                    .filter(
+                        match -> {
+                          var matchWeight = requireNonNull(match.getMatchWeight());
+                          int sign = FloatingScoreSupport.exact(matchWeight).signum();
+                          return scoreImpactType == ScoreImpactType.REWARD ? sign > 0 : sign < 0;
+                        })
+                    .count();
+              } else if (actualImpactType == ScoreImpactType.MIXED) {
                 var isImpactPositive = constraintMatchTotal.getScore().compareTo(zeroScore) > 0;
                 var isImpactNegative = constraintMatchTotal.getScore().compareTo(zeroScore) < 0;
                 if (isImpactPositive && scoreImpactType == ScoreImpactType.REWARD) {

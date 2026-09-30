@@ -16,6 +16,8 @@ import greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.function.QuadPredicate;
+import greycos.solver.core.api.function.ToDoubleTriFunction;
+import greycos.solver.core.api.function.ToFloatTriFunction;
 import greycos.solver.core.api.function.ToLongTriFunction;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.function.TriPredicate;
@@ -1551,4 +1553,140 @@ public interface TriConstraintStream<A, B, C> extends ConstraintStream {
    */
   <Score_ extends Score<Score_>> @NonNull TriConstraintBuilder<A, B, C, Score_> impactBigDecimal(
       @NonNull Score_ constraintWeight, @NonNull TriFunction<A, B, C, BigDecimal> matchWeigher);
+
+  /**
+   * As defined by {@link #penalizeFloat(Score, ToFloatTriFunction)}, where the match weight is one
+   * (1).
+   */
+  default <Score_ extends Score<Score_>>
+      @NonNull TriConstraintBuilder<A, B, C, Score_> penalizeFloat(
+          @NonNull Score_ constraintWeight) {
+    return penalizeFloat(constraintWeight, (a, b, c) -> 1F);
+  }
+
+  /**
+   * Subtracts the constraint weight multiplied by a {@code float} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be non-negative and finite. The
+   * input is preserved until the product is rounded to the score's precision. The constraint weight
+   * may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull TriConstraintBuilder<A, B, C, Score_> penalizeFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatTriFunction<A, B, C> matchWeigher);
+
+  /**
+   * As defined by {@link #penalizeDouble(Score, ToDoubleTriFunction)}, where the match weight is
+   * one (1).
+   */
+  default <Score_ extends Score<Score_>>
+      @NonNull TriConstraintBuilder<A, B, C, Score_> penalizeDouble(
+          @NonNull Score_ constraintWeight) {
+    return penalizeDouble(constraintWeight, (a, b, c) -> 1D);
+  }
+
+  /**
+   * Subtracts the constraint weight multiplied by a {@code double} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be non-negative and finite. The
+   * input is preserved until the product is rounded to the score's precision. The constraint weight
+   * may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull TriConstraintBuilder<A, B, C, Score_> penalizeDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleTriFunction<A, B, C> matchWeigher);
+
+  /**
+   * As defined by {@link #rewardFloat(Score, ToFloatTriFunction)}, where the match weight is one
+   * (1).
+   */
+  default <Score_ extends Score<Score_>> @NonNull TriConstraintBuilder<A, B, C, Score_> rewardFloat(
+      @NonNull Score_ constraintWeight) {
+    return rewardFloat(constraintWeight, (a, b, c) -> 1F);
+  }
+
+  /**
+   * Adds the constraint weight multiplied by a {@code float} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be non-negative and finite. The
+   * input is preserved until the product is rounded to the score's precision. The constraint weight
+   * may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull TriConstraintBuilder<A, B, C, Score_> rewardFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatTriFunction<A, B, C> matchWeigher);
+
+  /**
+   * As defined by {@link #rewardDouble(Score, ToDoubleTriFunction)}, where the match weight is one
+   * (1).
+   */
+  default <Score_ extends Score<Score_>>
+      @NonNull TriConstraintBuilder<A, B, C, Score_> rewardDouble(
+          @NonNull Score_ constraintWeight) {
+    return rewardDouble(constraintWeight, (a, b, c) -> 1D);
+  }
+
+  /**
+   * Adds the constraint weight multiplied by a {@code double} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be non-negative and finite. The
+   * input is preserved until the product is rounded to the score's precision. The constraint weight
+   * may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull TriConstraintBuilder<A, B, C, Score_> rewardDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleTriFunction<A, B, C> matchWeigher);
+
+  /**
+   * As defined by {@link #impactFloat(Score, ToFloatTriFunction)}, where the match weight is one
+   * (1).
+   */
+  default <Score_ extends Score<Score_>> @NonNull TriConstraintBuilder<A, B, C, Score_> impactFloat(
+      @NonNull Score_ constraintWeight) {
+    return impactFloat(constraintWeight, (a, b, c) -> 1F);
+  }
+
+  /**
+   * Adds the constraint weight multiplied by a {@code float} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be finite and may be positive
+   * or negative. The input is preserved until the product is rounded to the score's precision. The
+   * constraint weight may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull TriConstraintBuilder<A, B, C, Score_> impactFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatTriFunction<A, B, C> matchWeigher);
+
+  /**
+   * As defined by {@link #impactDouble(Score, ToDoubleTriFunction)}, where the match weight is one
+   * (1).
+   */
+  default <Score_ extends Score<Score_>>
+      @NonNull TriConstraintBuilder<A, B, C, Score_> impactDouble(
+          @NonNull Score_ constraintWeight) {
+    return impactDouble(constraintWeight, (a, b, c) -> 1D);
+  }
+
+  /**
+   * Adds the constraint weight multiplied by a {@code double} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be finite and may be positive
+   * or negative. The input is preserved until the product is rounded to the score's precision. The
+   * constraint weight may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull TriConstraintBuilder<A, B, C, Score_> impactDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleTriFunction<A, B, C> matchWeigher);
 }

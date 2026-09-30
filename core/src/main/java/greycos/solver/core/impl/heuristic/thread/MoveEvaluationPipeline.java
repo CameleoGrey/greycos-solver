@@ -733,6 +733,13 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
    */
   @FunctionalInterface
   public interface CandidateMetadataCollector<Solution_> extends AutoCloseable {
+    /**
+     * Observes the committed worker solution before a candidate is applied. All previous temporary
+     * moves have been undone and the current step has been replayed. This is also called for a
+     * non-doable candidate, which has no subsequent {@link #collect} call.
+     */
+    default void beforeEvaluation(EvaluationContext context) {}
+
     @Nullable EvaluationMetadata collect(
         SolutionView<Solution_> solutionView, Move<Solution_> move, EvaluationContext context);
 

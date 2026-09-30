@@ -158,6 +158,11 @@ constraintAnalysis.matches().forEach(matchAnalysis -> {
 ====
 
 Each match is accompanied by the score difference it caused, and a justification object (see above).
+For float and double scores, each match carries its rounded contribution.
+The total score and each constraint or justification subtotal independently round their exact sums.
+Adding already-rounded subtotals may therefore differ from the total score.
+To independently reconstruct a floating score, sum the individual match contributions with
+`FloatingScoreAccumulator`; do not repeatedly add rounded subtotals.
 Typically, the scoring engine creates justification objects automatically.
 Use xref:constraints-and-score/score-calculation.adoc#constraintStreamsCustomizingJustifications[Constraint Streams' `justifyWith(...)` call]
 when the analysis must carry domain-specific information.

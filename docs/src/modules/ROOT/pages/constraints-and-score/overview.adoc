@@ -283,38 +283,54 @@ public class VehicleRoutePlan {
 ====
 
 [#avoidFloatingPointNumbersInScoreCalculation]
-=== Avoid floating point numbers in score calculation
+=== Floating-point and decimal score calculation
 
-Avoid the use of `float` or `double` in score calculation.
-Use `BigDecimal` or scaled `long` instead.
+Use `BigDecimal` or scaled `long` when business rules require exact decimal units.
+For example, the decimal value `0.05` has no exact binary floating-point representation.
+Use a native float or double score when the objective intentionally uses binary floating-point values.
+GreyCOS supports both precisions for every built-in score layout.
 
-Floating point numbers (``float`` and ``double``) cannot represent a decimal number correctly.
-For example: a `double` cannot hold the value `0.05` correctly.
-Instead, it holds the nearest representable value.
-Arithmetic (including addition and subtraction) with floating point numbers, especially for planning problems, leads to incorrect decisions:
+Floating score components must be finite. Constructors, parsers, and match weighers reject NaN and infinities.
+Negative zero is normalized to positive zero. Comparisons are lexicographic and exact over represented values;
+there is no epsilon tolerance. Persistence uses the canonical `Float.toString` or `Double.toString` representation.
 
-image::constraints-and-score/overview/scoreWeightType.png[align="center"]
+Ordinary score arithmetic rounds each operation to the score's precision, using nearest-even rounding.
+Overflow raises an exception; underflow to zero is allowed.
+Repeated floating-point addition is not associative, and adding then subtracting a contribution
+need not restore the previous value. Therefore, do not implement an incremental calculator with a running
+`float += impact` or `double += impact` total.
 
-Additionally, floating point number addition is not associative:
+Constraint Streams avoids that drift with reversible exact accumulation:
 
-[tabs]
-====
-Java::
-+
-[source,java,options="nowrap"]
+[source,text]
 ----
-System.out.println( ((0.01 + 0.02) + 0.03) == (0.01 + (0.02 + 0.03)) ); // returns false
+matchContribution = roundToScorePrecision(exact(weight) * exact(matchWeight))
+score = roundToScorePrecision(exactSumOfActiveMatchContributions)
 ----
-====
 
-This leads to __score corruption__.
+Each match is rounded once at the selected score precision.
+The engine then sums those represented contributions exactly and rounds once when extracting the score.
+Match insertion order, retraction order, and temporary-move undo do not change the extracted score.
+An individual match contribution and the extracted score must be finite;
+the internal total may temporarily exceed the public range before canceling contributions arrive.
+Integer, float, and double match weights are multiplied without first narrowing the input.
+This guarantees reversible arithmetic for the represented inputs, not exact decimal semantics.
 
-Decimal numbers (``BigDecimal``) have none of these problems,
-but their arithmetic operations are slower than with `int` or `long`.
-In some cases, it can be worthwhile multiplying _all_ constraint weights by the same power of ten,
-so the score fits in a scaled `int` or `long`.
-For example, if we multiply all weights by `1000`,
-`fuelCost` of `0.07` becomes `fuelCostMillis` of `70` and no longer uses a decimal score weight.
+Easy and incremental calculators can use the public `FloatingScoreAccumulator` to obtain the same behavior:
+
+[source,java]
+----
+var total = FloatingScoreAccumulator.create(HardSoftDoubleScore.ZERO);
+HardSoftDoubleScore contribution =
+        total.addWeighted(HardSoftDoubleScore.ONE_SOFT, -0.1d);
+HardSoftDoubleScore score = total.extractScore();
+total.subtract(contribution); // Restores an exact zero total.
+----
+
+Keep the rounded contribution returned by `addWeighted` for later retraction.
+For independently calculated contributions, use `add` and `subtract`.
+`clear` resets the accumulator between working solutions.
+The existing integral and `BigDecimal` score arithmetic remains unchanged.
 
 
 [#scoreType]
@@ -333,7 +349,7 @@ see xref:integration/integration.adoc#integration[the integration chapter].
 [#simpleScore]
 === `SimpleScore`
 
-A `SimpleScore` has a single `int` value, for example ``-123``.
+A `SimpleScore` has a single `long` value, for example ``-123``.
 It has a single score level.
 
 [tabs]
@@ -349,14 +365,15 @@ Java::
 
 Variants of this `Score` type:
 
-* `SimpleScore` uses a `long` value instead of an `int` value.
-* `SimpleBigDecimalScore` uses a `BigDecimal` value instead of an `int` value.
+* `SimpleBigDecimalScore` uses a `BigDecimal` value.
+* `SimpleFloatScore` uses a `float` value.
+* `SimpleDoubleScore` uses a `double` value.
 
 
 [#hardSoftScore]
 === `HardSoftScore` (Recommended)
 
-A `HardSoftScore` has a hard `int` value and a soft `int` value, for example ``-123hard/-456soft``.
+A `HardSoftScore` has a hard `long` value and a soft `long` value, for example ``-123hard/-456soft``.
 It has two score levels (hard and soft).
 
 [tabs]
@@ -372,14 +389,15 @@ Java::
 
 Variants of this `Score` type:
 
-* `HardSoftScore` uses `long` values instead of `int` values.
-* `HardSoftBigDecimalScore` uses `BigDecimal` values instead of `int` values.
+* `HardSoftBigDecimalScore` uses `BigDecimal` values.
+* `HardSoftFloatScore` uses `float` values.
+* `HardSoftDoubleScore` uses `double` values.
 
 
 [#hardMediumSoftScore]
 === `HardMediumSoftScore`
 
-A `HardMediumSoftScore` which has a hard `int` value, a medium `int` value and a soft `int` value, for example ``-123hard/-456medium/-789soft``.
+A `HardMediumSoftScore` has a hard `long` value, a medium `long` value and a soft `long` value, for example ``-123hard/-456medium/-789soft``.
 It has three score levels (hard, medium and soft).
 The hard level determines if the solution is feasible,
 and the medium level and soft level score values determine
@@ -399,15 +417,16 @@ Java::
 
 Variants of this `Score` type:
 
-* `HardMediumSoftScore` uses `long` values instead of `int` values.
-* `HardMediumSoftBigDecimalScore` uses `BigDecimal` values instead of `int` values.
+* `HardMediumSoftBigDecimalScore` uses `BigDecimal` values.
+* `HardMediumSoftFloatScore` uses `float` values.
+* `HardMediumSoftDoubleScore` uses `double` values.
 
 
 [#bendableScore]
 === `BendableScore`
 
 A `BendableScore` has a configurable number of score levels.
-It has an array of hard `int` values and an array of soft `int` values,
+It has an array of hard `long` values and an array of soft `long` values,
 for example with two hard levels and three soft levels, the score can be ``[-123/-456]hard/[-789/-012/-345]soft``.
 In that case, it has five score levels.
 A solution is feasible if all hard levels are at least zero.
@@ -440,8 +459,11 @@ Use xref:constraints-and-score/understanding-the-score.adoc[score explanations] 
 
 Variants of this `Score` type:
 
-* `BendableScore` uses `long` values instead of `int` values.
-* `BendableBigDecimalScore` uses `BigDecimal` values instead of `int` values.
+* `BendableBigDecimalScore` uses `BigDecimal` values.
+* `BendableFloatScore` uses `float` values.
+* `BendableDoubleScore` uses `double` values.
+
+The float and double variants defensively copy their hard and soft arrays on construction and access.
 
 
 [#calculateTheScore]

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.impl.score.FloatingScoreSupport;
 
 /** Exact arithmetic for operator ranking. Score levels are never collapsed into a scalar. */
 public final class AlnsScoreMath {
@@ -26,6 +27,9 @@ public final class AlnsScoreMath {
         || value instanceof Short
         || value instanceof Byte) {
       return BigDecimal.valueOf(value.longValue());
+    }
+    if (value instanceof Float || value instanceof Double) {
+      return FloatingScoreSupport.exact(value);
     }
     return new BigDecimal(value.toString());
   }

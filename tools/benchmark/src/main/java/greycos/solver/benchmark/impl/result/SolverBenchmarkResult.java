@@ -140,6 +140,7 @@ public class SolverBenchmarkResult {
     return infeasibleScoreCount;
   }
 
+  /** Native floating totals use the matching BigDecimal score type to avoid overflow. */
   public Score getTotalScore() {
     return totalScore;
   }
@@ -232,7 +233,8 @@ public class SolverBenchmarkResult {
     if (totalWinningScoreDifference == null) {
       return null;
     }
-    return totalWinningScoreDifference.divide(getSuccessCount());
+    return FloatingBenchmarkScoreArithmetic.averageDifference(
+        totalWinningScoreDifference, getSuccessCount(), averageScore);
   }
 
   /**
@@ -288,6 +290,8 @@ public class SolverBenchmarkResult {
     failureCount = 0;
     boolean firstNonFailure = true;
     totalScore = null;
+    Score firstScore = null;
+    var floatingPercentages = new ArrayList<ScoreDifferencePercentage>();
     totalWinningScoreDifference = null;
     ScoreDifferencePercentage totalWorstScoreDifferencePercentage = null;
     long totalScoreCalculationSpeed = 0L;
@@ -306,8 +310,11 @@ public class SolverBenchmarkResult {
           infeasibleScoreCount++;
         }
         if (firstNonFailure) {
-          totalScore = singleBenchmarkResult.getAverageScore();
-          totalWinningScoreDifference = singleBenchmarkResult.getWinningScoreDifference();
+          firstScore = singleBenchmarkResult.getAverageScore();
+          totalScore = FloatingBenchmarkScoreArithmetic.widen(firstScore);
+          totalWinningScoreDifference =
+              FloatingBenchmarkScoreArithmetic.widen(
+                  singleBenchmarkResult.getWinningScoreDifference());
           totalWorstScoreDifferencePercentage =
               singleBenchmarkResult.getWorstScoreDifferencePercentage();
           totalScoreCalculationSpeed = singleBenchmarkResult.getScoreCalculationSpeed();
@@ -317,25 +324,35 @@ public class SolverBenchmarkResult {
               singleBenchmarkResult.getWorstScoreCalculationSpeedDifferencePercentage();
           firstNonFailure = false;
         } else {
-          totalScore = totalScore.add(singleBenchmarkResult.getAverageScore());
+          totalScore =
+              FloatingBenchmarkScoreArithmetic.add(
+                  totalScore, singleBenchmarkResult.getAverageScore());
           totalWinningScoreDifference =
-              totalWinningScoreDifference.add(singleBenchmarkResult.getWinningScoreDifference());
-          totalWorstScoreDifferencePercentage =
-              totalWorstScoreDifferencePercentage.add(
-                  singleBenchmarkResult.getWorstScoreDifferencePercentage());
+              FloatingBenchmarkScoreArithmetic.add(
+                  totalWinningScoreDifference, singleBenchmarkResult.getWinningScoreDifference());
+          if (!FloatingBenchmarkScoreArithmetic.isFloating(firstScore)) {
+            totalWorstScoreDifferencePercentage =
+                totalWorstScoreDifferencePercentage.add(
+                    singleBenchmarkResult.getWorstScoreDifferencePercentage());
+          }
           totalScoreCalculationSpeed += singleBenchmarkResult.getScoreCalculationSpeed();
           totalMoveEvaluationSpeed += singleBenchmarkResult.getMoveEvaluationSpeed();
           totalTimeMillisSpent += singleBenchmarkResult.getTimeMillisSpent();
           totalWorstScoreCalculationSpeedDifferencePercentage +=
               singleBenchmarkResult.getWorstScoreCalculationSpeedDifferencePercentage();
         }
+        if (FloatingBenchmarkScoreArithmetic.isFloating(firstScore)) {
+          floatingPercentages.add(singleBenchmarkResult.getWorstScoreDifferencePercentage());
+        }
       }
     }
     if (!firstNonFailure) {
       int successCount = getSuccessCount();
-      averageScore = totalScore.divide(successCount);
+      averageScore = FloatingBenchmarkScoreArithmetic.average(totalScore, successCount, firstScore);
       averageWorstScoreDifferencePercentage =
-          totalWorstScoreDifferencePercentage.divide(successCount);
+          floatingPercentages.isEmpty()
+              ? totalWorstScoreDifferencePercentage.divide(successCount)
+              : ScoreDifferencePercentage.averageFloating(floatingPercentages);
       averageScoreCalculationSpeed = totalScoreCalculationSpeed / successCount;
       averageMoveEvaluationSpeed = totalMoveEvaluationSpeed / successCount;
       averageTimeMillisSpent = totalTimeMillisSpent / successCount;

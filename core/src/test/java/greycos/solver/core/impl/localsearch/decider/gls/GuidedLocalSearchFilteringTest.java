@@ -25,6 +25,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSele
 import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchType;
 import greycos.solver.core.config.score.trend.InitializingScoreTrendLevel;
@@ -82,6 +83,7 @@ class GuidedLocalSearchFilteringTest {
     if (type == LocalSearchType.GUIDED_LOCAL_SEARCH) {
       phase.withGuidedLocalSearchConfig(
           new GuidedLocalSearchConfig()
+              .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
               .withFeatureProviderClass(EmptyListFeatures.class)
               .withSampleSize(4)
               .withMaxUnproductiveRounds(3));

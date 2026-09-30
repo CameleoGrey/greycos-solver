@@ -4,6 +4,8 @@ import java.util.Arrays;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import greycos.solver.core.impl.score.FloatingScoreSupport;
+import greycos.solver.core.impl.score.ScoreArithmetic;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -66,10 +68,8 @@ final class BestScoreFeasibleTermination<Solution_>
       return 0.0;
     }
     var startScore = innerStartScore.raw();
-    var totalDiff = startScore.negate();
-    var totalDiffNumbers = totalDiff.toLevelNumbers();
-    var scoreDiff = score.subtract(startScore);
-    var scoreDiffNumbers = scoreDiff.toLevelNumbers();
+    var totalDiffNumbers = ScoreArithmetic.difference(startScore.zero(), startScore);
+    var scoreDiffNumbers = ScoreArithmetic.difference(score, startScore);
     if (scoreDiffNumbers.length != totalDiffNumbers.length) {
       throw new IllegalStateException(
           "The startScore ("
@@ -79,7 +79,11 @@ final class BestScoreFeasibleTermination<Solution_>
               + ") don't have the same levelsSize.");
     }
     return BestScoreTermination.calculateTimeGradient(
-        totalDiffNumbers, scoreDiffNumbers, timeGradientWeightFeasibleNumbers, feasibleLevelsSize);
+        totalDiffNumbers,
+        scoreDiffNumbers,
+        timeGradientWeightFeasibleNumbers,
+        feasibleLevelsSize,
+        FloatingScoreSupport.isFloatingScore(startScore));
   }
 
   @Override

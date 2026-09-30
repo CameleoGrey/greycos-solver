@@ -10,6 +10,7 @@ import greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationS
 import greycos.solver.core.impl.cotwin.variable.nextprev.NextElementShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.nextprev.PreviousElementShadowVariableDescriptor;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.score.director.WorkingSolutionMutationObserver;
 import greycos.solver.core.impl.util.CollectionUtils;
 import greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
@@ -30,6 +31,8 @@ final class ListVariableStateCarrier<Solution_> {
   private InnerScoreDirector<Solution_, ?> scoreDirector;
   private int unassignedCount = 0;
   private Map<Object, MutablePosition> elementPositionMap;
+  private WorkingSolutionMutationObserver<Solution_> relationshipObserver;
+  private Map<Object, Relationship> relationships;
 
   /**
    * Whether {@link #initialize(InnerScoreDirector, int)} has run at least once. Distinguishes a
@@ -74,6 +77,8 @@ final class ListVariableStateCarrier<Solution_> {
     initialized = true;
     this.scoreDirector = scoreDirector;
     this.unassignedCount = initialUnassignedCount;
+    relationshipObserver = null;
+    relationships = null;
 
     this.requiresPositionMap =
         externalizedIndexProcessor == null
@@ -215,6 +220,9 @@ final class ListVariableStateCarrier<Solution_> {
               || elementUpdateSent;
     }
     unassignedCount++;
+    if (tracksRelationships() && relationships.remove(element) != null) {
+      relationshipObserver.afterListVariableRelationshipChanged(sourceVariableDescriptor, element);
+    }
     // Unlike addElement()/changeElement(), this does not also guard on requiresPositionMap:
     // externalizedIndexProcessor is non-null whenever requiresPositionMap is false,
     // and it always fires on this index-to-null transition, so elementUpdateSent is already true
@@ -257,8 +265,59 @@ final class ListVariableStateCarrier<Solution_> {
     if (!elementUpdateSent && requiresPositionMap) {
       notifier.accept(element);
     }
+    if (tracksRelationships()) {
+      var previous = index == 0 ? null : elements.get(index - 1);
+      var next = index + 1 == elements.size() ? null : elements.get(index + 1);
+      var old = relationships.get(element);
+      if (old == null || old.entity != entity || old.previous != previous || old.next != next) {
+        relationships.put(element, new Relationship(entity, previous, next));
+        relationshipObserver.afterListVariableRelationshipChanged(
+            sourceVariableDescriptor, element);
+      }
+    }
     return difference.anythingChanged;
   }
+
+  /** Initialize once per observer before a mutation, never from already changed list contents. */
+  void beforeListVariableChanged() {
+    var observer = scoreDirector.getWorkingSolutionMutationObserver();
+    if (observer == relationshipObserver) {
+      return;
+    }
+    relationshipObserver = observer;
+    relationships = null;
+    if (observer == null || !observer.requiresListVariableRelationshipChanges()) {
+      return;
+    }
+    relationships = new IdentityHashMap<>();
+    sourceVariableDescriptor
+        .getEntityDescriptor()
+        .visitAllEntities(
+            scoreDirector.getWorkingSolution(),
+            entity -> {
+              var elements = sourceVariableDescriptor.getValue(entity);
+              for (int i = 0; i < elements.size(); i++) {
+                relationships.put(
+                    elements.get(i),
+                    new Relationship(
+                        entity,
+                        i == 0 ? null : elements.get(i - 1),
+                        i + 1 == elements.size() ? null : elements.get(i + 1)));
+              }
+            });
+  }
+
+  boolean tracksRelationships() {
+    return relationships != null
+        && relationshipObserver == scoreDirector.getWorkingSolutionMutationObserver();
+  }
+
+  void clearRelationships() {
+    relationshipObserver = null;
+    relationships = null;
+  }
+
+  private record Relationship(Object entity, Object previous, Object next) {}
 
   private ChangeType processElementPosition(Object entity, Object element, int index) {
     if (requiresPositionMap) { // Update the position and figure out if it is different from

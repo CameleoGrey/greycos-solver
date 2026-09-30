@@ -36,9 +36,17 @@ class GuidedLocalSearchNumberTest {
   }
 
   @Test
-  void doesNotAcceptFloatingPointNumbers() {
+  void floatingPointValuesPreserveExactIeeeMagnitudeAndRejectNonFiniteNumbers() {
+    assertThat(GuidedLocalSearchNumber.of((Number) 0.1d).toBigDecimal())
+        .isEqualByComparingTo(new BigDecimal(0.1d));
+    assertThat(GuidedLocalSearchNumber.of((Number) 0.1f).toBigDecimal())
+        .isEqualByComparingTo(new BigDecimal((double) 0.1f));
+    assertThat(GuidedLocalSearchNumber.of((Number) (-0.0d)))
+        .isEqualTo(GuidedLocalSearchNumber.ZERO);
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> GuidedLocalSearchNumber.of(0.1))
-        .withMessageContaining("integral or BigDecimal");
+        .isThrownBy(() -> GuidedLocalSearchNumber.of((Number) Double.NaN))
+        .withMessageContaining("finite");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> GuidedLocalSearchNumber.of((Number) Float.POSITIVE_INFINITY));
   }
 }

@@ -15,10 +15,12 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
+import java.util.function.ToDoubleBiFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongBiFunction;
 
 import greycos.solver.core.api.function.QuadFunction;
+import greycos.solver.core.api.function.ToFloatBiFunction;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.score.stream.bi.BiConstraintCollector;
 import greycos.solver.core.api.score.stream.common.ConnectedRangeChain;
@@ -27,6 +29,26 @@ import greycos.solver.core.api.score.stream.common.SequenceChain;
 import greycos.solver.core.impl.score.stream.collector.AbstractReferenceAverageSlot;
 
 public final class InnerBiConstraintCollectors {
+  public static <A, B> BiConstraintCollector<A, B, ?, Float> sumFloat(
+      ToFloatBiFunction<? super A, ? super B> mapper) {
+    return new FloatBiCollector<>(mapper, false);
+  }
+
+  public static <A, B> BiConstraintCollector<A, B, ?, Float> averageFloat(
+      ToFloatBiFunction<? super A, ? super B> mapper) {
+    return new FloatBiCollector<>(mapper, true);
+  }
+
+  public static <A, B> BiConstraintCollector<A, B, ?, Double> sumDouble(
+      ToDoubleBiFunction<? super A, ? super B> mapper) {
+    return new DoubleBiCollector<>(mapper, false);
+  }
+
+  public static <A, B> BiConstraintCollector<A, B, ?, Double> averageDouble(
+      ToDoubleBiFunction<? super A, ? super B> mapper) {
+    return new DoubleBiCollector<>(mapper, true);
+  }
+
   public static <A, B> BiConstraintCollector<A, B, ?, Double> average(
       ToLongBiFunction<? super A, ? super B> mapper) {
     return new AverageBiCollector<>(mapper);

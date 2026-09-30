@@ -134,6 +134,9 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
               start = System.nanoTime();
             }
             InnerScore<Score_> score = null;
+            if (metadataCollector != null) {
+              metadataCollector.beforeEvaluation(slot.context);
+            }
             if (!(pipeline.evaluateDoable
                 && move instanceof AbstractSelectorBasedMove<Solution_> selector
                 && !selector.isMoveDoable(director))) {

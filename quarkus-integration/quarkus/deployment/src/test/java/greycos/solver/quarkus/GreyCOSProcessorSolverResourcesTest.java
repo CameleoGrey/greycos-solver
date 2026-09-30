@@ -8,12 +8,20 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import greycos.solver.core.api.score.BendableBigDecimalScore;
+import greycos.solver.core.api.score.BendableDoubleScore;
+import greycos.solver.core.api.score.BendableFloatScore;
 import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardMediumSoftDoubleScore;
+import greycos.solver.core.api.score.HardMediumSoftFloatScore;
 import greycos.solver.core.api.score.HardMediumSoftScore;
 import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardSoftDoubleScore;
+import greycos.solver.core.api.score.HardSoftFloatScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.SimpleBigDecimalScore;
+import greycos.solver.core.api.score.SimpleDoubleScore;
+import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.stream.ConstraintMetaModel;
 import greycos.solver.core.api.solver.SolutionManager;
@@ -86,6 +94,26 @@ class GreyCOSProcessorSolverResourcesTest {
   SolutionManager<TestdataQuarkusSolution, BendableBigDecimalScore>
       bendableBigDecimalSolutionManager1;
 
+  @Inject SolutionManager<TestdataQuarkusSolution, SimpleFloatScore> simpleFloatScoreManager;
+
+  @Inject SolutionManager<TestdataQuarkusSolution, SimpleDoubleScore> simpleDoubleScoreManager;
+
+  @Inject SolutionManager<TestdataQuarkusSolution, HardSoftFloatScore> hardSoftFloatScoreManager;
+
+  @Inject SolutionManager<TestdataQuarkusSolution, HardSoftDoubleScore> hardSoftDoubleScoreManager;
+
+  @Inject
+  SolutionManager<TestdataQuarkusSolution, HardMediumSoftFloatScore>
+      hardMediumSoftFloatScoreManager;
+
+  @Inject
+  SolutionManager<TestdataQuarkusSolution, HardMediumSoftDoubleScore>
+      hardMediumSoftDoubleScoreManager;
+
+  @Inject SolutionManager<TestdataQuarkusSolution, BendableFloatScore> bendableFloatScoreManager;
+
+  @Inject SolutionManager<TestdataQuarkusSolution, BendableDoubleScore> bendableDoubleScoreManager;
+
   @Test
   void solverProperties() {
     assertThat(constraintMetaModel).isNotNull();
@@ -104,6 +132,14 @@ class GreyCOSProcessorSolverResourcesTest {
     assertThat(solver1Factory).isNotNull();
     assertThat(solver1Manager).isNotNull();
     // SolutionManager
+    assertThat(simpleFloatScoreManager).isNotNull();
+    assertThat(simpleDoubleScoreManager).isNotNull();
+    assertThat(hardSoftFloatScoreManager).isNotNull();
+    assertThat(hardSoftDoubleScoreManager).isNotNull();
+    assertThat(hardMediumSoftFloatScoreManager).isNotNull();
+    assertThat(hardMediumSoftDoubleScoreManager).isNotNull();
+    assertThat(bendableFloatScoreManager).isNotNull();
+    assertThat(bendableDoubleScoreManager).isNotNull();
     assertThat(simpleSolutionManager1).isNotNull();
     assertThat(simpleBigDecimalSolutionManager1).isNotNull();
     assertThat(hardSoftSolutionManager1).isNotNull();

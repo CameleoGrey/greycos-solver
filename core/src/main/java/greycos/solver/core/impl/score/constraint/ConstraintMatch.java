@@ -28,6 +28,7 @@ public final class ConstraintMatch<Score_ extends Score<Score_>>
   private final ConstraintRef constraintRef;
   private final @Nullable ConstraintJustification justification;
   private final Score_ score;
+  private final @Nullable Number matchWeight;
 
   /**
    * @param constraintRef unique identifier of the constraint
@@ -36,9 +37,19 @@ public final class ConstraintMatch<Score_ extends Score<Score_>>
    */
   public ConstraintMatch(
       ConstraintRef constraintRef, @Nullable ConstraintJustification justification, Score_ score) {
+    this(constraintRef, justification, score, null);
+  }
+
+  /** Retains the original match weight before multiplication and floating-point rounding. */
+  public ConstraintMatch(
+      ConstraintRef constraintRef,
+      @Nullable ConstraintJustification justification,
+      Score_ score,
+      @Nullable Number matchWeight) {
     this.constraintRef = requireNonNull(constraintRef);
     this.justification = justification;
     this.score = requireNonNull(score);
+    this.matchWeight = matchWeight;
   }
 
   public ConstraintRef getConstraintRef() {
@@ -67,6 +78,11 @@ public final class ConstraintMatch<Score_ extends Score<Score_>>
 
   public Score_ getScore() {
     return score;
+  }
+
+  /** Null when the score calculator did not retain the original match weight. */
+  public @Nullable Number getMatchWeight() {
+    return matchWeight;
   }
 
   // ************************************************************************

@@ -34,6 +34,7 @@ import greycos.solver.core.impl.move.MoveDirector;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.neighborhood.NeighborhoodsBasedMoveRepository;
 import greycos.solver.core.impl.phase.scope.SolverLifecyclePoint;
+import greycos.solver.core.impl.score.ScoreArithmetic;
 import greycos.solver.core.impl.score.analysis.DefaultConstraintAnalysis;
 import greycos.solver.core.impl.score.analysis.DefaultMatchAnalysis;
 import greycos.solver.core.impl.score.analysis.DefaultScoreAnalysis;
@@ -78,9 +79,9 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
                 .map(
                     entry -> {
                       var score =
-                          entry.getValue().stream()
-                              .map(ConstraintMatch::getScore)
-                              .reduce(constraintMatchTotal.getScore().zero(), Score::add);
+                          ScoreArithmetic.sum(
+                              constraintMatchTotal.getConstraintWeight().zero(),
+                              entry.getValue().stream().map(ConstraintMatch::getScore));
                       return (MatchAnalysis<Score_>)
                           new DefaultMatchAnalysis<>(
                               constraintMatchTotal.getConstraintRef(), score, entry.getKey());
@@ -171,7 +172,9 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    * Explains the {@link Score} of {@link #calculateScore()} by splitting it up per {@link
    * Constraint}.
    *
-   * <p>The sum of {@link ConstraintMatchTotal#getScore()} equals {@link #calculateScore()}.
+   * <p>The sum of the individual constraint matches equals {@link #calculateScore()}. For floating
+   * scores, accumulate the individual matches exactly and round once; adding already rounded
+   * constraint subtotals can produce a different result.
    *
    * <p>Call {@link #calculateScore()} before calling this method, unless that method has already
    * been called since the last {@link PlanningVariable} changes.

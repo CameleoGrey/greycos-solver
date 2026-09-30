@@ -16,10 +16,12 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 
 import greycos.solver.core.api.function.QuadFunction;
+import greycos.solver.core.api.function.ToFloatFunction;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.score.stream.common.ConnectedRangeChain;
 import greycos.solver.core.api.score.stream.common.LoadBalance;
@@ -28,6 +30,26 @@ import greycos.solver.core.api.score.stream.uni.UniConstraintCollector;
 import greycos.solver.core.impl.score.stream.collector.AbstractReferenceAverageSlot;
 
 public class InnerUniConstraintCollectors {
+  public static <A> UniConstraintCollector<A, ?, Float> sumFloat(
+      ToFloatFunction<? super A> mapper) {
+    return new FloatUniCollector<>(mapper, false);
+  }
+
+  public static <A> UniConstraintCollector<A, ?, Float> averageFloat(
+      ToFloatFunction<? super A> mapper) {
+    return new FloatUniCollector<>(mapper, true);
+  }
+
+  public static <A> UniConstraintCollector<A, ?, Double> sumDouble(
+      ToDoubleFunction<? super A> mapper) {
+    return new DoubleUniCollector<>(mapper, false);
+  }
+
+  public static <A> UniConstraintCollector<A, ?, Double> averageDouble(
+      ToDoubleFunction<? super A> mapper) {
+    return new DoubleUniCollector<>(mapper, true);
+  }
+
   public static <A> UniConstraintCollector<A, ?, Double> average(ToLongFunction<? super A> mapper) {
     return new AverageUniCollector<>(mapper);
   }

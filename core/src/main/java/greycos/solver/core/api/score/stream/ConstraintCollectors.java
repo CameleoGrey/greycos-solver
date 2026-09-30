@@ -22,6 +22,8 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
+import java.util.function.ToDoubleBiFunction;
+import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongBiFunction;
 import java.util.function.ToLongFunction;
@@ -29,6 +31,12 @@ import java.util.function.ToLongFunction;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.function.QuadFunction;
 import greycos.solver.core.api.function.QuadPredicate;
+import greycos.solver.core.api.function.ToDoubleQuadFunction;
+import greycos.solver.core.api.function.ToDoubleTriFunction;
+import greycos.solver.core.api.function.ToFloatBiFunction;
+import greycos.solver.core.api.function.ToFloatFunction;
+import greycos.solver.core.api.function.ToFloatQuadFunction;
+import greycos.solver.core.api.function.ToFloatTriFunction;
 import greycos.solver.core.api.function.ToLongQuadFunction;
 import greycos.solver.core.api.function.ToLongTriFunction;
 import greycos.solver.core.api.function.TriFunction;
@@ -138,6 +146,80 @@ public final class ConstraintCollectors {
   // ************************************************************************
   // sum
   // ************************************************************************
+
+  /**
+   * Returns a collector that sums finite {@code float} contributions exactly and rounds the result
+   * once to the nearest binary32 value, with ties to even. Insertion order, replacement and
+   * retraction do not change the result for the same active contributions.
+   *
+   * <p>An empty group returns positive zero. All zero results are canonicalized to positive zero.
+   * NaN and infinities are rejected before changing the collector. The exact intermediate sum may
+   * exceed the finite {@code float} range; extracting a result that rounds outside that range
+   * throws {@link ArithmeticException} without changing the accumulated state.
+   *
+   * @param groupValueMapping maps a tuple to its finite represented contribution
+   * @param <A> type of the matched fact
+   * @throws IllegalArgumentException when the mapping produces NaN or infinity
+   */
+  public static <A> @NonNull UniConstraintCollector<A, ?, Float> sumFloat(
+      @NonNull ToFloatFunction<? super A> groupValueMapping) {
+    return InnerUniConstraintCollectors.sumFloat(groupValueMapping);
+  }
+
+  /** As defined by {@link #sumFloat(ToFloatFunction)}. */
+  public static <A, B> @NonNull BiConstraintCollector<A, B, ?, Float> sumFloat(
+      @NonNull ToFloatBiFunction<? super A, ? super B> groupValueMapping) {
+    return InnerBiConstraintCollectors.sumFloat(groupValueMapping);
+  }
+
+  /** As defined by {@link #sumFloat(ToFloatFunction)}. */
+  public static <A, B, C> @NonNull TriConstraintCollector<A, B, C, ?, Float> sumFloat(
+      @NonNull ToFloatTriFunction<? super A, ? super B, ? super C> groupValueMapping) {
+    return InnerTriConstraintCollectors.sumFloat(groupValueMapping);
+  }
+
+  /** As defined by {@link #sumFloat(ToFloatFunction)}. */
+  public static <A, B, C, D> @NonNull QuadConstraintCollector<A, B, C, D, ?, Float> sumFloat(
+      @NonNull ToFloatQuadFunction<? super A, ? super B, ? super C, ? super D> groupValueMapping) {
+    return InnerQuadConstraintCollectors.sumFloat(groupValueMapping);
+  }
+
+  /**
+   * Returns a collector that sums finite {@code double} contributions exactly and rounds the result
+   * once to the nearest binary64 value, with ties to even. Insertion order, replacement and
+   * retraction do not change the result for the same active contributions.
+   *
+   * <p>An empty group returns positive zero. All zero results are canonicalized to positive zero.
+   * NaN and infinities are rejected before changing the collector. The exact intermediate sum may
+   * exceed the finite {@code double} range; extracting a result that rounds outside that range
+   * throws {@link ArithmeticException} without changing the accumulated state.
+   *
+   * @param groupValueMapping maps a tuple to its finite represented contribution
+   * @param <A> type of the matched fact
+   * @throws IllegalArgumentException when the mapping produces NaN or infinity
+   */
+  public static <A> @NonNull UniConstraintCollector<A, ?, Double> sumDouble(
+      @NonNull ToDoubleFunction<? super A> groupValueMapping) {
+    return InnerUniConstraintCollectors.sumDouble(groupValueMapping);
+  }
+
+  /** As defined by {@link #sumDouble(ToDoubleFunction)}. */
+  public static <A, B> @NonNull BiConstraintCollector<A, B, ?, Double> sumDouble(
+      @NonNull ToDoubleBiFunction<? super A, ? super B> groupValueMapping) {
+    return InnerBiConstraintCollectors.sumDouble(groupValueMapping);
+  }
+
+  /** As defined by {@link #sumDouble(ToDoubleFunction)}. */
+  public static <A, B, C> @NonNull TriConstraintCollector<A, B, C, ?, Double> sumDouble(
+      @NonNull ToDoubleTriFunction<? super A, ? super B, ? super C> groupValueMapping) {
+    return InnerTriConstraintCollectors.sumDouble(groupValueMapping);
+  }
+
+  /** As defined by {@link #sumDouble(ToDoubleFunction)}. */
+  public static <A, B, C, D> @NonNull QuadConstraintCollector<A, B, C, D, ?, Double> sumDouble(
+      @NonNull ToDoubleQuadFunction<? super A, ? super B, ? super C, ? super D> groupValueMapping) {
+    return InnerQuadConstraintCollectors.sumDouble(groupValueMapping);
+  }
 
   /**
    * Returns a collector that sums a {@code long} property of the elements that are being grouped.
@@ -561,6 +643,80 @@ public final class ConstraintCollectors {
   // ************************************************************************
   // average
   // ************************************************************************
+
+  /**
+   * Returns a collector that averages finite {@code float} contributions. It divides their exact
+   * sum by the active contribution count before rounding once to the nearest binary32 value, with
+   * ties to even. Therefore the sum may exceed the finite {@code float} range while the average
+   * remains representable.
+   *
+   * <p>An empty group returns {@code null}. Zero results use positive zero. Insertion order,
+   * replacement and retraction do not change the result for the same active contributions. NaN and
+   * infinities are rejected before changing the collector.
+   *
+   * @param groupValueMapping maps a tuple to its finite represented contribution
+   * @param <A> type of the matched fact
+   * @throws IllegalArgumentException when the mapping produces NaN or infinity
+   */
+  public static <A> @NonNull UniConstraintCollector<A, ?, Float> averageFloat(
+      @NonNull ToFloatFunction<? super A> groupValueMapping) {
+    return InnerUniConstraintCollectors.averageFloat(groupValueMapping);
+  }
+
+  /** As defined by {@link #averageFloat(ToFloatFunction)}. */
+  public static <A, B> @NonNull BiConstraintCollector<A, B, ?, Float> averageFloat(
+      @NonNull ToFloatBiFunction<? super A, ? super B> groupValueMapping) {
+    return InnerBiConstraintCollectors.averageFloat(groupValueMapping);
+  }
+
+  /** As defined by {@link #averageFloat(ToFloatFunction)}. */
+  public static <A, B, C> @NonNull TriConstraintCollector<A, B, C, ?, Float> averageFloat(
+      @NonNull ToFloatTriFunction<? super A, ? super B, ? super C> groupValueMapping) {
+    return InnerTriConstraintCollectors.averageFloat(groupValueMapping);
+  }
+
+  /** As defined by {@link #averageFloat(ToFloatFunction)}. */
+  public static <A, B, C, D> @NonNull QuadConstraintCollector<A, B, C, D, ?, Float> averageFloat(
+      @NonNull ToFloatQuadFunction<? super A, ? super B, ? super C, ? super D> groupValueMapping) {
+    return InnerQuadConstraintCollectors.averageFloat(groupValueMapping);
+  }
+
+  /**
+   * Returns a collector that averages finite {@code double} contributions. It divides their exact
+   * sum by the active contribution count before rounding once to the nearest binary64 value, with
+   * ties to even. Therefore the sum may exceed the finite {@code double} range while the average
+   * remains representable.
+   *
+   * <p>An empty group returns {@code null}. Zero results use positive zero. Insertion order,
+   * replacement and retraction do not change the result for the same active contributions. NaN and
+   * infinities are rejected before changing the collector.
+   *
+   * @param groupValueMapping maps a tuple to its finite represented contribution
+   * @param <A> type of the matched fact
+   * @throws IllegalArgumentException when the mapping produces NaN or infinity
+   */
+  public static <A> @NonNull UniConstraintCollector<A, ?, Double> averageDouble(
+      @NonNull ToDoubleFunction<? super A> groupValueMapping) {
+    return InnerUniConstraintCollectors.averageDouble(groupValueMapping);
+  }
+
+  /** As defined by {@link #averageDouble(ToDoubleFunction)}. */
+  public static <A, B> @NonNull BiConstraintCollector<A, B, ?, Double> averageDouble(
+      @NonNull ToDoubleBiFunction<? super A, ? super B> groupValueMapping) {
+    return InnerBiConstraintCollectors.averageDouble(groupValueMapping);
+  }
+
+  /** As defined by {@link #averageDouble(ToDoubleFunction)}. */
+  public static <A, B, C> @NonNull TriConstraintCollector<A, B, C, ?, Double> averageDouble(
+      @NonNull ToDoubleTriFunction<? super A, ? super B, ? super C> groupValueMapping) {
+    return InnerTriConstraintCollectors.averageDouble(groupValueMapping);
+  }
+
+  /** As defined by {@link #averageDouble(ToDoubleFunction)}. */
+  public static <A, B, C, D> @NonNull QuadConstraintCollector<A, B, C, D, ?, Double> averageDouble(
+      @NonNull ToDoubleQuadFunction<? super A, ? super B, ? super C, ? super D> groupValueMapping) {
+    return InnerQuadConstraintCollectors.averageDouble(groupValueMapping);
+  }
 
   /**
    * Returns a collector that calculates an average of a {@code long} property of the elements that

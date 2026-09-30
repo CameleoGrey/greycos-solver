@@ -3,7 +3,12 @@ package greycos.solver.core.impl.localsearch.decider.acceptor.greatdeluge;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import java.util.stream.Stream;
+
 import greycos.solver.core.api.score.HardMediumSoftScore;
+import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.SimpleDoubleScore;
+import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.localsearch.decider.acceptor.AbstractAcceptorTest;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
@@ -14,8 +19,63 @@ import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.preview.api.move.Move;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class GreatDelugeAcceptorTest extends AbstractAcceptorTest {
+
+  static Stream<Score<?>> floatingMaximums() {
+    return Stream.of(SimpleDoubleScore.of(Double.MAX_VALUE), SimpleFloatScore.of(Float.MAX_VALUE));
+  }
+
+  @ParameterizedTest
+  @MethodSource("floatingMaximums")
+  <Score_ extends Score<Score_>> void floatingRatioHasNoIntermediateOverflow(Score_ maximum) {
+    var acceptor = new GreatDelugeAcceptor<>();
+    acceptor.setInitialWaterLevel(maximum.negate());
+    acceptor.setWaterLevelIncrementRatio(1.5);
+    var solverScope = new SolverScope<>();
+    solverScope.setInitializedBestScore(maximum);
+    var phase = new LocalSearchPhaseScope<>(solverScope, 0);
+    var lastStep = new LocalSearchStepScope<>(phase, -1);
+    lastStep.setInitializedScore(maximum);
+    phase.setLastCompletedStepScope(lastStep);
+    acceptor.phaseStarted(phase);
+    var step = new LocalSearchStepScope<>(phase);
+    acceptor.stepEnded(step);
+    // Internal water = -MAX + MAX * 1.5 = MAX / 2; last score MAX prevents aspiration.
+    var move = new LocalSearchMoveScope<>(step, 0, mock(Move.class));
+    move.setInitializedScore(maximum.divide(2));
+    assertThat(acceptor.isAccepted(move)).isTrue();
+    move.setInitializedScore(maximum.zero());
+    assertThat(acceptor.isAccepted(move)).isFalse();
+    acceptor.stepEnded(step);
+    // Water is now 2*MAX and even the greatest finite move cannot clear it.
+    move.setInitializedScore(maximum);
+    assertThat(acceptor.isAccepted(move)).isFalse();
+    acceptor.phaseEnded(phase);
+  }
+
+  @ParameterizedTest
+  @MethodSource("floatingMaximums")
+  <Score_ extends Score<Score_>> void floatingIncrementBoundCanExceedPublicScoreRange(
+      Score_ maximum) {
+    var acceptor = new GreatDelugeAcceptor<>();
+    acceptor.setWaterLevelIncrementScore(maximum);
+    var solverScope = new SolverScope<>();
+    solverScope.setInitializedBestScore(maximum);
+    var phase = new LocalSearchPhaseScope<>(solverScope, 0);
+    var lastStep = new LocalSearchStepScope<>(phase, -1);
+    lastStep.setInitializedScore(maximum);
+    phase.setLastCompletedStepScope(lastStep);
+    acceptor.phaseStarted(phase);
+    var step = new LocalSearchStepScope<>(phase);
+    acceptor.stepEnded(step);
+    var move = new LocalSearchMoveScope<>(step, 0, mock(Move.class));
+    move.setInitializedScore(maximum);
+    assertThat(acceptor.isAccepted(move)).isFalse();
+    acceptor.phaseEnded(phase);
+  }
 
   @Test
   void waterLevelIncrementScore_SimpleScore() {

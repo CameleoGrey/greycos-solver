@@ -22,6 +22,10 @@ class GuidedLocalSearchConfigTest {
     var config = new GuidedLocalSearchConfig();
     assertThat(config.getFeatureProviderClass()).isNull();
     assertThat(config.getPenaltyFactor()).isNull();
+    assertThat(config.getGuidanceMode()).isNull();
+    assertThat(config.getLevelScaleList()).isNull();
+    assertThat(config.getFocusStepLimit()).isNull();
+    assertThat(config.getFocusPenaltyUpdateLimit()).isNull();
     assertThat(config.getTargetScoreLevelIndex()).isNull();
     assertThat(config.getSearchMode()).isNull();
     assertThat(config.getSampleSize()).isNull();
@@ -30,6 +34,42 @@ class GuidedLocalSearchConfigTest {
     var visited = new ArrayList<Class<?>>();
     config.visitReferencedClasses(visited::add);
     assertThat(visited).isEmpty();
+  }
+
+  @Test
+  void multilevelConfigurationCopiesAndRoundTripsWithoutSharingScaleOverrides() {
+    var gls =
+        new GuidedLocalSearchConfig()
+            .withGuidanceMode(GuidedLocalSearchGuidanceMode.ALL_LEVELS)
+            .withFocusStepLimit(64)
+            .withFocusPenaltyUpdateLimit(8)
+            .withLevelScaleList(
+                new ArrayList<>(
+                    List.of(
+                        new GuidedLocalSearchLevelScaleConfig()
+                            .withScoreLevelIndex(0)
+                            .withScale(new BigDecimal("0.0125")))));
+    var copy = gls.copyConfig();
+    gls.getLevelScaleList().getFirst().setScale(BigDecimal.TEN);
+    assertThat(copy.getLevelScaleList().getFirst().getScale()).isEqualByComparingTo("0.0125");
+    var solver =
+        new SolverConfig()
+            .withPhases(
+                new LocalSearchPhaseConfig()
+                    .withLocalSearchType(LocalSearchType.GUIDED_LOCAL_SEARCH)
+                    .withGuidedLocalSearchConfig(copy));
+    var writer = new StringWriter();
+    var io = new SolverConfigIO();
+    io.write(solver, writer);
+    var restored =
+        ((LocalSearchPhaseConfig)
+                io.read(new StringReader(writer.toString())).getPhaseConfigList().getFirst())
+            .getGuidedLocalSearchConfig();
+    assertThat(restored.getGuidanceMode()).isEqualTo(GuidedLocalSearchGuidanceMode.ALL_LEVELS);
+    assertThat(restored.getFocusStepLimit()).isEqualTo(64);
+    assertThat(restored.getFocusPenaltyUpdateLimit()).isEqualTo(8);
+    assertThat(restored.getLevelScaleList().getFirst().getScoreLevelIndex()).isZero();
+    assertThat(restored.getLevelScaleList().getFirst().getScale()).isEqualByComparingTo("0.0125");
   }
 
   @Test

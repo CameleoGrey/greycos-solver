@@ -3,20 +3,58 @@ package greycos.solver.core.impl.localsearch.decider.gls;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Objects;
+import java.util.Set;
 
 import greycos.solver.core.api.score.BendableBigDecimalScore;
+import greycos.solver.core.api.score.BendableDoubleScore;
+import greycos.solver.core.api.score.BendableFloatScore;
 import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardMediumSoftDoubleScore;
+import greycos.solver.core.api.score.HardMediumSoftFloatScore;
 import greycos.solver.core.api.score.HardMediumSoftScore;
 import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardSoftDoubleScore;
+import greycos.solver.core.api.score.HardSoftFloatScore;
 import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.score.IBendableScore;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.SimpleBigDecimalScore;
+import greycos.solver.core.api.score.SimpleDoubleScore;
+import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.score.director.InnerScore;
 
 /** Compares guided scores without changing or rounding the business score. */
 public final class GuidedLocalSearchScoreComparator {
+
+  private static final Set<Class<?>> SUPPORTED_SCORE_TYPES =
+      Set.of(
+          SimpleScore.class,
+          HardSoftScore.class,
+          HardMediumSoftScore.class,
+          BendableScore.class,
+          SimpleBigDecimalScore.class,
+          HardSoftBigDecimalScore.class,
+          HardMediumSoftBigDecimalScore.class,
+          BendableBigDecimalScore.class,
+          SimpleFloatScore.class,
+          HardSoftFloatScore.class,
+          HardMediumSoftFloatScore.class,
+          BendableFloatScore.class,
+          SimpleDoubleScore.class,
+          HardSoftDoubleScore.class,
+          HardMediumSoftDoubleScore.class,
+          BendableDoubleScore.class);
+
+  public static void requireSupportedScoreType(Class<?> scoreClass) {
+    if (!SUPPORTED_SCORE_TYPES.contains(scoreClass)) {
+      throw new IllegalArgumentException(
+          "Guided Local Search does not support custom score class ("
+              + scoreClass.getName()
+              + "). Use a built-in integral, BigDecimal, Float or Double score family.");
+    }
+  }
 
   private final int targetScoreLevelIndex;
   private final GuidedLocalSearchNumber numerator;
@@ -72,6 +110,20 @@ public final class GuidedLocalSearchScoreComparator {
       GuidedLocalSearchNumber leftPenalty,
       InnerScore<?> right,
       GuidedLocalSearchNumber rightPenalty) {
+    return compare(left, leftPenalty, right, rightPenalty, GuidedLocalSearchNumber.ONE);
+  }
+
+  /** Penalty arguments are exact numerators sharing {@code penaltyDenominator}. */
+  public int compare(
+      InnerScore<?> left,
+      GuidedLocalSearchNumber leftPenalty,
+      InnerScore<?> right,
+      GuidedLocalSearchNumber rightPenalty,
+      GuidedLocalSearchNumber penaltyDenominator) {
+    if (penaltyDenominator.signum() <= 0) {
+      throw new IllegalArgumentException(
+          "The GLS penalty denominator (" + penaltyDenominator + ") must be positive.");
+    }
     validateScores(left.raw(), right.raw());
     if (leftPenalty.equals(rightPenalty)) {
       return compareOriginal(left, right);
@@ -80,6 +132,7 @@ public final class GuidedLocalSearchScoreComparator {
     if (comparison != 0) {
       return comparison;
     }
+    var combinedDenominator = denominator.multiply(penaltyDenominator);
     if (isIntegral(left.raw())) {
       comparison =
           GuidedLocalSearchNumber.compareAdjusted(
@@ -88,7 +141,7 @@ public final class GuidedLocalSearchScoreComparator {
               leftPenalty,
               rightPenalty,
               numerator,
-              denominator);
+              combinedDenominator);
     } else {
       var scoreDifference =
           GuidedLocalSearchNumber.of(
@@ -96,7 +149,7 @@ public final class GuidedLocalSearchScoreComparator {
                   .subtract(decimalLevel(right.raw(), targetScoreLevelIndex)));
       comparison =
           scoreDifference
-              .multiply(denominator)
+              .multiply(combinedDenominator)
               .subtract(leftPenalty.subtract(rightPenalty).multiply(numerator))
               .signum();
     }
@@ -157,8 +210,7 @@ public final class GuidedLocalSearchScoreComparator {
             default -> value.softScore();
           };
       case BendableBigDecimalScore value -> value.hardOrSoftScore(index);
-      default ->
-          throw new IllegalArgumentException("Unsupported decimal GLS score: " + score.getClass());
+      default -> GuidedLocalSearchNumber.of(score.toLevelNumbers()[index]).toBigDecimal();
     };
   }
 
@@ -172,12 +224,12 @@ public final class GuidedLocalSearchScoreComparator {
       case HardMediumSoftBigDecimalScore ignored -> 3;
       case BendableScore value -> value.levelsSize();
       case BendableBigDecimalScore value -> value.levelsSize();
-      default ->
-          throw new IllegalArgumentException("Unsupported GLS score type: " + score.getClass());
+      default -> score.toLevelNumbers().length;
     };
   }
 
   private void validateScores(Score<?> left, Score<?> right) {
+    requireSupportedScoreType(left.getClass());
     if (left.getClass() != right.getClass()
         || levelsSize(left) != levelsSize(right)
         || targetScoreLevelIndex >= levelsSize(left)) {
@@ -185,12 +237,9 @@ public final class GuidedLocalSearchScoreComparator {
           "The GLS targetScoreLevelIndex (%d) is incompatible with scores (%s, %s)."
               .formatted(targetScoreLevelIndex, left, right));
     }
-    if (left instanceof BendableScore l
-            && right instanceof BendableScore r
-            && l.hardLevelsSize() != r.hardLevelsSize()
-        || left instanceof BendableBigDecimalScore decimalLeft
-            && right instanceof BendableBigDecimalScore decimalRight
-            && decimalLeft.hardLevelsSize() != decimalRight.hardLevelsSize()) {
+    if (left instanceof IBendableScore<?> l
+        && right instanceof IBendableScore<?> r
+        && l.hardLevelsSize() != r.hardLevelsSize()) {
       throw new IllegalArgumentException("GLS requires matching bendable score dimensions.");
     }
   }

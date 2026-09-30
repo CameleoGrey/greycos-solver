@@ -31,6 +31,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChang
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchSearchMode;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchType;
@@ -102,6 +103,7 @@ class GuidedLocalSearchDeciderTest {
       String threads, int sampleSize) {
     var gls =
         new GuidedLocalSearchConfig()
+            .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
             .withFeatureProviderClass(RecoveryFeatures.class)
             .withPenaltyFactor(BigDecimal.ONE)
             .withTargetScoreLevelIndex(1)
@@ -221,7 +223,12 @@ class GuidedLocalSearchDeciderTest {
   void featureProviderRequiredAtBuildTime() {
     assertThatThrownBy(
             () ->
-                build(phase(new GuidedLocalSearchConfig(), new ChangeMoveSelectorConfig()), "NONE"))
+                build(
+                    phase(
+                        new GuidedLocalSearchConfig()
+                            .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET),
+                        new ChangeMoveSelectorConfig()),
+                    "NONE"))
         .hasMessageContaining("featureProviderClass");
   }
 
@@ -248,6 +255,8 @@ class GuidedLocalSearchDeciderTest {
         .isEqualTo(new GuidedLocalSearchDecider.Statistics(0, 0, 0, 0));
     assertThat(decider(solver).getMoveEvaluationDiagnostics()).isNull();
     assertThat(decider(solver).getUncreditedCalculationCount()).isZero();
+    assertThat(decider(solver).getFocusSwitchCount()).isZero();
+    assertThat(decider(solver).getFocusScoreLevelIndex()).isEqualTo(-1);
   }
 
   @Test
@@ -343,7 +352,9 @@ class GuidedLocalSearchDeciderTest {
   }
 
   private static GuidedLocalSearchConfig glsConfig() {
-    return new GuidedLocalSearchConfig().withFeatureProviderClass(EmptyProvider.class);
+    return new GuidedLocalSearchConfig()
+        .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
+        .withFeatureProviderClass(EmptyProvider.class);
   }
 
   private static LocalSearchPhaseConfig phase(

@@ -4,6 +4,8 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicPickEarlyType;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicMoveScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
+import greycos.solver.core.impl.score.FloatingScoreSupport;
+import greycos.solver.core.impl.score.ScoreArithmetic;
 
 public class DefaultConstructionHeuristicForager<Solution_>
     extends AbstractConstructionHeuristicForager<Solution_> {
@@ -82,8 +84,14 @@ public class DefaultConstructionHeuristicForager<Solution_>
                 .<Score_>getScore()
                 .raw();
         var moveScore = moveScope.<Score_>getScore().raw();
-        var lastStepScoreDifference = moveScore.subtract(lastStepScore);
-        if (lastStepScoreDifference.isFeasible()) {
+        var nonDeterioratingHard =
+            FloatingScoreSupport.isFloatingScore(moveScore)
+                ? ScoreArithmetic.isFeasibleDifference(
+                    moveScore,
+                    lastStepScore,
+                    moveScope.getScoreDirector().getScoreDefinition().getFeasibleLevelsSize())
+                : moveScore.subtract(lastStepScore).isFeasible();
+        if (nonDeterioratingHard) {
           earlyPickedMoveScope = moveScope;
         }
       }

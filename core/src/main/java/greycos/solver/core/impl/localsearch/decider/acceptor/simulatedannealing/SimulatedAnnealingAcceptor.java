@@ -5,6 +5,8 @@ import greycos.solver.core.impl.localsearch.decider.acceptor.AbstractAcceptor;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.score.FloatingScoreSupport;
+import greycos.solver.core.impl.score.ScoreArithmetic;
 
 /** The time gradient implementation of simulated annealing. */
 public class SimulatedAnnealingAcceptor<Solution_> extends AbstractAcceptor<Solution_> {
@@ -62,19 +64,23 @@ public class SimulatedAnnealingAcceptor<Solution_> extends AbstractAcceptor<Solu
     if (moveScore.compareTo(lastStepScore) >= 0) {
       return true;
     }
-    var moveScoreDifference = lastStepScore.subtract(moveScore);
-    var moveScoreDifferenceLevels = moveScoreDifference.toLevelDoubles();
+    var moveScoreDifferenceLevels = ScoreArithmetic.difference(lastStepScore, moveScore);
+    var floatingDifference = FloatingScoreSupport.isFloatingScore(lastStepScore);
     var acceptChance = 1.0;
     for (var i = 0; i < levelsLength; i++) {
       var moveScoreDifferenceLevel = moveScoreDifferenceLevels[i];
       var temperatureLevel = temperatureLevels[i];
       double acceptChanceLevel;
-      if (moveScoreDifferenceLevel <= 0.0) {
+      if (moveScoreDifferenceLevel.doubleValue() <= 0.0) {
         // In this level, moveScore is better than the lastStepScore, so do not disrupt the
         // acceptChance
         acceptChanceLevel = 1.0;
       } else {
-        acceptChanceLevel = Math.exp(-moveScoreDifferenceLevel / temperatureLevel);
+        var lossOverTemperature =
+            floatingDifference
+                ? ScoreArithmetic.ratio(moveScoreDifferenceLevel, temperatureLevel)
+                : moveScoreDifferenceLevel.doubleValue() / temperatureLevel;
+        acceptChanceLevel = Math.exp(-lossOverTemperature);
       }
       acceptChance *= acceptChanceLevel;
     }

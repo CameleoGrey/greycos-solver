@@ -12,12 +12,14 @@ import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.ToDoubleFunction;
 import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
 
 import greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.function.ToFloatFunction;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.ConstraintCollectors;
 import greycos.solver.core.api.score.stream.ConstraintStream;
@@ -1968,4 +1970,134 @@ public interface UniConstraintStream<A> extends ConstraintStream {
    */
   <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> impactBigDecimal(
       @NonNull Score_ constraintWeight, @NonNull Function<A, BigDecimal> matchWeigher);
+
+  /**
+   * As defined by {@link #penalizeFloat(Score, ToFloatFunction)}, where the match weight is one
+   * (1).
+   */
+  default <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> penalizeFloat(
+      @NonNull Score_ constraintWeight) {
+    return penalizeFloat(constraintWeight, (a) -> 1F);
+  }
+
+  /**
+   * Subtracts the constraint weight multiplied by a {@code float} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be non-negative and finite. The
+   * input is preserved until the product is rounded to the score's precision. The constraint weight
+   * may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> penalizeFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatFunction<A> matchWeigher);
+
+  /**
+   * As defined by {@link #penalizeDouble(Score, ToDoubleFunction)}, where the match weight is one
+   * (1).
+   */
+  default <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> penalizeDouble(
+      @NonNull Score_ constraintWeight) {
+    return penalizeDouble(constraintWeight, (a) -> 1D);
+  }
+
+  /**
+   * Subtracts the constraint weight multiplied by a {@code double} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be non-negative and finite. The
+   * input is preserved until the product is rounded to the score's precision. The constraint weight
+   * may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> penalizeDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleFunction<A> matchWeigher);
+
+  /**
+   * As defined by {@link #rewardFloat(Score, ToFloatFunction)}, where the match weight is one (1).
+   */
+  default <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> rewardFloat(
+      @NonNull Score_ constraintWeight) {
+    return rewardFloat(constraintWeight, (a) -> 1F);
+  }
+
+  /**
+   * Adds the constraint weight multiplied by a {@code float} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be non-negative and finite. The
+   * input is preserved until the product is rounded to the score's precision. The constraint weight
+   * may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> rewardFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatFunction<A> matchWeigher);
+
+  /**
+   * As defined by {@link #rewardDouble(Score, ToDoubleFunction)}, where the match weight is one
+   * (1).
+   */
+  default <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> rewardDouble(
+      @NonNull Score_ constraintWeight) {
+    return rewardDouble(constraintWeight, (a) -> 1D);
+  }
+
+  /**
+   * Adds the constraint weight multiplied by a {@code double} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be non-negative and finite. The
+   * input is preserved until the product is rounded to the score's precision. The constraint weight
+   * may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> rewardDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleFunction<A> matchWeigher);
+
+  /**
+   * As defined by {@link #impactFloat(Score, ToFloatFunction)}, where the match weight is one (1).
+   */
+  default <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> impactFloat(
+      @NonNull Score_ constraintWeight) {
+    return impactFloat(constraintWeight, (a) -> 1F);
+  }
+
+  /**
+   * Adds the constraint weight multiplied by a {@code float} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be finite and may be positive
+   * or negative. The input is preserved until the product is rounded to the score's precision. The
+   * constraint weight may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> impactFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatFunction<A> matchWeigher);
+
+  /**
+   * As defined by {@link #impactDouble(Score, ToDoubleFunction)}, where the match weight is one
+   * (1).
+   */
+  default <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> impactDouble(
+      @NonNull Score_ constraintWeight) {
+    return impactDouble(constraintWeight, (a) -> 1D);
+  }
+
+  /**
+   * Adds the constraint weight multiplied by a {@code double} match weight for each match and
+   * returns a builder to apply optional constraint properties.
+   *
+   * <p>Supports float and double score types. The match weight must be finite and may be positive
+   * or negative. The input is preserved until the product is rounded to the score's precision. The
+   * constraint weight may be overridden using {@link ConstraintWeightOverrides}.
+   *
+   * @param matchWeigher supplies the match weight to multiply by the constraint weight
+   */
+  <Score_ extends Score<Score_>> @NonNull UniConstraintBuilder<A, Score_> impactDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleFunction<A> matchWeigher);
 }

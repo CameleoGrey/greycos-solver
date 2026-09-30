@@ -3,8 +3,10 @@ package greycos.solver.core.impl.score.stream.common.uni;
 import java.math.BigDecimal;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 import java.util.function.ToLongFunction;
 
+import greycos.solver.core.api.function.ToFloatFunction;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.ConstraintFactory;
 import greycos.solver.core.api.score.stream.DefaultConstraintJustification;
@@ -147,4 +149,46 @@ public interface InnerUniConstraintStream<A> extends UniConstraintStream<A> {
       Score_ constraintWeight,
       Function<A, BigDecimal> matchWeigher,
       ScoreImpactType scoreImpactType);
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> penalizeFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatFunction<A> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.PENALTY);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> rewardFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatFunction<A> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.REWARD);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> impactFloat(
+      @NonNull Score_ constraintWeight, @NonNull ToFloatFunction<A> matchWeigher) {
+    return innerImpactFloat(constraintWeight, matchWeigher, ScoreImpactType.MIXED);
+  }
+
+  <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> innerImpactFloat(
+      Score_ constraintWeight, ToFloatFunction<A> matchWeigher, ScoreImpactType scoreImpactType);
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> penalizeDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleFunction<A> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.PENALTY);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> rewardDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleFunction<A> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.REWARD);
+  }
+
+  @Override
+  default @NonNull <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> impactDouble(
+      @NonNull Score_ constraintWeight, @NonNull ToDoubleFunction<A> matchWeigher) {
+    return innerImpactDouble(constraintWeight, matchWeigher, ScoreImpactType.MIXED);
+  }
+
+  <Score_ extends Score<Score_>> UniConstraintBuilder<A, Score_> innerImpactDouble(
+      Score_ constraintWeight, ToDoubleFunction<A> matchWeigher, ScoreImpactType scoreImpactType);
 }

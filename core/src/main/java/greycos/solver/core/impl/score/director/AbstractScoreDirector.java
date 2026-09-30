@@ -36,6 +36,7 @@ import greycos.solver.core.impl.move.MoveDirector;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.neighborhood.NeighborhoodsBasedMoveRepository;
 import greycos.solver.core.impl.phase.scope.SolverLifecyclePoint;
+import greycos.solver.core.impl.score.ScoreArithmetic;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.solver.exception.CloningCorruptionException;
@@ -286,7 +287,10 @@ public abstract class AbstractScoreDirector<
         && workingSolutionMutationObserver != observer) {
       throw new IllegalStateException("A working solution mutation observer is already attached.");
     }
-    workingSolutionMutationObserver = observer;
+    if (workingSolutionMutationObserver != observer) {
+      workingSolutionMutationObserver = observer;
+      variableSupport.workingSolutionMutationObserverChanged();
+    }
   }
 
   @Override
@@ -995,7 +999,9 @@ public abstract class AbstractScoreDirector<
         throw new IllegalStateException(
             "Score corruption (%s): the solution's score (%s) is not the uncorruptedScore (%s)."
                 .formatted(
-                    score.subtract(uncorruptedScore).toShortString(), score, uncorruptedScore));
+                    ScoreArithmetic.differenceString(score, uncorruptedScore),
+                    score,
+                    uncorruptedScore));
       }
     }
   }
@@ -1011,7 +1017,7 @@ public abstract class AbstractScoreDirector<
           after completedAction (%s).\
           """
               .formatted(
-                  expectedWorkingScore.raw().subtract(workingScore.raw()).toShortString(),
+                  ScoreArithmetic.differenceString(expectedWorkingScore.raw(), workingScore.raw()),
                   expectedWorkingScore,
                   workingScore,
                   completedAction));
@@ -1049,7 +1055,7 @@ public abstract class AbstractScoreDirector<
           """
               .formatted(
                   ShadowVariable.class.getSimpleName(),
-                  expectedWorkingScore.raw().subtract(workingScore.raw()).toShortString(),
+                  ScoreArithmetic.differenceString(expectedWorkingScore.raw(), workingScore.raw()),
                   expectedWorkingScore,
                   workingScore,
                   ShadowVariable.class.getSimpleName(),
@@ -1208,7 +1214,7 @@ public abstract class AbstractScoreDirector<
             %s\
             """
                 .formatted(
-                    innerScore.raw().subtract(uncorruptedInnerScore.raw()).toShortString(),
+                    ScoreArithmetic.differenceString(innerScore.raw(), uncorruptedInnerScore.raw()),
                     predicted ? "predictedScore" : "workingScore",
                     innerScore,
                     uncorruptedInnerScore,
@@ -1256,7 +1262,8 @@ public abstract class AbstractScoreDirector<
 
       corruptionDiagnosis = solutionTracker.buildScoreCorruptionMessage();
     }
-    var scoreDifference = undoInnerScore.raw().subtract(beforeMoveInnerScore.raw()).toShortString();
+    var scoreDifference =
+        ScoreArithmetic.differenceString(undoInnerScore.raw(), beforeMoveInnerScore.raw());
     var corruptionMessage =
         """
         UndoMove corruption (%s):

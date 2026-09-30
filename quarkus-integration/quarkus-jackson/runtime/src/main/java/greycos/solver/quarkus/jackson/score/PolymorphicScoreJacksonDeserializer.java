@@ -3,16 +3,25 @@ package greycos.solver.quarkus.jackson.score;
 import java.io.IOException;
 
 import greycos.solver.core.api.score.BendableBigDecimalScore;
+import greycos.solver.core.api.score.BendableDoubleScore;
+import greycos.solver.core.api.score.BendableFloatScore;
 import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardMediumSoftDoubleScore;
+import greycos.solver.core.api.score.HardMediumSoftFloatScore;
 import greycos.solver.core.api.score.HardMediumSoftScore;
 import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardSoftDoubleScore;
+import greycos.solver.core.api.score.HardSoftFloatScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.SimpleBigDecimalScore;
+import greycos.solver.core.api.score.SimpleDoubleScore;
+import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.api.score.SimpleScore;
 
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 
@@ -37,6 +46,15 @@ public class PolymorphicScoreJacksonDeserializer extends JsonDeserializer<Score>
     String scoreClassSimpleName = parser.currentName();
     parser.nextToken();
     String scoreString = parser.getValueAsString();
+    var score = parseScore(scoreClassSimpleName, scoreString);
+    if (parser.nextToken() != JsonToken.END_OBJECT) {
+      throw new IllegalArgumentException(
+          "A polymorphic score must contain exactly one score type.");
+    }
+    return score;
+  }
+
+  private Score parseScore(String scoreClassSimpleName, String scoreString) {
     if (scoreClassSimpleName.equals(SimpleScore.class.getSimpleName())) {
       return SimpleScore.parseScore(scoreString);
     } else if (scoreClassSimpleName.equals(SimpleBigDecimalScore.class.getSimpleName())) {
@@ -53,6 +71,22 @@ public class PolymorphicScoreJacksonDeserializer extends JsonDeserializer<Score>
       return BendableScore.parseScore(scoreString);
     } else if (scoreClassSimpleName.equals(BendableBigDecimalScore.class.getSimpleName())) {
       return BendableBigDecimalScore.parseScore(scoreString);
+    } else if (scoreClassSimpleName.equals(SimpleFloatScore.class.getSimpleName())) {
+      return SimpleFloatScore.parseScore(scoreString);
+    } else if (scoreClassSimpleName.equals(SimpleDoubleScore.class.getSimpleName())) {
+      return SimpleDoubleScore.parseScore(scoreString);
+    } else if (scoreClassSimpleName.equals(HardSoftFloatScore.class.getSimpleName())) {
+      return HardSoftFloatScore.parseScore(scoreString);
+    } else if (scoreClassSimpleName.equals(HardSoftDoubleScore.class.getSimpleName())) {
+      return HardSoftDoubleScore.parseScore(scoreString);
+    } else if (scoreClassSimpleName.equals(HardMediumSoftFloatScore.class.getSimpleName())) {
+      return HardMediumSoftFloatScore.parseScore(scoreString);
+    } else if (scoreClassSimpleName.equals(HardMediumSoftDoubleScore.class.getSimpleName())) {
+      return HardMediumSoftDoubleScore.parseScore(scoreString);
+    } else if (scoreClassSimpleName.equals(BendableFloatScore.class.getSimpleName())) {
+      return BendableFloatScore.parseScore(scoreString);
+    } else if (scoreClassSimpleName.equals(BendableDoubleScore.class.getSimpleName())) {
+      return BendableDoubleScore.parseScore(scoreString);
     } else {
       throw new IllegalArgumentException(
           "Unrecognized scoreClassSimpleName ("

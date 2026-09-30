@@ -2,13 +2,21 @@ package greycos.solver.quarkus.jackson;
 
 import greycos.solver.core.api.cotwin.solution.ConstraintWeightOverrides;
 import greycos.solver.core.api.score.BendableBigDecimalScore;
+import greycos.solver.core.api.score.BendableDoubleScore;
+import greycos.solver.core.api.score.BendableFloatScore;
 import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardMediumSoftDoubleScore;
+import greycos.solver.core.api.score.HardMediumSoftFloatScore;
 import greycos.solver.core.api.score.HardMediumSoftScore;
 import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardSoftDoubleScore;
+import greycos.solver.core.api.score.HardSoftFloatScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.SimpleBigDecimalScore;
+import greycos.solver.core.api.score.SimpleDoubleScore;
+import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import greycos.solver.core.api.score.stream.ConstraintRef;
@@ -28,20 +36,36 @@ import greycos.solver.quarkus.jackson.diff.PlanningSolutionDiffJacksonSerializer
 import greycos.solver.quarkus.jackson.diff.PlanningVariableDiffJacksonSerializer;
 import greycos.solver.quarkus.jackson.score.BendableBigDecimalScoreJacksonDeserializer;
 import greycos.solver.quarkus.jackson.score.BendableBigDecimalScoreJacksonSerializer;
+import greycos.solver.quarkus.jackson.score.BendableDoubleScoreJacksonDeserializer;
+import greycos.solver.quarkus.jackson.score.BendableDoubleScoreJacksonSerializer;
+import greycos.solver.quarkus.jackson.score.BendableFloatScoreJacksonDeserializer;
+import greycos.solver.quarkus.jackson.score.BendableFloatScoreJacksonSerializer;
 import greycos.solver.quarkus.jackson.score.BendableScoreJacksonDeserializer;
 import greycos.solver.quarkus.jackson.score.BendableScoreJacksonSerializer;
 import greycos.solver.quarkus.jackson.score.HardMediumSoftBigDecimalScoreJacksonDeserializer;
 import greycos.solver.quarkus.jackson.score.HardMediumSoftBigDecimalScoreJacksonSerializer;
+import greycos.solver.quarkus.jackson.score.HardMediumSoftDoubleScoreJacksonDeserializer;
+import greycos.solver.quarkus.jackson.score.HardMediumSoftDoubleScoreJacksonSerializer;
+import greycos.solver.quarkus.jackson.score.HardMediumSoftFloatScoreJacksonDeserializer;
+import greycos.solver.quarkus.jackson.score.HardMediumSoftFloatScoreJacksonSerializer;
 import greycos.solver.quarkus.jackson.score.HardMediumSoftScoreJacksonDeserializer;
 import greycos.solver.quarkus.jackson.score.HardMediumSoftScoreJacksonSerializer;
 import greycos.solver.quarkus.jackson.score.HardSoftBigDecimalScoreJacksonDeserializer;
 import greycos.solver.quarkus.jackson.score.HardSoftBigDecimalScoreJacksonSerializer;
+import greycos.solver.quarkus.jackson.score.HardSoftDoubleScoreJacksonDeserializer;
+import greycos.solver.quarkus.jackson.score.HardSoftDoubleScoreJacksonSerializer;
+import greycos.solver.quarkus.jackson.score.HardSoftFloatScoreJacksonDeserializer;
+import greycos.solver.quarkus.jackson.score.HardSoftFloatScoreJacksonSerializer;
 import greycos.solver.quarkus.jackson.score.HardSoftScoreJacksonDeserializer;
 import greycos.solver.quarkus.jackson.score.HardSoftScoreJacksonSerializer;
 import greycos.solver.quarkus.jackson.score.PolymorphicScoreJacksonDeserializer;
 import greycos.solver.quarkus.jackson.score.PolymorphicScoreJacksonSerializer;
 import greycos.solver.quarkus.jackson.score.SimpleBigDecimalScoreJacksonDeserializer;
 import greycos.solver.quarkus.jackson.score.SimpleBigDecimalScoreJacksonSerializer;
+import greycos.solver.quarkus.jackson.score.SimpleDoubleScoreJacksonDeserializer;
+import greycos.solver.quarkus.jackson.score.SimpleDoubleScoreJacksonSerializer;
+import greycos.solver.quarkus.jackson.score.SimpleFloatScoreJacksonDeserializer;
+import greycos.solver.quarkus.jackson.score.SimpleFloatScoreJacksonSerializer;
 import greycos.solver.quarkus.jackson.score.SimpleScoreJacksonDeserializer;
 import greycos.solver.quarkus.jackson.score.SimpleScoreJacksonSerializer;
 import greycos.solver.quarkus.jackson.score.analysis.ScoreAnalysisJacksonSerializer;
@@ -109,6 +133,26 @@ public class GreyCOSJacksonModule extends SimpleModule {
     addSerializer(BendableBigDecimalScore.class, new BendableBigDecimalScoreJacksonSerializer());
     addDeserializer(
         BendableBigDecimalScore.class, new BendableBigDecimalScoreJacksonDeserializer());
+
+    addSerializer(SimpleFloatScore.class, new SimpleFloatScoreJacksonSerializer());
+    addDeserializer(SimpleFloatScore.class, new SimpleFloatScoreJacksonDeserializer());
+    addSerializer(SimpleDoubleScore.class, new SimpleDoubleScoreJacksonSerializer());
+    addDeserializer(SimpleDoubleScore.class, new SimpleDoubleScoreJacksonDeserializer());
+    addSerializer(HardSoftFloatScore.class, new HardSoftFloatScoreJacksonSerializer());
+    addDeserializer(HardSoftFloatScore.class, new HardSoftFloatScoreJacksonDeserializer());
+    addSerializer(HardSoftDoubleScore.class, new HardSoftDoubleScoreJacksonSerializer());
+    addDeserializer(HardSoftDoubleScore.class, new HardSoftDoubleScoreJacksonDeserializer());
+    addSerializer(HardMediumSoftFloatScore.class, new HardMediumSoftFloatScoreJacksonSerializer());
+    addDeserializer(
+        HardMediumSoftFloatScore.class, new HardMediumSoftFloatScoreJacksonDeserializer());
+    addSerializer(
+        HardMediumSoftDoubleScore.class, new HardMediumSoftDoubleScoreJacksonSerializer());
+    addDeserializer(
+        HardMediumSoftDoubleScore.class, new HardMediumSoftDoubleScoreJacksonDeserializer());
+    addSerializer(BendableFloatScore.class, new BendableFloatScoreJacksonSerializer());
+    addDeserializer(BendableFloatScore.class, new BendableFloatScoreJacksonDeserializer());
+    addSerializer(BendableDoubleScore.class, new BendableDoubleScoreJacksonSerializer());
+    addDeserializer(BendableDoubleScore.class, new BendableDoubleScoreJacksonDeserializer());
 
     // Constraint weights
     addSerializer(ConstraintRef.class, new ConstraintRefJacksonSerializer());

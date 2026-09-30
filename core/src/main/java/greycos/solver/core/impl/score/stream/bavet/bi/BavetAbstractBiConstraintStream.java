@@ -6,8 +6,10 @@ import java.math.BigDecimal;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.ToDoubleBiFunction;
 import java.util.function.ToLongBiFunction;
 
+import greycos.solver.core.api.function.ToFloatBiFunction;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.DefaultConstraintJustification;
@@ -620,5 +622,27 @@ public abstract class BavetAbstractBiConstraintStream<Solution_, A, B>
   protected final TriFunction<A, B, Score<?>, DefaultConstraintJustification>
       getDefaultJustificationMapping() {
     return createDefaultJustificationMapping();
+  }
+
+  @Override
+  public <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> innerImpactFloat(
+      Score_ constraintWeight,
+      ToFloatBiFunction<A, B> matchWeigher,
+      ScoreImpactType scoreImpactType) {
+    var stream =
+        shareAndAddChild(
+            new BavetScoringBiConstraintStream<>(constraintFactory, this, matchWeigher));
+    return newTerminator(stream, scoreImpactType, constraintWeight);
+  }
+
+  @Override
+  public <Score_ extends Score<Score_>> BiConstraintBuilder<A, B, Score_> innerImpactDouble(
+      Score_ constraintWeight,
+      ToDoubleBiFunction<A, B> matchWeigher,
+      ScoreImpactType scoreImpactType) {
+    var stream =
+        shareAndAddChild(
+            new BavetScoringBiConstraintStream<>(constraintFactory, this, matchWeigher));
+    return newTerminator(stream, scoreImpactType, constraintWeight);
   }
 }

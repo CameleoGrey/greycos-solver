@@ -444,9 +444,9 @@ public class ProblemBenchmarkResult<Solution_> {
         continue;
       }
       singleBenchmarkResult.setWinningScoreDifference(
-          singleBenchmarkResult
-              .getAverageScore()
-              .subtract(winningSingleBenchmarkResult.getAverageScore()));
+          FloatingBenchmarkScoreArithmetic.difference(
+              singleBenchmarkResult.getAverageScore(),
+              winningSingleBenchmarkResult.getAverageScore()));
       singleBenchmarkResult.setWorstScoreDifferencePercentage(
           ScoreDifferencePercentage.calculateScoreDifferencePercentage(
               worstSingleBenchmarkResult.getAverageScore(),

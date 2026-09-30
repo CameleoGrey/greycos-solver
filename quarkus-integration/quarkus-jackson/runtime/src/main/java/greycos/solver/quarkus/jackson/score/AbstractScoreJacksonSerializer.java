@@ -33,6 +33,9 @@ public abstract class AbstractScoreJacksonSerializer<Score_ extends Score<Score_
   @Override
   public JsonSerializer<?> createContextual(SerializerProvider provider, BeanProperty property)
       throws JsonMappingException {
+    if (property == null) {
+      return this;
+    }
     JavaType propertyType = property.getType();
     if (Score.class.equals(propertyType.getRawClass())) {
       // If the property type is Score (not HardSoftScore for example),

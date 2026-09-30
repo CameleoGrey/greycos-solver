@@ -5,13 +5,21 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.enterprise.inject.Produces;
 
 import greycos.solver.core.api.score.BendableBigDecimalScore;
+import greycos.solver.core.api.score.BendableDoubleScore;
+import greycos.solver.core.api.score.BendableFloatScore;
 import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardMediumSoftDoubleScore;
+import greycos.solver.core.api.score.HardMediumSoftFloatScore;
 import greycos.solver.core.api.score.HardMediumSoftScore;
 import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardSoftDoubleScore;
+import greycos.solver.core.api.score.HardSoftFloatScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.SimpleBigDecimalScore;
+import greycos.solver.core.api.score.SimpleDoubleScore;
+import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.stream.ConstraintMetaModel;
 import greycos.solver.core.api.solver.SolutionManager;
@@ -154,6 +162,80 @@ public class DefaultGreyCOSBeanProvider {
       SolutionManager<Solution_, BendableBigDecimalScore>
           solutionManager_workaroundBendableBigDecimalScore(
               SolverFactory<Solution_> solverFactory) {
+    return solutionManager(solverFactory);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, SimpleFloatScore> solutionManager_workaroundSimpleFloatScore(
+          SolverFactory<Solution_> solverFactory) {
+    return solutionManager(solverFactory);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, SimpleDoubleScore> solutionManager_workaroundSimpleDoubleScore(
+          SolverFactory<Solution_> solverFactory) {
+    return solutionManager(solverFactory);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, HardSoftFloatScore> solutionManager_workaroundHardSoftFloatScore(
+          SolverFactory<Solution_> solverFactory) {
+    return solutionManager(solverFactory);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, HardSoftDoubleScore> solutionManager_workaroundHardSoftDoubleScore(
+          SolverFactory<Solution_> solverFactory) {
+    return solutionManager(solverFactory);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, HardMediumSoftFloatScore>
+          solutionManager_workaroundHardMediumSoftFloatScore(
+              SolverFactory<Solution_> solverFactory) {
+    return solutionManager(solverFactory);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, HardMediumSoftDoubleScore>
+          solutionManager_workaroundHardMediumSoftDoubleScore(
+              SolverFactory<Solution_> solverFactory) {
+    return solutionManager(solverFactory);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, BendableFloatScore> solutionManager_workaroundBendableFloatScore(
+          SolverFactory<Solution_> solverFactory) {
+    return solutionManager(solverFactory);
+  }
+
+  @DefaultBean
+  @Dependent
+  @Produces
+  <Solution_>
+      SolutionManager<Solution_, BendableDoubleScore> solutionManager_workaroundBendableDoubleScore(
+          SolverFactory<Solution_> solverFactory) {
     return solutionManager(solverFactory);
   }
 }

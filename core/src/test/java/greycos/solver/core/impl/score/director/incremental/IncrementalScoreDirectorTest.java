@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import greycos.solver.core.api.score.SimpleDoubleScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.calculator.AnalyzableIncrementalScoreCalculator;
 import greycos.solver.core.api.score.calculator.ConstraintMatchRegistration;
@@ -15,6 +16,7 @@ import greycos.solver.core.api.score.stream.DefaultConstraintJustification;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
+import greycos.solver.core.impl.score.definition.SimpleDoubleScoreDefinition;
 import greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 
 import org.jspecify.annotations.NullMarked;
@@ -26,6 +28,51 @@ class IncrementalScoreDirectorTest {
 
   private static final ConstraintRef CONSTRAINT_A = ConstraintRef.of("constraintA");
   private static final ConstraintRef CONSTRAINT_B = ConstraintRef.of("constraintB");
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void floatingRegistryRetainsExactContributionsAcrossRoundedConstraintSubtotals() {
+    IncrementalScoreDirectorFactory<Object, SimpleDoubleScore> factory =
+        mock(IncrementalScoreDirectorFactory.class);
+    when(factory.getScoreDefinition()).thenReturn(new SimpleDoubleScoreDefinition());
+    when(factory.getSolutionDescriptor()).thenReturn(mock(SolutionDescriptor.class));
+    AnalyzableIncrementalScoreCalculator<Object, SimpleDoubleScore> calculator =
+        mock(AnalyzableIncrementalScoreCalculator.class);
+    try (var director =
+        new IncrementalScoreDirector.Builder<>(factory, EnvironmentMode.PHASE_ASSERT)
+            .withIncrementalScoreCalculator(calculator)
+            .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
+            .build()) {
+      director.setWorkingSolution(new Object());
+      var large = SimpleDoubleScore.of(0x1p53);
+      var first =
+          director.registerConstraintMatch(
+              CONSTRAINT_A, large, DefaultConstraintJustification.of(large));
+      var second =
+          director.registerConstraintMatch(
+              CONSTRAINT_A,
+              SimpleDoubleScore.ONE,
+              DefaultConstraintJustification.of(SimpleDoubleScore.ONE));
+      var third =
+          director.registerConstraintMatch(
+              CONSTRAINT_B,
+              SimpleDoubleScore.ONE,
+              DefaultConstraintJustification.of(SimpleDoubleScore.ONE));
+      assertThat(director.getConstraintMatchTotalMap().get(CONSTRAINT_A).getScore())
+          .isEqualTo(large);
+      assertThat(director.totalScore()).isEqualTo(SimpleDoubleScore.of(0x1p53 + 2));
+      first.cancel();
+      assertThat(director.totalScore()).isEqualTo(SimpleDoubleScore.of(2));
+      third.cancel();
+      second.cancel();
+      assertThat(director.totalScore()).isEqualTo(SimpleDoubleScore.ZERO);
+      director.registerConstraintMatch(
+          CONSTRAINT_A, large, DefaultConstraintJustification.of(large));
+      director.setWorkingSolution(new Object());
+      assertThat(director.totalScore()).isEqualTo(SimpleDoubleScore.ZERO);
+      assertThat(director.getConstraintMatchTotalMap()).isEmpty();
+    }
+  }
 
   @Test
   void illegalStateExceptionThrownWhenConstraintMatchNotEnabled() {

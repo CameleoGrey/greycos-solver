@@ -5,6 +5,8 @@ import java.util.Objects;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import greycos.solver.core.impl.score.FloatingScoreSupport;
+import greycos.solver.core.impl.score.ScoreArithmetic;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -75,10 +77,8 @@ final class BestScoreTermination<Solution_> extends AbstractUniversalTermination
    */
   <Score_ extends Score<Score_>> double calculateTimeGradient(
       Score_ startScore, Score_ endScore, Score_ score) {
-    var totalDiff = endScore.subtract(startScore);
-    var totalDiffNumbers = totalDiff.toLevelNumbers();
-    var scoreDiff = score.subtract(startScore);
-    var scoreDiffNumbers = scoreDiff.toLevelNumbers();
+    var totalDiffNumbers = ScoreArithmetic.difference(endScore, startScore);
+    var scoreDiffNumbers = ScoreArithmetic.difference(score, startScore);
     if (scoreDiffNumbers.length != totalDiffNumbers.length) {
       throw new IllegalStateException(
           "The startScore ("
@@ -90,7 +90,11 @@ final class BestScoreTermination<Solution_> extends AbstractUniversalTermination
               + ") don't have the same levelsSize.");
     }
     return calculateTimeGradient(
-        totalDiffNumbers, scoreDiffNumbers, timeGradientWeightNumbers, levelsSize);
+        totalDiffNumbers,
+        scoreDiffNumbers,
+        timeGradientWeightNumbers,
+        levelsSize,
+        FloatingScoreSupport.isFloatingScore(startScore));
   }
 
   /**
@@ -105,6 +109,16 @@ final class BestScoreTermination<Solution_> extends AbstractUniversalTermination
       Number[] scoreDiffNumbers,
       double[] timeGradientWeightNumbers,
       int levelDepth) {
+    return calculateTimeGradient(
+        totalDiffNumbers, scoreDiffNumbers, timeGradientWeightNumbers, levelDepth, false);
+  }
+
+  static double calculateTimeGradient(
+      Number[] totalDiffNumbers,
+      Number[] scoreDiffNumbers,
+      double[] timeGradientWeightNumbers,
+      int levelDepth,
+      boolean widenedFloatingDifference) {
     var timeGradient = 0.0;
     var remainingTimeGradient = 1.0;
     for (var i = 0; i < levelDepth; i++) {
@@ -118,10 +132,16 @@ final class BestScoreTermination<Solution_> extends AbstractUniversalTermination
       }
       var totalDiffLevel = totalDiffNumbers[i].doubleValue();
       var scoreDiffLevel = scoreDiffNumbers[i].doubleValue();
-      if (scoreDiffLevel == totalDiffLevel) {
+      // Widened floating differences may exceed double range. Compare before narrowing.
+      var comparison =
+          widenedFloatingDifference
+              ? FloatingScoreSupport.exact(scoreDiffNumbers[i])
+                  .compareTo(FloatingScoreSupport.exact(totalDiffNumbers[i]))
+              : scoreDiffLevel == totalDiffLevel ? 0 : scoreDiffLevel > totalDiffLevel ? 1 : -1;
+      if (comparison == 0) {
         // Max out this level
         timeGradient += levelTimeGradientWeight;
-      } else if (scoreDiffLevel > totalDiffLevel) {
+      } else if (comparison > 0) {
         // Max out this level and all softer levels too
         timeGradient += levelTimeGradientWeight + remainingTimeGradient;
         break;
@@ -133,7 +153,10 @@ final class BestScoreTermination<Solution_> extends AbstractUniversalTermination
         // timeGradient += 0.0
         break;
       } else {
-        var levelTimeGradient = scoreDiffLevel / totalDiffLevel;
+        var levelTimeGradient =
+            widenedFloatingDifference
+                ? ScoreArithmetic.ratio(scoreDiffNumbers[i], totalDiffNumbers[i])
+                : scoreDiffLevel / totalDiffLevel;
         timeGradient += levelTimeGradient * levelTimeGradientWeight;
       }
     }

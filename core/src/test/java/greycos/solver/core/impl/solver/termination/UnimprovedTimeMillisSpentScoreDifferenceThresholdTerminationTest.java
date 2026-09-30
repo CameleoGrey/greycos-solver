@@ -9,6 +9,7 @@ import static org.mockito.Mockito.spy;
 
 import java.time.Clock;
 
+import greycos.solver.core.api.score.SimpleDoubleScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
@@ -23,6 +24,37 @@ import org.junit.jupiter.api.Test;
 class UnimprovedTimeMillisSpentScoreDifferenceThresholdTerminationTest {
 
   private static final long START_TIME_MILLIS = 0L;
+
+  @Test
+  void floatingImprovementBeyondDoubleRangePostponesTermination() {
+    var solverScope = spy(new SolverScope<TestdataSolution>());
+    var phaseScope = spy(new LocalSearchPhaseScope<>(solverScope, 0));
+    var stepScope = spy(new LocalSearchStepScope<>(phaseScope));
+    var clock = mock(Clock.class);
+    var termination =
+        new UnimprovedTimeMillisSpentScoreDifferenceThresholdTermination<TestdataSolution>(
+            1000L, SimpleDoubleScore.of(Double.MAX_VALUE), clock);
+    doReturn(0L).when(clock).millis();
+    doReturn(0L).when(phaseScope).getStartingSystemTimeMillis();
+    doReturn(0L).when(solverScope).getBestSolutionTimeMillis();
+    doReturn(true).when(stepScope).getBestScoreImproved();
+    doReturn(InnerScore.fullyAssigned(SimpleDoubleScore.of(-Double.MAX_VALUE)))
+        .when(solverScope)
+        .getBestScore();
+    termination.solvingStarted(solverScope);
+    termination.phaseStarted(phaseScope);
+    termination.stepEnded(stepScope);
+    doReturn(500L).when(clock).millis();
+    doReturn(500L).when(solverScope).getBestSolutionTimeMillis();
+    doReturn(InnerScore.fullyAssigned(SimpleDoubleScore.of(Double.MAX_VALUE)))
+        .when(solverScope)
+        .getBestScore();
+    termination.stepEnded(stepScope);
+    doReturn(1001L).when(clock).millis();
+    assertThat(termination.isSolverTerminated(solverScope)).isFalse();
+    doReturn(1501L).when(clock).millis();
+    assertThat(termination.isSolverTerminated(solverScope)).isTrue();
+  }
 
   @Test
   void forNegativeUnimprovedTimeMillis_exceptionIsThrown() {

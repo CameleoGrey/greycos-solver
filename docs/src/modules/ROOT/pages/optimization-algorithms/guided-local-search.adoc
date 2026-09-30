@@ -2,29 +2,33 @@
 = Guided Local Search
 
 Guided Local Search (GLS) changes the search objective when ordinary improvement stalls.
-The application identifies features of a solution, such as directed routing arcs, and their costs.
+By default, it identifies planning assignments and list relationships automatically.
+Applications can also supply features, such as directed routing arcs, with objective-specific costs.
 GLS increases penalties on selected costly features so that subsequent moves favor alternatives.
 These penalties guide move selection; the planning score, retained best solution, score explanations,
 and score-based termination continue to use the original constraints.
 
 GLS runs inside a local-search phase with a dedicated decider.
-It requires an initialized solution and an application-specific feature provider.
+It requires an initialized solution; the construction heuristic's result may still be infeasible.
 It supports basic and list planning variables, incremental score calculation, move workers, and islands.
 Benchmark it against existing search configurations on representative inputs before choosing it for production.
 
 [#guidedLocalSearchObjective]
 == Search objective and penalty updates
 
-GreyCOS maximizes scores. For the configured target score level `k`, GLS uses:
+GreyCOS maximizes scores. In the default `ALL_LEVELS` guidance mode, GLS maintains a separate penalty history
+for each business score level. It guides one level `k` at a time:
 
 [source,text]
 ----
-penalty(x) = penaltyFactor * sum(p[i] * cost[i](x), for active features i)
+penalty(x) = penaltyFactor * (scale[k] * sum(automaticPenalty[i, k])
+                            + sum(customPenalty[i, k] * customCost[i, k](x)))
 guidedLevel(x) = originalLevel[k](x) - penalty(x)
-utility(i) = cost[i](x) / (1 + p[i])
+automaticUtility(i) = scale[k] / (1 + automaticPenalty[i, k])
+customUtility(i) = customCost[i, k](x) / (1 + customPenalty[i, k])
 ----
 
-Each feature starts with penalty count `p[i] = 0`.
+Each feature starts with a zero penalty count at every level.
 When a search round finds admissible neighbors but no improving neighbor, GLS increments the count
 of every active, positive-cost feature tied for maximum utility.
 Features no longer present retain their penalty counts for future appearances.
@@ -32,26 +36,67 @@ Counts do not decay. By default, discovering a new original-score best does not 
 
 The guided comparison preserves structural validity and mandatory initialization first.
 It then compares the original score levels above `k`, the guided level at `k`, and the original levels below `k`,
-in that order. Candidates cannot worsen the original score prefix above the target level.
+in that order. The active focus changes over time; there is no permanently protected business-score prefix.
 An admissible candidate improving the original best is accepted through _aspiration_,
 even if its guided value does not improve the incumbent.
 
-For `HardSoftScore` and the default target, the comparison is equivalent to
-`(structural, initialization, hard, soft - penalty)`.
-Set `targetScoreLevelIndex` to `0` to guide the hard level instead.
-That permits hard-score deterioration, including temporary departure from feasibility.
-The solver still retains and returns the original-score best.
-Soft-level guidance preserves the hard score and therefore cannot escape every infeasible hard-score local optimum.
+The initial focus is the first negative hard level, or the last business level if no hard level is negative.
+After `focusStepLimit` committed moves or `focusPenaltyUpdateLimit` penalty updates,
+the focus moves to the preceding level, wrapping from the first level to the last.
+The defaults are 64 moves and 8 updates.
+The first-ever feasible solution switches the focus to the last level immediately.
+Subsequent departures from and returns to feasibility do not restart that schedule.
+This prevents repeated feasibility recovery from indefinitely postponing hard-level guidance.
+Penalty histories survive focus changes.
 
-All built-in integral and decimal score types are supported, including bendable scores.
+For `HardSoftScore`, GLS therefore alternates between hard and soft guidance.
+Search can cross an infeasible region to find a better feasible incumbent, and can continue optimizing softer levels.
+The retained and returned best remains the complete original lexicographic score.
+GLS is a heuristic: this behavior permits such escapes but does not guarantee feasibility or optimality.
+
+`FIXED_TARGET` mode retains the original single-level behavior.
+It requires a custom provider, guides `targetScoreLevelIndex` (the last level by default),
+and rejects moves that worsen an earlier original score level.
+An explicit target with no guidance mode selects `FIXED_TARGET` for compatibility.
+Specifying both `ALL_LEVELS` and a fixed target is invalid.
+
+When upgrading a configuration that supplied a provider but omitted the target,
+set `guidanceMode` to `FIXED_TARGET` to retain its former last-level behavior.
+Leaving both the mode and target unset enables the new automatic, all-level guidance.
+
+All sixteen built-in integral, decimal, float, and double score types are supported, including bendable scores.
 The target index is zero-based over business score levels; it excludes structural and initialization components.
 Penalty factors, feature costs, comparisons, and utility ties use exact arithmetic.
 Fractional penalties remain significant even for integral scores.
 For example, factor `0.1`, count `1`, and cost `3` contribute `0.3` to guidance.
 
-The cost-weighted formula and post-penalty escape follow OR-Tools' routing GLS design.
+The custom cost-weighted formula and post-penalty escape follow OR-Tools' routing GLS design.
 GreyCOS preserves fractional contributions instead of reproducing OR-Tools' per-feature integer truncation.
-It also protects higher-priority score levels. Matching a coefficient does not imply matching search trajectories.
+Automatic features and rotating score-level guidance are GreyCOS extensions.
+Matching a coefficient does not imply matching search trajectories.
+
+=== Automatic features and scale
+
+For basic variables, a feature identifies the entity, variable, and assigned value.
+For list variables, features identify ownership and directed adjacency, including owner-specific start and end boundaries.
+Unassigned values use distinct tokens where unassignment is allowed.
+Pinned assignments and immutable prefix interiors are omitted; mutable boundaries remain available.
+Mixed models combine these features. Single-threaded GLS adds no `@PlanningId` requirement;
+move workers retain the usual lookup and rebasing requirements.
+
+Each level's automatic scale is calibrated from up to the first 128 nonzero observations of:
+
+[source,text]
+----
+abs(candidateLevel - incumbentLevel) / max(1, changedAutomaticFeatureCount)
+----
+
+Here the change count is the symmetric difference between the candidate and incumbent feature sets.
+The scale is the exact median of these observations, taken in consumed candidate order.
+It freezes at the first penalty update for that level.
+With no observations, GLS uses a provisional scale of one; it replaces that scale once at a later penalty boundary
+if observations become available. Positive per-level `levelScale` overrides bypass calibration.
+Calibration uses existing evaluations and causes no extra score calculations.
 
 [#guidedLocalSearchRounds]
 == Descent, escape, and neighborhood coverage
@@ -59,8 +104,9 @@ It also protects higher-priority score levels. Matching a coefficient does not i
 During descent, GLS chooses the first admissible candidate that improves the guided comparison
 or satisfies original-best aspiration. Equal guided comparisons are not descent improvements.
 After updating penalties, it starts a fresh selector iterator and chooses the first admissible neighbor.
-This _escape_ step may worsen the guided target level, while still respecting structural validity,
-mandatory initialization, and the protected original score prefix.
+This _escape_ step may worsen any business score level in `ALL_LEVELS`, including hard levels,
+while still respecting structural validity and mandatory initialization.
+`FIXED_TARGET` additionally protects the original score prefix above its target.
 
 [cols="1,3",options="header"]
 |===
@@ -81,7 +127,8 @@ The solution has not changed between those rounds.
 
 If sampled rounds find no admissible candidate, GLS ends the phase after `maxUnproductiveRounds` rounds.
 An exhaustive round without any admissible candidate ends the phase immediately.
-If stagnation requires a penalty update but no active positive-cost feature can be penalized, the phase also ends.
+If the focus has no positive-cost features, `ALL_LEVELS` checks the remaining levels in a bounded sweep.
+The phase ends if none can be penalized. `FIXED_TARGET` checks only its target.
 Termination is checked throughout candidate and penalty rounds.
 Penalty updates do not create moves, completed steps, best-solution events, or score calculations.
 A step-count limit counts committed moves.
@@ -95,18 +142,21 @@ even though its iterator ends.
 [#guidedLocalSearchConfiguration]
 == Configuration
 
-Set the local-search type to `GUIDED_LOCAL_SEARCH` and supply a feature-provider class.
-The provider must have a public no-argument constructor.
+Set the local-search type to `GUIDED_LOCAL_SEARCH` to use automatic features across all score levels.
+An optional feature-provider class must have a public no-argument constructor.
 GLS owns acceptance and move selection; do not combine it with an `acceptor` or `forager` configuration.
-Automatic benchmark blueprints omit GLS because they cannot infer a feature provider.
-An explicitly configured benchmark can use it.
+Automatic benchmark blueprints can use GLS without application-specific configuration.
 
 [cols="2,1,3",options="header"]
 |===
 |Property |Default |Meaning
-|`featureProviderClass` |Required |Application feature provider.
+|`guidanceMode` |`ALL_LEVELS` |Rotate guidance across levels; `FIXED_TARGET` retains single-level behavior. An explicit target without a mode selects `FIXED_TARGET`.
+|`featureProviderClass` |None |Supplement automatic features in `ALL_LEVELS`; required in `FIXED_TARGET`.
 |`penaltyFactor` |`0.1` |Strictly positive decimal multiplier. Feature costs must use the target score level's units.
-|`targetScoreLevelIndex` |Last level |Zero-based target business score level; hard and soft levels are both allowed.
+|`targetScoreLevelIndex` |Last level in fixed mode |Zero-based fixed target; cannot be combined with `ALL_LEVELS`.
+|`focusStepLimit` |`64` |Committed moves before rotating focus in `ALL_LEVELS`.
+|`focusPenaltyUpdateLimit` |`8` |Penalty updates before rotating focus in `ALL_LEVELS`.
+|`levelScale` |Calibrated |Repeatable `scoreLevelIndex` and positive `scale` override for automatic features.
 |`searchMode` |`SAMPLED` |Sampled stagnation or supported exhaustive enumeration.
 |`sampleSize` |`1000` |Maximum attempted candidates per sampled round. Omit this property in exhaustive mode.
 |`maxUnproductiveRounds` |`3` |Consecutive sampled rounds allowed without an admissible candidate.
@@ -196,6 +246,8 @@ For a complete executable example with nearby selection, use
 `examples.vehiclerouting.VehicleRoutingGuidedLocalSearch` and its
 `examples/vehiclerouting/vehicleRoutingGuidedLocalSearchSolverConfig.xml` resource.
 The same GLS configuration is available in island local-search shorthand.
+For plain planning variables, see `examples.cloudbalancing.CloudBalancingGuidedLocalSearch`.
+Omit `featureProviderClass` to run either model with automatic features only.
 
 For exhaustive list search, replace the local-search element above with:
 
@@ -226,7 +278,7 @@ Implement the public APIs in `greycos.solver.core.api.localsearch`:
 |`GuidedLocalSearchFeatureProvider<Solution_, Key_>`
 |`extractFeatures` independently enumerates the features of a solution; `newSession` creates private incremental state.
 |`GuidedLocalSearchFeatureConsumer<Key_>`
-|`accept(key, longCost)` or `accept(key, BigDecimalCost)` emits a present feature and its cost.
+|`accept(key, longCost)`, `accept(key, BigDecimalCost)`, `acceptFloat`, and `acceptDouble` emit scalar costs; `acceptScore` emits per-level costs.
 |`GuidedLocalSearchFeatureUpdater<Key_>`
 |The consumer operations insert or replace a feature; `remove(key)` removes its presence.
 |`GuidedLocalSearchFeatureSession<Solution_, Key_>`
@@ -237,14 +289,21 @@ Keys must be non-null, immutable, and equal across cloned solutions.
 Use immutable business IDs or records composed of those IDs; do not use a mutable planning entity as a key.
 Each key represents binary feature presence. If the same kind of feature occurs several times,
 give each occurrence a distinct key. Full extraction must emit each key once.
-Costs must be nonnegative. Zero-cost features may be present but are never selected for penalty increments.
+Costs must be finite and nonnegative. Zero-cost features may be present but are never selected for penalty increments.
 Changing a present feature's cost keeps its penalty count.
 An incremental `remove` must name a currently present feature.
 
 Choose features whose removal or replacement describes useful alternative decisions.
 They may represent only selected terms of the objective; their sum need not reproduce the whole business score.
 Avoid including known immutable features: repeatedly penalizing a feature that no move can remove cannot guide useful choices.
-Use costs in the selected target level's units. For example, guiding scaled distance with unscaled kilometers
+Scalar costs apply to the last business level in `ALL_LEVELS` and to the target in `FIXED_TARGET`.
+`acceptScore(key, costs)` supplies a complete cost vector of the solution's score type and dimensions,
+with a zero structural component and nonnegative business components.
+Replacing the vector preserves the feature's separate penalty histories at every level.
+`acceptFloat` and `acceptDouble` use the exact represented binary value.
+Automatic and custom features have separate key spaces; custom features do not disable automatic features.
+
+Use costs in the corresponding score level's units. For example, guiding scaled distance with unscaled kilometers
 changes the effect of `penaltyFactor` by the scale factor.
 
 `extractFeatures` is the independent reference for correctness assertions.
@@ -282,13 +341,13 @@ The example's distance costs do not depend on vehicle identity.
 Constraint matches are not automatically used as GLS features.
 A match involving one customer may depend on its predecessor, while a customer ID alone does not identify that arc.
 Grouped matches and arbitrary justifications also need not describe elementary decisions.
-The explicit provider works with Easy, Incremental, and Constraint Streams score calculation.
+Both automatic features and explicit providers work with Easy, Incremental, and Constraint Streams score calculation.
 
 [#guidedLocalSearchLifecycle]
 == Threading, islands, and diagnosis
 
-Move workers evaluate guidance with private feature sessions against a frozen penalty generation.
-The coordinator consumes results in candidate order and synchronizes workers before changing penalties.
+Move workers evaluate guidance with private feature sessions against frozen penalty, focus, and scale generations.
+The coordinator consumes results in candidate order and synchronizes workers before changing guidance.
 Published solutions and scores remain original-score results.
 For reproducibility, keep the input, seed, selector configuration, worker count, and non-time termination fixed.
 Wall-clock termination and concurrent island migration can change the trajectory.

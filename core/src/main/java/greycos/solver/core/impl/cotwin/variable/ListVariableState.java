@@ -36,6 +36,11 @@ import org.jspecify.annotations.Nullable;
 public interface ListVariableState<Solution_, Entity_, Element_>
     extends ListVariableChangeHandler<Solution_> {
 
+  /**
+   * Releases observer-specific state immediately when a mutation observer is attached or detached.
+   */
+  default void workingSolutionMutationObserverChanged() {}
+
   void externalize(IndexShadowVariableDescriptor<Solution_> shadowVariableDescriptor);
 
   void externalize(InverseRelationShadowVariableDescriptor<Solution_> shadowVariableDescriptor);

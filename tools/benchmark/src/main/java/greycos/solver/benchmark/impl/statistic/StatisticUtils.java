@@ -1,11 +1,15 @@
 package greycos.solver.benchmark.impl.statistic;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
 import greycos.solver.benchmark.impl.result.BenchmarkResult;
+import greycos.solver.benchmark.impl.result.FloatingBenchmarkScoreArithmetic;
 import greycos.solver.core.api.score.Score;
 
 public class StatisticUtils {
@@ -28,6 +32,9 @@ public class StatisticUtils {
     }
     if (averageScore == null) {
       throw new IllegalArgumentException("Average score (" + averageScore + ") cannot be null.");
+    }
+    if (FloatingBenchmarkScoreArithmetic.isFloating(averageScore)) {
+      return floatingStandardDeviation(benchmarkResultList, averageScore, successCount);
     }
     // averageScore can no longer be null
     double[] differenceSquaredTotalDoubles = null;
@@ -55,6 +62,47 @@ public class StatisticUtils {
       standardDeviationDoubles[i] = Math.pow(differenceSquaredTotalDoubles[i] / successCount, 0.5);
     }
     return standardDeviationDoubles;
+  }
+
+  private static double[] floatingStandardDeviation(
+      List<? extends BenchmarkResult> results, Score<?> averageScore, int successCount) {
+    var averageLevels = averageScore.toLevelNumbers();
+    var squaredTotals = new BigDecimal[averageLevels.length];
+    Arrays.fill(squaredTotals, BigDecimal.ZERO);
+    boolean foundSuccess = false;
+    for (var result : results) {
+      if (!result.hasAllSuccess()) {
+        continue;
+      }
+      foundSuccess = true;
+      var levels = result.getAverageScore().toLevelNumbers();
+      if (levels.length != averageLevels.length) {
+        throw new IllegalArgumentException(
+            "Benchmark score and average must have the same level count.");
+      }
+      for (int i = 0; i < levels.length; i++) {
+        var difference =
+            FloatingBenchmarkScoreArithmetic.decimal(levels[i])
+                .subtract(FloatingBenchmarkScoreArithmetic.decimal(averageLevels[i]));
+        squaredTotals[i] = squaredTotals[i].add(difference.multiply(difference));
+      }
+    }
+    if (!foundSuccess) {
+      return new double[0];
+    }
+    var deviations = new double[averageLevels.length];
+    for (int i = 0; i < deviations.length; i++) {
+      var variance =
+          squaredTotals[i].divide(BigDecimal.valueOf(successCount), MathContext.DECIMAL128);
+      deviations[i] = variance.sqrt(MathContext.DECIMAL128).doubleValue();
+      if (!Double.isFinite(deviations[i])) {
+        throw new ArithmeticException(
+            "The benchmark standard deviation at level ("
+                + i
+                + ") exceeds the finite double range.");
+      }
+    }
+    return deviations;
   }
 
   public static String getStandardDeviationString(double[] standardDeviationDoubles) {

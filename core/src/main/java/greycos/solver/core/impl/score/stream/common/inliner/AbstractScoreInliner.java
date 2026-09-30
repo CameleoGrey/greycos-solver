@@ -43,6 +43,15 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
           ScoreDefinition<Score_> scoreDefinition,
           Map<Constraint, Score_> constraintWeightMap,
           ConstraintMatchPolicy constraintMatchPolicy) {
+    var numericType = scoreDefinition.getNumericType();
+    if (numericType == float.class || numericType == double.class) {
+      return (ScoreInliner_)
+          new FloatingScoreInliner<>(
+              constraintWeightMap,
+              constraintMatchPolicy,
+              scoreDefinition.getZeroScore(),
+              numericType);
+    }
     return (ScoreInliner_)
         switch (scoreDefinition) {
           case SimpleScoreDefinition simpleScoreDefinition ->
@@ -155,6 +164,11 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
     public Score_ toScore() {
       return delegate.toScore();
     }
+
+    @Override
+    public @Nullable Number matchWeight() {
+      return delegate.matchWeight();
+    }
   }
 
   private ElementAwareLinkedList<ConstraintMatchCarrier<Score_>> getConstraintMatchList(
@@ -232,6 +246,15 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
         // Repeated requests for score explanation should not create the same constraint match over
         // and over.
         constraintMatch = constraintMatchSupplier.apply(constraint, scoreImpact.toScore());
+        var matchWeight = scoreImpact.matchWeight();
+        if (matchWeight != null) {
+          constraintMatch =
+              new ConstraintMatch<>(
+                  constraintMatch.getConstraintRef(),
+                  constraintMatch.getJustification(),
+                  constraintMatch.getScore(),
+                  matchWeight);
+        }
       }
       return constraintMatch;
     }

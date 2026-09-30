@@ -2,6 +2,7 @@ package greycos.solver.benchmark.impl.ranking;
 
 import java.util.Comparator;
 
+import greycos.solver.benchmark.impl.result.FloatingBenchmarkScoreArithmetic;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 
@@ -21,6 +22,27 @@ final class ResilientScoreComparator implements Comparator<Score> {
       return b == null ? 0 : -1;
     } else if (b == null) {
       return 1;
+    }
+    if (FloatingBenchmarkScoreArithmetic.isFloating(a)
+        || FloatingBenchmarkScoreArithmetic.isFloating(b)
+        || FloatingBenchmarkScoreArithmetic.isFloating(aScoreDefinition.getZeroScore())) {
+      int structuralComparison = Long.compare(a.structuralScore(), b.structuralScore());
+      if (structuralComparison != 0) {
+        return structuralComparison;
+      }
+      var aNumbers = a.toLevelNumbers();
+      var bNumbers = b.toLevelNumbers();
+      for (int i = 0; i < aNumbers.length || i < bNumbers.length; i++) {
+        var aToken = i < aNumbers.length ? aNumbers[i] : 0;
+        var bToken = i < bNumbers.length ? bNumbers[i] : 0;
+        int comparison =
+            FloatingBenchmarkScoreArithmetic.decimal(aToken)
+                .compareTo(FloatingBenchmarkScoreArithmetic.decimal(bToken));
+        if (comparison != 0) {
+          return comparison;
+        }
+      }
+      return 0;
     }
     if (!aScoreDefinition.isCompatibleArithmeticArgument(a)
         || !aScoreDefinition.isCompatibleArithmeticArgument(b)) {
