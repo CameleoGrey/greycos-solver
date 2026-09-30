@@ -5,7 +5,6 @@ import java.util.List;
 
 import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
-import greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
@@ -15,6 +14,7 @@ import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.alns.DefaultAlnsPhaseFactory;
 import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhaseFactory;
+import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyProfileResolver;
 import greycos.solver.core.impl.exhaustivesearch.DefaultExhaustiveSearchPhaseFactory;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.islandmodel.DefaultIslandModelPhaseFactory;
@@ -76,21 +76,18 @@ public interface PhaseFactory<Solution_> {
       }
       var isConstructionPhase =
           ConstructionHeuristicPhaseConfig.class.isAssignableFrom(phaseConfig.getClass());
-      // We currently do not support nearby functionality for CH.
-      // Additionally, mixed models must not include any nearby settings for basic variables,
-      // as this may cause failures in certain cases,
-      // such as when defining multiple variables with a Cartesian product.
-      var entityPlacerConfig =
-          isConstructionPhase
-              ? ((ConstructionHeuristicPhaseConfig) phaseConfig).getEntityPlacerConfig()
-              : null;
-      var disableNearbySetting =
-          configPolicy.getNearbyDistanceMeterClass() != null
-              && entityPlacerConfig != null
-              && QueuedEntityPlacerConfig.class.isAssignableFrom(entityPlacerConfig.getClass())
-              && configPolicy.getSolutionDescriptor().hasBothBasicAndListVariables();
       var updatedConfigPolicy =
-          disableNearbySetting ? configPolicy.copyConfigPolicyWithoutNearbySetting() : configPolicy;
+          configPolicy
+              .cloneBuilder()
+              .withEntitySorterManner(configPolicy.getEntitySorterManner())
+              .withValueSorterManner(configPolicy.getValueSorterManner())
+              .withReinitializeVariableFilterEnabled(
+                  configPolicy.isReinitializeVariableFilterEnabled())
+              .withUnassignedValuesAllowed(configPolicy.isUnassignedValuesAllowed())
+              .withConstructionHeuristicNearbyProfiles(
+                  ConstructionHeuristicNearbyProfileResolver.resolveForPhase(
+                      phaseConfigList, phaseIndex, configPolicy))
+              .build();
       // The initialization phase can only be applied to construction heuristics or custom phases
       var isConstructionOrCustomPhase =
           isConstructionPhase || CustomPhaseConfig.class.isAssignableFrom(phaseConfig.getClass());

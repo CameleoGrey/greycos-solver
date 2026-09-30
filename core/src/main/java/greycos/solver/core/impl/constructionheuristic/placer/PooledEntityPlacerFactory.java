@@ -11,6 +11,7 @@ import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.composite.CartesianProductMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import greycos.solver.core.impl.AbstractFromConfigFactory;
+import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyMoveSelectorFactory;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
@@ -59,9 +60,10 @@ public class PooledEntityPlacerFactory<Solution_>
             AbstractFromConfigFactory.getDefaultEntitySelectorConfigForEntity(
                 configPolicy, entityDescriptor);
         changeMoveSelectorConfig.setEntitySelectorConfig(entitySelectorConfig);
+      } else {
+        changeMoveSelectorConfig.setEntitySelectorConfig(
+            EntitySelectorConfig.newMimicSelectorConfig(entitySelectorConfig.getId()));
       }
-      changeMoveSelectorConfig.setEntitySelectorConfig(
-          EntitySelectorConfig.newMimicSelectorConfig(entitySelectorConfig.getId()));
     }
     return config;
   }
@@ -82,6 +84,9 @@ public class PooledEntityPlacerFactory<Solution_>
         MoveSelectorFactory.<Solution_>create(moveSelectorConfig_)
             .buildMoveSelector(
                 configPolicy, SelectionCacheType.JUST_IN_TIME, SelectionOrder.ORIGINAL, false);
+    moveSelector =
+        ConstructionHeuristicNearbyMoveSelectorFactory.wrap(
+            moveSelector, moveSelectorConfig_, configPolicy);
     return new PooledEntityPlacer<>(this, configPolicy, moveSelector);
   }
 

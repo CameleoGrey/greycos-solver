@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.constructionheuristic.placer;
 
+import java.util.ArrayList;
 import java.util.Objects;
 
 import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
@@ -10,6 +11,7 @@ import greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig
 import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
+import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyMoveSelectorFactory;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
@@ -23,9 +25,44 @@ public class QueuedValuePlacerFactory<Solution_>
     extends AbstractEntityPlacerFactory<Solution_, QueuedValuePlacerConfig> {
 
   public static QueuedValuePlacerConfig unfoldNew(MoveSelectorConfig templateMoveSelectorConfig) {
-    throw new UnsupportedOperationException(
-        "The <constructionHeuristic> contains a moveSelector (%s) and the <queuedValuePlacer> does not support unfolding those yet."
-            .formatted(templateMoveSelectorConfig));
+    return unfoldNew(templateMoveSelectorConfig, new ValueSelectorConfig().withId("queuedValue"));
+  }
+
+  public static <Solution_> QueuedValuePlacerConfig unfoldNew(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      MoveSelectorConfig templateMoveSelectorConfig) {
+    var config = new QueuedValuePlacerConfig();
+    var factory = new QueuedValuePlacerFactory<Solution_>(config);
+    var entityDescriptor = factory.deduceEntityDescriptor(configPolicy, null);
+    return unfoldNew(
+        templateMoveSelectorConfig,
+        factory.buildValueSelectorConfig(configPolicy, entityDescriptor));
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static QueuedValuePlacerConfig unfoldNew(
+      MoveSelectorConfig templateMoveSelectorConfig, ValueSelectorConfig queuedValueConfig) {
+    var moveConfig = (MoveSelectorConfig) templateMoveSelectorConfig.copyConfig();
+    var leaves = new ArrayList<MoveSelectorConfig>();
+    moveConfig.extractLeafMoveSelectorConfigsIntoList(leaves);
+    for (var leaf : leaves) {
+      if (!(leaf instanceof ChangeMoveSelectorConfig change)) {
+        throw new IllegalArgumentException(
+            "The queued value construction heuristic candidate (%s) must be a changeMoveSelector, optionally nested in a composite selector."
+                .formatted(leaf));
+      }
+      if (change.getValueSelectorConfig() != null) {
+        throw new IllegalArgumentException(
+            "The queued value construction heuristic changeMoveSelector (%s) contains a valueSelector. Configure a queuedValuePlacer explicitly when source selection is customized."
+                .formatted(change));
+      }
+      change.setValueSelectorConfig(
+          new ValueSelectorConfig(queuedValueConfig.getVariableName())
+              .withMimicSelectorRef(queuedValueConfig.getId()));
+    }
+    return new QueuedValuePlacerConfig()
+        .withValueSelectorConfig(queuedValueConfig)
+        .withMoveSelectorConfig(moveConfig);
   }
 
   public QueuedValuePlacerFactory(QueuedValuePlacerConfig placerConfig) {
@@ -60,6 +97,9 @@ public class QueuedValuePlacerFactory<Solution_>
         MoveSelectorFactory.<Solution_>create(moveSelectorConfig_)
             .buildMoveSelector(
                 configPolicy, SelectionCacheType.JUST_IN_TIME, SelectionOrder.ORIGINAL, false);
+    moveSelector =
+        ConstructionHeuristicNearbyMoveSelectorFactory.wrap(
+            moveSelector, moveSelectorConfig_, configPolicy);
     if (!(valueSelector instanceof IterableValueSelector<Solution_> iterableValueSelector)) {
       throw new IllegalArgumentException(
           "The queuedValuePlacer (%s) needs to be based on an %s (%s). Check your @%s annotations."

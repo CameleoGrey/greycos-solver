@@ -15,6 +15,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSele
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import greycos.solver.core.config.util.ConfigUtils;
 
@@ -38,6 +39,9 @@ public final class QueuedValuePlacerConfig extends EntityPlacerConfig<QueuedValu
     @XmlElement(
         name = ChangeMoveSelectorConfig.XML_ELEMENT_NAME,
         type = ChangeMoveSelectorConfig.class),
+    @XmlElement(
+        name = ListChangeMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = ListChangeMoveSelectorConfig.class),
     @XmlElement(
         name = MoveIteratorFactoryConfig.XML_ELEMENT_NAME,
         type = MoveIteratorFactoryConfig.class),

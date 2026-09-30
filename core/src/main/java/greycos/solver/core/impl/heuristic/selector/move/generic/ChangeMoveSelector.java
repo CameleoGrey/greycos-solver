@@ -32,6 +32,14 @@ public class ChangeMoveSelector<Solution_> extends AbstractGenericMoveSelector<S
     return true;
   }
 
+  public EntitySelector<Solution_> getEntitySelector() {
+    return entitySelector;
+  }
+
+  public ValueSelector<Solution_> getValueSelector() {
+    return valueSelector;
+  }
+
   // ************************************************************************
   // Worker methods
   // ************************************************************************

@@ -63,6 +63,18 @@ public final class ListChangeMoveSelector<Solution_>
     return sourceValueSelector.getSize() * destinationSelector.getSize();
   }
 
+  public IterableValueSelector<Solution_> getSourceValueSelector() {
+    return sourceValueSelector;
+  }
+
+  public DestinationSelector<Solution_> getDestinationSelector() {
+    return destinationSelector;
+  }
+
+  public ListVariableDescriptor<Solution_> getListVariableDescriptor() {
+    return listVariableDescriptor;
+  }
+
   @Override
   public Iterator<Move<Solution_>> iterator() {
     if (randomSelection) {

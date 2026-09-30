@@ -40,7 +40,7 @@ public class ListUnassignMove<Solution_> extends AbstractMove<Solution_> {
     return movedValue;
   }
 
-  protected ListVariableDescriptor<Solution_> getVariableDescriptor() {
+  public ListVariableDescriptor<Solution_> getVariableDescriptor() {
     return variableDescriptor;
   }
 

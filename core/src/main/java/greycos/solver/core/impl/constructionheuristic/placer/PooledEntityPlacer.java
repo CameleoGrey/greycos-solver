@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.constructionheuristic.placer;
 
 import java.util.Iterator;
+import java.util.List;
 
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
@@ -26,6 +27,11 @@ public class PooledEntityPlacer<Solution_> extends AbstractEntityPlacer<Solution
   @Override
   public Iterator<Placement<Solution_>> iterator() {
     return new PooledEntityPlacingIterator();
+  }
+
+  @Override
+  public List<MoveSelector<Solution_>> getCandidateMoveSelectors() {
+    return List.of(moveSelector);
   }
 
   @Override

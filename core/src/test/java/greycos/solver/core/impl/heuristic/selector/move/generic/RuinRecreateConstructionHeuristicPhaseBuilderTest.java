@@ -35,7 +35,7 @@ class RuinRecreateConstructionHeuristicPhaseBuilderTest {
                       InitializingScoreTrendLevel.ANY
                     }))
             .build();
-    var constructionHeuristicConfig = mock(ConstructionHeuristicPhaseConfig.class);
+    var constructionHeuristicConfig = new ConstructionHeuristicPhaseConfig();
     var builder =
         RuinRecreateConstructionHeuristicPhaseBuilder.create(
             solverConfigPolicy, constructionHeuristicConfig);
@@ -60,7 +60,7 @@ class RuinRecreateConstructionHeuristicPhaseBuilderTest {
                       InitializingScoreTrendLevel.ANY
                     }))
             .build();
-    var constructionHeuristicConfig = mock(ConstructionHeuristicPhaseConfig.class);
+    var constructionHeuristicConfig = new ConstructionHeuristicPhaseConfig();
     var builder =
         RuinRecreateConstructionHeuristicPhaseBuilder.create(
             phaseConfigPolicy, constructionHeuristicConfig);
@@ -84,7 +84,7 @@ class RuinRecreateConstructionHeuristicPhaseBuilderTest {
                       InitializingScoreTrendLevel.ANY
                     }))
             .build();
-    var constructionHeuristicConfig = mock(ConstructionHeuristicPhaseConfig.class);
+    var constructionHeuristicConfig = new ConstructionHeuristicPhaseConfig();
     var builder =
         RuinRecreateConstructionHeuristicPhaseBuilder.create(
             solverConfigPolicy, constructionHeuristicConfig);

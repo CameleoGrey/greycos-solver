@@ -603,6 +603,10 @@
                     
           <xs:element minOccurs="0" name="constructionHeuristicType" type="tns:constructionHeuristicType"/>
                     
+          <xs:element minOccurs="0" name="nearbySelectionAutoConfigurationEnabled" type="xs:boolean"/>
+                    
+          <xs:element minOccurs="0" name="nearbySelectionSize" type="xs:int"/>
+                    
           <xs:element minOccurs="0" name="entitySorterManner" type="tns:entitySorterManner"/>
                     
           <xs:element minOccurs="0" name="valueSorterManner" type="tns:valueSorterManner"/>
@@ -622,6 +626,8 @@
             <xs:element name="cartesianProductMoveSelector" type="tns:cartesianProductMoveSelectorConfig"/>
                         
             <xs:element name="changeMoveSelector" type="tns:changeMoveSelectorConfig"/>
+                        
+            <xs:element name="listChangeMoveSelector" type="tns:listChangeMoveSelectorConfig"/>
                         
             <xs:element name="moveIteratorFactory" type="tns:moveIteratorFactoryConfig"/>
                         
@@ -1440,6 +1446,8 @@
             <xs:element name="cartesianProductMoveSelector" type="tns:cartesianProductMoveSelectorConfig"/>
                         
             <xs:element name="changeMoveSelector" type="tns:changeMoveSelectorConfig"/>
+                        
+            <xs:element name="listChangeMoveSelector" type="tns:listChangeMoveSelectorConfig"/>
                         
             <xs:element name="moveIteratorFactory" type="tns:moveIteratorFactoryConfig"/>
                         

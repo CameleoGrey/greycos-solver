@@ -33,6 +33,10 @@ public class ChangeMove<Solution_> extends AbstractMove<Solution_> {
     return variableDescriptor.getVariableName();
   }
 
+  public GenuineVariableDescriptor<Solution_> getVariableDescriptor() {
+    return variableDescriptor;
+  }
+
   public Object getEntity() {
     return entity;
   }

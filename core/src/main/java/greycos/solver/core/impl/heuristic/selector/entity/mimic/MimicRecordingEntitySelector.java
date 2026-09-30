@@ -46,6 +46,18 @@ public final class MimicRecordingEntitySelector<Solution_>
     replayingEntitySelectorList.add(replayingEntitySelector);
   }
 
+  /** Restores the origin of an already selected cached move before its siblings replay it. */
+  public void recordSelection(Object entity) {
+    if (!getEntityDescriptor().matchesEntity(entity)) {
+      throw new IllegalArgumentException(
+          "The recorded entity (%s) does not match the mimic recorder's entity class (%s)."
+              .formatted(entity, getEntityDescriptor().getEntityClass()));
+    }
+    for (var replayingEntitySelector : replayingEntitySelectorList) {
+      replayingEntitySelector.recordedNext(entity);
+    }
+  }
+
   // ************************************************************************
   // Worker methods
   // ************************************************************************

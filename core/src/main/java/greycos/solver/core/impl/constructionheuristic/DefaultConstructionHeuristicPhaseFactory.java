@@ -6,6 +6,7 @@ import java.util.Optional;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
 import greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicForagerConfig;
+import greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicPickEarlyType;
 import greycos.solver.core.config.constructionheuristic.placer.EntityPlacerConfig;
 import greycos.solver.core.config.constructionheuristic.placer.PooledEntityPlacerConfig;
 import greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
@@ -41,7 +42,7 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
     extends AbstractPhaseFactory<Solution_, ConstructionHeuristicPhaseConfig> {
 
   public DefaultConstructionHeuristicPhaseFactory(ConstructionHeuristicPhaseConfig phaseConfig) {
-    super(phaseConfig);
+    super(phaseConfig.copyConfig());
   }
 
   public final DefaultConstructionHeuristicPhaseBuilder<Solution_> getBuilder(
@@ -65,6 +66,15 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
     var moveThreadCount =
         resolveMoveThreadCount(
             phaseConfig.getMoveThreadCount(), solverConfigPolicy.getMoveThreadCount(), true);
+    var nearbySelectionSize =
+        Objects.requireNonNullElse(
+            phaseConfig.getNearbySelectionSize(),
+            solverConfigPolicy.getConstructionHeuristicNearbySelectionSize());
+    if (nearbySelectionSize < 1) {
+      throw new IllegalArgumentException(
+          "The construction heuristic nearbySelectionSize (%d) must be at least 1."
+              .formatted(nearbySelectionSize));
+    }
     var phaseConfigPolicyBuilder =
         solverConfigPolicy
             .cloneBuilder()
@@ -73,7 +83,15 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
             .withReinitializeVariableFilterEnabled(true)
             .withUnassignedValuesAllowed(true)
             .withEntitySorterManner(entitySorterManner)
-            .withValueSorterManner(valueSorterManner);
+            .withValueSorterManner(valueSorterManner)
+            .withConstructionHeuristicNearbyAutoConfigurationEnabled(
+                Objects.requireNonNullElse(
+                    phaseConfig.getNearbySelectionAutoConfigurationEnabled(),
+                    solverConfigPolicy.isConstructionHeuristicNearbyAutoConfigurationEnabled()))
+            .withConstructionHeuristicNearbySelectionSize(nearbySelectionSize)
+            // Local-search union augmentation duplicates candidates and has no construction
+            // evaluation boundary. Construction uses its independently resolved profiles.
+            .withNearbyDistanceMeterClass(null);
     var phaseConfigPolicy = phaseConfigPolicyBuilder.build();
     var entityPlacerConfig_ =
         getValidEntityPlacerConfig()
@@ -83,8 +101,33 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
     var entityPlacer =
         EntityPlacerFactory.<Solution_>create(entityPlacerConfig_)
             .buildEntityPlacer(phaseConfigPolicy);
+    validateFinitePlacementSelectors(entityPlacer, phaseConfigPolicy);
     return createBuilder(
         phaseConfigPolicy, solverTermination, phaseIndex, lastInitializingPhase, entityPlacer);
+  }
+
+  private void validateFinitePlacementSelectors(
+      EntityPlacer<Solution_> entityPlacer, HeuristicConfigPolicy<Solution_> configPolicy) {
+    var foragerConfig = phaseConfig.getForagerConfig();
+    if (foragerConfig != null && foragerConfig.getForagerClass() != null) {
+      // A custom forager owns its stopping contract, including finite evaluation of random
+      // candidates. A built-in pickEarlyType does not describe that custom contract.
+      return;
+    }
+    var earlyType = foragerConfig == null ? null : foragerConfig.getPickEarlyType();
+    boolean earlyPick =
+        earlyType != null
+            ? earlyType != ConstructionHeuristicPickEarlyType.NEVER
+            : configPolicy.getInitializingScoreTrend().isOnlyDown();
+    if (!earlyPick) {
+      for (var selector : entityPlacer.getCandidateMoveSelectors()) {
+        if (selector.isNeverEnding()) {
+          throw new IllegalArgumentException(
+              "The construction heuristic candidate selector (%s) is never-ending. Configure a finite selectedCountLimit or a built-in pickEarlyType; random nearby distribution caps do not limit the number of evaluated moves."
+                  .formatted(selector));
+        }
+      }
+    }
   }
 
   protected DefaultConstructionHeuristicPhaseBuilder<Solution_> createBuilder(
@@ -139,10 +182,40 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
       HeuristicConfigPolicy<Solution_> configPolicy,
       ConstructionHeuristicType constructionHeuristicType) {
     return findValidListVariableDescriptor(configPolicy.getSolutionDescriptor())
-        .map(
+        .<EntityPlacerConfig<?>>map(
             listVariableDescriptor ->
-                buildListVariableQueuedValuePlacerConfig(configPolicy, listVariableDescriptor))
+                buildConfiguredListVariablePlacer(configPolicy, listVariableDescriptor))
         .orElseGet(() -> buildUnfoldedEntityPlacerConfig(configPolicy, constructionHeuristicType));
+  }
+
+  private QueuedValuePlacerConfig buildConfiguredListVariablePlacer(
+      HeuristicConfigPolicy<Solution_> configPolicy, ListVariableDescriptor<?> variableDescriptor) {
+    var placer =
+        (QueuedValuePlacerConfig)
+            buildListVariableQueuedValuePlacerConfig(configPolicy, variableDescriptor);
+    if (ConfigUtils.isEmptyCollection(phaseConfig.getMoveSelectorConfigList())) {
+      return placer;
+    }
+    var moveConfig = (MoveSelectorConfig<?>) checkSingleMoveSelectorConfig().copyConfig();
+    var leaves = new java.util.ArrayList<MoveSelectorConfig>();
+    moveConfig.extractLeafMoveSelectorConfigsIntoList(leaves);
+    for (var leaf : leaves) {
+      if (!(leaf instanceof ListChangeMoveSelectorConfig listChange)) {
+        throw new IllegalArgumentException(
+            "The list construction heuristic candidate (%s) must be a listChangeMoveSelector, optionally nested in a composite selector."
+                .formatted(leaf));
+      }
+      if (listChange.getValueSelectorConfig() != null) {
+        throw new IllegalArgumentException(
+            "The list construction heuristic listChangeMoveSelector (%s) already contains a source valueSelector. Configure a queuedValuePlacer explicitly when source selection is customized."
+                .formatted(listChange));
+      }
+      listChange.setValueSelectorConfig(
+          new ValueSelectorConfig(variableDescriptor.getVariableName())
+              .withMimicSelectorRef(placer.getValueSelectorConfig().getId()));
+    }
+    placer.setMoveSelectorConfig(moveConfig);
+    return placer;
   }
 
   private Optional<ListVariableDescriptor<?>> findValidListVariableDescriptor(
@@ -250,7 +323,8 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
       }
       case ALLOCATE_TO_VALUE_FROM_QUEUE -> {
         if (!ConfigUtils.isEmptyCollection(phaseConfig.getMoveSelectorConfigList())) {
-          yield QueuedValuePlacerFactory.unfoldNew(checkSingleMoveSelectorConfig());
+          yield QueuedValuePlacerFactory.unfoldNew(
+              phaseConfigPolicy, checkSingleMoveSelectorConfig());
         }
         yield new QueuedValuePlacerConfig();
       }

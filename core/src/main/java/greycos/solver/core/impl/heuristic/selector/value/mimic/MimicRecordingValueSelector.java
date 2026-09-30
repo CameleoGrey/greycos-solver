@@ -45,6 +45,18 @@ public class MimicRecordingValueSelector<Solution_> extends AbstractDemandEnable
     replayingValueSelectorList.add(replayingValueSelector);
   }
 
+  /** Restores the selected value after nearby ranking before dependent selectors replay it. */
+  public void recordSelection(Object value) {
+    if (value != null && !getVariableDescriptor().acceptsValueType(value.getClass())) {
+      throw new IllegalArgumentException(
+          "The recorded value (%s) does not match the mimic recorder's variable (%s)."
+              .formatted(value, getVariableDescriptor()));
+    }
+    for (var replayingValueSelector : replayingValueSelectorList) {
+      replayingValueSelector.recordedNext(value);
+    }
+  }
+
   // ************************************************************************
   // Worker methods
   // ************************************************************************

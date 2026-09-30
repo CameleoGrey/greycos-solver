@@ -22,6 +22,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSele
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.config.util.ConfigUtils;
@@ -33,6 +34,8 @@ import org.jspecify.annotations.Nullable;
     propOrder = {
       "moveThreadCount",
       "constructionHeuristicType",
+      "nearbySelectionAutoConfigurationEnabled",
+      "nearbySelectionSize",
       "entitySorterManner",
       "valueSorterManner",
       "entityPlacerConfig",
@@ -48,6 +51,8 @@ public class ConstructionHeuristicPhaseConfig
   // and also because the input config file should match the output config file
 
   protected ConstructionHeuristicType constructionHeuristicType = null;
+  protected Boolean nearbySelectionAutoConfigurationEnabled = null;
+  protected Integer nearbySelectionSize = null;
   protected String moveThreadCount = null;
   protected EntitySorterManner entitySorterManner = null;
   protected ValueSorterManner valueSorterManner = null;
@@ -67,6 +72,9 @@ public class ConstructionHeuristicPhaseConfig
     @XmlElement(
         name = ChangeMoveSelectorConfig.XML_ELEMENT_NAME,
         type = ChangeMoveSelectorConfig.class),
+    @XmlElement(
+        name = ListChangeMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = ListChangeMoveSelectorConfig.class),
     @XmlElement(
         name = MoveIteratorFactoryConfig.XML_ELEMENT_NAME,
         type = MoveIteratorFactoryConfig.class),
@@ -100,6 +108,33 @@ public class ConstructionHeuristicPhaseConfig
   public void setConstructionHeuristicType(
       @Nullable ConstructionHeuristicType constructionHeuristicType) {
     this.constructionHeuristicType = constructionHeuristicType;
+  }
+
+  /**
+   * Whether nearby selection configured for local search is also used during construction. A null
+   * value defaults to true. Disabling inference does not disable explicitly configured construction
+   * nearby selectors.
+   */
+  public @Nullable Boolean getNearbySelectionAutoConfigurationEnabled() {
+    return nearbySelectionAutoConfigurationEnabled;
+  }
+
+  public void setNearbySelectionAutoConfigurationEnabled(
+      @Nullable Boolean nearbySelectionAutoConfigurationEnabled) {
+    this.nearbySelectionAutoConfigurationEnabled = nearbySelectionAutoConfigurationEnabled;
+  }
+
+  /**
+   * Initial number of complete nearby assignments evaluated for each construction origin. A null
+   * value defaults to 40. The neighborhood grows when all evaluated assignments worsen the hard
+   * score; this setting is independent of local search's random distribution.
+   */
+  public @Nullable Integer getNearbySelectionSize() {
+    return nearbySelectionSize;
+  }
+
+  public void setNearbySelectionSize(@Nullable Integer nearbySelectionSize) {
+    this.nearbySelectionSize = nearbySelectionSize;
   }
 
   public @Nullable String getMoveThreadCount() {
@@ -167,6 +202,18 @@ public class ConstructionHeuristicPhaseConfig
     return this;
   }
 
+  public @NonNull ConstructionHeuristicPhaseConfig withNearbySelectionAutoConfigurationEnabled(
+      @NonNull Boolean nearbySelectionAutoConfigurationEnabled) {
+    setNearbySelectionAutoConfigurationEnabled(nearbySelectionAutoConfigurationEnabled);
+    return this;
+  }
+
+  public @NonNull ConstructionHeuristicPhaseConfig withNearbySelectionSize(
+      @NonNull Integer nearbySelectionSize) {
+    setNearbySelectionSize(nearbySelectionSize);
+    return this;
+  }
+
   public @NonNull ConstructionHeuristicPhaseConfig withEntitySorterManner(
       @NonNull EntitySorterManner entitySorterManner) {
     this.entitySorterManner = entitySorterManner;
@@ -204,6 +251,13 @@ public class ConstructionHeuristicPhaseConfig
     constructionHeuristicType =
         ConfigUtils.inheritOverwritableProperty(
             constructionHeuristicType, inheritedConfig.getConstructionHeuristicType());
+    nearbySelectionAutoConfigurationEnabled =
+        ConfigUtils.inheritOverwritableProperty(
+            nearbySelectionAutoConfigurationEnabled,
+            inheritedConfig.getNearbySelectionAutoConfigurationEnabled());
+    nearbySelectionSize =
+        ConfigUtils.inheritOverwritableProperty(
+            nearbySelectionSize, inheritedConfig.getNearbySelectionSize());
     moveThreadCount =
         ConfigUtils.inheritOverwritableProperty(
             moveThreadCount, inheritedConfig.getMoveThreadCount());
@@ -225,7 +279,11 @@ public class ConstructionHeuristicPhaseConfig
 
   @Override
   public @NonNull ConstructionHeuristicPhaseConfig copyConfig() {
-    return new ConstructionHeuristicPhaseConfig().inherit(this);
+    var copy = new ConstructionHeuristicPhaseConfig().inherit(this);
+    if (entityPlacerConfig != null) {
+      copy.setEntityPlacerConfig((EntityPlacerConfig) entityPlacerConfig.copyConfig());
+    }
+    return copy;
   }
 
   @Override

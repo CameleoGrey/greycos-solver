@@ -45,6 +45,10 @@ public final class FilteringMoveSelector<Solution_> extends AbstractMoveSelector
     return childMoveSelector;
   }
 
+  public SelectionFilter<Solution_, Move<Solution_>> getFilter() {
+    return filter;
+  }
+
   // ************************************************************************
   // Worker methods
   // ************************************************************************

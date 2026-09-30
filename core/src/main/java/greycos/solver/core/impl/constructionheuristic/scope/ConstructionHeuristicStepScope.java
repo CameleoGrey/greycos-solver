@@ -15,6 +15,7 @@ public final class ConstructionHeuristicStepScope<Solution_> extends AbstractSte
   private Move<Solution_> step = null;
   private String stepString = null;
   private Long selectedMoveCount = null;
+  private long nearbyWideningCount;
 
   public ConstructionHeuristicStepScope(ConstructionHeuristicPhaseScope<Solution_> phaseScope) {
     this(phaseScope, phaseScope.getNextStepIndex());
@@ -64,6 +65,14 @@ public final class ConstructionHeuristicStepScope<Solution_> extends AbstractSte
 
   public void setSelectedMoveCount(Long selectedMoveCount) {
     this.selectedMoveCount = selectedMoveCount;
+  }
+
+  public long getNearbyWideningCount() {
+    return nearbyWideningCount;
+  }
+
+  public void setNearbyWideningCount(long nearbyWideningCount) {
+    this.nearbyWideningCount = nearbyWideningCount;
   }
 
   // ************************************************************************

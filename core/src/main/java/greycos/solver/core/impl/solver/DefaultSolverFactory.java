@@ -29,6 +29,7 @@ import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.AbstractFromConfigFactory;
 import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhaseFactory;
+import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyProfileResolver;
 import greycos.solver.core.impl.cotwin.common.CotwinAccessType;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
@@ -185,6 +186,9 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
                         scoreDirectorFactoryConfig.getConstraintStreamProfilingEnabled()))
             .withThreadFactoryClass(solverConfig.getThreadFactoryClass())
             .withNearbyDistanceMeterClass(solverConfig.getNearbyDistanceMeterClass())
+            .withConstructionHeuristicNearbyProfiles(
+                ConstructionHeuristicNearbyProfileResolver.resolveGlobal(
+                    solutionDescriptor, solverConfig.getNearbyDistanceMeterClass()))
             .withRandom(randomFactory.get())
             .withInitializingScoreTrend(scoreDirectorFactory.getInitializingScoreTrend())
             .withSolutionDescriptor(solutionDescriptor)

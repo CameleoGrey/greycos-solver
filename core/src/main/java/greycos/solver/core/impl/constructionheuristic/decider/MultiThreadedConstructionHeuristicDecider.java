@@ -8,6 +8,7 @@ import java.util.concurrent.ThreadFactory;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.constructionheuristic.decider.forager.ConstructionHeuristicForager;
+import greycos.solver.core.impl.constructionheuristic.nearby.ProgressiveConstructionIterator;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicMoveScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
@@ -124,39 +125,61 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   @Override
   public void decideNextStep(
       ConstructionHeuristicStepScope<Solution_> stepScope, Iterator<Move<Solution_>> moveIterator) {
+    var progressiveIterator =
+        moveIterator instanceof ProgressiveConstructionIterator<Solution_> progressive
+            ? progressive
+            : null;
     int stepIndex = stepScope.getStepIndex();
-    moveEvaluationPipeline.startNextStep(stepIndex);
-
     int selectMoveIndex = 0;
     int nextForagingMoveIndex = 0;
     int movesInPlay = 0;
     boolean terminatedPrematurely = false;
 
-    while (moveIterator.hasNext() || movesInPlay > 0) {
-      boolean hasNextMove = moveIterator.hasNext();
-      if (movesInPlay > 0 && (selectMoveIndex >= selectedMoveBufferSize || !hasNextMove)) {
-        var forageResult = forageResult(stepScope, stepIndex, nextForagingMoveIndex);
-        if (forageResult != ForageResult.CONTINUE) {
-          terminatedPrematurely = forageResult == ForageResult.TERMINATED;
+    try {
+      moveEvaluationPipeline.startNextStep(stepIndex);
+      while (true) {
+        if (Thread.currentThread().isInterrupted()) {
+          terminatedPrematurely = true;
           break;
         }
-        nextForagingMoveIndex++;
-        movesInPlay--;
-      }
-      if (hasNextMove) {
-        var move = moveIterator.next();
-        if (!isAllowedNonDoableMove(move)
-            && move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove
-            && !selectorBasedMove.isMoveDoable(stepScope.getScoreDirector())) {
+        boolean hasNextMove = moveIterator.hasNext();
+        if (!hasNextMove && movesInPlay == 0) {
+          // Score feedback for the entire batch must precede a decision to widen it.
+          if (progressiveIterator != null && progressiveIterator.advanceBatch()) {
+            continue;
+          }
+          break;
+        }
+        if (movesInPlay > 0 && (movesInPlay >= selectedMoveBufferSize || !hasNextMove)) {
+          var forageResult =
+              forageResult(stepScope, stepIndex, nextForagingMoveIndex, progressiveIterator);
+          if (forageResult != ForageResult.CONTINUE) {
+            terminatedPrematurely = forageResult == ForageResult.TERMINATED;
+            break;
+          }
+          nextForagingMoveIndex++;
+          movesInPlay--;
           continue;
         }
-        moveEvaluationPipeline.submit(selectMoveIndex, move);
-        selectMoveIndex++;
-        movesInPlay++;
+        if (hasNextMove) {
+          var move = moveIterator.next();
+          if (!isAllowedNonDoableMove(move)
+              && move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove
+              && !selectorBasedMove.isMoveDoable(stepScope.getScoreDirector())) {
+            continue;
+          }
+          moveEvaluationPipeline.submit(selectMoveIndex, move);
+          selectMoveIndex++;
+          movesInPlay++;
+        }
+      }
+    } finally {
+      moveEvaluationPipeline.cancelStep();
+      if (progressiveIterator != null) {
+        stepScope.setNearbyWideningCount(progressiveIterator.getWideningCount());
+        progressiveIterator.close();
       }
     }
-
-    moveEvaluationPipeline.cancelStep();
 
     // A partial CH step can worsen an optional assignment before its no-change move is considered.
     // Only complete evaluation or an intentional forager early pick may commit a move.
@@ -175,7 +198,10 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
   }
 
   private ForageResult forageResult(
-      ConstructionHeuristicStepScope<Solution_> stepScope, int stepIndex, int expectedMoveIndex) {
+      ConstructionHeuristicStepScope<Solution_> stepScope,
+      int stepIndex,
+      int expectedMoveIndex,
+      ProgressiveConstructionIterator<Solution_> progressiveIterator) {
     MoveEvaluationPipeline.Result<Solution_> result;
     try {
       result = moveEvaluationPipeline.take();
@@ -223,6 +249,12 @@ public class MultiThreadedConstructionHeuristicDecider<Solution_>
       moveScope.getScoreDirector().incrementCalculationCount();
       transferredCalculationCount++;
       forager.addMove(moveScope);
+      if (progressiveIterator != null) {
+        progressiveIterator.recordScore(moveScope);
+      }
+      if (Thread.currentThread().isInterrupted()) {
+        return ForageResult.TERMINATED;
+      }
       if (forager.isQuitEarly()) {
         return ForageResult.PICK_EARLY;
       }

@@ -42,6 +42,10 @@ public class CartesianProductMoveSelector<Solution_> extends CompositeMoveSelect
   // Worker methods
   // ************************************************************************
 
+  public boolean isIgnoreEmptyChildIterators() {
+    return ignoreEmptyChildIterators;
+  }
+
   @Override
   public boolean isNeverEnding() {
     if (randomSelection) {

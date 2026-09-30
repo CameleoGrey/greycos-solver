@@ -7,13 +7,18 @@ import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.constructionheuristic.decider.ConstructionHeuristicDecider;
 import greycos.solver.core.impl.constructionheuristic.placer.EntityPlacer;
+import greycos.solver.core.impl.constructionheuristic.placer.PooledEntityPlacer;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
+import greycos.solver.core.impl.heuristic.move.SelectorBasedCompositeMove;
+import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
+import greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
 import greycos.solver.core.impl.neighborhood.PlacerBasedMoveRepository;
 import greycos.solver.core.impl.phase.AbstractPossiblyInitializingPhase;
 import greycos.solver.core.impl.phase.PhaseType;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
+import greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.event.Level;
@@ -129,7 +134,14 @@ public class DefaultConstructionHeuristicPhase<Solution_>
       doStep(stepScope);
       stepEnded(stepScope);
       phaseScope.setLastCompletedStepScope(stepScope);
-      if (hasListVariable && stepScope.getStepIndex() >= maxStepCount) {
+      if (moveRepository.getPlacer() instanceof PooledEntityPlacer<?>
+          && stepScope.getScore().isFullyAssigned()
+          && isOnlyUnassignment(stepScope.getStep())) {
+        // Nullable variables left null are still reinitializable. Rebuilding their pool after
+        // choosing no assignment would repeat the same decision indefinitely.
+        earlyTerminationStatus = TerminationStatus.regular(phaseScope.getNextStepIndex());
+        break;
+      } else if (hasListVariable && stepScope.getStepIndex() >= maxStepCount) {
         earlyTerminationStatus = TerminationStatus.regular(phaseScope.getNextStepIndex());
         break;
       } else if (phaseTermination.isPhaseTerminated(phaseScope)) {
@@ -140,8 +152,31 @@ public class DefaultConstructionHeuristicPhase<Solution_>
     // We only store the termination status, which is exposed to the outside, when the phase has
     // ended.
     terminationStatus =
-        translateEarlyTermination(phaseScope, earlyTerminationStatus, moveRepository.hasNext());
+        translateEarlyTermination(
+            phaseScope,
+            earlyTerminationStatus,
+            earlyTerminationStatus != null && !earlyTerminationStatus.early()
+                ? false
+                : moveRepository.hasNext());
     phaseEnded(phaseScope);
+  }
+
+  private static boolean isOnlyUnassignment(Move<?> move) {
+    if (move instanceof SelectorBasedNoChangeMove<?>) {
+      return true;
+    }
+    if (move instanceof ChangeMove<?> change) {
+      return change.getToPlanningValue() == null;
+    }
+    if (move instanceof SelectorBasedCompositeMove<?> composite) {
+      for (var child : composite.getMoves()) {
+        if (!isOnlyUnassignment(child)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return false;
   }
 
   protected ConstructionHeuristicPhaseScope<Solution_> buildPhaseScope(

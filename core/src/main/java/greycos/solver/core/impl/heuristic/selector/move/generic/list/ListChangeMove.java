@@ -122,7 +122,7 @@ public class ListChangeMove<Solution_> extends AbstractMove<Solution_> {
     return planningValue;
   }
 
-  protected ListVariableDescriptor<Solution_> getVariableDescriptor() {
+  public ListVariableDescriptor<Solution_> getVariableDescriptor() {
     return variableDescriptor;
   }
 

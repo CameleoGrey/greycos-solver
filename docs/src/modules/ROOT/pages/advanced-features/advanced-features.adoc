@@ -25,7 +25,8 @@ The following advanced features are available in GreyCOS Solver:
 [#nearbySelection]
 === Nearby selection
 
-Nearby selection gives closer entities or values a higher probability of selection.
+Nearby selection favors closer entities or values.
+Local Search uses a probability distribution; construction heuristics use deterministic nearest batches.
 For problems such as TSP and VRP, this can improve solution quality within the available solving time.
 
 image::advanced-features/nearbySelectionMotivation.png[align="center"]
@@ -34,7 +35,8 @@ The benefit depends on the distance meter, neighborhood, and dataset; measure it
 
 image::advanced-features/nearbySelectionValueProposition.png[align="center"]
 
-Nearby selection increases the probability of selecting an entity or value which is nearby to the first entity being moved in that move.
+During Local Search, nearby selection increases the probability of selecting an entity or value
+which is nearby to the first entity being moved in that move.
 
 image::advanced-features/nearbySelectionRandomDistribution.png[align="center"]
 
@@ -60,7 +62,8 @@ For a basic variable, `Origin_` is the planning entity and `Destination_` may be
 For a list variable, `Origin_` is a planning value, while `Destination_` may be a planning value or entity.
 A sublist origin is represented by its first planning value at the time the sublist is selected.
 The meter receives that value, not a `SubList` object.
-For example, in vehicle routing the distance meter must accept both `Customer` and `Vehicle` destinations:
+For example, a manually configured vehicle-routing destination selector may require a meter
+that accepts both `Customer` and `Vehicle` destinations:
 
 [tabs]
 ====
@@ -81,15 +84,32 @@ public class CustomerNearbyDistanceMeter implements NearbyDistanceMeter<Customer
 [NOTE]
 ====
 `NearbyDistanceMeter` implementations must be stateless and thread-safe.
-Distances are cached during a solver phase, so calculate them from facts that remain constant during that phase,
+Calculate distances from facts that remain constant during a solver phase,
 such as customer coordinates, rather than from changing route positions or planning variables.
+Local Search caches distance rows during the phase.
 The solver may reuse the meter in different contexts.
-
-The Nearby configuration is not enabled for the Construction Heuristics
-because the method will analyze all possible moves.
-Adding Nearby in this situation would only result in unnecessary costs
-involving the generation of the distance matrix and sorting operations without taking advantage of the feature.
 ====
+
+[#constructionNearbySelection]
+==== Nearby selection during construction
+
+Construction heuristics automatically reuse the solver's `nearbyDistanceMeterClass`
+or applicable manual nearby selectors in the nearest upcoming Local Search phase.
+Discovery also covers Local Search inside island and partitioned search.
+Ruin-and-recreate construction inherits the resolved nearby profiles.
+No additional construction heuristic configuration is required.
+
+The initial nearest batch contains up to 40 complete assignment candidates per origin.
+If every meaningful, structurally valid assignment worsens the hard score relative to the previous step,
+construction widens the cumulative limit to 80, then 160, and so on until a suitable assignment is found
+or the finite candidate stream is exhausted.
+This deterministic batching is independent of Local Search's random distribution.
+
+Set `nearbySelectionSize` on the construction heuristic to change the positive initial batch size.
+Set `nearbySelectionAutoConfigurationEnabled` to `false` to disable automatic construction nearby selection;
+explicit construction nearby selectors retain their configured behavior.
+See xref:optimization-algorithms/construction-heuristics.adoc#constructionHeuristicNearbySelection[construction heuristic nearby selection]
+for configuration examples, distance-meter types, and widening semantics.
 
 [#basicVariableNearbySelection]
 ==== Nearby selection with a basic variable
@@ -147,7 +167,7 @@ For Swap, both are planning entities.
 To quickly configure nearby selection with a planning list variable,
 add `nearbyDistanceMeterClass` element to your configuration file.
 The following enables nearby selection with a list variable
-for the local search:
+for Local Search and its preceding construction heuristic:
 
 [source,xml,options="nowrap"]
 ----
@@ -300,7 +320,7 @@ including destinations outside that block.
 
 ===== Distance caching and explicit truncation
 
-Distance rows are initialized lazily and reused during a phase.
+During Local Search, distance rows are initialized lazily and reused during a phase.
 A bounded distribution can retain only the nearest candidates, but constructing a row still evaluates
 the distance to every candidate. This is not a spatial index.
 Setting `eagerInitialization` to `true` initializes enumerable origins at phase start;

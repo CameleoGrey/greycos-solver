@@ -24,6 +24,10 @@ public class SortingMoveSelector<Solution_> extends AbstractCachingMoveSelector<
   // Worker methods
   // ************************************************************************
 
+  public SelectionSorter<Solution_, Move<Solution_>> getSorter() {
+    return sorter;
+  }
+
   @Override
   public void constructCache(SolverScope<Solution_> solverScope) {
     super.constructCache(solverScope);

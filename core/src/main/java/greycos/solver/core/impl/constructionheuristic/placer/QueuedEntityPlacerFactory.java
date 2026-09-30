@@ -12,6 +12,7 @@ import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.composite.CartesianProductMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import greycos.solver.core.config.util.ConfigUtils;
+import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
@@ -82,6 +83,9 @@ public class QueuedEntityPlacerFactory<Solution_>
           MoveSelectorFactory.<Solution_>create(moveSelectorConfig)
               .buildMoveSelector(
                   configPolicy, SelectionCacheType.JUST_IN_TIME, SelectionOrder.ORIGINAL, false);
+      moveSelector =
+          ConstructionHeuristicNearbyMoveSelectorFactory.wrap(
+              moveSelector, moveSelectorConfig, configPolicy);
       moveSelectorList.add(moveSelector);
     }
     return new QueuedEntityPlacer<>(this, configPolicy, entitySelector, moveSelectorList);

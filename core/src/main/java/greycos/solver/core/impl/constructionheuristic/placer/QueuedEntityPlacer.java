@@ -38,6 +38,11 @@ public class QueuedEntityPlacer<Solution_> extends AbstractEntityPlacer<Solution
   }
 
   @Override
+  public List<MoveSelector<Solution_>> getCandidateMoveSelectors() {
+    return moveSelectorList;
+  }
+
+  @Override
   public EntityPlacer<Solution_> rebuildWithFilter(SelectionFilter<Solution_, Object> filter) {
     return new QueuedEntityPlacer<>(
         factory,

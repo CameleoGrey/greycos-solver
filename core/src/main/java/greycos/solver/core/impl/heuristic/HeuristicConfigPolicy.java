@@ -11,6 +11,7 @@ import greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.PreviewFeature;
 import greycos.solver.core.config.util.ConfigUtils;
+import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyProfiles;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
@@ -43,6 +44,9 @@ public class HeuristicConfigPolicy<Solution_> {
   private final boolean reinitializeVariableFilterEnabled;
   private final boolean unassignedValuesAllowed;
   private final Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass;
+  private final ConstructionHeuristicNearbyProfiles constructionHeuristicNearbyProfiles;
+  private final boolean constructionHeuristicNearbyAutoConfigurationEnabled;
+  private final int constructionHeuristicNearbySelectionSize;
   private final RandomSource random;
 
   private final Map<String, EntityMimicRecorder<Solution_>> entityMimicRecorderMap =
@@ -67,6 +71,11 @@ public class HeuristicConfigPolicy<Solution_> {
     this.reinitializeVariableFilterEnabled = builder.reinitializeVariableFilterEnabled;
     this.unassignedValuesAllowed = builder.unassignedValuesAllowed;
     this.nearbyDistanceMeterClass = builder.nearbyDistanceMeterClass;
+    this.constructionHeuristicNearbyProfiles = builder.constructionHeuristicNearbyProfiles;
+    this.constructionHeuristicNearbyAutoConfigurationEnabled =
+        builder.constructionHeuristicNearbyAutoConfigurationEnabled;
+    this.constructionHeuristicNearbySelectionSize =
+        builder.constructionHeuristicNearbySelectionSize;
     this.random = builder.random;
   }
 
@@ -122,12 +131,24 @@ public class HeuristicConfigPolicy<Solution_> {
     return unassignedValuesAllowed;
   }
 
-  public Class<? extends NearbyDistanceMeter> getNearbyDistanceMeterClass() {
+  public Class<? extends NearbyDistanceMeter<?, ?>> getNearbyDistanceMeterClass() {
     return nearbyDistanceMeterClass;
   }
 
   public RandomSource getRandom() {
     return random;
+  }
+
+  public ConstructionHeuristicNearbyProfiles getConstructionHeuristicNearbyProfiles() {
+    return constructionHeuristicNearbyProfiles;
+  }
+
+  public boolean isConstructionHeuristicNearbyAutoConfigurationEnabled() {
+    return constructionHeuristicNearbyAutoConfigurationEnabled;
+  }
+
+  public int getConstructionHeuristicNearbySelectionSize() {
+    return constructionHeuristicNearbySelectionSize;
   }
 
   // ************************************************************************
@@ -147,6 +168,10 @@ public class HeuristicConfigPolicy<Solution_> {
         .withSolutionDescriptor(solutionDescriptor)
         .withClassInstanceCache(classInstanceCache)
         .withNearbyDistanceMeterClass(nearbyDistanceMeterClass)
+        .withConstructionHeuristicNearbyProfiles(constructionHeuristicNearbyProfiles)
+        .withConstructionHeuristicNearbyAutoConfigurationEnabled(
+            constructionHeuristicNearbyAutoConfigurationEnabled)
+        .withConstructionHeuristicNearbySelectionSize(constructionHeuristicNearbySelectionSize)
         .withRandom(random);
   }
 
@@ -180,7 +205,13 @@ public class HeuristicConfigPolicy<Solution_> {
   }
 
   public HeuristicConfigPolicy<Solution_> copyConfigPolicyWithoutNearbySetting() {
-    return cloneBuilder().withNearbyDistanceMeterClass(null).build();
+    return cloneBuilder()
+        .withEntitySorterManner(entitySorterManner)
+        .withValueSorterManner(valueSorterManner)
+        .withReinitializeVariableFilterEnabled(reinitializeVariableFilterEnabled)
+        .withUnassignedValuesAllowed(unassignedValuesAllowed)
+        .withNearbyDistanceMeterClass(null)
+        .build();
   }
 
   public HeuristicConfigPolicy<Solution_> copyChildThreadConfigPolicy() {
@@ -315,6 +346,10 @@ public class HeuristicConfigPolicy<Solution_> {
     private boolean unassignedValuesAllowed = false;
 
     private Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass;
+    private ConstructionHeuristicNearbyProfiles constructionHeuristicNearbyProfiles =
+        ConstructionHeuristicNearbyProfiles.empty();
+    private boolean constructionHeuristicNearbyAutoConfigurationEnabled = true;
+    private int constructionHeuristicNearbySelectionSize = 40;
     private RandomSource random;
 
     public Builder<Solution_> withPreviewFeatureSet(Set<PreviewFeature> previewFeatureSet) {
@@ -356,6 +391,28 @@ public class HeuristicConfigPolicy<Solution_> {
 
     public Builder<Solution_> withRandom(RandomSource random) {
       this.random = random;
+      return this;
+    }
+
+    public Builder<Solution_> withConstructionHeuristicNearbyProfiles(
+        ConstructionHeuristicNearbyProfiles constructionHeuristicNearbyProfiles) {
+      this.constructionHeuristicNearbyProfiles =
+          java.util.Objects.requireNonNull(constructionHeuristicNearbyProfiles);
+      return this;
+    }
+
+    public Builder<Solution_> withConstructionHeuristicNearbyAutoConfigurationEnabled(
+        boolean enabled) {
+      this.constructionHeuristicNearbyAutoConfigurationEnabled = enabled;
+      return this;
+    }
+
+    public Builder<Solution_> withConstructionHeuristicNearbySelectionSize(int size) {
+      if (size < 1) {
+        throw new IllegalArgumentException(
+            "The constructionHeuristicNearbySelectionSize (%d) must be positive.".formatted(size));
+      }
+      this.constructionHeuristicNearbySelectionSize = size;
       return this;
     }
 

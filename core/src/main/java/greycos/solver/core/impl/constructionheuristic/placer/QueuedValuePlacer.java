@@ -2,12 +2,12 @@ package greycos.solver.core.impl.constructionheuristic.placer;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
-import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.decorator.IterableFilteringValueSelector;
@@ -36,7 +36,12 @@ public class QueuedValuePlacer<Solution_> extends AbstractEntityPlacer<Solution_
   }
 
   public boolean hasListChangeMoveSelector() {
-    return moveSelector instanceof ListChangeMoveSelector<Solution_>;
+    return valueSelector.getVariableDescriptor().isListVariable();
+  }
+
+  @Override
+  public List<MoveSelector<Solution_>> getCandidateMoveSelectors() {
+    return List.of(moveSelector);
   }
 
   private class QueuedValuePlacingIterator extends UpcomingSelectionIterator<Placement<Solution_>> {

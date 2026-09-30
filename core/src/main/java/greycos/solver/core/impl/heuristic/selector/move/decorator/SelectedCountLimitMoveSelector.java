@@ -32,6 +32,10 @@ public class SelectedCountLimitMoveSelector<Solution_> extends AbstractMoveSelec
     return childMoveSelector;
   }
 
+  public long getSelectedCountLimit() {
+    return selectedCountLimit;
+  }
+
   // ************************************************************************
   // Worker methods
   // ************************************************************************

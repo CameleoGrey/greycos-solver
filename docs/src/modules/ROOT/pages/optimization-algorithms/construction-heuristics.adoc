@@ -818,6 +818,172 @@ because a down trend guarantees that initializing any additional planning variab
 So if a move has the same score as before the planning variable was initialized, then no other move can have a better score.
 
 
+[#constructionHeuristicNearbySelection]
+=== Nearby selection
+
+Construction heuristics automatically reuse applicable nearby configuration for each planning variable.
+It can come from the solver's `nearbyDistanceMeterClass` or from manual nearby selectors
+in the nearest upcoming Local Search phase, including Local Search nested in island or partitioned search.
+Ruin-and-recreate construction inherits the resolved nearby profiles.
+Variables without an applicable profile retain their existing selection behavior.
+
+No additional construction heuristic configuration is needed to enable this behavior.
+For example, apply the following to a solver configured for vehicle routing:
+
+[tabs]
+====
+Java::
++
+[source,java,options="nowrap"]
+----
+solverConfig
+        .withNearbyDistanceMeterClass(CustomerNearbyDistanceMeter.class)
+        .withPhases(new ConstructionHeuristicPhaseConfig(), new LocalSearchPhaseConfig());
+----
+XML::
++
+[source,xml,options="nowrap"]
+----
+<solver xmlns="https://greycos.ai/xsd/solver">
+  <!-- Domain and score configuration. -->
+  <nearbyDistanceMeterClass>org.acme.vehiclerouting.domain.solver.nearby.CustomerNearbyDistanceMeter</nearbyDistanceMeterClass>
+  <constructionHeuristic/>
+  <localSearch/>
+</solver>
+----
+====
+
+`nearbySelectionAutoConfigurationEnabled` is a construction heuristic setting.
+An unset (`null`) value defaults to `true`; `false` disables automatic inference for that phase.
+Explicitly configured construction nearby selectors keep their configured behavior when inference is disabled.
+`nearbySelectionSize` sets the positive initial number of complete assignment candidates per origin;
+an unset value defaults to 40.
+It is independent of Local Search's random distribution and its distribution size parameters.
+For example, use `.withNearbySelectionSize(80)` in Java or
+`<nearbySelectionSize>80</nearbySelectionSize>` inside `<constructionHeuristic>` in XML.
+
+Automatic selection evaluates finite, deterministic batches selected by nearby rank.
+With the default size, the cumulative candidate limits are 40, 80, 160, and so on.
+It widens only when none of the evaluated meaningful, structurally valid assignments
+has a hard score at least as good as the raw score of the previous completed step.
+Hard score levels are compared exactly in their lexicographic order;
+structural initialization, medium, and soft levels do not enter this comparison.
+Unassignment and incomplete assignments do not establish an acceptable assignment.
+Once an acceptable assignment is found, evaluation finishes the current batch without widening;
+otherwise it continues until the finite candidate stream is exhausted.
+This rule does not guarantee that construction produces a feasible solution.
+
+Explicit nearby selectors, selection orders, selector limits, and
+<<constructionHeuristicsPickEarlyType,early pick rules>> remain authoritative.
+In particular, an explicit early pick rule may finish a step before the current batch is exhausted.
+Candidates still respect pinning, filters, value ranges for each entity, and list insertion eligibility.
+For an explicitly sorted move selector, nearby selection chooses a prefix for each origin,
+then merges the admitted candidates in the selector's cached global order.
+This preserves comparisons across origins, stable ties, and custom sorter behavior within each evaluation round.
+After the round's scores are available, only origins without an acceptable assignment widen.
+Candidates admitted by a later widening round follow those already evaluated.
+
+Distance-meter argument types determine how construction ranks assignments:
+
+* A basic Change profile measures the entity against candidate planning values.
+* A basic Swap profile measures the entity against already assigned entities, then maps those anchors
+to their planning values. Resources without assigned anchors are seeded deterministically.
+* A list profile with planning values for both meter arguments measures the unassigned value against assigned value anchors.
+It can use a typed `NearbyDistanceMeter<Customer, Customer>` without accepting vehicle owners.
+Empty routes and other destinations without value anchors are seeded deterministically.
+
+Profile discovery supports inherited entity contexts and value-selector downcasting.
+A distance meter may accept an interface implemented by subclasses in a declared value range;
+construction checks the actual arguments before invoking it.
+Candidates outside the meter's argument contract remain available in the deterministic seed stream.
+
+When several profiles apply, construction interleaves their independent rankings of unique candidates in deterministic round-robin order.
+It does not compare distances from different meters as though they shared a scale.
+An assignment shared by several rankings is evaluated only once.
+Ordinary selection holds transient ranking heaps for the current origin;
+explicitly sorted selection retains the admitted origins needed to merge the current round.
+Construction does not retain a full quadratic distance matrix.
+For a queued basic value with a Swap profile, it retains only the best anchor distance per candidate entity,
+so ranking scratch is linear in the candidate and anchor populations.
+Finding exact nearest candidates for an arbitrary meter still scans all eligible anchors,
+and does not have a universal subquadratic work bound.
+Repeatedly assigning one shared queued value can require cubic total distance work across construction steps,
+even though each step retains only linear ranking scratch.
+Measure score quality and construction time on representative datasets before choosing a batch size.
+
+For custom list construction, `listChangeMoveSelector` is supported directly under `constructionHeuristic`
+and inside `queuedValuePlacer`, in both Java and XML.
+Phase-level move selectors are used when the value placer is inferred.
+Omit the source value selector in this form so the inferred queue supplies its mimic replay:
+
+[tabs]
+====
+Java::
++
+[source,java,options="nowrap"]
+----
+ConstructionHeuristicPhaseConfig construction = new ConstructionHeuristicPhaseConfig()
+        .withMoveSelectorConfigList(java.util.List.of(new ListChangeMoveSelectorConfig()));
+----
+XML::
++
+[source,xml,options="nowrap"]
+----
+<constructionHeuristic>
+  <listChangeMoveSelector/>
+</constructionHeuristic>
+----
+====
+
+Use an explicit `queuedValuePlacer` when customizing the source value selector.
+The following explicit placer disables inference while retaining its manual nearby destination selector
+for a list variable named `customers`:
+
+[tabs]
+====
+Java::
++
+[source,java,options="nowrap"]
+----
+ConstructionHeuristicPhaseConfig construction = new ConstructionHeuristicPhaseConfig()
+        .withNearbySelectionAutoConfigurationEnabled(false)
+        .withEntityPlacerConfig(new QueuedValuePlacerConfig()
+                .withValueSelectorConfig(new ValueSelectorConfig("customers").withId("constructionValue"))
+                .withMoveSelectorConfig(new ListChangeMoveSelectorConfig()
+                        .withValueSelectorConfig(new ValueSelectorConfig().withMimicSelectorRef("constructionValue"))
+                        .withDestinationSelectorConfig(new DestinationSelectorConfig()
+                                .withNearbySelectionConfig(new NearbySelectionConfig()
+                                        .withOriginValueSelectorConfig(new ValueSelectorConfig()
+                                                .withMimicSelectorRef("constructionValue"))
+                                        .withNearbyDistanceMeterClass(CustomerNearbyDistanceMeter.class)))));
+----
+XML::
++
+[source,xml,options="nowrap"]
+----
+<constructionHeuristic>
+  <nearbySelectionAutoConfigurationEnabled>false</nearbySelectionAutoConfigurationEnabled>
+  <queuedValuePlacer>
+    <valueSelector id="constructionValue" variableName="customers"/>
+    <listChangeMoveSelector>
+      <valueSelector mimicSelectorRef="constructionValue"/>
+      <destinationSelector>
+        <nearbySelection>
+          <originValueSelector mimicSelectorRef="constructionValue"/>
+          <nearbyDistanceMeterClass>org.acme.vehiclerouting.domain.solver.nearby.CustomerNearbyDistanceMeter</nearbyDistanceMeterClass>
+        </nearbySelection>
+      </destinationSelector>
+    </listChangeMoveSelector>
+  </queuedValuePlacer>
+</constructionHeuristic>
+----
+====
+
+Manual selectors use the normal
+xref:advanced-features/advanced-features.adoc#listVariableNearbySelection[nearby selection configuration and argument types].
+They do not acquire the automatic batching semantics described above.
+
+
 [#scalingMultiplePlanningVariablesInConstructionHeuristics]
 === Scaling multiple planning variables in construction heuristics
 

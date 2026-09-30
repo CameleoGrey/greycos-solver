@@ -205,6 +205,8 @@
         <xs:sequence>
           <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
           <xs:element minOccurs="0" name="constructionHeuristicType" type="tns:constructionHeuristicType"/>
+          <xs:element minOccurs="0" name="nearbySelectionAutoConfigurationEnabled" type="xs:boolean"/>
+          <xs:element minOccurs="0" name="nearbySelectionSize" type="xs:int"/>
           <xs:element minOccurs="0" name="entitySorterManner" type="tns:entitySorterManner"/>
           <xs:element minOccurs="0" name="valueSorterManner" type="tns:valueSorterManner"/>
           <xs:choice minOccurs="0">
@@ -215,6 +217,7 @@
           <xs:choice maxOccurs="unbounded" minOccurs="0">
             <xs:element name="cartesianProductMoveSelector" type="tns:cartesianProductMoveSelectorConfig"/>
             <xs:element name="changeMoveSelector" type="tns:changeMoveSelectorConfig"/>
+            <xs:element name="listChangeMoveSelector" type="tns:listChangeMoveSelectorConfig"/>
             <xs:element name="moveIteratorFactory" type="tns:moveIteratorFactoryConfig"/>
             <xs:element name="moveListFactory" type="tns:moveListFactoryConfig"/>
             <xs:element name="pillarChangeMoveSelector" type="tns:pillarChangeMoveSelectorConfig"/>
@@ -624,6 +627,7 @@
           <xs:choice minOccurs="0">
             <xs:element name="cartesianProductMoveSelector" type="tns:cartesianProductMoveSelectorConfig"/>
             <xs:element name="changeMoveSelector" type="tns:changeMoveSelectorConfig"/>
+            <xs:element name="listChangeMoveSelector" type="tns:listChangeMoveSelectorConfig"/>
             <xs:element name="moveIteratorFactory" type="tns:moveIteratorFactoryConfig"/>
             <xs:element name="moveListFactory" type="tns:moveListFactoryConfig"/>
             <xs:element name="pillarChangeMoveSelector" type="tns:pillarChangeMoveSelectorConfig"/>

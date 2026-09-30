@@ -29,9 +29,11 @@ class PooledEntityPlacerFactoryTest {
 
     ChangeMoveSelectorConfig changeMoveSelectorConfig =
         (ChangeMoveSelectorConfig) placerConfig.getMoveSelectorConfig();
-    assertThat(changeMoveSelectorConfig.getEntitySelectorConfig().getEntityClass()).isNull();
-    assertThat(changeMoveSelectorConfig.getEntitySelectorConfig().getMimicSelectorRef())
+    assertThat(changeMoveSelectorConfig.getEntitySelectorConfig().getEntityClass())
+        .isEqualTo(TestdataEntity.class);
+    assertThat(changeMoveSelectorConfig.getEntitySelectorConfig().getId())
         .isEqualTo(TestdataEntity.class.getName());
+    assertThat(changeMoveSelectorConfig.getEntitySelectorConfig().getMimicSelectorRef()).isNull();
     assertThat(changeMoveSelectorConfig.getValueSelectorConfig().getVariableName())
         .isEqualTo("value");
   }
