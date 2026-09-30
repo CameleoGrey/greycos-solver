@@ -44,12 +44,14 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
   public void run() {
     thread = Thread.currentThread();
     InnerScoreDirector<Solution_, Score_> director = null;
+    MoveEvaluationPipeline.CandidateMetadataCollector<Solution_> metadataCollector = null;
     try {
       if (pipeline.aborting) {
         return;
       }
       director = parent.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
       InnerScore<Score_> workingScore = director.calculateScore();
+      metadataCollector = pipeline.createMetadataCollector(director);
       var epoch = mailbox;
       MoveEvaluationSource<Solution_> source = null;
       MoveEvaluationSource<Solution_> rebasedSource = null;
@@ -135,7 +137,17 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
             if (!(pipeline.evaluateDoable
                 && move instanceof AbstractSelectorBasedMove<Solution_> selector
                 && !selector.isMoveDoable(director))) {
-              score = director.executeTemporaryMove(move, pipeline.assertMoveScoreFromScratch);
+              if (metadataCollector == null) {
+                score = director.executeTemporaryMove(move, pipeline.assertMoveScoreFromScratch);
+              } else {
+                var collector = metadataCollector;
+                var context = slot.context;
+                score =
+                    director.executeTemporaryMove(
+                        move,
+                        view -> slot.metadata = collector.collect(view, move, context),
+                        pipeline.assertMoveScoreFromScratch);
+              }
               if (pipeline.assertExpectedUndoMoveScore) {
                 director.assertExpectedUndoMoveScore(
                     move,
@@ -183,6 +195,13 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
       }
     } finally {
       waiting = false;
+      if (metadataCollector != null) {
+        try {
+          metadataCollector.close();
+        } catch (Throwable e) {
+          pipeline.failCleanup(workerIndex, e);
+        }
+      }
       if (director != null) {
         try {
           calculationCount = director.getCalculationCount();
@@ -192,7 +211,7 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
         try {
           director.close();
         } catch (Throwable e) {
-          pipeline.fail(workerIndex, e);
+          pipeline.failCleanup(workerIndex, e);
         }
       }
       pipeline.acknowledge();

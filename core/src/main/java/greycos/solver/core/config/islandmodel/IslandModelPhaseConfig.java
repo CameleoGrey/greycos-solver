@@ -26,6 +26,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinR
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.SubListSwapMoveSelectorConfig;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchType;
 import greycos.solver.core.config.localsearch.decider.acceptor.LocalSearchAcceptorConfig;
@@ -73,6 +74,7 @@ import org.jspecify.annotations.Nullable;
       "compareGlobalFrequency",
       "migrationTimeout",
       "localSearchType",
+      "guidedLocalSearchConfig",
       "acceptorConfig",
       "foragerConfig",
       "moveSelectorConfig",
@@ -126,6 +128,9 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
         type = UnionMoveSelectorConfig.class)
   })
   private MoveSelectorConfig moveSelectorConfig = null;
+
+  @XmlElement(name = "guidedLocalSearch")
+  private GuidedLocalSearchConfig guidedLocalSearchConfig = null;
 
   @XmlElement(name = "acceptor")
   private LocalSearchAcceptorConfig acceptorConfig = null;
@@ -242,6 +247,15 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     this.moveSelectorConfig = moveSelectorConfig;
   }
 
+  public @Nullable GuidedLocalSearchConfig getGuidedLocalSearchConfig() {
+    return guidedLocalSearchConfig;
+  }
+
+  public void setGuidedLocalSearchConfig(
+      @Nullable GuidedLocalSearchConfig guidedLocalSearchConfig) {
+    this.guidedLocalSearchConfig = guidedLocalSearchConfig;
+  }
+
   public @Nullable LocalSearchAcceptorConfig getAcceptorConfig() {
     return acceptorConfig;
   }
@@ -318,6 +332,12 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     return this;
   }
 
+  public @NonNull IslandModelPhaseConfig withGuidedLocalSearchConfig(
+      @NonNull GuidedLocalSearchConfig guidedLocalSearchConfig) {
+    this.guidedLocalSearchConfig = guidedLocalSearchConfig;
+    return this;
+  }
+
   public @NonNull IslandModelPhaseConfig withAcceptorConfig(
       @NonNull LocalSearchAcceptorConfig acceptorConfig) {
     this.acceptorConfig = acceptorConfig;
@@ -351,6 +371,8 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     setMoveSelectorConfig(
         ConfigUtils.inheritOverwritableProperty(
             getMoveSelectorConfig(), inheritedConfig.getMoveSelectorConfig()));
+    guidedLocalSearchConfig =
+        ConfigUtils.inheritConfig(guidedLocalSearchConfig, inheritedConfig.guidedLocalSearchConfig);
     acceptorConfig = ConfigUtils.inheritConfig(acceptorConfig, inheritedConfig.getAcceptorConfig());
     foragerConfig = ConfigUtils.inheritConfig(foragerConfig, inheritedConfig.getForagerConfig());
     moveThreadCount =
@@ -403,6 +425,9 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
 
     if (moveSelectorConfig != null) {
       moveSelectorConfig.visitReferencedClasses(classVisitor);
+    }
+    if (guidedLocalSearchConfig != null) {
+      guidedLocalSearchConfig.visitReferencedClasses(classVisitor);
     }
     if (acceptorConfig != null) {
       acceptorConfig.visitReferencedClasses(classVisitor);

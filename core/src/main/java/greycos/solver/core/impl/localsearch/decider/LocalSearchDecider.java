@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 /**
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
-public class LocalSearchDecider<Solution_> {
+public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<Solution_> {
 
   protected final transient Logger logger = LoggerFactory.getLogger(getClass());
 

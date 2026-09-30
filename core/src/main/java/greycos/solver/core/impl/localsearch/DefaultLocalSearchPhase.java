@@ -10,7 +10,7 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
-import greycos.solver.core.impl.localsearch.decider.LocalSearchDecider;
+import greycos.solver.core.impl.localsearch.decider.LocalSearchPhaseDecider;
 import greycos.solver.core.impl.localsearch.event.LocalSearchPhaseLifecycleListener;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
@@ -35,7 +35,7 @@ import io.micrometer.core.instrument.Tags;
  */
 public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
     implements LocalSearchPhase<Solution_>, LocalSearchPhaseLifecycleListener<Solution_> {
-  protected final LocalSearchDecider<Solution_> decider;
+  protected final LocalSearchPhaseDecider<Solution_> decider;
   protected final AtomicLong acceptedMoveCountPerStep = new AtomicLong(0);
   protected final AtomicLong selectedMoveCountPerStep = new AtomicLong(0);
   protected final Map<String, ConstraintMatchMetricHandle> constraintIdToMetricHandleMap =
@@ -53,6 +53,10 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
   @Override
   public PhaseType getPhaseType() {
     return PhaseType.LOCAL_SEARCH;
+  }
+
+  public LocalSearchPhaseDecider<Solution_> getDecider() {
+    return decider;
   }
 
   @Override
@@ -106,7 +110,13 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
       stepStarted(stepScope);
       decider.decideNextStep(stepScope);
       if (stepScope.getStep() == null) {
-        if (phaseTermination.isPhaseTerminated(phaseScope)) {
+        if (stepScope.getNoStepReason() != null) {
+          logger.debug(
+              "{}    Local Search decision at step index ({}) ended without a move: {}.",
+              logIndentation,
+              stepScope.getStepIndex(),
+              stepScope.getNoStepReason());
+        } else if (phaseTermination.isPhaseTerminated(phaseScope)) {
           logger.trace(
               "{}    Step index ({}), time spent ({}) terminated without picking a nextStep.",
               logIndentation,
@@ -387,14 +397,14 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
   public static class Builder<Solution_>
       extends AbstractPhaseBuilder<Solution_, DefaultLocalSearchPhase<Solution_>> {
 
-    private final LocalSearchDecider<Solution_> decider;
+    private final LocalSearchPhaseDecider<Solution_> decider;
 
     public Builder(
         int phaseIndex,
         EnvironmentMode environmentMode,
         String logIndentation,
         PhaseTermination<Solution_> phaseTermination,
-        LocalSearchDecider<Solution_> decider) {
+        LocalSearchPhaseDecider<Solution_> decider) {
       super(phaseIndex, environmentMode, logIndentation, phaseTermination);
       this.decider = decider;
     }

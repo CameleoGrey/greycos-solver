@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
+  <localSearch>
+    <localSearchType>GUIDED_LOCAL_SEARCH</localSearchType>
+    <guidedLocalSearch>
+      <featureProviderClass>greycos.solver.quarkus.testcotwin.guidedlocalsearch.TestdataQuarkusGuidedLocalSearchFeatureProvider</featureProviderClass>
+    </guidedLocalSearch>
+  </localSearch>
+</solver>

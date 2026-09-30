@@ -9,6 +9,7 @@ module greycos.solver.core {
   exports greycos.solver.core.api.cotwin.valuerange;
   exports greycos.solver.core.api.cotwin.variable;
   exports greycos.solver.core.api.function;
+  exports greycos.solver.core.api.localsearch;
   exports greycos.solver.core.api.score;
   exports greycos.solver.core.api.score.analysis;
   exports greycos.solver.core.api.score.calculator;

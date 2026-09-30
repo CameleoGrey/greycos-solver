@@ -35,6 +35,7 @@ import org.jspecify.annotations.Nullable;
     propOrder = {
       "moveThreadCount",
       "localSearchType",
+      "guidedLocalSearchConfig",
       "moveSelectorConfig",
       "neighborhoodProviderClass",
       "acceptorConfig",
@@ -96,6 +97,9 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
 
   private String neighborhoodProviderClass = null;
 
+  @XmlElement(name = "guidedLocalSearch")
+  private GuidedLocalSearchConfig guidedLocalSearchConfig = null;
+
   @XmlElement(name = "acceptor")
   private LocalSearchAcceptorConfig acceptorConfig = null;
 
@@ -153,6 +157,15 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
         neighborhoodProviderClass == null ? null : neighborhoodProviderClass.getName();
   }
 
+  public @Nullable GuidedLocalSearchConfig getGuidedLocalSearchConfig() {
+    return guidedLocalSearchConfig;
+  }
+
+  public void setGuidedLocalSearchConfig(
+      @Nullable GuidedLocalSearchConfig guidedLocalSearchConfig) {
+    this.guidedLocalSearchConfig = guidedLocalSearchConfig;
+  }
+
   public @Nullable LocalSearchAcceptorConfig getAcceptorConfig() {
     return acceptorConfig;
   }
@@ -197,6 +210,12 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
     return this;
   }
 
+  public @NonNull LocalSearchPhaseConfig withGuidedLocalSearchConfig(
+      @NonNull GuidedLocalSearchConfig guidedLocalSearchConfig) {
+    this.guidedLocalSearchConfig = guidedLocalSearchConfig;
+    return this;
+  }
+
   public @NonNull LocalSearchPhaseConfig withAcceptorConfig(
       @NonNull LocalSearchAcceptorConfig acceptorConfig) {
     this.acceptorConfig = acceptorConfig;
@@ -224,6 +243,8 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
     neighborhoodProviderClass =
         ConfigUtils.inheritOverwritableProperty(
             neighborhoodProviderClass, inheritedConfig.neighborhoodProviderClass);
+    guidedLocalSearchConfig =
+        ConfigUtils.inheritConfig(guidedLocalSearchConfig, inheritedConfig.guidedLocalSearchConfig);
     acceptorConfig = ConfigUtils.inheritConfig(acceptorConfig, inheritedConfig.getAcceptorConfig());
     foragerConfig = ConfigUtils.inheritConfig(foragerConfig, inheritedConfig.getForagerConfig());
     return this;
@@ -244,6 +265,9 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
     }
     if (neighborhoodProviderClass != null) {
       classVisitor.accept(getNeighborhoodProviderClass());
+    }
+    if (guidedLocalSearchConfig != null) {
+      guidedLocalSearchConfig.visitReferencedClasses(classVisitor);
     }
     if (acceptorConfig != null) {
       acceptorConfig.visitReferencedClasses(classVisitor);

@@ -17,17 +17,20 @@ public enum LocalSearchType {
   /** See {@link PreviewFeature#DIVERSIFIED_LATE_ACCEPTANCE}. */
   DIVERSIFIED_LATE_ACCEPTANCE,
   GREAT_DELUGE,
-  VARIABLE_NEIGHBORHOOD_DESCENT;
+  VARIABLE_NEIGHBORHOOD_DESCENT,
+  /** Requires an explicit {@link GuidedLocalSearchConfig} with a feature provider. */
+  GUIDED_LOCAL_SEARCH;
 
   /**
    * @return values eligible for automatically generated blueprints, excluding types that duplicate
-   *     another blueprint or require preview opt-in
+   *     another blueprint, require a feature provider, or require preview opt-in
    */
   public static @NonNull LocalSearchType @NonNull [] getBluePrintTypes() {
     return Arrays.stream(values())
         .filter(
             localSearchType ->
-                localSearchType != SIMULATED_ANNEALING
+                localSearchType != GUIDED_LOCAL_SEARCH
+                    && localSearchType != SIMULATED_ANNEALING
                     && localSearchType != DIVERSIFIED_LATE_ACCEPTANCE)
         .toArray(LocalSearchType[]::new);
   }

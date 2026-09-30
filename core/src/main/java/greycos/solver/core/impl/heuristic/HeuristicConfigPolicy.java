@@ -35,6 +35,7 @@ public class HeuristicConfigPolicy<Solution_> {
   private final Integer moveThreadCount;
   private final Integer moveThreadBufferSize;
   private final boolean constraintStreamProfilingEnabled;
+  private final boolean nonDoableCandidateRetentionEnabled;
   private final Class<? extends ThreadFactory> threadFactoryClass;
   private final InitializingScoreTrend initializingScoreTrend;
   private final SolutionDescriptor<Solution_> solutionDescriptor;
@@ -62,6 +63,7 @@ public class HeuristicConfigPolicy<Solution_> {
     this.moveThreadCount = builder.moveThreadCount;
     this.moveThreadBufferSize = builder.moveThreadBufferSize;
     this.constraintStreamProfilingEnabled = builder.constraintStreamProfilingEnabled;
+    this.nonDoableCandidateRetentionEnabled = builder.nonDoableCandidateRetentionEnabled;
     this.threadFactoryClass = builder.threadFactoryClass;
     this.initializingScoreTrend = builder.initializingScoreTrend;
     this.solutionDescriptor = builder.solutionDescriptor;
@@ -97,6 +99,11 @@ public class HeuristicConfigPolicy<Solution_> {
 
   public boolean isConstraintStreamProfilingEnabled() {
     return constraintStreamProfilingEnabled;
+  }
+
+  /** Whether non-doable moves must reach the decider without entering typed user move filters. */
+  public boolean isNonDoableCandidateRetentionEnabled() {
+    return nonDoableCandidateRetentionEnabled;
   }
 
   public InitializingScoreTrend getInitializingScoreTrend() {
@@ -163,6 +170,7 @@ public class HeuristicConfigPolicy<Solution_> {
         .withMoveThreadCount(moveThreadCount)
         .withMoveThreadBufferSize(moveThreadBufferSize)
         .withConstraintStreamProfilingEnabled(constraintStreamProfilingEnabled)
+        .withNonDoableCandidateRetentionEnabled(nonDoableCandidateRetentionEnabled)
         .withThreadFactoryClass(threadFactoryClass)
         .withInitializingScoreTrend(initializingScoreTrend)
         .withSolutionDescriptor(solutionDescriptor)
@@ -332,6 +340,7 @@ public class HeuristicConfigPolicy<Solution_> {
     private Integer moveThreadCount;
     private Integer moveThreadBufferSize;
     private boolean constraintStreamProfilingEnabled;
+    private boolean nonDoableCandidateRetentionEnabled;
     private Class<? extends ThreadFactory> threadFactoryClass;
     private InitializingScoreTrend initializingScoreTrend;
     private SolutionDescriptor<Solution_> solutionDescriptor;
@@ -374,6 +383,11 @@ public class HeuristicConfigPolicy<Solution_> {
 
     public Builder<Solution_> withConstraintStreamProfilingEnabled(boolean enabled) {
       this.constraintStreamProfilingEnabled = enabled;
+      return this;
+    }
+
+    public Builder<Solution_> withNonDoableCandidateRetentionEnabled(boolean enabled) {
+      this.nonDoableCandidateRetentionEnabled = enabled;
       return this;
     }
 

@@ -82,7 +82,7 @@ public abstract class AbstractMoveSelectorFactory<
         buildBaseMoveSelector(configPolicy, selectionCacheType, randomMoveSelection);
     validateResolvedCacheType(resolvedCacheType, moveSelector);
 
-    moveSelector = applyFiltering(moveSelector, skipNonDoableMoves);
+    moveSelector = applyFiltering(configPolicy, moveSelector, skipNonDoableMoves);
     moveSelector = applySorting(resolvedCacheType, resolvedSelectionOrder, moveSelector);
     moveSelector = applyProbability(resolvedCacheType, resolvedSelectionOrder, moveSelector);
     moveSelector = applyShuffling(resolvedCacheType, resolvedSelectionOrder, moveSelector);
@@ -171,7 +171,9 @@ public abstract class AbstractMoveSelectorFactory<
   }
 
   private MoveSelector<Solution_> applyFiltering(
-      MoveSelector<Solution_> moveSelector, boolean skipNonDoableMoves) {
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      MoveSelector<Solution_> moveSelector,
+      boolean skipNonDoableMoves) {
     /*
      * Do not filter out pointless moves in Construction Heuristics and Exhaustive Search,
      * because the original value of the entity is irrelevant.
@@ -184,6 +186,16 @@ public abstract class AbstractMoveSelectorFactory<
     if (filterClass != null) {
       SelectionFilter<Solution_, Move<Solution_>> selectionFilter =
           ConfigUtils.newInstance(config, "filterClass", filterClass);
+      if (configPolicy.isNonDoableCandidateRetentionEnabled()) {
+        var userFilter = selectionFilter;
+        SelectionFilter<Solution_, Move<Solution_>> doableFilter =
+            DoableMoveSelectionFilter.INSTANCE;
+        // Placeholder moves have a different type from the moves expected by a user's filter.
+        // GLS still needs those attempts, so forward them to its bounded decision loop.
+        selectionFilter =
+            (scoreDirector, move) ->
+                !doableFilter.accept(scoreDirector, move) || userFilter.accept(scoreDirector, move);
+      }
       SelectionFilter<Solution_, Move<Solution_>> finalFilter =
           baseFilter == null
               ? selectionFilter

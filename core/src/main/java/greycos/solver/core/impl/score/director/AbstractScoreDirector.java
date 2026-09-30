@@ -83,6 +83,8 @@ public abstract class AbstractScoreDirector<
    */
   private final NeighborhoodNotifier<Solution_> neighborhoodsElementUpdateNotifier;
 
+  private @Nullable WorkingSolutionMutationObserver<Solution_> workingSolutionMutationObserver;
+
   private final boolean lookUpEnabled;
   private final LookUpManager lookUpManager;
   protected final ConstraintMatchPolicy constraintMatchPolicy;
@@ -276,6 +278,28 @@ public abstract class AbstractScoreDirector<
     return neighborhoodsElementUpdateNotifier;
   }
 
+  @Override
+  public void setWorkingSolutionMutationObserver(
+      @Nullable WorkingSolutionMutationObserver<Solution_> observer) {
+    if (observer != null
+        && workingSolutionMutationObserver != null
+        && workingSolutionMutationObserver != observer) {
+      throw new IllegalStateException("A working solution mutation observer is already attached.");
+    }
+    workingSolutionMutationObserver = observer;
+  }
+
+  @Override
+  public @Nullable WorkingSolutionMutationObserver<Solution_> getWorkingSolutionMutationObserver() {
+    return workingSolutionMutationObserver;
+  }
+
+  private void invalidateWorkingSolutionObserver() {
+    if (workingSolutionMutationObserver != null) {
+      workingSolutionMutationObserver.workingSolutionChanged();
+    }
+  }
+
   // ************************************************************************
   // Complex methods
   // ************************************************************************
@@ -307,6 +331,7 @@ public abstract class AbstractScoreDirector<
    */
   protected void setWorkingSolutionWithoutUpdatingShadows(
       Solution_ workingSolution, Consumer<Object> entityAndFactVisitor) {
+    invalidateWorkingSolutionObserver();
     this.workingSolution = requireNonNull(workingSolution);
     // Reset the ValueRangeManager with the new working solution BEFORE visiting entities.
     // This ensures getInitializationStatistics() uses the new solution, not the old cached one.
@@ -654,21 +679,42 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public void close() {
+    var observer = workingSolutionMutationObserver;
+    workingSolutionMutationObserver = null;
     workingSolution = null;
     workingInitScore = 0;
     if (lookUpEnabled) {
       lookUpManager.reset();
     }
-    variableSupport.close();
+    try {
+      variableSupport.close();
+    } catch (RuntimeException | Error failure) {
+      if (observer != null) {
+        try {
+          observer.close();
+        } catch (RuntimeException | Error closeFailure) {
+          if (closeFailure != failure) {
+            failure.addSuppressed(closeFailure);
+          }
+        }
+      }
+      throw failure;
+    }
+    if (observer != null) {
+      observer.close();
+    }
   }
 
   // ************************************************************************
   // Entity/variable add/change/remove methods
   // ************************************************************************
 
-  public void beforeEntityAdded(EntityDescriptor<Solution_> entityDescriptor, Object entity) {}
+  public void beforeEntityAdded(EntityDescriptor<Solution_> entityDescriptor, Object entity) {
+    invalidateWorkingSolutionObserver();
+  }
 
   public void afterEntityAdded(EntityDescriptor<Solution_> entityDescriptor, Object entity) {
+    invalidateWorkingSolutionObserver();
     workingInitScore -= entityDescriptor.countUninitializedVariables(entity);
     if (entityDescriptor.isGenuine()) {
       workingGenuineEntityCount++;
@@ -691,6 +737,10 @@ public abstract class AbstractScoreDirector<
   @Override
   public void beforeVariableChanged(
       VariableDescriptor<Solution_> variableDescriptor, Object entity) {
+    if (workingSolutionMutationObserver != null) {
+      workingSolutionMutationObserver.beforeVariableChanged(
+          entity, variableDescriptor.getVariableName());
+    }
     if (variableDescriptor.isGenuineAndUninitialized(entity)) {
       workingInitScore++;
     }
@@ -705,6 +755,10 @@ public abstract class AbstractScoreDirector<
       workingInitScore--;
     }
     variableSupport.afterVariableChanged(variableDescriptor, entity);
+    if (workingSolutionMutationObserver != null) {
+      workingSolutionMutationObserver.afterVariableChanged(
+          entity, variableDescriptor.getVariableName());
+    }
     neighborhoodsElementUpdateNotifier.accept(entity);
     if (isStepAssertOrMore()) {
       assertValueRangeForBasicVariables(entity);
@@ -713,11 +767,20 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public void beforeListVariableElementAssigned(
-      ListVariableDescriptor<Solution_> variableDescriptor, Object element) {}
+      ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
+    if (workingSolutionMutationObserver != null) {
+      workingSolutionMutationObserver.beforeListVariableElementAssigned(
+          variableDescriptor.getVariableName(), element);
+    }
+  }
 
   @Override
   public void afterListVariableElementAssigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
+    if (workingSolutionMutationObserver != null) {
+      workingSolutionMutationObserver.afterListVariableElementAssigned(
+          variableDescriptor.getVariableName(), element);
+    }
     if (!variableDescriptor
         .allowsUnassignedValues()) { // Unassigned elements don't count towards the initScore here.
       workingInitScore++;
@@ -729,7 +792,10 @@ public abstract class AbstractScoreDirector<
   @Override
   public void beforeListVariableElementUnassigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
-    // Do nothing
+    if (workingSolutionMutationObserver != null) {
+      workingSolutionMutationObserver.beforeListVariableElementUnassigned(
+          variableDescriptor.getVariableName(), element);
+    }
   }
 
   @Override
@@ -740,6 +806,10 @@ public abstract class AbstractScoreDirector<
       workingInitScore--;
     }
     variableSupport.afterElementUnassigned(variableDescriptor, element);
+    if (workingSolutionMutationObserver != null) {
+      workingSolutionMutationObserver.afterListVariableElementUnassigned(
+          variableDescriptor.getVariableName(), element);
+    }
     neighborhoodsElementUpdateNotifier.accept(element);
   }
 
@@ -762,6 +832,10 @@ public abstract class AbstractScoreDirector<
           """
               .formatted(variableDescriptor, entity, fromIndex, toIndex));
     }
+    if (workingSolutionMutationObserver != null) {
+      workingSolutionMutationObserver.beforeListVariableChanged(
+          entity, variableDescriptor.getVariableName(), fromIndex, toIndex);
+    }
     variableSupport.beforeListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
   }
 
@@ -772,6 +846,10 @@ public abstract class AbstractScoreDirector<
       int fromIndex,
       int toIndex) {
     variableSupport.afterListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
+    if (workingSolutionMutationObserver != null) {
+      workingSolutionMutationObserver.afterListVariableChanged(
+          entity, variableDescriptor.getVariableName(), fromIndex, toIndex);
+    }
     neighborhoodsElementUpdateNotifier.accept(entity);
     if (isStepAssertOrMore()) {
       var valueList = variableDescriptor.getValue(entity).subList(fromIndex, toIndex);
@@ -780,11 +858,13 @@ public abstract class AbstractScoreDirector<
   }
 
   public void beforeEntityRemoved(EntityDescriptor<Solution_> entityDescriptor, Object entity) {
+    invalidateWorkingSolutionObserver();
     workingInitScore += entityDescriptor.countUninitializedVariables(entity);
     assertInitScoreZeroOrLess();
   }
 
   public void afterEntityRemoved(EntityDescriptor<Solution_> entityDescriptor, Object entity) {
+    invalidateWorkingSolutionObserver();
     if (entityDescriptor.isGenuine()) {
       workingGenuineEntityCount--;
     }
@@ -809,11 +889,12 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public void beforeProblemFactAdded(Object problemFact) {
-    // Do nothing
+    invalidateWorkingSolutionObserver();
   }
 
   @Override
   public void afterProblemFactAdded(Object problemFact) {
+    invalidateWorkingSolutionObserver();
     if (lookUpEnabled) {
       lookUpManager.addWorkingObject(problemFact);
     }
@@ -827,11 +908,12 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public void beforeProblemPropertyChanged(Object problemFactOrEntity) {
-    // Do nothing
+    invalidateWorkingSolutionObserver();
   }
 
   @Override
   public void afterProblemPropertyChanged(Object problemFactOrEntity) {
+    invalidateWorkingSolutionObserver();
     if (isConstraintConfiguration(problemFactOrEntity)) {
       setWorkingSolution(
           workingSolution); // Nuke everything and recalculate, constraint weights have changed.
@@ -843,6 +925,7 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public void beforeProblemFactRemoved(Object problemFact) {
+    invalidateWorkingSolutionObserver();
     if (isConstraintConfiguration(problemFact)) {
       throw new IllegalStateException(
           """
@@ -855,6 +938,7 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public void afterProblemFactRemoved(Object problemFact) {
+    invalidateWorkingSolutionObserver();
     if (lookUpEnabled) {
       lookUpManager.removeWorkingObject(problemFact);
     }

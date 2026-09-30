@@ -460,6 +460,11 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       localSearchConfig.setMoveSelectorConfig(copiedConfig);
     }
 
+    var guidedLocalSearchConfig = islandModelConfig.getGuidedLocalSearchConfig();
+    if (guidedLocalSearchConfig != null) {
+      localSearchConfig.setGuidedLocalSearchConfig(guidedLocalSearchConfig.copyConfig());
+    }
+
     var acceptorConfig = islandModelConfig.getAcceptorConfig();
     if (acceptorConfig != null) {
       localSearchConfig.setAcceptorConfig(acceptorConfig.copyConfig());

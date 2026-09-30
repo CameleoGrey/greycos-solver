@@ -73,6 +73,10 @@ See xref:optimization-algorithms/overview.adoc[move and neighborhood selection].
 * An `Acceptor` which filters out unacceptable moves.
 * A `Forager` which gathers accepted moves and picks the next step from them.
 
+xref:optimization-algorithms/guided-local-search.adoc#guidedLocalSearch[Guided Local Search]
+uses a dedicated decider with application-defined features and penalties.
+Its configuration replaces the ordinary acceptor and forager; the move selector still supplies candidates.
+
 The solver phase configuration looks like this:
 
 [source,xml,options="nowrap"]

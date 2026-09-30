@@ -1,0 +1,308 @@
+[#guidedLocalSearch]
+= Guided Local Search
+
+Guided Local Search (GLS) changes the search objective when ordinary improvement stalls.
+The application identifies features of a solution, such as directed routing arcs, and their costs.
+GLS increases penalties on selected costly features so that subsequent moves favor alternatives.
+These penalties guide move selection; the planning score, retained best solution, score explanations,
+and score-based termination continue to use the original constraints.
+
+GLS runs inside a local-search phase with a dedicated decider.
+It requires an initialized solution and an application-specific feature provider.
+It supports basic and list planning variables, incremental score calculation, move workers, and islands.
+Benchmark it against existing search configurations on representative inputs before choosing it for production.
+
+[#guidedLocalSearchObjective]
+== Search objective and penalty updates
+
+GreyCOS maximizes scores. For the configured target score level `k`, GLS uses:
+
+[source,text]
+----
+penalty(x) = penaltyFactor * sum(p[i] * cost[i](x), for active features i)
+guidedLevel(x) = originalLevel[k](x) - penalty(x)
+utility(i) = cost[i](x) / (1 + p[i])
+----
+
+Each feature starts with penalty count `p[i] = 0`.
+When a search round finds admissible neighbors but no improving neighbor, GLS increments the count
+of every active, positive-cost feature tied for maximum utility.
+Features no longer present retain their penalty counts for future appearances.
+Counts do not decay. By default, discovering a new original-score best does not clear them.
+
+The guided comparison preserves structural validity and mandatory initialization first.
+It then compares the original score levels above `k`, the guided level at `k`, and the original levels below `k`,
+in that order. Candidates cannot worsen the original score prefix above the target level.
+An admissible candidate improving the original best is accepted through _aspiration_,
+even if its guided value does not improve the incumbent.
+
+For `HardSoftScore` and the default target, the comparison is equivalent to
+`(structural, initialization, hard, soft - penalty)`.
+Set `targetScoreLevelIndex` to `0` to guide the hard level instead.
+That permits hard-score deterioration, including temporary departure from feasibility.
+The solver still retains and returns the original-score best.
+Soft-level guidance preserves the hard score and therefore cannot escape every infeasible hard-score local optimum.
+
+All built-in integral and decimal score types are supported, including bendable scores.
+The target index is zero-based over business score levels; it excludes structural and initialization components.
+Penalty factors, feature costs, comparisons, and utility ties use exact arithmetic.
+Fractional penalties remain significant even for integral scores.
+For example, factor `0.1`, count `1`, and cost `3` contribute `0.3` to guidance.
+
+The cost-weighted formula and post-penalty escape follow OR-Tools' routing GLS design.
+GreyCOS preserves fractional contributions instead of reproducing OR-Tools' per-feature integer truncation.
+It also protects higher-priority score levels. Matching a coefficient does not imply matching search trajectories.
+
+[#guidedLocalSearchRounds]
+== Descent, escape, and neighborhood coverage
+
+During descent, GLS chooses the first admissible candidate that improves the guided comparison
+or satisfies original-best aspiration. Equal guided comparisons are not descent improvements.
+After updating penalties, it starts a fresh selector iterator and chooses the first admissible neighbor.
+This _escape_ step may worsen the guided target level, while still respecting structural validity,
+mandatory initialization, and the protected original score prefix.
+
+[cols="1,3",options="header"]
+|===
+|Search mode |Meaning of a completed unsuccessful descent round
+|`SAMPLED` (default)
+|No improvement appeared in at most `sampleSize` attempted candidates. This is sampled stagnation,
+not evidence of a local optimum. Random, nearby, and k-opt selectors require this mode.
+|`EXHAUSTIVE`
+|No improvement appeared during complete enumeration of the configured supported neighborhood.
+The result is local optimality relative to that neighborhood and the current admission rules.
+|===
+
+`sampleSize` counts attempted candidates, including moves that cannot be executed.
+It is independent of the ordinary forager's `acceptedCountLimit`.
+If a sampled descent round found an admissible neighbor, GLS retains one for escape recovery.
+The final escape probe re-evaluates that neighbor under the new penalties if fresh probes found none.
+The solution has not changed between those rounds.
+
+If sampled rounds find no admissible candidate, GLS ends the phase after `maxUnproductiveRounds` rounds.
+An exhaustive round without any admissible candidate ends the phase immediately.
+If stagnation requires a penalty update but no active positive-cost feature can be penalized, the phase also ends.
+Termination is checked throughout candidate and penalty rounds.
+Penalty updates do not create moves, completed steps, best-solution events, or score calculations.
+A step-count limit counts committed moves.
+
+Exhaustive mode accepts explicit `ORIGINAL` change or swap selectors for basic variables,
+list-change or list-swap selectors for list variables, and unions of those selectors.
+It rejects random and nearby selection, k-opt, selected-count truncation, custom selectors,
+and Neighborhoods repositories. A count-limited random iterator does not enumerate a neighborhood,
+even though its iterator ends.
+
+[#guidedLocalSearchConfiguration]
+== Configuration
+
+Set the local-search type to `GUIDED_LOCAL_SEARCH` and supply a feature-provider class.
+The provider must have a public no-argument constructor.
+GLS owns acceptance and move selection; do not combine it with an `acceptor` or `forager` configuration.
+Automatic benchmark blueprints omit GLS because they cannot infer a feature provider.
+An explicitly configured benchmark can use it.
+
+[cols="2,1,3",options="header"]
+|===
+|Property |Default |Meaning
+|`featureProviderClass` |Required |Application feature provider.
+|`penaltyFactor` |`0.1` |Strictly positive decimal multiplier. Feature costs must use the target score level's units.
+|`targetScoreLevelIndex` |Last level |Zero-based target business score level; hard and soft levels are both allowed.
+|`searchMode` |`SAMPLED` |Sampled stagnation or supported exhaustive enumeration.
+|`sampleSize` |`1000` |Maximum attempted candidates per sampled round. Omit this property in exhaustive mode.
+|`maxUnproductiveRounds` |`3` |Consecutive sampled rounds allowed without an admissible candidate.
+|`resetPenaltiesOnNewBest` |`false` |Clear penalty counts after a new original-score best.
+|===
+
+The following complete solver configuration uses the time-windowed routing model and feature provider
+from the examples module. It uses generated move selectors in sampled mode and a 30-second solver-wide budget,
+including construction:
+
+[source,xml]
+----
+<?xml version="1.0" encoding="UTF-8"?>
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
+  <randomSeed>0</randomSeed>
+  <moveThreadCount>NONE</moveThreadCount>
+  <solutionClass>examples.vehiclerouting.cotwin.timewindowed.TimeWindowedVehicleRoutingSolution</solutionClass>
+  <entityClass>examples.vehiclerouting.cotwin.Vehicle</entityClass>
+  <entityClass>examples.vehiclerouting.cotwin.timewindowed.TimeWindowedCustomer</entityClass>
+  <scoreDirectorFactory>
+    <constraintProviderClass>examples.vehiclerouting.score.VehicleRoutingConstraintProvider</constraintProviderClass>
+  </scoreDirectorFactory>
+  <termination>
+    <secondsSpentLimit>30</secondsSpentLimit>
+  </termination>
+  <constructionHeuristic>
+    <constructionHeuristicType>FIRST_FIT</constructionHeuristicType>
+  </constructionHeuristic>
+  <localSearch>
+    <localSearchType>GUIDED_LOCAL_SEARCH</localSearchType>
+    <guidedLocalSearch>
+      <featureProviderClass>examples.vehiclerouting.score.VehicleRoutingGuidedLocalSearchFeatureProvider</featureProviderClass>
+      <penaltyFactor>0.1</penaltyFactor>
+      <searchMode>SAMPLED</searchMode>
+      <sampleSize>1000</sampleSize>
+    </guidedLocalSearch>
+  </localSearch>
+</solver>
+----
+
+The equivalent Java factory is:
+
+[source,java]
+----
+import java.math.BigDecimal;
+import java.time.Duration;
+
+import greycos.solver.core.api.solver.Solver;
+import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
+import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchType;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
+import greycos.solver.core.config.solver.SolverConfig;
+
+import examples.vehiclerouting.cotwin.Vehicle;
+import examples.vehiclerouting.cotwin.timewindowed.TimeWindowedCustomer;
+import examples.vehiclerouting.cotwin.timewindowed.TimeWindowedVehicleRoutingSolution;
+import examples.vehiclerouting.score.VehicleRoutingConstraintProvider;
+import examples.vehiclerouting.score.VehicleRoutingGuidedLocalSearchFeatureProvider;
+
+public final class GuidedRoutingSolver {
+    public static Solver<TimeWindowedVehicleRoutingSolution> buildSolver() {
+        SolverConfig config = new SolverConfig()
+                .withSolutionClass(TimeWindowedVehicleRoutingSolution.class)
+                .withEntityClasses(Vehicle.class, TimeWindowedCustomer.class)
+                .withConstraintProviderClass(VehicleRoutingConstraintProvider.class)
+                .withRandomSeed(0L)
+                .withMoveThreadCount("NONE")
+                .withTerminationSpentLimit(Duration.ofSeconds(30))
+                .withPhases(
+                        new ConstructionHeuristicPhaseConfig()
+                                .withConstructionHeuristicType(ConstructionHeuristicType.FIRST_FIT),
+                        new LocalSearchPhaseConfig()
+                                .withLocalSearchType(LocalSearchType.GUIDED_LOCAL_SEARCH)
+                                .withGuidedLocalSearchConfig(new GuidedLocalSearchConfig()
+                                        .withFeatureProviderClass(VehicleRoutingGuidedLocalSearchFeatureProvider.class)
+                                        .withPenaltyFactor(new BigDecimal("0.1"))));
+        return SolverFactory.<TimeWindowedVehicleRoutingSolution>create(config).buildSolver();
+    }
+}
+----
+
+Call `GuidedRoutingSolver.buildSolver().solve(problem)` with an imported routing solution.
+For a complete executable example with nearby selection, use
+`examples.vehiclerouting.VehicleRoutingGuidedLocalSearch` and its
+`examples/vehiclerouting/vehicleRoutingGuidedLocalSearchSolverConfig.xml` resource.
+The same GLS configuration is available in island local-search shorthand.
+
+For exhaustive list search, replace the local-search element above with:
+
+[source,xml]
+----
+<localSearch>
+  <localSearchType>GUIDED_LOCAL_SEARCH</localSearchType>
+  <guidedLocalSearch>
+    <featureProviderClass>examples.vehiclerouting.score.VehicleRoutingGuidedLocalSearchFeatureProvider</featureProviderClass>
+    <searchMode>EXHAUSTIVE</searchMode>
+  </guidedLocalSearch>
+  <unionMoveSelector>
+    <selectionOrder>ORIGINAL</selectionOrder>
+    <listChangeMoveSelector/>
+    <listSwapMoveSelector/>
+  </unionMoveSelector>
+</localSearch>
+----
+
+[#guidedLocalSearchFeatureProvider]
+== Implementing a feature provider
+
+Implement the public APIs in `greycos.solver.core.api.localsearch`:
+
+[cols="2,3",options="header"]
+|===
+|Interface |Responsibility
+|`GuidedLocalSearchFeatureProvider<Solution_, Key_>`
+|`extractFeatures` independently enumerates the features of a solution; `newSession` creates private incremental state.
+|`GuidedLocalSearchFeatureConsumer<Key_>`
+|`accept(key, longCost)` or `accept(key, BigDecimalCost)` emits a present feature and its cost.
+|`GuidedLocalSearchFeatureUpdater<Key_>`
+|The consumer operations insert or replace a feature; `remove(key)` removes its presence.
+|`GuidedLocalSearchFeatureSession<Solution_, Key_>`
+|Resets against a working solution, receives variable notifications, flushes changed features, and closes its resources.
+|===
+
+Keys must be non-null, immutable, and equal across cloned solutions.
+Use immutable business IDs or records composed of those IDs; do not use a mutable planning entity as a key.
+Each key represents binary feature presence. If the same kind of feature occurs several times,
+give each occurrence a distinct key. Full extraction must emit each key once.
+Costs must be nonnegative. Zero-cost features may be present but are never selected for penalty increments.
+Changing a present feature's cost keeps its penalty count.
+An incremental `remove` must name a currently present feature.
+
+Choose features whose removal or replacement describes useful alternative decisions.
+They may represent only selected terms of the objective; their sum need not reproduce the whole business score.
+Avoid including known immutable features: repeatedly penalizing a feature that no move can remove cannot guide useful choices.
+Use costs in the selected target level's units. For example, guiding scaled distance with unscaled kilometers
+changes the effect of `penaltyFactor` by the scale factor.
+
+`extractFeatures` is the independent reference for correctness assertions.
+It must read the supplied solution, not a session's caches or its previously emitted feature map.
+The session is required for actual search; GreyCOS does not silently substitute full extraction for missing incremental logic.
+
+Session callbacks cover basic genuine and shadow variables, list changes, and list-element assignment and unassignment.
+Record affected objects in these callbacks and coalesce repeated notifications.
+Resolve derived feature costs in `flushChanges` after shadow updates have settled.
+`resetWorkingSolution` invalidates the old solution's caches; initialize lazily at the next safe flush.
+A session must handle temporary candidate changes, undo, and committed moves identically.
+Undo can restore a predicted business score without calling its calculator, so feature flushing must not depend on
+`calculateScore()` being invoked.
+
+Each working score director, including each move worker, receives its own session.
+Provider instances can be shared by workers and must be stateless or thread-safe.
+Sessions must not share mutable state or retain the consumer/updater outside the callback that received it.
+Core owns penalty counters and the active penalty total; sessions report only feature presence and cost changes.
+Do not modify planning variables, constraint weights, or the solution's score from a feature callback.
+
+=== Routing features
+
+The example provider uses directed arcs with typed customer/depot IDs, including depot departure and return.
+Customer IDs distinguish visits even when their locations coincide.
+Its cost is the same scaled distance used by the routing constraints.
+The reference extractor walks vehicle lists independently of shadow caches.
+The session updates cached arcs after predecessor, successor, or vehicle changes and ignores index-only changes.
+
+Relocation and swap update adjacent arcs without a whole-route feature scan.
+Reversing a segment changes every directed internal arc and requires corresponding updates.
+If costs depend on the assigned vehicle, transferring a segment may change every transferred arc's cost.
+Define explicitly whether a vehicle or cost class belongs in the key: sharing an arc key across vehicles shares its penalty history.
+The example's distance costs do not depend on vehicle identity.
+
+Constraint matches are not automatically used as GLS features.
+A match involving one customer may depend on its predecessor, while a customer ID alone does not identify that arc.
+Grouped matches and arbitrary justifications also need not describe elementary decisions.
+The explicit provider works with Easy, Incremental, and Constraint Streams score calculation.
+
+[#guidedLocalSearchLifecycle]
+== Threading, islands, and diagnosis
+
+Move workers evaluate guidance with private feature sessions against a frozen penalty generation.
+The coordinator consumes results in candidate order and synchronizes workers before changing penalties.
+Published solutions and scores remain original-score results.
+For reproducibility, keep the input, seed, selector configuration, worker count, and non-time termination fixed.
+Wall-clock termination and concurrent island migration can change the trajectory.
+
+Each island owns its penalty history.
+Adopting a migrant clears that history and rebuilds the guided baseline from the adopted business solution.
+Phase restart and problem changes also reset history and feature state.
+A configured new-best reset clears penalties after recording the original best.
+
+DEBUG logging reports rounds and penalty updates; phase summaries include GLS counters.
+Use `FULL_ASSERT`, `TRACKED_FULL_ASSERT`, or `NON_INTRUSIVE_FULL_ASSERT` to compare incremental feature maps
+and penalties against independent extraction. These full checks add whole-solution work to candidate evaluation.
+When guidance is ineffective, check that keys distinguish the intended decisions, costs match the target level's units,
+and movable positive-cost features are present.
+For throughput measurements, disable assertions and compare the same initialized inputs, seeds, neighborhoods,
+worker counts, and solve budgets. Measure original score and feasibility together with candidate throughput,
+penalty rounds, and memory. A faster feature evaluator alone does not establish better solution quality.

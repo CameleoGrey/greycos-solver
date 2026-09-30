@@ -695,6 +695,7 @@
           <xs:element minOccurs="0" name="compareGlobalFrequency" type="xs:int"/>
           <xs:element minOccurs="0" name="migrationTimeout" type="xs:long"/>
           <xs:element minOccurs="0" name="localSearchType" type="tns:localSearchType"/>
+          <xs:element minOccurs="0" name="guidedLocalSearch" type="tns:guidedLocalSearchConfig"/>
           <xs:element minOccurs="0" name="acceptor" type="tns:localSearchAcceptorConfig"/>
           <xs:element minOccurs="0" name="forager" type="tns:localSearchForagerConfig"/>
           <xs:choice minOccurs="0">
@@ -720,6 +721,21 @@
             <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
             <xs:element name="localSearch" type="tns:localSearchPhaseConfig"/>
           </xs:choice>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="guidedLocalSearchConfig">
+    <xs:complexContent>
+      <xs:extension base="tns:abstractConfig">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="featureProviderClass" type="xs:string"/>
+          <xs:element minOccurs="0" name="penaltyFactor" type="xs:decimal"/>
+          <xs:element minOccurs="0" name="targetScoreLevelIndex" type="xs:int"/>
+          <xs:element minOccurs="0" name="searchMode" type="tns:guidedLocalSearchSearchMode"/>
+          <xs:element minOccurs="0" name="sampleSize" type="xs:int"/>
+          <xs:element minOccurs="0" name="maxUnproductiveRounds" type="xs:int"/>
+          <xs:element minOccurs="0" name="resetPenaltiesOnNewBest" type="xs:boolean"/>
         </xs:sequence>
       </xs:extension>
     </xs:complexContent>
@@ -767,6 +783,7 @@
         <xs:sequence>
           <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
           <xs:element minOccurs="0" name="localSearchType" type="tns:localSearchType"/>
+          <xs:element minOccurs="0" name="guidedLocalSearch" type="tns:guidedLocalSearchConfig"/>
           <xs:choice minOccurs="0">
             <xs:element name="cartesianProductMoveSelector" type="tns:cartesianProductMoveSelectorConfig"/>
             <xs:element name="changeMoveSelector" type="tns:changeMoveSelectorConfig"/>
@@ -1008,6 +1025,13 @@
       <xs:enumeration value="DIVERSIFIED_LATE_ACCEPTANCE"/>
       <xs:enumeration value="GREAT_DELUGE"/>
       <xs:enumeration value="VARIABLE_NEIGHBORHOOD_DESCENT"/>
+      <xs:enumeration value="GUIDED_LOCAL_SEARCH"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="guidedLocalSearchSearchMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="SAMPLED"/>
+      <xs:enumeration value="EXHAUSTIVE"/>
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="acceptorType">

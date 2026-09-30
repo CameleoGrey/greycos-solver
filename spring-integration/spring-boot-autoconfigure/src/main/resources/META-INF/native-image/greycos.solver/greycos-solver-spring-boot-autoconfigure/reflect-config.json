@@ -483,6 +483,21 @@
     ]
   },
   {
+    "name": "greycos.solver.core.config.localsearch.GuidedLocalSearchConfig",
+    "allDeclaredFields": true,
+    "queryAllDeclaredMethods": true,
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "greycos.solver.core.config.localsearch.GuidedLocalSearchSearchMode",
+    "allDeclaredFields": true
+  },
+  {
     "name": "greycos.solver.core.config.localsearch.LocalSearchPhaseConfig",
     "allDeclaredFields": true,
     "queryAllDeclaredMethods": true,

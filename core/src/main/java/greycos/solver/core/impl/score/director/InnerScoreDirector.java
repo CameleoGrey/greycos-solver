@@ -146,6 +146,12 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    */
   NeighborhoodNotifier<Solution_> getNeighborhoodNotifier();
 
+  /** Attaches phase-local observation that also receives temporary move and undo changes. */
+  void setWorkingSolutionMutationObserver(
+      @Nullable WorkingSolutionMutationObserver<Solution_> observer);
+
+  @Nullable WorkingSolutionMutationObserver<Solution_> getWorkingSolutionMutationObserver();
+
   /**
    * Calculates the {@link Score} and updates the {@link PlanningSolution working solution}
    * accordingly.

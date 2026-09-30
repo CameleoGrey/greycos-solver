@@ -9,11 +9,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.thread.ThreadUtils;
 import greycos.solver.core.preview.api.move.Move;
+import greycos.solver.core.preview.api.move.SolutionView;
 
 import org.jspecify.annotations.Nullable;
 
@@ -60,9 +62,31 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   private volatile boolean waitingForReplay;
   private BooleanSupplier terminationCheck = () -> false;
   private int claimChunkSize = 1;
+  private @Nullable
+      Function<InnerScoreDirector<Solution_, ?>, CandidateMetadataCollector<Solution_>>
+      metadataCollectorFactory;
 
   public void setTerminationCheck(BooleanSupplier terminationCheck) {
     this.terminationCheck = Objects.requireNonNull(terminationCheck);
+  }
+
+  /** Configures private worker collectors before startup; ordinary scoring needs no collector. */
+  public void setMetadataCollectorFactory(
+      Function<InnerScoreDirector<Solution_, ?>, CandidateMetadataCollector<Solution_>> factory) {
+    if (started) {
+      throw new IllegalStateException(
+          "Candidate metadata collectors must be configured before startup.");
+    }
+    metadataCollectorFactory = Objects.requireNonNull(factory);
+  }
+
+  @Nullable CandidateMetadataCollector<Solution_> createMetadataCollector(
+      InnerScoreDirector<Solution_, ?> director) {
+    return metadataCollectorFactory == null
+        ? null
+        : Objects.requireNonNull(
+            metadataCollectorFactory.apply(director),
+            "The candidate metadata collector factory must return a collector.");
   }
 
   /** Configures range claims before startup. Individually submitted moves always claim singly. */
@@ -140,7 +164,16 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   }
 
   public void submit(int moveIndex, Move<Solution_> move) {
+    submit(moveIndex, move, null);
+  }
+
+  /** Publishes a candidate with immutable context for its pre-undo metadata evaluation. */
+  public void submit(int moveIndex, Move<Solution_> move, @Nullable EvaluationContext context) {
     checkFailure();
+    if ((metadataCollectorFactory == null) != (context == null)) {
+      throw new IllegalArgumentException(
+          "Candidate context and a metadata collector must either both be present or both be absent.");
+    }
     var epoch = current;
     if (epoch.closed
         || moveIndex != epoch.published
@@ -152,6 +185,8 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     slot.move = Objects.requireNonNull(move);
     slot.source = null;
     slot.score = null;
+    slot.context = context;
+    slot.metadata = null;
     slot.completedIndex = -1;
     epoch.published = moveIndex + 1;
     generated++;
@@ -173,6 +208,10 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   public int submitRange(
       int moveIndex, MoveEvaluationSource<Solution_> source, int sourceIndex, int requestedCount) {
     checkFailure();
+    if (metadataCollectorFactory != null) {
+      throw new IllegalStateException(
+          "Indexed range evaluation does not support candidate metadata.");
+    }
     Objects.requireNonNull(source);
     Objects.checkFromIndexSize(sourceIndex, requestedCount, source.size());
     var epoch = current;
@@ -187,6 +226,8 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       slot.source = source;
       slot.sourceIndex = sourceIndex + index - moveIndex;
       slot.score = null;
+      slot.context = null;
+      slot.metadata = null;
       slot.completedIndex = -1;
     }
     epoch.published = end;
@@ -228,7 +269,8 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       return null;
     }
     var move = slot.move == null ? slot.source.move(slot.sourceIndex) : slot.move;
-    var result = new Result<>(epoch.stepIndex, moveIndex, move, slot.score);
+    var result =
+        new Result<>(epoch.stepIndex, moveIndex, move, slot.score, slot.context, slot.metadata);
     consume(epoch, slot);
     return result;
   }
@@ -292,8 +334,9 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   }
 
   private void requireScoreOnly() {
-    if (evaluateDoable) {
-      throw new IllegalStateException("Score-only consumption requires scoring every candidate.");
+    if (evaluateDoable || metadataCollectorFactory != null) {
+      throw new IllegalStateException(
+          "Score-only consumption requires scoring every candidate without auxiliary metadata.");
     }
   }
 
@@ -346,6 +389,8 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     slot.move = null;
     slot.source = null;
     slot.score = null;
+    slot.context = null;
+    slot.metadata = null;
     epoch.consumed++;
     consumed++;
     if (doable) {
@@ -355,6 +400,52 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
 
   public void cancelStep() {
     current.closed = true;
+  }
+
+  /**
+   * Waits for a safe boundary at which coordinator-owned evaluation state may change. All current
+   * results must first be consumed. Acknowledging the current step additionally proves that no
+   * cancelled evaluation from an older step is still reading that state.
+   *
+   * <p>A false result means termination was requested and grants no permission to mutate state. The
+   * coordinator must not publish candidates concurrently with this call.
+   */
+  public boolean awaitEvaluationQuiescence() throws InterruptedException {
+    checkFailure();
+    var epoch = current;
+    if (!started || stopping || epoch.closed || epoch.published != epoch.consumed) {
+      throw new IllegalStateException(
+          "Evaluation quiescence requires an open step with every submitted result consumed.");
+    }
+    long waitStart = diagnosticsEnabled ? System.nanoTime() : 0;
+    try {
+      for (var worker : workers) {
+        while (worker.appliedStepIndex < epoch.stepIndex) {
+          checkFailure();
+          if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedException("Interrupted while waiting for evaluation quiescence.");
+          }
+          if (terminationCheck.getAsBoolean()) {
+            return false;
+          }
+          waitingForReplay = true;
+          if (worker.appliedStepIndex < epoch.stepIndex && failure.get() == null) {
+            LockSupport.parkNanos(this, TimeUnit.MILLISECONDS.toNanos(50));
+          }
+          waitingForReplay = false;
+        }
+      }
+      checkFailure();
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Interrupted while waiting for evaluation quiescence.");
+      }
+      return !terminationCheck.getAsBoolean();
+    } finally {
+      waitingForReplay = false;
+      if (diagnosticsEnabled) {
+        replayWaitNanos += System.nanoTime() - waitStart;
+      }
+    }
   }
 
   public void applyStep(int nextStepIndex, Move<Solution_> move, InnerScore<?> score) {
@@ -452,6 +543,17 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
         thread.interrupt();
         LockSupport.unpark(thread);
       }
+    }
+  }
+
+  void failCleanup(int workerIndex, Throwable cause) {
+    var original = failure.get();
+    if (original == null) {
+      fail(workerIndex, cause);
+      original = failure.get();
+    }
+    if (original != cause && original.getCause() != cause) {
+      original.addSuppressed(cause);
     }
   }
 
@@ -603,10 +705,39 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       long replayWaitNanos) {}
 
   public record Result<Solution_>(
-      int stepIndex, int moveIndex, Move<Solution_> move, InnerScore<?> score) {
+      int stepIndex,
+      int moveIndex,
+      Move<Solution_> move,
+      InnerScore<?> score,
+      @Nullable EvaluationContext context,
+      @Nullable EvaluationMetadata metadata) {
+    public Result(int stepIndex, int moveIndex, Move<Solution_> move, InnerScore<?> score) {
+      this(stepIndex, moveIndex, move, score, null, null);
+    }
+
     public boolean isMoveDoable() {
       return score != null;
     }
+  }
+
+  /** Immutable context shared by the coordinator and the workers evaluating its candidates. */
+  public interface EvaluationContext {}
+
+  /** Immutable candidate information captured while the scored temporary move remains applied. */
+  public interface EvaluationMetadata {}
+
+  /**
+   * A private worker collector. Its mutable caches belong to that worker's score director. Reads of
+   * shared context must finish before {@link #collect} returns; the collector must not retain a
+   * candidate's mutable solution state in its result.
+   */
+  @FunctionalInterface
+  public interface CandidateMetadataCollector<Solution_> extends AutoCloseable {
+    @Nullable EvaluationMetadata collect(
+        SolutionView<Solution_> solutionView, Move<Solution_> move, EvaluationContext context);
+
+    @Override
+    default void close() {}
   }
 
   static final class Slot<Solution_> {
@@ -614,6 +745,8 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     MoveEvaluationSource<Solution_> source;
     int sourceIndex;
     InnerScore<?> score;
+    @Nullable EvaluationContext context;
+    @Nullable EvaluationMetadata metadata;
     volatile int completedIndex = -1;
   }
 
@@ -641,6 +774,8 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
         slot.move = null;
         slot.source = null;
         slot.score = null;
+        slot.context = null;
+        slot.metadata = null;
         slot.completedIndex = -1;
       }
       stepIndex = index;

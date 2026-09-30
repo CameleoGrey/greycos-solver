@@ -69,6 +69,7 @@ public class DefaultExhaustiveSearchPhaseFactory<Solution_>
         solverConfigPolicy
             .cloneBuilder()
             .withEnvironmentMode(environmentMode)
+            .withNonDoableCandidateRetentionEnabled(false)
             .withReinitializeVariableFilterEnabled(true)
             .withEntitySorterManner(entitySorterManner)
             .withValueSorterManner(valueSorterManner)

@@ -51,22 +51,32 @@ final class KOptListMoveSelector<Solution_> extends AbstractGenericListMoveSelec
 
   @Override
   public long getSize() {
-    long total = 0;
     long valueSelectorSize = valueSelector.getSize();
-    for (int i = minK; i < Math.min(valueSelectorSize, maxK); i++) {
-      if (valueSelectorSize > i) { // need more than k nodes in order to perform a k-opt
-        long kOptMoveTypes = KOptUtils.getPureKOptMoveTypes(i);
-
-        // A tour with n nodes have n - 1 edges
-        // And we chose k of them to remove in a k-opt
-        final long edgeChoices;
-        if (valueSelectorSize <= Integer.MAX_VALUE) {
-          edgeChoices = MathUtils.binomialCoefficient((int) (valueSelectorSize - 1), i);
-        } else {
-          edgeChoices = Long.MAX_VALUE;
-        }
-        total += kOptMoveTypes * edgeChoices;
+    long originSelectorSize = originSelector.getSize();
+    if (originSelectorSize == 0 || valueSelectorSize == 0) {
+      return 0L;
+    }
+    long total = 0L;
+    try {
+      if (minK == 2) {
+        // Two-opt selects endpoint pairs, also allowing a tail swap between two singleton routes.
+        // The single-tour edge formula below would incorrectly report zero for that neighborhood.
+        total = Math.multiplyExact(originSelectorSize, valueSelectorSize);
       }
+      for (int k = Math.max(3, minK); k <= maxK && k < valueSelectorSize; k++) {
+        // The number of pure 18-opt reconnections already exceeds Long.MAX_VALUE. The shared
+        // utility uses long arithmetic, so do not ask it to calculate an unrepresentable count.
+        if (k >= 18 || valueSelectorSize > Integer.MAX_VALUE) {
+          return Long.MAX_VALUE;
+        }
+        // Approximate the number of ways to remove k edges from a tour's n - 1 edges.
+        long edgeChoices = MathUtils.binomialCoefficient((int) (valueSelectorSize - 1), k);
+        long kOptMoveTypes = KOptUtils.getPureKOptMoveTypes(k);
+        total = Math.addExact(total, Math.multiplyExact(kOptMoveTypes, edgeChoices));
+      }
+    } catch (ArithmeticException overflow) {
+      // Size is an estimate used by filtering bailout; wrapping negative could disable all moves.
+      return Long.MAX_VALUE;
     }
     return total;
   }

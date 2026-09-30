@@ -80,6 +80,7 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
             .cloneBuilder()
             .withEnvironmentMode(environmentMode)
             .withMoveThreadCount(moveThreadCount)
+            .withNonDoableCandidateRetentionEnabled(false)
             .withReinitializeVariableFilterEnabled(true)
             .withUnassignedValuesAllowed(true)
             .withEntitySorterManner(entitySorterManner)

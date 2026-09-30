@@ -16,6 +16,15 @@ public final class LocalSearchStepScope<Solution_> extends AbstractStepScope<Sol
   private String stepString = null;
   private Long selectedMoveCount = null;
   private Long acceptedMoveCount = null;
+  private NoStepReason noStepReason;
+
+  /** An intentional end to a decision which did not select a real move. */
+  public enum NoStepReason {
+    TERMINATED,
+    NO_ADMISSIBLE_MOVE,
+    NO_PENALIZABLE_FEATURES,
+    SAMPLE_EXHAUSTED
+  }
 
   public LocalSearchStepScope(LocalSearchPhaseScope<Solution_> phaseScope) {
     this(phaseScope, phaseScope.getNextStepIndex());
@@ -72,6 +81,14 @@ public final class LocalSearchStepScope<Solution_> extends AbstractStepScope<Sol
 
   public void setAcceptedMoveCount(Long acceptedMoveCount) {
     this.acceptedMoveCount = acceptedMoveCount;
+  }
+
+  public NoStepReason getNoStepReason() {
+    return noStepReason;
+  }
+
+  public void setNoStepReason(NoStepReason noStepReason) {
+    this.noStepReason = noStepReason;
   }
 
   // ************************************************************************
