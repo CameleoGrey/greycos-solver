@@ -74,8 +74,10 @@ See xref:optimization-algorithms/overview.adoc[move and neighborhood selection].
 * A `Forager` which gathers accepted moves and picks the next step from them.
 
 xref:optimization-algorithms/guided-local-search.adoc#guidedLocalSearch[Guided Local Search]
-uses a dedicated decider with application-defined features and penalties.
-Its configuration replaces the ordinary acceptor and forager; the move selector still supplies candidates.
+uses a dedicated decider with automatic or application-defined features and penalties.
+It retries guided improvement after penalty updates, adapts focus on stagnation, and bounds hard-score excursions.
+Its configuration replaces the ordinary acceptor and forager; the move selector supplies candidates.
+Optional directed origin selection prefers penalized origins in supported selectors.
 
 The solver phase configuration looks like this:
 

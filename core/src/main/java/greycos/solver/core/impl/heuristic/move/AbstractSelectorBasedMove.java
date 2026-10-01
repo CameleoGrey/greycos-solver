@@ -29,6 +29,16 @@ import org.jspecify.annotations.NullMarked;
 public abstract class AbstractSelectorBasedMove<Solution_>
     implements greycos.solver.core.preview.api.move.Move<Solution_> {
 
+  private boolean guidedLocalSearchOrdinaryOrigin;
+
+  public final boolean hasGuidedLocalSearchOrdinaryOrigin() {
+    return guidedLocalSearchOrdinaryOrigin;
+  }
+
+  public final void setGuidedLocalSearchOrdinaryOrigin(boolean ordinaryOrigin) {
+    guidedLocalSearchOrdinaryOrigin = ordinaryOrigin;
+  }
+
   public boolean isMoveDoable(ScoreDirector<Solution_> scoreDirector) {
     return true;
   }

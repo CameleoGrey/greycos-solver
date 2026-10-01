@@ -21,12 +21,18 @@ import org.jspecify.annotations.Nullable;
 @XmlType(
     propOrder = {
       "featureProviderClass",
+      "featureComposition",
+      "automaticListOwnershipEnabled",
+      "directedOriginSelection",
       "penaltyFactor",
       "guidanceMode",
       "targetScoreLevelIndex",
       "levelScaleList",
       "focusStepLimit",
       "focusPenaltyUpdateLimit",
+      "maxPenaltyUpdatesPerStep",
+      "excursionStepLimit",
+      "excursionRepairStepLimit",
       "searchMode",
       "sampleSize",
       "maxUnproductiveRounds",
@@ -36,6 +42,9 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
 
   // Keep defaults out of configuration objects so inheritance and XML round-trips preserve intent.
   private String featureProviderClass;
+  private GuidedLocalSearchFeatureComposition featureComposition;
+  private Boolean automaticListOwnershipEnabled;
+  private Boolean directedOriginSelection;
   private BigDecimal penaltyFactor;
   private GuidedLocalSearchGuidanceMode guidanceMode;
   private Integer targetScoreLevelIndex;
@@ -45,15 +54,17 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
 
   private Integer focusStepLimit;
   private Integer focusPenaltyUpdateLimit;
+  private Integer maxPenaltyUpdatesPerStep;
+  private Integer excursionStepLimit;
+  private Integer excursionRepairStepLimit;
   private GuidedLocalSearchSearchMode searchMode;
   private Integer sampleSize;
   private Integer maxUnproductiveRounds;
   private Boolean resetPenaltiesOnNewBest;
 
   /**
-   * Optional supplemental provider in ALL_LEVELS; required in FIXED_TARGET. The provider must have
-   * a public no-arg constructor. Each solve and island owns independent feature sessions and
-   * penalty histories.
+   * Required by CUSTOM and COMBINED feature composition. The provider must have a public no-arg
+   * constructor. Each solve and island owns independent feature sessions and penalty histories.
    */
   @SuppressWarnings("rawtypes")
   public @Nullable Class<? extends GuidedLocalSearchFeatureProvider> getFeatureProviderClass() {
@@ -74,6 +85,55 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
     return this;
   }
 
+  /**
+   * When omitted, ALL_LEVELS uses AUTOMATIC without a provider and COMBINED with a provider;
+   * FIXED_TARGET uses CUSTOM. Explicit AUTOMATIC also supports FIXED_TARGET without a provider.
+   */
+  public @Nullable GuidedLocalSearchFeatureComposition getFeatureComposition() {
+    return featureComposition;
+  }
+
+  public void setFeatureComposition(
+      @Nullable GuidedLocalSearchFeatureComposition featureComposition) {
+    this.featureComposition = featureComposition;
+  }
+
+  public @NonNull GuidedLocalSearchConfig withFeatureComposition(
+      @NonNull GuidedLocalSearchFeatureComposition featureComposition) {
+    setFeatureComposition(featureComposition);
+    return this;
+  }
+
+  /** Whether automatic list features include value ownership; defaults to {@code false}. */
+  public @Nullable Boolean getAutomaticListOwnershipEnabled() {
+    return automaticListOwnershipEnabled;
+  }
+
+  public void setAutomaticListOwnershipEnabled(@Nullable Boolean automaticListOwnershipEnabled) {
+    this.automaticListOwnershipEnabled = automaticListOwnershipEnabled;
+  }
+
+  public @NonNull GuidedLocalSearchConfig withAutomaticListOwnershipEnabled(
+      @NonNull Boolean automaticListOwnershipEnabled) {
+    setAutomaticListOwnershipEnabled(automaticListOwnershipEnabled);
+    return this;
+  }
+
+  /** Whether supported selectors prefer origins with high penalty pressure; defaults to false. */
+  public @Nullable Boolean getDirectedOriginSelection() {
+    return directedOriginSelection;
+  }
+
+  public void setDirectedOriginSelection(@Nullable Boolean directedOriginSelection) {
+    this.directedOriginSelection = directedOriginSelection;
+  }
+
+  public @NonNull GuidedLocalSearchConfig withDirectedOriginSelection(
+      @NonNull Boolean directedOriginSelection) {
+    setDirectedOriginSelection(directedOriginSelection);
+    return this;
+  }
+
   /** Positive exact decimal factor applied to weighted penalties; defaults to {@code 0.1}. */
   public @Nullable BigDecimal getPenaltyFactor() {
     return penaltyFactor;
@@ -88,7 +148,7 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
     return this;
   }
 
-  /** Defaults to ALL_LEVELS unless an explicit target selects legacy FIXED_TARGET behavior. */
+  /** Defaults to ALL_LEVELS unless an explicit target selects FIXED_TARGET. */
   public @Nullable GuidedLocalSearchGuidanceMode getGuidanceMode() {
     return guidanceMode;
   }
@@ -117,7 +177,7 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
     return this;
   }
 
-  /** Maximum committed moves per focus epoch in ALL_LEVELS; defaults to 64. */
+  /** Maximum committed moves per focus epoch; defaults to 64. Progress renews the same focus. */
   public @Nullable Integer getFocusStepLimit() {
     return focusStepLimit;
   }
@@ -131,7 +191,7 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
     return this;
   }
 
-  /** Maximum penalty updates per focus epoch in ALL_LEVELS; defaults to 8. */
+  /** Maximum penalty updates per focus epoch; defaults to 8. */
   public @Nullable Integer getFocusPenaltyUpdateLimit() {
     return focusPenaltyUpdateLimit;
   }
@@ -142,6 +202,50 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
 
   public @NonNull GuidedLocalSearchConfig withFocusPenaltyUpdateLimit(int focusPenaltyUpdateLimit) {
     setFocusPenaltyUpdateLimit(focusPenaltyUpdateLimit);
+    return this;
+  }
+
+  /** Maximum penalty updates across all focuses in one real decision; defaults to 64. */
+  public @Nullable Integer getMaxPenaltyUpdatesPerStep() {
+    return maxPenaltyUpdatesPerStep;
+  }
+
+  public void setMaxPenaltyUpdatesPerStep(@Nullable Integer maxPenaltyUpdatesPerStep) {
+    this.maxPenaltyUpdatesPerStep = maxPenaltyUpdatesPerStep;
+  }
+
+  public @NonNull GuidedLocalSearchConfig withMaxPenaltyUpdatesPerStep(
+      int maxPenaltyUpdatesPerStep) {
+    setMaxPenaltyUpdatesPerStep(maxPenaltyUpdatesPerStep);
+    return this;
+  }
+
+  /** Maximum committed moves in a deliberate hard-score excursion; defaults to 8. */
+  public @Nullable Integer getExcursionStepLimit() {
+    return excursionStepLimit;
+  }
+
+  public void setExcursionStepLimit(@Nullable Integer excursionStepLimit) {
+    this.excursionStepLimit = excursionStepLimit;
+  }
+
+  public @NonNull GuidedLocalSearchConfig withExcursionStepLimit(int excursionStepLimit) {
+    setExcursionStepLimit(excursionStepLimit);
+    return this;
+  }
+
+  /** Maximum committed repair moves following a hard-score excursion; defaults to 64. */
+  public @Nullable Integer getExcursionRepairStepLimit() {
+    return excursionRepairStepLimit;
+  }
+
+  public void setExcursionRepairStepLimit(@Nullable Integer excursionRepairStepLimit) {
+    this.excursionRepairStepLimit = excursionRepairStepLimit;
+  }
+
+  public @NonNull GuidedLocalSearchConfig withExcursionRepairStepLimit(
+      int excursionRepairStepLimit) {
+    setExcursionRepairStepLimit(excursionRepairStepLimit);
     return this;
   }
 
@@ -199,8 +303,9 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
 
   /**
    * Positive bound on consecutive sampled rounds with no structurally valid, fully assigned
-   * candidate; FIXED_TARGET also requires preserving the protected score prefix. Defaults to 3.
-   * Exhaustive search stops after its first such completed round.
+   * candidate admitted by the active focus and excursion state; defaults to 3. Exhaustive search
+   * acts after its first such completed round. A bounded focus escalation may follow where the
+   * guidance mode permits it.
    */
   public @Nullable Integer getMaxUnproductiveRounds() {
     return maxUnproductiveRounds;
@@ -237,6 +342,15 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
     featureProviderClass =
         ConfigUtils.inheritOverwritableProperty(
             featureProviderClass, inheritedConfig.featureProviderClass);
+    featureComposition =
+        ConfigUtils.inheritOverwritableProperty(
+            featureComposition, inheritedConfig.featureComposition);
+    automaticListOwnershipEnabled =
+        ConfigUtils.inheritOverwritableProperty(
+            automaticListOwnershipEnabled, inheritedConfig.automaticListOwnershipEnabled);
+    directedOriginSelection =
+        ConfigUtils.inheritOverwritableProperty(
+            directedOriginSelection, inheritedConfig.directedOriginSelection);
     penaltyFactor =
         ConfigUtils.inheritOverwritableProperty(penaltyFactor, inheritedConfig.penaltyFactor);
     guidanceMode =
@@ -251,6 +365,15 @@ public class GuidedLocalSearchConfig extends AbstractConfig<GuidedLocalSearchCon
     focusPenaltyUpdateLimit =
         ConfigUtils.inheritOverwritableProperty(
             focusPenaltyUpdateLimit, inheritedConfig.focusPenaltyUpdateLimit);
+    maxPenaltyUpdatesPerStep =
+        ConfigUtils.inheritOverwritableProperty(
+            maxPenaltyUpdatesPerStep, inheritedConfig.maxPenaltyUpdatesPerStep);
+    excursionStepLimit =
+        ConfigUtils.inheritOverwritableProperty(
+            excursionStepLimit, inheritedConfig.excursionStepLimit);
+    excursionRepairStepLimit =
+        ConfigUtils.inheritOverwritableProperty(
+            excursionRepairStepLimit, inheritedConfig.excursionRepairStepLimit);
     searchMode = ConfigUtils.inheritOverwritableProperty(searchMode, inheritedConfig.searchMode);
     sampleSize = ConfigUtils.inheritOverwritableProperty(sampleSize, inheritedConfig.sampleSize);
     maxUnproductiveRounds =

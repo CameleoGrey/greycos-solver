@@ -14,11 +14,15 @@ import static greycos.solver.core.testutil.PlannerAssert.assertEmptyNeverEndingI
 import static greycos.solver.core.testutil.PlannerAssert.verifyPhaseLifecycle;
 import static greycos.solver.core.testutil.PlannerTestUtils.mockScoreDirector;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
+import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.value.decorator.ProbabilityValueSelector;
 import greycos.solver.core.testcotwin.list.TestdataListEntity;
 import greycos.solver.core.testcotwin.list.TestdataListSolution;
 import greycos.solver.core.testcotwin.list.TestdataListUtils;
@@ -34,6 +38,90 @@ import greycos.solver.core.testutil.TestRandom;
 import org.junit.jupiter.api.Test;
 
 class RandomSubListSelectorTest {
+
+  @Test
+  void finiteSeedSourceExhaustsWithoutDiscardingSelections() {
+    var v1 = new TestdataListValue("1");
+    var v2 = new TestdataListValue("2");
+    var entity = TestdataListEntity.createWithValues("A", v1, v2);
+    var solution = new TestdataListSolution();
+    solution.setEntityList(List.of(entity));
+    solution.setValueList(List.of(v1, v2));
+    var scoreDirector = mockScoreDirector(TestdataListSolution.buildSolutionDescriptor());
+    scoreDirector.setWorkingSolution(solution);
+    var selector =
+        new RandomSubListSelector<>(
+            mockEntitySelector(entity),
+            greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.mockIterableValueSelector(
+                getListVariableDescriptor(scoreDirector), v1, v2),
+            1,
+            2);
+    var solverScope = solvingStarted(selector, scoreDirector, new TestRandom(0, 1));
+    phaseStarted(selector, solverScope);
+    var iterator = selector.iterator();
+    assertThat(selector.isNeverEnding()).isFalse();
+    assertThat(iterator.next().entity()).isSameAs(entity);
+    assertThat(iterator.next().entity()).isSameAs(entity);
+    assertThat(iterator.hasNext()).isFalse();
+    assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(iterator::next);
+  }
+
+  @Test
+  void randomSeedsRestrictedToShortListsStopAfterBoundedAttempts() {
+    var v1 = new TestdataListValue("1");
+    var v2 = new TestdataListValue("2");
+    var v3 = new TestdataListValue("3");
+    var a = TestdataListEntity.createWithValues("A", v1, v2);
+    var b = TestdataListEntity.createWithValues("B", v3);
+    var solution = new TestdataListSolution();
+    solution.setEntityList(List.of(a, b));
+    solution.setValueList(List.of(v1, v2, v3));
+    var scoreDirector = mockScoreDirector(TestdataListSolution.buildSolutionDescriptor());
+    scoreDirector.setWorkingSolution(solution);
+    var selector =
+        new RandomSubListSelector<>(
+            mockEntitySelector(a, b),
+            TestdataListUtils.mockNeverEndingIterableValueSelector(
+                getListVariableDescriptor(scoreDirector), v3),
+            2,
+            2);
+    var solverScope = solvingStarted(selector, scoreDirector, new TestRandom(new int[0]));
+    phaseStarted(selector, solverScope);
+    var iterator = selector.iterator();
+    assertThat(iterator.hasNext()).isFalse();
+    assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(iterator::next);
+  }
+
+  @Test
+  void probabilitySeedsRestrictedToShortListsStopAfterBoundedAttempts() {
+    var v1 = new TestdataListValue("1");
+    var v2 = new TestdataListValue("2");
+    var v3 = new TestdataListValue("3");
+    var a = TestdataListEntity.createWithValues("A", v1, v2);
+    var b = TestdataListEntity.createWithValues("B", v3);
+    var solution = new TestdataListSolution();
+    solution.setEntityList(List.of(a, b));
+    solution.setValueList(List.of(v1, v2, v3));
+    var scoreDirector = mockScoreDirector(TestdataListSolution.buildSolutionDescriptor());
+    scoreDirector.setWorkingSolution(solution);
+    var probabilitySource =
+        new ProbabilityValueSelector<>(
+            greycos.solver.core.impl.heuristic.selector.SelectorTestUtils.mockIterableValueSelector(
+                getListVariableDescriptor(scoreDirector), v3),
+            SelectionCacheType.PHASE,
+            (director, value) -> 1.0);
+    var selector = new RandomSubListSelector<>(mockEntitySelector(a, b), probabilitySource, 2, 2);
+    // More than ten attempts fails immediately instead of hanging the test.
+    var solverScope = solvingStarted(selector, scoreDirector, new TestRandom(new double[10]));
+    var phaseScope = phaseStarted(selector, solverScope);
+    assertThat(probabilitySource.isNeverEnding()).isTrue();
+    assertThat(selector.isNeverEnding()).isTrue();
+    var iterator = selector.iterator();
+    assertThat(iterator.hasNext()).isFalse();
+    assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(iterator::next);
+    selector.phaseEnded(phaseScope);
+    selector.solvingEnded(solverScope);
+  }
 
   @Test
   void randomUnrestricted() {

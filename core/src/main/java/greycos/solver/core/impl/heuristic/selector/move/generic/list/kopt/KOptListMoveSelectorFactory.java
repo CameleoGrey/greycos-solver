@@ -58,10 +58,20 @@ public final class KOptListMoveSelectorFactory<Solution_>
     var selectionOrder = SelectionOrder.fromRandomSelectionBoolean(randomSelection);
     var originSelector =
         buildIterableValueSelector(
-            configPolicy, entityDescriptor, originSelectorConfig, minimumCacheType, selectionOrder);
+            configPolicy,
+            entityDescriptor,
+            originSelectorConfig,
+            minimumCacheType,
+            selectionOrder,
+            true);
     var valueSelector =
         buildIterableValueSelector(
-            configPolicy, entityDescriptor, valueSelectorConfig, minimumCacheType, selectionOrder);
+            configPolicy,
+            entityDescriptor,
+            valueSelectorConfig,
+            minimumCacheType,
+            selectionOrder,
+            false);
 
     int minimumK = Objects.requireNonNullElse(config.getMinimumK(), DEFAULT_MINIMUM_K);
     if (minimumK < 2) {
@@ -99,7 +109,27 @@ public final class KOptListMoveSelectorFactory<Solution_>
       EntityDescriptor<Solution_> entityDescriptor,
       ValueSelectorConfig valueSelectorConfig,
       SelectionCacheType minimumCacheType,
-      SelectionOrder inheritedSelectionOrder) {
+      SelectionOrder inheritedSelectionOrder,
+      boolean originSelection) {
+    if (originSelection) {
+      var originSelector =
+          ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
+              .buildOriginValueSelector(
+                  configPolicy,
+                  entityDescriptor,
+                  minimumCacheType,
+                  inheritedSelectionOrder,
+                  ValueSelectorFactory.ListValueFilteringType.ACCEPT_ASSIGNED);
+      if (originSelector instanceof IterableValueSelector<Solution_> iterableOriginSelector) {
+        return iterableOriginSelector;
+      }
+      throw new IllegalArgumentException(
+          "The kOptListMoveSelector ("
+              + config
+              + ") requires an iterable list origin selector ("
+              + originSelector
+              + ").");
+    }
     var valueSelector =
         ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
             .buildValueSelector(

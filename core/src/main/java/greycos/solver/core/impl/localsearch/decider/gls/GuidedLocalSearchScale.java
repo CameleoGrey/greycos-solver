@@ -1,7 +1,7 @@
 package greycos.solver.core.impl.localsearch.decider.gls;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,6 +17,15 @@ public record GuidedLocalSearchScale(
     if (numerator.signum() <= 0 || denominator.signum() <= 0) {
       throw new IllegalArgumentException("GLS scale numerator and denominator must be positive.");
     }
+    // Both components may arrive as native decimal scores. Normalize to one integral fraction.
+    var n = numerator.toBigDecimal();
+    var d = denominator.toBigDecimal();
+    int scale = Math.max(n.scale(), d.scale());
+    var ni = n.scaleByPowerOfTen(scale).toBigIntegerExact();
+    var di = d.scaleByPowerOfTen(scale).toBigIntegerExact();
+    var common = ni.gcd(di);
+    numerator = GuidedLocalSearchNumber.of(ni.divide(common));
+    denominator = GuidedLocalSearchNumber.of(di.divide(common));
   }
 
   public static GuidedLocalSearchScale of(BigDecimal value) {
@@ -24,18 +33,20 @@ public record GuidedLocalSearchScale(
   }
 
   public static GuidedLocalSearchScale of(GuidedLocalSearchNumber value, int divisor) {
-    var decimal = value.toBigDecimal();
-    var numerator = decimal.unscaledValue();
-    var denominator = BigInteger.valueOf(divisor);
-    if (decimal.scale() > 0) {
-      denominator = denominator.multiply(BigInteger.TEN.pow(decimal.scale()));
-    } else if (decimal.scale() < 0) {
-      numerator = numerator.multiply(BigInteger.TEN.pow(-decimal.scale()));
-    }
-    var gcd = numerator.gcd(denominator);
+    var fraction = GuidedLocalSearchRational.of(value, divisor);
     return new GuidedLocalSearchScale(
-        GuidedLocalSearchNumber.of(numerator.divide(gcd)),
-        GuidedLocalSearchNumber.of(denominator.divide(gcd)));
+        GuidedLocalSearchNumber.of(fraction.numerator()),
+        GuidedLocalSearchNumber.of(fraction.denominator()));
+  }
+
+  public GuidedLocalSearchScale dividedBy(int divisor) {
+    if (divisor <= 0) throw new IllegalArgumentException("The GLS scale divisor must be positive.");
+    return new GuidedLocalSearchScale(numerator, denominator.multiply(divisor));
+  }
+
+  public GuidedLocalSearchScale multipliedBy(int factor) {
+    if (factor <= 0) throw new IllegalArgumentException("The GLS scale factor must be positive.");
+    return new GuidedLocalSearchScale(numerator.multiply(factor), denominator);
   }
 
   @Override
@@ -44,6 +55,7 @@ public record GuidedLocalSearchScale(
   }
 
   static GuidedLocalSearchScale median(List<GuidedLocalSearchScale> values) {
+    if (values.isEmpty()) throw new IllegalArgumentException("GLS median requires observations.");
     var sorted = new ArrayList<>(values);
     sorted.sort(null);
     int middle = sorted.size() / 2;
@@ -55,36 +67,56 @@ public record GuidedLocalSearchScale(
         left.denominator.multiply(right.denominator).multiply(2));
   }
 
-  /** Collects at most the first 128 informative, coordinator-consumed candidate observations. */
+  /** Rolling scale data is learned only from coordinator-consumed eligible observations. */
   static final class Calibration {
-    private static final int SAMPLE_LIMIT = 128;
-    private final List<GuidedLocalSearchScale> observations = new ArrayList<>();
+    private static final int SAMPLE_LIMIT = 256;
+    private final ArrayDeque<GuidedLocalSearchScale> observations = new ArrayDeque<>();
+    private final boolean fixed;
     private GuidedLocalSearchScale scale;
-    private boolean frozen;
+    private boolean calibrated;
+    private boolean changed;
 
     Calibration(BigDecimal override) {
       scale = override == null ? ONE : of(override);
-      frozen = override != null;
+      fixed = override != null;
+      calibrated = fixed;
     }
 
     void observe(GuidedLocalSearchNumber scoreDifference, int automaticDifferenceCount) {
-      if (frozen || observations.size() == SAMPLE_LIMIT || scoreDifference.signum() == 0) return;
+      if (fixed || automaticDifferenceCount == 0 || scoreDifference.signum() == 0) return;
       if (scoreDifference.signum() < 0)
         scoreDifference = GuidedLocalSearchNumber.ZERO.subtract(scoreDifference);
-      observations.add(of(scoreDifference, Math.max(1, automaticDifferenceCount)));
+      if (observations.size() == SAMPLE_LIMIT) observations.removeFirst();
+      observations.addLast(of(scoreDifference, automaticDifferenceCount));
+      changed = true;
     }
 
-    GuidedLocalSearchScale freezeAtPenaltyUpdate() {
-      if (!frozen && !observations.isEmpty()) {
-        scale = median(observations);
-        frozen = true;
-        observations.clear();
+    GuidedLocalSearchScale publishAtPenaltyUpdate() {
+      if (!fixed && changed) {
+        var next = median(new ArrayList<>(observations));
+        if (calibrated) {
+          var lower = scale.dividedBy(2);
+          var upper = scale.multipliedBy(2);
+          if (next.compareTo(lower) < 0) next = lower;
+          else if (next.compareTo(upper) > 0) next = upper;
+        }
+        scale = next;
+        calibrated = true;
+        changed = false;
       }
       return scale;
     }
 
     GuidedLocalSearchScale scale() {
       return scale;
+    }
+
+    boolean calibrated() {
+      return calibrated;
+    }
+
+    int observationCount() {
+      return observations.size();
     }
   }
 }

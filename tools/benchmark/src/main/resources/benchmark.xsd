@@ -1653,6 +1653,12 @@
                     
           <xs:element minOccurs="0" name="featureProviderClass" type="xs:string"/>
                     
+          <xs:element minOccurs="0" name="featureComposition" type="tns:guidedLocalSearchFeatureComposition"/>
+                    
+          <xs:element minOccurs="0" name="automaticListOwnershipEnabled" type="xs:boolean"/>
+                    
+          <xs:element minOccurs="0" name="directedOriginSelection" type="xs:boolean"/>
+                    
           <xs:element minOccurs="0" name="penaltyFactor" type="xs:decimal"/>
                     
           <xs:element minOccurs="0" name="guidanceMode" type="tns:guidedLocalSearchGuidanceMode"/>
@@ -1664,6 +1670,12 @@
           <xs:element minOccurs="0" name="focusStepLimit" type="xs:int"/>
                     
           <xs:element minOccurs="0" name="focusPenaltyUpdateLimit" type="xs:int"/>
+                    
+          <xs:element minOccurs="0" name="maxPenaltyUpdatesPerStep" type="xs:int"/>
+                    
+          <xs:element minOccurs="0" name="excursionStepLimit" type="xs:int"/>
+                    
+          <xs:element minOccurs="0" name="excursionRepairStepLimit" type="xs:int"/>
                     
           <xs:element minOccurs="0" name="searchMode" type="tns:guidedLocalSearchSearchMode"/>
                     
@@ -2252,6 +2264,20 @@
       <xs:enumeration value="VARIABLE_NEIGHBORHOOD_DESCENT"/>
             
       <xs:enumeration value="GUIDED_LOCAL_SEARCH"/>
+          
+    </xs:restriction>
+      
+  </xs:simpleType>
+    
+  <xs:simpleType name="guidedLocalSearchFeatureComposition">
+        
+    <xs:restriction base="xs:string">
+            
+      <xs:enumeration value="AUTOMATIC"/>
+            
+      <xs:enumeration value="CUSTOM"/>
+            
+      <xs:enumeration value="COMBINED"/>
           
     </xs:restriction>
       

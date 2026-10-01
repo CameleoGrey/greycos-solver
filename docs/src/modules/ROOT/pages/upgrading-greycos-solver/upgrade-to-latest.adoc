@@ -1,0 +1,88 @@
+[#upgradeToLatest]
+= Upgrading to the latest version
+
+[#guidedLocalSearchUpgrade]
+== Guided Local Search
+
+Every `GUIDED_LOCAL_SEARCH` phase uses the upgraded controller and automatic feature learning.
+The public provider and session interfaces, existing configuration methods and XML names, and existing enum values remain available.
+`FIXED_TARGET` remains a focus policy within GLS.
+An unspecified `localSearchType` continues to use Late Acceptance.
+
+=== Configuration resolution
+
+Existing explicit values of `penaltyFactor`, `sampleSize`, `levelScale`, `targetScoreLevelIndex`,
+`maxUnproductiveRounds`, and `resetPenaltiesOnNewBest` remain effective.
+Omitted fields remain unset through copying, inheritance, and XML/native configuration serialization;
+their defaults are resolved when the solver is built.
+
+[cols="3,3",options="header"]
+|===
+|Configuration |Resolution
+|Mode and target omitted |`ALL_LEVELS`.
+|Target supplied and mode omitted |`FIXED_TARGET`, retaining that target.
+|Composition omitted in `ALL_LEVELS`, no provider |Automatic features.
+|Composition omitted in `ALL_LEVELS`, provider supplied |Automatic and custom features.
+|Composition omitted in `FIXED_TARGET` |Custom features; a provider remains required.
+|Explicit `featureComposition=AUTOMATIC` |Automatic features in either mode; omit the provider.
+|Explicit `featureComposition=CUSTOM` or `COMBINED` |Provider required. `CUSTOM` excludes automatic features.
+|`directedOriginSelection` omitted |`false`; existing custom move selectors and Neighborhoods remain usable.
+|===
+
+To use a fixed target with automatic features and no provider, set the composition explicitly:
+
+[source,xml]
+----
+<localSearch>
+  <localSearchType>GUIDED_LOCAL_SEARCH</localSearchType>
+  <guidedLocalSearch>
+    <featureComposition>AUTOMATIC</featureComposition>
+    <targetScoreLevelIndex>1</targetScoreLevelIndex>
+  </guidedLocalSearch>
+</localSearch>
+----
+
+The target index must exist in the configured score type.
+`CUSTOM` does not support `levelScale`, enabled automatic list ownership, or enabled directed origin selection.
+For combined automatic and provider features, select `COMBINED`.
+
+=== Changed search behavior
+
+* A penalty update is followed by another guided-improvement round.
+Acceptance requires strict guided improvement or a new original-score best, subject to the current admission rules.
+The retry budget `maxPenaltyUpdatesPerStep` defaults to 64; exhaustion ends the phase normally.
+* `focusStepLimit` and `focusPenaltyUpdateLimit` keep defaults 64 and 8.
+They now bound focus epochs: original-score progress renews the same focus, and stagnation can escalate focus.
+They do not request unconditional cyclic rotation.
+* Ordinary search and repair protect the original hard score.
+They reject feasible-to-infeasible transitions even when the hard vector improves lexicographically.
+Deliberate hard excursions have at most eight committed moves by default, followed by at most 64 repair moves.
+Partial repair does not restart the repair budget; unsuccessful repair ends the phase while preserving the retained original-score best.
+`FIXED_TARGET` never changes its target.
+* Automatic list features now include directed adjacency and boundaries by default.
+Set `automaticListOwnershipEnabled=true` to also guide list ownership.
+* Automatic costs are learned from changed features in consumed candidate evaluations.
+Scales use a rolling median and are published with costs at penalty barriers.
+Explicit `levelScale` overrides stay fixed, and custom provider costs are unchanged.
+* Maximum-utility ties receive a bounded seeded penalty batch.
+Penalty histories continue to persist unless a configured reset or lifecycle reset clears them.
+
+GLS retains the best original score according to the score type's native ordering.
+Once a feasible solution has been found, the returned best remains feasible when the model orders every feasible solution
+above every infeasible solution, as the routing and cloud examples do.
+Unusual positive hard rewards can violate this assumption; a hard vector `[1, -1]` is infeasible
+but ranks above the feasible vector `[0, 0]`.
+
+`directedOriginSelection=true` additionally prefers penalized origins in supported sampled, just-in-time selector trees.
+Finite origin streams use a bounded buffer to reorder all source selections;
+ordinary slots draw fresh selections directly from the source while any remain.
+Unsupported trees fail with the selector path and remediation.
+Set it to `false` to use an unsupported tree with the same upgraded controller and learning.
+The routing examples enable directed origins and use 80% nearby and 20% broad move selection.
+They use factor `0.1` and sample size `1000`; explicitly configured larger samples remain in effect.
+A very large sample can delay the next penalty update beyond an original-best idle limit.
+
+Read the xref:optimization-algorithms/guided-local-search.adoc#guidedLocalSearch[GLS manual]
+for feature-provider contracts, controller admission rules, and all defaults.
+Use the xref:optimization-algorithms/guided-local-search.adoc#guidedLocalSearchBenchmarking[measurement recipe]
+to compare original scores and independently replayed solutions before drawing quality conclusions.

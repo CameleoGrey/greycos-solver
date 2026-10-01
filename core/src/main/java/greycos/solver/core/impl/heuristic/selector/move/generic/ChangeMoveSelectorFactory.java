@@ -46,7 +46,13 @@ public class ChangeMoveSelectorFactory<Solution_>
     var selectionOrder = SelectionOrder.fromRandomSelectionBoolean(randomSelection);
     var entitySelector =
         EntitySelectorFactory.<Solution_>create(config.getEntitySelectorConfig())
-            .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
+            .buildOriginEntitySelector(
+                configPolicy,
+                minimumCacheType,
+                selectionOrder,
+                config.getValueSelectorConfig().getVariableName() == null
+                    ? null
+                    : List.of(config.getValueSelectorConfig().getVariableName()));
     var valueSelector =
         ValueSelectorFactory.<Solution_>create(config.getValueSelectorConfig())
             .buildValueSelector(

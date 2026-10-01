@@ -2,6 +2,7 @@ package greycos.solver.core.impl.localsearch.decider.gls;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +15,7 @@ import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescripto
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 
-/** Incremental unit-cost decision features. No business scoring backend is consulted. */
+/** Incremental decision features. No business scoring backend is consulted. */
 final class GuidedLocalSearchAutomaticFeatures<Solution_> {
 
   private final InnerScoreDirector<Solution_, ?> director;
@@ -25,6 +26,8 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
   private final Map<Object, ElementEntry> elements = new IdentityHashMap<>();
   private final Map<Object, EmptyListEntry> owners = new IdentityHashMap<>();
   private final ArrayList<Entry> dirty = new ArrayList<>();
+  private final Map<Object, Entry> featureSources = new HashMap<>();
+  private final boolean ownershipEnabled;
   private final ListVariableDescriptor<Solution_> listDescriptor;
   private final ListVariableState<Solution_, Object, Object> listState;
 
@@ -32,7 +35,9 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
       InnerScoreDirector<Solution_, ?> director,
       GuidedLocalSearchIdentityRegistry<Solution_> identities,
       Consumer<Object> add,
-      Consumer<Object> remove) {
+      Consumer<Object> remove,
+      boolean ownershipEnabled) {
+    this.ownershipEnabled = ownershipEnabled;
     this.director = director;
     this.identities = identities;
     this.add = add;
@@ -46,6 +51,7 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
     elements.clear();
     owners.clear();
     dirty.clear();
+    featureSources.clear();
     director
         .getSolutionDescriptor()
         .visitAllEntities(
@@ -119,11 +125,13 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
       var updated = entry.features();
       for (var previous : entry.emitted) {
         if (!updated.contains(previous)) {
+          featureSources.remove(previous);
           remove.accept(previous);
         }
       }
       for (var current : updated) {
         if (!entry.emitted.contains(current)) {
+          featureSources.put(current, entry);
           add.accept(current);
         }
       }
@@ -214,7 +222,9 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
     var variable = variableId(listDescriptor);
     var valueId = identities.token(value);
     if (owner == null) {
-      return List.of(new Feature(Kind.OWNERSHIP, variable, valueId, identities.token(null)));
+      return ownershipEnabled
+          ? List.of(new Feature(Kind.OWNERSHIP, variable, valueId, identities.token(null)))
+          : List.of();
     }
     if (!isMovable(owner)) {
       return List.of();
@@ -222,7 +232,7 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
     var ownerId = identities.token(owner);
     var result = new ArrayList<Object>(3);
     if (!pinned) {
-      result.add(new Feature(Kind.OWNERSHIP, variable, valueId, ownerId));
+      if (ownershipEnabled) result.add(new Feature(Kind.OWNERSHIP, variable, valueId, ownerId));
       result.add(
           new Feature(
               Kind.ARC,
@@ -235,6 +245,104 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
       result.add(new Feature(Kind.ARC, variable, valueId, new Boundary(ownerId, true)));
     }
     return result;
+  }
+
+  /** Only penalized active keys need origins; unpenalized populations do not trigger list scans. */
+  GuidedLocalSearchFeatureTracker.OriginPriorities originPriorities(
+      GuidedLocalSearchLearning.Snapshot learning,
+      GuidedLocalSearchPenaltyTable.Snapshot<Object> penalties,
+      Set<Object> activePenalized,
+      int level) {
+    var entityPriorities = new IdentityHashMap<Object, Map<String, GuidedLocalSearchNumber>>();
+    var valuePriorities = new IdentityHashMap<Object, Map<String, GuidedLocalSearchNumber>>();
+    var boundaryPriorities = new IdentityHashMap<Object, Map<String, GuidedLocalSearchNumber>>();
+    var listBuilders = new IdentityHashMap<Object, ListPriorityBuilder>();
+    String listName = listDescriptor == null ? null : listDescriptor.getVariableName();
+    for (var key : activePenalized) {
+      var source = featureSources.get(key);
+      var cost =
+          GuidedLocalSearchNumber.of(learning.weight(level, key)).multiply(penalties.count(key));
+      var feature = (Feature) key;
+      switch (feature.kind) {
+        case ASSIGNMENT -> {
+          var basic = (BasicEntry) source;
+          addPriority(entityPriorities, basic.entity, basic.descriptor.getVariableName(), cost);
+        }
+        case OWNERSHIP -> {
+          var element = (ElementEntry) source;
+          addPriority(valuePriorities, element.value, listName, cost);
+          var owner = listState.getInverseSingleton(element.value);
+          if (owner != null) {
+            var builder =
+                listBuilders.computeIfAbsent(
+                    owner,
+                    ignored -> new ListPriorityBuilder(listDescriptor.getValue(owner).size()));
+            builder.ownership.put(listState.getIndexOrFail(element.value), cost);
+          }
+        }
+        case ARC -> {
+          if (feature.left instanceof Boundary && feature.right instanceof Boundary) {
+            var owner = ((EmptyListEntry) source).owner;
+            addPriority(boundaryPriorities, owner, listName, cost);
+            listBuilders
+                .computeIfAbsent(owner, ignored -> new ListPriorityBuilder(0))
+                .arcs
+                .put(0, cost);
+          } else {
+            var element = (ElementEntry) source;
+            var owner = listState.getInverseSingleton(element.value);
+            var builder =
+                listBuilders.computeIfAbsent(
+                    owner,
+                    ignored -> new ListPriorityBuilder(listDescriptor.getValue(owner).size()));
+            addPriority(valuePriorities, element.value, listName, cost);
+            if (feature.right instanceof Boundary) {
+              addPriority(boundaryPriorities, owner, listName, cost);
+              builder.arcs.put(builder.size, cost);
+            } else {
+              var previous = listState.getPreviousElement(element.value);
+              if (previous == null) addPriority(boundaryPriorities, owner, listName, cost);
+              else addPriority(valuePriorities, previous, listName, cost);
+              builder.arcs.put(listState.getIndexOrFail(element.value), cost);
+            }
+          }
+        }
+      }
+    }
+    var listPriorities =
+        new IdentityHashMap<
+            Object, Map<String, GuidedLocalSearchFeatureTracker.ListContributions>>();
+    listBuilders.forEach(
+        (owner, builder) ->
+            listPriorities.put(
+                owner,
+                Map.of(
+                    listName,
+                    new GuidedLocalSearchFeatureTracker.ListContributions(
+                        builder.size, builder.arcs, builder.ownership))));
+    return new GuidedLocalSearchFeatureTracker.OriginPriorities(
+        entityPriorities, valuePriorities, boundaryPriorities, listPriorities);
+  }
+
+  private static final class ListPriorityBuilder {
+    private final int size;
+    private final Map<Integer, GuidedLocalSearchNumber> arcs = new HashMap<>();
+    private final Map<Integer, GuidedLocalSearchNumber> ownership = new HashMap<>();
+
+    ListPriorityBuilder(int size) {
+      this.size = size;
+    }
+  }
+
+  private static void addPriority(
+      Map<Object, Map<String, GuidedLocalSearchNumber>> priorities,
+      Object origin,
+      String variableName,
+      GuidedLocalSearchNumber contribution) {
+    if (contribution.signum() == 0) return;
+    priorities
+        .computeIfAbsent(origin, ignored -> new java.util.HashMap<>())
+        .merge(variableName, contribution, GuidedLocalSearchNumber::add);
   }
 
   private static VariableIdentity variableId(VariableDescriptor<?> descriptor) {

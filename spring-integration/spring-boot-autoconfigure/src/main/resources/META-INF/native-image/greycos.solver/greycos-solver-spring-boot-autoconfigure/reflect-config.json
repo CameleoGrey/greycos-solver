@@ -494,6 +494,10 @@
     ]
   },
   {
+    "name": "greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition",
+    "allDeclaredFields": true
+  },
+  {
     "name": "greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode",
     "allDeclaredFields": true
   },

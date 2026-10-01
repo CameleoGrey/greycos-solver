@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -19,6 +20,10 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.cotwin.solution.ProblemFactCollectionProperty;
 import greycos.solver.core.api.cotwin.valuerange.ValueRangeProvider;
 import greycos.solver.core.api.cotwin.variable.PlanningVariable;
+import greycos.solver.core.api.localsearch.GuidedLocalSearchFeatureConsumer;
+import greycos.solver.core.api.localsearch.GuidedLocalSearchFeatureProvider;
+import greycos.solver.core.api.localsearch.GuidedLocalSearchFeatureSession;
+import greycos.solver.core.api.localsearch.GuidedLocalSearchFeatureUpdater;
 import greycos.solver.core.api.score.BendableBigDecimalScore;
 import greycos.solver.core.api.score.BendableDoubleScore;
 import greycos.solver.core.api.score.BendableFloatScore;
@@ -47,6 +52,8 @@ import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchSearchMode;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchType;
@@ -57,6 +64,7 @@ import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
 import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchDecider;
 import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchScale;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -139,10 +147,8 @@ class GuidedLocalSearchNativeScoreIntegrationTest {
         assertThat(problem.entities)
             .extracting(entity -> entity.choice.id)
             .containsExactly("A", "A");
-        assertThat(trace)
-            .as("%s / %s / %s", family, backend, workers)
-            .hasSizeGreaterThanOrEqualTo(2);
-        assertThat(trace.getFirst().choices()).containsExactly("B", "A");
+        assertThat(trace).as("%s / %s / %s", family, backend, workers).hasSize(2);
+        assertThat(trace.getFirst().choices()).containsExactlyInAnyOrder("B", "A");
         assertThat(trace.getFirst().score()).isEqualTo(family.score(mixed));
         assertThat(trace.getLast().choices()).containsExactly("B", "B");
         if (family.levelCount() > 1) {
@@ -168,6 +174,46 @@ class GuidedLocalSearchNativeScoreIntegrationTest {
 
   @ParameterizedTest(name = "{0}, move workers {1}")
   @MethodSource("familiesAndWorkers")
+  <Score_ extends Score<Score_>> void constantCustomFeatureStopsWithoutInventingNativeScoreProgress(
+      Family<Score_> family, String workers) {
+    var config = config(family, Backend.EASY, workers, false, 1);
+    ((LocalSearchPhaseConfig) config.getPhaseConfigList().getFirst())
+        .withGuidedLocalSearchConfig(
+            new GuidedLocalSearchConfig()
+                .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
+                .withFeatureComposition(GuidedLocalSearchFeatureComposition.CUSTOM)
+                .withFeatureProviderClass(ConstantFeatures.class)
+                .withTargetScoreLevelIndex(0)
+                .withSearchMode(GuidedLocalSearchSearchMode.EXHAUSTIVE)
+                .withMaxPenaltyUpdatesPerStep(3));
+    DefaultSolver<FamilySolution<Score_>> solver = solver(config);
+    var trace = recordSteps(solver);
+    var attempt = new AtomicReference<LocalSearchStepScope<FamilySolution<Score_>>>();
+    solver.addPhaseLifecycleListener(
+        new PhaseLifecycleListenerAdapter<>() {
+          @Override
+          public void stepStarted(AbstractStepScope<FamilySolution<Score_>> scope) {
+            attempt.set((LocalSearchStepScope<FamilySolution<Score_>>) scope);
+          }
+        });
+
+    var result = solver.solve(family.problem());
+
+    assertThat(trace).isEmpty();
+    assertThat(result.entities).extracting(entity -> entity.choice.id).containsExactly("A", "A");
+    assertThat(result.getScore())
+        .isEqualTo(family.score(initialLevels(family.levelCount())))
+        .isEqualTo(oracle(result));
+    assertThat(attempt.get().getStep()).isNull();
+    assertThat(attempt.get().getAcceptedMoveCount()).isZero();
+    assertThat(attempt.get().getNoStepReason())
+        .isEqualTo(LocalSearchStepScope.NoStepReason.GUIDED_RETRY_EXHAUSTED);
+    assertThat(statistics(solver).penaltyUpdates()).isEqualTo(3);
+    assertThat(decider(solver).getControllerDiagnostics().retryExhaustions()).isEqualTo(1);
+  }
+
+  @ParameterizedTest(name = "{0}, move workers {1}")
+  @MethodSource("familiesAndWorkers")
   <Score_ extends Score<Score_>> void adoptedAssignmentsResetAutomaticGuidanceAndKeepNativeScores(
       Family<Score_> family, String workers) {
     DefaultSolver<FamilySolution<Score_>> solver =
@@ -184,6 +230,7 @@ class GuidedLocalSearchNativeScoreIntegrationTest {
                   .isNotEqualTo(GuidedLocalSearchScale.ONE);
             } else if (scope.getStepIndex() == 2) {
               assertThat(gls.getFocusScoreLevelIndex()).isEqualTo(family.levelCount() - 1);
+              assertThat(gls.getControllerDiagnostics().calibratedLevels()).containsOnly(false);
               for (int level = 0; level < family.levelCount(); level++) {
                 assertThat(gls.getAutomaticScale(level)).isEqualTo(GuidedLocalSearchScale.ONE);
               }
@@ -202,7 +249,12 @@ class GuidedLocalSearchNativeScoreIntegrationTest {
                       .getGenuineVariableDescriptor("choice");
               var adopt =
                   new ChangeMove<>(
-                      descriptor, working.entities.getLast(), working.choices.getLast());
+                      descriptor,
+                      working.entities.stream()
+                          .filter(entity -> entity.choice.id.equals("A"))
+                          .findFirst()
+                          .orElseThrow(),
+                      working.choices.getLast());
               // Island adoption uses this same pending move/reset path after importing an improved
               // assignment.
               scope
@@ -215,7 +267,7 @@ class GuidedLocalSearchNativeScoreIntegrationTest {
 
     assertOptimum(solver.solve(family.problem()));
     assertThat(trace).hasSize(4);
-    assertThat(trace.get(0).choices()).containsExactly("B", "A");
+    assertThat(trace.get(0).choices()).containsExactlyInAnyOrder("B", "A");
     assertThat(trace.get(1)).isEqualTo(new Step<>(List.of("B", "B"), family.zero()));
     assertThat(statistics(solver).penaltyUpdates()).isGreaterThanOrEqualTo(2L);
     var firstTrace = List.copyOf(trace);
@@ -602,6 +654,28 @@ class GuidedLocalSearchNativeScoreIntegrationTest {
     private Assignment(String id, Choice choice) {
       this.id = id;
       this.choice = choice;
+    }
+  }
+
+  public static class ConstantFeatures
+      implements GuidedLocalSearchFeatureProvider<FamilySolution<?>, String> {
+    @Override
+    public void extractFeatures(
+        FamilySolution<?> solution, GuidedLocalSearchFeatureConsumer<String> consumer) {
+      consumer.accept("present-in-every-assignment", 1L);
+    }
+
+    @Override
+    public GuidedLocalSearchFeatureSession<FamilySolution<?>, String> newSession() {
+      return new GuidedLocalSearchFeatureSession<>() {
+        @Override
+        public void resetWorkingSolution(FamilySolution<?> solution) {}
+
+        @Override
+        public void flushChanges(GuidedLocalSearchFeatureUpdater<String> updater) {
+          updater.accept("present-in-every-assignment", 1L);
+        }
+      };
     }
   }
 

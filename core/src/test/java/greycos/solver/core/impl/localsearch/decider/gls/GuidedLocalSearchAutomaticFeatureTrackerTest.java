@@ -5,9 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
 import greycos.solver.core.api.cotwin.entity.PlanningEntity;
@@ -196,7 +198,7 @@ class GuidedLocalSearchAutomaticFeatureTrackerTest {
         assertThat(tracker.automaticFeatures()).hasSize(1);
         table.incrementMaximumUtility(tracker.automaticFeatures());
         tracker.updatePenalties(List.of(table.snapshot()));
-        assertThat(tracker.aggregates().automatic()).containsExactly(GuidedLocalSearchNumber.ONE);
+        assertThat(tracker.aggregates().automatic()).containsExactly(GuidedLocalSearchNumber.of(4));
         var move =
             new ChangeMove<>(
                 TestdataEntity.buildVariableDescriptorForValue(),
@@ -230,6 +232,189 @@ class GuidedLocalSearchAutomaticFeatureTrackerTest {
   }
 
   @Test
+  void frozenSparseDeltasAndLearnedCostsSurviveUndoAndMatchWorkers() {
+    var solution = TestdataSolution.generateSolution(2, 1);
+    var factory =
+        new ScoreDirectorFactoryFactory<TestdataSolution, SimpleScore>(
+                new ScoreDirectorFactoryConfig()
+                    .withEasyScoreCalculatorClass(TestdataEasyScoreCalculator.class))
+            .buildScoreDirectorFactory(
+                EnvironmentMode.PHASE_ASSERT, TestdataSolution.buildSolutionDescriptor());
+    var table = new GuidedLocalSearchPenaltyTable<Object>();
+    try (var director = factory.buildScoreDirector()) {
+      director.setWorkingSolution(solution);
+      try (var tracker =
+          GuidedLocalSearchFeatureTracker.attachAutomatic(
+              director, null, List.of(table.snapshot()), null, 0)) {
+        tracker.markBaseline();
+        var incumbent = tracker.automaticFeatures().keySet().iterator().next();
+        table.incrementMaximumUtility(tracker.automaticFeatures());
+        tracker.updatePenalties(List.of(table.snapshot()));
+        var metadata = new AtomicReference<GuidedLocalSearchFeatureTracker.AutomaticDelta>();
+        var move =
+            new ChangeMove<>(
+                TestdataEntity.buildVariableDescriptorForValue(),
+                solution.getEntityList().getFirst(),
+                solution.getValueList().getLast());
+        director.executeTemporaryMove(
+            move,
+            ignored -> {
+              metadata.set(tracker.automaticDelta());
+              assertThat(metadata.get().removed()).containsExactly(incumbent);
+              assertThat(metadata.get().added()).hasSize(1);
+              tracker.assertFromScratch();
+            },
+            true);
+        tracker.assertFromScratch();
+        assertThat(tracker.automaticDelta())
+            .isEqualTo(GuidedLocalSearchFeatureTracker.AutomaticDelta.EMPTY);
+        assertThat(metadata.get().removed()).containsExactly(incumbent);
+        var learning = new GuidedLocalSearchLearning(List.of(BigDecimal.ONE));
+        learning.observe(metadata.get(), new Number[] {1}, new Number[] {0}, true);
+        var generation =
+            learning.publish(tracker.automaticFeatures().keySet(), List.of(table.snapshot()));
+        tracker.updateLearning(generation);
+        assertThat(tracker.aggregates().automatic()).containsExactly(GuidedLocalSearchNumber.of(8));
+        tracker.assertFromScratch();
+        try (var worker = director.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
+            var workerTracker =
+                GuidedLocalSearchFeatureTracker.attachAutomatic(
+                    worker, null, List.of(table.snapshot()), tracker.identityRegistry(), 0)) {
+          workerTracker.updateLearning(generation);
+          workerTracker.markBaseline();
+          workerTracker.assertFromScratch();
+          assertThat(workerTracker.aggregates()).isEqualTo(tracker.aggregates());
+          assertThat(workerTracker.learningVersion()).isEqualTo(generation.version());
+          learning.observe(metadata.get(), new Number[] {-1}, new Number[] {0}, true);
+          tracker.updateLearning(
+              learning.publish(tracker.automaticFeatures().keySet(), List.of(table.snapshot())));
+          assertThat(tracker.aggregates().automatic())
+              .containsExactly(GuidedLocalSearchNumber.of(4));
+          assertThat(workerTracker.aggregates().automatic())
+              .containsExactly(GuidedLocalSearchNumber.of(8));
+          workerTracker.updateLearning(learning.snapshot());
+          assertThat(workerTracker.aggregates()).isEqualTo(tracker.aggregates());
+        }
+      }
+    }
+  }
+
+  @Test
+  void ownershipRequiresExplicitEnablementAndCustomOnlyKeepsNativeVectorCosts() {
+    try (var director = modelDirector()) {
+      director.setWorkingSolution(new Model());
+      try (var tracker =
+          GuidedLocalSearchFeatureTracker.attachAutomatic(
+              director, null, emptySnapshots(), null, 1)) {
+        assertThat(tracker.automaticFeatures()).hasSize(12);
+        tracker.assertFromScratch();
+      }
+      try (var tracker =
+          GuidedLocalSearchFeatureTracker.attachAutomatic(
+              director, null, emptySnapshots(), null, 1, true, true)) {
+        assertThat(tracker.automaticFeatures()).hasSize(20);
+        tracker.assertFromScratch();
+      }
+      var provider = new VectorProvider();
+      var hard = new GuidedLocalSearchPenaltyTable<Object>();
+      var soft = new GuidedLocalSearchPenaltyTable<Object>();
+      try (var tracker =
+          GuidedLocalSearchFeatureTracker.attachAutomatic(
+              director,
+              provider,
+              List.of(hard.snapshot(), soft.snapshot()),
+              null,
+              1,
+              false,
+              false)) {
+        tracker.markBaseline();
+        assertThat(tracker.automaticFeatures()).isEmpty();
+        hard.incrementMaximumUtility(tracker.customFeaturesForPenaltyUpdate(0));
+        soft.incrementMaximumUtility(tracker.customFeaturesForPenaltyUpdate(1));
+        tracker.updatePenalties(List.of(hard.snapshot(), soft.snapshot()));
+        assertThat(tracker.aggregates().custom())
+            .containsExactly(GuidedLocalSearchNumber.ONE, GuidedLocalSearchNumber.of(2));
+        assertThat(tracker.aggregates().automatic()).containsOnly(GuidedLocalSearchNumber.ZERO);
+        assertThat(tracker.automaticDelta())
+            .isEqualTo(GuidedLocalSearchFeatureTracker.AutomaticDelta.EMPTY);
+        tracker.assertFromScratch();
+        provider.cost = HardSoftScore.of(3, 4);
+        provider.dirty = true;
+        tracker.assertFromScratch();
+        assertThat(tracker.aggregates().custom())
+            .containsExactly(GuidedLocalSearchNumber.of(3), GuidedLocalSearchNumber.of(4));
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void originPrioritiesUseIncidentArcsAndOnlyRemovedSublistBoundaries(boolean ownership) {
+    var solution = new Model();
+    try (var director = modelDirector()) {
+      director.setWorkingSolution(solution);
+      try (var tracker =
+          GuidedLocalSearchFeatureTracker.attachAutomatic(
+              director, null, emptySnapshots(), null, 1, true, ownership)) {
+        tracker.markBaseline();
+        assertThat(tracker.originPriorities(1).isEmpty()).isTrue();
+        var counts = new LinkedHashMap<Object, Long>();
+        tracker.automaticFeatures().keySet().forEach(key -> counts.put(key, 1L));
+        tracker.updatePenalties(
+            List.of(
+                emptySnapshots().getFirst(),
+                new GuidedLocalSearchPenaltyTable.Snapshot<>(1, counts)));
+        var priorities = tracker.originPriorities(1);
+        var owner = solution.nodes.getFirst();
+        assertThat(priorities.entityPriority(owner, List.of("choice")))
+            .isEqualTo(
+                GuidedLocalSearchSelectionContext.Priority.of(GuidedLocalSearchNumber.of(4)));
+        assertThat(priorities.valuePriority(owner.values.getFirst(), "values"))
+            .isEqualTo(
+                GuidedLocalSearchSelectionContext.Priority.of(
+                    GuidedLocalSearchNumber.of(ownership ? 12 : 8)));
+        assertThat(priorities.subListPriority(owner, "values", 1, 3))
+            .isEqualTo(
+                new GuidedLocalSearchSelectionContext.Priority(
+                    GuidedLocalSearchNumber.of(ownership ? 20 : 8), 3));
+        var descriptor = director.getSolutionDescriptor().getListVariableDescriptor();
+        director.executeTemporaryMove(
+            new ListChangeMove<>(descriptor, owner, 0, owner, 4),
+            ignored -> {
+              tracker.assertFromScratch();
+              assertThat(tracker.originPriorities(1).subListPriority(owner, "values", 1, 3))
+                  .isNotEqualTo(priorities.subListPriority(owner, "values", 1, 3));
+            },
+            true);
+        tracker.assertFromScratch();
+        assertThat(tracker.originPriorities(1).subListPriority(owner, "values", 1, 3))
+            .isEqualTo(priorities.subListPriority(owner, "values", 1, 3));
+      }
+    }
+  }
+
+  @Test
+  void canonicalPenaltyEnumerationIsUnaffectedByCandidateUndoOrder() {
+    var solution = new Model();
+    try (var director = modelDirector()) {
+      director.setWorkingSolution(solution);
+      try (var tracker =
+          GuidedLocalSearchFeatureTracker.attachAutomatic(
+              director, null, emptySnapshots(), null, 1)) {
+        tracker.markBaseline();
+        var initialOrder = new ArrayList<>(tracker.automaticFeatures(1).keySet());
+        var owner = solution.nodes.getFirst();
+        var descriptor = director.getSolutionDescriptor().getListVariableDescriptor();
+        director.executeTemporaryMove(
+            new ListChangeMove<>(descriptor, owner, 0, owner, 4),
+            ignored -> tracker.automaticDelta(),
+            true);
+        assertThat(new ArrayList<>(tracker.automaticFeatures(1).keySet())).isEqualTo(initialOrder);
+      }
+    }
+  }
+
+  @Test
   void mixedNoIdModelTracksInternalAdjacencyPinsUnassignmentAndUndo() {
     var solution = new Model();
     var movable = solution.nodes.getFirst();
@@ -243,13 +428,13 @@ class GuidedLocalSearchAutomaticFeatureTrackerTest {
               director, null, emptySnapshots(), null, 1)) {
         tracker.markBaseline();
         var initial = Map.copyOf(tracker.automaticFeatures());
-        assertThat(initial).hasSize(8);
+        assertThat(initial).hasSize(5);
         director.executeTemporaryMove(
             new ListChangeMove<>(descriptor, movable, 2, movable, 4),
             ignored -> {
               tracker.assertFromScratch();
               assertThat(tracker.automaticDifferenceCount()).isEqualTo(6);
-              assertThat(tracker.automaticFeatures()).hasSize(8);
+              assertThat(tracker.automaticFeatures()).hasSize(5);
             },
             true);
         director.executeTemporaryMove(

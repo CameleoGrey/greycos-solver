@@ -73,7 +73,8 @@ public class ListSwapMoveSelectorFactory<Solution_>
             valueSelectorConfig,
             minimumCacheType,
             selectionOrder,
-            null);
+            null,
+            true);
     var rightValueSelector =
         buildIterableValueSelector(
             configPolicy,
@@ -81,7 +82,8 @@ public class ListSwapMoveSelectorFactory<Solution_>
             secondaryValueSelectorConfig,
             minimumCacheType,
             selectionOrder,
-            entityValueRangeRecorderId);
+            entityValueRangeRecorderId,
+            false);
     var variableDescriptor = leftValueSelector.getVariableDescriptor();
     // This may be redundant but emphasizes that the ListSwapMove is not designed to swap elements
     // on multiple list variables, unlike the SwapMove, which swaps all (basic) variables between
@@ -105,7 +107,18 @@ public class ListSwapMoveSelectorFactory<Solution_>
       ValueSelectorConfig valueSelectorConfig,
       SelectionCacheType minimumCacheType,
       SelectionOrder inheritedSelectionOrder,
-      String entityValueRangeRecorderId) {
+      String entityValueRangeRecorderId,
+      boolean originSelection) {
+    if (originSelection) {
+      return (IterableValueSelector<Solution_>)
+          ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
+              .buildOriginValueSelector(
+                  configPolicy,
+                  entityDescriptor,
+                  minimumCacheType,
+                  inheritedSelectionOrder,
+                  ValueSelectorFactory.ListValueFilteringType.NONE);
+    }
     // Swap moves require asserting both sides,
     // which means checking if the left and right entities accept the swapped values
     var valueSelector =

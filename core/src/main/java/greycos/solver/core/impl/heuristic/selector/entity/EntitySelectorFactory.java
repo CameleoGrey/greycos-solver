@@ -2,6 +2,7 @@ package greycos.solver.core.impl.heuristic.selector.entity;
 
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -30,6 +31,7 @@ import greycos.solver.core.impl.heuristic.selector.entity.decorator.CachingEntit
 import greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntityByEntitySelector;
 import greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntityByValueSelector;
 import greycos.solver.core.impl.heuristic.selector.entity.decorator.FilteringEntitySelector;
+import greycos.solver.core.impl.heuristic.selector.entity.decorator.GuidedLocalSearchEntitySelector;
 import greycos.solver.core.impl.heuristic.selector.entity.decorator.ProbabilityEntitySelector;
 import greycos.solver.core.impl.heuristic.selector.entity.decorator.SelectedCountLimitEntitySelector;
 import greycos.solver.core.impl.heuristic.selector.entity.decorator.ShufflingEntitySelector;
@@ -107,7 +109,27 @@ public class EntitySelectorFactory<Solution_>
       SelectionOrder inheritedSelectionOrder,
       ValueRangeRecorderId valueRangeRecorderId) {
     return buildEntitySelectorSource(
-            configPolicy, minimumCacheType, inheritedSelectionOrder, valueRangeRecorderId)
+            configPolicy,
+            minimumCacheType,
+            inheritedSelectionOrder,
+            valueRangeRecorderId,
+            false,
+            null)
+        .selector();
+  }
+
+  public EntitySelector<Solution_> buildOriginEntitySelector(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      SelectionCacheType minimumCacheType,
+      SelectionOrder inheritedSelectionOrder,
+      List<String> variableNameIncludeList) {
+    return buildEntitySelectorSource(
+            configPolicy,
+            minimumCacheType,
+            inheritedSelectionOrder,
+            null,
+            true,
+            variableNameIncludeList)
         .selector();
   }
 
@@ -115,14 +137,17 @@ public class EntitySelectorFactory<Solution_>
       HeuristicConfigPolicy<Solution_> configPolicy,
       SelectionCacheType minimumCacheType,
       SelectionOrder inheritedSelectionOrder) {
-    return buildEntitySelectorSource(configPolicy, minimumCacheType, inheritedSelectionOrder, null);
+    return buildEntitySelectorSource(
+        configPolicy, minimumCacheType, inheritedSelectionOrder, null, false, null);
   }
 
   private NearbySelectionSource<Solution_, EntitySelector<Solution_>> buildEntitySelectorSource(
       HeuristicConfigPolicy<Solution_> configPolicy,
       SelectionCacheType minimumCacheType,
       SelectionOrder inheritedSelectionOrder,
-      ValueRangeRecorderId valueRangeRecorderId) {
+      ValueRangeRecorderId valueRangeRecorderId,
+      boolean originSelection,
+      List<String> variableNameIncludeList) {
     if (config.getMimicSelectorRef() != null) {
       var selector = buildMimicReplaying(configPolicy);
       var recordedSource =
@@ -217,6 +242,28 @@ public class EntitySelectorFactory<Solution_>
             membershipSelector.endingIterator().forEachRemaining(membership::add);
             return membership;
           };
+    }
+    var selectionContext = configPolicy.getGuidedLocalSearchSelectionContext();
+    if (originSelection && selectionContext != null) {
+      // Caches above the live filters may retain previously eligible entities.
+      if (resolvedCacheType.isCached()) {
+        entitySelector = applyMovableEntityFiltering(entitySelector);
+        if (liveFilter != null) {
+          entitySelector = FilteringEntitySelector.ofPreservingChild(entitySelector, liveFilter);
+        }
+      }
+      var variableNames =
+          deduceBasicVariableDescriptorList(entityDescriptor, variableNameIncludeList).stream()
+              .map(variable -> variable.getVariableName())
+              .toList();
+      entitySelector =
+          new GuidedLocalSearchEntitySelector<>(
+              entitySelector,
+              selectionContext,
+              variableNames,
+              resolvedSelectionOrder == SelectionOrder.RANDOM
+                  && config.getSelectedCountLimit() == null
+                  && entitySelector.isNeverEnding());
     }
     entitySelector =
         applyMimicRecording(

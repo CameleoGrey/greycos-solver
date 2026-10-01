@@ -114,7 +114,12 @@ public class ListChangeMoveSelectorFactory<Solution_>
 
     var sourceValueSelector =
         ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
-            .buildValueSelector(configPolicy, entityDescriptor, minimumCacheType, selectionOrder);
+            .buildOriginValueSelector(
+                configPolicy,
+                entityDescriptor,
+                minimumCacheType,
+                selectionOrder,
+                ValueSelectorFactory.ListValueFilteringType.NONE);
     if (isExhaustiveSearch) {
       sourceValueSelector =
           new UnassignedListValueSelector<>((IterableValueSelector<Solution_>) sourceValueSelector);

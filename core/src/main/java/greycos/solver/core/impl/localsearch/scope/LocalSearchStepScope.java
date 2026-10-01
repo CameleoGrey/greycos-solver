@@ -23,7 +23,9 @@ public final class LocalSearchStepScope<Solution_> extends AbstractStepScope<Sol
     TERMINATED,
     NO_ADMISSIBLE_MOVE,
     NO_PENALIZABLE_FEATURES,
-    SAMPLE_EXHAUSTED
+    SAMPLE_EXHAUSTED,
+    GUIDED_RETRY_EXHAUSTED,
+    EXCURSION_REPAIR_EXHAUSTED
   }
 
   public LocalSearchStepScope(LocalSearchPhaseScope<Solution_> phaseScope) {

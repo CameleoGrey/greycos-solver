@@ -21,11 +21,17 @@ class GuidedLocalSearchConfigTest {
   void defaultsStayUnspecifiedForInheritanceAndSerialization() {
     var config = new GuidedLocalSearchConfig();
     assertThat(config.getFeatureProviderClass()).isNull();
+    assertThat(config.getFeatureComposition()).isNull();
+    assertThat(config.getAutomaticListOwnershipEnabled()).isNull();
+    assertThat(config.getDirectedOriginSelection()).isNull();
     assertThat(config.getPenaltyFactor()).isNull();
     assertThat(config.getGuidanceMode()).isNull();
     assertThat(config.getLevelScaleList()).isNull();
     assertThat(config.getFocusStepLimit()).isNull();
     assertThat(config.getFocusPenaltyUpdateLimit()).isNull();
+    assertThat(config.getMaxPenaltyUpdatesPerStep()).isNull();
+    assertThat(config.getExcursionStepLimit()).isNull();
+    assertThat(config.getExcursionRepairStepLimit()).isNull();
     assertThat(config.getTargetScoreLevelIndex()).isNull();
     assertThat(config.getSearchMode()).isNull();
     assertThat(config.getSampleSize()).isNull();
@@ -43,6 +49,12 @@ class GuidedLocalSearchConfigTest {
             .withGuidanceMode(GuidedLocalSearchGuidanceMode.ALL_LEVELS)
             .withFocusStepLimit(64)
             .withFocusPenaltyUpdateLimit(8)
+            .withFeatureComposition(GuidedLocalSearchFeatureComposition.COMBINED)
+            .withAutomaticListOwnershipEnabled(true)
+            .withDirectedOriginSelection(true)
+            .withMaxPenaltyUpdatesPerStep(37)
+            .withExcursionStepLimit(5)
+            .withExcursionRepairStepLimit(23)
             .withLevelScaleList(
                 new ArrayList<>(
                     List.of(
@@ -68,6 +80,13 @@ class GuidedLocalSearchConfigTest {
     assertThat(restored.getGuidanceMode()).isEqualTo(GuidedLocalSearchGuidanceMode.ALL_LEVELS);
     assertThat(restored.getFocusStepLimit()).isEqualTo(64);
     assertThat(restored.getFocusPenaltyUpdateLimit()).isEqualTo(8);
+    assertThat(restored.getFeatureComposition())
+        .isEqualTo(GuidedLocalSearchFeatureComposition.COMBINED);
+    assertThat(restored.getAutomaticListOwnershipEnabled()).isTrue();
+    assertThat(restored.getDirectedOriginSelection()).isTrue();
+    assertThat(restored.getMaxPenaltyUpdatesPerStep()).isEqualTo(37);
+    assertThat(restored.getExcursionStepLimit()).isEqualTo(5);
+    assertThat(restored.getExcursionRepairStepLimit()).isEqualTo(23);
     assertThat(restored.getLevelScaleList().getFirst().getScoreLevelIndex()).isZero();
     assertThat(restored.getLevelScaleList().getFirst().getScale()).isEqualByComparingTo("0.0125");
   }
@@ -79,6 +98,10 @@ class GuidedLocalSearchConfigTest {
         new GuidedLocalSearchConfig()
             .withPenaltyFactor(new BigDecimal("0.125"))
             .withSampleSize(17)
+            .withFeatureComposition(GuidedLocalSearchFeatureComposition.CUSTOM)
+            .withAutomaticListOwnershipEnabled(false)
+            .withDirectedOriginSelection(false)
+            .withMaxPenaltyUpdatesPerStep(11)
             .withResetPenaltiesOnNewBest(false);
     child.inherit(parent);
 
@@ -88,6 +111,12 @@ class GuidedLocalSearchConfigTest {
     assertThat(child.getSearchMode()).isEqualTo(GuidedLocalSearchSearchMode.SAMPLED);
     assertThat(child.getSampleSize()).isEqualTo(17);
     assertThat(child.getMaxUnproductiveRounds()).isEqualTo(5);
+    assertThat(child.getFeatureComposition()).isEqualTo(GuidedLocalSearchFeatureComposition.CUSTOM);
+    assertThat(child.getAutomaticListOwnershipEnabled()).isFalse();
+    assertThat(child.getDirectedOriginSelection()).isFalse();
+    assertThat(child.getMaxPenaltyUpdatesPerStep()).isEqualTo(11);
+    assertThat(child.getExcursionStepLimit()).isEqualTo(5);
+    assertThat(child.getExcursionRepairStepLimit()).isEqualTo(23);
     assertThat(child.getResetPenaltiesOnNewBest()).isFalse();
     assertThat(parent.getSampleSize()).isEqualTo(23);
     assertThat(parent.getResetPenaltiesOnNewBest()).isTrue();
@@ -185,6 +214,12 @@ class GuidedLocalSearchConfigTest {
   private static GuidedLocalSearchConfig configured() {
     return new GuidedLocalSearchConfig()
         .withFeatureProviderClass(FeatureProvider.class)
+        .withFeatureComposition(GuidedLocalSearchFeatureComposition.COMBINED)
+        .withAutomaticListOwnershipEnabled(true)
+        .withDirectedOriginSelection(true)
+        .withMaxPenaltyUpdatesPerStep(37)
+        .withExcursionStepLimit(5)
+        .withExcursionRepairStepLimit(23)
         .withPenaltyFactor(new BigDecimal("0.2"))
         .withTargetScoreLevelIndex(0)
         .withSearchMode(GuidedLocalSearchSearchMode.SAMPLED)

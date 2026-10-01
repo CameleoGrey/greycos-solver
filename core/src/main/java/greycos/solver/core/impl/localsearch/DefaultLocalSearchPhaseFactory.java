@@ -18,6 +18,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChang
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchSearchMode;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
@@ -41,9 +42,11 @@ import greycos.solver.core.impl.localsearch.decider.acceptor.AcceptorFactory;
 import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForagerFactory;
 import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchDecider;
+import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchDirectedSelectionValidator;
 import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchExhaustiveValidator;
 import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchNumber;
 import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchScoreComparator;
+import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchSelectionContext;
 import greycos.solver.core.impl.neighborhood.MixedMoveSelector;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.neighborhood.MoveSelectorBasedMoveRepository;
@@ -86,6 +89,13 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
             .withMoveThreadCount(moveThreadCount)
             .withNonDoableCandidateRetentionEnabled(
                 phaseConfig.getLocalSearchType() == LocalSearchType.GUIDED_LOCAL_SEARCH)
+            .withGuidedLocalSearchSelectionContext(
+                phaseConfig.getLocalSearchType() == LocalSearchType.GUIDED_LOCAL_SEARCH
+                        && phaseConfig.getGuidedLocalSearchConfig() != null
+                        && Boolean.TRUE.equals(
+                            phaseConfig.getGuidedLocalSearchConfig().getDirectedOriginSelection())
+                    ? new GuidedLocalSearchSelectionContext<>()
+                    : null)
             .build();
     var phaseTermination = buildPhaseTermination(phaseConfigPolicy, solverTermination);
     var decider = buildDecider(phaseConfigPolicy, phaseTermination);
@@ -384,10 +394,25 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
     }
     if (gls == null) gls = new GuidedLocalSearchConfig();
     var guidanceMode = resolveGuidanceMode(gls);
-    if (guidanceMode == GuidedLocalSearchGuidanceMode.FIXED_TARGET
+    var composition = resolveFeatureComposition(gls);
+    if (composition != GuidedLocalSearchFeatureComposition.AUTOMATIC
         && gls.getFeatureProviderClass() == null) {
       throw new IllegalArgumentException(
-          "Guided Local Search FIXED_TARGET requires guidedLocalSearch.featureProviderClass.");
+          "Guided Local Search featureComposition ("
+              + composition
+              + ") requires guidedLocalSearch.featureProviderClass.");
+    }
+    if (composition == GuidedLocalSearchFeatureComposition.AUTOMATIC
+        && gls.getFeatureProviderClass() != null) {
+      throw new IllegalArgumentException(
+          "Guided Local Search featureComposition AUTOMATIC cannot specify featureProviderClass. Select COMBINED to use both feature families.");
+    }
+    if (composition == GuidedLocalSearchFeatureComposition.CUSTOM
+        && (Boolean.TRUE.equals(gls.getAutomaticListOwnershipEnabled())
+            || Boolean.TRUE.equals(gls.getDirectedOriginSelection())
+            || gls.getLevelScaleList() != null)) {
+      throw new IllegalArgumentException(
+          "Guided Local Search featureComposition CUSTOM does not support automaticListOwnershipEnabled, directedOriginSelection or levelScale. Select AUTOMATIC or COMBINED.");
     }
     if (guidanceMode == GuidedLocalSearchGuidanceMode.ALL_LEVELS
         && gls.getTargetScoreLevelIndex() != null) {
@@ -422,12 +447,15 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
       throw new IllegalArgumentException(
           "Guided Local Search focusStepLimit and focusPenaltyUpdateLimit must be positive.");
     }
-    if (guidanceMode == GuidedLocalSearchGuidanceMode.FIXED_TARGET
-        && (gls.getLevelScaleList() != null
-            || gls.getFocusStepLimit() != null
-            || gls.getFocusPenaltyUpdateLimit() != null)) {
+    if (gls.getMaxPenaltyUpdatesPerStep() != null && gls.getMaxPenaltyUpdatesPerStep() <= 0
+        || gls.getExcursionStepLimit() != null && gls.getExcursionStepLimit() <= 0
+        || gls.getExcursionRepairStepLimit() != null && gls.getExcursionRepairStepLimit() <= 0) {
       throw new IllegalArgumentException(
-          "Guided Local Search levelScale and focus limits require ALL_LEVELS.");
+          "Guided Local Search maxPenaltyUpdatesPerStep (%s), excursionStepLimit (%s) and excursionRepairStepLimit (%s) must be positive when specified."
+              .formatted(
+                  gls.getMaxPenaltyUpdatesPerStep(),
+                  gls.getExcursionStepLimit(),
+                  gls.getExcursionRepairStepLimit()));
     }
     if (gls.getLevelScaleList() != null) {
       var configuredLevels = new java.util.HashSet<Integer>();
@@ -472,6 +500,17 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
       }
       GuidedLocalSearchExhaustiveValidator.validate(phaseConfig.getMoveSelectorConfig());
     }
+    if (Boolean.TRUE.equals(gls.getDirectedOriginSelection())) {
+      if (gls.getSearchMode() == GuidedLocalSearchSearchMode.EXHAUSTIVE
+          || phaseConfig.getNeighborhoodProviderClass() != null) {
+        throw new IllegalArgumentException(
+            "Guided Local Search directedOriginSelection requires SAMPLED mode and a supported move selector tree.");
+      }
+      GuidedLocalSearchDirectedSelectionValidator.validate(
+          phaseConfig.getMoveSelectorConfig() == null
+              ? determineDefaultMoveSelectorConfig(configPolicy)
+              : phaseConfig.getMoveSelectorConfig());
+    }
   }
 
   private LocalSearchPhaseDecider<Solution_> buildGuidedLocalSearchDecider(
@@ -504,6 +543,8 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
             repository,
             provider,
             resolveGuidanceMode(gls),
+            resolveFeatureComposition(gls),
+            Boolean.TRUE.equals(gls.getAutomaticListOwnershipEnabled()),
             Objects.requireNonNullElse(gls.getPenaltyFactor(), new BigDecimal("0.1")),
             Objects.requireNonNullElse(
                 gls.getTargetScoreLevelIndex(),
@@ -511,10 +552,14 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
             gls.getLevelScaleList() == null ? List.of() : gls.getLevelScaleList(),
             Objects.requireNonNullElse(gls.getFocusStepLimit(), 64),
             Objects.requireNonNullElse(gls.getFocusPenaltyUpdateLimit(), 8),
+            Objects.requireNonNullElse(gls.getMaxPenaltyUpdatesPerStep(), 64),
+            Objects.requireNonNullElse(gls.getExcursionStepLimit(), 8),
+            Objects.requireNonNullElse(gls.getExcursionRepairStepLimit(), 64),
             mode,
             Objects.requireNonNullElse(gls.getSampleSize(), 1000),
             Objects.requireNonNullElse(gls.getMaxUnproductiveRounds(), 3),
             Boolean.TRUE.equals(gls.getResetPenaltiesOnNewBest()),
+            configPolicy.getGuidedLocalSearchSelectionContext(),
             threadCount == 0 ? null : configPolicy.buildThreadFactory(ChildThreadType.MOVE_THREAD),
             threadCount,
             threadCount * Objects.requireNonNullElse(configPolicy.getMoveThreadBufferSize(), 10));
@@ -528,6 +573,16 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
         config.getTargetScoreLevelIndex() == null
             ? GuidedLocalSearchGuidanceMode.ALL_LEVELS
             : GuidedLocalSearchGuidanceMode.FIXED_TARGET);
+  }
+
+  private static GuidedLocalSearchFeatureComposition resolveFeatureComposition(
+      GuidedLocalSearchConfig config) {
+    if (config.getFeatureComposition() != null) return config.getFeatureComposition();
+    if (resolveGuidanceMode(config) == GuidedLocalSearchGuidanceMode.FIXED_TARGET)
+      return GuidedLocalSearchFeatureComposition.CUSTOM;
+    return config.getFeatureProviderClass() == null
+        ? GuidedLocalSearchFeatureComposition.AUTOMATIC
+        : GuidedLocalSearchFeatureComposition.COMBINED;
   }
 
   private UnionMoveSelectorConfig determineDefaultMoveSelectorConfig(

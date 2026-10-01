@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import greycos.solver.core.api.cotwin.entity.PlanningEntity;
@@ -111,6 +112,40 @@ class GuidedLocalSearchIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("calculatorsAndWorkers")
+  void constantPositiveFeatureCannotForceAnOriginalScoreRegression(
+      Backend backend, String workers) {
+    var config = config(backend, workers, 1, 2);
+    ((LocalSearchPhaseConfig) config.getPhaseConfigList().getFirst())
+        .getGuidedLocalSearchConfig()
+        .withFeatureProviderClass(ConstantFeatures.class);
+    var solver = solver(config);
+    var trace = recordSteps(solver);
+    var attempt = new AtomicReference<LocalSearchStepScope<LandscapeSolution>>();
+    solver.addPhaseLifecycleListener(
+        new PhaseLifecycleListenerAdapter<>() {
+          @Override
+          public void stepStarted(AbstractStepScope<LandscapeSolution> scope) {
+            attempt.set((LocalSearchStepScope<LandscapeSolution>) scope);
+          }
+        });
+
+    var result = solver.solve(problem(false));
+
+    assertThat(trace).isEmpty();
+    assertThat(attempt.get().getStep()).isNull();
+    assertThat(attempt.get().getAcceptedMoveCount()).isZero();
+    assertThat(attempt.get().getSelectedMoveCount()).isEqualTo(130L);
+    assertThat(attempt.get().getNoStepReason())
+        .isEqualTo(LocalSearchStepScope.NoStepReason.GUIDED_RETRY_EXHAUSTED);
+    assertThat(statistics(solver)).isEqualTo(new GuidedLocalSearchDecider.Statistics(65, 64, 0, 0));
+    assertThat(result.entities).extracting(entity -> entity.choice.id).containsExactly("A", "A");
+    assertThat(result.score)
+        .isEqualTo(HardSoftScore.ofSoft(-2))
+        .isEqualTo(new LandscapeEasyScore().calculateScore(result));
+  }
+
+  @ParameterizedTest
+  @MethodSource("calculatorsAndWorkers")
   void hardTargetCanCrossInfeasibilityWhileSoftTargetProtectsHardScore(
       Backend backend, String workers) {
     var hardSolver = solver(config(backend, workers, 0, 2));
@@ -158,8 +193,9 @@ class GuidedLocalSearchIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"NONE", "2"})
-  void resettingPenaltiesOnNewBestChangesGuidanceWithoutChangingTheBestScore(String workers) {
+  void resettingPenaltiesOnNewBestReducesRetriesWithoutChangingTheBestScore(String workers) {
     var histories = new ArrayList<List<Step>>();
+    var penaltyUpdates = new ArrayList<Long>();
     for (boolean reset : List.of(false, true)) {
       var config = config(Backend.INCREMENTAL, workers, 1, 4);
       ((LocalSearchPhaseConfig) config.getPhaseConfigList().getFirst())
@@ -171,17 +207,19 @@ class GuidedLocalSearchIntegrationTest {
       problem.choices.getLast().featureCost = 10L;
 
       assertBestIsUnpenalized(solver.solve(problem));
-      assertThat(statistics(solver).penaltyUpdates()).isEqualTo(2);
+      penaltyUpdates.add(statistics(solver).penaltyUpdates());
     }
 
-    assertThat(histories.getFirst().subList(0, 3))
-        .containsExactlyElementsOf(histories.getLast().subList(0, 3));
-    // After BB improves the business best, clearing history makes AA attractive again.
-    // Retained A penalties instead reject that return and select BB from the same AB state.
-    assertThat(histories.getFirst().getLast())
-        .isEqualTo(new Step(List.of("B", "B"), HardSoftScore.ZERO));
-    assertThat(histories.getLast().getLast())
-        .isEqualTo(new Step(List.of("A", "A"), HardSoftScore.ofSoft(-2)));
+    assertThat(histories.getFirst())
+        .containsExactly(
+            new Step(List.of("B", "A"), HardSoftScore.ofSoft(-5)),
+            new Step(List.of("B", "B"), HardSoftScore.ZERO),
+            new Step(List.of("A", "B"), HardSoftScore.ofSoft(-5)),
+            new Step(List.of("A", "A"), HardSoftScore.ofSoft(-2)));
+    assertThat(histories.getLast()).containsExactlyElementsOf(histories.getFirst());
+    // Retaining the left/A penalty requires two left/B increments before leaving BB;
+    // clearing that history requires just one. Every committed move still improves guidance.
+    assertThat(penaltyUpdates).containsExactly(3L, 2L);
   }
 
   @ParameterizedTest
@@ -254,7 +292,7 @@ class GuidedLocalSearchIntegrationTest {
             new Step(List.of("B", "A"), HardSoftScore.ofSoft(-5)),
             new Step(List.of("B", "B"), HardSoftScore.ZERO),
             new Step(List.of("A", "B"), HardSoftScore.ofSoft(-5)));
-    assertThat(statistics(solver).penaltyUpdates()).isEqualTo(2);
+    assertThat(statistics(solver).penaltyUpdates()).isEqualTo(3);
     assertBestIsUnpenalized(result);
   }
 
@@ -281,7 +319,7 @@ class GuidedLocalSearchIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"NONE", "2"})
-  void pinnedAssignmentsAreNotChangedByEscape(String workers) {
+  void guidedMovesPreservePinnedAssignments(String workers) {
     var solver = solver(config(Backend.EASY, workers, 1, 4));
     var trace = recordSteps(solver);
     var problem = problem(false);
@@ -298,7 +336,7 @@ class GuidedLocalSearchIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"NONE", "2"})
-  void listEscapePreservesPinnedPrefixAndRecalculatesMutableBoundary(String workers) {
+  void guidedListMovesPreservePinnedPrefixAndRecalculateMutableBoundary(String workers) {
     var problem = TestdataPinnedWithIndexListSolution.generateInitializedSolution(8, 2);
     problem.getEntityList().getFirst().setPinIndex(2);
     problem.getEntityList().getLast().setPinned(true);
@@ -853,10 +891,14 @@ class GuidedLocalSearchIntegrationTest {
         LandscapeSolution solution, GuidedLocalSearchFeatureConsumer<AssignmentKey> consumer) {
       for (var entity : solution.entities) {
         if (!entity.pinned && entity.choice != null) {
-          consumer.accept(
-              new AssignmentKey(entity.id, entity.choice.id), entity.choice.featureCost);
+          consumer.accept(new AssignmentKey(entity.id, entity.choice.id), featureCost(entity));
         }
       }
+    }
+
+    private static long featureCost(Assignment entity) {
+      // Distinct costs make the first penalized assignment independent of tie sampling.
+      return ("left".equals(entity.id) ? 3L : 1L) * entity.choice.featureCost;
     }
 
     @Override
@@ -886,11 +928,33 @@ class GuidedLocalSearchIntegrationTest {
             }
             if (!entity.pinned && entity.choice != null) {
               var key = new AssignmentKey(entity.id, entity.choice.id);
-              updater.accept(key, entity.choice.featureCost);
+              updater.accept(key, featureCost(entity));
               emitted.put(entity, key);
             }
           }
           dirty.clear();
+        }
+      };
+    }
+  }
+
+  public static class ConstantFeatures
+      implements GuidedLocalSearchFeatureProvider<LandscapeSolution, String> {
+    @Override
+    public void extractFeatures(
+        LandscapeSolution solution, GuidedLocalSearchFeatureConsumer<String> consumer) {
+      consumer.accept("present-in-every-assignment", 10L);
+    }
+
+    @Override
+    public GuidedLocalSearchFeatureSession<LandscapeSolution, String> newSession() {
+      return new GuidedLocalSearchFeatureSession<>() {
+        @Override
+        public void resetWorkingSolution(LandscapeSolution solution) {}
+
+        @Override
+        public void flushChanges(GuidedLocalSearchFeatureUpdater<String> updater) {
+          updater.accept("present-in-every-assignment", 10L);
         }
       };
     }

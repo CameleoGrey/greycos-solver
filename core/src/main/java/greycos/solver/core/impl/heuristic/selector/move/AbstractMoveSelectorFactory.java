@@ -4,6 +4,7 @@ import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.common.decorator.SelectionSorterOrder;
 import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
 import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.AbstractSelectorFactory;
@@ -14,6 +15,7 @@ import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionPro
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import greycos.solver.core.impl.heuristic.selector.move.decorator.CachingMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.decorator.FilteringMoveSelector;
+import greycos.solver.core.impl.heuristic.selector.move.decorator.GuidedLocalSearchMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.decorator.ProbabilityMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.decorator.SelectedCountLimitMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.decorator.ShufflingMoveSelector;
@@ -88,6 +90,12 @@ public abstract class AbstractMoveSelectorFactory<
     moveSelector = applyShuffling(resolvedCacheType, resolvedSelectionOrder, moveSelector);
     moveSelector = applyCaching(resolvedCacheType, resolvedSelectionOrder, moveSelector);
     moveSelector = applySelectedLimit(moveSelector);
+    if (configPolicy.getGuidedLocalSearchSelectionContext() != null
+        && !(config instanceof UnionMoveSelectorConfig)) {
+      moveSelector =
+          new GuidedLocalSearchMoveSelector<>(
+              moveSelector, configPolicy.getGuidedLocalSearchSelectionContext());
+    }
     return moveSelector;
   }
 

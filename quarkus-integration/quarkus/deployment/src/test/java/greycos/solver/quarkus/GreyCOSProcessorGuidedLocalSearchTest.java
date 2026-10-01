@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.inject.Inject;
 
+import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.quarkus.testcotwin.guidedlocalsearch.TestdataQuarkusGuidedLocalSearchFeatureProvider;
@@ -62,9 +64,42 @@ class GreyCOSProcessorGuidedLocalSearchTest {
   @Inject SolverConfig solverConfig;
 
   @Test
-  void providerConfigurationSurvivesQuarkusAugmentation() {
+  void providerAndGuidanceConfigurationSurviveQuarkusAugmentation() {
     var phase = (LocalSearchPhaseConfig) solverConfig.getPhaseConfigList().getFirst();
-    assertThat(phase.getGuidedLocalSearchConfig().getFeatureProviderClass())
+    var guidance = phase.getGuidedLocalSearchConfig();
+    assertThat(guidance.getFeatureProviderClass())
         .isEqualTo(TestdataQuarkusGuidedLocalSearchFeatureProvider.class);
+    assertThat(guidance.getFeatureComposition())
+        .isEqualTo(GuidedLocalSearchFeatureComposition.COMBINED);
+    assertThat(guidance.getAutomaticListOwnershipEnabled()).isTrue();
+    assertThat(guidance.getDirectedOriginSelection()).isTrue();
+    assertThat(guidance.getPenaltyFactor()).isEqualByComparingTo("0.125");
+    assertThat(guidance.getPenaltyFactor().scale()).isEqualTo(4);
+    assertThat(guidance.getGuidanceMode()).isEqualTo(GuidedLocalSearchGuidanceMode.ALL_LEVELS);
+    assertThat(guidance.getLevelScaleList()).hasSize(1);
+    assertThat(guidance.getLevelScaleList().getFirst().getScoreLevelIndex()).isZero();
+    assertThat(guidance.getLevelScaleList().getFirst().getScale()).isEqualByComparingTo("1E-30");
+    assertThat(guidance.getLevelScaleList().getFirst().getScale().scale()).isEqualTo(30);
+    assertThat(guidance.getFocusStepLimit()).isEqualTo(17);
+    assertThat(guidance.getFocusPenaltyUpdateLimit()).isEqualTo(3);
+    assertThat(guidance.getMaxPenaltyUpdatesPerStep()).isEqualTo(11);
+    assertThat(guidance.getExcursionStepLimit()).isEqualTo(5);
+    assertThat(guidance.getExcursionRepairStepLimit()).isEqualTo(29);
+  }
+
+  @Test
+  void automaticFixedTargetAndOmittedSettingsSurviveQuarkusAugmentation() {
+    var phase = (LocalSearchPhaseConfig) solverConfig.getPhaseConfigList().getLast();
+    var guidance = phase.getGuidedLocalSearchConfig();
+    assertThat(guidance.getFeatureComposition())
+        .isEqualTo(GuidedLocalSearchFeatureComposition.AUTOMATIC);
+    assertThat(guidance.getTargetScoreLevelIndex()).isZero();
+    assertThat(guidance.getFeatureProviderClass()).isNull();
+    assertThat(guidance.getGuidanceMode()).isNull();
+    assertThat(guidance.getAutomaticListOwnershipEnabled()).isNull();
+    assertThat(guidance.getDirectedOriginSelection()).isFalse();
+    assertThat(guidance.getMaxPenaltyUpdatesPerStep()).isNull();
+    assertThat(guidance.getExcursionStepLimit()).isNull();
+    assertThat(guidance.getExcursionRepairStepLimit()).isNull();
   }
 }

@@ -69,7 +69,11 @@ public class SwapMoveSelectorFactory<Solution_>
 
     var leftEntitySelector =
         EntitySelectorFactory.<Solution_>create(entitySelectorConfig)
-            .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
+            .buildOriginEntitySelector(
+                configPolicy,
+                minimumCacheType,
+                selectionOrder,
+                config.getVariableNameIncludeList());
     var rightEntitySelector =
         EntitySelectorFactory.<Solution_>create(secondaryEntitySelectorConfig)
             .buildEntitySelector(

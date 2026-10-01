@@ -50,7 +50,8 @@ public class SubListSwapMoveSelectorFactory<Solution_>
 
     var leftSubListSelector =
         SubListSelectorFactory.<Solution_>create(subListSelectorConfig)
-            .buildSubListSelector(configPolicy, entitySelector, minimumCacheType, selectionOrder);
+            .buildOriginSubListSelector(
+                configPolicy, entitySelector, minimumCacheType, selectionOrder);
     var rightSubListSelector =
         SubListSelectorFactory.<Solution_>create(secondarySubListSelectorConfig)
             .buildSubListSelector(configPolicy, entitySelector, minimumCacheType, selectionOrder);

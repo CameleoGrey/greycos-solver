@@ -33,5 +33,6 @@
 * xref:frequently-asked-questions.adoc[leveloffset=+1]
 * https://github.com/CameleoGrey/greycos-solver/releases[New and noteworthy][leveloffset=+1]
 * Upgrading GreyCOS Solver
+** xref:upgrading-greycos-solver/upgrade-to-latest.adoc[leveloffset=+1]
 ** xref:upgrading-greycos-solver/migration-guides/shadow-variables-inconsistent-to-structural-score.adoc[leveloffset=+1]
 ** xref:upgrading-greycos-solver/backwards-compatibility.adoc[leveloffset=+1]

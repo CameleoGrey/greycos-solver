@@ -5,6 +5,7 @@ import static io.quarkus.deployment.annotations.ExecutionTime.RUNTIME_INIT;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -45,6 +46,7 @@ import greycos.solver.core.impl.cotwin.variable.declarative.RootVariableSource;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import greycos.solver.core.impl.score.stream.test.DefaultConstraintVerifier;
 import greycos.solver.core.impl.solver.DefaultSolverFactory;
+import greycos.solver.quarkus.BigDecimalSubstitution;
 import greycos.solver.quarkus.GreyCOSRecorder;
 import greycos.solver.quarkus.bean.BeanUtil;
 import greycos.solver.quarkus.bean.DefaultGreyCOSBeanProvider;
@@ -89,6 +91,7 @@ import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
 import io.quarkus.deployment.builditem.HotDeploymentWatchedFileBuildItem;
 import io.quarkus.deployment.builditem.IndexDependencyBuildItem;
+import io.quarkus.deployment.builditem.ObjectSubstitutionBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveHierarchyBuildItem;
 import io.quarkus.deployment.pkg.steps.NativeBuild;
@@ -111,6 +114,12 @@ class GreyCOSProcessor {
   @BuildStep
   FeatureBuildItem feature() {
     return new FeatureBuildItem("greycos-solver");
+  }
+
+  @BuildStep
+  ObjectSubstitutionBuildItem registerBigDecimalSubstitution() {
+    return new ObjectSubstitutionBuildItem(
+        BigDecimal.class, String.class, BigDecimalSubstitution.class);
   }
 
   @BuildStep

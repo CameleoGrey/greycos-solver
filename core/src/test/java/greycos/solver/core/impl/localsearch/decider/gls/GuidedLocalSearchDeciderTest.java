@@ -31,6 +31,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChang
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchSearchMode;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
@@ -87,6 +88,12 @@ class GuidedLocalSearchDeciderTest {
           .isEqualTo(LocalSearchStepScope.NoStepReason.SAMPLE_EXHAUSTED);
       assertThat(last.get().getSelectedMoveCount()).isZero();
       assertThat(decider(solver).getStatistics().emptyRounds()).isEqualTo(3);
+      var diagnostics = decider(solver).getControllerDiagnostics();
+      assertThat(diagnostics.attemptedCandidates()).isEqualTo(12);
+      assertThat(diagnostics.doableCandidates()).isZero();
+      assertThat(diagnostics.admissibleCandidates()).isZero();
+      assertThat(diagnostics.committedMovesByFocusLevel()).containsExactly(0L);
+      assertThat(diagnostics.committedMovesByReason()).containsExactly(0L, 0L, 0L);
     } finally {
       NonDoableMoveFactory.GENERATED.remove();
     }
@@ -99,8 +106,7 @@ class GuidedLocalSearchDeciderTest {
 
   @ParameterizedTest
   @MethodSource("recoveryConfigurations")
-  void sampledEscapeReevaluatesRetainedMoveWhenFreshProbesViolatePrefix(
-      String threads, int sampleSize) {
+  void sampledRetriesDoNotInjectThePreviousRoundRetainedMove(String threads, int sampleSize) {
     var gls =
         new GuidedLocalSearchConfig()
             .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
@@ -126,15 +132,17 @@ class GuidedLocalSearchDeciderTest {
         (DefaultSolver<TestdataHardSoftScoreSolution>)
             SolverFactory.<TestdataHardSoftScoreSolution>create(config).buildSolver();
     var trace = new ArrayList<HardSoftScore>();
-    var selected = new AtomicReference<Long>();
+    var lastDecision = new AtomicReference<LocalSearchStepScope<TestdataHardSoftScoreSolution>>();
     solver.addPhaseLifecycleListener(
         new PhaseLifecycleListenerAdapter<>() {
           @Override
+          public void stepStarted(AbstractStepScope<TestdataHardSoftScoreSolution> scope) {
+            lastDecision.set((LocalSearchStepScope<TestdataHardSoftScoreSolution>) scope);
+          }
+
+          @Override
           public void stepEnded(AbstractStepScope<TestdataHardSoftScoreSolution> scope) {
             trace.add((HardSoftScore) scope.getScore().raw());
-            selected.set(
-                ((LocalSearchStepScope<TestdataHardSoftScoreSolution>) scope)
-                    .getSelectedMoveCount());
           }
         });
     var solution = new TestdataHardSoftScoreSolution("recovery");
@@ -144,18 +152,136 @@ class GuidedLocalSearchDeciderTest {
 
     var best = solver.solve(solution);
 
-    assertThat(trace).containsExactly(HardSoftScore.ofSoft(-1));
+    assertThat(trace).isEmpty();
     assertThat(best.getScore()).isEqualTo(HardSoftScore.ZERO);
     assertThat(best.getEntityList().getFirst().getValue().getCode()).isEqualTo("A");
-    assertThat(selected.get()).isEqualTo(2L * sampleSize);
+    assertThat(lastDecision.get().getSelectedMoveCount()).isEqualTo(4L * sampleSize);
+    assertThat(lastDecision.get().getNoStepReason())
+        .isEqualTo(LocalSearchStepScope.NoStepReason.SAMPLE_EXHAUSTED);
     var controller =
         (GuidedLocalSearchDecider<TestdataHardSoftScoreSolution>)
             ((DefaultLocalSearchPhase<TestdataHardSoftScoreSolution>)
                     solver.getPhaseList().getFirst())
                 .getDecider();
     assertThat(controller.getStatistics().penaltyUpdates()).isEqualTo(1);
-    assertThat(controller.getStatistics().decisionRounds()).isEqualTo(2);
-    assertThat(controller.getStatistics().recoveryMoves()).isEqualTo(1);
+    assertThat(controller.getStatistics().decisionRounds()).isEqualTo(4);
+    assertThat(controller.getStatistics().recoveryMoves()).isZero();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"NONE", "2"})
+  void aGuidedTieIsRejectedUntilTheNextPenaltyUpdateCreatesStrictImprovement(String threads) {
+    var gls =
+        new GuidedLocalSearchConfig()
+            .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
+            .withFeatureProviderClass(RecoveryFeatures.class)
+            .withPenaltyFactor(new BigDecimal("0.1"))
+            .withTargetScoreLevelIndex(1)
+            .withSampleSize(1);
+    var config =
+        new SolverConfig()
+            .withSolutionClass(TestdataHardSoftScoreSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(RecoveryScore.class)
+            .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
+            .withMoveThreadCount(threads)
+            .withPhases(
+                phase(
+                    gls,
+                    new MoveIteratorFactoryConfig()
+                        .withMoveIteratorFactoryClass(RepeatedRecoveryMoveFactory.class)
+                        .withSelectionOrder(SelectionOrder.ORIGINAL)));
+    var solver =
+        (DefaultSolver<TestdataHardSoftScoreSolution>)
+            SolverFactory.<TestdataHardSoftScoreSolution>create(config).buildSolver();
+    var trace = new ArrayList<HardSoftScore>();
+    solver.addPhaseLifecycleListener(
+        new PhaseLifecycleListenerAdapter<>() {
+          @Override
+          public void stepEnded(AbstractStepScope<TestdataHardSoftScoreSolution> scope) {
+            trace.add((HardSoftScore) scope.getScore().raw());
+          }
+        });
+    var solution = new TestdataHardSoftScoreSolution("strict");
+    var a = new TestdataValue("A");
+    solution.setValueList(List.of(a, new TestdataValue("B")));
+    solution.setEntityList(List.of(new TestdataEntity("entity", a)));
+
+    var best = solver.solve(solution);
+
+    assertThat(trace).containsExactly(HardSoftScore.ofSoft(-1));
+    assertThat(best.getScore()).isEqualTo(HardSoftScore.ZERO);
+    var controller =
+        (GuidedLocalSearchDecider<TestdataHardSoftScoreSolution>)
+            ((DefaultLocalSearchPhase<TestdataHardSoftScoreSolution>)
+                    solver.getPhaseList().getFirst())
+                .getDecider();
+    assertThat(controller.getStatistics().penaltyUpdates()).isEqualTo(2);
+    assertThat(controller.getStatistics().decisionRounds()).isEqualTo(3);
+    assertThat(controller.getStatistics().recoveryMoves()).isZero();
+    var diagnostics = controller.getControllerDiagnostics();
+    assertThat(diagnostics.attemptedCandidates()).isEqualTo(3);
+    assertThat(diagnostics.doableCandidates()).isEqualTo(3);
+    assertThat(diagnostics.admissibleCandidates()).isEqualTo(3);
+    assertThat(diagnostics.penaltyUpdatesByLevel()).containsExactly(0L, 2L);
+    assertThat(diagnostics.penalizedFeaturesByLevel()).containsExactly(0L, 2L);
+    assertThat(diagnostics.scaleObservationCounts()).containsExactly(0, 0);
+    assertThat(diagnostics.committedMovesByFocusLevel()).containsExactly(0L, 1L);
+    assertThat(diagnostics.committedMovesByState()).containsExactly(1L, 0L, 0L);
+    assertThat(diagnostics.committedMovesByReason()).containsExactly(0L, 1L, 0L);
+    assertThatThrownBy(() -> diagnostics.penaltyUpdatesByLevel().add(1L))
+        .isInstanceOf(UnsupportedOperationException.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"NONE", "2"})
+  void constantFeaturesExhaustTheRetryBudgetWithoutCommittingAMove(String threads) {
+    var solver =
+        build(
+            phase(
+                glsConfig()
+                    .withFeatureProviderClass(ConstantFeatures.class)
+                    .withSampleSize(3)
+                    .withMaxPenaltyUpdatesPerStep(7),
+                new ChangeMoveSelectorConfig().withSelectionOrder(SelectionOrder.ORIGINAL)),
+            threads);
+    var ended = new AtomicInteger();
+    var last = observe(solver, new AtomicInteger(), ended);
+
+    var best = solver.solve(TestdataSolution.generateSolution(2, 1));
+
+    assertThat(best.getScore()).isEqualTo(SimpleScore.ZERO);
+    assertThat(ended).hasValue(0);
+    assertThat(last.get().getAcceptedMoveCount()).isZero();
+    assertThat(last.get().getNoStepReason())
+        .isEqualTo(LocalSearchStepScope.NoStepReason.GUIDED_RETRY_EXHAUSTED);
+    assertThat(decider(solver).getStatistics().penaltyUpdates()).isEqualTo(7);
+    assertThat(decider(solver).getStatistics().decisionRounds()).isEqualTo(8);
+    assertThat(decider(solver).getControllerDiagnostics().retryExhaustions()).isEqualTo(1);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"NONE", "2"})
+  void fixedTargetCanExplicitlyUseAutomaticFeaturesWithoutAProvider(String threads) {
+    var config =
+        new GuidedLocalSearchConfig()
+            .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
+            .withFeatureComposition(GuidedLocalSearchFeatureComposition.AUTOMATIC)
+            .withSampleSize(3);
+    var solver =
+        build(
+            phase(
+                config, new ChangeMoveSelectorConfig().withSelectionOrder(SelectionOrder.ORIGINAL)),
+            threads);
+    var ended = new AtomicInteger();
+    observe(solver, new AtomicInteger(), ended);
+
+    solver.solve(TestdataSolution.generateSolution(2, 1));
+
+    assertThat(ended).hasValue(1);
+    assertThat(decider(solver).getStatistics().penaltyUpdates()).isEqualTo(1);
+    assertThat(decider(solver).getControllerDiagnostics().featureComposition())
+        .isEqualTo(GuidedLocalSearchFeatureComposition.AUTOMATIC);
   }
 
   @ParameterizedTest
@@ -257,10 +383,119 @@ class GuidedLocalSearchDeciderTest {
     assertThat(decider(solver).getUncreditedCalculationCount()).isZero();
     assertThat(decider(solver).getFocusSwitchCount()).isZero();
     assertThat(decider(solver).getFocusScoreLevelIndex()).isEqualTo(-1);
+    assertThat(decider(solver).getControllerDiagnostics().attemptedCandidates()).isZero();
+    assertThat(decider(solver).getControllerDiagnostics().penaltyUpdatesByLevel()).isEmpty();
+    assertThat(decider(solver).getControllerDiagnostics().eligibleOriginProbes()).isZero();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"NONE", "2"})
+  void diagnosticsRetainPhaseTotalsAcrossPendingMigrationGuidanceReset(String threads) {
+    var gls =
+        new GuidedLocalSearchConfig()
+            .withFeatureComposition(GuidedLocalSearchFeatureComposition.AUTOMATIC)
+            .withDirectedOriginSelection(true)
+            .withSampleSize(3);
+    var solver =
+        build(
+            phase(gls, new ChangeMoveSelectorConfig().withSelectionOrder(SelectionOrder.ORIGINAL))
+                .withTerminationConfig(new TerminationConfig().withStepCountLimit(3)),
+            threads);
+    var beforeMigration = new AtomicReference<GuidedLocalSearchDecider.ControllerDiagnostics>();
+    var afterMigration = new AtomicReference<GuidedLocalSearchDecider.ControllerDiagnostics>();
+    solver.addPhaseLifecycleListener(
+        new PhaseLifecycleListenerAdapter<>() {
+          @Override
+          public void stepStarted(AbstractStepScope<TestdataSolution> scope) {
+            if (scope.getStepIndex() == 2) {
+              afterMigration.set(decider(solver).getControllerDiagnostics());
+            }
+          }
+
+          @Override
+          public void stepEnded(AbstractStepScope<TestdataSolution> scope) {
+            if (scope.getStepIndex() == 0) {
+              beforeMigration.set(decider(solver).getControllerDiagnostics());
+              var working = scope.getWorkingSolution();
+              var descriptor =
+                  scope
+                      .getScoreDirector()
+                      .getSolutionDescriptor()
+                      .findEntityDescriptorOrFail(TestdataEntity.class)
+                      .getGenuineVariableDescriptor("value");
+              scope
+                  .getPhaseScope()
+                  .getSolverScope()
+                  .setPendingMove(
+                      new ChangeMove<>(
+                          descriptor,
+                          working.getEntityList().getFirst(),
+                          working.getValueList().getLast()),
+                      true);
+            }
+          }
+        });
+
+    solver.solve(TestdataSolution.generateSolution(3, 1));
+
+    var before = beforeMigration.get();
+    var after = afterMigration.get();
+    assertThat(before.eligibleOriginProbes()).isPositive();
+    assertThat(after.eligibleOriginProbes()).isEqualTo(before.eligibleOriginProbes());
+    assertThat(after.emittedOrigins()).isEqualTo(before.emittedOrigins());
+    assertThat(after.ordinaryOrigins()).isEqualTo(before.ordinaryOrigins());
+    assertThat(after.attemptedCandidates()).isEqualTo(before.attemptedCandidates());
+    assertThat(after.penaltyUpdatesByLevel()).isEqualTo(before.penaltyUpdatesByLevel());
+    assertThat(after.committedMovesByReason()).containsExactly(0L, 1L, 1L);
+    var diagnostics = decider(solver).getControllerDiagnostics();
+    assertThat(diagnostics.eligibleOriginProbes()).isGreaterThan(after.eligibleOriginProbes());
+    assertThat(diagnostics.eligibleOriginProbes())
+        .isGreaterThanOrEqualTo(diagnostics.emittedOrigins());
+    assertThat(diagnostics.committedMovesByFocusLevel()).containsExactly(3L);
+    assertThat(diagnostics.committedMovesByState()).containsExactly(3L, 0L, 0L);
+    assertThat(diagnostics.committedMovesByReason()).containsExactly(0L, 2L, 1L);
+    assertThat(diagnostics.penaltyUpdatesByLevel().getFirst())
+        .isEqualTo(diagnostics.penaltyUpdates());
   }
 
   @Test
   void invalidSettingsFailAtBuildTime() {
+    for (var invalid :
+        List.of(
+            glsConfig().withMaxPenaltyUpdatesPerStep(0),
+            glsConfig().withExcursionStepLimit(0),
+            glsConfig().withExcursionRepairStepLimit(0),
+            glsConfig().withFocusStepLimit(0),
+            glsConfig().withFocusPenaltyUpdateLimit(0))) {
+      assertThatThrownBy(() -> build(phase(invalid, new ChangeMoveSelectorConfig()), "NONE"))
+          .hasMessageContaining("positive");
+    }
+    assertThatThrownBy(
+            () ->
+                build(
+                    phase(
+                        glsConfig()
+                            .withFeatureComposition(GuidedLocalSearchFeatureComposition.AUTOMATIC),
+                        new ChangeMoveSelectorConfig()),
+                    "NONE"))
+        .hasMessageContaining("featureProviderClass");
+    assertThatThrownBy(
+            () ->
+                build(
+                    phase(
+                        new GuidedLocalSearchConfig()
+                            .withFeatureComposition(GuidedLocalSearchFeatureComposition.COMBINED),
+                        new ChangeMoveSelectorConfig()),
+                    "NONE"))
+        .hasMessageContaining("featureProviderClass");
+    assertThatThrownBy(
+            () ->
+                build(
+                    phase(
+                        glsConfig().withAutomaticListOwnershipEnabled(true),
+                        new ChangeMoveSelectorConfig()),
+                    "NONE"))
+        .hasMessageContaining("CUSTOM");
     assertThatThrownBy(
             () ->
                 build(
@@ -437,6 +672,32 @@ class GuidedLocalSearchDeciderTest {
     }
   }
 
+  public static class ConstantFeatures extends EmptyProvider {
+    @Override
+    public void extractFeatures(
+        TestdataSolution solution, GuidedLocalSearchFeatureConsumer<String> consumer) {
+      consumer.accept("constant", 1L);
+    }
+
+    @Override
+    public GuidedLocalSearchFeatureSession<TestdataSolution, String> newSession() {
+      return new GuidedLocalSearchFeatureSession<>() {
+        private boolean reset;
+
+        @Override
+        public void resetWorkingSolution(TestdataSolution solution) {
+          reset = true;
+        }
+
+        @Override
+        public void flushChanges(GuidedLocalSearchFeatureUpdater<String> updater) {
+          if (reset) updater.accept("constant", 1L);
+          reset = false;
+        }
+      };
+    }
+  }
+
   public static class PrivateConstructorProvider extends EmptyProvider {
     private PrivateConstructorProvider() {}
   }
@@ -482,14 +743,25 @@ class GuidedLocalSearchDeciderTest {
           new ChangeMove<>(
               descriptor,
               solution.getEntityList().getFirst(),
-              solution.getValueList().get(round++ == 0 ? 1 : 2));
+              solution.getValueList().get(nextValueIndex()));
       return Collections.nCopies(4, move).iterator();
+    }
+
+    protected int nextValueIndex() {
+      return round++ == 0 ? 1 : 2;
     }
 
     @Override
     public Iterator<Move<TestdataHardSoftScoreSolution>> createRandomMoveIterator(
         ScoreDirector<TestdataHardSoftScoreSolution> director, RandomGenerator random) {
       return createOriginalMoveIterator(director);
+    }
+  }
+
+  public static class RepeatedRecoveryMoveFactory extends RecoveryMoveFactory {
+    @Override
+    protected int nextValueIndex() {
+      return 1;
     }
   }
 

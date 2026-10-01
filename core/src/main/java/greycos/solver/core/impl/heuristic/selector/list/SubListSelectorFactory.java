@@ -41,6 +41,25 @@ public final class SubListSelectorFactory<Solution_>
       EntitySelector<Solution_> entitySelector,
       SelectionCacheType minimumCacheType,
       SelectionOrder inheritedSelectionOrder) {
+    return buildSubListSelector(
+        configPolicy, entitySelector, minimumCacheType, inheritedSelectionOrder, false);
+  }
+
+  public SubListSelector<Solution_> buildOriginSubListSelector(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      EntitySelector<Solution_> entitySelector,
+      SelectionCacheType minimumCacheType,
+      SelectionOrder inheritedSelectionOrder) {
+    return buildSubListSelector(
+        configPolicy, entitySelector, minimumCacheType, inheritedSelectionOrder, true);
+  }
+
+  private SubListSelector<Solution_> buildSubListSelector(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      EntitySelector<Solution_> entitySelector,
+      SelectionCacheType minimumCacheType,
+      SelectionOrder inheritedSelectionOrder,
+      boolean originSelection) {
     if (config.getMimicSelectorRef() != null) {
       return buildMimicReplaying(configPolicy);
     }
@@ -75,6 +94,11 @@ public final class SubListSelectorFactory<Solution_>
             baseSubListSelector,
             valueSource);
 
+    if (originSelection && configPolicy.getGuidedLocalSearchSelectionContext() != null) {
+      subListSelector =
+          new GuidedLocalSearchSubListSelector<>(
+              subListSelector, configPolicy.getGuidedLocalSearchSelectionContext());
+    }
     subListSelector = applyMimicRecording(configPolicy, subListSelector);
 
     return subListSelector;

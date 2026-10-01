@@ -4,6 +4,28 @@
     <localSearchType>GUIDED_LOCAL_SEARCH</localSearchType>
     <guidedLocalSearch>
       <featureProviderClass>greycos.solver.quarkus.testcotwin.guidedlocalsearch.TestdataQuarkusGuidedLocalSearchFeatureProvider</featureProviderClass>
+      <featureComposition>COMBINED</featureComposition>
+      <automaticListOwnershipEnabled>true</automaticListOwnershipEnabled>
+      <directedOriginSelection>true</directedOriginSelection>
+      <penaltyFactor>0.1250</penaltyFactor>
+      <guidanceMode>ALL_LEVELS</guidanceMode>
+      <levelScale>
+        <scoreLevelIndex>0</scoreLevelIndex>
+        <scale>0.000000000000000000000000000001</scale>
+      </levelScale>
+      <focusStepLimit>17</focusStepLimit>
+      <focusPenaltyUpdateLimit>3</focusPenaltyUpdateLimit>
+      <maxPenaltyUpdatesPerStep>11</maxPenaltyUpdatesPerStep>
+      <excursionStepLimit>5</excursionStepLimit>
+      <excursionRepairStepLimit>29</excursionRepairStepLimit>
+    </guidedLocalSearch>
+  </localSearch>
+  <localSearch>
+    <localSearchType>GUIDED_LOCAL_SEARCH</localSearchType>
+    <guidedLocalSearch>
+      <featureComposition>AUTOMATIC</featureComposition>
+      <directedOriginSelection>false</directedOriginSelection>
+      <targetScoreLevelIndex>0</targetScoreLevelIndex>
     </guidedLocalSearch>
   </localSearch>
 </solver>

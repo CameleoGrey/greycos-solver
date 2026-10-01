@@ -2,16 +2,24 @@ package greycos.solver.core.impl.localsearch.decider.gls;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import greycos.solver.core.api.localsearch.GuidedLocalSearchFeatureConsumer;
 import greycos.solver.core.api.localsearch.GuidedLocalSearchFeatureProvider;
@@ -21,6 +29,7 @@ import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchSearchMode;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
@@ -55,10 +64,14 @@ import greycos.solver.core.testcotwin.TestdataValue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @Timeout(20)
 class GuidedLocalSearchNeighborhoodsTest {
+
+  private static final ThreadLocal<SessionLifecycle> SESSION_LIFECYCLE = new ThreadLocal<>();
 
   @ParameterizedTest
   @ValueSource(strings = {"NONE", "2"})
@@ -78,7 +91,7 @@ class GuidedLocalSearchNeighborhoodsTest {
                     .withGuidedLocalSearchConfig(
                         new GuidedLocalSearchConfig()
                             .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
-                            .withFeatureProviderClass(ConstantFeatures.class)
+                            .withFeatureProviderClass(EligibleCountFeatures.class)
                             .withSampleSize(1000))
                     .withMoveProviderClass(CachedNeighborhood.class)
                     .withTerminationConfig(new TerminationConfig().withStepCountLimit(3)));
@@ -128,6 +141,212 @@ class GuidedLocalSearchNeighborhoodsTest {
     } finally {
       CachedNeighborhood.FILTER_CALLS.remove();
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"NONE", "2"})
+  void constantFeatureStopsAtRetryLimitWithoutCommittingAnEqualScoreMove(String threads) {
+    var config =
+        new SolverConfig()
+            .withSolutionClass(TestdataSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(ZeroScore.class)
+            .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
+            .withMoveThreadCount(threads)
+            .withRandomSeed(0L)
+            .withPreviewFeature(PreviewFeature.NEIGHBORHOODS)
+            .withPhases(
+                new LocalSearchPhaseConfig()
+                    .withLocalSearchType(LocalSearchType.GUIDED_LOCAL_SEARCH)
+                    .withGuidedLocalSearchConfig(
+                        new GuidedLocalSearchConfig()
+                            .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
+                            .withFeatureProviderClass(ConstantFeatures.class)
+                            .withSampleSize(4)
+                            .withMaxPenaltyUpdatesPerStep(3))
+                    .withMoveProviderClass(CachedNeighborhood.class)
+                    .withTerminationConfig(new TerminationConfig().withStepCountLimit(1)));
+    var solver =
+        (DefaultSolver<TestdataSolution>)
+            SolverFactory.<TestdataSolution>create(config).buildSolver();
+    var attempt = new AtomicReference<LocalSearchStepScope<TestdataSolution>>();
+    var committed = new AtomicInteger();
+    solver.addPhaseLifecycleListener(
+        new PhaseLifecycleListenerAdapter<>() {
+          @Override
+          public void stepStarted(AbstractStepScope<TestdataSolution> scope) {
+            attempt.set((LocalSearchStepScope<TestdataSolution>) scope);
+          }
+
+          @Override
+          public void stepEnded(AbstractStepScope<TestdataSolution> scope) {
+            committed.incrementAndGet();
+          }
+        });
+
+    try {
+      var best = solver.solve(problem(4));
+
+      assertThat(committed).hasValue(0);
+      assertThat(attempt.get().getStep()).isNull();
+      assertThat(attempt.get().getNoStepReason())
+          .isEqualTo(LocalSearchStepScope.NoStepReason.GUIDED_RETRY_EXHAUSTED);
+      assertThat(attempt.get().getSelectedMoveCount()).isEqualTo(16L);
+      assertThat(attempt.get().getAcceptedMoveCount()).isZero();
+      assertThat(best.getEntityList())
+          .allSatisfy(entity -> assertThat(entity.getValue().getCode()).isEqualTo("eligible"));
+      assertThat(best.getScore()).isEqualTo(SimpleScore.ZERO);
+      var phase = (DefaultLocalSearchPhase<TestdataSolution>) solver.getPhaseList().getFirst();
+      var decider = (GuidedLocalSearchDecider<TestdataSolution>) phase.getDecider();
+      assertThat(decider.getStatistics())
+          .isEqualTo(new GuidedLocalSearchDecider.Statistics(4, 3, 0, 0));
+      assertThat(decider.getControllerDiagnostics().retryExhaustions()).isEqualTo(1);
+    } finally {
+      CachedNeighborhood.FILTER_CALLS.remove();
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"NONE", "2"})
+  void featureFailureClosesEverySessionAndWorkerAndAllowsSolverReuse(String threads)
+      throws InterruptedException {
+    assertFailureCleanupAndSolverReuse(threads, FailurePoint.CANDIDATE);
+  }
+
+  static Stream<Arguments> partialStartupFailures() {
+    return Stream.of(
+        Arguments.of("NONE", FailurePoint.REPOSITORY_START),
+        Arguments.of("2", FailurePoint.REPOSITORY_START),
+        Arguments.of("2", FailurePoint.WORKER_START));
+  }
+
+  @ParameterizedTest
+  @MethodSource("partialStartupFailures")
+  void partialPhaseStartupFailureCleansInitializedResourcesAndAllowsSolverReuse(
+      String threads, FailurePoint failurePoint) throws InterruptedException {
+    assertFailureCleanupAndSolverReuse(threads, failurePoint);
+  }
+
+  private static void assertFailureCleanupAndSolverReuse(String threads, FailurePoint failurePoint)
+      throws InterruptedException {
+    var lifecycle = new SessionLifecycle(failurePoint);
+    SESSION_LIFECYCLE.set(lifecycle);
+    try {
+      var config =
+          new SolverConfig()
+              .withSolutionClass(TestdataSolution.class)
+              .withEntityClasses(TestdataEntity.class)
+              .withEasyScoreCalculatorClass(ZeroScore.class)
+              .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
+              .withMoveThreadCount(threads)
+              .withThreadFactoryClass(RecordingThreadFactory.class)
+              .withRandomSeed(0L)
+              .withPreviewFeature(PreviewFeature.NEIGHBORHOODS)
+              .withPhases(
+                  new LocalSearchPhaseConfig()
+                      .withLocalSearchType(LocalSearchType.GUIDED_LOCAL_SEARCH)
+                      .withGuidedLocalSearchConfig(
+                          new GuidedLocalSearchConfig()
+                              .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)
+                              .withFeatureProviderClass(FailingFeatures.class)
+                              .withSampleSize(4))
+                      .withMoveProviderClass(FailingNeighborhood.class)
+                      .withTerminationConfig(new TerminationConfig().withStepCountLimit(1)));
+      var solver =
+          (DefaultSolver<TestdataSolution>)
+              SolverFactory.<TestdataSolution>create(config).buildSolver();
+      var committed = new ArrayList<Long>();
+      solver.addPhaseLifecycleListener(
+          new PhaseLifecycleListenerAdapter<>() {
+            @Override
+            public void stepEnded(AbstractStepScope<TestdataSolution> scope) {
+              committed.add(
+                  scope.getWorkingSolution().getEntityList().stream()
+                      .filter(entity -> entity.getValue().getCode().equals("changed"))
+                      .count());
+            }
+
+            @Override
+            public void solvingError(SolverScope<TestdataSolution> scope, Throwable failure) {
+              if (failurePoint == FailurePoint.REPOSITORY_START) {
+                // This failure happens before a feature session exists. A failing listener must
+                // not prevent the repository's partially initialized phase from being cleaned up.
+                throw lifecycle.cleanupFailure;
+              }
+            }
+          });
+      var problem = problem(4);
+
+      var thrown = catchThrowable(() -> solver.solve(problem));
+
+      if (threads.equals("NONE") || failurePoint == FailurePoint.REPOSITORY_START) {
+        assertThat(thrown).isSameAs(lifecycle.evaluationFailure);
+      } else {
+        assertThat(thrown).hasCause(lifecycle.evaluationFailure);
+      }
+      assertThat(thrown.getSuppressed()).contains(lifecycle.cleanupFailure);
+      assertThat(lifecycle.failedOperations).hasPositiveValue();
+      assertThat(committed).isEmpty();
+      int sessionsPerSolve = threads.equals("NONE") ? 1 : 3;
+      int sessionCount =
+          switch (failurePoint) {
+            case CANDIDATE -> sessionsPerSolve;
+            case WORKER_START -> 1;
+            case REPOSITORY_START -> 0;
+          };
+      assertThat(lifecycle.sessionCloseCounts)
+          .hasSize(sessionCount)
+          .allSatisfy(count -> assertThat(count).hasValue(1));
+      int workerCount = threads.equals("NONE") ? 0 : 2;
+      int startedWorkerCount = failurePoint == FailurePoint.REPOSITORY_START ? 0 : workerCount;
+      assertThat(lifecycle.workers).hasSize(startedWorkerCount);
+      assertWorkersStopped(lifecycle.workers);
+      assertThat(solver.isSolving()).isFalse();
+      assertThat(solver.getSolverScope().getScoreDirector().getWorkingSolution()).isNull();
+      assertThat(problem.getEntityList())
+          .allSatisfy(entity -> assertThat(entity.getValue().getCode()).isEqualTo("eligible"));
+
+      lifecycle.fail.set(false);
+      var best = solver.solve(problem(4));
+
+      assertThat(committed).containsExactly(1L);
+      assertThat(best.getScore()).isEqualTo(SimpleScore.ZERO);
+      assertThat(lifecycle.sessionCloseCounts)
+          .hasSize(sessionCount + sessionsPerSolve)
+          .allSatisfy(count -> assertThat(count).hasValue(1));
+      assertThat(lifecycle.workers).hasSize(startedWorkerCount + workerCount);
+      assertWorkersStopped(lifecycle.workers);
+    } finally {
+      for (var worker : lifecycle.workers) worker.interrupt();
+      for (var worker : lifecycle.workers) worker.join(2000);
+      CachedNeighborhood.FILTER_CALLS.remove();
+      SESSION_LIFECYCLE.remove();
+    }
+  }
+
+  private static void assertWorkersStopped(List<Thread> workers) throws InterruptedException {
+    for (var worker : workers) {
+      // Executor termination may precede the last return from Thread.run().
+      worker.join(2000);
+      assertThat(worker.isAlive()).as("GLS worker %s", worker.getName()).isFalse();
+    }
+  }
+
+  @Test
+  void failingRepositoryCleanupRunsOnceAndIsSuppressedOnTheOriginalFailure() {
+    var context = new DecisionContext();
+    var original = new IllegalStateException("candidate evaluation failed");
+    var cleanup = new IllegalStateException("repository cleanup failed");
+    try (context) {
+      doThrow(cleanup).when(context.repository).phaseEnded(context.phaseScope);
+
+      context.decider.solvingError(context.solverScope, original);
+      context.decider.solvingError(context.solverScope, original);
+      context.decider.phaseEnded(context.phaseScope);
+    }
+
+    verify(context.repository, times(1)).phaseEnded(context.phaseScope);
+    assertThat(original.getSuppressed()).containsExactly(cleanup);
   }
 
   @Test
@@ -231,15 +450,21 @@ class GuidedLocalSearchNeighborhoodsTest {
             repository,
             new ConstantFeatures(),
             GuidedLocalSearchGuidanceMode.FIXED_TARGET,
+            GuidedLocalSearchFeatureComposition.CUSTOM,
+            false,
             BigDecimal.ONE,
             0,
             List.of(),
             100,
             100,
+            64,
+            8,
+            64,
             GuidedLocalSearchSearchMode.SAMPLED,
             1,
             1,
             false,
+            null,
             Thread::new,
             0,
             1);
@@ -313,7 +538,7 @@ class GuidedLocalSearchNeighborhoodsTest {
                         .filter(
                             (view, entity) -> {
                               FILTER_CALLS.get().incrementAndGet();
-                              return entity.getValue().getCode().equals("eligible");
+                              return accepts(entity);
                             });
                 return factory
                     .pick(entities)
@@ -325,6 +550,23 @@ class GuidedLocalSearchNeighborhoodsTest {
               })
           .build();
     }
+
+    protected boolean accepts(TestdataEntity entity) {
+      return entity.getValue().getCode().equals("eligible");
+    }
+  }
+
+  public static class FailingNeighborhood extends CachedNeighborhood {
+    private final SessionLifecycle lifecycle = SESSION_LIFECYCLE.get();
+
+    @Override
+    protected boolean accepts(TestdataEntity entity) {
+      if (lifecycle.fail.get() && lifecycle.failurePoint == FailurePoint.REPOSITORY_START) {
+        lifecycle.failedOperations.incrementAndGet();
+        throw lifecycle.evaluationFailure;
+      }
+      return super.accepts(entity);
+    }
   }
 
   public static class ZeroScore implements EasyScoreCalculator<TestdataSolution, SimpleScore> {
@@ -334,7 +576,157 @@ class GuidedLocalSearchNeighborhoodsTest {
     }
   }
 
-  /** A constant feature deliberately forces a full sample and a penalty update on every step. */
+  private enum FailurePoint {
+    CANDIDATE,
+    REPOSITORY_START,
+    WORKER_START
+  }
+
+  private static final class SessionLifecycle {
+    private final FailurePoint failurePoint;
+    private final Thread coordinator = Thread.currentThread();
+    private final IllegalStateException evaluationFailure =
+        new IllegalStateException("feature candidate evaluation failed");
+    private final IllegalStateException cleanupFailure =
+        new IllegalStateException("feature session cleanup failed");
+    private final AtomicBoolean fail = new AtomicBoolean(true);
+    private final AtomicInteger failedOperations = new AtomicInteger();
+    private final List<AtomicInteger> sessionCloseCounts = new CopyOnWriteArrayList<>();
+    private final List<Thread> workers = new CopyOnWriteArrayList<>();
+
+    private SessionLifecycle(FailurePoint failurePoint) {
+      this.failurePoint = failurePoint;
+    }
+  }
+
+  public static class RecordingThreadFactory implements ThreadFactory {
+    private final SessionLifecycle lifecycle = SESSION_LIFECYCLE.get();
+
+    @Override
+    public Thread newThread(Runnable runnable) {
+      var thread = new Thread(runnable, "gls-feature-lifecycle-worker");
+      lifecycle.workers.add(thread);
+      return thread;
+    }
+  }
+
+  public static class FailingFeatures
+      implements GuidedLocalSearchFeatureProvider<TestdataSolution, Integer> {
+    private final SessionLifecycle lifecycle = SESSION_LIFECYCLE.get();
+    private final EligibleCountFeatures delegate = new EligibleCountFeatures();
+
+    @Override
+    public void extractFeatures(
+        TestdataSolution solution, GuidedLocalSearchFeatureConsumer<Integer> consumer) {
+      delegate.extractFeatures(solution, consumer);
+    }
+
+    @Override
+    public GuidedLocalSearchFeatureSession<TestdataSolution, Integer> newSession() {
+      if (lifecycle.fail.get()
+          && lifecycle.failurePoint == FailurePoint.WORKER_START
+          && Thread.currentThread() != lifecycle.coordinator) {
+        lifecycle.failedOperations.incrementAndGet();
+        throw lifecycle.evaluationFailure;
+      }
+      var session = delegate.newSession();
+      var closeCount = new AtomicInteger();
+      lifecycle.sessionCloseCounts.add(closeCount);
+      boolean coordinatorSession = Thread.currentThread() == lifecycle.coordinator;
+      return new GuidedLocalSearchFeatureSession<>() {
+        private TestdataSolution solution;
+
+        @Override
+        public void resetWorkingSolution(TestdataSolution solution) {
+          this.solution = solution;
+          session.resetWorkingSolution(solution);
+        }
+
+        @Override
+        public void beforeVariableChanged(Object entity, String variableName) {
+          session.beforeVariableChanged(entity, variableName);
+        }
+
+        @Override
+        public void afterVariableChanged(Object entity, String variableName) {
+          session.afterVariableChanged(entity, variableName);
+        }
+
+        @Override
+        public void flushChanges(GuidedLocalSearchFeatureUpdater<Integer> updater) {
+          if (lifecycle.fail.get()
+              && lifecycle.failurePoint == FailurePoint.CANDIDATE
+              && solution.getEntityList().stream()
+                  .anyMatch(entity -> !EligibleCountFeatures.isEligible(entity))) {
+            lifecycle.failedOperations.incrementAndGet();
+            throw lifecycle.evaluationFailure;
+          }
+          session.flushChanges(updater);
+        }
+
+        @Override
+        public void close() {
+          closeCount.incrementAndGet();
+          session.close();
+          if (coordinatorSession && lifecycle.fail.get()) throw lifecycle.cleanupFailure;
+        }
+      };
+    }
+  }
+
+  /** Every candidate changes the feature key, making the first retry strictly improve guidance. */
+  public static class EligibleCountFeatures
+      implements GuidedLocalSearchFeatureProvider<TestdataSolution, Integer> {
+    @Override
+    public void extractFeatures(
+        TestdataSolution solution, GuidedLocalSearchFeatureConsumer<Integer> consumer) {
+      int eligibleCount =
+          (int) solution.getEntityList().stream().filter(EligibleCountFeatures::isEligible).count();
+      consumer.accept(eligibleCount, eligibleCount);
+    }
+
+    private static boolean isEligible(TestdataEntity entity) {
+      return entity.getValue().getCode().equals("eligible");
+    }
+
+    @Override
+    public GuidedLocalSearchFeatureSession<TestdataSolution, Integer> newSession() {
+      return new GuidedLocalSearchFeatureSession<>() {
+        private int eligibleCount;
+        private Integer emittedCount;
+
+        @Override
+        public void resetWorkingSolution(TestdataSolution solution) {
+          eligibleCount =
+              (int)
+                  solution.getEntityList().stream()
+                      .filter(EligibleCountFeatures::isEligible)
+                      .count();
+          emittedCount = null;
+        }
+
+        @Override
+        public void beforeVariableChanged(Object entity, String variableName) {
+          if (isEligible((TestdataEntity) entity)) eligibleCount--;
+        }
+
+        @Override
+        public void afterVariableChanged(Object entity, String variableName) {
+          if (isEligible((TestdataEntity) entity)) eligibleCount++;
+        }
+
+        @Override
+        public void flushChanges(GuidedLocalSearchFeatureUpdater<Integer> updater) {
+          if (emittedCount != null && emittedCount == eligibleCount) return;
+          if (emittedCount != null) updater.remove(emittedCount);
+          updater.accept(eligibleCount, eligibleCount);
+          emittedCount = eligibleCount;
+        }
+      };
+    }
+  }
+
+  /** Equal penalties in the incumbent and every candidate cannot justify a committed move. */
   public static class ConstantFeatures
       implements GuidedLocalSearchFeatureProvider<TestdataSolution, String> {
     @Override

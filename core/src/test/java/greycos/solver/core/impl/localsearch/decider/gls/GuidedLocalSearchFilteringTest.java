@@ -43,6 +43,9 @@ import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelectorFact
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt.SelectorBasedTwoOptListMove;
 import greycos.solver.core.impl.localsearch.DefaultLocalSearchPhase;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
+import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.score.trend.InitializingScoreTrend;
 import greycos.solver.core.impl.solver.DefaultSolver;
@@ -99,6 +102,20 @@ class GuidedLocalSearchFilteringTest {
     var solver =
         (DefaultSolver<TestdataListSolution>)
             SolverFactory.<TestdataListSolution>create(config).buildSolver();
+    var attempt = new AtomicReference<LocalSearchStepScope<TestdataListSolution>>();
+    var committed = new AtomicInteger();
+    solver.addPhaseLifecycleListener(
+        new PhaseLifecycleListenerAdapter<>() {
+          @Override
+          public void stepStarted(AbstractStepScope<TestdataListSolution> scope) {
+            attempt.set((LocalSearchStepScope<TestdataListSolution>) scope);
+          }
+
+          @Override
+          public void stepEnded(AbstractStepScope<TestdataListSolution> scope) {
+            committed.incrementAndGet();
+          }
+        });
     TypedTwoOptFilter.CALLS.get().set(0);
     try {
       var result = solver.solve(TestdataListSolution.generateInitializedSolution(4, 1));
@@ -112,6 +129,13 @@ class GuidedLocalSearchFilteringTest {
                     .getDecider();
         assertThat(decider.getStatistics().emptyRounds()).isEqualTo(3);
         assertThat(decider.getStatistics().decisionRounds()).isEqualTo(3);
+        assertThat(decider.getStatistics().penaltyUpdates()).isZero();
+        assertThat(attempt.get().getStep()).isNull();
+        assertThat(attempt.get().getSelectedMoveCount()).isZero();
+        assertThat(attempt.get().getAcceptedMoveCount()).isZero();
+        assertThat(attempt.get().getNoStepReason())
+            .isEqualTo(LocalSearchStepScope.NoStepReason.SAMPLE_EXHAUSTED);
+        assertThat(committed).hasValue(0);
       }
     } finally {
       TypedTwoOptFilter.CALLS.remove();

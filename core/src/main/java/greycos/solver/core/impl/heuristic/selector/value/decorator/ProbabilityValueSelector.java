@@ -88,7 +88,8 @@ public final class ProbabilityValueSelector<Solution_>
 
   @Override
   public boolean isNeverEnding() {
-    return false;
+    // Probability sampling repeats with replacement, even though its cached population is finite.
+    return true;
   }
 
   @Override

@@ -52,7 +52,8 @@ public class SubListChangeMoveSelectorFactory<Solution_>
             .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
     var subListSelector =
         SubListSelectorFactory.<Solution_>create(subListSelectorConfig)
-            .buildSubListSelector(configPolicy, entitySelector, minimumCacheType, selectionOrder);
+            .buildOriginSubListSelector(
+                configPolicy, entitySelector, minimumCacheType, selectionOrder);
     var destinationSelector =
         DestinationSelectorFactory.<Solution_>create(destinationSelectorConfig)
             .buildDestinationSelector(configPolicy, minimumCacheType, randomSelection);

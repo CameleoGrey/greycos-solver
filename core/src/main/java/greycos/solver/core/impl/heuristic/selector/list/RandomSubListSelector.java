@@ -69,7 +69,7 @@ public final class RandomSubListSelector<Solution_> extends AbstractListMoveSele
 
   @Override
   public boolean isNeverEnding() {
-    return true;
+    return valueSelector.isNeverEnding();
   }
 
   @Override
@@ -132,10 +132,13 @@ public final class RandomSubListSelector<Solution_> extends AbstractListMoveSele
       var listSize = 0;
 
       var firstUnpinnedIndex = 0;
+      long attempts =
+          valueSelector.isNeverEnding()
+              ? Math.max(1L, Math.min(Long.MAX_VALUE / 10L, valueSelector.getSize()) * 10L)
+              : Long.MAX_VALUE;
       while (listSize < minimumSubListSize) {
-        if (!valueIterator.hasNext()) {
-          throw new IllegalStateException(
-              "The valueIterator (%s) should never end.".formatted(valueIterator));
+        if (!valueIterator.hasNext() || attempts-- == 0L) {
+          return noUpcomingSelection();
         }
         // Using valueSelector instead of entitySelector is fairer
         // because entities with bigger list variables will be selected more often.

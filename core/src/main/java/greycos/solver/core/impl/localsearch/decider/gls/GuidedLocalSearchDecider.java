@@ -4,13 +4,12 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 import greycos.solver.core.api.localsearch.GuidedLocalSearchFeatureProvider;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchLevelScaleConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchSearchMode;
@@ -45,11 +44,17 @@ public final class GuidedLocalSearchDecider<Solution_>
   private final MoveRepository<Solution_> repository;
   private final GuidedLocalSearchFeatureProvider<Solution_, Object> provider;
   private final GuidedLocalSearchGuidanceMode guidanceMode;
+  private final GuidedLocalSearchFeatureComposition featureComposition;
+  private final boolean automaticListOwnershipEnabled;
+  private final GuidedLocalSearchSelectionContext<Solution_> selectionContext;
   private final BigDecimal penaltyFactor;
   private final int fixedTarget;
   private final List<GuidedLocalSearchLevelScaleConfig> levelScaleOverrides;
   private final int focusStepLimit;
   private final int focusPenaltyUpdateLimit;
+  private final int maxPenaltyUpdatesPerStep;
+  private final int excursionStepLimit;
+  private final int excursionRepairStepLimit;
   private GuidedLocalSearchScoreComparator comparator;
   private final GuidedLocalSearchSearchMode searchMode;
   private final int sampleSize;
@@ -59,11 +64,24 @@ public final class GuidedLocalSearchDecider<Solution_>
   private final int moveThreadCount;
   private final int bufferSize;
   private final List<GuidedLocalSearchPenaltyTable<Object>> penaltyTables = new ArrayList<>();
-  private final List<GuidedLocalSearchScale.Calibration> calibrations = new ArrayList<>();
+  private GuidedLocalSearchLearning learning;
+  private int hardLevelCount;
+  private SearchState state = SearchState.NORMAL;
+  private InnerScore<?> epochStartScore;
+  private InnerScore<?> epochBestScore;
+  private int excursionSteps;
+  private int repairSteps;
+  private boolean excursionBecameInfeasible;
+  private boolean repairExhausted;
+  private long excursionsStarted;
+  private long excursionsRecovered;
+  private long totalExcursionSteps;
+  private long totalRepairSteps;
+  private long retryExhaustions;
+  private ControllerDiagnostics controllerDiagnostics;
   private int focusLevel;
   private int focusSteps;
   private int focusPenaltyUpdates;
-  private boolean feasibleSeen;
   private long guidanceVersion;
   private long focusSwitches;
 
@@ -71,6 +89,7 @@ public final class GuidedLocalSearchDecider<Solution_>
   private boolean assertUndo;
   private boolean assertExpectedStepScore;
   private boolean resetOnPendingMove;
+  private LocalSearchPhaseScope<Solution_> repositoryPhaseScope;
   private GuidedLocalSearchFeatureTracker<Solution_, Object> tracker;
   private MoveEvaluationPipeline<Solution_> pipeline;
   private MoveEvaluationPipeline.Diagnostics diagnostics;
@@ -82,6 +101,23 @@ public final class GuidedLocalSearchDecider<Solution_>
   private long featureResetVersion;
   private int nextMoveIndex;
 
+  // Observation-only phase totals; guidance resets during adoption do not clear them.
+  private long attemptedCandidates;
+  private long doableCandidates;
+  private long admissibleCandidates;
+  private long[] penaltyUpdatesByLevel = new long[0];
+  private long[] penalizedFeaturesByLevel = new long[0];
+  private long[] committedMovesByFocusLevel = new long[0];
+  private long[] committedMovesByState = new long[SearchState.values().length];
+  private long[] committedMovesByReason = new long[AcceptanceReason.values().length];
+  private long priorEligibleOriginProbes;
+  private long priorEmittedOrigins;
+  private long priorOrdinaryOrigins;
+  private AcceptanceReason evaluatedAcceptanceReason;
+  private AcceptanceReason selectedAcceptanceReason;
+  private int selectedFocusLevel;
+  private SearchState selectedState;
+
   @SuppressWarnings("unchecked")
   public GuidedLocalSearchDecider(
       String logIndentation,
@@ -89,15 +125,21 @@ public final class GuidedLocalSearchDecider<Solution_>
       MoveRepository<Solution_> repository,
       GuidedLocalSearchFeatureProvider<Solution_, ?> provider,
       GuidedLocalSearchGuidanceMode guidanceMode,
+      GuidedLocalSearchFeatureComposition featureComposition,
+      boolean automaticListOwnershipEnabled,
       BigDecimal penaltyFactor,
       int targetScoreLevelIndex,
       List<GuidedLocalSearchLevelScaleConfig> levelScaleOverrides,
       int focusStepLimit,
       int focusPenaltyUpdateLimit,
+      int maxPenaltyUpdatesPerStep,
+      int excursionStepLimit,
+      int excursionRepairStepLimit,
       GuidedLocalSearchSearchMode searchMode,
       int sampleSize,
       int maxUnproductiveRounds,
       boolean resetPenaltiesOnNewBest,
+      GuidedLocalSearchSelectionContext<Solution_> selectionContext,
       ThreadFactory threadFactory,
       int moveThreadCount,
       int bufferSize) {
@@ -106,11 +148,17 @@ public final class GuidedLocalSearchDecider<Solution_>
     this.repository = repository;
     this.provider = (GuidedLocalSearchFeatureProvider<Solution_, Object>) provider;
     this.guidanceMode = guidanceMode;
+    this.featureComposition = featureComposition;
+    this.automaticListOwnershipEnabled = automaticListOwnershipEnabled;
+    this.selectionContext = selectionContext;
     this.penaltyFactor = penaltyFactor;
     fixedTarget = targetScoreLevelIndex;
     this.levelScaleOverrides = List.copyOf(levelScaleOverrides);
     this.focusStepLimit = focusStepLimit;
     this.focusPenaltyUpdateLimit = focusPenaltyUpdateLimit;
+    this.maxPenaltyUpdatesPerStep = maxPenaltyUpdatesPerStep;
+    this.excursionStepLimit = excursionStepLimit;
+    this.excursionRepairStepLimit = excursionRepairStepLimit;
     this.searchMode = searchMode;
     this.sampleSize = sampleSize;
     this.maxUnproductiveRounds = maxUnproductiveRounds;
@@ -129,6 +177,7 @@ public final class GuidedLocalSearchDecider<Solution_>
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
+    resetObservationCounters(0);
     decisionRounds =
         penaltyUpdates = emptyRounds = recoveryMoves = transferredCalculationCount = 0L;
     diagnostics = null;
@@ -136,29 +185,69 @@ public final class GuidedLocalSearchDecider<Solution_>
     focusSwitches = 0;
     focusSteps = focusPenaltyUpdates = 0;
     penaltyTables.clear();
-    calibrations.clear();
+    learning = null;
+    state = SearchState.NORMAL;
+    epochStartScore = epochBestScore = null;
+    excursionSteps = repairSteps = 0;
+    excursionsStarted =
+        excursionsRecovered = totalExcursionSteps = totalRepairSteps = retryExhaustions = 0;
+    repairExhausted = false;
+    controllerDiagnostics = null;
+    if (selectionContext != null) selectionContext.clear();
     repository.solvingStarted(solverScope);
   }
 
   @Override
   public void phaseStarted(LocalSearchPhaseScope<Solution_> phaseScope) {
+    resetObservationCounters(phaseScope.getSolverScope().getScoreDefinition().getLevelsSize());
+    if (selectionContext != null) selectionContext.clear();
+    try {
+      startRepositoryPhase(phaseScope);
+      initializePhase(phaseScope);
+    } catch (RuntimeException | Error failure) {
+      solvingError(phaseScope.getSolverScope(), failure);
+      throw failure;
+    }
+  }
+
+  private void startRepositoryPhase(LocalSearchPhaseScope<Solution_> phaseScope) {
+    if (repositoryPhaseScope != null) {
+      throw new IllegalStateException("The GLS move repository already has an active phase.");
+    }
+    // A repository can acquire resources before its phase-start callback fails.
+    repositoryPhaseScope = phaseScope;
     repository.phaseStarted(phaseScope);
+  }
+
+  private void endRepositoryPhase() {
+    var phaseScope = repositoryPhaseScope;
+    if (phaseScope == null) return;
+    // Cleanup is attempted once even if the callback itself throws.
+    repositoryPhaseScope = null;
+    repository.phaseEnded(phaseScope);
+  }
+
+  private void initializePhase(LocalSearchPhaseScope<Solution_> phaseScope) {
     penaltyTables.clear();
-    calibrations.clear();
     int levelCount = phaseScope.getSolverScope().getScoreDefinition().getLevelsSize();
     for (int level = 0; level < levelCount; level++) {
       penaltyTables.add(new GuidedLocalSearchPenaltyTable<>());
     }
-    resetCalibrations();
+    resetLearning();
     guidanceVersion = 0;
+    hardLevelCount = phaseScope.getSolverScope().getScoreDefinition().getFeasibleLevelsSize();
     initializeFocus(phaseScope);
     focusSwitches = 0;
     decisionRounds =
         penaltyUpdates = emptyRounds = recoveryMoves = transferredCalculationCount = 0L;
     diagnostics = null;
+    controllerDiagnostics = null;
+    excursionsStarted =
+        excursionsRecovered = totalExcursionSteps = totalRepairSteps = retryExhaustions = 0;
     resetOnPendingMove = false;
     featureResetVersion = 0;
     tracker = newTracker(phaseScope.getScoreDirector());
+    publishOriginPriorities();
     if (moveThreadCount == 0) {
       return;
     }
@@ -189,8 +278,6 @@ public final class GuidedLocalSearchDecider<Solution_>
     } catch (RuntimeException | Error failure) {
       try {
         executor.shutdownNow();
-        tracker.close();
-        tracker = null;
       } catch (RuntimeException | Error cleanup) {
         if (cleanup != failure) failure.addSuppressed(cleanup);
       }
@@ -198,33 +285,61 @@ public final class GuidedLocalSearchDecider<Solution_>
     }
   }
 
-  private void resetCalibrations() {
-    calibrations.clear();
+  private void resetObservationCounters(int levels) {
+    attemptedCandidates = doableCandidates = admissibleCandidates = 0L;
+    penaltyUpdatesByLevel = new long[levels];
+    penalizedFeaturesByLevel = new long[levels];
+    committedMovesByFocusLevel = new long[levels];
+    committedMovesByState = new long[SearchState.values().length];
+    committedMovesByReason = new long[AcceptanceReason.values().length];
+    priorEligibleOriginProbes = priorEmittedOrigins = priorOrdinaryOrigins = 0L;
+    evaluatedAcceptanceReason = selectedAcceptanceReason = null;
+    selectedState = null;
+    selectedFocusLevel = -1;
+  }
+
+  private void cacheAndClearOriginDiagnostics() {
+    if (selectionContext == null) return;
+    var origins = selectionContext.getDiagnostics();
+    priorEligibleOriginProbes += origins.eligibleOriginProbes();
+    priorEmittedOrigins += origins.emittedOrigins();
+    priorOrdinaryOrigins += origins.ordinaryOrigins();
+    selectionContext.clear();
+  }
+
+  private void resetLearning() {
+    var overrides = new ArrayList<BigDecimal>(penaltyTables.size());
     for (int level = 0; level < penaltyTables.size(); level++) {
       BigDecimal override = null;
       for (var config : levelScaleOverrides) {
         if (config.getScoreLevelIndex() == level) override = config.getScale();
       }
-      calibrations.add(new GuidedLocalSearchScale.Calibration(override));
+      overrides.add(override);
     }
+    learning = new GuidedLocalSearchLearning(overrides);
   }
 
   private GuidedLocalSearchFeatureTracker<Solution_, Object> newTracker(
       InnerScoreDirector<Solution_, ?> director) {
-    if (allLevels()) {
-      return GuidedLocalSearchFeatureTracker.attachAutomatic(
-          director,
-          provider,
-          snapshots(),
-          tracker == null ? null : tracker.identityRegistry(),
-          penaltyTables.size() - 1);
-    }
-    return GuidedLocalSearchFeatureTracker.attach(
-        director, provider, penalties().snapshot(), fixedTarget);
+    var created =
+        GuidedLocalSearchFeatureTracker.attachAutomatic(
+            director,
+            provider,
+            snapshots(),
+            tracker == null ? null : tracker.identityRegistry(),
+            allLevels() ? penaltyTables.size() - 1 : fixedTarget,
+            automaticEnabled(),
+            automaticListOwnershipEnabled);
+    created.updateLearning(learning.snapshot());
+    return created;
   }
 
   private boolean allLevels() {
     return guidanceMode == GuidedLocalSearchGuidanceMode.ALL_LEVELS;
+  }
+
+  private boolean automaticEnabled() {
+    return featureComposition != GuidedLocalSearchFeatureComposition.CUSTOM;
   }
 
   private GuidedLocalSearchPenaltyTable<Object> penalties() {
@@ -236,14 +351,13 @@ public final class GuidedLocalSearchDecider<Solution_>
   }
 
   private GuidedLocalSearchScale scale() {
-    return allLevels() ? calibrations.get(focusLevel).scale() : GuidedLocalSearchScale.ONE;
+    return learning.snapshot().scales().get(focusLevel).dividedBy(4);
   }
 
   private GuidedLocalSearchNumber aggregate(
       GuidedLocalSearchFeatureTracker<Solution_, Object> featureTracker,
       int level,
       GuidedLocalSearchScale scale) {
-    if (!allLevels()) return featureTracker.aggregate();
     var guidance = featureTracker.aggregates();
     return guidance
         .automatic()
@@ -253,40 +367,98 @@ public final class GuidedLocalSearchDecider<Solution_>
   }
 
   private void updateTrackerPenalties() {
-    if (allLevels()) tracker.updatePenalties(snapshots());
-    else tracker.updatePenalties(penalties().snapshot());
+    tracker.updatePenalties(snapshots());
     guidanceVersion = Math.incrementExact(guidanceVersion);
+    publishOriginPriorities();
+  }
+
+  private void pruneInactivePenaltyMetadata() {
+    for (int level = 0; level < penaltyTables.size(); level++) {
+      penaltyTables
+          .get(level)
+          .pruneInactive(tracker.automaticFeatures(), tracker.customFeatures(level));
+    }
+  }
+
+  private void publishOriginPriorities() {
+    if (selectionContext != null) selectionContext.publish(tracker.originPriorities(focusLevel));
   }
 
   private void initializeFocus(LocalSearchPhaseScope<Solution_> phaseScope) {
-    var score = phaseScope.getLastCompletedStepScope().getScore().raw();
-    feasibleSeen = score.isFeasible();
-    int initial = fixedTarget;
-    if (allLevels()) {
-      initial = penaltyTables.size() - 1;
-      var levels = score.toLevelNumbers();
-      for (int i = 0;
-          i < phaseScope.getSolverScope().getScoreDefinition().getFeasibleLevelsSize();
-          i++) {
-        if (GuidedLocalSearchNumber.of(levels[i]).signum() < 0) {
-          initial = i;
-          break;
-        }
-      }
-    }
-    setFocus(initial);
+    var score = phaseScope.getLastCompletedStepScope().getScore();
+    state = SearchState.NORMAL;
+    excursionSteps = repairSteps = 0;
+    excursionBecameInfeasible = repairExhausted = false;
+    setFocus(allLevels() ? firstViolatedHardLevelOrLast(score) : fixedTarget, score);
   }
 
-  private void setFocus(int level) {
+  private int firstViolatedHardLevelOrLast(InnerScore<?> score) {
+    var levels = score.raw().toLevelNumbers();
+    for (int level = 0; level < hardLevelCount; level++) {
+      if (GuidedLocalSearchNumber.of(levels[level]).signum() < 0) return level;
+    }
+    return penaltyTables.size() - 1;
+  }
+
+  private void setFocus(int level, InnerScore<?> currentScore) {
     if (focusLevel != level) focusSwitches++;
     focusLevel = level;
     focusSteps = focusPenaltyUpdates = 0;
+    epochStartScore = epochBestScore = currentScore;
     comparator = new GuidedLocalSearchScoreComparator(level, penaltyFactor);
     guidanceVersion = Math.incrementExact(guidanceVersion);
   }
 
-  private void advanceFocus() {
-    setFocus(focusLevel == 0 ? penaltyTables.size() - 1 : focusLevel - 1);
+  private boolean advanceStagnantFocus(InnerScore<?> currentScore) {
+    if (state == SearchState.REPAIR) return false;
+    int nextFocus = allLevels() ? Math.max(0, focusLevel - 1) : fixedTarget;
+    if (state == SearchState.EXCURSION) {
+      if (!allLevels() || nextFocus == focusLevel) return false;
+      setFocus(nextFocus, currentScore);
+      return true;
+    }
+    if (nextFocus < hardLevelCount) {
+      state = SearchState.EXCURSION;
+      excursionSteps = repairSteps = 0;
+      excursionBecameInfeasible = !currentScore.raw().isFeasible();
+      excursionsStarted++;
+    } else if (!allLevels() || nextFocus == focusLevel) {
+      return false;
+    }
+    setFocus(nextFocus, currentScore);
+    return true;
+  }
+
+  private void finishFocusEpoch(InnerScore<?> currentScore) {
+    if (comparePrefix(epochBestScore, epochStartScore, focusLevel + 1) > 0
+        || !advanceStagnantFocus(currentScore)) {
+      setFocus(focusLevel, currentScore);
+    }
+  }
+
+  private void enterRepair(InnerScore<?> currentScore) {
+    state = SearchState.REPAIR;
+    repairSteps = 0;
+    setFocus(allLevels() ? firstViolatedHardLevelOrLast(currentScore) : fixedTarget, currentScore);
+  }
+
+  private void recoverFeasibility(InnerScore<?> currentScore) {
+    excursionsRecovered++;
+    state = SearchState.NORMAL;
+    excursionBecameInfeasible = false;
+    setFocus(allLevels() ? penaltyTables.size() - 1 : fixedTarget, currentScore);
+  }
+
+  private static int comparePrefix(InnerScore<?> left, InnerScore<?> right, int levelCount) {
+    var leftLevels = left.raw().toLevelNumbers();
+    var rightLevels = right.raw().toLevelNumbers();
+    for (int level = 0; level < levelCount; level++) {
+      int comparison =
+          GuidedLocalSearchNumber.of(leftLevels[level])
+              .compareTo(GuidedLocalSearchNumber.of(rightLevels[level]));
+      if (comparison != 0) return comparison;
+    }
+    return 0;
   }
 
   @Override
@@ -307,91 +479,115 @@ public final class GuidedLocalSearchDecider<Solution_>
         stepScope.setNoStepReason(NoStepReason.TERMINATED);
         return;
       }
+      if (repairExhausted) {
+        stepScope.setNoStepReason(NoStepReason.EXCURSION_REPAIR_EXHAUSTED);
+        return;
+      }
       var pending = stepScope.getPhaseScope().getSolverScope().consumePendingMove();
       if (pending != null) {
         resetOnPendingMove = pending.requiresReset();
-        var score =
-            stepScope.getScoreDirector().executeTemporaryMove(pending.move(), assertFromScratch);
+        var score = scoreDirector.executeTemporaryMove(pending.move(), assertFromScratch);
         stepScope.getPhaseScope().addMoveEvaluationCount(pending.move(), 1L);
         stepScope.setSelectedMoveCount(1L);
-        select(stepScope, new Candidate<>(pending.move(), score, GuidedLocalSearchNumber.ZERO, 0));
+        select(
+            stepScope,
+            new Candidate<>(
+                pending.move(),
+                score,
+                GuidedLocalSearchNumber.ZERO,
+                GuidedLocalSearchFeatureTracker.AutomaticDelta.EMPTY,
+                true),
+            AcceptanceReason.PENDING_MOVE);
         return;
       }
       InnerScore<?> currentScore = stepScope.getPhaseScope().getLastCompletedStepScope().getScore();
-      if (allLevels()) tracker.markBaseline();
+      tracker.markBaseline();
       var currentPenalty = aggregate(tracker, focusLevel, scale());
       if (assertFromScratch) tracker.assertFromScratch();
       int unproductiveRounds = 0;
-      int emptyFocusLevels = 0;
+      int decisionPenaltyUpdates = 0;
+      int transitionsWithoutPenalty = 0;
       while (!terminated(stepScope)) {
-        var result = runRound(stepScope, currentScore, currentPenalty, false, null);
+        var result = runRound(stepScope, currentScore, currentPenalty);
         if (result.terminated()) {
           stepScope.setNoStepReason(NoStepReason.TERMINATED);
           return;
         }
         if (result.selected() != null) {
-          select(stepScope, result.selected());
+          select(stepScope, result.selected(), evaluatedAcceptanceReason);
           return;
         }
-        if (result.retained() == null) {
+        if (!result.admissible()) {
           emptyRounds++;
-          if (searchMode == GuidedLocalSearchSearchMode.EXHAUSTIVE) {
-            stepScope.setNoStepReason(NoStepReason.NO_ADMISSIBLE_MOVE);
-            return;
+          if (searchMode == GuidedLocalSearchSearchMode.SAMPLED
+              && ++unproductiveRounds < maxUnproductiveRounds) continue;
+          boolean canEscalate = allLevels() ? result.valid() : result.prefixAdmissible();
+          if (canEscalate && transitionsWithoutPenalty < penaltyTables.size() + 2) {
+            if (!awaitQuiescence(stepScope)) return;
+            if (advanceStagnantFocus(currentScore)) {
+              transitionsWithoutPenalty++;
+              unproductiveRounds = 0;
+              publishOriginPriorities();
+              currentPenalty = aggregate(tracker, focusLevel, scale());
+              continue;
+            }
           }
-          if (++unproductiveRounds >= maxUnproductiveRounds) {
-            stepScope.setNoStepReason(NoStepReason.SAMPLE_EXHAUSTED);
-            return;
-          }
-          continue;
+          finishWithoutMove(
+              stepScope,
+              searchMode == GuidedLocalSearchSearchMode.EXHAUSTIVE
+                  ? NoStepReason.NO_ADMISSIBLE_MOVE
+                  : NoStepReason.SAMPLE_EXHAUSTED);
+          return;
         }
         unproductiveRounds = 0;
-        if (!awaitQuiescence(stepScope)) return;
-        int incrementedFeatures;
-        if (allLevels()) {
-          var scale = calibrations.get(focusLevel).freezeAtPenaltyUpdate();
-          incrementedFeatures =
-              penalties()
-                  .incrementMaximumUtility(
-                      tracker.automaticFeatures(), tracker.customFeatures(focusLevel), scale);
-        } else {
-          incrementedFeatures = penalties().incrementMaximumUtility(tracker.activeFeatures());
+        if (decisionPenaltyUpdates >= maxPenaltyUpdatesPerStep) {
+          retryExhaustions++;
+          finishWithoutMove(stepScope, NoStepReason.GUIDED_RETRY_EXHAUSTED);
+          return;
         }
+        if (!awaitQuiescence(stepScope)) return;
+        // Workers are quiescent: publish learning before calculating this penalty batch.
+        pruneInactivePenaltyMetadata();
+        tracker.updateLearning(learning.publish(tracker.automaticFeatures().keySet(), snapshots()));
+        guidanceVersion = Math.incrementExact(guidanceVersion);
+        int incrementedFeatures =
+            penalties()
+                .incrementMaximumUtility(
+                    tracker.automaticFeatures(focusLevel),
+                    tracker.customFeaturesForPenaltyUpdate(focusLevel),
+                    scale(),
+                    stepScope.getWorkingRandom().acceptorUsage());
         if (incrementedFeatures == 0) {
-          if (allLevels() && ++emptyFocusLevels < penaltyTables.size()) {
-            advanceFocus();
+          if (state != SearchState.REPAIR
+              && allLevels()
+              && focusLevel > 0
+              && ++transitionsWithoutPenalty <= penaltyTables.size()) {
+            if (state == SearchState.NORMAL) advanceStagnantFocus(currentScore);
+            else setFocus(focusLevel - 1, currentScore);
+            publishOriginPriorities();
             currentPenalty = aggregate(tracker, focusLevel, scale());
             continue;
           }
-          stepScope.setNoStepReason(NoStepReason.NO_PENALIZABLE_FEATURES);
+          finishWithoutMove(stepScope, NoStepReason.NO_PENALIZABLE_FEATURES);
           return;
         }
         penaltyUpdates++;
+        penaltyUpdatesByLevel[focusLevel]++;
+        penalizedFeaturesByLevel[focusLevel] += incrementedFeatures;
+        decisionPenaltyUpdates++;
         focusPenaltyUpdates++;
+        transitionsWithoutPenalty = 0;
         LOGGER.debug(
-            "{}GLS penalty update ({}), step ({}), focus level ({}), penalized features ({}), search mode ({}).",
+            "{}GLS penalty update ({}), step ({}), focus level ({}), penalized features ({}), state ({}).",
             logIndentation,
             penalties().version(),
             stepScope.getStepIndex(),
             focusLevel,
             incrementedFeatures,
-            searchMode);
+            state);
+        if (focusPenaltyUpdates >= focusPenaltyUpdateLimit) finishFocusEpoch(currentScore);
         updateTrackerPenalties();
         currentPenalty = aggregate(tracker, focusLevel, scale());
-        var escape =
-            runRound(stepScope, currentScore, currentPenalty, true, result.retained().move());
-        if (escape.terminated()) {
-          stepScope.setNoStepReason(NoStepReason.TERMINATED);
-        } else if (escape.selected() != null) {
-          select(stepScope, escape.selected());
-        } else {
-          // A deterministic retained/re-enumerated move must remain admissible on unchanged state.
-          throw new IllegalStateException(
-              "Guided Local Search escape lost its previously admissible move at step ("
-                  + stepScope.getStepIndex()
-                  + "). Check move replay and feature-provider determinism.");
-        }
-        return;
       }
       stepScope.setNoStepReason(NoStepReason.TERMINATED);
     } finally {
@@ -399,22 +595,25 @@ public final class GuidedLocalSearchDecider<Solution_>
     }
   }
 
+  private void finishWithoutMove(LocalSearchStepScope<Solution_> stepScope, NoStepReason reason) {
+    stepScope.setNoStepReason(
+        state == SearchState.REPAIR ? NoStepReason.EXCURSION_REPAIR_EXHAUSTED : reason);
+  }
+
   private RoundResult<Solution_> runRound(
       LocalSearchStepScope<Solution_> stepScope,
       InnerScore<?> currentScore,
-      GuidedLocalSearchNumber currentPenalty,
-      boolean escape,
-      Move<Solution_> retainedMove) {
+      GuidedLocalSearchNumber currentPenalty) {
     decisionRounds++;
     LOGGER.debug(
-        "{}GLS round ({}), step ({}), focus level ({}), guidance version ({}), penalty version ({}), escape ({}).",
+        "{}GLS round ({}), step ({}), focus level ({}), guidance version ({}), penalty version ({}), state ({}).",
         logIndentation,
         decisionRounds,
         stepScope.getStepIndex(),
         focusLevel,
         guidanceVersion,
         penalties().version(),
-        escape);
+        state);
     var context =
         new RoundContext(
             stepScope.getStepIndex(),
@@ -423,43 +622,51 @@ public final class GuidedLocalSearchDecider<Solution_>
             guidanceVersion,
             focusLevel,
             scale(),
-            snapshots());
+            snapshots(),
+            learning.snapshot());
     Iterator<Move<Solution_>> iterator = repository.iterator();
-    RecoveryIterator recovery = null;
-    if (escape && searchMode == GuidedLocalSearchSearchMode.SAMPLED) {
-      recovery = new RecoveryIterator(iterator, Objects.requireNonNull(retainedMove));
-      iterator = recovery;
-    }
     long limit = searchMode == GuidedLocalSearchSearchMode.SAMPLED ? sampleSize : Long.MAX_VALUE;
     long attempted = 0;
     int inPlay = 0;
-    Candidate<Solution_> retained = null;
+    boolean admissible = false;
+    boolean valid = false;
+    boolean prefixAdmissible = false;
     boolean sourceExhausted = false;
     while (true) {
-      if (terminated(stepScope)) return new RoundResult<>(null, retained, true);
+      if (terminated(stepScope))
+        return new RoundResult<>(null, admissible, valid, prefixAdmissible, true);
       Candidate<Solution_> candidate;
       if (pipeline == null) {
         if (attempted >= limit || !iterator.hasNext()) break;
         var move = iterator.next();
+        boolean ordinaryOrigin =
+            selectionContext == null || selectionContext.isOrdinaryCandidate(move);
         attempted++;
-        candidate = evaluateSequential(stepScope, move);
+        attemptedCandidates++;
+        candidate = evaluateSequential(stepScope, move, ordinaryOrigin);
       } else {
         while (inPlay < bufferSize && attempted < limit && !sourceExhausted) {
           if (!iterator.hasNext()) {
             sourceExhausted = true;
             break;
           }
-          pipeline.submit(nextMoveIndex, iterator.next(), context);
+          var move = iterator.next();
+          boolean ordinaryOrigin =
+              selectionContext == null || selectionContext.isOrdinaryCandidate(move);
+          pipeline.submit(nextMoveIndex, move, new CandidateContext(context, ordinaryOrigin));
           nextMoveIndex = Math.incrementExact(nextMoveIndex);
           attempted++;
+          attemptedCandidates++;
           inPlay++;
         }
         if (inPlay == 0) break;
         try {
           var result = pipeline.take();
-          if (result == null) return new RoundResult<>(null, retained, true);
+          if (result == null)
+            return new RoundResult<>(null, admissible, valid, prefixAdmissible, true);
           inPlay--;
-          if (!context.equals(result.context())) {
+          var candidateContext = (CandidateContext) result.context();
+          if (candidateContext == null || !context.equals(candidateContext.round())) {
             throw new IllegalStateException(
                 "Guided Local Search received a stale candidate generation.");
           }
@@ -478,29 +685,42 @@ public final class GuidedLocalSearchDecider<Solution_>
                   result.move(),
                   result.score(),
                   metadata == null ? GuidedLocalSearchNumber.ZERO : metadata.penalty(),
-                  metadata == null ? 0 : metadata.automaticDifferenceCount());
+                  metadata == null
+                      ? GuidedLocalSearchFeatureTracker.AutomaticDelta.EMPTY
+                      : metadata.automaticDelta(),
+                  candidateContext.ordinaryOrigin());
         } catch (InterruptedException interrupted) {
           Thread.currentThread().interrupt();
-          return new RoundResult<>(null, retained, true);
+          return new RoundResult<>(null, admissible, valid, prefixAdmissible, true);
         }
       }
       if (candidate == null) continue;
+      doableCandidates++;
       stepScope.getPhaseScope().addMoveEvaluationCount(candidate.move(), 1L);
       if (!candidate.score().isStructurallyFlawed()) {
         stepScope.setSelectedMoveCount(stepScope.getSelectedMoveCount() + 1L);
       }
       if (!candidate.score().isFullyAssigned() || candidate.score().isStructurallyFlawed())
         continue;
-      if (allLevels()) observeCalibration(candidate, currentScore);
-      int prefixComparison =
-          allLevels() ? 0 : comparator.compareProtectedPrefix(candidate.score(), currentScore);
-      if (prefixComparison < 0) continue;
-      if (retained == null) retained = candidate;
-      if (escape
-          || prefixComparison > 0
-          || compareOriginal(
+      valid = true;
+      learning.observe(
+          candidate.automaticDelta(),
+          candidate.score().raw().toLevelNumbers(),
+          currentScore.raw().toLevelNumbers(),
+          candidate.ordinaryOrigin());
+      if (comparator.compareProtectedPrefix(candidate.score(), currentScore) < 0) continue;
+      prefixAdmissible = true;
+      if (state != SearchState.EXCURSION
+          && (comparePrefix(candidate.score(), currentScore, hardLevelCount) < 0
+              || (currentScore.raw().isFeasible() && !candidate.score().raw().isFeasible())))
+        continue;
+      admissible = true;
+      admissibleCandidates++;
+      boolean aspiration =
+          compareOriginal(
                   candidate.score(), stepScope.getPhaseScope().getSolverScope().getBestScore())
-              > 0
+              > 0;
+      if (aspiration
           || comparator.compare(
                   candidate.score(),
                   candidate.penalty(),
@@ -508,42 +728,35 @@ public final class GuidedLocalSearchDecider<Solution_>
                   currentPenalty,
                   context.scale().denominator())
               > 0) {
-        if (recovery != null && candidate.move() == retainedMove) recoveryMoves++;
-        return new RoundResult<>(candidate, retained, false);
+        evaluatedAcceptanceReason =
+            aspiration
+                ? AcceptanceReason.ORIGINAL_BEST_ASPIRATION
+                : AcceptanceReason.GUIDED_IMPROVEMENT;
+        return new RoundResult<>(candidate, true, true, true, false);
       }
     }
-    return new RoundResult<>(null, retained, false);
-  }
-
-  private void observeCalibration(Candidate<Solution_> candidate, InnerScore<?> currentScore) {
-    var currentLevels = currentScore.raw().toLevelNumbers();
-    var candidateLevels = candidate.score().raw().toLevelNumbers();
-    for (int level = 0; level < calibrations.size(); level++) {
-      calibrations
-          .get(level)
-          .observe(
-              GuidedLocalSearchNumber.of(candidateLevels[level])
-                  .subtract(GuidedLocalSearchNumber.of(currentLevels[level])),
-              candidate.automaticDifferenceCount());
-    }
+    return new RoundResult<>(null, admissible, valid, prefixAdmissible, false);
   }
 
   private Candidate<Solution_> evaluateSequential(
-      LocalSearchStepScope<Solution_> stepScope, Move<Solution_> move) {
+      LocalSearchStepScope<Solution_> stepScope, Move<Solution_> move, boolean ordinaryOrigin) {
     var director = stepScope.getScoreDirector();
     int moveIndex = nextMoveIndex;
     nextMoveIndex = Math.incrementExact(nextMoveIndex);
     if (move instanceof AbstractSelectorBasedMove<Solution_> selector
         && !selector.isMoveDoable(director)) return null;
     var holder = new GuidedLocalSearchNumber[] {GuidedLocalSearchNumber.ZERO};
-    var differenceCount = new int[1];
+    var automaticDelta =
+        new GuidedLocalSearchFeatureTracker.AutomaticDelta[] {
+          GuidedLocalSearchFeatureTracker.AutomaticDelta.EMPTY
+        };
     var score =
         director.executeTemporaryMove(
             move,
             view -> {
               if (validCandidate(director)) {
                 holder[0] = aggregate(tracker, focusLevel, scale());
-                if (allLevels()) differenceCount[0] = tracker.automaticDifferenceCount();
+                automaticDelta[0] = tracker.automaticDelta();
                 if (assertFromScratch) tracker.assertFromScratch();
               }
             },
@@ -556,7 +769,7 @@ public final class GuidedLocalSearchDecider<Solution_>
               -1, stepScope.getPhaseScope().getPhaseIndex(), stepScope.getStepIndex(), moveIndex));
     }
     if (assertFromScratch) tracker.assertFromScratch();
-    return new Candidate<>(move, score, holder[0], differenceCount[0]);
+    return new Candidate<>(move, score, holder[0], automaticDelta[0], ordinaryOrigin);
   }
 
   private static boolean validCandidate(InnerScoreDirector<?, ?> director) {
@@ -577,7 +790,13 @@ public final class GuidedLocalSearchDecider<Solution_>
     return ((InnerScore) left).compareTo(right);
   }
 
-  private void select(LocalSearchStepScope<Solution_> scope, Candidate<Solution_> candidate) {
+  private void select(
+      LocalSearchStepScope<Solution_> scope,
+      Candidate<Solution_> candidate,
+      AcceptanceReason acceptanceReason) {
+    selectedFocusLevel = focusLevel;
+    selectedState = state;
+    selectedAcceptanceReason = acceptanceReason;
     scope.setStep(candidate.move());
     scope.setScore(candidate.score());
     scope.setAcceptedMoveCount(scope.getAcceptedMoveCount() + 1L);
@@ -612,42 +831,86 @@ public final class GuidedLocalSearchDecider<Solution_>
 
   @Override
   public void stepEnded(LocalSearchStepScope<Solution_> scope) {
+    // Capture at selection; adoption and the following epoch transition may change focus/state.
+    if (selectedAcceptanceReason != null) {
+      committedMovesByFocusLevel[selectedFocusLevel]++;
+      committedMovesByState[selectedState.ordinal()]++;
+      committedMovesByReason[selectedAcceptanceReason.ordinal()]++;
+      selectedAcceptanceReason = null;
+    }
     repository.stepEnded(scope);
     boolean adopted = resetOnPendingMove;
     if (resetOnPendingMove || (resetPenaltiesOnNewBest && scope.getBestScoreImproved())) {
       if (awaitQuiescence(scope)) {
-        penaltyTables.forEach(GuidedLocalSearchPenaltyTable::clear);
-        updateTrackerPenalties();
+        if (resetOnPendingMove) penaltyTables.forEach(GuidedLocalSearchPenaltyTable::clear);
+        else penaltyTables.forEach(GuidedLocalSearchPenaltyTable::clearCounts);
         if (resetOnPendingMove) {
           tracker.reset();
-          resetCalibrations();
+          resetLearning();
+          tracker.updateLearning(learning.snapshot());
           featureResetVersion = Math.incrementExact(featureResetVersion);
-          // Adoption changes the incumbent but is still one real step.
           var phaseScope = scope.getPhaseScope();
           phaseScope.setLastCompletedStepScope(scope);
           initializeFocus(phaseScope);
-          repository.phaseEnded(phaseScope);
-          repository.phaseStarted(phaseScope);
+          cacheAndClearOriginDiagnostics();
+          endRepositoryPhase();
+          startRepositoryPhase(phaseScope);
         }
+        pruneInactivePenaltyMetadata();
+        updateTrackerPenalties();
       }
       resetOnPendingMove = false;
     }
-    if (allLevels() && !adopted) {
+    if (!adopted) {
       focusSteps++;
-      boolean firstFeasible = !feasibleSeen && scope.getScore().raw().isFeasible();
-      if (firstFeasible
-          || focusSteps >= focusStepLimit
-          || focusPenaltyUpdates >= focusPenaltyUpdateLimit) {
-        if (awaitQuiescence(scope)) {
-          if (firstFeasible) {
-            feasibleSeen = true;
-            setFocus(penaltyTables.size() - 1);
-          } else {
-            advanceFocus();
-          }
+      if (comparePrefix(scope.getScore(), epochBestScore, focusLevel + 1) > 0)
+        epochBestScore = scope.getScore();
+      boolean feasible = scope.getScore().raw().isFeasible();
+      if (state == SearchState.EXCURSION) {
+        excursionSteps++;
+        totalExcursionSteps++;
+        excursionBecameInfeasible |= !feasible;
+      } else if (state == SearchState.REPAIR) {
+        repairSteps++;
+        totalRepairSteps++;
+      }
+      boolean transition =
+          (state != SearchState.NORMAL && feasible && excursionBecameInfeasible)
+              || (state == SearchState.EXCURSION && excursionSteps >= excursionStepLimit)
+              || (state == SearchState.REPAIR
+                  && (repairSteps >= excursionRepairStepLimit
+                      || (allLevels()
+                          && firstViolatedHardLevelOrLast(scope.getScore()) != focusLevel)))
+              || (allLevels()
+                  && state == SearchState.NORMAL
+                  && feasible
+                  && focusLevel < hardLevelCount)
+              || focusSteps >= focusStepLimit;
+      if (transition && awaitQuiescence(scope)) {
+        if (state != SearchState.NORMAL
+            && feasible
+            && (excursionBecameInfeasible || excursionSteps >= excursionStepLimit)) {
+          recoverFeasibility(scope.getScore());
+        } else if (state == SearchState.EXCURSION && excursionSteps >= excursionStepLimit) {
+          enterRepair(scope.getScore());
+        } else if (state == SearchState.REPAIR) {
+          if (repairSteps >= excursionRepairStepLimit) repairExhausted = true;
+          else
+            setFocus(
+                allLevels() ? firstViolatedHardLevelOrLast(scope.getScore()) : fixedTarget,
+                scope.getScore());
+        } else if (allLevels()
+            && state == SearchState.NORMAL
+            && feasible
+            && focusLevel < hardLevelCount) {
+          setFocus(penaltyTables.size() - 1, scope.getScore());
+        } else {
+          finishFocusEpoch(scope.getScore());
         }
+        publishOriginPriorities();
       }
     }
+    if (selectionContext != null && awaitQuiescence(scope)) publishOriginPriorities();
     if (assertFromScratch) tracker.assertFromScratch();
   }
 
@@ -655,9 +918,15 @@ public final class GuidedLocalSearchDecider<Solution_>
   public void phaseEnded(LocalSearchPhaseScope<Solution_> phaseScope) {
     Throwable failure = null;
     try {
-      repository.phaseEnded(phaseScope);
+      controllerDiagnostics = snapshotControllerDiagnostics();
     } catch (RuntimeException | Error error) {
       failure = error;
+    }
+    try {
+      endRepositoryPhase();
+    } catch (RuntimeException | Error error) {
+      if (failure == null) failure = error;
+      else if (failure != error) failure.addSuppressed(error);
     }
     if (pipeline != null) {
       try {
@@ -683,6 +952,7 @@ public final class GuidedLocalSearchDecider<Solution_>
         tracker = null;
       }
     }
+    cacheAndClearOriginDiagnostics();
     if (failure instanceof Error error) throw error;
     if (failure != null) throw (RuntimeException) failure;
     LOGGER.info(
@@ -710,6 +980,11 @@ public final class GuidedLocalSearchDecider<Solution_>
       }
       pipeline = null;
     }
+    try {
+      endRepositoryPhase();
+    } catch (RuntimeException | Error cleanup) {
+      if (cleanup != failure) failure.addSuppressed(cleanup);
+    }
     if (tracker != null) {
       try {
         tracker.close();
@@ -718,6 +993,7 @@ public final class GuidedLocalSearchDecider<Solution_>
       }
       tracker = null;
     }
+    cacheAndClearOriginDiagnostics();
   }
 
   @Override
@@ -744,7 +1020,132 @@ public final class GuidedLocalSearchDecider<Solution_>
   }
 
   public GuidedLocalSearchScale getAutomaticScale(int level) {
-    return calibrations.get(level).scale();
+    return learning.snapshot().scales().get(level);
+  }
+
+  public ControllerDiagnostics getControllerDiagnostics() {
+    return tracker == null && controllerDiagnostics != null
+        ? controllerDiagnostics
+        : snapshotControllerDiagnostics();
+  }
+
+  private ControllerDiagnostics snapshotControllerDiagnostics() {
+    var active = tracker == null ? java.util.Set.of() : tracker.automaticFeatures().keySet();
+    var allActive = new java.util.HashSet<Object>(active);
+    if (tracker != null) {
+      for (int level = 0; level < penaltyTables.size(); level++)
+        allActive.addAll(tracker.customFeatures(level).keySet());
+    }
+    var penalized = new java.util.HashSet<Object>();
+    penaltyTables.forEach(table -> penalized.addAll(table.snapshot().counts().keySet()));
+    penalized.removeAll(allActive);
+    var learned = learning == null ? null : learning.snapshot();
+    var origins = selectionContext == null ? null : selectionContext.getDiagnostics();
+    return new ControllerDiagnostics(
+        guidanceMode,
+        featureComposition,
+        penaltyFactor,
+        focusLevel,
+        state,
+        decisionRounds,
+        penaltyUpdates,
+        focusSwitches,
+        excursionsStarted,
+        excursionsRecovered,
+        totalExcursionSteps,
+        totalRepairSteps,
+        retryExhaustions,
+        maxPenaltyUpdatesPerStep,
+        excursionStepLimit,
+        excursionRepairStepLimit,
+        learned == null ? List.of() : learned.scales(),
+        learned == null ? List.of() : learned.calibrated(),
+        learned == null ? 0 : learned.retainedFeatureCount(),
+        active.size(),
+        penalized.size(),
+        attemptedCandidates,
+        doableCandidates,
+        admissibleCandidates,
+        immutableCounts(penaltyUpdatesByLevel),
+        immutableCounts(penalizedFeaturesByLevel),
+        learned == null ? List.of() : learned.scaleObservationCounts(),
+        immutableCounts(committedMovesByFocusLevel),
+        immutableCounts(committedMovesByState),
+        immutableCounts(committedMovesByReason),
+        priorEligibleOriginProbes + (origins == null ? 0L : origins.eligibleOriginProbes()),
+        priorEmittedOrigins + (origins == null ? 0L : origins.emittedOrigins()),
+        priorOrdinaryOrigins + (origins == null ? 0L : origins.ordinaryOrigins()));
+  }
+
+  private static List<Long> immutableCounts(long[] counts) {
+    var snapshot = new ArrayList<Long>(counts.length);
+    for (long count : counts) snapshot.add(count);
+    return List.copyOf(snapshot);
+  }
+
+  public enum AcceptanceReason {
+    ORIGINAL_BEST_ASPIRATION,
+    GUIDED_IMPROVEMENT,
+    PENDING_MOVE
+  }
+
+  public enum SearchState {
+    NORMAL,
+    EXCURSION,
+    REPAIR
+  }
+
+  /**
+   * Candidate counts cover search rounds: attempts include submitted work canceled after selection,
+   * while doable/admissible counts include only coordinator-consumed results. Pending adoptions are
+   * reported separately in committedMovesByReason. Per-state and per-reason lists follow enum
+   * order. scaleObservationCounts contains current published rolling-window sizes, not phase
+   * totals.
+   */
+  public record ControllerDiagnostics(
+      GuidedLocalSearchGuidanceMode guidanceMode,
+      GuidedLocalSearchFeatureComposition featureComposition,
+      BigDecimal penaltyFactor,
+      int focusLevel,
+      SearchState state,
+      long decisionRounds,
+      long penaltyUpdates,
+      long focusSwitches,
+      long excursionsStarted,
+      long excursionsRecovered,
+      long excursionSteps,
+      long repairSteps,
+      long retryExhaustions,
+      int maxPenaltyUpdatesPerStep,
+      int excursionStepLimit,
+      int excursionRepairStepLimit,
+      List<GuidedLocalSearchScale> automaticScales,
+      List<Boolean> calibratedLevels,
+      int retainedLearnedFeatures,
+      int activeAutomaticFeatures,
+      int dormantPenalizedFeatures,
+      long attemptedCandidates,
+      long doableCandidates,
+      long admissibleCandidates,
+      List<Long> penaltyUpdatesByLevel,
+      List<Long> penalizedFeaturesByLevel,
+      List<Integer> scaleObservationCounts,
+      List<Long> committedMovesByFocusLevel,
+      List<Long> committedMovesByState,
+      List<Long> committedMovesByReason,
+      long eligibleOriginProbes,
+      long emittedOrigins,
+      long ordinaryOrigins) {
+    public ControllerDiagnostics {
+      automaticScales = List.copyOf(automaticScales);
+      calibratedLevels = List.copyOf(calibratedLevels);
+      penaltyUpdatesByLevel = List.copyOf(penaltyUpdatesByLevel);
+      penalizedFeaturesByLevel = List.copyOf(penalizedFeaturesByLevel);
+      scaleObservationCounts = List.copyOf(scaleObservationCounts);
+      committedMovesByFocusLevel = List.copyOf(committedMovesByFocusLevel);
+      committedMovesByState = List.copyOf(committedMovesByState);
+      committedMovesByReason = List.copyOf(committedMovesByReason);
+    }
   }
 
   public record Statistics(
@@ -754,10 +1155,15 @@ public final class GuidedLocalSearchDecider<Solution_>
       Move<Solution_> move,
       InnerScore<?> score,
       GuidedLocalSearchNumber penalty,
-      int automaticDifferenceCount) {}
+      GuidedLocalSearchFeatureTracker.AutomaticDelta automaticDelta,
+      boolean ordinaryOrigin) {}
 
   private record RoundResult<Solution_>(
-      Candidate<Solution_> selected, Candidate<Solution_> retained, boolean terminated) {}
+      Candidate<Solution_> selected,
+      boolean admissible,
+      boolean valid,
+      boolean prefixAdmissible,
+      boolean terminated) {}
 
   private record RoundContext(
       int stepIndex,
@@ -766,10 +1172,15 @@ public final class GuidedLocalSearchDecider<Solution_>
       long guidanceVersion,
       int focusLevel,
       GuidedLocalSearchScale scale,
-      List<GuidedLocalSearchPenaltyTable.Snapshot<Object>> snapshots)
+      List<GuidedLocalSearchPenaltyTable.Snapshot<Object>> snapshots,
+      GuidedLocalSearchLearning.Snapshot learning) {}
+
+  private record CandidateContext(RoundContext round, boolean ordinaryOrigin)
       implements MoveEvaluationPipeline.EvaluationContext {}
 
-  private record CandidatePenalty(GuidedLocalSearchNumber penalty, int automaticDifferenceCount)
+  private record CandidatePenalty(
+      GuidedLocalSearchNumber penalty,
+      GuidedLocalSearchFeatureTracker.AutomaticDelta automaticDelta)
       implements MoveEvaluationPipeline.EvaluationMetadata {}
 
   private final class WorkerCollector
@@ -788,18 +1199,18 @@ public final class GuidedLocalSearchDecider<Solution_>
 
     @Override
     public void beforeEvaluation(MoveEvaluationPipeline.EvaluationContext evaluationContext) {
-      var context = (RoundContext) evaluationContext;
+      var context = ((CandidateContext) evaluationContext).round();
       if (resetVersion != context.featureResetVersion()) {
         workerTracker.reset();
         resetVersion = context.featureResetVersion();
         baselineStep = -1;
       }
       if (version != context.guidanceVersion()) {
-        if (allLevels()) workerTracker.updatePenalties(context.snapshots());
-        else workerTracker.updatePenalties(context.snapshots().get(fixedTarget));
+        workerTracker.updatePenalties(context.snapshots());
+        workerTracker.updateLearning(context.learning());
         version = context.guidanceVersion();
       }
-      if (allLevels() && baselineStep != context.stepIndex()) {
+      if (baselineStep != context.stepIndex()) {
         workerTracker.markBaseline();
         baselineStep = context.stepIndex();
       }
@@ -810,45 +1221,16 @@ public final class GuidedLocalSearchDecider<Solution_>
         SolutionView<Solution_> view,
         Move<Solution_> move,
         MoveEvaluationPipeline.EvaluationContext evaluationContext) {
-      var context = (RoundContext) evaluationContext;
+      var context = ((CandidateContext) evaluationContext).round();
       if (!validCandidate(director)) return null;
       var penalty = aggregate(workerTracker, context.focusLevel(), context.scale());
       if (assertFromScratch) workerTracker.assertFromScratch();
-      return new CandidatePenalty(
-          penalty, allLevels() ? workerTracker.automaticDifferenceCount() : 0);
+      return new CandidatePenalty(penalty, workerTracker.automaticDelta());
     }
 
     @Override
     public void close() {
       workerTracker.close();
-    }
-  }
-
-  private final class RecoveryIterator implements Iterator<Move<Solution_>> {
-    private final Iterator<Move<Solution_>> fresh;
-    private final Move<Solution_> retained;
-    private int freshCount;
-    private boolean recovered;
-
-    private RecoveryIterator(Iterator<Move<Solution_>> fresh, Move<Solution_> retained) {
-      this.fresh = fresh;
-      this.retained = retained;
-    }
-
-    @Override
-    public boolean hasNext() {
-      return !recovered;
-    }
-
-    @Override
-    public Move<Solution_> next() {
-      if (recovered) throw new NoSuchElementException();
-      if (freshCount < sampleSize - 1 && fresh.hasNext()) {
-        freshCount++;
-        return fresh.next();
-      }
-      recovered = true;
-      return retained;
     }
   }
 }

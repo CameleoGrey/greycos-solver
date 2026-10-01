@@ -2,8 +2,9 @@
 = Guided Local Search
 
 Guided Local Search (GLS) changes the search objective when ordinary improvement stalls.
-By default, it identifies planning assignments and list relationships automatically.
-Applications can also supply features, such as directed routing arcs, with objective-specific costs.
+By default, it derives features from planning assignments and directed list relationships,
+then estimates their costs from evaluated moves.
+Applications can also supply features with objective-specific costs.
 GLS increases penalties on selected costly features so that subsequent moves favor alternatives.
 These penalties guide move selection; the planning score, retained best solution, score explanations,
 and score-based termination continue to use the original constraints.
@@ -21,114 +22,161 @@ for each business score level. It guides one level `k` at a time:
 
 [source,text]
 ----
-penalty(x) = penaltyFactor * (scale[k] * sum(automaticPenalty[i, k])
-                            + sum(customPenalty[i, k] * customCost[i, k](x)))
-guidedLevel(x) = originalLevel[k](x) - penalty(x)
-automaticUtility(i) = scale[k] / (1 + automaticPenalty[i, k])
-customUtility(i) = customCost[i, k](x) / (1 + customPenalty[i, k])
+penalty[k](x) = penaltyFactor * sum(penaltyCount[i, k] * cost[i, k](x))
+guidedLevel(x) = originalLevel[k](x) - penalty[k](x)
+utility(i, k) = cost[i, k](x) / (1 + penaltyCount[i, k])
 ----
 
+The sum includes the configured automatic and custom feature families.
 Each feature starts with a zero penalty count at every level.
-When a search round finds admissible neighbors but no improving neighbor, GLS increments the count
-of every active, positive-cost feature tied for maximum utility.
+After a complete round with admissible candidates but no accepted move, GLS updates costs and penalties,
+then starts another round under the new guidance.
+Only active, positive-cost features tied for maximum utility can receive a penalty increment.
+If `M` features have positive cost and `T` share maximum utility, the update increments
+`min(T, ceil(M / 16))` distinct features.
+Selection uses stable feature order and the coordinator's seeded random generator.
+For example, a 2,024-way initial tie increments 127 features.
+
 Features no longer present retain their penalty counts for future appearances.
 Counts do not decay. By default, discovering a new original-score best does not clear them.
+A penalty update does not itself accept a move: every committed search move must improve the guided comparison
+or improve the retained original-score best through _aspiration_, while satisfying the current admission rules.
+Equal guided comparisons do not count as improvement.
 
-The guided comparison preserves structural validity and mandatory initialization first.
-It then compares the original score levels above `k`, the guided level at `k`, and the original levels below `k`,
-in that order. The active focus changes over time; there is no permanently protected business-score prefix.
-An admissible candidate improving the original best is accepted through _aspiration_,
-even if its guided value does not improve the incumbent.
-
-The initial focus is the first negative hard level, or the last business level if no hard level is negative.
-After `focusStepLimit` committed moves or `focusPenaltyUpdateLimit` penalty updates,
-the focus moves to the preceding level, wrapping from the first level to the last.
-The defaults are 64 moves and 8 updates.
-The first-ever feasible solution switches the focus to the last level immediately.
-Subsequent departures from and returns to feasibility do not restart that schedule.
-This prevents repeated feasibility recovery from indefinitely postponing hard-level guidance.
-Penalty histories survive focus changes.
-
-For `HardSoftScore`, GLS therefore alternates between hard and soft guidance.
-Search can cross an infeasible region to find a better feasible incumbent, and can continue optimizing softer levels.
-The retained and returned best remains the complete original lexicographic score.
-GLS is a heuristic: this behavior permits such escapes but does not guarantee feasibility or optimality.
-
-`FIXED_TARGET` mode retains the original single-level behavior.
-It requires a custom provider, guides `targetScoreLevelIndex` (the last level by default),
-and rejects moves that worsen an earlier original score level.
-An explicit target with no guidance mode selects `FIXED_TARGET` for compatibility.
-Specifying both `ALL_LEVELS` and a fixed target is invalid.
-
-When upgrading a configuration that supplied a provider but omitted the target,
-set `guidanceMode` to `FIXED_TARGET` to retain its former last-level behavior.
-Leaving both the mode and target unset enables the new automatic, all-level guidance.
+The guided comparison first preserves structural validity and mandatory initialization.
+It compares the original score levels above `k`, the guided level at `k`, and the original levels below `k`,
+in that order. Original-score aspiration is also subject to structural, initialization, protected-prefix,
+and controller-state admission rules.
+A candidate that merely improves the current original score receives no aspiration unless it beats the retained best.
 
 All sixteen built-in integral, decimal, float, and double score types are supported, including bendable scores.
 The target index is zero-based over business score levels; it excludes structural and initialization components.
-Penalty factors, feature costs, comparisons, and utility ties use exact arithmetic.
+Penalty factors, feature costs, comparisons, medians, and utility ties use exact rational arithmetic.
 Fractional penalties remain significant even for integral scores.
 For example, factor `0.1`, count `1`, and cost `3` contribute `0.3` to guidance.
 
-The custom cost-weighted formula and post-penalty escape follow OR-Tools' routing GLS design.
-GreyCOS preserves fractional contributions instead of reproducing OR-Tools' per-feature integer truncation.
-Automatic features and rotating score-level guidance are GreyCOS extensions.
-Matching a coefficient does not imply matching search trajectories.
-
-=== Automatic features and scale
+=== Automatic features and learned costs
 
 For basic variables, a feature identifies the entity, variable, and assigned value.
-For list variables, features identify ownership and directed adjacency, including owner-specific start and end boundaries.
+For list variables, the default features identify directed adjacency and owner-specific start and end boundaries.
+Set `automaticListOwnershipEnabled` to `true` to additionally identify each value's assigned owner.
 Unassigned values use distinct tokens where unassignment is allowed.
 Pinned assignments and immutable prefix interiors are omitted; mutable boundaries remain available.
 Mixed models combine these features. Single-threaded GLS adds no `@PlanningId` requirement;
 move workers retain the usual lookup and rebasing requirements.
 
-Each level's automatic scale is calibrated from up to the first 128 nonzero observations of:
+GLS learns an estimated cost for each automatic feature and score level from temporary candidate evaluations.
+Let `R` be the automatic features removed by a candidate and `A` those added, after canceling transient changes:
 
 [source,text]
 ----
-abs(candidateLevel - incumbentLevel) / max(1, changedAutomaticFeatureCount)
+d = max(size(R), size(A))
+z[k] = (candidateLevel[k] - incumbentLevel[k]) / d
+observation[i, k] = +z[k] for i in R, -z[k] for i in A
+weight[i, k] = clamp(4 + trunc(4 * medianObservation[i, k] / scale[k]), 1, 16)
+cost[i, k] = scale[k] * weight[i, k] / 4
 ----
 
-Here the change count is the symmetric difference between the candidate and incumbent feature sets.
-The scale is the exact median of these observations, taken in consumed candidate order.
-It freezes at the first penalty update for that level.
-With no observations, GLS uses a provisional scale of one; it replaces that scale once at a later penalty boundary
-if observations become available. Positive per-level `levelScale` overrides bypass calibration.
-Calibration uses existing evaluations and causes no extra score calculations.
+A candidate with `d = 0` supplies no cost observation but still advances the event history.
+Otherwise, removing a feature when the score improves raises its estimated cost;
+adding a feature in the same situation lowers its estimated cost.
+The observations are a heuristic attribution of the move's score change, not a decomposition of the constraints.
+
+The observation history covers the last 256 valid, coordinator-consumed candidate events.
+Each feature uses at most its latest eight observations within that history, including zero observations.
+The median of an even number of observations is the arithmetic mean of its middle two values;
+`trunc` truncates toward zero. A feature without an estimate starts with weight `4`.
+At a penalty barrier, features with new observations update their weights.
+Published weights remain available when their observations expire and no new observation replaces them.
+Histories for features that are neither active nor penalized at any level are discarded at publication.
+Custom feature costs come directly from the provider and are not learned or rescaled.
+
+Each level has a separate rolling scale history of at most 256 eligible, nonzero values of `abs(z[k])`.
+Without directed origin selection, every valid consumed candidate is eligible.
+With directed selection, only candidates drawn ordinarily from the origin source calibrate the scale;
+both ordinary and directed candidates supply feature-cost observations.
+The scale starts provisionally at one. Its first empirical median replaces that provisional value directly.
+Later empirical updates are clamped to between half and twice the previously published scale.
+A positive `levelScale` override fixes that level's scale and bypasses calibration.
+It does not disable automatic feature learning.
+
+Learning consumes only structurally valid, fully initialized results used by the coordinator, in candidate order,
+including candidates subsequently rejected by score or controller admission rules.
+Discarded speculative worker results do not contribute observations.
+Costs and scales are published at penalty-update barriers and remain frozen throughout each candidate round.
+The tracker exports changed feature keys without extracting all features for every candidate.
+Learning uses existing score evaluations and does not depend on constraint matches or add score calculations.
 
 [#guidedLocalSearchRounds]
-== Descent, escape, and neighborhood coverage
+== Focus, bounded excursions, and neighborhood coverage
 
-During descent, GLS chooses the first admissible candidate that improves the guided comparison
-or satisfies original-best aspiration. Equal guided comparisons are not descent improvements.
-After updating penalties, it starts a fresh selector iterator and chooses the first admissible neighbor.
-This _escape_ step may worsen any business score level in `ALL_LEVELS`, including hard levels,
-while still respecting structural validity and mandatory initialization.
-`FIXED_TARGET` additionally protects the original score prefix above its target.
+`ALL_LEVELS` begins with the first negative hard level, or the last business level when the solution is feasible.
+A focus epoch permits at most `focusStepLimit` committed moves or `focusPenaltyUpdateLimit` penalty updates,
+with defaults of 64 and 8.
+If a committed solution improved the original-score prefix through the focused level relative to the epoch's start,
+the next epoch retains that focus.
+A stagnant epoch moves to the preceding level without cyclic wrapping; productive soft descent is not interrupted
+merely because 64 moves have completed.
+Penalty histories survive focus changes.
+
+Ordinary search protects the original hard-score vector lexicographically and the original prefix above the active focus.
+Ordinary search and repair also reject a feasible-to-infeasible transition, even if it improves the hard vector lexicographically.
+Original-best aspiration remains subject to this admission rule.
+Stagnation that reaches hard guidance, including a stagnant initial hard focus, starts a deliberate excursion.
+During that excursion, guided improvements may worsen the focused hard level while preserving its earlier prefix.
+The excursion permits at most `excursionStepLimit` committed moves, eight by default.
+If it has not recovered feasibility, GLS enters repair with at most `excursionRepairStepLimit` further committed moves,
+64 by default. Repair does not allow the original hard score to worsen.
+Partial hard-score improvements do not restart that repair budget.
+In `ALL_LEVELS`, repair focuses on the first violated hard level.
+An excursion that becomes feasible again immediately returns to ordinary search at the last business level.
+An excursion that remains feasible also returns there when its move budget ends.
+If repair cannot find a move or exhausts its budget, the phase ends with an explicit repair-exhaustion reason.
+GLS retains the best original score, including while the working solution is infeasible.
+Once a feasible solution has been found, the returned best remains feasible if the score model orders every feasible solution
+above every infeasible solution, as the routing and cloud examples' penalty models do.
+A model with positive hard rewards can violate this assumption: the hard vector `[1, -1]` is infeasible
+yet lexicographically better than the feasible vector `[0, 0]`.
+Retained-best selection follows that native score ordering.
+
+`FIXED_TARGET` guides `targetScoreLevelIndex`, the last level by default, and never changes that target.
+It protects the original prefix above the target and uses the same bounded retry policy.
+A fixed hard target can use the excursion and repair policy without rotating to another target.
+An explicit target with no guidance mode selects `FIXED_TARGET` for compatibility.
+Specifying both `ALL_LEVELS` and a fixed target is invalid.
+GLS is a heuristic; bounded excursions do not guarantee feasibility or optimality.
 
 [cols="1,3",options="header"]
 |===
-|Search mode |Meaning of a completed unsuccessful descent round
+|Search mode |Meaning of a completed unsuccessful round
 |`SAMPLED` (default)
-|No improvement appeared in at most `sampleSize` attempted candidates. This is sampled stagnation,
-not evidence of a local optimum. Random, nearby, and k-opt selectors require this mode.
+|No accepted improvement appeared in at most `sampleSize` attempted candidates.
+This is sampled stagnation, not evidence of a local optimum.
+Random, nearby, and k-opt selectors require this mode.
 |`EXHAUSTIVE`
-|No improvement appeared during complete enumeration of the configured supported neighborhood.
-The result is local optimality relative to that neighborhood and the current admission rules.
+|No accepted improvement appeared during complete enumeration of the configured supported neighborhood.
+The result is local optimality relative to that neighborhood, the frozen guided objective, and the current admission rules.
 |===
 
 `sampleSize` counts attempted candidates, including moves that cannot be executed.
 It is independent of the ordinary forager's `acceptedCountLimit`.
-If a sampled descent round found an admissible neighbor, GLS retains one for escape recovery.
-The final escape probe re-evaluates that neighbor under the new penalties if fresh probes found none.
-The solution has not changed between those rounds.
+After an unsuccessful round with admissible candidates, GLS retries under new penalties;
+it does not force an arbitrary escape move.
+`maxPenaltyUpdatesPerStep` bounds these updates across all focuses in one decision, with a default of 64.
+Exhaustion ends the phase normally with `GUIDED_RETRY_EXHAUSTED`, including under step-count-only termination.
+This bound also applies when positive-cost features are constant and cannot change candidate ranking.
 
-If sampled rounds find no admissible candidate, GLS ends the phase after `maxUnproductiveRounds` rounds.
-An exhaustive round without any admissible candidate ends the phase immediately.
-If the focus has no positive-cost features, `ALL_LEVELS` checks the remaining levels in a bounded sweep.
-The phase ends if none can be penalized. `FIXED_TARGET` checks only its target.
+`maxUnproductiveRounds` counts consecutive sampled rounds with no admissible candidate.
+Reaching this bound can escalate an ordinary `ALL_LEVELS` focus if valid, fully initialized candidates were encountered.
+A fixed hard target can enter an excursion if a candidate respects its protected prefix.
+If no such transition is available, the phase ends.
+Exhaustive mode makes the same decision after one complete round.
+An empty neighborhood or fixed-target prefix violations do not trigger an escape.
+
+When an admissible round has no positive-cost feature to penalize, `ALL_LEVELS` checks preceding focuses down to zero,
+without wrapping, and can enter or continue a hard excursion during that bounded search.
+`FIXED_TARGET` and repair check only their current target.
+The phase ends if no eligible feature is found; failure during repair reports `EXCURSION_REPAIR_EXHAUSTED`.
 Termination is checked throughout candidate and penalty rounds.
 Penalty updates do not create moves, completed steps, best-solution events, or score calculations.
 A step-count limit counts committed moves.
@@ -139,6 +187,28 @@ It rejects random and nearby selection, k-opt, selected-count truncation, custom
 and Neighborhoods repositories. A count-limited random iterator does not enumerate a neighborhood,
 even though its iterator ends.
 
+=== Directed origin selection
+
+`directedOriginSelection=true` prefers move origins associated with high automatic penalty pressure
+before the selected move is built.
+It uses tournaments of at most eight eligible origins, with every fourth selection requesting ordinary exploration.
+Finite origin streams use a bounded buffer to reorder selections, retaining every source selection once.
+Without active penalty pressure, selection remains ordinary.
+An ordinary slot draws a fresh origin directly from the source while any remain, including when the buffer contains
+tournament candidates. Any final buffered origins are emitted without contributing to scale calibration.
+Existing filters, pins, value ranges, mimic relationships, and nearby selection remain effective.
+An ordinary exploration slot still obeys the configured nearby restriction;
+include an unrestricted branch when broad exploration is wanted.
+
+This option supports just-in-time change, swap, list-change, list-swap, sublist-change, sublist-swap,
+and k-opt selectors, and supported unions of those selectors.
+Unsupported custom selectors, Neighborhoods repositories, exhaustive mode, cached move trees,
+and unsupported selector combinations fail during solver construction with the selector path and remediation.
+Set `directedOriginSelection=false` to use such neighborhoods with the same GLS learning and controller.
+The library default is `false`; the routing examples enable it explicitly.
+Automatic feature composition is required for origin priorities; opaque custom keys still affect evaluated guidance
+when `featureComposition=COMBINED`.
+
 [#guidedLocalSearchConfiguration]
 == Configuration
 
@@ -147,25 +217,47 @@ An optional feature-provider class must have a public no-argument constructor.
 GLS owns acceptance and move selection; do not combine it with an `acceptor` or `forager` configuration.
 Automatic benchmark blueprints can use GLS without application-specific configuration.
 
+Feature composition is resolved as follows:
+
+[cols="2,2,3",options="header"]
+|===
+|`featureComposition` |Feature families |Provider requirement
+|`AUTOMATIC` |Automatic features only |Do not specify a provider. Supports both guidance modes.
+|`CUSTOM` |Provider features only |Provider required. Omit `levelScale`; leave ownership and directed selection disabled.
+|`COMBINED` |Automatic and provider features |Provider required. Families have separate key spaces.
+|Omitted, `ALL_LEVELS` |Automatic without a provider; combined with a provider |Retains the previous resolution rule.
+|Omitted, `FIXED_TARGET` |Custom features |Provider required. Set `AUTOMATIC` explicitly for an automatic fixed target.
+|===
+
 [cols="2,1,3",options="header"]
 |===
 |Property |Default |Meaning
-|`guidanceMode` |`ALL_LEVELS` |Rotate guidance across levels; `FIXED_TARGET` retains single-level behavior. An explicit target without a mode selects `FIXED_TARGET`.
-|`featureProviderClass` |None |Supplement automatic features in `ALL_LEVELS`; required in `FIXED_TARGET`.
-|`penaltyFactor` |`0.1` |Strictly positive decimal multiplier. Feature costs must use the target score level's units.
+|`guidanceMode` |`ALL_LEVELS` |Adapt focus on stagnation; `FIXED_TARGET` keeps one target. An explicit target without a mode selects `FIXED_TARGET`.
+|`featureProviderClass` |None |Custom feature provider used by `CUSTOM` and `COMBINED`.
+|`featureComposition` |Resolved above |Select automatic, custom, or combined features.
+|`automaticListOwnershipEnabled` |`false` |Add list ownership to automatic adjacency and boundary features.
+|`directedOriginSelection` |`false` |Prefer penalized origins in supported sampled selector trees.
+|`penaltyFactor` |`0.1` |Strictly positive decimal multiplier applied to feature penalties.
 |`targetScoreLevelIndex` |Last level in fixed mode |Zero-based fixed target; cannot be combined with `ALL_LEVELS`.
-|`focusStepLimit` |`64` |Committed moves before rotating focus in `ALL_LEVELS`.
-|`focusPenaltyUpdateLimit` |`8` |Penalty updates before rotating focus in `ALL_LEVELS`.
-|`levelScale` |Calibrated |Repeatable `scoreLevelIndex` and positive `scale` override for automatic features.
+|`focusStepLimit` |`64` |Maximum committed moves in one focus epoch. Progress renews the same focus.
+|`focusPenaltyUpdateLimit` |`8` |Maximum penalty updates in one focus epoch. Stagnation can escalate focus.
+|`maxPenaltyUpdatesPerStep` |`64` |Maximum penalty updates across focuses before a decision ends without a move.
+|`excursionStepLimit` |`8` |Maximum committed moves in a deliberate hard-score excursion.
+|`excursionRepairStepLimit` |`64` |Maximum subsequent committed repair moves; partial repair does not renew the budget.
+|`levelScale` |Rolling calibration |Repeatable `scoreLevelIndex` and positive fixed `scale` for automatic features.
 |`searchMode` |`SAMPLED` |Sampled stagnation or supported exhaustive enumeration.
-|`sampleSize` |`1000` |Maximum attempted candidates per sampled round. Omit this property in exhaustive mode.
+|`sampleSize` |`1000` |Maximum attempted candidates per sampled round. Omit in exhaustive mode.
 |`maxUnproductiveRounds` |`3` |Consecutive sampled rounds allowed without an admissible candidate.
 |`resetPenaltiesOnNewBest` |`false` |Clear penalty counts after a new original-score best.
 |===
 
-The following complete solver configuration uses the time-windowed routing model and feature provider
-from the examples module. It uses generated move selectors in sampled mode and a 30-second solver-wide budget,
-including construction:
+Omitted configuration fields stay unset through copying, inheritance, XML serialization, and native configuration generation.
+Defaults are resolved when the solver is built.
+Existing explicit sample sizes, factors, scale overrides, targets, and reset settings remain effective.
+For changed search behavior, see the xref:upgrading-greycos-solver/upgrade-to-latest.adoc#guidedLocalSearchUpgrade[GLS upgrade notes].
+
+The following complete solver configuration uses the time-windowed routing model from the examples module.
+It uses automatic features, directed generated selectors, and a 30-second solver-wide budget, including construction:
 
 [source,xml]
 ----
@@ -188,7 +280,8 @@ including construction:
   <localSearch>
     <localSearchType>GUIDED_LOCAL_SEARCH</localSearchType>
     <guidedLocalSearch>
-      <featureProviderClass>examples.vehiclerouting.score.VehicleRoutingGuidedLocalSearchFeatureProvider</featureProviderClass>
+      <featureComposition>AUTOMATIC</featureComposition>
+      <directedOriginSelection>true</directedOriginSelection>
       <penaltyFactor>0.1</penaltyFactor>
       <searchMode>SAMPLED</searchMode>
       <sampleSize>1000</sampleSize>
@@ -208,16 +301,16 @@ import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
+import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchType;
-import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
 import greycos.solver.core.config.solver.SolverConfig;
 
 import examples.vehiclerouting.cotwin.Vehicle;
 import examples.vehiclerouting.cotwin.timewindowed.TimeWindowedCustomer;
 import examples.vehiclerouting.cotwin.timewindowed.TimeWindowedVehicleRoutingSolution;
 import examples.vehiclerouting.score.VehicleRoutingConstraintProvider;
-import examples.vehiclerouting.score.VehicleRoutingGuidedLocalSearchFeatureProvider;
 
 public final class GuidedRoutingSolver {
     public static Solver<TimeWindowedVehicleRoutingSolution> buildSolver() {
@@ -234,20 +327,23 @@ public final class GuidedRoutingSolver {
                         new LocalSearchPhaseConfig()
                                 .withLocalSearchType(LocalSearchType.GUIDED_LOCAL_SEARCH)
                                 .withGuidedLocalSearchConfig(new GuidedLocalSearchConfig()
-                                        .withFeatureProviderClass(VehicleRoutingGuidedLocalSearchFeatureProvider.class)
-                                        .withPenaltyFactor(new BigDecimal("0.1"))));
+                                        .withFeatureComposition(GuidedLocalSearchFeatureComposition.AUTOMATIC)
+                                        .withDirectedOriginSelection(true)
+                                        .withPenaltyFactor(new BigDecimal("0.1"))
+                                        .withSampleSize(1000)));
         return SolverFactory.<TimeWindowedVehicleRoutingSolution>create(config).buildSolver();
     }
 }
 ----
 
 Call `GuidedRoutingSolver.buildSolver().solve(problem)` with an imported routing solution.
-For a complete executable example with nearby selection, use
+For an executable example with 80% nearby and 20% broad move selection, use
 `examples.vehiclerouting.VehicleRoutingGuidedLocalSearch` and its
 `examples/vehiclerouting/vehicleRoutingGuidedLocalSearchSolverConfig.xml` resource.
+The GLS-to-Late-Acceptance routing pipeline bounds its GLS phase to 60 seconds and uses a 30-second
+original-best idle limit before handing the retained best to Late Acceptance.
 The same GLS configuration is available in island local-search shorthand.
 For plain planning variables, see `examples.cloudbalancing.CloudBalancingGuidedLocalSearch`.
-Omit `featureProviderClass` to run either model with automatic features only.
 
 For exhaustive list search, replace the local-search element above with:
 
@@ -256,7 +352,7 @@ For exhaustive list search, replace the local-search element above with:
 <localSearch>
   <localSearchType>GUIDED_LOCAL_SEARCH</localSearchType>
   <guidedLocalSearch>
-    <featureProviderClass>examples.vehiclerouting.score.VehicleRoutingGuidedLocalSearchFeatureProvider</featureProviderClass>
+    <featureComposition>AUTOMATIC</featureComposition>
     <searchMode>EXHAUSTIVE</searchMode>
   </guidedLocalSearch>
   <unionMoveSelector>
@@ -301,7 +397,8 @@ Scalar costs apply to the last business level in `ALL_LEVELS` and to the target 
 with a zero structural component and nonnegative business components.
 Replacing the vector preserves the feature's separate penalty histories at every level.
 `acceptFloat` and `acceptDouble` use the exact represented binary value.
-Automatic and custom features have separate key spaces; custom features do not disable automatic features.
+Automatic and custom features have separate key spaces.
+Use `COMBINED` to include both families or `CUSTOM` to use only the provider.
 
 Use costs in the corresponding score level's units. For example, guiding scaled distance with unscaled kilometers
 changes the effect of `penaltyFactor` by the scale factor.
@@ -346,22 +443,88 @@ Both automatic features and explicit providers work with Easy, Incremental, and 
 [#guidedLocalSearchLifecycle]
 == Threading, islands, and diagnosis
 
-Move workers evaluate guidance with private feature sessions against frozen penalty, focus, and scale generations.
+Move workers evaluate guidance with private feature sessions against frozen penalty, focus, cost, and scale generations.
 The coordinator consumes results in candidate order and synchronizes workers before changing guidance.
 Published solutions and scores remain original-score results.
 For reproducibility, keep the input, seed, selector configuration, worker count, and non-time termination fixed.
 Wall-clock termination and concurrent island migration can change the trajectory.
 
-Each island owns its penalty history.
-Adopting a migrant clears that history and rebuilds the guided baseline from the adopted business solution.
-Phase restart and problem changes also reset history and feature state.
-A configured new-best reset clears penalties after recording the original best.
+Each island owns its controller, penalty history, and learned costs and scales.
+Adopting a migrant resets those states and rebuilds the guided baseline from the adopted business solution.
+Phase restart and problem changes also reset controller, learning, and feature state.
+A configured new-best reset clears penalties after recording the original best; learned costs and scales remain available.
 
-DEBUG logging reports rounds and penalty updates; phase summaries include GLS counters.
+DEBUG logging reports rounds, penalty updates, and the controller state; phase summaries include GLS counters.
+Distinguish consumed candidate evaluations from speculative work discarded by move workers.
+The internal controller diagnostic snapshot also reports attempted, doable, and admissible candidates;
+penalty updates and incremented features by score level; and committed moves by focus, state, and acceptance reason.
+Attempt counts include prefetched work canceled after selection. Doable and admissible counts cover consumed results.
+Committed counters use the focus and state at selection, before the following transition.
+Directed selection reports eligible source draws, returned origins, and ordinary returned origins.
+These phase totals survive migrant adoption; published scale observation counts describe the current rolling windows.
+Retry exhaustion and failed excursion repair are normal phase-ending reasons, not completed search steps.
 Use `FULL_ASSERT`, `TRACKED_FULL_ASSERT`, or `NON_INTRUSIVE_FULL_ASSERT` to compare incremental feature maps
 and penalties against independent extraction. These full checks add whole-solution work to candidate evaluation.
 When guidance is ineffective, check that keys distinguish the intended decisions, costs match the target level's units,
 and movable positive-cost features are present.
+If an infeasible start ends with `EXCURSION_REPAIR_EXHAUSTED`, inspect the repair-move count before extending the wall-clock limit.
+The repair limit can end the phase while improving moves are still available.
+The cloud example sets `excursionRepairStepLimit=1024` because its overloaded 120-process input required
+more than the default 64 repair moves in the bounded comparison. The global default remains 64.
+
+[#guidedLocalSearchBenchmarking]
+== Measuring effectiveness
+
 For throughput measurements, disable assertions and compare the same initialized inputs, seeds, neighborhoods,
 worker counts, and solve budgets. Measure original score and feasibility together with candidate throughput,
 penalty rounds, and memory. A faster feature evaluator alone does not establish better solution quality.
+
+The opt-in routing and cloud benchmarks under `examples/src/test/java/examples` export input and artifact hashes,
+initialized assignments, effective configurations, original-score trajectories, diagnostics, and independently replayed results.
+Use saved construction-heuristic starts for paired comparisons and verify their assignments and scores before measuring search.
+Preserve the effective construction configuration, including any nearby configuration inherited from later phases.
+Use `NONE` for sequential search; a move-thread count of `1` creates one move worker.
+
+A bounded upgrade comparison can use this 120-minute maximum budget:
+
+[cols="3,1",options="header"]
+|===
+|Work |Budget
+|Routing `n1000`: previous supplied GLS, upgraded automatic GLS, and the application Late Acceptance configuration;
+three seeds, 600 seconds per run |90 minutes
+|Routing `n100` and cloud `c40-p120`: old and new automatic GLS, construction-heuristic and overloaded starts,
+`NONE` and six workers, three seeds, 15 seconds per run |12 minutes
+|Screening on a separate seed, including old and new engines with identical settings |6 minutes
+|Warmup, start preparation, setup, and termination overhead |12 minutes
+|===
+
+Retain executable artifacts of the previous implementation for the baseline.
+For the supplied routing comparison, record its explicit factor `0.01`, sample size `1000000`, and six move workers.
+The upgraded automatic arm uses factor `0.1`, sample size `1000`, and six move workers.
+The application reference uses four Late Acceptance islands, three move workers per island, and history size 200.
+Report that larger worker topology; it is an application reference with a different CPU allocation.
+Freeze selected settings before measuring the three comparison seeds.
+
+Run measured solves sequentially with hard time limits and record early phase endings.
+The optional benchmark property `unimprovedMillis=120000` stops a run after two minutes
+without an original-best improvement, while retaining its configured total time cap.
+It applies to the entire measured phase, including the application island phase.
+The default is zero, which disables this cutoff. Checkpoints after early termination are recorded as `NA`.
+Extract 60-, 120-, 300-, and 600-second checkpoints from the long runs instead of repeating them.
+Report every seed's feasibility, best original score, time to feasibility, useful consumed evaluations,
+discarded evaluations, penalty updates, and excursion outcomes.
+Replay every exported result independently.
+Compare routing distances and cloud objectives separately.
+
+For this upgrade comparison, judge the final feasible routing distance at 600 seconds and progress beyond
+the previous implementation's plateau. Slower initial convergence is acceptable; the 60-second checkpoint
+is diagnostic rather than an acceptance gate. Record time to the reference target and periods without
+improvement so an early plateau is distinguishable from continued progress.
+When an idle cutoff ends a run sooner, compare its final score at the actual stopping time and state that
+the later checkpoints were not measured. A retrospective truncation of an earlier trajectory must be labeled as such.
+These are measured acceptance criteria, not CI timing assertions or established results.
+Record whether and when the reported routing reference of 56.1 is reached.
+Use the example's distance units (the negative soft score divided by 1000 for this dataset);
+the `EUC_2D` input has no explicit physical distance unit.
+That value is a comparison target and does not certify global optimality.
+If a criterion is missed within the budget, report the observed failure alongside the per-seed evidence.

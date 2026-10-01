@@ -19,6 +19,7 @@ import greycos.solver.core.config.heuristic.selector.common.decorator.SelectionS
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.AbstractSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.ComparatorFactorySelectionSorter;
@@ -36,6 +37,7 @@ import greycos.solver.core.impl.heuristic.selector.value.decorator.CachingValueS
 import greycos.solver.core.impl.heuristic.selector.value.decorator.DowncastingValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueRangeSelector;
 import greycos.solver.core.impl.heuristic.selector.value.decorator.FilteringValueSelector;
+import greycos.solver.core.impl.heuristic.selector.value.decorator.GuidedLocalSearchValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.decorator.IterableFromEntityPropertyValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.decorator.ProbabilityValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.decorator.ReinitializeVariableValueSelector;
@@ -48,6 +50,7 @@ import greycos.solver.core.impl.heuristic.selector.value.mimic.ValueMimicRecorde
 import greycos.solver.core.impl.heuristic.selector.value.nearby.AbstractNearbyValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.nearby.NearEntityNearbyValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.nearby.NearValueNearbyValueSelector;
+import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.ClassInstanceCache;
 
 public class ValueSelectorFactory<Solution_>
@@ -141,7 +144,27 @@ public class ValueSelectorFactory<Solution_>
             applyReinitializeVariableFiltering,
             listValueFilteringType,
             entityValueRangeRecorderId,
-            assertBothSides)
+            assertBothSides,
+            false)
+        .selector();
+  }
+
+  public ValueSelector<Solution_> buildOriginValueSelector(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      EntityDescriptor<Solution_> entityDescriptor,
+      SelectionCacheType minimumCacheType,
+      SelectionOrder inheritedSelectionOrder,
+      ListValueFilteringType listValueFilteringType) {
+    return buildValueSelectorSource(
+            configPolicy,
+            entityDescriptor,
+            minimumCacheType,
+            inheritedSelectionOrder,
+            false,
+            listValueFilteringType,
+            null,
+            false,
+            true)
         .selector();
   }
 
@@ -160,6 +183,7 @@ public class ValueSelectorFactory<Solution_>
             false,
             ListValueFilteringType.NONE,
             null,
+            false,
             false);
     if (!(source.selector() instanceof IterableValueSelector<Solution_> selector)
         || !(source.populationSelector()
@@ -180,7 +204,8 @@ public class ValueSelectorFactory<Solution_>
       boolean applyReinitializeVariableFiltering,
       ListValueFilteringType listValueFilteringType,
       String entityValueRangeRecorderId,
-      boolean assertBothSides) {
+      boolean assertBothSides,
+      boolean originSelection) {
     if (config.getMimicSelectorRef() != null) {
       var variableDescriptor = resolveMimicVariableDescriptor(configPolicy, entityDescriptor);
       var valueSelector = buildMimicReplaying(configPolicy);
@@ -231,6 +256,24 @@ public class ValueSelectorFactory<Solution_>
         config.getFilterClass() == null
             ? null
             : instanceCache.newInstance(config, "filterClass", config.getFilterClass());
+    var selectionContext = configPolicy.getGuidedLocalSearchSelectionContext();
+    boolean directedOrigin = originSelection && selectionContext != null;
+    if (directedOrigin
+        && variableDescriptor instanceof ListVariableDescriptor<Solution_> listVariableDescriptor) {
+      SelectionFilter<Solution_, Object> legalOriginFilter =
+          (scoreDirector, value) -> {
+            var state =
+                ((InnerScoreDirector<Solution_, ?>) scoreDirector)
+                    .getListVariableState(listVariableDescriptor);
+            return !state.isPinned(value)
+                && (listValueFilteringType != ListValueFilteringType.ACCEPT_ASSIGNED
+                    || state.isAssigned(value));
+          };
+      liveFilter =
+          liveFilter == null
+              ? legalOriginFilter
+              : SelectionFilter.compose(liveFilter, legalOriginFilter);
+    }
     if (nearbySelectionConfig != null) {
       valueSelector =
           applyNearbySelection(
@@ -280,6 +323,25 @@ public class ValueSelectorFactory<Solution_>
             membershipSelector.endingIterator(null).forEachRemaining(membership::add);
             return membership;
           };
+    }
+    if (directedOrigin) {
+      if (resolvedCacheType.isCached() && liveFilter != null) {
+        valueSelector = FilteringValueSelector.of(valueSelector, liveFilter);
+      }
+      if (!(valueSelector instanceof IterableValueSelector<Solution_> iterableValueSelector)
+          || !variableDescriptor.isListVariable()) {
+        throw new IllegalArgumentException(
+            "Guided Local Search directedOriginSelection requires an iterable list origin ("
+                + config
+                + "). Maybe use a list value range or disable directedOriginSelection.");
+      }
+      valueSelector =
+          new GuidedLocalSearchValueSelector<>(
+              iterableValueSelector,
+              selectionContext,
+              resolvedSelectionOrder == SelectionOrder.RANDOM
+                  && config.getSelectedCountLimit() == null
+                  && valueSelector.isNeverEnding());
     }
     valueSelector =
         applyMimicRecording(

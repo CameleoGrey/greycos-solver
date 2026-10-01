@@ -3,10 +3,13 @@ package greycos.solver.core.impl.localsearch.decider.gls;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -42,15 +45,17 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
   private boolean closed;
   private GuidedLocalSearchIdentityRegistry<Solution_> identityRegistry;
   private GuidedLocalSearchAutomaticFeatures<Solution_> automatic;
-  private final Map<Object, GuidedLocalSearchNumber> automaticFeatures = new HashMap<>();
+  private final Map<Object, GuidedLocalSearchNumber> automaticFeatures = new LinkedHashMap<>();
   private final Set<Object> baseline = new HashSet<>();
-  private final Set<Object> difference = new HashSet<>();
+  private final Set<Object> difference = new LinkedHashSet<>();
   private final Set<Key_> customKeys = new HashSet<>();
   private List<GuidedLocalSearchPenaltyTable.Snapshot<Object>> levelPenalties;
   private List<Map<Object, GuidedLocalSearchNumber>> levelFeatures;
   private GuidedLocalSearchNumber[] automaticTotals;
   private GuidedLocalSearchNumber[] customTotals;
   private int scalarTargetIndex;
+  private GuidedLocalSearchLearning.Snapshot learning;
+  private List<Set<Object>> activePenalizedAutomatic;
 
   private GuidedLocalSearchFeatureTracker(
       InnerScoreDirector<Solution_, ?> scoreDirector,
@@ -117,6 +122,17 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
       List<GuidedLocalSearchPenaltyTable.Snapshot<Object>> penalties,
       GuidedLocalSearchIdentityRegistry<Solution_> catalog,
       int scalarTargetIndex) {
+    return attachAutomatic(director, provider, penalties, catalog, scalarTargetIndex, true, false);
+  }
+
+  public static <Solution_> GuidedLocalSearchFeatureTracker<Solution_, Object> attachAutomatic(
+      InnerScoreDirector<Solution_, ?> director,
+      GuidedLocalSearchFeatureProvider<Solution_, Object> provider,
+      List<GuidedLocalSearchPenaltyTable.Snapshot<Object>> penalties,
+      GuidedLocalSearchIdentityRegistry<Solution_> catalog,
+      int scalarTargetIndex,
+      boolean automaticEnabled,
+      boolean ownershipEnabled) {
     var tracker =
         GuidedLocalSearchFeatureTracker.<Solution_, Object>attach(
             director, provider, new GuidedLocalSearchPenaltyTable.Snapshot<>(0L, Map.of()));
@@ -128,7 +144,10 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
       }
       tracker.levelPenalties = List.copyOf(penalties);
       tracker.levelFeatures = new ArrayList<>(size);
-      for (int i = 0; i < size; i++) tracker.levelFeatures.add(new HashMap<>());
+      for (int i = 0; i < size; i++) tracker.levelFeatures.add(new LinkedHashMap<>());
+      tracker.learning = GuidedLocalSearchLearning.Snapshot.neutral(size);
+      tracker.activePenalizedAutomatic = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) tracker.activePenalizedAutomatic.add(new LinkedHashSet<>());
       tracker.automaticTotals = new GuidedLocalSearchNumber[size];
       tracker.customTotals = new GuidedLocalSearchNumber[size];
       Arrays.fill(tracker.automaticTotals, GuidedLocalSearchNumber.ZERO);
@@ -137,9 +156,15 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
           catalog == null
               ? GuidedLocalSearchIdentityRegistry.create(director)
               : catalog.bind(director);
-      tracker.automatic =
-          new GuidedLocalSearchAutomaticFeatures<>(
-              director, tracker.identityRegistry, tracker::addAutomatic, tracker::removeAutomatic);
+      if (automaticEnabled) {
+        tracker.automatic =
+            new GuidedLocalSearchAutomaticFeatures<>(
+                director,
+                tracker.identityRegistry,
+                tracker::addAutomatic,
+                tracker::removeAutomatic,
+                ownershipEnabled);
+      }
       return tracker;
     } catch (RuntimeException | Error failure) {
       try {
@@ -169,9 +194,44 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
     return Collections.unmodifiableMap(automaticFeatures);
   }
 
+  /** Weighted automatic costs for a penalty barrier; candidate evaluation uses cached totals. */
+  public Map<Object, GuidedLocalSearchNumber> automaticFeatures(int level) {
+    flush();
+    var weighted = new LinkedHashMap<Object, GuidedLocalSearchNumber>(automaticFeatures.size());
+    if (automatic != null)
+      automatic.extract(
+          key -> {
+            if (!automaticFeatures.containsKey(key)
+                || weighted.putIfAbsent(
+                        key, GuidedLocalSearchNumber.of(learning.weight(level, key)))
+                    != null) {
+              throw new IllegalStateException(
+                  "GLS canonical automatic extraction has an absent or duplicate feature ("
+                      + key
+                      + ").");
+            }
+          });
+    if (weighted.size() != automaticFeatures.size()) {
+      throw new IllegalStateException(
+          "GLS canonical automatic extraction differs from tracked assignments.");
+    }
+    return Collections.unmodifiableMap(weighted);
+  }
+
   public Map<Object, GuidedLocalSearchNumber> customFeatures(int level) {
     flush();
     return Collections.unmodifiableMap(levelFeatures.get(level));
+  }
+
+  /** Canonical provider enumeration is used once at a penalty barrier, never for candidates. */
+  public Map<Object, GuidedLocalSearchNumber> customFeaturesForPenaltyUpdate(int level) {
+    flush();
+    var extracted = extractCustomFeatures();
+    if (!extracted.features.equals(levelFeatures) || !extracted.keys.equals(customKeys)) {
+      throw new IllegalStateException(
+          "GLS custom features differ between the session and canonical provider extraction.");
+    }
+    return Collections.unmodifiableMap(extracted.features.get(level));
   }
 
   /** Commits only changed feature presence to the incumbent baseline. */
@@ -189,6 +249,163 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
     return difference.size();
   }
 
+  public record AutomaticDelta(List<Object> removed, List<Object> added) {
+    public static final AutomaticDelta EMPTY = new AutomaticDelta(List.of(), List.of());
+
+    public AutomaticDelta {
+      removed = List.copyOf(removed);
+      added = List.copyOf(added);
+    }
+  }
+
+  /** Freezes only changed keys while the candidate is applied, before its undo. */
+  public AutomaticDelta automaticDelta() {
+    flush();
+    if (difference.isEmpty()) return AutomaticDelta.EMPTY;
+    var removed = new ArrayList<Object>();
+    var added = new ArrayList<Object>();
+    for (var key : difference) {
+      if (automaticFeatures.containsKey(key)) added.add(key);
+      else removed.add(key);
+    }
+    return new AutomaticDelta(removed, added);
+  }
+
+  public void updateLearning(GuidedLocalSearchLearning.Snapshot learning) {
+    ensureOpen();
+    if (learning.scales().size() != levelFeatures.size()) {
+      throw new IllegalArgumentException("GLS learning levels must match the score definition.");
+    }
+    this.learning = learning;
+    for (int i = 0; i < levelFeatures.size(); i++) {
+      automaticTotals[i] = sumAutomatic(automaticFeatures, levelPenalties.get(i), i);
+    }
+  }
+
+  public long learningVersion() {
+    return learning.version();
+  }
+
+  public OriginPriorities originPriorities(int level) {
+    flush();
+    return automatic == null || levelPenalties.get(level).counts().isEmpty()
+        ? OriginPriorities.EMPTY
+        : automatic.originPriorities(
+            learning, levelPenalties.get(level), activePenalizedAutomatic.get(level), level);
+  }
+
+  /** Immutable coordinator origins, keyed by model object identity and genuine variable name. */
+  public static final class OriginPriorities
+      implements GuidedLocalSearchSelectionContext.PrioritySnapshot {
+    private static final OriginPriorities EMPTY =
+        new OriginPriorities(Map.of(), Map.of(), Map.of(), Map.of());
+    private final Map<Object, Map<String, GuidedLocalSearchNumber>> entities;
+    private final Map<Object, Map<String, GuidedLocalSearchNumber>> values;
+    private final Map<Object, Map<String, GuidedLocalSearchNumber>> boundaries;
+    private final Map<Object, Map<String, ListContributions>> lists;
+
+    OriginPriorities(
+        Map<Object, Map<String, GuidedLocalSearchNumber>> entities,
+        Map<Object, Map<String, GuidedLocalSearchNumber>> values,
+        Map<Object, Map<String, GuidedLocalSearchNumber>> boundaries,
+        Map<Object, Map<String, ListContributions>> lists) {
+      this.entities = freezeIdentityMap(entities);
+      this.values = freezeIdentityMap(values);
+      this.boundaries = freezeIdentityMap(boundaries);
+      this.lists = freezeIdentityMap(lists);
+    }
+
+    private static <T> Map<Object, Map<String, T>> freezeIdentityMap(
+        Map<Object, Map<String, T>> source) {
+      var frozen = new IdentityHashMap<Object, Map<String, T>>();
+      source.forEach((object, variables) -> frozen.put(object, Map.copyOf(variables)));
+      return Collections.unmodifiableMap(frozen);
+    }
+
+    @Override
+    public boolean isEmpty() {
+      return entities.isEmpty() && values.isEmpty() && boundaries.isEmpty();
+    }
+
+    @Override
+    public GuidedLocalSearchSelectionContext.Priority entityPriority(
+        Object entity, Collection<String> variableNames) {
+      var variables = entities.get(entity);
+      if (variables == null) return GuidedLocalSearchSelectionContext.Priority.ZERO;
+      var total = GuidedLocalSearchNumber.ZERO;
+      for (var name : variableNames)
+        total = total.add(variables.getOrDefault(name, GuidedLocalSearchNumber.ZERO));
+      return GuidedLocalSearchSelectionContext.Priority.of(total);
+    }
+
+    @Override
+    public GuidedLocalSearchSelectionContext.Priority valuePriority(
+        Object value, String variableName) {
+      return priority(values, value, variableName);
+    }
+
+    public GuidedLocalSearchSelectionContext.Priority boundaryPriority(
+        Object owner, String variableName) {
+      return priority(boundaries, owner, variableName);
+    }
+
+    private static GuidedLocalSearchSelectionContext.Priority priority(
+        Map<Object, Map<String, GuidedLocalSearchNumber>> origins,
+        Object origin,
+        String variableName) {
+      var variables = origins.get(origin);
+      return variables == null
+          ? GuidedLocalSearchSelectionContext.Priority.ZERO
+          : GuidedLocalSearchSelectionContext.Priority.of(
+              variables.getOrDefault(variableName, GuidedLocalSearchNumber.ZERO));
+    }
+
+    @Override
+    public GuidedLocalSearchSelectionContext.Priority subListPriority(
+        Object owner, String variableName, int fromIndex, int length) {
+      var variables = lists.get(owner);
+      if (variables == null || length <= 0) return GuidedLocalSearchSelectionContext.Priority.ZERO;
+      var list = variables.get(variableName);
+      if (list == null || fromIndex < 0 || fromIndex > list.size - length) {
+        return GuidedLocalSearchSelectionContext.Priority.ZERO;
+      }
+      int toIndex = fromIndex + length;
+      var total =
+          list.arcs
+              .getOrDefault(fromIndex, GuidedLocalSearchNumber.ZERO)
+              .add(list.arcs.getOrDefault(toIndex, GuidedLocalSearchNumber.ZERO))
+              .add(list.ownershipBefore(toIndex).subtract(list.ownershipBefore(fromIndex)));
+      return new GuidedLocalSearchSelectionContext.Priority(total, length);
+    }
+  }
+
+  static final class ListContributions {
+    private final int size;
+    private final Map<Integer, GuidedLocalSearchNumber> arcs;
+    private final int[] ownershipIndexes;
+    private final GuidedLocalSearchNumber[] ownershipPrefix;
+
+    ListContributions(
+        int size,
+        Map<Integer, GuidedLocalSearchNumber> arcs,
+        Map<Integer, GuidedLocalSearchNumber> ownership) {
+      this.size = size;
+      this.arcs = Map.copyOf(arcs);
+      ownershipIndexes = ownership.keySet().stream().mapToInt(Integer::intValue).sorted().toArray();
+      ownershipPrefix = new GuidedLocalSearchNumber[ownershipIndexes.length + 1];
+      ownershipPrefix[0] = GuidedLocalSearchNumber.ZERO;
+      for (int i = 0; i < ownershipIndexes.length; i++) {
+        ownershipPrefix[i + 1] = ownershipPrefix[i].add(ownership.get(ownershipIndexes[i]));
+      }
+    }
+
+    private GuidedLocalSearchNumber ownershipBefore(int index) {
+      int position = Arrays.binarySearch(ownershipIndexes, index);
+      if (position < 0) position = -position - 1;
+      return ownershipPrefix[position];
+    }
+  }
+
   public void updatePenalties(List<GuidedLocalSearchPenaltyTable.Snapshot<Object>> penalties) {
     ensureOpen();
     if (penalties.size() != levelFeatures.size()) {
@@ -196,8 +413,13 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
     }
     levelPenalties = List.copyOf(penalties);
     for (int i = 0; i < penalties.size(); i++) {
-      automaticTotals[i] = sum(automaticFeatures, penalties.get(i));
+      automaticTotals[i] = sumAutomatic(automaticFeatures, penalties.get(i), i);
       customTotals[i] = sum(levelFeatures.get(i), penalties.get(i));
+      var active = activePenalizedAutomatic.get(i);
+      active.clear();
+      for (var key : automaticFeatures.keySet()) {
+        if (penalties.get(i).count(key) != 0L) active.add(key);
+      }
     }
   }
 
@@ -208,8 +430,11 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
     if (baseline.contains(key)) difference.remove(key);
     else difference.add(key);
     for (int i = 0; i < automaticTotals.length; i++) {
+      if (levelPenalties.get(i).count(key) != 0L) activePenalizedAutomatic.get(i).add(key);
       automaticTotals[i] =
-          automaticTotals[i].add(GuidedLocalSearchNumber.of(levelPenalties.get(i).count(key)));
+          automaticTotals[i].add(
+              GuidedLocalSearchNumber.of(learning.weight(i, key))
+                  .multiply(levelPenalties.get(i).count(key)));
     }
   }
 
@@ -220,8 +445,11 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
     if (baseline.contains(key)) difference.add(key);
     else difference.remove(key);
     for (int i = 0; i < automaticTotals.length; i++) {
+      activePenalizedAutomatic.get(i).remove(key);
       automaticTotals[i] =
-          automaticTotals[i].subtract(GuidedLocalSearchNumber.of(levelPenalties.get(i).count(key)));
+          automaticTotals[i].subtract(
+              GuidedLocalSearchNumber.of(learning.weight(i, key))
+                  .multiply(levelPenalties.get(i).count(key)));
     }
   }
 
@@ -267,6 +495,7 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
     customKeys.clear();
     if (levelFeatures != null) {
       levelFeatures.forEach(Map::clear);
+      activePenalizedAutomatic.forEach(Set::clear);
       Arrays.fill(automaticTotals, GuidedLocalSearchNumber.ZERO);
       Arrays.fill(customTotals, GuidedLocalSearchNumber.ZERO);
     }
@@ -297,7 +526,7 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
 
   public void assertFromScratch() {
     flush();
-    if (automatic != null) {
+    if (levelFeatures != null) {
       try {
         assertAutomaticFromScratch();
       } catch (RuntimeException | Error failure) {
@@ -359,15 +588,50 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
 
   private void assertAutomaticFromScratch() {
     var expectedAuto = new HashMap<Object, GuidedLocalSearchNumber>();
-    automatic.extract(
-        key -> {
-          if (expectedAuto.putIfAbsent(key, GuidedLocalSearchNumber.ONE) != null) {
-            throw new IllegalStateException(
-                "Duplicate independently extracted automatic GLS feature (" + key + ").");
-          }
-        });
+    if (automatic != null)
+      automatic.extract(
+          key -> {
+            if (expectedAuto.putIfAbsent(key, GuidedLocalSearchNumber.ONE) != null) {
+              throw new IllegalStateException(
+                  "Duplicate independently extracted automatic GLS feature (" + key + ").");
+            }
+          });
+    var extracted = extractCustomFeatures();
+    var expectedCustom = extracted.features;
+    var expectedKeys = extracted.keys;
+    if (!expectedAuto.equals(automaticFeatures)
+        || !expectedCustom.equals(levelFeatures)
+        || !expectedKeys.equals(customKeys)) {
+      throw new IllegalStateException(
+          "GLS feature corruption: incremental automatic/custom features differ from independent extraction.");
+    }
+    for (int i = 0; i < levelFeatures.size(); i++) {
+      if (!sumAutomatic(expectedAuto, levelPenalties.get(i), i).equals(automaticTotals[i])
+          || !sum(expectedCustom.get(i), levelPenalties.get(i)).equals(customTotals[i])) {
+        throw new IllegalStateException("GLS aggregate corruption at score level (" + i + ").");
+      }
+      var expectedPenalized = new HashSet<Object>();
+      for (var key : expectedAuto.keySet()) {
+        if (levelPenalties.get(i).count(key) != 0L) expectedPenalized.add(key);
+      }
+      if (!expectedPenalized.equals(activePenalizedAutomatic.get(i))) {
+        throw new IllegalStateException(
+            "GLS active penalized feature corruption at score level (" + i + ").");
+      }
+    }
+    var expectedDifference = new HashSet<>(baseline);
+    for (var key : automaticFeatures.keySet()) {
+      if (!expectedDifference.add(key)) expectedDifference.remove(key);
+    }
+    if (!expectedDifference.equals(difference)) {
+      throw new IllegalStateException(
+          "GLS automatic feature difference differs from its incumbent baseline.");
+    }
+  }
+
+  private CustomExtraction<Key_> extractCustomFeatures() {
     var expectedCustom = new ArrayList<Map<Object, GuidedLocalSearchNumber>>(levelFeatures.size());
-    for (int i = 0; i < levelFeatures.size(); i++) expectedCustom.add(new HashMap<>());
+    for (int i = 0; i < levelFeatures.size(); i++) expectedCustom.add(new LinkedHashMap<>());
     var expectedKeys = new HashSet<Key_>();
     if (provider != null) {
       provider.extractFeatures(
@@ -405,26 +669,24 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
             }
           });
     }
-    if (!expectedAuto.equals(automaticFeatures)
-        || !expectedCustom.equals(levelFeatures)
-        || !expectedKeys.equals(customKeys)) {
-      throw new IllegalStateException(
-          "GLS feature corruption: incremental automatic/custom features differ from independent extraction.");
+    return new CustomExtraction<>(expectedCustom, expectedKeys);
+  }
+
+  private record CustomExtraction<Key_>(
+      List<Map<Object, GuidedLocalSearchNumber>> features, Set<Key_> keys) {}
+
+  private GuidedLocalSearchNumber sumAutomatic(
+      Map<Object, GuidedLocalSearchNumber> features,
+      GuidedLocalSearchPenaltyTable.Snapshot<Object> penalties,
+      int level) {
+    var result = GuidedLocalSearchNumber.ZERO;
+    for (var key : features.keySet()) {
+      result =
+          result.add(
+              GuidedLocalSearchNumber.of(learning.weight(level, key))
+                  .multiply(penalties.count(key)));
     }
-    for (int i = 0; i < levelFeatures.size(); i++) {
-      if (!sum(expectedAuto, levelPenalties.get(i)).equals(automaticTotals[i])
-          || !sum(expectedCustom.get(i), levelPenalties.get(i)).equals(customTotals[i])) {
-        throw new IllegalStateException("GLS aggregate corruption at score level (" + i + ").");
-      }
-    }
-    var expectedDifference = new HashSet<>(baseline);
-    for (var key : automaticFeatures.keySet()) {
-      if (!expectedDifference.add(key)) expectedDifference.remove(key);
-    }
-    if (!expectedDifference.equals(difference)) {
-      throw new IllegalStateException(
-          "GLS automatic feature difference differs from its incumbent baseline.");
-    }
+    return result;
   }
 
   private static <Key_> GuidedLocalSearchNumber sum(
@@ -654,7 +916,7 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
 
     private void put(Key_ key, GuidedLocalSearchNumber cost) {
       validateFeature(key, cost);
-      if (automatic != null) {
+      if (levelFeatures != null) {
         putVector(key, scalarCost(cost));
         return;
       }
@@ -669,13 +931,13 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
     @Override
     public void acceptScore(Key_ key, Score<?> cost) {
       var costs = vectorCost(key, cost);
-      if (automatic == null) put(key, costs[scalarTargetIndex]);
+      if (levelFeatures == null) put(key, costs[scalarTargetIndex]);
       else putVector(key, costs);
     }
 
     @Override
     public void remove(Key_ key) {
-      if (automatic != null) {
+      if (levelFeatures != null) {
         if (!customKeys.remove(key)) {
           throw new IllegalStateException(
               "GLS feature provider ("

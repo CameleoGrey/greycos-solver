@@ -9,9 +9,10 @@ import org.jspecify.annotations.NullMarked;
  * route arcs inside a pinned prefix are fixed, but the outgoing boundary arc may still change.
  * Costs must be nonnegative. Scalar costs use the configured fixed target's units, or the last
  * business level's units in full-score exploration. Score-vector costs use each level's own units.
- * In full-score exploration, custom features supplement automatic assignment and adjacency
- * features. In fixed-target mode this provider supplies all features. There is no automatic
- * conversion from constraint matches or from hard to soft scores.
+ * Feature composition determines whether provider features replace or supplement automatic
+ * features. With unspecified composition, full-score exploration supplements automatic features and
+ * fixed-target mode uses only provider features. There is no automatic conversion from constraint
+ * matches or from hard to soft scores.
  *
  * <p>Providers may be shared by worker threads and therefore must be stateless or thread-safe. Each
  * working solution receives its own mutable session. Neither method may modify the solution.
@@ -24,8 +25,9 @@ public interface GuidedLocalSearchFeatureProvider<Solution_, Key_> {
 
   /**
    * Independently enumerates all currently selected features, each key exactly once. Used as a
-   * correctness oracle; it must not read an incremental session's caches. Zero costs are allowed
-   * but never receive penalty increments.
+   * correctness oracle and to establish feature order at penalty updates; it must not read an
+   * incremental session's caches. Use deterministic enumeration for reproducible penalty ties. Zero
+   * costs are allowed but never receive penalty increments.
    */
   void extractFeatures(Solution_ solution, GuidedLocalSearchFeatureConsumer<Key_> consumer);
 

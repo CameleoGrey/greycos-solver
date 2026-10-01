@@ -20,6 +20,7 @@ import greycos.solver.core.impl.heuristic.selector.list.SubListSelector;
 import greycos.solver.core.impl.heuristic.selector.list.mimic.SubListMimicRecorder;
 import greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.mimic.ValueMimicRecorder;
+import greycos.solver.core.impl.localsearch.decider.gls.GuidedLocalSearchSelectionContext;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.trend.InitializingScoreTrend;
 import greycos.solver.core.impl.solver.ClassInstanceCache;
@@ -49,6 +50,7 @@ public class HeuristicConfigPolicy<Solution_> {
   private final boolean constructionHeuristicNearbyAutoConfigurationEnabled;
   private final int constructionHeuristicNearbySelectionSize;
   private final RandomSource random;
+  private final GuidedLocalSearchSelectionContext<Solution_> guidedLocalSearchSelectionContext;
 
   private final Map<String, EntityMimicRecorder<Solution_>> entityMimicRecorderMap =
       new HashMap<>();
@@ -79,6 +81,7 @@ public class HeuristicConfigPolicy<Solution_> {
     this.constructionHeuristicNearbySelectionSize =
         builder.constructionHeuristicNearbySelectionSize;
     this.random = builder.random;
+    this.guidedLocalSearchSelectionContext = builder.guidedLocalSearchSelectionContext;
   }
 
   public EnvironmentMode getEnvironmentMode() {
@@ -142,6 +145,10 @@ public class HeuristicConfigPolicy<Solution_> {
     return nearbyDistanceMeterClass;
   }
 
+  public GuidedLocalSearchSelectionContext<Solution_> getGuidedLocalSearchSelectionContext() {
+    return guidedLocalSearchSelectionContext;
+  }
+
   public RandomSource getRandom() {
     return random;
   }
@@ -180,7 +187,8 @@ public class HeuristicConfigPolicy<Solution_> {
         .withConstructionHeuristicNearbyAutoConfigurationEnabled(
             constructionHeuristicNearbyAutoConfigurationEnabled)
         .withConstructionHeuristicNearbySelectionSize(constructionHeuristicNearbySelectionSize)
-        .withRandom(random);
+        .withRandom(random)
+        .withGuidedLocalSearchSelectionContext(guidedLocalSearchSelectionContext);
   }
 
   public HeuristicConfigPolicy<Solution_> copyConfigPolicy() {
@@ -205,7 +213,7 @@ public class HeuristicConfigPolicy<Solution_> {
   }
 
   public HeuristicConfigPolicy<Solution_> copyPhaseConfigPolicy(EnvironmentMode environmentMode) {
-    var builder = cloneBuilder();
+    var builder = cloneBuilder().withGuidedLocalSearchSelectionContext(null);
     if (environmentMode != null) {
       builder.withEnvironmentMode(environmentMode);
     }
@@ -360,6 +368,7 @@ public class HeuristicConfigPolicy<Solution_> {
     private boolean constructionHeuristicNearbyAutoConfigurationEnabled = true;
     private int constructionHeuristicNearbySelectionSize = 40;
     private RandomSource random;
+    private GuidedLocalSearchSelectionContext<Solution_> guidedLocalSearchSelectionContext;
 
     public Builder<Solution_> withPreviewFeatureSet(Set<PreviewFeature> previewFeatureSet) {
       this.previewFeatureSet = previewFeatureSet;
@@ -400,6 +409,12 @@ public class HeuristicConfigPolicy<Solution_> {
     public Builder<Solution_> withNearbyDistanceMeterClass(
         Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass) {
       this.nearbyDistanceMeterClass = nearbyDistanceMeterClass;
+      return this;
+    }
+
+    public Builder<Solution_> withGuidedLocalSearchSelectionContext(
+        GuidedLocalSearchSelectionContext<Solution_> context) {
+      this.guidedLocalSearchSelectionContext = context;
       return this;
     }
 
