@@ -2,130 +2,153 @@ package greycos.solver.core.config.solver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
-import greycos.solver.core.api.solver.Solver;
+import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.solver.SolverFactory;
-import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
-import greycos.solver.core.testcotwin.TestdataEntity;
-import greycos.solver.core.testcotwin.TestdataSolution;
-import greycos.solver.core.testcotwin.TestdataValue;
-import greycos.solver.core.testutil.PlannerTestUtils;
+import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
+import greycos.solver.core.impl.heuristic.thread.MoveThreadingWorkload.BasicSolution;
+import greycos.solver.core.impl.heuristic.thread.MoveThreadingWorkload.BasicWorkload;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
+import greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import greycos.solver.core.impl.solver.DefaultSolver;
+import greycos.solver.core.preview.api.move.Move;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
-/**
- * Tests to verify one of the core requirements of multithreaded solving: reproducibility of
- * results. After a constant number of steps, every iteration must finish with the same score when
- * using REPRODUCIBLE environment mode.
- *
- * <p>This test verifies that multithreaded move evaluation produces deterministic results across
- * multiple solving runs with identical inputs.
- */
+/** Compares construction and local-search trajectories using assignment and machine-load scores. */
 @Tag("slow")
 class MultiThreadedReproducibilityTest {
 
-  private static final int REPETITION_COUNT = 10;
-  private static final int STEP_LIMIT = 5000;
-  private static final String MOVE_THREAD_COUNT = "4";
-
-  private TestdataSolution[] testdataSolutions = new TestdataSolution[REPETITION_COUNT];
-  private SolverFactory<TestdataSolution> solverFactory;
-
-  @BeforeEach
-  void createUninitializedSolutions() {
-    // Create identical uninitialized solutions for each repetition
-    for (int i = 0; i < REPETITION_COUNT; i++) {
-      testdataSolutions[i] = createTestSolution(20, 10);
-    }
-
-    SolverConfig solverConfig =
-        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
-    solverConfig
-        .withEnvironmentMode(EnvironmentMode.REPRODUCIBLE)
-        .withMoveThreadCount(MOVE_THREAD_COUNT);
-
-    // Set step count limit for local search phase
-    solverConfig
-        .getPhaseConfigList()
-        .forEach(
-            phaseConfig -> {
-              if (phaseConfig instanceof LocalSearchPhaseConfig) {
-                phaseConfig.setTerminationConfig(
-                    new TerminationConfig().withStepCountLimit(STEP_LIMIT));
-              }
-            });
-
-    solverFactory = SolverFactory.create(solverConfig);
-  }
+  private static final int PROBLEM_SIZE = 24;
+  private static final int STEP_LIMIT = 60;
 
   @Test
+  @Timeout(60)
   void multiThreadedSolvingIsReproducible() {
-    IntStream.range(0, REPETITION_COUNT).forEach(this::solveAndCompareWithPrevious);
-  }
-
-  private void solveAndCompareWithPrevious(final int iteration) {
-    Solver<TestdataSolution> solver = solverFactory.buildSolver();
-    TestdataSolution bestSolution = solver.solve(testdataSolutions[iteration]);
-    testdataSolutions[iteration] = bestSolution;
-
-    if (iteration > 0) {
-      TestdataSolution previousBestSolution = testdataSolutions[iteration - 1];
-      assertThat(bestSolution.getScore())
-          .as(
-              "Iteration %d score should match iteration %d score for reproducibility",
-              iteration, iteration - 1)
-          .isEqualTo(previousBestSolution.getScore());
-    }
+    assertReproducible("4");
   }
 
   @Test
+  @Timeout(60)
   void multiThreadedSolvingIsReproducibleWithAutoThreadCount() {
-    // Test with AUTO thread count
-    SolverConfig solverConfig =
-        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class);
-    solverConfig
-        .withEnvironmentMode(EnvironmentMode.REPRODUCIBLE)
-        .withMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_AUTO);
-
-    solverConfig
-        .getPhaseConfigList()
-        .forEach(
-            phaseConfig -> {
-              if (phaseConfig instanceof LocalSearchPhaseConfig) {
-                phaseConfig.setTerminationConfig(new TerminationConfig().withStepCountLimit(1000));
-              }
-            });
-
-    SolverFactory<TestdataSolution> autoSolverFactory = SolverFactory.create(solverConfig);
-
-    TestdataSolution solution1 = autoSolverFactory.buildSolver().solve(createTestSolution(15, 8));
-    TestdataSolution solution2 = autoSolverFactory.buildSolver().solve(createTestSolution(15, 8));
-
-    assertThat(solution1.getScore())
-        .as("AUTO thread count should produce reproducible results")
-        .isEqualTo(solution2.getScore());
+    // AUTO is compared on the same machine, where its resolved worker count remains fixed.
+    assertReproducible(SolverConfig.MOVE_THREAD_COUNT_AUTO);
   }
 
-  private TestdataSolution createTestSolution(int entityCount, int valueCount) {
-    TestdataSolution solution = new TestdataSolution();
+  private void assertReproducible(String threads) {
+    var workload = new BasicWorkload();
+    var config =
+        workload.solverConfig(
+            threads,
+            37L,
+            16,
+            new TerminationConfig().withStepCountLimit(STEP_LIMIT),
+            EnvironmentMode.REPRODUCIBLE);
+    var phases = new ArrayList<>(config.getPhaseConfigList());
+    phases.add(0, new ConstructionHeuristicPhaseConfig());
+    config.setPhaseConfigList(phases);
+    var factory = SolverFactory.<BasicSolution>create(config);
 
-    final List<TestdataValue> values =
-        IntStream.range(0, valueCount)
-            .mapToObj(number -> new TestdataValue("value" + number))
-            .collect(Collectors.toList());
-    final List<TestdataEntity> entities =
-        IntStream.range(0, entityCount)
-            .mapToObj(number -> new TestdataEntity("entity" + number))
-            .collect(Collectors.toList());
+    var first = solve(factory, workload);
+    var second = solve(factory, workload);
 
-    solution.setValueList(values);
-    solution.setEntityList(entities);
-    return solution;
+    assertThat(first).isEqualTo(second);
+    assertThat(first.constructionSteps()).hasSize(PROBLEM_SIZE);
+    assertThat(first.localSearchSteps()).hasSize(STEP_LIMIT);
+    assertThat(first.constructionSteps().stream().map(StepTrace::score).distinct().count())
+        .isGreaterThan(1L);
+    assertThat(first.finalScore()).isLessThan(SimpleScore.ZERO);
   }
+
+  private Trace solve(SolverFactory<BasicSolution> factory, BasicWorkload workload) {
+    var problem = workload.createProblem(PROBLEM_SIZE);
+    problem.getJobs().forEach(job -> job.setMachine(null));
+    problem.setScore(null);
+    var solver = (DefaultSolver<BasicSolution>) factory.buildSolver();
+    var construction = new ArrayList<StepTrace>();
+    var localSearch = new ArrayList<StepTrace>();
+    solver.addPhaseLifecycleListener(
+        new PhaseLifecycleListenerAdapter<>() {
+          @Override
+          public void stepEnded(AbstractStepScope<BasicSolution> stepScope) {
+            var workingSolution = stepScope.getWorkingSolution();
+            long unassigned =
+                workingSolution.getJobs().stream().filter(job -> job.getMachine() == null).count();
+            var expectedScore = recomputePartialScore(workingSolution);
+            assertThat(stepScope.getScore().unassignedCount()).isEqualTo(unassigned);
+            assertThat(stepScope.getScore().raw()).isEqualTo(expectedScore);
+            if (stepScope instanceof ConstructionHeuristicStepScope<BasicSolution> step) {
+              construction.add(
+                  new StepTrace(
+                      step.getStepIndex(),
+                      moveSignature(step.getStep()),
+                      step.getSelectedMoveCount(),
+                      0L,
+                      unassigned,
+                      expectedScore,
+                      workload.state(workingSolution)));
+            } else if (stepScope instanceof LocalSearchStepScope<BasicSolution> step) {
+              assertThat(unassigned).isZero();
+              assertThat(expectedScore).isEqualTo(workload.recompute(workingSolution));
+              localSearch.add(
+                  new StepTrace(
+                      step.getStepIndex(),
+                      moveSignature(step.getStep()),
+                      step.getSelectedMoveCount(),
+                      step.getAcceptedMoveCount(),
+                      unassigned,
+                      expectedScore,
+                      workload.state(workingSolution)));
+            }
+          }
+        });
+    var solution = solver.solve(problem);
+    assertThat(solution.getScore()).isEqualTo(workload.recompute(solution));
+    return new Trace(construction, localSearch, workload.state(solution), solution.getScore());
+  }
+
+  private static SimpleScore recomputePartialScore(BasicSolution solution) {
+    long[] loads = new long[solution.getMachines().size()];
+    long penalty = 0L;
+    for (var job : solution.getJobs()) {
+      var machine = job.getMachine();
+      if (machine == null) {
+        continue;
+      }
+      assertThat(machine).isSameAs(solution.getMachines().get(machine.id()));
+      loads[machine.id()] += job.getUnits();
+      penalty += Math.abs((long) machine.id() - job.getPreferredMachine()) * job.getUnits();
+    }
+    for (long load : loads) {
+      penalty += load * load;
+    }
+    return SimpleScore.of(-penalty);
+  }
+
+  private static String moveSignature(Move<BasicSolution> move) {
+    // The fixture's entities and values describe themselves using stable business IDs.
+    return move.describe() + ":" + move.getPlanningEntities() + ":" + move.getPlanningValues();
+  }
+
+  private record StepTrace(
+      int stepIndex,
+      String move,
+      long selectedMoves,
+      long acceptedMoves,
+      long unassigned,
+      SimpleScore score,
+      String assignments) {}
+
+  private record Trace(
+      List<StepTrace> constructionSteps,
+      List<StepTrace> localSearchSteps,
+      String finalAssignments,
+      SimpleScore finalScore) {}
 }

@@ -89,6 +89,49 @@ class DefaultAlnsPoliciesTest {
   }
 
   @Test
+  void rouletteUpdatesWeightsAtTwoCompletedSegmentBoundaries() {
+    var policy =
+        new DefaultAlnsSelection<SimpleScore>(
+            AlnsSelectionPolicyType.SEGMENTED_ROULETTE,
+            Map.of("d", 1.0),
+            Map.of("r", 1.0),
+            2,
+            0.5,
+            0.01,
+            1.0,
+            5,
+            3,
+            1);
+    policy.update(result("d", "r", AlnsOutcome.NEW_BEST));
+    assertThat(policy.weights()).containsEntry("destroy/d", 1.0).containsEntry("repair/r", 1.0);
+    policy.update(result("d", "r", AlnsOutcome.IMPROVED));
+    assertThat(policy.weights()).containsEntry("destroy/d", 2.5).containsEntry("repair/r", 2.5);
+    policy.update(result("d", "r", AlnsOutcome.ACCEPTED));
+    assertThat(policy.weights()).containsEntry("destroy/d", 2.5).containsEntry("repair/r", 2.5);
+    policy.update(result("d", "r", AlnsOutcome.REJECTED));
+    assertThat(policy.weights()).containsEntry("destroy/d", 1.5).containsEntry("repair/r", 1.5);
+  }
+
+  @Test
+  void annealingCoolingChangesTheAcceptanceBoundaryAfterEachCompletedStep() {
+    var policy =
+        new DefaultAlnsAcceptance<SimpleScore>(
+            AlnsAcceptanceType.SIMULATED_ANNEALING, 4, SimpleScore.of(100), 0.5);
+    policy.initialize(SimpleScore.ZERO);
+    // The same draw lies below exp(-0.5), but above exp(-1) after one cooling step.
+    var random =
+        new Random(0) {
+          @Override
+          public double nextDouble() {
+            return 0.5;
+          }
+        };
+    assertThat(policy.isAccepted(SimpleScore.ZERO, SimpleScore.of(-50), random)).isTrue();
+    policy.stepEnded(SimpleScore.ZERO);
+    assertThat(policy.isAccepted(SimpleScore.ZERO, SimpleScore.of(-50), random)).isFalse();
+  }
+
+  @Test
   void ucbExploresCompatiblePairsBeforeReusingOne() {
     var policy = selection(AlnsSelectionPolicyType.UCB);
     var pairs = List.of(new AlnsOperatorPair("d1", "r"), new AlnsOperatorPair("d2", "r"));

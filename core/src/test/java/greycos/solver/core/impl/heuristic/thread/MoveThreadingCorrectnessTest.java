@@ -18,7 +18,9 @@ import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPha
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
 import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.decider.acceptor.LocalSearchAcceptorConfig;
@@ -32,6 +34,7 @@ import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.solver.DefaultSolver;
+import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.testcotwin.TestdataValue;
 import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingEntity;
 import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingSolution;
@@ -269,6 +272,75 @@ class MoveThreadingCorrectnessTest {
   }
 
   @ParameterizedTest
+  @CsvSource({
+    "basic,NONE,false,false",
+    "basic,NONE,false,true",
+    "basic,NONE,true,false",
+    "basic,NONE,true,true",
+    "basic,4,false,false",
+    "basic,4,false,true",
+    "basic,4,true,false",
+    "basic,4,true,true",
+    "list,NONE,false,false",
+    "list,NONE,false,true",
+    "list,NONE,true,false",
+    "list,NONE,true,true",
+    "list,4,false,false",
+    "list,4,false,true",
+    "list,4,true,false",
+    "list,4,true,true"
+  })
+  @Timeout(60)
+  void reproducesOrdinaryAndRuinRecreateMovesWithLogicalTermination(
+      String workloadName, String threads, boolean ruinRecreate, boolean scoreCountTermination) {
+    var workload = MoveThreadingWorkload.named(workloadName);
+    var first =
+        solveWithLogicalTermination(
+            workload, workloadName, threads, ruinRecreate, scoreCountTermination);
+    var second =
+        solveWithLogicalTermination(
+            workload, workloadName, threads, ruinRecreate, scoreCountTermination);
+
+    // Compare identical configurations. Worker count changes the logical cost of nested repair;
+    // speculative worker calculations are intentionally excluded from this trace.
+    assertThat(first).isEqualTo(second);
+    assertThat(first.steps()).isNotEmpty();
+    if (!scoreCountTermination) {
+      assertThat(first.steps()).hasSize(30);
+    }
+    assertThat(first.finalScore()).isGreaterThan(first.initialScore());
+    assertThat(first.usefulMoves()).isGreaterThanOrEqualTo(first.steps().size());
+  }
+
+  private <Solution_> Trace solveWithLogicalTermination(
+      Workload<Solution_> workload,
+      String workloadName,
+      String threads,
+      boolean ruinRecreate,
+      boolean scoreCountTermination) {
+    var termination =
+        scoreCountTermination
+            ? new TerminationConfig().withScoreCalculationCountLimit(600L)
+            : new TerminationConfig().withStepCountLimit(30);
+    var config =
+        workload
+            .solverConfig(threads, 37L, 1, termination, EnvironmentMode.PHASE_ASSERT)
+            .withMoveThreadBufferSize(2);
+    if (ruinRecreate) {
+      var phase = (LocalSearchPhaseConfig) config.getPhaseConfigList().getFirst();
+      phase.setMoveSelectorConfig(
+          workloadName.equals("basic")
+              ? new RuinRecreateMoveSelectorConfig()
+                  .withMinimumRuinedCount(2)
+                  .withMaximumRuinedCount(4)
+              : new ListRuinRecreateMoveSelectorConfig()
+                  .withMinimumRuinedCount(2)
+                  .withMaximumRuinedCount(4));
+    }
+    return solve(workload, config, 24);
+  }
+
+  @ParameterizedTest
   @ValueSource(strings = {"NONE", "8"})
   @Timeout(60)
   void constructsPartiallyAssignedBasicProblemWithPinnedJob(String threads) {
@@ -399,8 +471,6 @@ class MoveThreadingCorrectnessTest {
 
   private <Solution_> Trace solve(
       Workload<Solution_> workload, String threads, int acceptedCount, int bufferSize) {
-    var problem = workload.createProblem(32);
-    var initialScore = workload.recompute(problem);
     var config =
         workload
             .solverConfig(
@@ -410,6 +480,13 @@ class MoveThreadingCorrectnessTest {
                 new TerminationConfig().withStepCountLimit(STEP_LIMIT),
                 EnvironmentMode.FULL_ASSERT)
             .withMoveThreadBufferSize(bufferSize);
+    return solve(workload, config, 32);
+  }
+
+  private <Solution_> Trace solve(
+      Workload<Solution_> workload, SolverConfig config, int problemSize) {
+    var problem = workload.createProblem(problemSize);
+    var initialScore = workload.recompute(problem);
     var solver = (DefaultSolver<Solution_>) SolverFactory.<Solution_>create(config).buildSolver();
     List<String> steps = new ArrayList<>();
     solver.addPhaseLifecycleListener(
@@ -422,7 +499,7 @@ class MoveThreadingCorrectnessTest {
               steps.add(
                   localStep.getStepIndex()
                       + ":"
-                      + localStep.getStep()
+                      + moveSignature(localStep.getStep())
                       + ":"
                       + independentlyCalculated
                       + ":"
@@ -443,6 +520,12 @@ class MoveThreadingCorrectnessTest {
         initialScore,
         workload.score(solution),
         solver.getMoveEvaluationCount());
+  }
+
+  private static String moveSignature(Move<?> move) {
+    // R&R toString() includes an IdentityHashMap. Compare its stable entity/value IDs and the
+    // resulting assignments instead of depending on that map's iteration order.
+    return move.describe() + ":" + move.getPlanningEntities() + ":" + move.getPlanningValues();
   }
 
   private record Trace(

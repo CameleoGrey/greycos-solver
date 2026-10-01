@@ -2,7 +2,6 @@ package greycos.solver.core.config.solver;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Random;
 
 import jakarta.xml.bind.annotation.XmlEnum;
 
@@ -15,10 +14,9 @@ import greycos.solver.core.preview.api.move.Move;
 /**
  * The environment mode also allows you to detect common bugs in your implementation.
  *
- * <p>Also, a {@link Solver} has a single {@link Random} instance. Some optimization algorithms use
- * the {@link Random} instance a lot more than others. For example simulated annealing depends
- * highly on random numbers, while tabu search only depends on it to deal with score ties. This
- * environment mode influences the seed of that {@link Random} instance.
+ * <p>A {@link Solver} derives separate random streams for move iteration, factories, and acceptance
+ * from its random seed. The environment mode determines how an unspecified seed is chosen; an
+ * explicitly configured seed takes precedence in every mode.
  */
 @XmlEnum
 public enum EnvironmentMode {
@@ -85,18 +83,19 @@ public enum EnvironmentMode {
    * This is the default mode as it is recommended during development, and runs minimal correctness
    * checks that serve to quickly identify score corruption bugs.
    *
-   * <p>In this mode, two runs on the same computer will execute the same code in the same order.
-   * They will also yield the same result, except if they use a time based termination and they have
-   * a sufficiently large difference in allocated CPU time. This allows you to benchmark new
-   * optimizations (such as a new {@link Move} implementation) fairly and reproduce bugs in your
-   * code reliably.
+   * <p>This mode uses a fixed default random seed when none is configured. Repeating a search
+   * requires identical inputs, configuration, software versions, ordered data, deterministic custom
+   * components, and work-based termination. Under those conditions, ordinary construction
+   * heuristics, local search, and ALNS repeat their assignments and scores at each completed step,
+   * including with a fixed move-worker configuration.
    *
    * <p>Warning: some code can disrupt reproducibility regardless of this mode. This typically
    * happens when user code serves data such as {@link PlanningEntity planning entities} from
    * collections without defined iteration order, such as {@link HashSet} or {@link HashMap}.
    *
-   * <p>In practice, this mode uses the default random seed, and it also disables certain
-   * concurrency optimizations, such as work stealing.
+   * <p>Time-based termination, external cancellation, live problem changes, and asynchronous island
+   * or partition orchestration can change the result despite a fixed seed. Physical
+   * speculative-worker counts and elapsed durations are not part of the reproducibility contract.
    */
   PHASE_ASSERT(true),
   /**
@@ -114,14 +113,14 @@ public enum EnvironmentMode {
   /**
    * The non-reproducible mode is equally fast or slightly faster than {@link #NO_ASSERT}.
    *
-   * <p>The random seed is different on every run, which makes it more robust against an unlucky
-   * random seed. An unlucky random seed gives a bad result on a certain data set with a certain
-   * solver configuration. Note that in most use cases, the impact of the random seed is relatively
-   * low on the result. An occasional bad result is far more likely to be caused by another issue
-   * (such as a score trap).
+   * <p>Unless explicitly configured, the random seed is generated when building a solver, which
+   * makes it more robust against an unlucky random seed. An unlucky random seed gives a bad result
+   * on a certain data set with a certain solver configuration. Note that in most use cases, the
+   * impact of the random seed is relatively low on the result. An occasional bad result is far more
+   * likely to be caused by another issue (such as a score trap).
    *
-   * <p>In multithreaded scenarios, this mode allows the use of work stealing and other
-   * non-deterministic speed tricks.
+   * <p>An explicit seed still takes precedence in this mode. The same input, configuration, and
+   * termination requirements described by {@link #PHASE_ASSERT} apply when replaying a search.
    */
   NON_REPRODUCIBLE(false);
 

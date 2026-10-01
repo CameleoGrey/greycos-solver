@@ -42,6 +42,9 @@ public record SampleValueRanges<Value_>(
       Long.MAX_VALUE / FilteringIterator.BAIL_OUT_SAFETY_MULTIPLIER;
 
   /**
+   * When minimum sizes tie, uses the first range encountered in the sample. The sampling source
+   * therefore does not depend on the iteration order of the distinct-range set.
+   *
    * @return the sample members' distinct {@link ValueRange}s for {@code variableMetaModel}. Ranges
    *     may still be {@link NullAllowingValueRange}-wrapped; {@code null} is never a candidate
    *     destination out of {@link #findTarget}/{@link #pickExactly} regardless, since {@link
@@ -64,9 +67,13 @@ public record SampleValueRanges<Value_>(
     // so the common case is exactly one distinct range,
     // and a HashSet's backing table would be pure overhead for that.
     ValueRange<Value_> firstRange = null;
+    ValueRange<Value_> smallestRange = null;
     List<ValueRange<Value_>> distinctRangeList = null;
     for (var entity : sample) {
       var range = solutionView.getValueRange(variableMetaModel, entity);
+      if (smallestRange == null || range.getSize() < smallestRange.getSize()) {
+        smallestRange = range;
+      }
       if (firstRange == null) {
         firstRange = range;
       } else if (distinctRangeList == null) {
@@ -82,10 +89,15 @@ public record SampleValueRanges<Value_>(
         distinctRangeList.add(range);
       }
     }
-    return of(distinctRangeList == null ? Set.of(firstRange) : Set.copyOf(distinctRangeList));
+    var distinctRangeSet =
+        distinctRangeList == null ? Set.of(firstRange) : Set.copyOf(distinctRangeList);
+    return new SampleValueRanges<>(distinctRangeSet, Objects.requireNonNull(smallestRange));
   }
 
   /**
+   * Ties for the smallest range retain this set's encounter order. Use an ordered set when tied
+   * ranges must produce reproducible sampling.
+   *
    * @return an instance over an already-known set of distinct ranges; exposed mainly so the
    *     reservoir-sampling fallback ({@link #pickExactly}) can be bias-tested directly against
    *     plain {@link ValueRange} fixtures, without needing a {@link Sample} or a solution.

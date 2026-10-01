@@ -8,6 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -30,6 +31,64 @@ import greycos.solver.core.testcotwin.valuerange.entityproviding.unassignedvar.T
 import org.junit.jupiter.api.Test;
 
 class SampleValueRangesTest {
+
+  @Test
+  void of_sampleBased_equalSizesRetainFirstEncounteredRange() {
+    try (var fixture = new SampleValueRangesTestSupport()) {
+      // Both orders must work in every JVM; this does not depend on observing different set salts.
+      assertThat(fixture.ranges(fixture.entityA, fixture.entityB).smallestRange())
+          .isSameAs(fixture.rangeOf(fixture.entityA));
+      assertThat(fixture.ranges(fixture.entityB, fixture.entityA).smallestRange())
+          .isSameAs(fixture.rangeOf(fixture.entityB));
+    }
+  }
+
+  @Test
+  void of_sampleBased_laterSmallerRangeWins() {
+    try (var fixture = new SampleValueRangesTestSupport()) {
+      var ranges = fixture.ranges(fixture.entityA, fixture.entityB, fixture.smaller);
+
+      assertThat(ranges.smallestRange()).isSameAs(fixture.rangeOf(fixture.smaller));
+      assertThat(ranges.distinctRangeSet()).hasSize(3);
+    }
+  }
+
+  @Test
+  void of_sampleBased_duplicatesRetainFirstMinimumAndDistinctMembership() {
+    try (var fixture = new SampleValueRangesTestSupport()) {
+      var tiedRanges = fixture.ranges(fixture.entityA, fixture.duplicateA, fixture.entityB);
+      assertThat(tiedRanges.smallestRange()).isSameAs(fixture.rangeOf(fixture.entityA));
+      assertThat(tiedRanges.distinctRangeSet()).hasSize(2);
+
+      var smallerRanges =
+          fixture.ranges(
+              fixture.entityA, fixture.smaller, fixture.duplicateSmaller, fixture.entityB);
+      assertThat(smallerRanges.smallestRange()).isSameAs(fixture.rangeOf(fixture.smaller));
+      assertThat(smallerRanges.distinctRangeSet()).hasSize(3);
+    }
+  }
+
+  @Test
+  void of_sampleBased_equalityAndHashIgnoreTieOrder() {
+    try (var fixture = new SampleValueRangesTestSupport()) {
+      var ab = fixture.ranges(fixture.entityA, fixture.entityB);
+      var ba = fixture.ranges(fixture.entityB, fixture.entityA);
+
+      assertThat(ab.smallestRange()).isNotSameAs(ba.smallestRange());
+      assertThat(ab).isEqualTo(ba).hasSameHashCodeAs(ba);
+    }
+  }
+
+  @Test
+  void of_orderedSet_equalSizesRetainFirstEncounteredRange() {
+    var a = new ListValueRange<>(List.of("a", "b", "c"));
+    var b = new ListValueRange<>(List.of("c", "b", "d"));
+
+    assertThat(SampleValueRanges.of(new LinkedHashSet<>(List.of(a, b))).smallestRange())
+        .isSameAs(a);
+    assertThat(SampleValueRanges.of(new LinkedHashSet<>(List.of(b, a))).smallestRange())
+        .isSameAs(b);
+  }
 
   @Test
   void of_sampleBased_excludesNullAndChecksLegalityAcrossEveryMember() {

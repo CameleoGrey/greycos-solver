@@ -112,33 +112,50 @@ You can set the environment mode in the solver configuration XML file:
 </solver>
 ----
 
-A solver has a single `Random` instance.
-Some solver configurations use the `Random` instance a lot more than others.
-For example, Simulated Annealing depends highly on random numbers, while Tabu Search only depends on it to deal with score ties.
-The environment mode influences the seed of that `Random` instance.
+A solver derives separate random streams for move iteration, factories, and acceptance from its random seed.
+It isolates the random state of each step so that speculative move generation does not shift later steps' random streams.
+The environment mode determines whether an unspecified seed defaults to a fixed value or is generated.
+An explicitly configured seed takes precedence in every mode.
 
 
 [#environmentModeReproducibility]
 === Reproducibility
 
-For the environment mode to be reproducible,
-any two runs of the same dataset with the same solver configuration must have the same result at every step.
-Choosing a reproducible environment mode enables you to reproduce bugs consistently.
-It also allows you to benchmark certain refactorings (such as a score constraint performance optimization) fairly across runs.
+Reproducibility means repeating the planning assignments and scores at every completed search step,
+including the returned best solution.
+This helps reproduce bugs and compare changes such as score calculation optimizations.
+For construction heuristics, ordinary Local Search (including Guided Local Search and ruin/recreate),
+and ALNS, use the following conditions:
 
-Regardless of whether the chosen environment mode itself is reproducible,
-your application might still not be fully reproducible because of:
+* Keep the solver and application build, dependencies, JDK, input, and effective configuration identical.
+This includes the random seed, environment modes, move-thread counts, and buffer sizes.
+Use explicit thread counts when replaying on another machine; `AUTO` may resolve differently.
+Changing a version or configuration can change the search trajectory even when both configurations are individually reproducible.
+* Preserve the iteration order of entities, values, and problem facts consumed by constraints or neighborhoods.
+Use ordered collections such as `List`, `LinkedHashSet`, or `LinkedHashMap` where iteration affects search decisions.
+Custom scoring, selectors, listeners, and policies must also be deterministic for the same inputs.
+* Use work-based termination, preferably a step count, and keep nested repair budgets work-based too.
+Time limits, including unimproved time, diminished returns, and ALNS `repairSpentLimit`, depend on execution speed.
+They can change the final result even with a fixed seed.
+A time-dependent acceptance rule, such as Simulated Annealing with a time-based gradient, can also change earlier steps.
+External cancellation and live problem changes require reproducing their position in the search; the seed alone is insufficient.
 
-* Use of `HashSet` (or another `Collection` which has an undefined iteration order between JVM runs)
-for collections of planning entities or planning values (but not normal problem facts),
-especially in the solution implementation.
-Replace it with ``LinkedHashSet``.
-** This also applies to `HashMap`, which can be replaced by `LinkedHashMap`.
-* Combining a time gradient-dependent algorithm (most notably xref:optimization-algorithms/local-search.adoc#simulatedAnnealing[Simulated Annealing]) together with
-xref:optimization-algorithms/overview.adoc#timeMillisSpentTermination[time spent termination].
-A large enough difference in allocated CPU time will influence the time gradient values.
-Replace Simulated Annealing with Late Acceptance,
-or replace time spent termination with step count termination.
+Move evaluation workers consume results in selection order, so worker completion order does not determine the chosen move.
+Reported physical score-calculation counts can nevertheless differ because workers may finish different amounts of discarded speculative work.
+Compare completed steps, assignments, scores, and logical work rather than physical worker counters or elapsed durations.
+A calculation-count limit can produce different trajectories when changing worker configuration, especially with nested ruin/recreate.
+Timing-based callback throttling can also change which intermediate best solutions reach a consumer.
+
+The environment mode alone does not make asynchronous orchestration reproducible.
+Multi-island search can adopt different shared solutions depending on scheduling; even with adoption and migration disabled,
+equal-score winners can depend on publication order.
+Partitioned search can merge intermediate results in a different order, and a shared score target can stop it with different assignments.
+These paths are outside the reproducibility conditions above.
+
+To retain a reproducible case, save the ordered input before solving, the solver configuration and all overrides,
+the seed and thread counts from startup logging, the application and solver revisions, and the JDK version.
+Include the termination settings and any custom-component configuration.
+Check replay by comparing assignments and scores at each completed step; equal final scores alone can hide different solutions.
 
 
 [#environmentModeAvailableModes]
@@ -159,7 +176,8 @@ As the environment mode becomes stricter,
 the solver becomes slower, but gains more error-detection capabilities.
 `STEP_ASSERT` is already slow enough to prevent its use in production.
 
-All modes other than `NON_REPRODUCIBLE` are <<environmentModeReproducibility,reproducible>>.
+All modes other than `NON_REPRODUCIBLE` use a fixed default seed and support
+<<environmentModeReproducibility,reproducibility under the conditions above>>.
 
 
 [#environmentModeTrackedFullAssert]
@@ -245,7 +263,7 @@ and it gives you the benefit of quickly checking for score corruptions.
 If you can guarantee that your code is and will remain bug-free,
 you can switch to the `NO_ASSERT` mode for a marginal performance gain.
 
-In practice, this mode disables certain concurrency optimizations, such as work stealing.
+This mode uses a fixed default random seed when none is configured.
 
 
 [#environmentModeNoAssert]
@@ -613,7 +631,7 @@ there are `greycos.solver.move.type.step.score.diff.hard.score` and `greycos.sol
 
 Many heuristics and metaheuristics depend on pseudorandom values for move selection,
 score-tie resolution and probability-based acceptance.
-The solver derives independent streams for move generation, move selection and acceptance from one root seed.
+The solver derives independent streams for move iteration, factories, and acceptance from one root seed.
 This prevents one component's random consumption from changing another component's sequence.
 
 To change the root seed, specify `randomSeed`:
@@ -627,9 +645,9 @@ To change the root seed, specify `randomSeed`:
 </solver>
 ----
 
-With a reproducible environment mode, the same seed and solver configuration produce the same stream assignment.
-Child solvers and worker threads receive streams by stable index before they start,
-so their random sequences do not depend on thread scheduling.
+The same seed and effective solver configuration produce the same initial random streams.
+Reproducing a complete solve also requires the input, termination, and orchestration conditions in
+<<environmentModeReproducibility,Reproducibility>>.
 
 
 [#solverManager]
