@@ -482,7 +482,7 @@ penalty rounds, and memory. A faster feature evaluator alone does not establish 
 The opt-in routing and cloud benchmarks under `examples/src/test/java/examples` export input and artifact hashes,
 initialized assignments, effective configurations, original-score trajectories, diagnostics, and independently replayed results.
 Use saved construction-heuristic starts for paired comparisons and verify their assignments and scores before measuring search.
-Preserve the effective construction configuration, including any nearby configuration inherited from later phases.
+Preserve the effective construction configuration, including explicit nearby selectors and any enabled automatic nearby selection.
 Use `NONE` for sequential search; a move-thread count of `1` creates one move worker.
 
 A bounded upgrade comparison can use this 120-minute maximum budget:

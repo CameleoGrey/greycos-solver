@@ -821,14 +821,14 @@ So if a move has the same score as before the planning variable was initialized,
 [#constructionHeuristicNearbySelection]
 === Nearby selection
 
-Construction heuristics automatically reuse applicable nearby configuration for each planning variable.
-It can come from the solver's `nearbyDistanceMeterClass` or from manual nearby selectors
+Automatic nearby selection is disabled by default for construction heuristics.
+Set `nearbySelectionAutoConfigurationEnabled` to `true` on a construction heuristic phase
+to reuse applicable nearby configuration for each planning variable.
+The configuration can come from the solver's `nearbyDistanceMeterClass` or from manual nearby selectors
 in the nearest upcoming Local Search phase, including Local Search nested in island or partitioned search.
-Ruin-and-recreate construction inherits the resolved nearby profiles.
-Variables without an applicable profile retain their existing selection behavior.
+Variables without an applicable profile use ordinary selection, even when the flag is `true`.
 
-No additional construction heuristic configuration is needed to enable this behavior.
-For example, apply the following to a solver configured for vehicle routing:
+For example, enable automatic nearby selection for the construction phase of a vehicle-routing solver:
 
 [tabs]
 ====
@@ -838,7 +838,9 @@ Java::
 ----
 solverConfig
         .withNearbyDistanceMeterClass(CustomerNearbyDistanceMeter.class)
-        .withPhases(new ConstructionHeuristicPhaseConfig(), new LocalSearchPhaseConfig());
+        .withPhases(new ConstructionHeuristicPhaseConfig()
+                        .withNearbySelectionAutoConfigurationEnabled(true),
+                new LocalSearchPhaseConfig());
 ----
 XML::
 +
@@ -847,20 +849,31 @@ XML::
 <solver xmlns="https://greycos.ai/xsd/solver">
   <!-- Domain and score configuration. -->
   <nearbyDistanceMeterClass>org.acme.vehiclerouting.domain.solver.nearby.CustomerNearbyDistanceMeter</nearbyDistanceMeterClass>
-  <constructionHeuristic/>
+  <constructionHeuristic>
+    <nearbySelectionAutoConfigurationEnabled>true</nearbySelectionAutoConfigurationEnabled>
+  </constructionHeuristic>
   <localSearch/>
 </solver>
 ----
 ====
 
 `nearbySelectionAutoConfigurationEnabled` is a construction heuristic setting.
-An unset (`null`) value defaults to `true`; `false` disables automatic inference for that phase.
+An unset (`null`) value defaults to `false`; only `true` enables automatic inference for that phase.
 Explicitly configured construction nearby selectors keep their configured behavior when inference is disabled.
 `nearbySelectionSize` sets the positive initial number of complete assignment candidates per origin;
 an unset value defaults to 40.
+Setting `nearbySelectionSize` alone does not enable automatic nearby selection.
 It is independent of Local Search's random distribution and its distribution size parameters.
 For example, use `.withNearbySelectionSize(80)` in Java or
 `<nearbySelectionSize>80</nearbySelectionSize>` inside `<constructionHeuristic>` in XML.
+
+Ruin-and-recreate repair construction is controlled separately.
+Set `nearbySelectionAutoConfigurationEnabled` to `true` on each
+xref:optimization-algorithms/move-selector-reference.adoc#ruinRecreateMoveSelector[`RuinRecreateMoveSelector`]
+or xref:optimization-algorithms/move-selector-reference.adoc#listRuinRecreateMoveSelector[`ListRuinRecreateMoveSelector`]
+that should reuse the enclosing Local Search phase's nearby profiles.
+The phase setting does not enable repair nearby selection, and a repair selector's setting does not enable it for another selector.
+These settings do not change Local Search's nearby selection or the discovery of nearby profiles.
 
 Automatic selection evaluates finite, deterministic batches selected by nearby rank.
 With the default size, the cumulative candidate limits are 40, 80, 160, and so on.

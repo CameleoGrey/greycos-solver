@@ -55,6 +55,8 @@ public final class ListRuinRecreateMoveSelectorFactory<Solution_>
 
     var constructionHeuristicPhaseConfig =
         new ConstructionHeuristicPhaseConfig().withEntityPlacerConfig(entityPlacerConfig);
+    constructionHeuristicPhaseConfig.setNearbySelectionAutoConfigurationEnabled(
+        config.getNearbySelectionAutoConfigurationEnabled());
     var constructionHeuristicPhaseBuilder =
         RuinRecreateConstructionHeuristicPhaseBuilder.create(
             configPolicy, constructionHeuristicPhaseConfig);

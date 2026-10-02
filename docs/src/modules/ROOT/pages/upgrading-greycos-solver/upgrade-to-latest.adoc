@@ -1,6 +1,38 @@
 [#upgradeToLatest]
 = Upgrading to the latest version
 
+[#constructionNearbySelectionUpgrade]
+== Automatic nearby selection during construction and repair
+
+Automatic nearby selection now defaults to disabled for construction heuristics and ruin-and-recreate repair.
+Previously, construction could automatically reuse the solver's nearby distance meter or nearby selectors
+from the upcoming Local Search phase without an explicit opt-in.
+
+To retain automatic nearby selection, set `nearbySelectionAutoConfigurationEnabled` to `true`
+on each construction heuristic phase and each repair selector that needs it:
+
+* `ConstructionHeuristicPhaseConfig` controls that construction phase.
+* `RuinRecreateMoveSelectorConfig` controls that basic-variable selector's repair.
+* `ListRuinRecreateMoveSelectorConfig` controls that list-variable selector's repair.
+
+These settings are independent. Enabling the initial construction phase does not enable repair,
+and enabling one repair selector does not enable another.
+Each unset (`null`) value defaults to `false`; an explicit `false` also disables automatic selection.
+Use `.withNearbySelectionAutoConfigurationEnabled(true)` in Java or
+`<nearbySelectionAutoConfigurationEnabled>true</nearbySelectionAutoConfigurationEnabled>` in XML.
+In a repair selector, place the XML element after its existing ruin-specific settings.
+See the complete examples for
+xref:optimization-algorithms/construction-heuristics.adoc#constructionHeuristicNearbySelection[construction phases],
+xref:optimization-algorithms/move-selector-reference.adoc#ruinRecreateMoveSelector[basic-variable repair], and
+xref:optimization-algorithms/move-selector-reference.adoc#listRuinRecreateMoveSelector[list-variable repair].
+
+`nearbySelectionSize` still defaults to 40 and only controls the initial automatic batch size;
+setting it alone does not enable automatic nearby selection.
+With `true` and no applicable profile, construction or repair uses ordinary selection.
+Explicit construction nearby selectors remain an independent opt-in and keep their configured behavior.
+Local Search's nearby selection is unchanged.
+Nearby-profile metadata is still resolved when building the solver, including when automatic construction selection is disabled.
+
 [#guidedLocalSearchUpgrade]
 == Guided Local Search
 

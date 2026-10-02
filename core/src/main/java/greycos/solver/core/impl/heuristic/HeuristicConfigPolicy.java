@@ -365,7 +365,7 @@ public class HeuristicConfigPolicy<Solution_> {
     private Class<? extends NearbyDistanceMeter<?, ?>> nearbyDistanceMeterClass;
     private ConstructionHeuristicNearbyProfiles constructionHeuristicNearbyProfiles =
         ConstructionHeuristicNearbyProfiles.empty();
-    private boolean constructionHeuristicNearbyAutoConfigurationEnabled = true;
+    private boolean constructionHeuristicNearbyAutoConfigurationEnabled = false;
     private int constructionHeuristicNearbySelectionSize = 40;
     private RandomSource random;
     private GuidedLocalSearchSelectionContext<Solution_> guidedLocalSearchSelectionContext;

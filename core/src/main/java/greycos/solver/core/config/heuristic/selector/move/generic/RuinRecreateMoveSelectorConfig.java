@@ -19,7 +19,8 @@ import org.jspecify.annotations.Nullable;
       "minimumRuinedPercentage",
       "maximumRuinedPercentage",
       "entitySelectorConfig",
-      "variableName"
+      "variableName",
+      "nearbySelectionAutoConfigurationEnabled"
     })
 public class RuinRecreateMoveSelectorConfig
     extends MoveSelectorConfig<RuinRecreateMoveSelectorConfig> {
@@ -40,6 +41,7 @@ public class RuinRecreateMoveSelectorConfig
   protected EntitySelectorConfig entitySelectorConfig = null;
 
   protected String variableName = null;
+  protected Boolean nearbySelectionAutoConfigurationEnabled = null;
 
   // **************************
   // Getters/Setters
@@ -111,6 +113,20 @@ public class RuinRecreateMoveSelectorConfig
     this.variableName = variableName;
   }
 
+  /**
+   * Whether nearby selection configured for local search is also used during this selector's repair
+   * construction heuristic. A null value defaults to false. This setting is independent of the
+   * top-level construction heuristic and other ruin-and-recreate selectors.
+   */
+  public @Nullable Boolean getNearbySelectionAutoConfigurationEnabled() {
+    return nearbySelectionAutoConfigurationEnabled;
+  }
+
+  public void setNearbySelectionAutoConfigurationEnabled(
+      @Nullable Boolean nearbySelectionAutoConfigurationEnabled) {
+    this.nearbySelectionAutoConfigurationEnabled = nearbySelectionAutoConfigurationEnabled;
+  }
+
   public @NonNull RuinRecreateMoveSelectorConfig withMaximumRuinedPercentage(
       @NonNull Double maximumRuinedPercentage) {
     this.maximumRuinedPercentage = maximumRuinedPercentage;
@@ -125,6 +141,12 @@ public class RuinRecreateMoveSelectorConfig
 
   public @NonNull RuinRecreateMoveSelectorConfig withVariableName(@NonNull String variableName) {
     this.setVariableName(variableName);
+    return this;
+  }
+
+  public @NonNull RuinRecreateMoveSelectorConfig withNearbySelectionAutoConfigurationEnabled(
+      @NonNull Boolean nearbySelectionAutoConfigurationEnabled) {
+    setNearbySelectionAutoConfigurationEnabled(nearbySelectionAutoConfigurationEnabled);
     return this;
   }
 
@@ -169,6 +191,10 @@ public class RuinRecreateMoveSelectorConfig
         ConfigUtils.inheritConfig(entitySelectorConfig, inheritedConfig.getEntitySelectorConfig());
     variableName =
         ConfigUtils.inheritOverwritableProperty(variableName, inheritedConfig.getVariableName());
+    nearbySelectionAutoConfigurationEnabled =
+        ConfigUtils.inheritOverwritableProperty(
+            nearbySelectionAutoConfigurationEnabled,
+            inheritedConfig.getNearbySelectionAutoConfigurationEnabled());
     return this;
   }
 

@@ -15,7 +15,8 @@ import org.jspecify.annotations.Nullable;
       "minimumRuinedCount",
       "maximumRuinedCount",
       "minimumRuinedPercentage",
-      "maximumRuinedPercentage"
+      "maximumRuinedPercentage",
+      "nearbySelectionAutoConfigurationEnabled"
     })
 public class ListRuinRecreateMoveSelectorConfig
     extends MoveSelectorConfig<ListRuinRecreateMoveSelectorConfig> {
@@ -31,6 +32,7 @@ public class ListRuinRecreateMoveSelectorConfig
 
   protected Double minimumRuinedPercentage = null;
   protected Double maximumRuinedPercentage = null;
+  protected Boolean nearbySelectionAutoConfigurationEnabled = null;
 
   // **************************
   // Getters/Setters
@@ -92,6 +94,26 @@ public class ListRuinRecreateMoveSelectorConfig
     return this;
   }
 
+  /**
+   * Whether nearby selection configured for local search is also used during this selector's repair
+   * construction heuristic. A null value defaults to false. This setting is independent of the
+   * top-level construction heuristic and other ruin-and-recreate selectors.
+   */
+  public @Nullable Boolean getNearbySelectionAutoConfigurationEnabled() {
+    return nearbySelectionAutoConfigurationEnabled;
+  }
+
+  public void setNearbySelectionAutoConfigurationEnabled(
+      @Nullable Boolean nearbySelectionAutoConfigurationEnabled) {
+    this.nearbySelectionAutoConfigurationEnabled = nearbySelectionAutoConfigurationEnabled;
+  }
+
+  public @NonNull ListRuinRecreateMoveSelectorConfig withNearbySelectionAutoConfigurationEnabled(
+      @NonNull Boolean nearbySelectionAutoConfigurationEnabled) {
+    setNearbySelectionAutoConfigurationEnabled(nearbySelectionAutoConfigurationEnabled);
+    return this;
+  }
+
   // **************************
   // Interface methods
   // **************************
@@ -122,6 +144,10 @@ public class ListRuinRecreateMoveSelectorConfig
     maximumRuinedPercentage =
         ConfigUtils.inheritOverwritableProperty(
             maximumRuinedPercentage, inheritedConfig.getMaximumRuinedPercentage());
+    nearbySelectionAutoConfigurationEnabled =
+        ConfigUtils.inheritOverwritableProperty(
+            nearbySelectionAutoConfigurationEnabled,
+            inheritedConfig.getNearbySelectionAutoConfigurationEnabled());
     return this;
   }
 

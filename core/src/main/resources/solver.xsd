@@ -519,6 +519,7 @@
           <xs:element minOccurs="0" name="maximumRuinedPercentage" type="xs:double"/>
           <xs:element minOccurs="0" name="entitySelector" type="tns:entitySelectorConfig"/>
           <xs:element minOccurs="0" name="variableName" type="xs:string"/>
+          <xs:element minOccurs="0" name="nearbySelectionAutoConfigurationEnabled" type="xs:boolean"/>
         </xs:sequence>
       </xs:extension>
     </xs:complexContent>
@@ -531,6 +532,7 @@
           <xs:element minOccurs="0" name="maximumRuinedCount" type="xs:int"/>
           <xs:element minOccurs="0" name="minimumRuinedPercentage" type="xs:double"/>
           <xs:element minOccurs="0" name="maximumRuinedPercentage" type="xs:double"/>
+          <xs:element minOccurs="0" name="nearbySelectionAutoConfigurationEnabled" type="xs:boolean"/>
         </xs:sequence>
       </xs:extension>
     </xs:complexContent>

@@ -86,9 +86,7 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
             .withEntitySorterManner(entitySorterManner)
             .withValueSorterManner(valueSorterManner)
             .withConstructionHeuristicNearbyAutoConfigurationEnabled(
-                Objects.requireNonNullElse(
-                    phaseConfig.getNearbySelectionAutoConfigurationEnabled(),
-                    solverConfigPolicy.isConstructionHeuristicNearbyAutoConfigurationEnabled()))
+                Boolean.TRUE.equals(phaseConfig.getNearbySelectionAutoConfigurationEnabled()))
             .withConstructionHeuristicNearbySelectionSize(nearbySelectionSize)
             // Local-search union augmentation duplicates candidates and has no construction
             // evaluation boundary. Construction uses its independently resolved profiles.

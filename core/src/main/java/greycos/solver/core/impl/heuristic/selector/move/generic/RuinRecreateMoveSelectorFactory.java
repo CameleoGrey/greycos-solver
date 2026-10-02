@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.heuristic.selector.move.generic;
 
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
@@ -70,9 +72,16 @@ public final class RuinRecreateMoveSelectorFactory<Solution_>
     var nestedEntitySelectorConfig =
         getDefaultEntitySelectorConfigForEntity(
             configPolicy, ruinRecreateEntitySelector.getEntityDescriptor());
+    var constructionHeuristicPhaseConfig =
+        new ConstructionHeuristicPhaseConfig()
+            .withEntityPlacerConfig(
+                new QueuedEntityPlacerConfig()
+                    .withEntitySelectorConfig(nestedEntitySelectorConfig));
+    constructionHeuristicPhaseConfig.setNearbySelectionAutoConfigurationEnabled(
+        config.getNearbySelectionAutoConfigurationEnabled());
     var constructionHeuristicPhaseBuilder =
         RuinRecreateConstructionHeuristicPhaseBuilder.create(
-            configPolicy, nestedEntitySelectorConfig);
+            configPolicy, constructionHeuristicPhaseConfig);
     return new RuinRecreateMoveSelector<>(
         ruinRecreateEntitySelector,
         variableDescriptor,

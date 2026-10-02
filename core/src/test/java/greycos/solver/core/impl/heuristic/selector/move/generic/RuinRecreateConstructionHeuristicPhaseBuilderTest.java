@@ -10,13 +10,19 @@ import java.util.Set;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.score.trend.InitializingScoreTrendLevel;
 import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyMoveSelector;
+import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyProfileResolver;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.trend.InitializingScoreTrend;
+import greycos.solver.core.testcotwin.TestdataEntity;
 import greycos.solver.core.testcotwin.TestdataSolution;
+import greycos.solver.core.testcotwin.TestdataValue;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class RuinRecreateConstructionHeuristicPhaseBuilderTest {
@@ -35,12 +41,47 @@ class RuinRecreateConstructionHeuristicPhaseBuilderTest {
                       InitializingScoreTrendLevel.ANY
                     }))
             .build();
+    assertThat(solverConfigPolicy.isConstructionHeuristicNearbyAutoConfigurationEnabled())
+        .isFalse();
     var constructionHeuristicConfig = new ConstructionHeuristicPhaseConfig();
     var builder =
         RuinRecreateConstructionHeuristicPhaseBuilder.create(
             solverConfigPolicy, constructionHeuristicConfig);
     var phase = builder.build();
     assertThat(phase.getEntityPlacer()).isSameAs(builder.getEntityPlacer());
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = {false, true})
+  void nestedNearbySelectionRequiresItsOwnOptIn(Boolean enabled) {
+    var descriptor = TestdataSolution.buildSolutionDescriptor();
+    var enclosingPolicy =
+        new HeuristicConfigPolicy.Builder<TestdataSolution>()
+            .withEnvironmentMode(EnvironmentMode.PHASE_ASSERT)
+            .withSolutionDescriptor(descriptor)
+            .withInitializingScoreTrend(
+                new InitializingScoreTrend(
+                    new InitializingScoreTrendLevel[] {InitializingScoreTrendLevel.ANY}))
+            .withConstructionHeuristicNearbyProfiles(
+                ConstructionHeuristicNearbyProfileResolver.resolveGlobal(
+                    descriptor, TestNearbyDistanceMeter.class))
+            .withConstructionHeuristicNearbyAutoConfigurationEnabled(true)
+            .build();
+    var constructionHeuristicConfig =
+        new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(5);
+    constructionHeuristicConfig.setNearbySelectionAutoConfigurationEnabled(enabled);
+
+    var builder =
+        RuinRecreateConstructionHeuristicPhaseBuilder.create(
+            enclosingPolicy, constructionHeuristicConfig);
+
+    assertThat(builder.getEntityPlacer().getCandidateMoveSelectors())
+        .singleElement()
+        .satisfies(
+            selector ->
+                assertThat(selector instanceof ConstructionHeuristicNearbyMoveSelector<?>)
+                    .isEqualTo(Boolean.TRUE.equals(enabled)));
   }
 
   @Test
@@ -151,5 +192,14 @@ class RuinRecreateConstructionHeuristicPhaseBuilderTest {
     assertThat(anotherCopy.getEntityPlacer())
         .isNotSameAs(builder.getEntityPlacer())
         .isNotSameAs(copy.getEntityPlacer());
+  }
+
+  public static final class TestNearbyDistanceMeter
+      implements NearbyDistanceMeter<TestdataEntity, TestdataValue> {
+
+    @Override
+    public double getNearbyDistance(TestdataEntity origin, TestdataValue destination) {
+      return 0;
+    }
   }
 }

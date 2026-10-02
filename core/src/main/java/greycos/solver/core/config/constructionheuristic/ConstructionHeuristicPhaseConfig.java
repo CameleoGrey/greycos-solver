@@ -112,8 +112,8 @@ public class ConstructionHeuristicPhaseConfig
 
   /**
    * Whether nearby selection configured for local search is also used during construction. A null
-   * value defaults to true. Disabling inference does not disable explicitly configured construction
-   * nearby selectors.
+   * value defaults to false. Disabling inference does not disable explicitly configured
+   * construction nearby selectors.
    */
   public @Nullable Boolean getNearbySelectionAutoConfigurationEnabled() {
     return nearbySelectionAutoConfigurationEnabled;
@@ -127,7 +127,9 @@ public class ConstructionHeuristicPhaseConfig
   /**
    * Initial number of complete nearby assignments evaluated for each construction origin. A null
    * value defaults to 40. The neighborhood grows when all evaluated assignments worsen the hard
-   * score; this setting is independent of local search's random distribution.
+   * score; this setting is independent of local search's random distribution. Setting this size
+   * does not enable automatic nearby selection; also enable {@link
+   * #getNearbySelectionAutoConfigurationEnabled()}.
    */
   public @Nullable Integer getNearbySelectionSize() {
     return nearbySelectionSize;

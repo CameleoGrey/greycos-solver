@@ -26,7 +26,7 @@ The following advanced features are available in GreyCOS Solver:
 === Nearby selection
 
 Nearby selection favors closer entities or values.
-Local Search uses a probability distribution; construction heuristics use deterministic nearest batches.
+Local Search uses a probability distribution; automatic construction nearby selection uses deterministic nearest batches.
 For problems such as TSP and VRP, this can improve solution quality within the available solving time.
 
 image::advanced-features/nearbySelectionMotivation.png[align="center"]
@@ -93,11 +93,20 @@ The solver may reuse the meter in different contexts.
 [#constructionNearbySelection]
 ==== Nearby selection during construction
 
-Construction heuristics automatically reuse the solver's `nearbyDistanceMeterClass`
-or applicable manual nearby selectors in the nearest upcoming Local Search phase.
+Automatic nearby selection is disabled by default for construction heuristics.
+Set `nearbySelectionAutoConfigurationEnabled` to `true` on a construction heuristic phase
+to reuse the solver's `nearbyDistanceMeterClass` or applicable manual nearby selectors
+in the nearest upcoming Local Search phase.
 Discovery also covers Local Search inside island and partitioned search.
-Ruin-and-recreate construction inherits the resolved nearby profiles.
-No additional construction heuristic configuration is required.
+An unset (`null`) or `false` flag leaves automatic selection disabled.
+Without an applicable profile, construction uses ordinary selection even when the flag is `true`.
+
+Ruin-and-recreate repair has its own opt-in on each `RuinRecreateMoveSelectorConfig`
+and `ListRuinRecreateMoveSelectorConfig`.
+Set the selector's `nearbySelectionAutoConfigurationEnabled` to `true` to reuse profiles
+from its enclosing Local Search phase during repair.
+It defaults to `false` independently of the initial construction phase and other repair selectors.
+Local Search's nearby selection and profile discovery are unchanged by these flags.
 
 The initial nearest batch contains up to 40 complete assignment candidates per origin.
 If every meaningful, structurally valid assignment worsens the hard score relative to the previous step,
@@ -106,8 +115,8 @@ or the finite candidate stream is exhausted.
 This deterministic batching is independent of Local Search's random distribution.
 
 Set `nearbySelectionSize` on the construction heuristic to change the positive initial batch size.
-Set `nearbySelectionAutoConfigurationEnabled` to `false` to disable automatic construction nearby selection;
-explicit construction nearby selectors retain their configured behavior.
+The default is 40; setting the size alone does not enable automatic nearby selection.
+Explicit construction nearby selectors are a separate opt-in and retain their configured behavior when automatic selection is disabled.
 See xref:optimization-algorithms/construction-heuristics.adoc#constructionHeuristicNearbySelection[construction heuristic nearby selection]
 for configuration examples, distance-meter types, and widening semantics.
 
@@ -167,7 +176,7 @@ For Swap, both are planning entities.
 To quickly configure nearby selection with a planning list variable,
 add `nearbyDistanceMeterClass` element to your configuration file.
 The following enables nearby selection with a list variable
-for Local Search and its preceding construction heuristic:
+for Local Search:
 
 [source,xml,options="nowrap"]
 ----

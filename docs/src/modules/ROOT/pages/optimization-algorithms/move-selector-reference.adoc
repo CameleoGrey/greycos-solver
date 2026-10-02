@@ -348,15 +348,13 @@ This coarse-grained move is useful to help the solver to escape from a local opt
 It allows the solver to effectively "undo" a number of earlier decisions in one step,
 opening up a new part of the solution space.
 
-[NOTE]
-====
-If xref:advanced-features/advanced-features.adoc#nearbySelection[nearby selection] is enabled,
-the `RuinRecreateMove` is likely to underperform
-as it won't be able to rebuild the solution using nearby selection.
-This almost always results in worse solutions than those that were originally ruined,
-without a big likelihood of leading to a better solution further down the line.
-We recommend not using this move together with nearby selection.
-====
+Repair uses ordinary selection by default, including when the enclosing Local Search phase uses
+xref:advanced-features/advanced-features.adoc#nearbySelection[nearby selection].
+Set `nearbySelectionAutoConfigurationEnabled` to `true` on this move selector to reuse that phase's
+applicable nearby profiles during repair.
+An unset (`null`) or `false` value disables automatic nearby selection for this selector's repair.
+This setting is independent of the initial construction phase and other ruin-and-recreate selectors.
+Without an applicable profile, repair uses ordinary selection even when the flag is `true`.
 
 This move is not enabled by default.
 To enable it, add the following to the `localSearch` section of the solver configuration:
@@ -374,20 +372,41 @@ We recommend that you xref:using-greycos-solver/benchmarking-and-tweaking.adoc#b
 to find the best fit for your problem.
 ====
 
-Advanced configuration:
+Advanced configuration, with automatic nearby selection enabled for repair:
 
+[tabs]
+====
+Java::
++
+[source,java,options="nowrap"]
+----
+RuinRecreateMoveSelectorConfig ruinRecreate = new RuinRecreateMoveSelectorConfig()
+        .withMinimumRuinedCount(5)
+        .withMaximumRuinedCount(20)
+        .withEntitySelectorConfig(new EntitySelectorConfig(Lecture.class))
+        .withVariableName("room")
+        .withNearbySelectionAutoConfigurationEnabled(true);
+----
+XML::
++
 [source,xml,options="nowrap"]
 ----
     <ruinRecreateMoveSelector>
       <minimumRuinedCount>5</minimumRuinedCount>
       <maximumRuinedCount>20</maximumRuinedCount>
       <entitySelector>
-        <entityClass>...Lecture</entityClass>
-        ...
+        <entityClass>org.acme.schooltimetabling.cotwin.Lecture</entityClass>
       </entitySelector>
       <variableName>room</variableName>
+      <nearbySelectionAutoConfigurationEnabled>true</nearbySelectionAutoConfigurationEnabled>
     </ruinRecreateMoveSelector>
 ----
+====
+
+The XML `nearbySelectionAutoConfigurationEnabled` element follows the other ruin-and-recreate settings,
+including `entitySelector` and `variableName` when present.
+Enabled repair uses the deterministic batching described in
+xref:optimization-algorithms/construction-heuristics.adoc#constructionHeuristicNearbySelection[construction heuristic nearby selection].
 
 The `minimumRuinedCount` and `maximumRuinedCount` properties limit the number of entities that are unassigned.
 The default values are `5` and `20` respectively, but for large datasets,
@@ -402,8 +421,8 @@ The property `variableName` allows you to specify which variable will be used by
 
 [NOTE]
 ====
-`RuinRecreateMove` doesn’t support customizing the construction heuristic that it runs.
-Neither does it support customizing any entity or value selectors.
+`RuinRecreateMove` supports the automatic nearby setting above, but does not expose a custom repair
+construction heuristic or custom repair entity and value selectors.
 If your problem needs more control over the construction heuristic,
 don’t enable this move.
 ====
@@ -594,15 +613,13 @@ This coarse-grained move is useful to help the solver to escape from a local opt
 It allows the solver to effectively "undo" a number of earlier decisions in one step,
 opening up a new part of the solution space.
 
-[NOTE]
-====
-If xref:advanced-features/advanced-features.adoc#nearbySelection[nearby selection] is enabled,
-the `ListRuinRecreateMove` is likely to underperform
-as it won't be able to rebuild the solution using nearby selection.
-This almost always results in worse solutions than those that were originally ruined,
-without a big likelihood of leading to a better solution further down the line.
-We recommend not using this move together with nearby selection.
-====
+Repair uses ordinary selection by default, including when the enclosing Local Search phase uses
+xref:advanced-features/advanced-features.adoc#nearbySelection[nearby selection].
+Set `nearbySelectionAutoConfigurationEnabled` to `true` on this move selector to reuse that phase's
+applicable nearby profiles during repair.
+An unset (`null`) or `false` value disables automatic nearby selection for this selector's repair.
+This setting is independent of the initial construction phase and other ruin-and-recreate selectors.
+Without an applicable profile, repair uses ordinary selection even when the flag is `true`.
 
 This move is not enabled by default.
 To enable it, add the following to the `localSearch` section of the solver configuration:
@@ -620,24 +637,43 @@ We recommend that you xref:using-greycos-solver/benchmarking-and-tweaking.adoc#b
 to find the best fit for your problem.
 ====
 
-Advanced configuration:
+Advanced configuration, with automatic nearby selection enabled for repair:
 
+[tabs]
+====
+Java::
++
+[source,java,options="nowrap"]
+----
+ListRuinRecreateMoveSelectorConfig ruinRecreate = new ListRuinRecreateMoveSelectorConfig()
+        .withMinimumRuinedCount(5)
+        .withMaximumRuinedCount(40)
+        .withNearbySelectionAutoConfigurationEnabled(true);
+----
+XML::
++
 [source,xml,options="nowrap"]
 ----
     <listRuinRecreateMoveSelector>
       <minimumRuinedCount>5</minimumRuinedCount>
       <maximumRuinedCount>40</maximumRuinedCount>
+      <nearbySelectionAutoConfigurationEnabled>true</nearbySelectionAutoConfigurationEnabled>
     </listRuinRecreateMoveSelector>
 ----
+====
+
+The XML `nearbySelectionAutoConfigurationEnabled` element follows the ruin-count and ruin-percentage settings.
+Enabled repair uses the deterministic batching described in
+xref:optimization-algorithms/construction-heuristics.adoc#constructionHeuristicNearbySelection[construction heuristic nearby selection].
 
 The `minimumRuinedCount` and `maximumRuinedCount` properties limit the number of values that are unassigned.
-The default values are `5` and `20` respectively, but for large datasets,
+The default values are `5` and `40` respectively, but for large datasets,
 it may prove beneficial to increase these values.
 
 [NOTE]
 ====
-`ListRuinRecreateMove` doesn’t support customizing the construction heuristic that it runs.
-Neither does it support customizing any entity or value selectors.
+`ListRuinRecreateMove` supports the automatic nearby setting above, but does not expose a custom repair
+construction heuristic or custom repair entity and value selectors.
 If your problem needs more control over the construction heuristic,
 don’t enable this move.
 ====

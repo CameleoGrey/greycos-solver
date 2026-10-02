@@ -438,6 +438,7 @@ class SortedNearbyConstructionHeuristicTest {
 
   private static ConstructionHeuristicPhaseConfig phase(MoveSelectorConfig<?> move, int size) {
     return new ConstructionHeuristicPhaseConfig()
+        .withNearbySelectionAutoConfigurationEnabled(true)
         .withEntityPlacerConfig(new PooledEntityPlacerConfig().withMoveSelectorConfig(move))
         .withNearbySelectionSize(size)
         .withForagerConfig(recordingForager(Integer.MAX_VALUE))

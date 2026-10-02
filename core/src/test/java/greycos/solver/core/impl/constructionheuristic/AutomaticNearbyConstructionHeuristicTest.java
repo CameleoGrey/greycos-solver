@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import greycos.solver.core.api.cotwin.lookup.PlanningId;
@@ -29,6 +30,7 @@ import greycos.solver.core.config.constructionheuristic.decider.forager.Construc
 import greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicPickEarlyType;
 import greycos.solver.core.config.constructionheuristic.placer.PooledEntityPlacerConfig;
 import greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
+import greycos.solver.core.config.constructionheuristic.placer.QueuedValuePlacerConfig;
 import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.common.nearby.NearbySelectionConfig;
 import greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
@@ -48,16 +50,22 @@ import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.decider.acceptor.AcceptorType;
 import greycos.solver.core.config.localsearch.decider.acceptor.LocalSearchAcceptorConfig;
 import greycos.solver.core.config.localsearch.decider.forager.LocalSearchForagerConfig;
+import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
+import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.constructionheuristic.decider.forager.DefaultConstructionHeuristicForager;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicMoveScope;
+import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMeter;
+import greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
+import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.solver.DefaultSolver;
 import greycos.solver.core.testcotwin.TestdataEntity;
 import greycos.solver.core.testcotwin.TestdataObject;
@@ -78,12 +86,18 @@ import greycos.solver.core.testcotwin.multivar.TestdataMultiVarSolution;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @Execution(ExecutionMode.SAME_THREAD)
 class AutomaticNearbyConstructionHeuristicTest {
 
   private static final ThreadLocal<Observations> OBSERVATIONS = new ThreadLocal<>();
   private static final AtomicLong REPAIR_METER_CALLS = new AtomicLong();
+  private static final AtomicLong NESTED_METER_CALLS = new AtomicLong();
 
   @Test
   void customRandomForagerStopsAfterFirstMoveWhenAutomaticNearbyIsDisabled() {
@@ -100,8 +114,10 @@ class AutomaticNearbyConstructionHeuristicTest {
     assertCustomRandomForager(true, 3, ConstructionHeuristicPickEarlyType.NEVER);
   }
 
-  @Test
-  void finiteExplicitRandomValuesPreserveCustomEarlyPickWithoutNearbySnapshots() {
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = {false, true})
+  void finiteExplicitRandomValuesPreserveCustomEarlyPickWithoutNearbySnapshots(Boolean enabled) {
     var values =
         new ValueSelectorConfig("value")
             .withSelectionOrder(SelectionOrder.RANDOM)
@@ -112,6 +128,9 @@ class AutomaticNearbyConstructionHeuristicTest {
                 new ConstructionHeuristicForagerConfig()
                     .withForagerClass(StopAfterForager.class)
                     .withCustomProperties(Map.of("stopAfter", "3")));
+    if (enabled != null) {
+      phase.withNearbySelectionAutoConfigurationEnabled(enabled);
+    }
     var outcome =
         solve(
             basicConfig(phase).withEasyScoreCalculatorClass(ZeroBasicCalculator.class),
@@ -177,6 +196,7 @@ class AutomaticNearbyConstructionHeuristicTest {
     var config =
         tripleConfig(
             new ConstructionHeuristicPhaseConfig()
+                .withNearbySelectionAutoConfigurationEnabled(true)
                 .withConstructionHeuristicType(ConstructionHeuristicType.ALLOCATE_FROM_POOL)
                 .withNearbySelectionSize(1));
     var outcome = solve(config, problem);
@@ -207,6 +227,7 @@ class AutomaticNearbyConstructionHeuristicTest {
                 primary, new UnionMoveSelectorConfig().withMoveSelectors(secondary, tertiary));
     var phase =
         new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
             .withEntityPlacerConfig(new PooledEntityPlacerConfig().withMoveSelectorConfig(product))
             .withNearbySelectionSize(1);
     var outcome = solve(tripleConfig(phase), tripleProblem(1));
@@ -233,6 +254,7 @@ class AutomaticNearbyConstructionHeuristicTest {
         new CartesianProductMoveSelectorConfig().withMoveSelectors(primary, secondary, tertiary);
     var phase =
         new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
             .withEntityPlacerConfig(new PooledEntityPlacerConfig().withMoveSelectorConfig(product))
             .withNearbySelectionSize(1);
     var outcome = solve(tripleConfig(phase), tripleProblem(2));
@@ -242,17 +264,38 @@ class AutomaticNearbyConstructionHeuristicTest {
     assertTripleInitialized(outcome.solution());
   }
 
-  @Test
-  void basicRuinRecreateUsesEnclosingManualNearbyProfile() {
-    assertBasicRuinRecreate("NONE");
+  @ParameterizedTest
+  @MethodSource("repairConfigurations")
+  void basicRuinRecreateUsesEnclosingProfileOnlyWhenEnabled(
+      Boolean repairEnabled, String moveThreadCount) {
+    REPAIR_METER_CALLS.set(0);
+    var outcome =
+        solve(
+            basicRepairConfig(repairEnabled, moveThreadCount),
+            TestdataSolution.generateSolution(3, 3));
+    assertMeterCalls(REPAIR_METER_CALLS.get(), repairEnabled);
+    assertBasicScore(outcome.solution());
   }
 
-  @Test
-  void basicRuinRecreateWithMoveThreadsUsesEnclosingManualNearbyProfile() {
-    assertBasicRuinRecreate("2");
+  @ParameterizedTest
+  @MethodSource("independentRepairConfigurations")
+  void basicInitialConstructionAndRepairFlagsAreIndependent(
+      boolean initialEnabled, Boolean repairEnabled, String moveThreadCount) {
+    var config = basicRepairConfig(repairEnabled, moveThreadCount);
+    config.withPhases(
+        new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(initialEnabled),
+        config.getPhaseConfigList().getFirst());
+    REPAIR_METER_CALLS.set(0);
+    var outcome = solve(config, basicProblem(3, 3));
+    assertMeterCalls(outcome.observations().repairMeterCallsAfterConstruction, initialEnabled);
+    assertMeterCalls(
+        REPAIR_METER_CALLS.get() - outcome.observations().repairMeterCallsAfterConstruction,
+        repairEnabled);
+    assertBasicScore(outcome.solution());
   }
 
-  private static void assertBasicRuinRecreate(String moveThreadCount) {
+  private static SolverConfig basicRepairConfig(Boolean repairEnabled, String moveThreadCount) {
     var nearby =
         new NearbySelectionConfig()
             .withOriginEntitySelectorConfig(
@@ -269,38 +312,49 @@ class AutomaticNearbyConstructionHeuristicTest {
             .withMinimumRuinedCount(1)
             .withMaximumRuinedCount(1)
             .withFixedProbabilityWeight(1.0);
-    var local =
-        new LocalSearchPhaseConfig()
-            .withAcceptorConfig(
-                new LocalSearchAcceptorConfig()
-                    .withAcceptorTypeList(List.of(AcceptorType.HILL_CLIMBING)))
-            .withMoveSelectorConfig(
-                new UnionMoveSelectorConfig().withMoveSelectors(parentChange, ruin))
-            .withForagerConfig(new LocalSearchForagerConfig().withAcceptedCountLimit(1))
-            .withTerminationConfig(new TerminationConfig().withStepCountLimit(1));
-    var config =
-        commonConfig(TestdataSolution.class, TestdataEntity.class)
-            .withEasyScoreCalculatorClass(BasicCalculator.class)
-            .withMoveThreadCount(moveThreadCount)
-            .withPhases(local);
+    if (repairEnabled != null) {
+      ruin.withNearbySelectionAutoConfigurationEnabled(repairEnabled);
+    }
+    return commonConfig(TestdataSolution.class, TestdataEntity.class)
+        .withEasyScoreCalculatorClass(BasicCalculator.class)
+        .withMoveThreadCount(moveThreadCount)
+        .withPhases(repairLocalSearch(parentChange, ruin));
+  }
+
+  @ParameterizedTest
+  @MethodSource("repairConfigurations")
+  void listRuinRecreateUsesEnclosingProfileOnlyWhenEnabled(
+      Boolean repairEnabled, String moveThreadCount) {
     REPAIR_METER_CALLS.set(0);
-    var problem = TestdataSolution.generateSolution(3, 3);
-    var outcome = solve(config, problem);
-    assertThat(REPAIR_METER_CALLS.get()).isPositive();
-    assertBasicScore(outcome.solution());
+    var outcome =
+        solve(
+            listRepairConfig(repairEnabled, moveThreadCount),
+            TestdataListSolution.generateInitializedSolution(6, 3));
+    assertMeterCalls(REPAIR_METER_CALLS.get(), repairEnabled);
+    assertListIntegrity(outcome.solution());
+    assertThat(outcome.solution().getScore()).isEqualTo(listScore(outcome.solution()));
   }
 
-  @Test
-  void listRuinRecreateUsesEnclosingManualNearbyProfile() {
-    assertListRuinRecreate("NONE");
+  @ParameterizedTest
+  @MethodSource("independentRepairConfigurations")
+  void listInitialConstructionAndRepairFlagsAreIndependent(
+      boolean initialEnabled, Boolean repairEnabled, String moveThreadCount) {
+    var config = listRepairConfig(repairEnabled, moveThreadCount);
+    config.withPhases(
+        new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(initialEnabled),
+        config.getPhaseConfigList().getFirst());
+    REPAIR_METER_CALLS.set(0);
+    var outcome = solve(config, TestdataListSolution.generateUninitializedSolution(6, 3));
+    assertMeterCalls(outcome.observations().repairMeterCallsAfterConstruction, initialEnabled);
+    assertMeterCalls(
+        REPAIR_METER_CALLS.get() - outcome.observations().repairMeterCallsAfterConstruction,
+        repairEnabled);
+    assertListIntegrity(outcome.solution());
+    assertThat(outcome.solution().getScore()).isEqualTo(listScore(outcome.solution()));
   }
 
-  @Test
-  void listRuinRecreateWithMoveThreadsUsesEnclosingManualNearbyProfile() {
-    assertListRuinRecreate("2");
-  }
-
-  private static void assertListRuinRecreate(String moveThreadCount) {
+  private static SolverConfig listRepairConfig(Boolean repairEnabled, String moveThreadCount) {
     var nearby =
         new NearbySelectionConfig()
             .withOriginValueSelectorConfig(
@@ -318,30 +372,58 @@ class AutomaticNearbyConstructionHeuristicTest {
             .withMinimumRuinedCount(1)
             .withMaximumRuinedCount(1)
             .withFixedProbabilityWeight(1.0);
-    var local =
-        new LocalSearchPhaseConfig()
-            .withAcceptorConfig(
-                new LocalSearchAcceptorConfig()
-                    .withAcceptorTypeList(List.of(AcceptorType.HILL_CLIMBING)))
-            .withMoveSelectorConfig(
-                new UnionMoveSelectorConfig().withMoveSelectors(parentChange, ruin))
-            .withForagerConfig(new LocalSearchForagerConfig().withAcceptedCountLimit(1))
-            .withTerminationConfig(new TerminationConfig().withStepCountLimit(1));
-    var config =
-        commonConfig(TestdataListSolution.class, TestdataListEntity.class, TestdataListValue.class)
-            .withEasyScoreCalculatorClass(ListCalculator.class)
-            .withMoveThreadCount(moveThreadCount)
-            .withPhases(local);
-    REPAIR_METER_CALLS.set(0);
-    var outcome = solve(config, TestdataListSolution.generateInitializedSolution(6, 3));
-    assertThat(REPAIR_METER_CALLS.get()).isPositive();
-    assertListIntegrity(outcome.solution());
-    assertThat(outcome.solution().getScore()).isEqualTo(listScore(outcome.solution()));
+    if (repairEnabled != null) {
+      ruin.withNearbySelectionAutoConfigurationEnabled(repairEnabled);
+    }
+    return commonConfig(
+            TestdataListSolution.class, TestdataListEntity.class, TestdataListValue.class)
+        .withEasyScoreCalculatorClass(ListCalculator.class)
+        .withMoveThreadCount(moveThreadCount)
+        .withPhases(repairLocalSearch(parentChange, ruin));
+  }
+
+  private static LocalSearchPhaseConfig repairLocalSearch(
+      MoveSelectorConfig<?> parentChange, MoveSelectorConfig<?> ruin) {
+    return new LocalSearchPhaseConfig()
+        .withAcceptorConfig(
+            new LocalSearchAcceptorConfig()
+                .withAcceptorTypeList(List.of(AcceptorType.HILL_CLIMBING)))
+        .withMoveSelectorConfig(new UnionMoveSelectorConfig().withMoveSelectors(parentChange, ruin))
+        .withForagerConfig(new LocalSearchForagerConfig().withAcceptedCountLimit(1))
+        .withTerminationConfig(new TerminationConfig().withStepCountLimit(1));
+  }
+
+  private static Stream<Arguments> repairConfigurations() {
+    return Stream.<Boolean>of(null, false, true)
+        .flatMap(enabled -> Stream.of("NONE", "2").map(threads -> Arguments.of(enabled, threads)));
+  }
+
+  private static Stream<Arguments> independentRepairConfigurations() {
+    return Stream.of("NONE", "2")
+        .flatMap(
+            threads ->
+                Stream.of(
+                    Arguments.of(true, null, threads),
+                    Arguments.of(true, false, threads),
+                    Arguments.of(false, true, threads)));
+  }
+
+  private static void assertMeterCalls(long meterCalls, Boolean enabled) {
+    if (Boolean.TRUE.equals(enabled)) {
+      assertThat(meterCalls).isPositive();
+    } else {
+      assertThat(meterCalls).isZero();
+    }
   }
 
   @Test
   void globalProfileOrdersGeneratedValuesByDistance() {
-    var outcome = solve(basicConfig(new ConstructionHeuristicPhaseConfig()), basicProblem(3, 3));
+    var outcome =
+        solve(
+            basicConfig(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)),
+            basicProblem(3, 3));
 
     assertThat(outcome.solution().getEntityList())
         .extracting(entity -> index(entity.getValue()))
@@ -353,7 +435,12 @@ class AutomaticNearbyConstructionHeuristicTest {
 
   @Test
   void constructionOnlyGlobalProfileScoresFortyOfNinetySixValues() {
-    var outcome = solve(basicConfig(new ConstructionHeuristicPhaseConfig()), basicProblem(96, 1));
+    var outcome =
+        solve(
+            basicConfig(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)),
+            basicProblem(96, 1));
 
     assertThat(index(outcome.solution().getEntityList().getFirst().getValue())).isEqualTo(95);
     assertThat(outcome.observations().meterCalls).isEqualTo(96);
@@ -362,12 +449,89 @@ class AutomaticNearbyConstructionHeuristicTest {
     assertBasicScore(outcome.solution());
   }
 
-  @Test
-  void disabledAutomaticNearbyPreservesExhaustiveConstruction() {
-    var phase =
-        new ConstructionHeuristicPhaseConfig().withNearbySelectionAutoConfigurationEnabled(false);
-    var outcome = solve(basicConfig(phase), basicProblem(96, 1));
+  @ParameterizedTest
+  @MethodSource("constructionConfigurations")
+  void basicConstructionUsesGlobalAndUpcomingProfilesOnlyWhenEnabled(
+      Boolean enabled, boolean globalProfile) {
+    var phase = new ConstructionHeuristicPhaseConfig();
+    if (enabled != null) {
+      phase.withNearbySelectionAutoConfigurationEnabled(enabled);
+    }
+    var config = basicConfig(phase);
+    if (!globalProfile) {
+      var nearby =
+          new NearbySelectionConfig()
+              .withOriginEntitySelectorConfig(
+                  new EntitySelectorConfig().withMimicSelectorRef("upcomingOrigin"))
+              .withNearbyDistanceMeterClass(BasicMeter.class);
+      var change =
+          new ChangeMoveSelectorConfig()
+              .withEntitySelectorConfig(new EntitySelectorConfig().withId("upcomingOrigin"))
+              .withValueSelectorConfig(
+                  new ValueSelectorConfig("value").withNearbySelectionConfig(nearby));
+      withoutGlobalNearby(config).withPhases(phase, upcomingLocalSearch(change));
+    }
+    var outcome = solve(config, basicProblem(96, 1));
+    long expectedMoves = Boolean.TRUE.equals(enabled) ? 40 : 96;
+    assertMeterCalls(outcome.observations().meterCalls, enabled);
+    assertThat(outcome.observations().selectedMoves).containsExactly(expectedMoves);
+    assertThat(outcome.observations().moveEvaluationCount).isEqualTo(expectedMoves);
+    assertBasicScore(outcome.solution());
+    assertThat(phase.getNearbySelectionAutoConfigurationEnabled()).isEqualTo(enabled);
+  }
 
+  @ParameterizedTest
+  @MethodSource("constructionConfigurations")
+  void listConstructionUsesGlobalAndUpcomingProfilesOnlyWhenEnabled(
+      Boolean enabled, boolean globalProfile) {
+    var phase = new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1);
+    if (enabled != null) {
+      phase.withNearbySelectionAutoConfigurationEnabled(enabled);
+    }
+    var config = listConfig(phase);
+    if (!globalProfile) {
+      var nearby =
+          new NearbySelectionConfig()
+              .withOriginValueSelectorConfig(
+                  new ValueSelectorConfig().withMimicSelectorRef("upcomingListOrigin"))
+              .withNearbyDistanceMeterClass(ListDestinationMeter.class);
+      var change =
+          new ListChangeMoveSelectorConfig()
+              .withValueSelectorConfig(
+                  new ValueSelectorConfig("valueList").withId("upcomingListOrigin"))
+              .withDestinationSelectorConfig(
+                  new DestinationSelectorConfig().withNearbySelectionConfig(nearby));
+      withoutGlobalNearby(config).withPhases(phase, upcomingLocalSearch(change));
+    }
+    var outcome = solve(config, TestdataListSolution.generateUninitializedSolution(6, 3));
+    assertMeterCalls(outcome.observations().meterCalls, enabled);
+    if (Boolean.TRUE.equals(enabled)) {
+      assertThat(outcome.observations().selectedMoves).containsExactly(1L, 1L, 1L, 1L, 1L, 1L);
+      assertThat(outcome.observations().moveEvaluationCount).isEqualTo(6);
+    } else {
+      assertThat(outcome.observations().selectedMoves).containsExactly(3L, 4L, 5L, 6L, 7L, 8L);
+      assertThat(outcome.observations().moveEvaluationCount).isEqualTo(33);
+    }
+    assertListIntegrity(outcome.solution());
+    assertThat(outcome.solution().getScore()).isEqualTo(listScore(outcome.solution()));
+    assertThat(phase.getNearbySelectionAutoConfigurationEnabled()).isEqualTo(enabled);
+    assertThat(phase.getNearbySelectionSize()).isEqualTo(1);
+  }
+
+  private static Stream<Arguments> constructionConfigurations() {
+    return Stream.<Boolean>of(null, false, true)
+        .flatMap(enabled -> Stream.of(false, true).map(global -> Arguments.of(enabled, global)));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = false)
+  void nearbySelectionSizeDoesNotEnableAutomaticBasicConstruction(Boolean enabled) {
+    var phase = new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(7);
+    if (enabled != null) {
+      phase.withNearbySelectionAutoConfigurationEnabled(enabled);
+    }
+    var outcome = solve(basicConfig(phase), basicProblem(96, 1));
     assertThat(outcome.observations().meterCalls).isZero();
     assertThat(outcome.observations().selectedMoves).containsExactly(96L);
     assertThat(outcome.observations().moveEvaluationCount).isEqualTo(96);
@@ -375,8 +539,54 @@ class AutomaticNearbyConstructionHeuristicTest {
   }
 
   @Test
+  void automaticListConstructionWithoutProfilesPreservesExhaustiveConstruction() {
+    var phase =
+        new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
+            .withNearbySelectionSize(1);
+    var outcome =
+        solve(
+            withoutGlobalNearby(listConfig(phase)),
+            TestdataListSolution.generateUninitializedSolution(6, 3));
+    assertThat(outcome.observations().meterCalls).isZero();
+    assertThat(outcome.observations().selectedMoves).containsExactly(3L, 4L, 5L, 6L, 7L, 8L);
+    assertThat(outcome.observations().moveEvaluationCount).isEqualTo(33);
+    assertListIntegrity(outcome.solution());
+    assertThat(outcome.solution().getScore()).isEqualTo(listScore(outcome.solution()));
+  }
+
+  @ParameterizedTest
+  @MethodSource("constructionConfigurations")
+  void nestedConstructionUsesItsOwnFlag(Boolean enabled, boolean partitioned) {
+    var construction = new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1);
+    if (enabled != null) {
+      construction.withNearbySelectionAutoConfigurationEnabled(enabled);
+    }
+    PhaseConfig<?> nested =
+        partitioned
+            ? new PartitionedSearchPhaseConfig()
+                .withSolutionPartitionerClass(OnePartition.class)
+                .withPhaseConfigList(List.of(construction))
+            : new IslandModelPhaseConfig()
+                .withIslandCount(1)
+                .withPhaseConfigList(List.of(construction));
+    var config =
+        basicConfig(construction)
+            .withNearbyDistanceMeterClass(NestedBasicMeter.class)
+            .withPhases(nested);
+    NESTED_METER_CALLS.set(0);
+    var outcome = solve(config, basicProblem(96, 1));
+    assertMeterCalls(NESTED_METER_CALLS.get(), enabled);
+    assertBasicScore(outcome.solution());
+  }
+
+  @Test
   void automaticNearbyWithoutAnyProfilePreservesExhaustiveConstruction() {
-    var config = withoutGlobalNearby(basicConfig(new ConstructionHeuristicPhaseConfig()));
+    var config =
+        withoutGlobalNearby(
+            basicConfig(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)));
     var outcome = solve(config, basicProblem(96, 1));
 
     assertThat(outcome.observations().meterCalls).isZero();
@@ -387,7 +597,10 @@ class AutomaticNearbyConstructionHeuristicTest {
 
   @Test
   void configuredInitialSizeRestrictsFirstBatch() {
-    var phase = new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(7);
+    var phase =
+        new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
+            .withNearbySelectionSize(7);
     var outcome = solve(basicConfig(phase), basicProblem(96, 1));
 
     assertThat(outcome.observations().meterCalls).isEqualTo(96);
@@ -402,7 +615,12 @@ class AutomaticNearbyConstructionHeuristicTest {
       value.hard0 = value.rank < 130 ? -1 : 0;
       value.soft = -value.rank;
     }
-    var outcome = solve(hardConfig(new ConstructionHeuristicPhaseConfig()), problem);
+    var outcome =
+        solve(
+            hardConfig(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)),
+            problem);
 
     assertThat(outcome.solution().entities.getFirst().value.rank).isEqualTo(130);
     assertThat(outcome.observations().selectedMoves).containsExactly(160L);
@@ -420,7 +638,10 @@ class AutomaticNearbyConstructionHeuristicTest {
       value.hard0 = value.rank < 130 ? -1 : 0;
       value.soft = -value.rank;
     }
-    var phase = new ConstructionHeuristicPhaseConfig().withMoveThreadCount("2");
+    var phase =
+        new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
+            .withMoveThreadCount("2");
     var outcome = solve(hardConfig(phase), problem);
 
     assertThat(outcome.solution().entities.getFirst().value.rank).isEqualTo(130);
@@ -437,7 +658,12 @@ class AutomaticNearbyConstructionHeuristicTest {
       value.hard0 = -1;
       value.soft = -value.rank;
     }
-    var outcome = solve(hardConfig(new ConstructionHeuristicPhaseConfig()), problem);
+    var outcome =
+        solve(
+            hardConfig(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)),
+            problem);
 
     assertThat(outcome.solution().entities.getFirst().value.rank).isZero();
     assertThat(outcome.observations().selectedMoves).containsExactly(173L);
@@ -454,7 +680,12 @@ class AutomaticNearbyConstructionHeuristicTest {
     for (var value : problem.values) {
       value.soft = -value.rank - 1;
     }
-    var outcome = solve(hardConfig(new ConstructionHeuristicPhaseConfig()), problem);
+    var outcome =
+        solve(
+            hardConfig(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)),
+            problem);
 
     assertThat(outcome.solution().entities.getFirst().value.rank).isZero();
     assertThat(outcome.observations().selectedMoves).containsExactly(40L);
@@ -471,7 +702,12 @@ class AutomaticNearbyConstructionHeuristicTest {
       value.hard1 = -100;
       value.soft = -value.rank;
     }
-    var outcome = solve(hardConfig(new ConstructionHeuristicPhaseConfig()), problem);
+    var outcome =
+        solve(
+            hardConfig(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)),
+            problem);
 
     assertThat(outcome.observations().selectedMoves).containsExactly(40L);
     assertThat(outcome.solution().score)
@@ -488,7 +724,12 @@ class AutomaticNearbyConstructionHeuristicTest {
       value.soft = -value.rank;
     }
     problem.values.get(60).hard1 = 0;
-    var outcome = solve(hardConfig(new ConstructionHeuristicPhaseConfig()), problem);
+    var outcome =
+        solve(
+            hardConfig(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)),
+            problem);
 
     assertThat(outcome.solution().entities.getFirst().value.rank).isEqualTo(60);
     assertThat(outcome.observations().selectedMoves).containsExactly(80L);
@@ -503,7 +744,12 @@ class AutomaticNearbyConstructionHeuristicTest {
       value.hard0 = value.rank < 40 ? 1 : 0;
       value.soft = -value.rank;
     }
-    var outcome = solve(hardConfig(new ConstructionHeuristicPhaseConfig()), problem);
+    var outcome =
+        solve(
+            hardConfig(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)),
+            problem);
 
     assertThat(outcome.solution().entities.getFirst().value.rank).isEqualTo(40);
     // The forager excludes structurally flawed moves from its selected count.
@@ -527,7 +773,9 @@ class AutomaticNearbyConstructionHeuristicTest {
         commonConfig(OptionalHardSolution.class, OptionalHardEntity.class)
             .withEasyScoreCalculatorClass(OptionalHardCalculator.class)
             .withNearbyDistanceMeterClass(OptionalHardMeter.class)
-            .withPhases(new ConstructionHeuristicPhaseConfig());
+            .withPhases(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true));
     var outcome = solve(config, problem);
 
     assertThat(outcome.solution().entities.getFirst().value.rank).isEqualTo(60);
@@ -550,7 +798,9 @@ class AutomaticNearbyConstructionHeuristicTest {
         commonConfig(OptionalHardSolution.class, OptionalHardEntity.class)
             .withEasyScoreCalculatorClass(OptionalHardCalculator.class)
             .withNearbyDistanceMeterClass(OptionalHardMeter.class)
-            .withPhases(new ConstructionHeuristicPhaseConfig());
+            .withPhases(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true));
     var outcome = solve(config, problem);
 
     assertThat(outcome.solution().entities.getFirst().value).isNull();
@@ -561,8 +811,10 @@ class AutomaticNearbyConstructionHeuristicTest {
     assertThat(outcome.solution().score).isEqualTo(optionalHardScore(outcome.solution()));
   }
 
-  @Test
-  void explicitNearbySelectionOverridesGlobalProfileAndPhaseSize() {
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = {false, true})
+  void explicitNearbySelectionOverridesGlobalProfileAndPhaseSize(Boolean enabled) {
     var nearby =
         new NearbySelectionConfig()
             .withOriginEntitySelectorConfig(
@@ -573,6 +825,9 @@ class AutomaticNearbyConstructionHeuristicTest {
             .withNearbySelectionConfig(nearby)
             .withSelectedCountLimit(1L);
     var phase = queuedEntityPhase(values).withNearbySelectionSize(7);
+    if (enabled != null) {
+      phase.withNearbySelectionAutoConfigurationEnabled(enabled);
+    }
     var outcome =
         solve(
             basicConfig(phase).withEasyScoreCalculatorClass(ZeroBasicCalculator.class),
@@ -586,13 +841,46 @@ class AutomaticNearbyConstructionHeuristicTest {
     assertThat(outcome.solution().getScore()).isEqualTo(SimpleScore.ZERO);
   }
 
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = false)
+  void explicitListNearbySelectionWorksWithAutomaticInferenceOff(Boolean enabled) {
+    var nearby =
+        new NearbySelectionConfig()
+            .withOriginValueSelectorConfig(
+                new ValueSelectorConfig().withMimicSelectorRef("manualQueuedValue"))
+            .withNearbyDistanceMeterClass(ListDestinationMeter.class);
+    var phase =
+        new ConstructionHeuristicPhaseConfig()
+            .withEntityPlacerConfig(
+                new QueuedValuePlacerConfig()
+                    .withValueSelectorConfig(
+                        new ValueSelectorConfig("valueList").withId("manualQueuedValue"))
+                    .withMoveSelectorConfig(
+                        new ListChangeMoveSelectorConfig()
+                            .withValueSelectorConfig(
+                                new ValueSelectorConfig().withMimicSelectorRef("manualQueuedValue"))
+                            .withDestinationSelectorConfig(
+                                new DestinationSelectorConfig().withNearbySelectionConfig(nearby))
+                            .withSelectedCountLimit(1L)));
+    if (enabled != null) {
+      phase.withNearbySelectionAutoConfigurationEnabled(enabled);
+    }
+    var outcome =
+        solve(listConfig(phase), TestdataListSolution.generateUninitializedSolution(6, 3));
+    assertThat(outcome.observations().meterCalls).isPositive();
+    assertThat(outcome.observations().selectedMoves).containsExactly(1L, 1L, 1L, 1L, 1L, 1L);
+    assertListIntegrity(outcome.solution());
+    assertThat(outcome.solution().getScore()).isEqualTo(listScore(outcome.solution()));
+  }
+
   @Test
   void explicitSelectionOrderAndCountLimitOverrideAutomaticDefaults() {
     var values =
         new ValueSelectorConfig("value")
             .withSelectionOrder(SelectionOrder.ORIGINAL)
             .withSelectedCountLimit(7L);
-    var phase = queuedEntityPhase(values);
+    var phase = queuedEntityPhase(values).withNearbySelectionAutoConfigurationEnabled(true);
     var outcome =
         solve(
             basicConfig(phase).withEasyScoreCalculatorClass(ZeroBasicCalculator.class),
@@ -604,7 +892,7 @@ class AutomaticNearbyConstructionHeuristicTest {
     assertThat(values.getNearbySelectionConfig()).isNull();
     assertThat(values.getSelectionOrder()).isEqualTo(SelectionOrder.ORIGINAL);
     assertThat(values.getSelectedCountLimit()).isEqualTo(7L);
-    assertThat(phase.getNearbySelectionAutoConfigurationEnabled()).isNull();
+    assertThat(phase.getNearbySelectionAutoConfigurationEnabled()).isTrue();
     assertThat(phase.getNearbySelectionSize()).isNull();
   }
 
@@ -613,7 +901,7 @@ class AutomaticNearbyConstructionHeuristicTest {
     var values = new ValueSelectorConfig("value").withSelectionOrder(SelectionOrder.ORIGINAL);
     var outcome =
         solve(
-            basicConfig(queuedEntityPhase(values))
+            basicConfig(queuedEntityPhase(values).withNearbySelectionAutoConfigurationEnabled(true))
                 .withEasyScoreCalculatorClass(ZeroBasicCalculator.class),
             basicProblem(96, 1));
 
@@ -633,7 +921,10 @@ class AutomaticNearbyConstructionHeuristicTest {
       value.soft = -value.rank;
     }
     var values = new ValueSelectorConfig("value").withSelectedCountLimit(5L);
-    var outcome = solve(hardConfig(queuedEntityPhase(values)), problem);
+    var outcome =
+        solve(
+            hardConfig(queuedEntityPhase(values).withNearbySelectionAutoConfigurationEnabled(true)),
+            problem);
 
     assertThat(outcome.observations().selectedMoves).containsExactly(5L);
     assertThat(outcome.observations().meterCalls).isEqualTo(5);
@@ -646,6 +937,7 @@ class AutomaticNearbyConstructionHeuristicTest {
   void explicitEarlyPickOverridesBatchEvaluation() {
     var phase =
         new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
             .withForagerConfig(
                 new ConstructionHeuristicForagerConfig()
                     .withPickEarlyType(ConstructionHeuristicPickEarlyType.FIRST_FEASIBLE_SCORE));
@@ -659,7 +951,7 @@ class AutomaticNearbyConstructionHeuristicTest {
   @Test
   void repeatedSolvesPreserveCallerConfiguration() {
     var values = new ValueSelectorConfig("value");
-    var phase = queuedEntityPhase(values);
+    var phase = queuedEntityPhase(values).withNearbySelectionAutoConfigurationEnabled(true);
     var config = basicConfig(phase);
     var factory = SolverFactory.<TestdataSolution>create(config);
     var first = solve(factory, basicProblem(96, 1));
@@ -679,7 +971,10 @@ class AutomaticNearbyConstructionHeuristicTest {
 
   @Test
   void reusedSolverRebuildsNearbyCandidatesForEachProblem() {
-    var config = basicConfig(new ConstructionHeuristicPhaseConfig());
+    var config =
+        basicConfig(
+            new ConstructionHeuristicPhaseConfig()
+                .withNearbySelectionAutoConfigurationEnabled(true));
     var solver =
         (DefaultSolver<TestdataSolution>)
             SolverFactory.<TestdataSolution>create(config).buildSolver();
@@ -700,6 +995,7 @@ class AutomaticNearbyConstructionHeuristicTest {
   void nestedUnionReceivesAutomaticProfile() {
     var phase =
         new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
             .withEntityPlacerConfig(
                 new QueuedEntityPlacerConfig()
                     .withEntitySelectorConfig(new EntitySelectorConfig().withId("queuedEntity"))
@@ -732,9 +1028,15 @@ class AutomaticNearbyConstructionHeuristicTest {
             .withSecondaryEntitySelectorConfig(
                 new EntitySelectorConfig().withNearbySelectionConfig(nearby));
     var config =
-        withoutGlobalNearby(basicConfig(new ConstructionHeuristicPhaseConfig()))
+        withoutGlobalNearby(
+                basicConfig(
+                    new ConstructionHeuristicPhaseConfig()
+                        .withNearbySelectionAutoConfigurationEnabled(true)))
             .withEasyScoreCalculatorClass(ZeroBasicCalculator.class)
-            .withPhases(new ConstructionHeuristicPhaseConfig(), upcomingLocalSearch(swap));
+            .withPhases(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true),
+                upcomingLocalSearch(swap));
     var outcome = solve(config, basicProblem(96, 3));
 
     assertThat(outcome.solution().getEntityList()).allMatch(entity -> entity.getValue() != null);
@@ -749,7 +1051,9 @@ class AutomaticNearbyConstructionHeuristicTest {
   @Test
   void globalTypedEntitySwapMeterSeedsConstructionWithoutLocalSearch() {
     var config =
-        basicConfig(new ConstructionHeuristicPhaseConfig())
+        basicConfig(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true))
             .withNearbyDistanceMeterClass(EntitySwapMeter.class)
             .withEasyScoreCalculatorClass(ZeroBasicCalculator.class);
     var outcome = solve(config, basicProblem(96, 3));
@@ -764,6 +1068,7 @@ class AutomaticNearbyConstructionHeuristicTest {
   void pooledEntityPlacerKeepsEntityValueDistanceDirection() {
     var phase =
         new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
             .withConstructionHeuristicType(ConstructionHeuristicType.ALLOCATE_FROM_POOL)
             .withNearbySelectionSize(1);
     var outcome = solve(basicConfig(phase), basicProblem(96, 3));
@@ -779,6 +1084,7 @@ class AutomaticNearbyConstructionHeuristicTest {
   void scalarQueuedValuePlacerRanksEntitiesUsingEntityToValueMeter() {
     var phase =
         new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
             .withConstructionHeuristicType(ConstructionHeuristicType.ALLOCATE_TO_VALUE_FROM_QUEUE)
             .withNearbySelectionSize(1);
     var outcome = solve(basicConfig(phase), basicProblem(3, 3));
@@ -792,7 +1098,11 @@ class AutomaticNearbyConstructionHeuristicTest {
 
   @Test
   void globalListDestinationProfileSeedsEmptyRoutesAndMaintainsShadows() {
-    var config = listConfig(new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1));
+    var config =
+        listConfig(
+            new ConstructionHeuristicPhaseConfig()
+                .withNearbySelectionAutoConfigurationEnabled(true)
+                .withNearbySelectionSize(1));
     var outcome = solve(config, TestdataListSolution.generateUninitializedSolution(6, 3));
 
     assertListIntegrity(outcome.solution());
@@ -817,7 +1127,10 @@ class AutomaticNearbyConstructionHeuristicTest {
             .withValueSelectorConfig(origin)
             .withDestinationSelectorConfig(
                 new DestinationSelectorConfig().withNearbySelectionConfig(nearby));
-    var phase = new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1);
+    var phase =
+        new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
+            .withNearbySelectionSize(1);
     var config =
         withoutGlobalNearby(listConfig(phase)).withPhases(phase, upcomingLocalSearch(move));
     var outcome = solve(config, TestdataListSolution.generateUninitializedSolution(6, 3));
@@ -843,7 +1156,10 @@ class AutomaticNearbyConstructionHeuristicTest {
                             .withOriginValueSelectorConfig(
                                 new ValueSelectorConfig().withMimicSelectorRef("valueSwapOrigin"))
                             .withNearbyDistanceMeterClass(ListValueSwapMeter.class)));
-    var phase = new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1);
+    var phase =
+        new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
+            .withNearbySelectionSize(1);
     var config =
         withoutGlobalNearby(listConfig(phase))
             .withEasyScoreCalculatorClass(ZeroListCalculator.class)
@@ -859,7 +1175,10 @@ class AutomaticNearbyConstructionHeuristicTest {
   @Test
   void globalTypedValueSwapMeterSeedsEmptyListRoutesWithoutLocalSearch() {
     var config =
-        listConfig(new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1))
+        listConfig(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)
+                    .withNearbySelectionSize(1))
             .withNearbyDistanceMeterClass(ListValueSwapMeter.class)
             .withEasyScoreCalculatorClass(ZeroListCalculator.class);
     var outcome = solve(config, TestdataListSolution.generateUninitializedSolution(6, 2));
@@ -887,7 +1206,10 @@ class AutomaticNearbyConstructionHeuristicTest {
             .withIslandCount(1)
             .withPhaseConfigList(List.of(upcomingLocalSearch(change)))
             .withTerminationConfig(new TerminationConfig().withStepCountLimit(0));
-    var phase = new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1);
+    var phase =
+        new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
+            .withNearbySelectionSize(1);
     var config = withoutGlobalNearby(basicConfig(phase)).withPhases(phase, island);
     var outcome = solve(config, basicProblem(96, 1));
 
@@ -907,7 +1229,10 @@ class AutomaticNearbyConstructionHeuristicTest {
                 TestdataListEntityProvidingValue.class)
             .withEasyScoreCalculatorClass(RangedListCalculator.class)
             .withNearbyDistanceMeterClass(RangedListMeter.class)
-            .withPhases(new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1));
+            .withPhases(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)
+                    .withNearbySelectionSize(1));
     var outcome = solve(config, problem);
 
     assertThat(outcome.observations().selectedMoves).containsExactly(1L, 1L, 1L, 1L, 1L, 1L);
@@ -935,7 +1260,10 @@ class AutomaticNearbyConstructionHeuristicTest {
                 TestdataPinnedListValue.class)
             .withEasyScoreCalculatorClass(PinnedListCalculator.class)
             .withNearbyDistanceMeterClass(PinnedListMeter.class)
-            .withPhases(new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1));
+            .withPhases(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)
+                    .withNearbySelectionSize(1));
     var outcome = solve(config, problem);
 
     assertThat(outcome.solution().getEntityList().getFirst().getValueList())
@@ -953,7 +1281,10 @@ class AutomaticNearbyConstructionHeuristicTest {
         commonConfig(TestdataMultiVarSolution.class, TestdataMultiVarEntity.class)
             .withEasyScoreCalculatorClass(MultiVariableCalculator.class)
             .withNearbyDistanceMeterClass(MultiVariableMeter.class)
-            .withPhases(new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1));
+            .withPhases(
+                new ConstructionHeuristicPhaseConfig()
+                    .withNearbySelectionAutoConfigurationEnabled(true)
+                    .withNearbySelectionSize(1));
     var outcome = solve(config, problem);
 
     var entity = outcome.solution().getMultiVarEntityList().getFirst();
@@ -978,7 +1309,10 @@ class AutomaticNearbyConstructionHeuristicTest {
             .withEntitySelectorConfig(origin)
             .withValueSelectorConfig(
                 new ValueSelectorConfig("primaryValue").withNearbySelectionConfig(nearby));
-    var phase = new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1);
+    var phase =
+        new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
+            .withNearbySelectionSize(1);
     var config =
         commonConfig(TestdataMultiVarSolution.class, TestdataMultiVarEntity.class)
             .withEasyScoreCalculatorClass(MultiVariableCalculator.class)
@@ -1036,7 +1370,10 @@ class AutomaticNearbyConstructionHeuristicTest {
     return commonConfig(PairSolution.class, PairEntity.class)
         .withEasyScoreCalculatorClass(PairCalculator.class)
         .withNearbyDistanceMeterClass(PairMeter.class)
-        .withPhases(new ConstructionHeuristicPhaseConfig().withNearbySelectionSize(1));
+        .withPhases(
+            new ConstructionHeuristicPhaseConfig()
+                .withNearbySelectionAutoConfigurationEnabled(true)
+                .withNearbySelectionSize(1));
   }
 
   private static HardSoftScore pairScore(PairSolution solution) {
@@ -1138,6 +1475,9 @@ class AutomaticNearbyConstructionHeuristicTest {
 
           @Override
           public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
+            if (phaseScope instanceof ConstructionHeuristicPhaseScope<?>) {
+              observations.repairMeterCallsAfterConstruction = REPAIR_METER_CALLS.get();
+            }
             if (phaseScope.getPhaseIndex() == 0) {
               observations.moveEvaluationCount =
                   phaseScope.getSolverScope().getMoveEvaluationCount();
@@ -1253,6 +1593,7 @@ class AutomaticNearbyConstructionHeuristicTest {
     private int basicValueCount;
     private long meterCalls;
     private long moveEvaluationCount;
+    private long repairMeterCallsAfterConstruction;
     private final List<Long> selectedMoves = new ArrayList<>();
     private final Set<Integer> scoredRanks = new HashSet<>();
     private final List<List<Integer>> tripleAssignedCounts = new ArrayList<>();
@@ -1295,6 +1636,23 @@ class AutomaticNearbyConstructionHeuristicTest {
     public double getNearbyDistance(TripleEntity origin, TestdataValue destination) {
       countMeterCall();
       return Math.abs(2 - index(origin) - index(destination));
+    }
+  }
+
+  public static final class NestedBasicMeter
+      implements NearbyDistanceMeter<TestdataEntity, TestdataValue> {
+    @Override
+    public double getNearbyDistance(TestdataEntity origin, TestdataValue destination) {
+      NESTED_METER_CALLS.incrementAndGet();
+      return Math.abs(95 - index(origin) - index(destination));
+    }
+  }
+
+  public static final class OnePartition implements SolutionPartitioner<TestdataSolution> {
+    @Override
+    public List<TestdataSolution> splitWorkingSolution(
+        ScoreDirector<TestdataSolution> director, Integer runnablePartThreadLimit) {
+      return List.of(((InnerScoreDirector<TestdataSolution, ?>) director).cloneWorkingSolution());
     }
   }
 

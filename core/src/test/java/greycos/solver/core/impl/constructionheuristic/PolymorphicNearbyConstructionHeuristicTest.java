@@ -83,7 +83,10 @@ class PolymorphicNearbyConstructionHeuristicTest {
 
     var outcome =
         solve(
-            basicConfig(moveThreadCount).withPhases(new ConstructionHeuristicPhaseConfig()),
+            basicConfig(moveThreadCount)
+                .withPhases(
+                    new ConstructionHeuristicPhaseConfig()
+                        .withNearbySelectionAutoConfigurationEnabled(true)),
             problem);
 
     assertThat(outcome.selectedMoves()).isEqualTo(40);
