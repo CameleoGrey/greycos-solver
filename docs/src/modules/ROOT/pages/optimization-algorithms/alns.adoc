@@ -1069,22 +1069,7 @@ For a controlled comparison of clock-polling overhead,
 checkpoint. It does not change the configured mode or the set of supported repair-attempt configurations.
 Keep this diagnostic setting consistent when comparing throughput and report it with the termination budget.
 
-The opt-in synthetic comparison harness runs basic assignment, list routing, and mixed-variable workloads across three seeds,
-rotating ordinary local search, local search with ruin-and-recreate, and ALNS at matched phase time budgets:
-
-[source,shell]
-----
-mvn -pl core -am test -Dtest=AlnsComparisonBenchmarkTest -Dsurefire.failIfNoSpecifiedTests=false \
-  -Dgreycos.alns.benchmark=true -Dgreycos.alns.benchmark.millis=1000 -Dgreycos.alns.benchmark.seeds=3
-----
-
-Its CSV and standalone HTML report are written to `core/target/alns-comparison.csv` and `core/target/alns-comparison.html`.
-It records the observed elapsed time, score, score calculations, outer moves, and post-solve JVM heap use,
-and independently checks each returned score. Heap samples include retained JVM allocations after validation;
-peak heap and process RSS are not measured by this harness.
-These small easy-score workloads validate the comparison procedure; they do not establish production performance.
-
 For real-domain experiments, the repository's `examples/README.adoc` documents the available
 Vehicle Routing ALNS programs, configurations, and validation tests. Start from those actual
-resources and follow the comparison procedure above; their individual settings are examples,
+resources and compare solution quality at matched wall-clock budgets across multiple seeds; their individual settings are examples,
 not framework defaults or evidence of a universally best portfolio.

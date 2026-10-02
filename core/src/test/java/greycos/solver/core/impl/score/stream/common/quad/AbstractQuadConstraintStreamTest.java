@@ -43,7 +43,6 @@ import greycos.solver.core.testcotwin.score.lavish.TestdataLavishSolution;
 import greycos.solver.core.testcotwin.score.lavish.TestdataLavishValue;
 import greycos.solver.core.testcotwin.score.lavish.TestdataLavishValueGroup;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestTemplate;
 
 public abstract class AbstractQuadConstraintStreamTest extends AbstractConstraintStreamTest
@@ -395,9 +394,62 @@ public abstract class AbstractQuadConstraintStreamTest extends AbstractConstrain
 
   @Override
   @TestTemplate
-  @Disabled(
-      "Would cause too many matches to meaningfully assert; cost-benefit ratio is wrong here.")
-  public void ifExistsDoesNotIncludeUnassigned() {}
+  public void ifExistsDoesNotIncludeUnassigned() {
+    var solution = TestdataLavishSolution.generateSolution(1, 1, 1, 4);
+    var entity1 = solution.getEntityList().get(0);
+    var entity2 = solution.getEntityList().get(1);
+    var entity3 = solution.getEntityList().get(2);
+    var entity4 = solution.getEntityList().get(3);
+    var entity5 =
+        new TestdataLavishEntity("Generated Entity 4", solution.getFirstEntityGroup(), null);
+    solution.getEntityList().add(entity5);
+
+    // Ordering the entities bounds the number of quad tuples at five.
+    var scoreDirector =
+        buildScoreDirector(
+            factory ->
+                factory
+                    .forEachUniquePair(TestdataLavishEntity.class)
+                    .join(
+                        TestdataLavishEntity.class,
+                        Joiners.lessThan((a, b) -> b.getCode(), TestdataLavishEntity::getCode))
+                    .join(
+                        TestdataLavishEntity.class,
+                        Joiners.lessThan((a, b, c) -> c.getCode(), TestdataLavishEntity::getCode))
+                    .ifExists(
+                        TestdataLavishEntity.class,
+                        filtering((a, b, c, d, e) -> e != a && e != b && e != c && e != d))
+                    .penalize(SimpleScore.ONE)
+                    .asConstraint(TEST_CONSTRAINT_ID));
+
+    // From scratch: the unassigned entity cannot act as an existence witness.
+    scoreDirector.setWorkingSolution(solution);
+    assertScore(scoreDirector);
+
+    // Incremental: assigning the fifth entity gives every quad an existence witness.
+    scoreDirector.beforeVariableChanged(entity5, "value");
+    entity5.setValue(solution.getFirstValue());
+    scoreDirector.afterVariableChanged(entity5, "value");
+    assertScore(
+        scoreDirector,
+        assertMatch(entity1, entity2, entity3, entity4),
+        assertMatch(entity1, entity2, entity3, entity5),
+        assertMatch(entity1, entity2, entity4, entity5),
+        assertMatch(entity1, entity3, entity4, entity5),
+        assertMatch(entity2, entity3, entity4, entity5));
+
+    // Incremental: unassigning the entity retracts it from both sides of the existence check.
+    scoreDirector.beforeVariableChanged(entity5, "value");
+    entity5.setValue(null);
+    scoreDirector.afterVariableChanged(entity5, "value");
+    assertScore(scoreDirector);
+
+    // Incremental: removing an unassigned entity leaves the score unchanged.
+    scoreDirector.beforeEntityRemoved(entity5);
+    solution.getEntityList().remove(entity5);
+    scoreDirector.afterEntityRemoved(entity5);
+    assertScore(scoreDirector);
+  }
 
   @Override
   @TestTemplate
@@ -624,9 +676,56 @@ public abstract class AbstractQuadConstraintStreamTest extends AbstractConstrain
 
   @Override
   @TestTemplate
-  @Disabled(
-      "Would cause too many matches to meaningfully assert; cost-benefit ratio is wrong here.")
-  public void ifNotExistsDoesNotIncludeUnassigned() {}
+  public void ifNotExistsDoesNotIncludeUnassigned() {
+    var solution = TestdataLavishSolution.generateSolution(1, 1, 1, 4);
+    var entity1 = solution.getEntityList().get(0);
+    var entity2 = solution.getEntityList().get(1);
+    var entity3 = solution.getEntityList().get(2);
+    var entity4 = solution.getEntityList().get(3);
+    var entity5 =
+        new TestdataLavishEntity("Generated Entity 4", solution.getFirstEntityGroup(), null);
+    solution.getEntityList().add(entity5);
+
+    // Ordering the entities bounds the number of quad tuples at five.
+    var scoreDirector =
+        buildScoreDirector(
+            factory ->
+                factory
+                    .forEachUniquePair(TestdataLavishEntity.class)
+                    .join(
+                        TestdataLavishEntity.class,
+                        Joiners.lessThan((a, b) -> b.getCode(), TestdataLavishEntity::getCode))
+                    .join(
+                        TestdataLavishEntity.class,
+                        Joiners.lessThan((a, b, c) -> c.getCode(), TestdataLavishEntity::getCode))
+                    .ifNotExists(
+                        TestdataLavishEntity.class,
+                        filtering((a, b, c, d, e) -> e != a && e != b && e != c && e != d))
+                    .penalize(SimpleScore.ONE)
+                    .asConstraint(TEST_CONSTRAINT_ID));
+
+    // From scratch: the unassigned entity cannot suppress the single quad match.
+    scoreDirector.setWorkingSolution(solution);
+    assertScore(scoreDirector, assertMatch(entity1, entity2, entity3, entity4));
+
+    // Incremental: assigning the fifth entity gives every quad an existence witness.
+    scoreDirector.beforeVariableChanged(entity5, "value");
+    entity5.setValue(solution.getFirstValue());
+    scoreDirector.afterVariableChanged(entity5, "value");
+    assertScore(scoreDirector);
+
+    // Incremental: unassigning the entity restores the single quad match.
+    scoreDirector.beforeVariableChanged(entity5, "value");
+    entity5.setValue(null);
+    scoreDirector.afterVariableChanged(entity5, "value");
+    assertScore(scoreDirector, assertMatch(entity1, entity2, entity3, entity4));
+
+    // Incremental: removing an unassigned entity leaves the score unchanged.
+    scoreDirector.beforeEntityRemoved(entity5);
+    solution.getEntityList().remove(entity5);
+    scoreDirector.afterEntityRemoved(entity5);
+    assertScore(scoreDirector, assertMatch(entity1, entity2, entity3, entity4));
+  }
 
   @Override
   @TestTemplate

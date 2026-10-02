@@ -49,14 +49,12 @@ import greycos.solver.core.testcotwin.inheritance.solution.baseannotated.thirdpa
 import greycos.solver.core.testcotwin.list.TestdataListEntity;
 import greycos.solver.core.testcotwin.list.TestdataListSolution;
 import greycos.solver.core.testcotwin.list.TestdataListValue;
-import greycos.solver.core.testcotwin.reflect.accessmodifier.TestdataAccessModifierSolution;
 import greycos.solver.core.testcotwin.reflect.field.TestdataFieldAnnotatedEntity;
 import greycos.solver.core.testcotwin.reflect.field.TestdataFieldAnnotatedSolution;
 import greycos.solver.core.testcotwin.shadow.dependency.TestdataDependencyEntity;
 import greycos.solver.core.testcotwin.shadow.dependency.TestdataDependencySolution;
 import greycos.solver.core.testcotwin.shadow.dependency.TestdataDependencyValue;
 
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 public abstract class AbstractSolutionClonerTest {
@@ -154,15 +152,8 @@ public abstract class AbstractSolutionClonerTest {
     assertCode("1", cloneA.getValueList().get(0));
   }
 
-  private boolean isGizmo() {
-    return this.getClass().getSimpleName().contains("Gizmo");
-  }
-
   @Test
   void cloneFieldAnnotatedSolution() {
-    // can't check cloner class; it doesn't implement any additional interfaces
-    Assumptions.assumeFalse(isGizmo(), "Gizmo cannot use reflection");
-
     var solutionDescriptor = TestdataFieldAnnotatedSolution.buildSolutionDescriptor();
     SolutionCloner<TestdataFieldAnnotatedSolution> cloner =
         createSolutionCloner(solutionDescriptor);
@@ -201,63 +192,6 @@ public abstract class AbstractSolutionClonerTest {
   }
 
   @Test
-  void cloneAccessModifierSolution() {
-    // can't check cloner class; it doesn't implement any additional interfaces
-    Assumptions.assumeFalse(isGizmo(), "Gizmo cannot use reflection");
-
-    var staticObject = new Object();
-    TestdataAccessModifierSolution.setStaticField(staticObject);
-
-    var solutionDescriptor = TestdataAccessModifierSolution.buildSolutionDescriptor();
-    var cloner = createSolutionCloner(solutionDescriptor);
-
-    var val1 = new TestdataValue("1");
-    var val2 = new TestdataValue("2");
-    var val3 = new TestdataValue("3");
-    var a = new TestdataEntity("a", val1);
-    var b = new TestdataEntity("b", val1);
-    var c = new TestdataEntity("c", val3);
-    var d = new TestdataEntity("d", val3);
-
-    var original = new TestdataAccessModifierSolution("solution");
-    original.setWriteOnlyField("writeHello");
-    var valueList = Arrays.asList(val1, val2, val3);
-    original.setValueList(valueList);
-    var originalEntityList = Arrays.asList(a, b, c, d);
-    original.setEntityList(originalEntityList);
-
-    var clone = cloner.cloneSolution(original);
-
-    assertThat(TestdataAccessModifierSolution.getStaticFinalField())
-        .isSameAs("staticFinalFieldValue");
-    assertThat(TestdataAccessModifierSolution.getStaticField()).isSameAs(staticObject);
-
-    assertThat(clone).isNotSameAs(original);
-    assertCode("solution", clone);
-    assertThat(clone.getFinalField()).isEqualTo(original.getFinalField());
-    assertThat(clone.getReadOnlyField()).isEqualTo("readHello");
-    assertThat(clone.getValueList()).isSameAs(valueList);
-    assertThat(clone.getScore()).isEqualTo(original.getScore());
-
-    var cloneEntityList = clone.getEntityList();
-    assertThat(cloneEntityList).hasSize(4).isNotSameAs(originalEntityList);
-    var cloneA = cloneEntityList.get(0);
-    var cloneB = cloneEntityList.get(1);
-    var cloneC = cloneEntityList.get(2);
-    var cloneD = cloneEntityList.get(3);
-    assertEntityClone(a, cloneA, "a", "1");
-    assertEntityClone(b, cloneB, "b", "1");
-    assertEntityClone(c, cloneC, "c", "3");
-    assertEntityClone(d, cloneD, "d", "3");
-
-    assertThat(cloneB).isNotSameAs(b);
-    b.setValue(val2);
-    assertCode("2", b.getValue());
-    // Clone remains unchanged
-    assertCode("1", cloneB.getValue());
-  }
-
-  @Test
   void failDeepCloneRequiredTypeAnnotation() {
     var solutionDescriptor = TestdataInvalidEntityProvidingSolution.buildSolutionDescriptor();
     var original = TestdataInvalidEntityProvidingSolution.generateSolution();
@@ -277,10 +211,6 @@ public abstract class AbstractSolutionClonerTest {
 
   @Test
   protected void cloneExtendedSolution() {
-    // can't check cloner class; it doesn't implement any additional interfaces
-    Assumptions.assumeFalse(
-        isGizmo(), "Gizmo cannot handle subclasses of the class annotated with @PlanningSolution");
-
     var solutionDescriptor = TestdataOnlyBaseAnnotatedExtendedSolution.buildSolutionDescriptor();
     var cloner = createSolutionCloner(solutionDescriptor);
 
@@ -437,7 +367,7 @@ public abstract class AbstractSolutionClonerTest {
     assertCode(valueCode, cloneEntity.getValue());
   }
 
-  private void assertEntityClone(
+  protected void assertEntityClone(
       TestdataEntity originalEntity,
       TestdataEntity cloneEntity,
       String entityCode,

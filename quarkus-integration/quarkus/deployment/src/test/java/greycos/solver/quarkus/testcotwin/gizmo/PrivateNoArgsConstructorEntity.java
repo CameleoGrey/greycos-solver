@@ -6,21 +6,29 @@ import greycos.solver.core.api.cotwin.variable.PlanningVariable;
 
 @PlanningEntity
 public class PrivateNoArgsConstructorEntity {
-  @PlanningId final String id;
+  @PlanningId private final String id;
+
+  private String rawState;
 
   @PlanningVariable(valueRangeProviderRefs = "valueRange")
   String value;
 
   private PrivateNoArgsConstructorEntity() {
     id = null;
+    rawState = "No-argument constructor";
   }
 
   public PrivateNoArgsConstructorEntity(String id) {
     this.id = id;
+    rawState = "Raw state (" + id + ")";
   }
 
   public String getId() {
     return id;
+  }
+
+  public String testReadRawState() {
+    return rawState;
   }
 
   public String getValue() {

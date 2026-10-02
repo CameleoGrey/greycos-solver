@@ -25,7 +25,6 @@ import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidin
 import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingValue;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -80,7 +79,6 @@ class SelectorBasedListChangeMoveTest {
         .isTrue();
   }
 
-  @Disabled("Temporarily disabled")
   @Test
   void isMoveDoableValueRangeProviderOnEntity() {
     var value1 = new TestdataListEntityProvidingValue("1");
@@ -91,6 +89,10 @@ class SelectorBasedListChangeMoveTest {
             "e1", List.of(value1, value2), List.of(value1, value2));
     var entity2 =
         new TestdataListEntityProvidingEntity("e2", List.of(value1, value3), List.of(value3));
+    var solution = new TestdataListEntityProvidingSolution();
+    solution.setEntityList(List.of(entity1, entity2));
+    otherInnerScoreDirector.getValueRangeManager().reset(solution);
+
     assertThat(
             new SelectorBasedListChangeMove<>(otherVariableDescriptor, entity1, 0, entity2, 0)
                 .isMoveDoable(otherInnerScoreDirector))
