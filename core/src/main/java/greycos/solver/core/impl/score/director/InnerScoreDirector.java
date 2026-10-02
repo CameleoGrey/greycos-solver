@@ -362,6 +362,14 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    */
   void setAllChangesWillBeUndoneBeforeStepEnds(boolean allChangesWillBeUndoneBeforeStepEnds);
 
+  boolean isAllChangesWillBeUndoneBeforeStepEnds();
+
+  /** Captures the baseline for assertion diagnostics before preparing a deferred move. */
+  default void beforePreparedMove() {}
+
+  /** Captures the completed candidate for assertion diagnostics while it remains applied. */
+  default void afterPreparedMove() {}
+
   /**
    * Asserts that if the {@link Score} is calculated for the current {@link PlanningSolution working
    * solution} in the current {@link ScoreDirector} (with possibly incremental calculation residue),

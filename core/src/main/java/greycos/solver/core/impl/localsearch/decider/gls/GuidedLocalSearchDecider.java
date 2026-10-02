@@ -4,9 +4,11 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.function.BiConsumer;
 
 import greycos.solver.core.api.localsearch.GuidedLocalSearchFeatureProvider;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition;
@@ -20,6 +22,9 @@ import greycos.solver.core.impl.localsearch.decider.LocalSearchPhaseDecider;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope.NoStepReason;
+import greycos.solver.core.impl.move.PreparableMove;
+import greycos.solver.core.impl.move.PreparedMoveEvaluation;
+import greycos.solver.core.impl.move.PreparedMoveFilters;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.phase.scope.SolverLifecyclePoint;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -472,6 +477,7 @@ public final class GuidedLocalSearchDecider<Solution_>
   @Override
   public void decideNextStep(LocalSearchStepScope<Solution_> stepScope) {
     var scoreDirector = stepScope.getScoreDirector();
+    boolean previousTemporaryState = scoreDirector.isAllChangesWillBeUndoneBeforeStepEnds();
     scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(true);
     try {
       if (pipeline != null) pipeline.startNextStep(stepScope.getStepIndex());
@@ -591,7 +597,8 @@ public final class GuidedLocalSearchDecider<Solution_>
       }
       stepScope.setNoStepReason(NoStepReason.TERMINATED);
     } finally {
-      scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(false);
+      if (pipeline != null && stepScope.getStep() == null) pipeline.cancelStep();
+      scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(previousTemporaryState);
     }
   }
 
@@ -670,9 +677,12 @@ public final class GuidedLocalSearchDecider<Solution_>
             throw new IllegalStateException(
                 "Guided Local Search received a stale candidate generation.");
           }
+          stepScope.getScoreDirector().incrementCalculationCount(result.calculationCount());
+          transferredCalculationCount += result.calculationCount();
           if (!result.isMoveDoable()) continue;
-          stepScope.getScoreDirector().incrementCalculationCount();
-          transferredCalculationCount++;
+          var preparedMove =
+              PreparedMoveFilters.filter(result.move(), stepScope.getScoreDirector());
+          if (preparedMove == null) continue;
           var metadata = (CandidatePenalty) result.metadata();
           if (metadata == null
               && result.score().isFullyAssigned()
@@ -682,7 +692,7 @@ public final class GuidedLocalSearchDecider<Solution_>
           }
           candidate =
               new Candidate<>(
-                  result.move(),
+                  preparedMove,
                   result.score(),
                   metadata == null ? GuidedLocalSearchNumber.ZERO : metadata.penalty(),
                   metadata == null
@@ -743,24 +753,45 @@ public final class GuidedLocalSearchDecider<Solution_>
     var director = stepScope.getScoreDirector();
     int moveIndex = nextMoveIndex;
     nextMoveIndex = Math.incrementExact(nextMoveIndex);
-    if (move instanceof AbstractSelectorBasedMove<Solution_> selector
+    if (!(move instanceof PreparableMove<Solution_>)
+        && move instanceof AbstractSelectorBasedMove<Solution_> selector
         && !selector.isMoveDoable(director)) return null;
     var holder = new GuidedLocalSearchNumber[] {GuidedLocalSearchNumber.ZERO};
     var automaticDelta =
         new GuidedLocalSearchFeatureTracker.AutomaticDelta[] {
           GuidedLocalSearchFeatureTracker.AutomaticDelta.EMPTY
         };
-    var score =
-        director.executeTemporaryMove(
-            move,
-            view -> {
-              if (validCandidate(director)) {
-                holder[0] = aggregate(tracker, focusLevel, scale());
-                automaticDelta[0] = tracker.automaticDelta();
-                if (assertFromScratch) tracker.assertFromScratch();
-              }
-            },
-            assertFromScratch);
+    BiConsumer<SolutionView<Solution_>, Move<Solution_>> finalStateConsumer =
+        (view, preparedMove) -> {
+          if (validCandidate(director)) {
+            holder[0] = aggregate(tracker, focusLevel, scale());
+            automaticDelta[0] = tracker.automaticDelta();
+            if (assertFromScratch) tracker.assertFromScratch();
+          }
+        };
+    InnerScore<?> score;
+    if (move instanceof PreparableMove<Solution_> preparableMove) {
+      var result =
+          preparableMove.prepare(
+              director,
+              () -> {
+                if (terminated(stepScope)) {
+                  throw new CancellationException(
+                      "Guided local search move preparation terminated.");
+                }
+              },
+              assertFromScratch,
+              finalStateConsumer);
+      if (result.status() != PreparedMoveEvaluation.Status.EVALUATED) return null;
+      move = PreparedMoveFilters.filter(result.move(), director);
+      if (move == null) return null;
+      score = result.score();
+    } else {
+      var evaluatedMove = move;
+      score =
+          director.executeTemporaryMove(
+              move, view -> finalStateConsumer.accept(view, evaluatedMove), assertFromScratch);
+    }
     if (assertUndo) {
       director.assertExpectedUndoMoveScore(
           move,
@@ -922,12 +953,6 @@ public final class GuidedLocalSearchDecider<Solution_>
     } catch (RuntimeException | Error error) {
       failure = error;
     }
-    try {
-      endRepositoryPhase();
-    } catch (RuntimeException | Error error) {
-      if (failure == null) failure = error;
-      else if (failure != error) failure.addSuppressed(error);
-    }
     if (pipeline != null) {
       try {
         pipeline.close();
@@ -941,6 +966,12 @@ public final class GuidedLocalSearchDecider<Solution_>
       } finally {
         pipeline = null;
       }
+    }
+    try {
+      endRepositoryPhase();
+    } catch (RuntimeException | Error error) {
+      if (failure == null) failure = error;
+      else if (failure != error) failure.addSuppressed(error);
     }
     if (tracker != null) {
       try {

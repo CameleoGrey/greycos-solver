@@ -11,6 +11,7 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
+import greycos.solver.core.impl.move.PreparedMoveEvaluation;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.thread.ThreadUtils;
@@ -50,6 +51,7 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   final boolean diagnosticsEnabled = Boolean.getBoolean("greycos.solver.moveThreadDiagnostics");
   volatile boolean stopping;
   volatile boolean aborting;
+  private InnerScoreDirector<Solution_, ?> coordinatorDirector;
   private boolean started;
   private boolean joined;
   private Epoch<Solution_> current;
@@ -136,6 +138,7 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     if (started) {
       throw new IllegalStateException("Move evaluation pipeline already started.");
     }
+    coordinatorDirector = Objects.requireNonNull(parent);
     started = true;
     try {
       // Populate the list before any worker can fail and wake/interrupt its peers.
@@ -185,6 +188,9 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     slot.move = Objects.requireNonNull(move);
     slot.source = null;
     slot.score = null;
+    slot.preparedMove = null;
+    slot.status = null;
+    slot.calculationCount = 0L;
     slot.context = context;
     slot.metadata = null;
     slot.completedIndex = -1;
@@ -226,6 +232,9 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       slot.source = source;
       slot.sourceIndex = sourceIndex + index - moveIndex;
       slot.score = null;
+      slot.preparedMove = null;
+      slot.status = null;
+      slot.calculationCount = 0L;
       slot.context = null;
       slot.metadata = null;
       slot.completedIndex = -1;
@@ -268,9 +277,20 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     if (slot == null) {
       return null;
     }
-    var move = slot.move == null ? slot.source.move(slot.sourceIndex) : slot.move;
+    var move =
+        slot.preparedMove != null
+            ? slot.preparedMove.rebase(coordinatorDirector.getMoveDirector())
+            : slot.move == null ? slot.source.move(slot.sourceIndex) : slot.move;
     var result =
-        new Result<>(epoch.stepIndex, moveIndex, move, slot.score, slot.context, slot.metadata);
+        new Result<>(
+            epoch.stepIndex,
+            moveIndex,
+            move,
+            slot.score,
+            slot.context,
+            slot.metadata,
+            slot.status,
+            slot.calculationCount);
     consume(epoch, slot);
     return result;
   }
@@ -387,6 +407,7 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   private void consume(Epoch<Solution_> epoch, Slot<Solution_> slot) {
     boolean doable = slot.score != null;
     slot.move = null;
+    slot.preparedMove = null;
     slot.source = null;
     slot.score = null;
     slot.context = null;
@@ -710,13 +731,35 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       Move<Solution_> move,
       InnerScore<?> score,
       @Nullable EvaluationContext context,
-      @Nullable EvaluationMetadata metadata) {
+      @Nullable EvaluationMetadata metadata,
+      PreparedMoveEvaluation.Status status,
+      long calculationCount) {
+    public Result(
+        int stepIndex,
+        int moveIndex,
+        Move<Solution_> move,
+        InnerScore<?> score,
+        @Nullable EvaluationContext context,
+        @Nullable EvaluationMetadata metadata) {
+      this(
+          stepIndex,
+          moveIndex,
+          move,
+          score,
+          context,
+          metadata,
+          score == null
+              ? PreparedMoveEvaluation.Status.EMPTY
+              : PreparedMoveEvaluation.Status.EVALUATED,
+          score == null ? 0L : 1L);
+    }
+
     public Result(int stepIndex, int moveIndex, Move<Solution_> move, InnerScore<?> score) {
       this(stepIndex, moveIndex, move, score, null, null);
     }
 
     public boolean isMoveDoable() {
-      return score != null;
+      return status == PreparedMoveEvaluation.Status.EVALUATED && score != null;
     }
   }
 
@@ -749,6 +792,9 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
 
   static final class Slot<Solution_> {
     Move<Solution_> move;
+    Move<Solution_> preparedMove;
+    PreparedMoveEvaluation.Status status;
+    long calculationCount;
     MoveEvaluationSource<Solution_> source;
     int sourceIndex;
     InnerScore<?> score;
@@ -781,6 +827,9 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
         slot.move = null;
         slot.source = null;
         slot.score = null;
+        slot.preparedMove = null;
+        slot.status = null;
+        slot.calculationCount = 0L;
         slot.context = null;
         slot.metadata = null;
         slot.completedIndex = -1;

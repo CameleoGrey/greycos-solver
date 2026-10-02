@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -18,19 +19,26 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
+import java.util.function.BiConsumer;
 
+import greycos.solver.core.api.cotwin.lookup.Lookup;
+import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.heuristic.selector.move.generic.SelectorBasedChangeMove;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline.CandidateMetadataCollector;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline.EvaluationContext;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline.EvaluationMetadata;
+import greycos.solver.core.impl.move.PreparableMove;
+import greycos.solver.core.impl.move.PreparedMoveEvaluation;
 import greycos.solver.core.impl.move.builtin.ChangeMove;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.easy.EasyScoreDirectorFactory;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningVariableMetaModel;
 import greycos.solver.core.preview.api.move.Move;
+import greycos.solver.core.preview.api.move.MutableSolutionView;
 import greycos.solver.core.preview.api.move.SolutionView;
 import greycos.solver.core.testcotwin.TestdataEntity;
 import greycos.solver.core.testcotwin.TestdataSolution;
@@ -45,6 +53,178 @@ class MoveEvaluationPipelineMetadataTest {
   private static final Duration TIMEOUT = Duration.ofSeconds(10);
   private static final InnerScore<SimpleScore> SECOND_SCORE =
       InnerScore.fullyAssigned(SimpleScore.of(-1));
+
+  @Test
+  void preparedResultRebasesTheFrozenMoveAndCollectsOnlyItsFinalState() throws Exception {
+    try (var fixture = new Fixture(1, 1)) {
+      var counts = new PreparationCounts();
+      var request = new PreparedRequest(fixture.changeTo(1), counts, false, false);
+      fixture.start();
+      fixture.pipeline.submit(0, request, new TestContext(3));
+      var result = fixture.pipeline.take();
+
+      assertThat(result.status()).isEqualTo(PreparedMoveEvaluation.Status.EVALUATED);
+      assertThat(result.move()).isNotInstanceOf(PreparableMove.class);
+      assertThat(result.calculationCount()).isEqualTo(3);
+      assertThat(result.metadata()).isEqualTo(new TestMetadata("second", 3));
+      assertThat(fixture.baselines).containsExactly(new TestMetadata("first", 3));
+      assertThat(fixture.collections).hasValue(1);
+      fixture.assertWorkerValues("first");
+      assertThat(counts.preparations).hasValue(1);
+      fixture.parent.executeMove(result.move());
+      assertThat(fixture.solution.getEntityList().getFirst().getValue().getCode())
+          .isEqualTo("second");
+      fixture.pipeline.applyStep(1, result.move(), result.score());
+      fixture.pipeline.close();
+      fixture.assertWorkerValues("second");
+      assertThat(counts.preparations).hasValue(1);
+      assertThat(counts.closures).hasValue(1);
+    }
+  }
+
+  @Test
+  void emptyPreparedResultsKeepProbeCountsAndShareOneProviderCleanup() throws Exception {
+    try (var fixture = new Fixture(1, 1)) {
+      var counts = new PreparationCounts();
+      fixture.start();
+      for (int index = 0; index < 2; index++) {
+        fixture.pipeline.submit(
+            index,
+            new PreparedRequest(fixture.changeTo(1), counts, true, false),
+            new TestContext(index));
+        var result = fixture.pipeline.take();
+        assertThat(result.status()).isEqualTo(PreparedMoveEvaluation.Status.EMPTY);
+        assertThat(result.isMoveDoable()).isFalse();
+        assertThat(result.calculationCount()).isEqualTo(2);
+        assertThat(result.score()).isNull();
+        assertThat(result.metadata()).isNull();
+      }
+      fixture.pipeline.close();
+      assertThat(fixture.pipeline.getCalculationCount()).isEqualTo(5);
+      assertThat(counts.preparations).hasValue(2);
+      assertThat(counts.closures).hasValue(1);
+      assertThat(fixture.collections).hasValue(0);
+      fixture.assertWorkerValues("first");
+    }
+  }
+
+  @Test
+  void cancelledPreparationReturnsNoCandidateAndClosesItsContext() throws Exception {
+    try (var fixture = new Fixture(1, 1)) {
+      var counts = new PreparationCounts();
+      fixture.start();
+      fixture.pipeline.submit(
+          0, new PreparedRequest(fixture.changeTo(1), counts, false, true), new TestContext(0));
+      fixture.pipeline.flush();
+      await().atMost(TIMEOUT).until(() -> counts.preparations.get() == 1);
+      fixture.pipeline.cancelStep();
+      var result = fixture.pipeline.take();
+      assertThat(result.status()).isEqualTo(PreparedMoveEvaluation.Status.CANCELLED);
+      assertThat(result.isMoveDoable()).isFalse();
+      assertThat(result.calculationCount()).isEqualTo(2);
+      assertThat(result.metadata()).isNull();
+      fixture.pipeline.close();
+      assertThat(counts.closures).hasValue(1);
+      fixture.assertWorkerValues("first");
+    }
+  }
+
+  @Test
+  void preparationFailurePreservesTheCauseWhenContextCleanupAlsoFails() {
+    try (var fixture = new Fixture(1, 1)) {
+      var counts = new PreparationCounts();
+      counts.evaluationFailure = new IllegalArgumentException("preparation failed");
+      counts.closeFailure = new IllegalStateException("session close failed");
+      fixture.start();
+      fixture.pipeline.submit(
+          0, new PreparedRequest(fixture.changeTo(1), counts, false, false), new TestContext(0));
+      var failure = catchThrowable(fixture.pipeline::take);
+      fixture.pipeline.abort();
+      assertThat(failure).hasCause(counts.evaluationFailure);
+      assertThat(failure.getSuppressed()).contains(counts.closeFailure);
+      assertThat(counts.closures).hasValue(1);
+      assertThat(fixture.closedCollectors).hasValue(1);
+      fixture.assertWorkerValues("first");
+    }
+  }
+
+  private static final class PreparationCounts {
+    private final AtomicInteger preparations = new AtomicInteger();
+    private final AtomicInteger closures = new AtomicInteger();
+    private RuntimeException evaluationFailure;
+    private RuntimeException closeFailure;
+  }
+
+  private record PreparedRequest(
+      Move<TestdataSolution> frozen,
+      PreparationCounts counts,
+      boolean empty,
+      boolean waitForCancellation)
+      implements PreparableMove<TestdataSolution> {
+
+    @Override
+    public <Score_ extends Score<Score_>> PreparedMoveEvaluation<TestdataSolution, Score_> prepare(
+        InnerScoreDirector<TestdataSolution, Score_> director,
+        Runnable checkTermination,
+        boolean assertFromScratch,
+        BiConsumer<SolutionView<TestdataSolution>, Move<TestdataSolution>> finalStateConsumer) {
+      long before = director.getCalculationCount();
+      director.calculateScore();
+      director.calculateScore();
+      counts.preparations.incrementAndGet();
+      if (counts.evaluationFailure != null) throw counts.evaluationFailure;
+      if (waitForCancellation) {
+        try {
+          while (true) {
+            checkTermination.run();
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
+          }
+        } catch (CancellationException cancelled) {
+          return new PreparedMoveEvaluation<>(
+              PreparedMoveEvaluation.Status.CANCELLED,
+              null,
+              null,
+              director.getCalculationCount() - before);
+        }
+      }
+      if (empty) {
+        return new PreparedMoveEvaluation<>(
+            PreparedMoveEvaluation.Status.EMPTY,
+            null,
+            null,
+            director.getCalculationCount() - before);
+      }
+      var score =
+          director.executeTemporaryMove(
+              frozen, view -> finalStateConsumer.accept(view, frozen), assertFromScratch);
+      return new PreparedMoveEvaluation<>(
+          PreparedMoveEvaluation.Status.EVALUATED,
+          frozen,
+          score,
+          director.getCalculationCount() - before);
+    }
+
+    @Override
+    public void execute(MutableSolutionView<TestdataSolution> solutionView) {
+      throw new AssertionError("A deferred request must never execute directly.");
+    }
+
+    @Override
+    public Move<TestdataSolution> rebase(Lookup lookup) {
+      return new PreparedRequest(frozen.rebase(lookup), counts, empty, waitForCancellation);
+    }
+
+    @Override
+    public Object cleanupKey() {
+      return counts;
+    }
+
+    @Override
+    public void closeEvaluationContext(InnerScoreDirector<TestdataSolution, ?> director) {
+      counts.closures.incrementAndGet();
+      if (counts.closeFailure != null) throw counts.closeFailure;
+    }
+  }
 
   @Test
   void metadataObservesTheAppliedCandidateAndTheWorkerThenUndoesIt() throws Exception {
@@ -435,7 +615,7 @@ class MoveEvaluationPipelineMetadataTest {
                           .getValueList()
                           .indexOf(workingSolution.getEntityList().getFirst().getValue())),
               EnvironmentMode.PHASE_ASSERT);
-      parent = factory.buildScoreDirector();
+      parent = factory.createScoreDirectorBuilder().withLookUpEnabled(true).build();
       parent.setWorkingSolution(solution);
       parent.calculateScore();
       executor = Executors.newFixedThreadPool(workers);

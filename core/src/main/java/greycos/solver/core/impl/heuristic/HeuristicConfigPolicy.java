@@ -37,6 +37,7 @@ public class HeuristicConfigPolicy<Solution_> {
   private final Integer moveThreadBufferSize;
   private final boolean constraintStreamProfilingEnabled;
   private final boolean nonDoableCandidateRetentionEnabled;
+  private final boolean multistageMoveSelectionEnabled;
   private final Class<? extends ThreadFactory> threadFactoryClass;
   private final InitializingScoreTrend initializingScoreTrend;
   private final SolutionDescriptor<Solution_> solutionDescriptor;
@@ -66,6 +67,7 @@ public class HeuristicConfigPolicy<Solution_> {
     this.moveThreadBufferSize = builder.moveThreadBufferSize;
     this.constraintStreamProfilingEnabled = builder.constraintStreamProfilingEnabled;
     this.nonDoableCandidateRetentionEnabled = builder.nonDoableCandidateRetentionEnabled;
+    this.multistageMoveSelectionEnabled = builder.multistageMoveSelectionEnabled;
     this.threadFactoryClass = builder.threadFactoryClass;
     this.initializingScoreTrend = builder.initializingScoreTrend;
     this.solutionDescriptor = builder.solutionDescriptor;
@@ -107,6 +109,11 @@ public class HeuristicConfigPolicy<Solution_> {
   /** Whether non-doable moves must reach the decider without entering typed user move filters. */
   public boolean isNonDoableCandidateRetentionEnabled() {
     return nonDoableCandidateRetentionEnabled;
+  }
+
+  /** Whether this phase prepares complete multistage candidates before accepting moves. */
+  public boolean isMultistageMoveSelectionEnabled() {
+    return multistageMoveSelectionEnabled;
   }
 
   public InitializingScoreTrend getInitializingScoreTrend() {
@@ -178,6 +185,7 @@ public class HeuristicConfigPolicy<Solution_> {
         .withMoveThreadBufferSize(moveThreadBufferSize)
         .withConstraintStreamProfilingEnabled(constraintStreamProfilingEnabled)
         .withNonDoableCandidateRetentionEnabled(nonDoableCandidateRetentionEnabled)
+        .withMultistageMoveSelectionEnabled(multistageMoveSelectionEnabled)
         .withThreadFactoryClass(threadFactoryClass)
         .withInitializingScoreTrend(initializingScoreTrend)
         .withSolutionDescriptor(solutionDescriptor)
@@ -213,7 +221,10 @@ public class HeuristicConfigPolicy<Solution_> {
   }
 
   public HeuristicConfigPolicy<Solution_> copyPhaseConfigPolicy(EnvironmentMode environmentMode) {
-    var builder = cloneBuilder().withGuidedLocalSearchSelectionContext(null);
+    var builder =
+        cloneBuilder()
+            .withGuidedLocalSearchSelectionContext(null)
+            .withMultistageMoveSelectionEnabled(false);
     if (environmentMode != null) {
       builder.withEnvironmentMode(environmentMode);
     }
@@ -349,6 +360,7 @@ public class HeuristicConfigPolicy<Solution_> {
     private Integer moveThreadBufferSize;
     private boolean constraintStreamProfilingEnabled;
     private boolean nonDoableCandidateRetentionEnabled;
+    private boolean multistageMoveSelectionEnabled;
     private Class<? extends ThreadFactory> threadFactoryClass;
     private InitializingScoreTrend initializingScoreTrend;
     private SolutionDescriptor<Solution_> solutionDescriptor;
@@ -397,6 +409,11 @@ public class HeuristicConfigPolicy<Solution_> {
 
     public Builder<Solution_> withNonDoableCandidateRetentionEnabled(boolean enabled) {
       this.nonDoableCandidateRetentionEnabled = enabled;
+      return this;
+    }
+
+    public Builder<Solution_> withMultistageMoveSelectionEnabled(boolean enabled) {
+      this.multistageMoveSelectionEnabled = enabled;
       return this;
     }
 

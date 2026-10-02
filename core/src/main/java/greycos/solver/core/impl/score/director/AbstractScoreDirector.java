@@ -245,6 +245,25 @@ public abstract class AbstractScoreDirector<
   }
 
   @Override
+  public boolean isAllChangesWillBeUndoneBeforeStepEnds() {
+    return allChangesWillBeUndoneBeforeStepEnds;
+  }
+
+  @Override
+  public void beforePreparedMove() {
+    if (solutionTracker != null) {
+      solutionTracker.setBeforeMoveSolution(workingSolution);
+    }
+  }
+
+  @Override
+  public void afterPreparedMove() {
+    if (solutionTracker != null) {
+      solutionTracker.setAfterMoveSolution(workingSolution);
+    }
+  }
+
+  @Override
   public long getCalculationCount() {
     return calculationCount;
   }
@@ -536,7 +555,8 @@ public abstract class AbstractScoreDirector<
     // as they will be immediately undone.
     // Moves will only be re-generated once the solution has actually changed,
     // which will happen at the end of the step, after executeMove(...) was called.
-    allChangesWillBeUndoneBeforeStepEnds = true;
+    boolean previousTemporaryState = allChangesWillBeUndoneBeforeStepEnds;
+    setAllChangesWillBeUndoneBeforeStepEnds(true);
     if (solutionTracker != null) {
       solutionTracker.setBeforeMoveSolution(workingSolution);
     }
@@ -557,7 +577,7 @@ public abstract class AbstractScoreDirector<
                 return score;
               }));
     } finally {
-      allChangesWillBeUndoneBeforeStepEnds = false;
+      setAllChangesWillBeUndoneBeforeStepEnds(previousTemporaryState);
     }
   }
 

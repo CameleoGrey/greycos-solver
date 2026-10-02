@@ -7,6 +7,7 @@ import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.config.heuristic.selector.move.composite.CartesianProductMoveSelectorConfig;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
+import greycos.solver.core.impl.heuristic.selector.move.generic.AbstractMultistageMoveSelectorFactory;
 
 public class CartesianProductMoveSelectorFactory<Solution_>
     extends AbstractCompositeMoveSelectorFactory<Solution_, CartesianProductMoveSelectorConfig> {
@@ -21,6 +22,12 @@ public class CartesianProductMoveSelectorFactory<Solution_>
       HeuristicConfigPolicy<Solution_> configPolicy,
       SelectionCacheType minimumCacheType,
       boolean randomSelection) {
+    if (AbstractMultistageMoveSelectorFactory.containsMultistage(config)) {
+      throw new IllegalArgumentException(
+          "The cartesianProductMoveSelector (%s) contains a multistage move selector. "
+                  .formatted(config)
+              + "Maybe use a unionMoveSelector or combine the operations in one multistage provider.");
+    }
     if (configPolicy.getNearbyDistanceMeterClass() != null) {
       throw new IllegalArgumentException(
           """

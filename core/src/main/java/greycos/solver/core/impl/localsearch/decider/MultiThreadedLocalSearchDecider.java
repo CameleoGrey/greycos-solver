@@ -13,6 +13,7 @@ import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.move.PreparedMoveFilters;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -93,14 +94,30 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
 
   @Override
   public void phaseEnded(LocalSearchPhaseScope<Solution_> phaseScope) {
-    super.phaseEnded(phaseScope);
-    moveEvaluationPipeline.close();
-    // Consumed scores already count toward coordinator termination; add only the remaining work.
-    phaseScope.addChildThreadsScoreCalculationCount(
-        moveEvaluationPipeline.getCalculationCount() - transferredCalculationCount);
-    moveEvaluationDiagnostics = moveEvaluationPipeline.getDiagnostics();
-    logger.debug("{}Move evaluation diagnostics: {}", logIndentation, moveEvaluationDiagnostics);
-    moveEvaluationPipeline = null;
+    Throwable failure = null;
+    try {
+      if (moveEvaluationPipeline != null) {
+        moveEvaluationPipeline.close();
+        // Consumed scores already count toward termination; add only the remaining worker work.
+        phaseScope.addChildThreadsScoreCalculationCount(
+            moveEvaluationPipeline.getCalculationCount() - transferredCalculationCount);
+        moveEvaluationDiagnostics = moveEvaluationPipeline.getDiagnostics();
+        logger.debug(
+            "{}Move evaluation diagnostics: {}", logIndentation, moveEvaluationDiagnostics);
+      }
+    } catch (RuntimeException | Error error) {
+      failure = error;
+    } finally {
+      moveEvaluationPipeline = null;
+    }
+    try {
+      super.phaseEnded(phaseScope);
+    } catch (RuntimeException | Error error) {
+      if (failure == null) failure = error;
+      else if (failure != error) failure.addSuppressed(error);
+    }
+    if (failure instanceof Error error) throw error;
+    if (failure != null) throw (RuntimeException) failure;
   }
 
   public MoveEvaluationPipeline.Diagnostics getMoveEvaluationDiagnostics() {
@@ -115,11 +132,29 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   }
 
   @Override
-  public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
-    super.solvingError(solverScope, exception);
-    if (moveEvaluationPipeline != null) {
-      moveEvaluationPipeline.abort();
+  protected void resetLocalSearchState(LocalSearchStepScope<Solution_> stepScope) {
+    try {
+      // The adopted step must reach every worker before provider lifecycle callbacks reset state.
+      if (moveEvaluationPipeline.awaitEvaluationQuiescence()) {
+        super.resetLocalSearchState(stepScope);
+      }
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
     }
+  }
+
+  @Override
+  public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
+    if (moveEvaluationPipeline != null) {
+      try {
+        moveEvaluationPipeline.abort();
+      } catch (RuntimeException | Error cleanup) {
+        if (cleanup != exception) exception.addSuppressed(cleanup);
+      } finally {
+        moveEvaluationPipeline = null;
+      }
+    }
+    super.solvingError(solverScope, exception);
   }
 
   protected ExecutorService createThreadPoolExecutor() {
@@ -170,7 +205,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
           movesInPlay++;
         }
       } while (movesInPlay > 0);
-      if (stoppedForagingEarly && movesInPlay > 0) {
+      if (stoppedForagingEarly) {
         moveEvaluationPipeline.cancelStep();
       }
       // Pick the best move from the results
@@ -209,15 +244,14 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
               + result.stepIndex()
               + ").");
     }
+    stepScope.getScoreDirector().incrementCalculationCount(result.calculationCount());
+    transferredCalculationCount += result.calculationCount();
     int foragingMoveIndex = result.moveIndex();
     Move<Solution_> foragingMove = result.move();
     if (foragingMove == null) {
       throw new IllegalStateException(
           "Impossible situation: no original move for move index (" + foragingMoveIndex + ").");
     }
-
-    LocalSearchMoveScope<Solution_> moveScope =
-        new LocalSearchMoveScope<>(stepScope, foragingMoveIndex, foragingMove);
 
     if (!result.isMoveDoable()) {
       logger.trace(
@@ -226,9 +260,15 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
           foragingMoveIndex,
           foragingMove);
     } else {
+      foragingMove = PreparedMoveFilters.filter(foragingMove, stepScope.getScoreDirector());
+      if (foragingMove == null) {
+        return termination.isPhaseTerminated(stepScope.getPhaseScope())
+            ? ForageResult.STOP_FORAGING
+            : ForageResult.CONTINUE;
+      }
+      LocalSearchMoveScope<Solution_> moveScope =
+          new LocalSearchMoveScope<>(stepScope, foragingMoveIndex, foragingMove);
       moveScope.setScore(result.score());
-      moveScope.getScoreDirector().incrementCalculationCount();
-      transferredCalculationCount++;
       boolean accepted = acceptor.isAccepted(moveScope);
       moveScope.setAccepted(accepted);
       logger.trace(

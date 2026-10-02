@@ -29,6 +29,9 @@ The following `MoveSelector` implementations are available out of the box:
 |<<ruinRecreateMoveSelector,Ruin and Recreate move>>
 |Take a subset of entities, uninitialize them and run a construction heuristic to put them back
 
+|<<multistageMoveSelector,Multistage move>>
+|Build a basic-variable candidate through ordered custom stages that score and select operations
+
 |<<listChangeMoveSelector,List change move>>
 |Move a list element to a different index or to another entity's list variable
 
@@ -46,6 +49,9 @@ The following `MoveSelector` implementations are available out of the box:
 
 |<<listRuinRecreateMoveSelector,List Ruin and Recreate move>>
 |Take a subset of values, remove them from their lists, and run a construction heuristic to recreate the lists
+
+|<<listMultistageMoveSelector,List multistage move>>
+|Build a list-variable candidate through ordered custom stages using the latest list state
 
 |<<tailChainSwapMoveSelector,Tail chain swap move>>
 |Swap 2 tails chains
@@ -451,6 +457,22 @@ to control the frequency of this move:
 The above configuration will run the `RuinRecreateMove` once for every 100 fine-grained moves.
 As always, benchmarking is recommended to find the optimal value for your use case.
 
+[#multistageMoveSelector]
+=== `MultistageMoveSelector`
+
+This opt-in selector builds one move from ordered custom stages for one basic planning variable.
+Later stages see preceding selected changes and updated shadow variables.
+Use `BasicVariableStageProvider` with `MultistageMoveSelectorConfig`; configure `stageProviderClass`,
+`entityClass`, `variableName`, and optional positive `candidateCountLimit` and `probeCountLimit`.
+The defaults are 64 candidate requests per step and 10000 scoring probes per candidate.
+Chained variables are unsupported.
+
+The selector is supported directly in Local Search or in a union, including move workers, islands and partitions.
+Caching, Cartesian-product composition and GLS directed origin selection are rejected.
+All operations must respect pinning and value ranges, and mandatory assignments must be repaired before the candidate completes.
+See xref:optimization-algorithms/multistage.adoc#multistageMoves[multistage moves] for configuration examples,
+the stable provider/evaluator API, rollback and frozen replay semantics, and provider implementations.
+
 [#listMoveSelectors]
 == Move selectors for list variables
 
@@ -701,6 +723,22 @@ to control the frequency of this move:
 
 The above configuration will run the `ListRuinRecreateMove` once for every 100 fine-grained moves.
 As always, benchmarking is recommended to find the optimal value for your use case.
+
+[#listMultistageMoveSelector]
+=== `ListMultistageMoveSelector`
+
+This opt-in selector builds one move from ordered custom stages for one planning list variable.
+Use `ListVariableStageProvider` with `ListMultistageMoveSelectorConfig`.
+Its `entityClass` identifies the list owner; `variableName` identifies that owner's list.
+The provider chooses safe operations through `ListVariableMoveEvaluator`, including removal, placement,
+swap, reversal and sublist relocation. Insertion indices refer to the destination after the moved values are removed.
+
+The default limits are 64 candidate requests per step and 10000 scoring probes per candidate.
+Pinned prefixes and destination value ranges are enforced. Temporary mandatory unassignment must be repaired
+before the completed candidate can be accepted.
+The composition, worker and replay rules match <<multistageMoveSelector,the basic multistage selector>>.
+See xref:optimization-algorithms/multistage.adoc#multistageMoves[multistage moves] for the full contract and a list provider example
+that removes a value and chooses its reinsertion from the changed list state.
 
 [#chainMoveSelectors]
 == Move selectors for chained variables

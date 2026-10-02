@@ -23,6 +23,7 @@ module greycos.solver.core {
   exports greycos.solver.core.api.score.stream.uni;
   exports greycos.solver.core.api.solver;
   exports greycos.solver.core.api.solver.alns;
+  exports greycos.solver.core.api.solver.multistage;
   exports greycos.solver.core.api.solver.change;
   exports greycos.solver.core.api.solver.event;
   exports greycos.solver.core.api.solver.phase;

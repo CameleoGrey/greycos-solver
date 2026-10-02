@@ -17,11 +17,13 @@ import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSel
 import greycos.solver.core.config.heuristic.selector.move.factory.MoveIteratorFactoryConfig;
 import greycos.solver.core.config.heuristic.selector.move.factory.MoveListFactoryConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
@@ -46,6 +48,8 @@ import org.jspecify.annotations.Nullable;
   MoveListFactoryConfig.class,
   PillarChangeMoveSelectorConfig.class,
   PillarSwapMoveSelectorConfig.class,
+  MultistageMoveSelectorConfig.class,
+  ListMultistageMoveSelectorConfig.class,
   RuinRecreateMoveSelectorConfig.class,
   ListRuinRecreateMoveSelectorConfig.class,
   SubListChangeMoveSelectorConfig.class,

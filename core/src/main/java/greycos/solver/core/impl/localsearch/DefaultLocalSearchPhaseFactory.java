@@ -87,6 +87,7 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
             .cloneBuilder()
             .withEnvironmentMode(environmentMode)
             .withMoveThreadCount(moveThreadCount)
+            .withMultistageMoveSelectionEnabled(true)
             .withNonDoableCandidateRetentionEnabled(
                 phaseConfig.getLocalSearchType() == LocalSearchType.GUIDED_LOCAL_SEARCH)
             .withGuidedLocalSearchSelectionContext(

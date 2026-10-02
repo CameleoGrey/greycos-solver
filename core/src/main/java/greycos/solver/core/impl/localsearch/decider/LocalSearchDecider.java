@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.localsearch.decider;
 
+import java.util.concurrent.CancellationException;
+
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.config.solver.EnvironmentMode;
@@ -9,8 +11,12 @@ import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.move.PreparableMove;
+import greycos.solver.core.impl.move.PreparedMoveEvaluation;
+import greycos.solver.core.impl.move.PreparedMoveFilters;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.phase.scope.SolverLifecyclePoint;
+import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
 import greycos.solver.core.impl.solver.termination.Termination;
@@ -34,6 +40,7 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
   protected boolean assertMoveScoreFromScratch = false;
   protected boolean assertExpectedUndoMoveScore = false;
   protected boolean resetOnPendingMove = false;
+  private LocalSearchPhaseScope<Solution_> repositoryPhaseScope;
 
   public LocalSearchDecider(
       String logIndentation,
@@ -85,7 +92,7 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
   }
 
   public void phaseStarted(LocalSearchPhaseScope<Solution_> phaseScope) {
-    moveRepository.phaseStarted(phaseScope);
+    startRepositoryPhase(phaseScope);
     acceptor.phaseStarted(phaseScope);
     forager.phaseStarted(phaseScope);
   }
@@ -98,49 +105,73 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
 
   public void decideNextStep(LocalSearchStepScope<Solution_> stepScope) {
     var scoreDirector = stepScope.getScoreDirector();
+    boolean previousTemporaryState = scoreDirector.isAllChangesWillBeUndoneBeforeStepEnds();
     scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(true);
-    var pending = stepScope.getPhaseScope().getSolverScope().consumePendingMove();
-    if (pending != null) {
-      resetOnPendingMove = pending.requiresReset();
-      var move = pending.move();
-      var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
-      stepScope.getPhaseScope().addMoveEvaluationCount(move, 1L);
-      stepScope.setStep(move);
-      if (logger.isDebugEnabled()) {
-        stepScope.setStepString(move.toString());
-      }
-      stepScope.setScore(score);
-      stepScope.setSelectedMoveCount(1L);
-      stepScope.setAcceptedMoveCount(1L);
-    } else {
-      var moveIndex = 0;
-      for (var move : moveRepository) {
-        var moveScope = new LocalSearchMoveScope<>(stepScope, moveIndex, move);
-        moveIndex++;
-        doMove(moveScope);
-        if (forager.isQuitEarly()) {
-          break;
+    try {
+      var pending = stepScope.getPhaseScope().getSolverScope().consumePendingMove();
+      if (pending != null) {
+        resetOnPendingMove = pending.requiresReset();
+        var move = pending.move();
+        var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
+        stepScope.getPhaseScope().addMoveEvaluationCount(move, 1L);
+        stepScope.setStep(move);
+        if (logger.isDebugEnabled()) {
+          stepScope.setStepString(move.toString());
         }
-        stepScope.getPhaseScope().getSolverScope().checkYielding();
-        if (termination.isPhaseTerminated(stepScope.getPhaseScope())) {
-          break;
+        stepScope.setScore(score);
+        stepScope.setSelectedMoveCount(1L);
+        stepScope.setAcceptedMoveCount(1L);
+      } else {
+        var moveIndex = 0;
+        for (var move : moveRepository) {
+          var moveScope = new LocalSearchMoveScope<>(stepScope, moveIndex, move);
+          moveIndex++;
+          doMove(moveScope);
+          if (forager.isQuitEarly()) {
+            break;
+          }
+          stepScope.getPhaseScope().getSolverScope().checkYielding();
+          if (termination.isPhaseTerminated(stepScope.getPhaseScope())) {
+            break;
+          }
         }
+        pickMove(stepScope);
       }
-      pickMove(stepScope);
+    } finally {
+      scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(previousTemporaryState);
     }
-    scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(false);
   }
 
   protected <Score_ extends Score<Score_>> void doMove(LocalSearchMoveScope<Solution_> moveScope) {
     var scoreDirector = moveScope.<Score_>getScoreDirector();
     var move = moveScope.getMove();
-    if (move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove
-        && !selectorBasedMove.isMoveDoable(scoreDirector)) {
-      throw new IllegalStateException(
-          "Impossible state: Local search move selector (%s) provided a non-doable move (%s)."
-              .formatted(moveRepository, move));
+    InnerScore<Score_> score;
+    if (move instanceof PreparableMove<Solution_> preparableMove) {
+      var stepScope = moveScope.getStepScope();
+      var result =
+          preparableMove.prepare(
+              scoreDirector,
+              () -> checkPreparationTermination(stepScope),
+              assertMoveScoreFromScratch,
+              null);
+      if (result.status() != PreparedMoveEvaluation.Status.EVALUATED) {
+        return;
+      }
+      move = PreparedMoveFilters.filter(result.move(), scoreDirector);
+      if (move == null) {
+        return;
+      }
+      moveScope = new LocalSearchMoveScope<>(stepScope, moveScope.getMoveIndex(), move);
+      score = result.score();
+    } else {
+      if (move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove
+          && !selectorBasedMove.isMoveDoable(scoreDirector)) {
+        throw new IllegalStateException(
+            "Impossible state: Local search move selector (%s) provided a non-doable move (%s)."
+                .formatted(moveRepository, move));
+      }
+      score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
     }
-    var score = scoreDirector.executeTemporaryMove(moveScope.getMove(), assertMoveScoreFromScratch);
     moveScope.setScore(score);
     moveScope.setAccepted(acceptor.isAccepted(moveScope));
     forager.addMove(moveScope);
@@ -157,6 +188,14 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
         moveScope.getScore().raw(),
         moveScope.getAccepted(),
         moveScope.getMove());
+  }
+
+  protected void checkPreparationTermination(LocalSearchStepScope<Solution_> stepScope) {
+    stepScope.getPhaseScope().getSolverScope().checkYielding();
+    if (Thread.currentThread().isInterrupted()
+        || termination.isPhaseTerminated(stepScope.getPhaseScope())) {
+      throw new CancellationException("Local search move preparation terminated.");
+    }
   }
 
   protected void pickMove(LocalSearchStepScope<Solution_> stepScope) {
@@ -182,7 +221,7 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
   }
 
   public void phaseEnded(LocalSearchPhaseScope<Solution_> phaseScope) {
-    moveRepository.phaseEnded(phaseScope);
+    endRepositoryPhase();
     acceptor.phaseEnded(phaseScope);
     forager.phaseEnded(phaseScope);
   }
@@ -190,10 +229,10 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
   protected void resetLocalSearchState(LocalSearchStepScope<Solution_> stepScope) {
     var phaseScope = stepScope.getPhaseScope();
     phaseScope.setLastCompletedStepScope(stepScope);
-    moveRepository.phaseEnded(phaseScope);
+    endRepositoryPhase();
     acceptor.phaseEnded(phaseScope);
     forager.phaseEnded(phaseScope);
-    moveRepository.phaseStarted(phaseScope);
+    startRepositoryPhase(phaseScope);
     acceptor.phaseStarted(phaseScope);
     forager.phaseStarted(phaseScope);
   }
@@ -204,7 +243,28 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
     forager.solvingEnded(solverScope);
   }
 
+  private void startRepositoryPhase(LocalSearchPhaseScope<Solution_> phaseScope) {
+    if (repositoryPhaseScope != null) {
+      throw new IllegalStateException(
+          "The local search move repository already has an active phase.");
+    }
+    // Track partial startup too: a failing provider may already own an evaluation session.
+    repositoryPhaseScope = phaseScope;
+    moveRepository.phaseStarted(phaseScope);
+  }
+
+  private void endRepositoryPhase() {
+    var phaseScope = repositoryPhaseScope;
+    if (phaseScope == null) return;
+    repositoryPhaseScope = null;
+    moveRepository.phaseEnded(phaseScope);
+  }
+
   public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
-    // Overridable by a subclass.
+    try {
+      endRepositoryPhase();
+    } catch (RuntimeException | Error cleanup) {
+      if (cleanup != exception) exception.addSuppressed(cleanup);
+    }
   }
 }

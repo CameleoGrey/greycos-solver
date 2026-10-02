@@ -1,0 +1,311 @@
+[#multistageMoves]
+= Multistage moves
+
+A multistage move builds one Local Search candidate through ordered custom stages.
+Each stage sees the genuine variables and shadow variables produced by the preceding selected stage.
+It can score several alternatives temporarily, then select one operation, skip itself, or abort the entire candidate.
+Local Search scores and accepts the completed candidate as one move.
+
+Use this when a later decision depends on an earlier change: remove several assignments, inspect the changed state,
+and choose their replacements one at a time. A basic-variable selector handles one ordinary planning variable;
+a list-variable selector handles one planning list variable.
+The feature is opt-in. Existing solver configurations retain their selectors and defaults.
+
+[#multistageConfiguration]
+== Configuration
+
+The stable API is in `greycos.solver.core.api.solver.multistage`.
+Implement `BasicVariableStageProvider<Solution_, Entity_, Value_, Score_>` for a basic variable,
+or `ListVariableStageProvider<Solution_, Entity_, Value_, Score_>` for a list variable.
+Providers must have a public no-argument constructor.
+
+[cols="2,1,4",options="header"]
+|===
+|Property |Default |Meaning
+|`stageProviderClass` |Required |Provider implementation for this selector's variable kind.
+|`entityClass` |Inferred if unambiguous |Entity class declaring the variable; for a list this is the list owner.
+|`variableName` |Inferred if unambiguous |Exactly one genuine variable. Specify both names when the model is ambiguous.
+|`candidateCountLimit` |64 |Maximum candidate requests per step, including aborted and unchanged requests.
+|`probeCountLimit` |10000 |Maximum scoring probes in one candidate, across all its stages.
+|===
+
+Both limits must be positive. Configuration copying and inheritance preserve unset values;
+defaults are resolved when the selector is built.
+Use the selector directly in Local Search, or as a child of a `unionMoveSelector`.
+It also works in the Local Search phases used by move workers, islands and partitions.
+Cache levels other than `JUST_IN_TIME`, Cartesian-product composition and GLS directed origin selection are rejected.
+The candidate is specific to the current state and must be rebuilt after a committed step or a working-solution replacement.
+
+The following configuration illustrates a basic-variable application model in package `example`.
+The application supplies an `AssignmentPlan` planning solution, a `Task` planning entity with a mandatory
+`worker` variable of type `Worker`, and an `AssignmentConstraints` constraint provider using `HardSoftScore`.
+`AssignmentPlan.getTaskList()` returns the tasks in stable order, and all tasks in this example are movable.
+The `ReassignStages` provider is defined below. Replace these application types with your own model classes.
+
+[source,xml]
+----
+<?xml version="1.0" encoding="UTF-8"?>
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
+  <randomSeed>0</randomSeed>
+  <moveThreadCount>NONE</moveThreadCount>
+  <solutionClass>example.AssignmentPlan</solutionClass>
+  <entityClass>example.Task</entityClass>
+  <scoreDirectorFactory>
+    <constraintProviderClass>example.AssignmentConstraints</constraintProviderClass>
+  </scoreDirectorFactory>
+  <constructionHeuristic>
+    <constructionHeuristicType>FIRST_FIT</constructionHeuristicType>
+  </constructionHeuristic>
+  <localSearch>
+    <termination><secondsSpentLimit>10</secondsSpentLimit></termination>
+    <localSearchType>LATE_ACCEPTANCE</localSearchType>
+    <unionMoveSelector>
+      <selectedCountLimit>256</selectedCountLimit>
+      <changeMoveSelector/>
+      <swapMoveSelector/>
+      <multistageMoveSelector>
+        <stageProviderClass>example.ReassignStages</stageProviderClass>
+        <entityClass>example.Task</entityClass>
+        <variableName>worker</variableName>
+        <candidateCountLimit>64</candidateCountLimit>
+        <probeCountLimit>10000</probeCountLimit>
+      </multistageMoveSelector>
+    </unionMoveSelector>
+  </localSearch>
+</solver>
+----
+
+For list variables use `ListMultistageMoveSelectorConfig` or `<listMultistageMoveSelector>`.
+For a separate list model, assume a `TaskSequencePlan` solution and a `TaskQueue` entity whose mandatory
+planning list variable `tasks` contains `Task` values. The application defines their planning annotations,
+value ranges, shadow variables and constraints, using `HardSoftScore`.
+`TaskSequencePlan.getTaskList()` returns every task once in stable order, independent of its queue or position.
+All queues and tasks in this example are movable, with no pinned prefixes.
+The selector binds to the list owner:
+
+[source,xml]
+----
+<listMultistageMoveSelector>
+  <stageProviderClass>example.ReinsertStages</stageProviderClass>
+  <entityClass>example.TaskQueue</entityClass>
+  <variableName>tasks</variableName>
+  <candidateCountLimit>64</candidateCountLimit>
+  <probeCountLimit>10000</probeCountLimit>
+</listMultistageMoveSelector>
+----
+
+Place this fragment directly inside the list model's Local Search configuration or in a union with list change/swap selectors.
+Its provider is shown in <<multistageExamples,the list provider example>>.
+The snippets require the stated application model; they are not standalone applications.
+
+[#multistageProviders]
+== Provider and stage lifecycle
+
+. `initialize(workingSolution)` receives this provider's current working clone at phase start or reset.
+Build read-only caches here. Do not keep references to a previously supplied solution.
+. `getCandidateCount()` returns a nonnegative `long` population size for the current step.
+Zero means an empty neighborhood. The count and mapping from indices to candidates must remain stable during that step
+and agree across cloned solutions.
+. `createStages(candidateIndex, random)` returns a finite ordered list of stages for that index.
+It may select a group of entities or values using the supplied random generator.
+Each stage receives its own evaluator when its turn is reached.
+. The selected operation is applied and shadow listeners run before the next stage is invoked.
+. `phaseEnded()` releases working-object references and other phase resources, including on failure.
+Initialization and cleanup may repeat when a working solution is replaced.
+
+The solver creates a separate provider for each worker, island and partition.
+Use working references only from that provider's initialization or evaluator.
+Do not store mutable state or working entities in static fields, share them with another provider,
+or make choices depend on the history of callback invocations.
+Speculative evaluation may run callbacks for candidates that are never accepted.
+Provider side effects are not rolled back.
+
+Use the supplied `RandomGenerator`; do not create a time-seeded generator, retain the generator,
+or use unordered iteration whose order differs across clones.
+Use stable domain order for alternatives. `bestFit` retains the first alternative on an exact tie.
+With fixed work, the same data, seed, configuration and worker count should reproduce the accepted-state trace.
+Changing a time budget, hardware, worker count or algorithm configuration can change the search trajectory.
+
+[#multistageEvaluation]
+== Scoring alternatives and selecting an operation
+
+All changes must be built through the current evaluator.
+The public API does not expose score-director mutation or arbitrary move execution.
+`workingSolution()` is for read-only inspection; never assign variables, change lists or edit problem facts directly.
+Do not retain evaluators or operations after the callback that created them.
+
+[cols="2,4",options="header"]
+|===
+|Method |Behavior
+|`evaluate(operation)` |Temporarily apply, update shadows, calculate an exact evaluation, then restore the stage baseline.
+|`evaluateAll(operations)` |Evaluate alternatives independently against the same baseline, preserving input order.
+|`bestFit(operations)` |Evaluate all alternatives and return an `apply` result for the greatest evaluation. An empty collection aborts the candidate.
+|`sequence(operations)` |Build one operation applying its components in order. Every component must belong to this stage.
+|`currentEvaluation()` |Calculate the exact evaluation of the current prefix.
+|`checkTermination()` |Cooperatively check cancellation and budget exhaustion; call it in provider loops that do substantial work between probes.
+|===
+
+An evaluation contains the original score and the count of unassigned mandatory decisions.
+Comparison first considers structural consistency, then assignment completeness, then the original score.
+It does not use a GLS augmented objective.
+Temporary removal of a mandatory assignment is permitted; a completed candidate that retains a mandatory unassignment
+or inconsistent shadows is rejected.
+An optional variable's legal null assignment is distinct from a mandatory decision temporarily removed for repair.
+
+Return `MultistageStageResult.apply(operation)` to retain one operation for the next stage,
+`skip()` to continue unchanged, or `abortCandidate()` to undo the entire prefix and stop this candidate.
+A successful probe restores the current stage prefix and its stored score before `evaluate` returns.
+A safe operation-validation rejection preserves that prefix; the stage may choose another legal alternative.
+A partial mutation, listener, scoring or undo failure rebuilds the original candidate baseline, invalidates the evaluator and propagates.
+Let failures that require this exceptional recovery, cancellation and probe-budget exhaustion propagate;
+catching them does not permit the callback to resume the candidate.
+These abort paths restore the state from before the candidate.
+Ordinary constraint violations may remain in a completed candidate; normal Local Search acceptance still decides whether to use it.
+
+Here is a two-stage basic provider for the `AssignmentPlan` model described above.
+It removes one assignment, then evaluates all its legal replacements from the changed state:
+
+[source,java]
+----
+package example;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.random.RandomGenerator;
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.solver.multistage.BasicVariableCustomStage;
+import greycos.solver.core.api.solver.multistage.BasicVariableStageProvider;
+import greycos.solver.core.api.solver.multistage.MultistageOperation;
+import greycos.solver.core.api.solver.multistage.MultistageStageResult;
+
+public final class ReassignStages implements
+        BasicVariableStageProvider<AssignmentPlan, Task, Worker, HardSoftScore> {
+    private AssignmentPlan solution;
+
+    public void initialize(AssignmentPlan solution) {
+        this.solution = solution;
+    }
+
+    public long getCandidateCount() {
+        return solution.getTaskList().size();
+    }
+
+    public List<BasicVariableCustomStage<AssignmentPlan, Task, Worker, HardSoftScore>>
+            createStages(long candidateIndex, RandomGenerator random) {
+        var task = solution.getTaskList().get(Math.toIntExact(candidateIndex));
+        return List.of(
+            evaluator -> MultistageStageResult.apply(evaluator.unassign(task)),
+            evaluator -> {
+                var choices = new ArrayList<MultistageOperation<AssignmentPlan>>();
+                for (var worker : evaluator.legalValues(task)) {
+                    evaluator.checkTermination();
+                    choices.add(evaluator.assign(task, worker));
+                }
+                return evaluator.bestFit(choices);
+            });
+    }
+
+    public void phaseEnded() {
+        solution = null;
+    }
+}
+----
+
+[#multistageOperations]
+== Operations, pinning and value ranges
+
+The basic evaluator provides `assign`, `swap` and `unassign` for the configured variable.
+`legalValues(entity)` returns its current legal range in domain order, including null only for an optional variable.
+Operations validate working-object identity, entity movability and membership in the entity's value range.
+A swap must satisfy both resulting ranges.
+
+The list evaluator provides `place`, `unassign`, `swap`, `reverse` and `relocateSubList`.
+`position(value)` reads the current placement; `legalPositions(value)` enumerates legal destinations in entity/index order.
+`MultistagePosition.unassigned()` represents an optional unassignment destination.
+`place(value, destination, index)` interprets the index *after removing that value from its current list*.
+`relocateSubList` uses a half-open source interval and a destination index *after removing the entire sublist*.
+This rule also applies within the same list.
+
+Every operation must respect entity pins and the pinned prefix of a list.
+A provider must select only movable entities and values; invalid operations fail with context instead of silently moving pinned data.
+Destination ranges are checked, including both sides of a swap and every element of a relocated sublist.
+Use evaluator range/destination methods for live eligibility; do not cache eligibility or insertion indices across stages.
+Object references, indices and operation objects from a previous callback are not reusable operation plans.
+
+[#multistageReplay]
+== Budgets, cancellation and replay
+
+Candidate and probe limits bound custom work independently of the Local Search forager.
+Probe limits include every alternative examined by `evaluateAll` and `bestFit`.
+Do not return an infinite stage list or an infinite iterable of alternatives.
+Long custom loops must call `checkTermination()`, including loops that only read values or construct operations.
+The framework checks termination at stage, probe and mutation boundaries and in batches during its own enumeration.
+If a budget or solver termination interrupts repair, the whole unfinished candidate is undone.
+
+After evaluation, the engine freezes the concrete accepted operation sequence.
+Applying the winning move, rebasing it to another working clone, undoing it, and replaying it on workers
+use that recorded sequence; these paths do not invoke the provider or choose alternatives again.
+Rebasing maps entity/value identities to the receiving working solution.
+This is necessary because reevaluating a custom stage on a later state could choose a different result.
+Frozen replay is valid only for the corresponding baseline and lifecycle epoch.
+The engine invalidates speculative candidates when the working state is reset or replaced.
+
+[#multistageExamples]
+== List provider example
+
+For the `TaskSequencePlan` model described above, this provider temporarily removes one task,
+then evaluates its legal placements against the changed list state.
+The stable task list supplies candidate identities even while tasks move between queues.
+The second stage enumerates destinations only after the first stage has applied its removal and updated shadows.
+
+[source,java]
+----
+package example;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.random.RandomGenerator;
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.solver.multistage.ListVariableCustomStage;
+import greycos.solver.core.api.solver.multistage.ListVariableStageProvider;
+import greycos.solver.core.api.solver.multistage.MultistageOperation;
+import greycos.solver.core.api.solver.multistage.MultistageStageResult;
+
+public final class ReinsertStages implements
+        ListVariableStageProvider<TaskSequencePlan, TaskQueue, Task, HardSoftScore> {
+    private TaskSequencePlan solution;
+
+    public void initialize(TaskSequencePlan solution) {
+        this.solution = solution;
+    }
+
+    public long getCandidateCount() {
+        return solution.getTaskList().size();
+    }
+
+    public List<ListVariableCustomStage<TaskSequencePlan, TaskQueue, Task, HardSoftScore>>
+            createStages(long candidateIndex, RandomGenerator random) {
+        var task = solution.getTaskList().get(Math.toIntExact(candidateIndex));
+        return List.of(
+            evaluator -> MultistageStageResult.apply(evaluator.unassign(task)),
+            evaluator -> {
+                var choices = new ArrayList<MultistageOperation<TaskSequencePlan>>();
+                for (var position : evaluator.legalPositions(task)) {
+                    evaluator.checkTermination();
+                    choices.add(position.isUnassigned()
+                            ? evaluator.unassign(task)
+                            : evaluator.place(task, position.entity(), position.index()));
+                }
+                return evaluator.bestFit(choices);
+            });
+    }
+
+    public void phaseEnded() {
+        solution = null;
+    }
+}
+----
+
+If no legal replacement exists, `bestFit` aborts the candidate and restores the original state.
+For a model with pins, restrict the candidate population to movable tasks in stable order.
+Keep that population and its index mapping fixed during each step; recompute it when eligibility changes between steps.

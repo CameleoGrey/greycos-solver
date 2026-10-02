@@ -6,6 +6,8 @@ import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFil
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
+import greycos.solver.core.impl.move.PreparableMove;
+import greycos.solver.core.impl.move.PreparedMoveFilters;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
@@ -164,6 +166,9 @@ public final class FilteringMoveSelector<Solution_> extends AbstractMoveSelector
           attemptsBeforeCheckTermination--;
         }
         next = childMoveIterator.next();
+        if (next instanceof PreparableMove<Solution_> request) {
+          return filter == null ? request : PreparedMoveFilters.defer(request, filter);
+        }
       } while (!accept(scoreDirector, next));
       return next;
     }

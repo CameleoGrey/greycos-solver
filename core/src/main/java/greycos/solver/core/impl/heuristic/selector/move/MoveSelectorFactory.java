@@ -8,11 +8,13 @@ import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSel
 import greycos.solver.core.config.heuristic.selector.move.factory.MoveIteratorFactoryConfig;
 import greycos.solver.core.config.heuristic.selector.move.factory.MoveListFactoryConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
@@ -24,11 +26,13 @@ import greycos.solver.core.impl.heuristic.selector.move.composite.UnionMoveSelec
 import greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorFactoryFactory;
 import greycos.solver.core.impl.heuristic.selector.move.factory.MoveListFactoryFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.MultistageMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.PillarChangeMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.PillarSwapMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.RuinRecreateMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.SwapMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListMultistageMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListSwapMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListChangeMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.list.SubListSwapMoveSelectorFactory;
@@ -39,7 +43,12 @@ public interface MoveSelectorFactory<Solution_> {
 
   static <Solution_> AbstractMoveSelectorFactory<Solution_, ?> create(
       MoveSelectorConfig<?> moveSelectorConfig) {
-    if (moveSelectorConfig instanceof ChangeMoveSelectorConfig changeMoveSelectorConfig) {
+    if (moveSelectorConfig instanceof MultistageMoveSelectorConfig multistageMoveSelectorConfig) {
+      return new MultistageMoveSelectorFactory<>(multistageMoveSelectorConfig);
+    } else if (moveSelectorConfig
+        instanceof ListMultistageMoveSelectorConfig listMultistageMoveSelectorConfig) {
+      return new ListMultistageMoveSelectorFactory<>(listMultistageMoveSelectorConfig);
+    } else if (moveSelectorConfig instanceof ChangeMoveSelectorConfig changeMoveSelectorConfig) {
       return new ChangeMoveSelectorFactory<>(changeMoveSelectorConfig);
     } else if (moveSelectorConfig
         instanceof ListChangeMoveSelectorConfig listChangeMoveSelectorConfig) {

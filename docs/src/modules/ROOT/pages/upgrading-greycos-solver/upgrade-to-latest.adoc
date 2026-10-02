@@ -1,6 +1,23 @@
 [#upgradeToLatest]
 = Upgrading to the latest version
 
+[#multistageMoveUpgrade]
+== Opt-in multistage moves
+
+Local Search now supports `MultistageMoveSelectorConfig` for a basic planning variable and
+`ListMultistageMoveSelectorConfig` for a planning list variable.
+Their provider/evaluator interfaces are in `greycos.solver.core.api.solver.multistage`.
+The XML elements are `<multistageMoveSelector>` and `<listMultistageMoveSelector>`.
+Existing configurations and example entry points retain their defaults; enabling the feature requires an explicit selector.
+
+Each selector binds one entity class and variable, with a required `stageProviderClass`.
+The default limits are 64 candidate requests per step and 10000 scoring probes per candidate.
+Use the selector directly in Local Search or in a union; cached and Cartesian-product composition are rejected,
+as is GLS directed origin selection.
+Move workers, islands and partitions receive independent providers and replay recorded operations.
+See xref:optimization-algorithms/multistage.adoc#multistageMoves[multistage moves] for Java provider and XML configuration examples,
+provider lifecycle, pinning/range rules, rollback, and frozen replay semantics.
+
 [#constructionNearbySelectionUpgrade]
 == Automatic nearby selection during construction and repair
 

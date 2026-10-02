@@ -1,9 +1,13 @@
 package greycos.solver.core.impl.heuristic.thread;
 
+import java.util.IdentityHashMap;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.locks.LockSupport;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
+import greycos.solver.core.impl.move.PreparableMove;
+import greycos.solver.core.impl.move.PreparedMoveEvaluation;
 import greycos.solver.core.impl.phase.scope.SolverLifecyclePoint;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
@@ -45,6 +49,7 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
     thread = Thread.currentThread();
     InnerScoreDirector<Solution_, Score_> director = null;
     MoveEvaluationPipeline.CandidateMetadataCollector<Solution_> metadataCollector = null;
+    var evaluationContexts = new IdentityHashMap<Object, PreparableMove<Solution_>>();
     try {
       if (pipeline.aborting) {
         return;
@@ -134,10 +139,38 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
               start = System.nanoTime();
             }
             InnerScore<Score_> score = null;
+            long calculationStart = director.getCalculationCount();
+            var status = PreparedMoveEvaluation.Status.EMPTY;
             if (metadataCollector != null) {
               metadataCollector.beforeEvaluation(slot.context);
             }
-            if (!(pipeline.evaluateDoable
+            if (move instanceof PreparableMove<Solution_> preparableMove) {
+              evaluationContexts.putIfAbsent(preparableMove.cleanupKey(), preparableMove);
+              var evaluatingEpoch = epoch;
+              var collector = metadataCollector;
+              var context = slot.context;
+              var result =
+                  preparableMove.prepare(
+                      director,
+                      () -> {
+                        if (evaluatingEpoch.closed
+                            || pipeline.aborting
+                            || Thread.currentThread().isInterrupted()) {
+                          throw new CancellationException("Move worker preparation cancelled.");
+                        }
+                      },
+                      pipeline.assertMoveScoreFromScratch,
+                      collector == null
+                          ? null
+                          : (view, preparedMove) ->
+                              slot.metadata = collector.collect(view, preparedMove, context));
+              status = result.status();
+              score = result.score();
+              slot.preparedMove = result.move();
+              if (status == PreparedMoveEvaluation.Status.EVALUATED) {
+                move = result.move();
+              }
+            } else if (!(pipeline.evaluateDoable
                 && move instanceof AbstractSelectorBasedMove<Solution_> selector
                 && !selector.isMoveDoable(director))) {
               if (metadataCollector == null) {
@@ -145,12 +178,16 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
               } else {
                 var collector = metadataCollector;
                 var context = slot.context;
+                var evaluatedMove = move;
                 score =
                     director.executeTemporaryMove(
                         move,
-                        view -> slot.metadata = collector.collect(view, move, context),
+                        view -> slot.metadata = collector.collect(view, evaluatedMove, context),
                         pipeline.assertMoveScoreFromScratch);
               }
+              status = PreparedMoveEvaluation.Status.EVALUATED;
+            }
+            if (status == PreparedMoveEvaluation.Status.EVALUATED) {
               if (pipeline.assertExpectedUndoMoveScore) {
                 director.assertExpectedUndoMoveScore(
                     move,
@@ -166,7 +203,9 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
               samples++;
             }
             slot.score = score;
+            slot.status = status;
             calculationCount = director.getCalculationCount();
+            slot.calculationCount = calculationCount - calculationStart;
             slot.completedIndex = moveIndex;
             // Never touch the slot after publishing: the coordinator may immediately reuse it.
             pipeline.resultPublished(epoch, moveIndex);
@@ -198,6 +237,15 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
       }
     } finally {
       waiting = false;
+      if (director != null) {
+        for (var context : evaluationContexts.values()) {
+          try {
+            context.closeEvaluationContext(director);
+          } catch (Throwable e) {
+            pipeline.failCleanup(workerIndex, e);
+          }
+        }
+      }
       if (metadataCollector != null) {
         try {
           metadataCollector.close();

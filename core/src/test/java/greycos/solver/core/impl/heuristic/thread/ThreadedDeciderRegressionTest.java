@@ -2,8 +2,14 @@ package greycos.solver.core.impl.heuristic.thread;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -30,11 +36,15 @@ import greycos.solver.core.impl.constructionheuristic.decider.forager.DefaultCon
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.localsearch.decider.LocalSearchDecider;
 import greycos.solver.core.impl.localsearch.decider.MultiThreadedLocalSearchDecider;
 import greycos.solver.core.impl.localsearch.decider.acceptor.Acceptor;
 import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.move.PreparableMove;
+import greycos.solver.core.impl.move.PreparedMoveEvaluation;
 import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.neighborhood.MoveSelectorBasedMoveRepository;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -51,7 +61,10 @@ import greycos.solver.core.testcotwin.list.unassignedvar.TestdataAllowsUnassigne
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 
 @Timeout(10)
 class ThreadedDeciderRegressionTest {
@@ -198,15 +211,16 @@ class ThreadedDeciderRegressionTest {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {false, true})
+  @CsvSource({"false, 0, 1", "true, 0, 1", "false, 2, 4", "true, 2, 4"})
   @SuppressWarnings("unchecked")
-  void localSearchCountsOnlyScoredTransfersOnceAcrossPhases(boolean earlyPick) throws Exception {
+  void localSearchCountsAllConsumedCalculationsOnceAcrossPhases(
+      boolean earlyPick, long emptyCalculations, long evaluatedCalculations) throws Exception {
     var calculationCount = new AtomicLong();
     InnerScoreDirector<Object, SimpleScore> director = mock(InnerScoreDirector.class);
     when(director.getCalculationCount()).thenAnswer(invocation -> calculationCount.get());
-    doAnswer(invocation -> calculationCount.incrementAndGet())
+    doAnswer(invocation -> calculationCount.addAndGet(invocation.getArgument(0, Long.class)))
         .when(director)
-        .incrementCalculationCount();
+        .incrementCalculationCount(anyLong());
     var solverScope = new SolverScope<Object>();
     solverScope.setScoreDirector(director);
     MoveRepository<Object> repository = mock(MoveSelectorBasedMoveRepository.class);
@@ -227,6 +241,7 @@ class ThreadedDeciderRegressionTest {
             return pipeline;
           }
         };
+    var lifecycle = inOrder(pipeline, repository);
     for (int phaseIndex = 0; phaseIndex < 2; phaseIndex++) {
       var phase = new LocalSearchPhaseScope<>(solverScope, phaseIndex);
       phase.startingNow();
@@ -234,20 +249,156 @@ class ThreadedDeciderRegressionTest {
       when(repository.iterator()).thenReturn(moves.iterator());
       when(pipeline.take())
           .thenReturn(
-              new MoveEvaluationPipeline.Result<>(0, 0, moves.get(0), null),
-              new MoveEvaluationPipeline.Result<>(0, 1, moves.get(1), ZERO),
-              new MoveEvaluationPipeline.Result<>(0, 2, moves.get(2), ZERO));
-      when(pipeline.getCalculationCount()).thenReturn(7L);
+              new MoveEvaluationPipeline.Result<>(
+                  0,
+                  0,
+                  moves.get(0),
+                  null,
+                  null,
+                  null,
+                  PreparedMoveEvaluation.Status.EMPTY,
+                  emptyCalculations),
+              new MoveEvaluationPipeline.Result<>(
+                  0,
+                  1,
+                  moves.get(1),
+                  ZERO,
+                  null,
+                  null,
+                  PreparedMoveEvaluation.Status.EVALUATED,
+                  evaluatedCalculations),
+              new MoveEvaluationPipeline.Result<>(
+                  0,
+                  2,
+                  moves.get(2),
+                  ZERO,
+                  null,
+                  null,
+                  PreparedMoveEvaluation.Status.EVALUATED,
+                  evaluatedCalculations));
+      when(pipeline.getCalculationCount()).thenReturn(17L);
       var step = new LocalSearchStepScope<>(phase, 0);
       decider.stepStarted(step);
       decider.decideNextStep(step);
-      assertThat(calculationCount).hasValue((phaseIndex + 1L) * (earlyPick ? 1 : 2));
+      assertThat(calculationCount)
+          .hasValue(
+              (phaseIndex + 1L)
+                  * (emptyCalculations + (earlyPick ? 1 : 2) * evaluatedCalculations));
       decider.phaseEnded(phase);
+      lifecycle.verify(pipeline).close();
+      lifecycle.verify(repository).phaseEnded(phase);
       phase.endingNow();
 
-      assertThat(phase.getPhaseScoreCalculationCount()).isEqualTo(7);
-      assertThat(solverScope.getScoreCalculationCount()).isEqualTo((phaseIndex + 1L) * 7);
+      assertThat(phase.getPhaseScoreCalculationCount()).isEqualTo(17);
+      assertThat(solverScope.getScoreCalculationCount()).isEqualTo((phaseIndex + 1L) * 17);
     }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void sequentialLocalSearchForagesAndAssertsTheFrozenMove() {
+    InnerScoreDirector<Object, SimpleScore> director = mock(InnerScoreDirector.class);
+    PreparableMove<Object> request = mock(PreparableMove.class);
+    var frozen = move();
+    when(request.<SimpleScore>prepare(any(), any(), anyBoolean(), isNull()))
+        .thenReturn(
+            new PreparedMoveEvaluation<>(PreparedMoveEvaluation.Status.EVALUATED, frozen, ZERO, 4));
+    var solverScope = new SolverScope<Object>();
+    solverScope.setScoreDirector(director);
+    var phase = new LocalSearchPhaseScope<>(solverScope, 0);
+    phase.getLastCompletedStepScope().setScore(ZERO);
+    var step = new LocalSearchStepScope<>(phase, 0);
+    MoveRepository<Object> repository = mock(MoveSelectorBasedMoveRepository.class);
+    when(repository.iterator()).thenReturn(List.<Move<Object>>of(request).iterator());
+    LocalSearchForager<Object> forager = mock(LocalSearchForager.class);
+    Acceptor<Object> acceptor = mock(Acceptor.class);
+    var decider = new LocalSearchDecider<>("", noTermination(), repository, acceptor, forager);
+    decider.enableAssertions(EnvironmentMode.FULL_ASSERT);
+
+    decider.decideNextStep(step);
+
+    ArgumentCaptor<LocalSearchMoveScope<Object>> scope =
+        ArgumentCaptor.forClass(LocalSearchMoveScope.class);
+    verify(forager).addMove(scope.capture());
+    assertThat(scope.getValue().getMove()).isSameAs(frozen);
+    assertThat(scope.getValue().getScore()).isEqualTo(ZERO);
+    verify(acceptor).isAccepted(scope.getValue());
+    verify(request).<SimpleScore>prepare(eq(director), any(), eq(true), isNull());
+    verify(director).assertExpectedUndoMoveScore(eq(frozen), eq(ZERO), any());
+    verify(director, never()).executeTemporaryMove(any(), anyBoolean());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = PreparedMoveEvaluation.Status.class,
+      names = {"EMPTY", "CANCELLED"})
+  @SuppressWarnings("unchecked")
+  void sequentialLocalSearchDoesNotForageIncompletePreparation(
+      PreparedMoveEvaluation.Status status) {
+    InnerScoreDirector<Object, SimpleScore> director = mock(InnerScoreDirector.class);
+    PreparableMove<Object> request = mock(PreparableMove.class);
+    when(request.<SimpleScore>prepare(any(), any(), anyBoolean(), isNull()))
+        .thenReturn(new PreparedMoveEvaluation<>(status, null, null, 2));
+    var solverScope = new SolverScope<Object>();
+    solverScope.setScoreDirector(director);
+    var phase = new LocalSearchPhaseScope<>(solverScope, 0);
+    var step = new LocalSearchStepScope<>(phase, 0);
+    MoveRepository<Object> repository = mock(MoveSelectorBasedMoveRepository.class);
+    when(repository.iterator()).thenReturn(List.<Move<Object>>of(request).iterator());
+    LocalSearchForager<Object> forager = mock(LocalSearchForager.class);
+    Acceptor<Object> acceptor = mock(Acceptor.class);
+    var decider = new LocalSearchDecider<>("", noTermination(), repository, acceptor, forager);
+
+    decider.decideNextStep(step);
+
+    verify(acceptor, never()).isAccepted(any());
+    verify(forager, never()).addMove(any());
+    assertThat(step.getStep()).isNull();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  @SuppressWarnings("unchecked")
+  void localSearchFailureClosesRepositoryOnceAfterWorkersAndPreservesFailure(boolean threaded) {
+    InnerScoreDirector<Object, SimpleScore> director = mock(InnerScoreDirector.class);
+    var solverScope = new SolverScope<Object>();
+    solverScope.setScoreDirector(director);
+    var phase = new LocalSearchPhaseScope<>(solverScope, 0);
+    MoveRepository<Object> repository = mock(MoveSelectorBasedMoveRepository.class);
+    LocalSearchForager<Object> forager = mock(LocalSearchForager.class);
+    Acceptor<Object> acceptor = mock(Acceptor.class);
+    MoveEvaluationPipeline<Object> pipeline = mock(MoveEvaluationPipeline.class);
+    LocalSearchDecider<Object> decider;
+    if (threaded) {
+      decider =
+          new MultiThreadedLocalSearchDecider<>(
+              "", noTermination(), repository, acceptor, forager, Thread::new, 2, 3) {
+            @Override
+            protected ExecutorService createThreadPoolExecutor() {
+              return mock(ExecutorService.class);
+            }
+
+            @Override
+            protected MoveEvaluationPipeline<Object> createMoveEvaluationPipeline(int phaseIndex) {
+              return pipeline;
+            }
+          };
+    } else {
+      decider = new LocalSearchDecider<>("", noTermination(), repository, acceptor, forager);
+    }
+    decider.phaseStarted(phase);
+    var primary = new IllegalStateException("stage failed");
+    var cleanup = new IllegalArgumentException("provider cleanup failed");
+    doThrow(cleanup).when(repository).phaseEnded(phase);
+
+    decider.solvingError(solverScope, primary);
+    decider.solvingError(solverScope, primary);
+
+    var lifecycle = inOrder(pipeline, repository);
+    if (threaded) lifecycle.verify(pipeline).abort();
+    lifecycle.verify(repository).phaseEnded(phase);
+    verify(repository).phaseEnded(phase);
+    assertThat(primary.getSuppressed()).containsExactly(cleanup);
   }
 
   private static PhaseTermination<Object> noTermination() {
