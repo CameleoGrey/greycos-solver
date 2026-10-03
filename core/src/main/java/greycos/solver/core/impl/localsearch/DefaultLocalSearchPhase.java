@@ -180,8 +180,9 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
 
   @Override
   public void stepEnded(LocalSearchStepScope<Solution_> stepScope) {
-    super.stepEnded(stepScope);
+    // Island listeners must publish the history after this completed step has been recorded.
     decider.stepEnded(stepScope);
+    super.stepEnded(stepScope);
     collectMetrics(stepScope);
     SolverMetricSamples.publishIslandStep(
         stepScope.getPhaseScope().getSolverScope(),

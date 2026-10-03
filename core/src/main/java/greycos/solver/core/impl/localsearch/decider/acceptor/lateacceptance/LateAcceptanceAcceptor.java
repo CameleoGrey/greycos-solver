@@ -2,6 +2,8 @@ package greycos.solver.core.impl.localsearch.decider.acceptor.lateacceptance;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.localsearch.decider.acceptor.AbstractAcceptor;
+import greycos.solver.core.impl.localsearch.decider.acceptor.AcceptorMigrationState;
+import greycos.solver.core.impl.localsearch.decider.acceptor.LateAcceptanceHistory;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
@@ -83,6 +85,29 @@ public class LateAcceptanceAcceptor<Solution_> extends AbstractAcceptor<Solution
     // A migrant contributes one score, including when it improves a hard or medium level.
     scoreBuffer.update(stepScope.getScore());
     bestScoreState.update(stepScope);
+  }
+
+  @Override
+  public void migrationStepEnded(
+      LocalSearchStepScope<Solution_> stepScope, AcceptorMigrationState state) {
+    var phaseScope = stepScope.getPhaseScope();
+    var definition = phaseScope.getSolverScope().getScoreDefinition();
+    if (state instanceof LateAcceptanceHistory history && history.isCompatible(definition)) {
+      scoreBuffer = new LateAcceptanceScoreBuffer(history);
+      bestScoreState =
+          definition.getLevelsSize() > 1
+              ? new DefaultLevelScoreState<>(phaseScope.getBestScore(), definition)
+              : new NoOpLevelScoreState<>();
+      bestScoreState.update(stepScope);
+    } else {
+      migrationStepEnded(stepScope);
+    }
+  }
+
+  @Override
+  public AcceptorMigrationState snapshotMigrationState(
+      LocalSearchPhaseScope<Solution_> phaseScope) {
+    return scoreBuffer.snapshot(phaseScope.getSolverScope().getScoreDefinition());
   }
 
   @Override

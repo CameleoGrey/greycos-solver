@@ -93,6 +93,28 @@ public class CompositeAcceptor<Solution_> extends AbstractAcceptor<Solution_> {
   }
 
   @Override
+  public void migrationStepEnded(
+      LocalSearchStepScope<Solution_> stepScope, AcceptorMigrationState state) {
+    for (var i = 0; i < acceptorList.size(); i++) {
+      var childState =
+          state instanceof AcceptorMigrationState.Composite composite
+              ? composite.child(i)
+              : AcceptorMigrationState.Empty.INSTANCE;
+      acceptorList.get(i).migrationStepEnded(stepScope, childState);
+    }
+  }
+
+  @Override
+  public AcceptorMigrationState snapshotMigrationState(
+      LocalSearchPhaseScope<Solution_> phaseScope) {
+    var children =
+        acceptorList.stream().map(acceptor -> acceptor.snapshotMigrationState(phaseScope)).toList();
+    return children.stream().allMatch(state -> state == AcceptorMigrationState.Empty.INSTANCE)
+        ? AcceptorMigrationState.Empty.INSTANCE
+        : new AcceptorMigrationState.Composite(children);
+  }
+
+  @Override
   public void resetAfterMigration(LocalSearchPhaseScope<Solution_> phaseScope) {
     for (var acceptor : acceptorList) {
       acceptor.resetAfterMigration(phaseScope);

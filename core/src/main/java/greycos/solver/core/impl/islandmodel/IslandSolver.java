@@ -172,7 +172,8 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_>
       solverScope.setPendingMoveIfBetter(
           syncMove.rebase(solverScope.getScoreDirector()),
           pending.score(),
-          pending.requiresReset());
+          pending.requiresReset(),
+          pending.acceptorState());
     }
   }
 

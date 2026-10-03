@@ -21,6 +21,7 @@ import greycos.solver.core.api.solver.ProblemSizeStatistics;
 import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.impl.localsearch.decider.acceptor.AcceptorMigrationState;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -76,6 +77,9 @@ public class SolverScope<Solution_> {
   private AbstractSolver<Solution_> solver;
   private DefaultProblemChangeDirector<Solution_> problemChangeDirector;
   private final AtomicReference<PendingMove<Solution_>> pendingMove = new AtomicReference<>();
+  // Owned by the solver thread; only immutable snapshots are published to other islands.
+  private boolean acceptorMigrationEnabled;
+  private AcceptorMigrationState bestAcceptorMigrationState = AcceptorMigrationState.Empty.INSTANCE;
 
   /** Used for capping CPU power usage in multithreaded scenarios. */
   private Semaphore runnableThreadSemaphore = null;
@@ -234,14 +238,23 @@ public class SolverScope<Solution_> {
   }
 
   public void setPendingMove(Move<Solution_> move, boolean requiresReset) {
-    pendingMove.set(new PendingMove<>(move, requiresReset, null));
+    pendingMove.set(
+        new PendingMove<>(move, requiresReset, null, AcceptorMigrationState.Empty.INSTANCE));
   }
 
   public void setPendingMoveIfBetter(
       Move<Solution_> move, InnerScore<?> score, boolean requiresReset) {
+    setPendingMoveIfBetter(move, score, requiresReset, AcceptorMigrationState.Empty.INSTANCE);
+  }
+
+  public void setPendingMoveIfBetter(
+      Move<Solution_> move,
+      InnerScore<?> score,
+      boolean requiresReset,
+      AcceptorMigrationState state) {
     Objects.requireNonNull(move, "The pending move must not be null.");
     Objects.requireNonNull(score, "The pending move score must not be null.");
-    var candidate = new PendingMove<>(move, requiresReset, score);
+    var candidate = new PendingMove<>(move, requiresReset, score, Objects.requireNonNull(state));
     while (true) {
       var current = pendingMove.get();
       if (current != null && current.score() != null) {
@@ -402,6 +415,7 @@ public class SolverScope<Solution_> {
    */
   public void setBestSolution(Solution_ bestSolution) {
     this.bestSolution.set(bestSolution);
+    bestAcceptorMigrationState = AcceptorMigrationState.Empty.INSTANCE;
   }
 
   @SuppressWarnings("unchecked")
@@ -415,6 +429,23 @@ public class SolverScope<Solution_> {
 
   public <Score_ extends Score<Score_>> void setBestScore(InnerScore<Score_> bestScore) {
     this.bestScore.set(bestScore);
+    bestAcceptorMigrationState = AcceptorMigrationState.Empty.INSTANCE;
+  }
+
+  public boolean isAcceptorMigrationEnabled() {
+    return acceptorMigrationEnabled;
+  }
+
+  public void setAcceptorMigrationEnabled(boolean enabled) {
+    acceptorMigrationEnabled = enabled;
+  }
+
+  public AcceptorMigrationState getBestAcceptorMigrationState() {
+    return bestAcceptorMigrationState;
+  }
+
+  public void setBestAcceptorMigrationState(AcceptorMigrationState state) {
+    bestAcceptorMigrationState = Objects.requireNonNull(state);
   }
 
   public Long getBestSolutionTimeMillis() {
@@ -626,11 +657,17 @@ public class SolverScope<Solution_> {
     private final Move<Solution_> move;
     private final boolean requiresReset;
     private final InnerScore<?> score;
+    private final AcceptorMigrationState acceptorState;
 
-    private PendingMove(Move<Solution_> move, boolean requiresReset, InnerScore<?> score) {
+    private PendingMove(
+        Move<Solution_> move,
+        boolean requiresReset,
+        InnerScore<?> score,
+        AcceptorMigrationState acceptorState) {
       this.move = move;
       this.requiresReset = requiresReset;
       this.score = score;
+      this.acceptorState = acceptorState;
     }
 
     public Move<Solution_> move() {
@@ -643,6 +680,10 @@ public class SolverScope<Solution_> {
 
     public InnerScore<?> score() {
       return score;
+    }
+
+    public AcceptorMigrationState acceptorState() {
+      return acceptorState;
     }
   }
 

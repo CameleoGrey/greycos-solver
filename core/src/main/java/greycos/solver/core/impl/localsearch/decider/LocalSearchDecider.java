@@ -7,6 +7,7 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
 import greycos.solver.core.impl.localsearch.decider.acceptor.Acceptor;
+import greycos.solver.core.impl.localsearch.decider.acceptor.AcceptorMigrationState;
 import greycos.solver.core.impl.localsearch.decider.acceptor.tabu.PlanningValueSnapshot;
 import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
@@ -42,6 +43,7 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
   protected boolean assertMoveScoreFromScratch = false;
   protected boolean assertExpectedUndoMoveScore = false;
   protected boolean resetOnPendingMove = false;
+  protected AcceptorMigrationState pendingAcceptorState = AcceptorMigrationState.Empty.INSTANCE;
   private LocalSearchPhaseScope<Solution_> repositoryPhaseScope;
   private LocalSearchCandidateLimit candidateLimit;
   private boolean candidateLimitWarningLogged;
@@ -97,6 +99,8 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
   }
 
   public void phaseStarted(LocalSearchPhaseScope<Solution_> phaseScope) {
+    resetOnPendingMove = false;
+    pendingAcceptorState = AcceptorMigrationState.Empty.INSTANCE;
     candidateLimitWarningLogged = false;
     startRepositoryPhase(phaseScope);
     acceptor.phaseStarted(phaseScope);
@@ -121,6 +125,7 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
       var pending = stepScope.getPhaseScope().getSolverScope().consumePendingMove();
       if (pending != null) {
         resetOnPendingMove = pending.requiresReset();
+        pendingAcceptorState = pending.acceptorState();
         var move = pending.move();
         var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
         stepScope.getPhaseScope().addMoveEvaluationCount(move, 1L);
@@ -285,7 +290,7 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
   public void stepEnded(LocalSearchStepScope<Solution_> stepScope) {
     moveRepository.stepEnded(stepScope);
     if (resetOnPendingMove) {
-      acceptor.migrationStepEnded(stepScope);
+      acceptor.migrationStepEnded(stepScope, pendingAcceptorState);
     } else {
       acceptor.stepEnded(stepScope);
     }
@@ -293,6 +298,12 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
     if (resetOnPendingMove) {
       resetOnPendingMove = false;
       resetLocalSearchState(stepScope);
+    }
+    pendingAcceptorState = AcceptorMigrationState.Empty.INSTANCE;
+    var solverScope = stepScope.getPhaseScope().getSolverScope();
+    if (solverScope.isAcceptorMigrationEnabled() && stepScope.getBestScoreImproved()) {
+      solverScope.setBestAcceptorMigrationState(
+          acceptor.snapshotMigrationState(stepScope.getPhaseScope()));
     }
   }
 

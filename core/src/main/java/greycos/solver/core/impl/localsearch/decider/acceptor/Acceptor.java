@@ -41,9 +41,21 @@ public interface Acceptor<Solution_> extends LocalSearchPhaseLifecycleListener<S
     stepEnded(stepScope);
   }
 
+  /** Imports compatible donor state or records the migration using this acceptor's fallback. */
+  default void migrationStepEnded(
+      LocalSearchStepScope<Solution_> stepScope, AcceptorMigrationState state) {
+    migrationStepEnded(stepScope);
+  }
+
+  /** Captures state after the step producing the best solution has completed. */
+  default AcceptorMigrationState snapshotMigrationState(
+      LocalSearchPhaseScope<Solution_> phaseScope) {
+    return AcceptorMigrationState.Empty.INSTANCE;
+  }
+
   /**
-   * Refreshes acceptance state after the migration step has been recorded. The default restarts
-   * the acceptor; acceptors with reusable history may retain it instead.
+   * Refreshes acceptance state after the migration step has been recorded. The default restarts the
+   * acceptor; acceptors with reusable history may retain it instead.
    */
   default void resetAfterMigration(LocalSearchPhaseScope<Solution_> phaseScope) {
     phaseEnded(phaseScope);

@@ -183,6 +183,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     if (pending != null) {
       moveEvaluationPipeline.cancelStep();
       resetOnPendingMove = pending.requiresReset();
+      pendingAcceptorState = pending.acceptorState();
       var move = pending.move();
       var score =
           stepScope.getScoreDirector().executeTemporaryMove(move, assertMoveScoreFromScratch);

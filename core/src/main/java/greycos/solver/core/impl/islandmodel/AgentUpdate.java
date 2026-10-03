@@ -3,6 +3,7 @@ package greycos.solver.core.impl.islandmodel;
 import java.util.BitSet;
 import java.util.Objects;
 
+import greycos.solver.core.impl.localsearch.decider.acceptor.AcceptorMigrationState;
 import greycos.solver.core.impl.score.director.InnerScore;
 
 /**
@@ -15,13 +16,28 @@ public class AgentUpdate<Solution_> {
   private final Solution_ migrant;
   private final InnerScore<?> migrantScore;
   private final BitSet aliveBits;
+  private final AcceptorMigrationState acceptorState;
 
   public AgentUpdate(int agentId, Solution_ migrant, InnerScore<?> migrantScore, BitSet aliveBits) {
+    this(agentId, migrant, migrantScore, aliveBits, AcceptorMigrationState.Empty.INSTANCE);
+  }
+
+  public AgentUpdate(
+      int agentId,
+      Solution_ migrant,
+      InnerScore<?> migrantScore,
+      BitSet aliveBits,
+      AcceptorMigrationState acceptorState) {
     this.agentId = agentId;
     this.migrant = Objects.requireNonNull(migrant, "Migrant cannot be null");
     this.migrantScore = Objects.requireNonNull(migrantScore, "Migrant score cannot be null");
     this.aliveBits =
         (BitSet) Objects.requireNonNull(aliveBits, "Alive bits cannot be null").clone();
+    this.acceptorState = Objects.requireNonNull(acceptorState);
+  }
+
+  public AcceptorMigrationState getAcceptorState() {
+    return acceptorState;
   }
 
   public int getAgentId() {
@@ -52,12 +68,13 @@ public class AgentUpdate<Solution_> {
     return agentId == that.agentId
         && Objects.equals(migrant, that.migrant)
         && Objects.equals(migrantScore, that.migrantScore)
+        && Objects.equals(acceptorState, that.acceptorState)
         && Objects.equals(aliveBits, that.aliveBits);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(agentId, migrant, migrantScore, aliveBits);
+    return Objects.hash(agentId, migrant, migrantScore, aliveBits, acceptorState);
   }
 
   @Override

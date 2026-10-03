@@ -845,9 +845,20 @@ Choose a smaller value to exchange solutions around the ring more frequently.
 Migration copies planning assignments, respects pinned entities and list prefixes, and updates list assignment shadows.
 Evaluating an adopted solution consumes one local-search move evaluation, including for move-count termination and monitoring.
 Both ring migration and global-best adoption require a score strictly better than the receiving island's best so far.
-In Local Search with Late Acceptance, adoption writes the migrant's score into the next history slot and advances the circular buffer.
-The remaining history is retained, including when the migrant improves a hard or medium score level.
+In Local Search with Late Acceptance, an island captures its full score history after the step that finds a new best solution.
+That immutable history travels with the best solution, even if the donor continues searching before migration.
+Adoption replaces the receiving island's history with the donor's entries, buffer length, and next-write position.
+The migrant's score is already represented in that history; adoption does not append it again or advance the imported buffer.
+The imported length applies for the rest of the receiving phase, unless another migration replaces it.
+A new phase uses its configured history length.
+
+If the migrant has no compatible Late Acceptance history, the receiving island keeps its own history and appends the migrant's score.
+This also applies to migrants from construction or other algorithms and to unmatched positions in composite acceptors.
+Compatibility requires the same score type and score dimensions; history lengths may differ.
+Migration itself does not clear history when a hard or medium level improves.
+Ordinary Late Acceptance steps continue to use their existing score-level reset rules.
 Equal or worse migrants leave the working solution and Late Acceptance history unchanged.
+Other acceptance algorithms, including Diversified Late Acceptance and ALNS, retain their existing migration behavior.
 
 Termination configured on `islandModel` spans the inner phase sequence.
 Each island receives its own cumulative step, move-evaluation, and score-calculation quota.

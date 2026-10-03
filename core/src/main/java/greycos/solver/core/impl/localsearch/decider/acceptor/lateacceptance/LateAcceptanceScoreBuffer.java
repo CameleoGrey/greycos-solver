@@ -1,9 +1,12 @@
 package greycos.solver.core.impl.localsearch.decider.acceptor.lateacceptance;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.impl.localsearch.decider.acceptor.LateAcceptanceHistory;
+import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
 
 /**
@@ -31,6 +34,26 @@ final class LateAcceptanceScoreBuffer {
     // the score is set to zero,
     // and it means all scores will be read initially.
     this.slotEpoch = new long[size];
+  }
+
+  LateAcceptanceScoreBuffer(LateAcceptanceHistory history) {
+    scores = history.scores().toArray(InnerScore<?>[]::new);
+    size = scores.length;
+    currentIndex = history.nextIndex();
+    slotEpoch = new long[size];
+  }
+
+  LateAcceptanceHistory snapshot(ScoreDefinition<?> definition) {
+    var effectiveScores = new ArrayList<InnerScore<?>>(size);
+    for (var i = 0; i < size; i++) {
+      effectiveScores.add(get(i));
+    }
+    return new LateAcceptanceHistory(
+        effectiveScores,
+        currentIndex,
+        definition.getScoreClass(),
+        definition.getLevelsSize(),
+        definition.getFeasibleLevelsSize());
   }
 
   <Score_ extends Score<Score_>> InnerScore<Score_> getCurrent() {

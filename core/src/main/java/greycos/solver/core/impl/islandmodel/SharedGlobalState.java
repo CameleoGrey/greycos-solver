@@ -8,6 +8,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.impl.localsearch.decider.acceptor.AcceptorMigrationState;
 import greycos.solver.core.impl.score.director.InnerScore;
 
 /**
@@ -21,13 +22,23 @@ public class SharedGlobalState<Solution_> {
     private final InnerScore<?> score;
     private final long timestampMillis;
     private final long version;
+    private final AcceptorMigrationState acceptorState;
 
     private BestSolutionSnapshot(
-        Solution_ solution, InnerScore<?> score, long timestampMillis, long version) {
+        Solution_ solution,
+        InnerScore<?> score,
+        long timestampMillis,
+        long version,
+        AcceptorMigrationState acceptorState) {
       this.solution = Objects.requireNonNull(solution, "Best solution cannot be null");
       this.score = Objects.requireNonNull(score, "Best score cannot be null");
       this.timestampMillis = timestampMillis;
       this.version = version;
+      this.acceptorState = Objects.requireNonNull(acceptorState);
+    }
+
+    public AcceptorMigrationState getAcceptorState() {
+      return acceptorState;
     }
 
     public Solution_ getSolution() {
@@ -63,8 +74,14 @@ public class SharedGlobalState<Solution_> {
       new CopyOnWriteArrayList<>();
 
   public boolean tryUpdate(Solution_ candidate, InnerScore<?> candidateScore) {
+    return tryUpdate(candidate, candidateScore, AcceptorMigrationState.Empty.INSTANCE);
+  }
+
+  public boolean tryUpdate(
+      Solution_ candidate, InnerScore<?> candidateScore, AcceptorMigrationState acceptorState) {
     Objects.requireNonNull(candidate, "Candidate solution cannot be null");
     Objects.requireNonNull(candidateScore, "Candidate score cannot be null");
+    Objects.requireNonNull(acceptorState);
     if (closed || candidateScore.isStructurallyFlawed()) {
       return false;
     }
@@ -95,7 +112,8 @@ public class SharedGlobalState<Solution_> {
               candidate,
               candidateScore,
               clock.millis(),
-              currentSnapshot == null ? 1L : currentSnapshot.getVersion() + 1L);
+              currentSnapshot == null ? 1L : currentSnapshot.getVersion() + 1L,
+              acceptorState);
       // Internal termination history must observe every improvement in publication order.
       // External observers remain outside this lock and may arrive out of order.
       if (progressObserver != null) {
@@ -106,7 +124,7 @@ public class SharedGlobalState<Solution_> {
       // reading or modifying the enclosing solver scope would cross thread ownership boundaries.
       // Always acquire state locks from child to parent, before local mailbox backpressure.
       if (enclosingGlobalState != null) {
-        enclosingGlobalState.tryUpdate(candidate, candidateScore);
+        enclosingGlobalState.tryUpdate(candidate, candidateScore, acceptorState);
       }
       // Queue accepted publications in the same order as the shared termination history.
       if (publicationObserver != null) {

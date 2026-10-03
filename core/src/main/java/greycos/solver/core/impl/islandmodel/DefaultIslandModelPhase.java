@@ -139,7 +139,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       if (innerScore == null) {
         innerScore = solverScope.calculateScore();
       }
-      runState.tryUpdate(initialSolution, innerScore);
+      runState.tryUpdate(initialSolution, innerScore, solverScope.getBestAcceptorMigrationState());
 
       propagator =
           new GlobalBestPropagator<>(
@@ -160,6 +160,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
             phaseIndex,
             runState.getBestScore());
         solverScope.setInitialSolution(globalBest);
+        solverScope.setBestAcceptorMigrationState(runState.getBestSnapshot().getAcceptorState());
       } else {
         LOGGER.warn(
             "{}Island Model phase ({}) ended with no global best solution",
@@ -274,6 +275,7 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
           agentScope.setSolver(islandSolver);
           var initialSolution =
               solverScope.getScoreDirector().cloneSolution(solverScope.getBestSolution());
+          agentScope.setBestAcceptorMigrationState(solverScope.getBestAcceptorMigrationState());
           agent =
               createAgent(
                   i,

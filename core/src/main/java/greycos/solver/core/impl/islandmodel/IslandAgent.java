@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import greycos.solver.core.impl.alns.AlnsPhase;
 import greycos.solver.core.impl.localsearch.LocalSearchPhase;
+import greycos.solver.core.impl.localsearch.decider.acceptor.AcceptorMigrationState;
 import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.random.RandomSource;
@@ -28,6 +29,7 @@ public class IslandAgent<Solution_> implements Runnable {
   private final int agentId;
   private final List<Phase<Solution_>> phases;
   private final Solution_ initialSolution;
+  private final AcceptorMigrationState initialAcceptorState;
   private final SharedGlobalState<Solution_> globalState;
   private final BoundedChannel<AgentUpdate<Solution_>> sender;
   private final BoundedChannel<AgentUpdate<Solution_>> receiver;
@@ -63,6 +65,7 @@ public class IslandAgent<Solution_> implements Runnable {
     this.config = Objects.requireNonNull(config, "Config cannot be null");
     this.random = Objects.requireNonNull(random, "Random cannot be null");
     this.islandScope = Objects.requireNonNull(islandScope, "Island solver scope cannot be null");
+    initialAcceptorState = islandScope.getBestAcceptorMigrationState();
     this.completionLatch =
         Objects.requireNonNull(completionLatch, "Completion latch cannot be null");
     this.stepsUntilNextMigration = config.getMigrationFrequency();
@@ -82,6 +85,7 @@ public class IslandAgent<Solution_> implements Runnable {
 
       islandScope.setWorkingRandom(random);
       islandScope.setInitialSolution(initialSolution);
+      islandScope.setAcceptorMigrationEnabled(true);
 
       var globalBestUpdater = new GlobalBestUpdater<Solution_>(globalState, agentId);
       for (Phase<Solution_> phase : phases) {
@@ -106,6 +110,7 @@ public class IslandAgent<Solution_> implements Runnable {
 
       var islandSolver = (IslandSolver<Solution_>) islandScope.getSolver();
       islandSolver.solvingStarted(islandScope);
+      islandScope.setBestAcceptorMigrationState(initialAcceptorState);
       islandSolver.runPhases(islandScope);
       globalBestUpdater.publishCurrentBest(islandScope);
       islandSolver.solvingEnded(islandScope);
@@ -209,7 +214,7 @@ public class IslandAgent<Solution_> implements Runnable {
           update.getAgentId(),
           migrantInnerScore.raw(),
           currentInnerScore.raw());
-      scheduleAdoption(migrant, migrantInnerScore);
+      scheduleAdoption(migrant, migrantInnerScore, update.getAcceptorState());
     } else {
       LOGGER.debug(
           "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
@@ -237,7 +242,12 @@ public class IslandAgent<Solution_> implements Runnable {
       return null;
     }
     AgentUpdate<Solution_> updateToSend =
-        new AgentUpdate<>(agentId, migrant, migrantScore, snapshotAliveBits());
+        new AgentUpdate<>(
+            agentId,
+            migrant,
+            migrantScore,
+            snapshotAliveBits(),
+            islandScope.getBestAcceptorMigrationState());
     LOGGER.debug("Agent {} sending migration", agentId);
 
     boolean sent = sender.replace(updateToSend);
@@ -259,9 +269,10 @@ public class IslandAgent<Solution_> implements Runnable {
     return score;
   }
 
-  private void scheduleAdoption(Solution_ migrant, InnerScore<?> migrantScore) {
+  private void scheduleAdoption(
+      Solution_ migrant, InnerScore<?> migrantScore, AcceptorMigrationState acceptorState) {
     var syncMove = SolutionSyncMove.createMove(islandScope.getScoreDirector(), migrant);
-    islandScope.setPendingMoveIfBetter(syncMove, migrantScore, true);
+    islandScope.setPendingMoveIfBetter(syncMove, migrantScore, true, acceptorState);
   }
 
   private BitSet snapshotAliveBits() {

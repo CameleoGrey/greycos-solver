@@ -78,7 +78,8 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
 
       var syncMove = SolutionSyncMove.createMove(stepScope.getScoreDirector(), globalBest);
       var solverScope = stepScope.getPhaseScope().getSolverScope();
-      solverScope.setPendingMoveIfBetter(syncMove, globalInnerScore, true);
+      solverScope.setPendingMoveIfBetter(
+          syncMove, globalInnerScore, true, globalSnapshot.getAcceptorState());
     }
   }
 

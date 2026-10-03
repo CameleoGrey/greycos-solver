@@ -7,6 +7,7 @@ import java.util.List;
 
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.impl.localsearch.decider.acceptor.LateAcceptanceHistory;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.DefaultSolver;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
@@ -43,8 +44,11 @@ class IslandPendingMigrationTest {
       }
       var migrantScore =
           InnerScore.fullyAssigned(new TestdataEasyScoreCalculator().calculateScore(migrant));
+      var history =
+          new LateAcceptanceHistory(
+              List.of(migrantScore, scope.getBestScore()), 1, SimpleScore.class, 1, 0);
       scope.setPendingMoveIfBetter(
-          SolutionSyncMove.createMove(director, migrant), migrantScore, requiresReset);
+          SolutionSyncMove.createMove(director, migrant), migrantScore, requiresReset, history);
 
       IslandPendingMigrationTest.<TestdataSolution>islandSolver()
           .restoreWorkingSolutionForNextPhase(scope);
@@ -53,6 +57,7 @@ class IslandPendingMigrationTest {
       assertThat(pending).isNotNull();
       assertThat(pending.score()).isEqualTo(migrantScore);
       assertThat(pending.requiresReset()).isEqualTo(requiresReset);
+      assertThat(pending.acceptorState()).isSameAs(history);
       assertThat(director.getWorkingSolution()).isNotSameAs(oldWorking);
       director.executeMove(pending.move());
       assertThat(director.calculateScore()).isEqualTo(migrantScore);

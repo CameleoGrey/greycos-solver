@@ -123,6 +123,7 @@ public final class GlobalBestPropagator<Solution_>
     }
     mainSolverScope.setBestSolution(clonedSolution);
     mainSolverScope.setBestScore(score);
+    mainSolverScope.setBestAcceptorMigrationState(snapshot.getAcceptorState());
     mainSolverScope.setBestSolutionTimeMillis(snapshot.getTimestampMillis());
     lastKnownBestScore = score;
     if (score.isFullyAssigned()) {

@@ -56,7 +56,8 @@ public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<
         bestSolution == solverScope.getWorkingSolution()
             ? solverScope.getScoreDirector().cloneSolution(bestSolution)
             : bestSolution;
-    if (globalState.tryUpdate(publishedSolution, bestScore)) {
+    if (globalState.tryUpdate(
+        publishedSolution, bestScore, solverScope.getBestAcceptorMigrationState())) {
       LOGGER.debug(
           "Agent {} updated global best (score: {}, time spent: {} ms)",
           agentId,
