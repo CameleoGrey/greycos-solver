@@ -13,16 +13,26 @@ final class DefaultListVariableMoveEvaluator<
     extends AbstractMultistageEvaluator<Solution_, Score_>
     implements ListVariableMoveEvaluator<Solution_, Entity_, Value_, Score_> {
 
+  private final MultistageVariableContext<Solution_> context;
+
   DefaultListVariableMoveEvaluator(MultistageTransaction<Solution_, Score_> transaction) {
-    super(transaction);
+    this(transaction, transaction.defaultContext, new MultistageStageScope());
+  }
+
+  DefaultListVariableMoveEvaluator(
+      MultistageTransaction<Solution_, Score_> transaction,
+      MultistageVariableContext<Solution_> context,
+      MultistageStageScope scope) {
+    super(transaction, scope);
+    this.context = context;
   }
 
   @Override
   @SuppressWarnings("unchecked")
   public MultistagePosition<Entity_> position(Value_ value) {
     checkActive();
-    transaction.requireKnownListValue(value);
-    var position = transaction.position(value);
+    context.requireKnownListValue(value);
+    var position = context.position(value);
     return position == null
         ? MultistagePosition.unassigned()
         : MultistagePosition.assigned((Entity_) position.entity(), position.index());
@@ -32,28 +42,28 @@ final class DefaultListVariableMoveEvaluator<
   @SuppressWarnings("unchecked")
   public List<MultistagePosition<Entity_>> legalPositions(Value_ value) {
     checkTermination();
-    transaction.requireKnownListValue(value);
-    var source = transaction.position(value);
+    context.requireKnownListValue(value);
+    var source = context.position(value);
     if (source != null
-        && (!transaction.movable(source.entity())
-            || source.index() < transaction.firstUnpinnedIndex(source.entity()))) {
+        && (!context.movable(source.entity())
+            || source.index() < context.firstUnpinnedIndex(source.entity()))) {
       checkTermination();
       return List.of();
     }
     var positions = new ArrayList<MultistagePosition<Entity_>>();
     int traversed = 0;
-    for (var entity : transaction.entities) {
+    for (var entity : context.entities) {
       if ((++traversed & 63) == 0) checkTermination();
-      if (!transaction.movable(entity) || !transaction.range(entity).contains(value)) continue;
+      if (!context.movable(entity) || !context.range(entity).contains(value)) continue;
       int size =
-          transaction.listVariable().getListSize(entity)
+          context.listVariable().getListSize(entity)
               - (source != null && source.entity() == entity ? 1 : 0);
-      for (int index = transaction.firstUnpinnedIndex(entity); index <= size; index++) {
+      for (int index = context.firstUnpinnedIndex(entity); index <= size; index++) {
         if ((++traversed & 63) == 0) checkTermination();
         positions.add(MultistagePosition.assigned((Entity_) entity, index));
       }
     }
-    if (transaction.listVariable().allowsUnassignedValues())
+    if (context.listVariable().allowsUnassignedValues())
       positions.add(MultistagePosition.unassigned());
     checkTermination();
     return List.copyOf(positions);
@@ -63,24 +73,31 @@ final class DefaultListVariableMoveEvaluator<
   public MultistageOperation<Solution_> place(
       Value_ value, Entity_ destinationEntity, int destinationIndex) {
     return operation(
-        MultistageOperationImpl.Kind.PLACE, value, destinationEntity, 0, 0, destinationIndex);
+        context,
+        MultistageOperationImpl.Kind.PLACE,
+        value,
+        destinationEntity,
+        0,
+        0,
+        destinationIndex);
   }
 
   @Override
   public MultistageOperation<Solution_> unassign(Value_ value) {
-    return operation(MultistageOperationImpl.Kind.UNASSIGN_LIST, value, null, 0, 0, 0);
+    return operation(context, MultistageOperationImpl.Kind.UNASSIGN_LIST, value, null, 0, 0, 0);
   }
 
   @Override
   public MultistageOperation<Solution_> swap(Value_ leftValue, Value_ rightValue) {
-    return operation(MultistageOperationImpl.Kind.SWAP_LIST, leftValue, rightValue, 0, 0, 0);
+    return operation(
+        context, MultistageOperationImpl.Kind.SWAP_LIST, leftValue, rightValue, 0, 0, 0);
   }
 
   @Override
   public MultistageOperation<Solution_> reverse(
       Entity_ entity, int fromInclusive, int toExclusive) {
     return operation(
-        MultistageOperationImpl.Kind.REVERSE, entity, null, fromInclusive, toExclusive, 0);
+        context, MultistageOperationImpl.Kind.REVERSE, entity, null, fromInclusive, toExclusive, 0);
   }
 
   @Override
@@ -91,6 +108,7 @@ final class DefaultListVariableMoveEvaluator<
       Entity_ destinationEntity,
       int destinationIndex) {
     return operation(
+        context,
         MultistageOperationImpl.Kind.RELOCATE,
         sourceEntity,
         destinationEntity,

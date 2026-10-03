@@ -6,7 +6,7 @@ import greycos.solver.core.api.score.Score;
 
 import org.jspecify.annotations.Nullable;
 
-/** Evaluates changes to the single basic variable bound to the enclosing selector. */
+/** Evaluates changes to one basic planning variable, including as a cross-variable stage's view. */
 public interface BasicVariableMoveEvaluator<
         Solution_, Entity_, Value_, Score_ extends Score<Score_>>
     extends MultistageMoveEvaluator<Solution_, Score_> {

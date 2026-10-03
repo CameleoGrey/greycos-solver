@@ -5,9 +5,9 @@ import java.util.List;
 import greycos.solver.core.api.score.Score;
 
 /**
- * Evaluates changes to the single list variable bound to the enclosing selector. Values identify
- * elements by working-object identity. All source elements and destination indices must respect
- * pinning and the destination's value range.
+ * Evaluates changes to one list planning variable, including as a cross-variable stage's view.
+ * Values identify elements by working-object identity. All source elements and destination indices
+ * must respect pinning and the destination's value range.
  */
 public interface ListVariableMoveEvaluator<Solution_, Entity_, Value_, Score_ extends Score<Score_>>
     extends MultistageMoveEvaluator<Solution_, Score_> {

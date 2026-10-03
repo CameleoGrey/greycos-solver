@@ -13,24 +13,34 @@ final class DefaultBasicVariableMoveEvaluator<
     extends AbstractMultistageEvaluator<Solution_, Score_>
     implements BasicVariableMoveEvaluator<Solution_, Entity_, Value_, Score_> {
 
+  private final MultistageVariableContext<Solution_> context;
+
   DefaultBasicVariableMoveEvaluator(MultistageTransaction<Solution_, Score_> transaction) {
-    super(transaction);
+    this(transaction, transaction.defaultContext, new MultistageStageScope());
+  }
+
+  DefaultBasicVariableMoveEvaluator(
+      MultistageTransaction<Solution_, Score_> transaction,
+      MultistageVariableContext<Solution_> context,
+      MultistageStageScope scope) {
+    super(transaction, scope);
+    this.context = context;
   }
 
   @Override
   @SuppressWarnings("unchecked")
   public Value_ currentValue(Entity_ entity) {
     checkActive();
-    transaction.requireEntity(entity);
-    return (Value_) transaction.variable.getValue(entity);
+    context.requireEntity(entity);
+    return (Value_) context.variable.getValue(entity);
   }
 
   @Override
   @SuppressWarnings("unchecked")
   public List<Value_> legalValues(Entity_ entity) {
     checkTermination();
-    transaction.requireMovable(entity);
-    var range = transaction.range(entity);
+    context.requireMovable(entity);
+    var range = context.range(entity);
     var values = new ArrayList<Value_>();
     var iterator = range.createOriginalIterator();
     int traversed = 0;
@@ -45,16 +55,17 @@ final class DefaultBasicVariableMoveEvaluator<
 
   @Override
   public MultistageOperation<Solution_> assign(Entity_ entity, Value_ value) {
-    return operation(MultistageOperationImpl.Kind.ASSIGN, entity, value, 0, 0, 0);
+    return operation(context, MultistageOperationImpl.Kind.ASSIGN, entity, value, 0, 0, 0);
   }
 
   @Override
   public MultistageOperation<Solution_> unassign(Entity_ entity) {
-    return operation(MultistageOperationImpl.Kind.UNASSIGN_BASIC, entity, null, 0, 0, 0);
+    return operation(context, MultistageOperationImpl.Kind.UNASSIGN_BASIC, entity, null, 0, 0, 0);
   }
 
   @Override
   public MultistageOperation<Solution_> swap(Entity_ leftEntity, Entity_ rightEntity) {
-    return operation(MultistageOperationImpl.Kind.SWAP_BASIC, leftEntity, rightEntity, 0, 0, 0);
+    return operation(
+        context, MultistageOperationImpl.Kind.SWAP_BASIC, leftEntity, rightEntity, 0, 0, 0);
   }
 }

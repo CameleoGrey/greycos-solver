@@ -11,6 +11,7 @@ import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.composite.CartesianProductMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.CrossVariableMultistageMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
@@ -20,7 +21,7 @@ import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelectorFact
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import greycos.solver.core.impl.multistage.MultistageDefinition;
 
-/** Shared construction and validation of basic and list multistage selectors. */
+/** Shared construction and validation of multistage selectors. */
 public abstract class AbstractMultistageMoveSelectorFactory<
         Solution_, Config_ extends MoveSelectorConfig<Config_>>
     extends AbstractMoveSelectorFactory<Solution_, Config_> {
@@ -106,9 +107,12 @@ public abstract class AbstractMultistageMoveSelectorFactory<
     return new MultistageMoveSelector<>(definition, randomSelection, candidateCountLimit);
   }
 
+  protected Class<?> getProviderInterface() {
+    return listVariable ? ListVariableStageProvider.class : BasicVariableStageProvider.class;
+  }
+
   private void validateProvider() {
-    var providerInterface =
-        listVariable ? ListVariableStageProvider.class : BasicVariableStageProvider.class;
+    var providerInterface = getProviderInterface();
     if (providerClass == null || !providerInterface.isAssignableFrom(providerClass)) {
       throw new IllegalArgumentException(
           "The multistage move selector (%s) has stageProviderClass (%s), which must implement %s."
@@ -173,7 +177,8 @@ public abstract class AbstractMultistageMoveSelectorFactory<
 
   /** Finds multistage descendants before a composite can hide their execution semantics. */
   public static boolean containsMultistage(MoveSelectorConfig<?> config) {
-    if (config instanceof MultistageMoveSelectorConfig
+    if (config instanceof CrossVariableMultistageMoveSelectorConfig
+        || config instanceof MultistageMoveSelectorConfig
         || config instanceof ListMultistageMoveSelectorConfig) {
       return true;
     }

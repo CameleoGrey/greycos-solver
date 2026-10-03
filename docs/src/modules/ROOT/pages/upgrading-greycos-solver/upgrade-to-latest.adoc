@@ -4,14 +4,26 @@
 [#multistageMoveUpgrade]
 == Opt-in multistage moves
 
-Local Search now supports `MultistageMoveSelectorConfig` for a basic planning variable and
-`ListMultistageMoveSelectorConfig` for a planning list variable.
+Local Search supports `MultistageMoveSelectorConfig` for one basic planning variable,
+`ListMultistageMoveSelectorConfig` for one planning list variable, and
+`CrossVariableMultistageMoveSelectorConfig` for a candidate spanning declared basic variables and the model's planning list variable.
 Their provider/evaluator interfaces are in `greycos.solver.core.api.solver.multistage`.
-The XML elements are `<multistageMoveSelector>` and `<listMultistageMoveSelector>`.
-Existing configurations and example entry points retain their defaults; enabling the feature requires an explicit selector.
+The XML elements are `<multistageMoveSelector>`, `<listMultistageMoveSelector>` and `<crossVariableMultistageMoveSelector>`.
+Existing single-variable APIs, configurations and defaults remain unchanged; enabling a new selector is explicit.
 
-Each selector binds one entity class and variable, with a required `stageProviderClass`.
-The default limits are 64 candidate requests per step and 10000 scoring probes per candidate.
+The single-variable selectors bind one entity class and variable.
+The cross-variable selector requires `CrossVariableStageProvider` and an explicit list of declarations,
+each with its variable kind, entity class, variable name and value class.
+Declare these with `withVariables(...)` in Java or repeated `<variable>` elements in XML.
+`BasicVariableReference` and `ListVariableReference` select typed views within each stage.
+A provider can change several declared variables, including basic and list variables on the same entity,
+and can evaluate a compound sequence as one final-state probe.
+Undeclared views and operations outside the declared entity scope are rejected.
+This does not add support for chained variables or multiple planning list variables.
+
+All selectors require `stageProviderClass`.
+The default limits are 64 candidate requests per step and 10000 scoring probes per candidate,
+shared across every stage and variable view.
 Use the selector directly in Local Search or in a union; cached and Cartesian-product composition are rejected,
 as is GLS directed origin selection.
 Move workers, islands and partitions receive independent providers and replay recorded operations.

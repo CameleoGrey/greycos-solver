@@ -27,23 +27,28 @@ import javax.tools.DiagnosticCollector;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 
+import greycos.solver.core.config.heuristic.selector.move.generic.CrossVariableMultistageMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.MultistageVariableConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.MultistageVariableKind;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /** Checks a real consumer compiled against production classes and the exported public surface. */
 class MultistagePublicApiTest {
   @TempDir Path temporaryDirectory;
 
-  @Test
-  void externalBasicAndListProvidersCompileWithoutImplementationOrPreviewImports()
-      throws Exception {
+  @ParameterizedTest(name = "useModulePath = {0}")
+  @ValueSource(booleans = {false, true})
+  void externalBasicListAndCrossVariableProvidersCompileWithoutImplementationOrPreviewImports(
+      boolean useModulePath) throws Exception {
     var compiler = ToolProvider.getSystemJavaCompiler();
     assertThat(compiler).as("A JDK compiler is required for the public API test").isNotNull();
     var dependencies = dependencyLocations(coreLocation());
-    var modulePath = productionModulePath(dependencies);
     var sourceDirectory = Files.createDirectories(temporaryDirectory.resolve("source/consumer"));
     var outputDirectory = Files.createDirectories(temporaryDirectory.resolve("classes"));
     var source = sourceDirectory.resolve("PublicMultistageConsumer.java");
@@ -58,9 +63,13 @@ class MultistagePublicApiTest {
                 Integer.toString(Runtime.version().feature()),
                 "-d",
                 outputDirectory.toString()));
-    if (modulePath.isEmpty()) {
+    if (!useModulePath) {
       options.addAll(List.of("--class-path", joinPaths(dependencies)));
     } else {
+      var modulePath = productionModulePath(dependencies);
+      assertThat(modulePath)
+          .as("The JPMS consumer requires the complete production module path")
+          .isNotEmpty();
       var moduleSource = sourceDirectory.getParent().resolve("module-info.java");
       Files.writeString(
           moduleSource, "module multistage.external.consumer { requires greycos.solver.core; }\n");
@@ -86,7 +95,8 @@ class MultistagePublicApiTest {
               .call();
       assertThat(compiled)
           .withFailMessage(
-              "External multistage consumer failed:%n%s",
+              "External multistage consumer failed (useModulePath=%s):%n%s",
+              useModulePath,
               diagnostics.getDiagnostics().stream()
                   .map(Object::toString)
                   .collect(Collectors.joining("\n")))
@@ -96,7 +106,13 @@ class MultistagePublicApiTest {
         .exists();
     assertThat(outputDirectory.resolve("consumer/PublicMultistageConsumer$ListProvider.class"))
         .exists();
-    if (!modulePath.isEmpty()) assertThat(outputDirectory.resolve("module-info.class")).exists();
+    assertThat(outputDirectory.resolve("consumer/PublicMultistageConsumer$CrossProvider.class"))
+        .exists();
+    if (useModulePath) {
+      assertThat(outputDirectory.resolve("module-info.class")).exists();
+    } else {
+      assertThat(outputDirectory.resolve("module-info.class")).doesNotExist();
+    }
   }
 
   @Test
@@ -115,16 +131,25 @@ class MultistagePublicApiTest {
         List.<Class<?>>of(
             BasicVariableStageProvider.class,
             ListVariableStageProvider.class,
+            CrossVariableStageProvider.class,
             BasicVariableCustomStage.class,
             ListVariableCustomStage.class,
+            CrossVariableCustomStage.class,
             BasicVariableMoveEvaluator.class,
             ListVariableMoveEvaluator.class,
+            CrossVariableMoveEvaluator.class,
+            MultistageVariableReference.class,
+            BasicVariableReference.class,
+            ListVariableReference.class,
             MultistageMoveEvaluator.class,
             MultistageOperation.class,
             MultistageStageResult.class,
             MultistageStageResult.Kind.class,
             MultistagePosition.class,
             MultistageEvaluation.class,
+            CrossVariableMultistageMoveSelectorConfig.class,
+            MultistageVariableConfig.class,
+            MultistageVariableKind.class,
             MultistageMoveSelectorConfig.class,
             ListMultistageMoveSelectorConfig.class);
     for (var type : types) {
@@ -220,9 +245,21 @@ class MultistagePublicApiTest {
       var name = pending.removeFirst();
       if (!visited.add(name) || systemModules.find(name).isPresent()) continue;
       var descriptor = descriptors.get(name);
-      if (descriptor == null) return List.of();
+      if (descriptor == null) {
+        throw new AssertionError(
+            "The required production module (%s) was not found in consumer dependencies (%s)."
+                .formatted(name, locations));
+      }
       selected.add(moduleLocations.get(name));
-      for (var requirement : descriptor.requires()) pending.addLast(requirement.name());
+      for (var requirement : descriptor.requires()) {
+        // Compile-time-only dependencies of precompiled modules need not be present for a consumer.
+        if (requirement.modifiers().contains(ModuleDescriptor.Requires.Modifier.STATIC)
+            && !descriptors.containsKey(requirement.name())
+            && systemModules.find(requirement.name()).isEmpty()) {
+          continue;
+        }
+        pending.addLast(requirement.name());
+      }
     }
     return List.copyOf(selected);
   }
@@ -239,16 +276,31 @@ class MultistagePublicApiTest {
       import java.util.random.RandomGenerator;
       import greycos.solver.core.api.score.SimpleScore;
       import greycos.solver.core.api.solver.multistage.BasicVariableCustomStage;
+      import greycos.solver.core.api.solver.multistage.BasicVariableReference;
       import greycos.solver.core.api.solver.multistage.BasicVariableStageProvider;
+      import greycos.solver.core.api.solver.multistage.CrossVariableCustomStage;
+      import greycos.solver.core.api.solver.multistage.CrossVariableStageProvider;
       import greycos.solver.core.api.solver.multistage.ListVariableCustomStage;
+      import greycos.solver.core.api.solver.multistage.ListVariableReference;
       import greycos.solver.core.api.solver.multistage.ListVariableStageProvider;
       import greycos.solver.core.api.solver.multistage.MultistageStageResult;
+      import greycos.solver.core.config.heuristic.selector.move.generic.CrossVariableMultistageMoveSelectorConfig;
       import greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
       import greycos.solver.core.config.heuristic.selector.move.generic.list.ListMultistageMoveSelectorConfig;
 
       public final class PublicMultistageConsumer {
         public static final class Problem { public List<Entity> entities; }
-        public static final class Entity { public Integer value; public List<Integer> values; }
+        public static final class Entity {
+          public Integer value;
+          public String label;
+          public List<Integer> values;
+        }
+        private static final BasicVariableReference<Entity, Integer> VALUE =
+            BasicVariableReference.of(Entity.class, "value", Integer.class);
+        private static final BasicVariableReference<Entity, String> LABEL =
+            BasicVariableReference.of(Entity.class, "label", String.class);
+        private static final ListVariableReference<Entity, Integer> VALUES =
+            ListVariableReference.of(Entity.class, "values", Integer.class);
         public static final class BasicProvider
             implements BasicVariableStageProvider<Problem, Entity, Integer, SimpleScore> {
           private Problem solution;
@@ -280,6 +332,36 @@ class MultistagePublicApiTest {
           }
           public void phaseEnded() { solution = null; }
         }
+        public static final class CrossProvider
+            implements CrossVariableStageProvider<Problem, SimpleScore> {
+          private Problem solution;
+          public void initialize(Problem solution) { this.solution = solution; }
+          public long getCandidateCount() { return solution.entities.size(); }
+          public List<CrossVariableCustomStage<Problem, SimpleScore>> createStages(
+              long candidateIndex, RandomGenerator random) {
+            var entity = solution.entities.get(Math.toIntExact(candidateIndex));
+            return List.of(evaluator -> {
+                  var numbers = evaluator.basic(VALUE);
+                  var labels = evaluator.basic(LABEL);
+                  Integer currentNumber = numbers.currentValue(entity);
+                  String currentLabel = labels.currentValue(entity);
+                  var compound = evaluator.sequence(List.of(
+                      numbers.assign(entity, currentNumber), labels.assign(entity, currentLabel)));
+                  evaluator.evaluateAll(List.of(compound));
+                  return MultistageStageResult.apply(compound);
+                }, evaluator -> {
+                  if (entity.values.isEmpty()) return MultistageStageResult.skip();
+                  var numbers = evaluator.basic(VALUE);
+                  var lists = evaluator.list(VALUES);
+                  Integer value = entity.values.getFirst();
+                  var compound = evaluator.sequence(List.of(
+                      numbers.assign(entity, value), lists.place(value, entity, 0)));
+                  lists.evaluate(compound);
+                  return evaluator.bestFit(List.of(compound));
+                });
+          }
+          public void phaseEnded() { solution = null; }
+        }
         public static MultistageMoveSelectorConfig basicConfig() {
           return new MultistageMoveSelectorConfig().withStageProviderClass(BasicProvider.class)
               .withEntityClass(Entity.class).withVariableName("value")
@@ -289,6 +371,11 @@ class MultistagePublicApiTest {
           return new ListMultistageMoveSelectorConfig().withStageProviderClass(ListProvider.class)
               .withEntityClass(Entity.class).withVariableName("values")
               .withCandidateCountLimit(7).withProbeCountLimit(200);
+        }
+        public static CrossVariableMultistageMoveSelectorConfig crossConfig() {
+          return new CrossVariableMultistageMoveSelectorConfig().withStageProviderClass(CrossProvider.class)
+              .withVariables(VALUE, LABEL, VALUES)
+              .withCandidateCountLimit(9).withProbeCountLimit(300);
         }
       }
       """;

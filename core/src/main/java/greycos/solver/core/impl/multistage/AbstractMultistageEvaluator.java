@@ -12,10 +12,16 @@ import greycos.solver.core.api.solver.multistage.MultistageOperation;
 abstract class AbstractMultistageEvaluator<Solution_, Score_ extends Score<Score_>>
     implements MultistageMoveEvaluator<Solution_, Score_> {
   final MultistageTransaction<Solution_, Score_> transaction;
-  private boolean active = true;
+  final MultistageStageScope scope;
 
   AbstractMultistageEvaluator(MultistageTransaction<Solution_, Score_> transaction) {
+    this(transaction, new MultistageStageScope());
+  }
+
+  AbstractMultistageEvaluator(
+      MultistageTransaction<Solution_, Score_> transaction, MultistageStageScope scope) {
     this.transaction = transaction;
+    this.scope = scope;
   }
 
   @Override
@@ -39,7 +45,7 @@ abstract class AbstractMultistageEvaluator<Solution_, Score_ extends Score<Score
   public final MultistageOperation<Solution_> sequence(
       List<? extends MultistageOperation<Solution_>> operations) {
     checkTermination();
-    var intents = new ArrayList<MultistageOperationImpl.Intent>();
+    var intents = new ArrayList<MultistageOperationImpl.Intent<Solution_>>();
     int traversed = 0;
     for (var operation : Objects.requireNonNull(operations)) {
       if ((++traversed & 63) == 0) checkTermination();
@@ -49,7 +55,7 @@ abstract class AbstractMultistageEvaluator<Solution_, Score_ extends Score<Score
       }
     }
     checkTermination();
-    return new MultistageOperationImpl<>(this, intents);
+    return new MultistageOperationImpl<>(scope, intents);
   }
 
   @Override
@@ -59,7 +65,11 @@ abstract class AbstractMultistageEvaluator<Solution_, Score_ extends Score<Score
   }
 
   final void checkActive() {
-    if (!active)
+    if (Thread.currentThread() != scope.owner) {
+      throw new IllegalStateException(
+          "A multistage evaluator may only be used by its stage callback thread.");
+    }
+    if (!scope.active)
       throw new IllegalStateException(
           "A multistage evaluator is only valid during its stage callback.");
     transaction.checkActive();
@@ -68,7 +78,7 @@ abstract class AbstractMultistageEvaluator<Solution_, Score_ extends Score<Score
   final MultistageOperationImpl<Solution_> owned(MultistageOperation<Solution_> operation) {
     checkActive();
     if (!(operation instanceof MultistageOperationImpl<Solution_> internal)
-        || internal.owner() != this) {
+        || internal.owner() != scope) {
       throw new IllegalArgumentException(
           "The multistage operation belongs to another stage or was not created by its evaluator.");
     }
@@ -76,13 +86,21 @@ abstract class AbstractMultistageEvaluator<Solution_, Score_ extends Score<Score
   }
 
   final MultistageOperation<Solution_> operation(
-      MultistageOperationImpl.Kind kind, Object first, Object second, int from, int to, int index) {
+      MultistageVariableContext<Solution_> context,
+      MultistageOperationImpl.Kind kind,
+      Object first,
+      Object second,
+      int from,
+      int to,
+      int index) {
     checkActive();
     return new MultistageOperationImpl<>(
-        this, List.of(new MultistageOperationImpl.Intent(kind, first, second, from, to, index)));
+        scope,
+        List.of(
+            new MultistageOperationImpl.Intent<>(context, kind, first, second, from, to, index)));
   }
 
   final void invalidate() {
-    active = false;
+    scope.active = false;
   }
 }

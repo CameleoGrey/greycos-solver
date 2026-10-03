@@ -18,6 +18,56 @@ import org.junit.jupiter.api.Test;
 class MultistageApiTest {
 
   @Test
+  void variableReferencesUseStructuralEqualityAndPreserveKindAndTypes() {
+    var basic = BasicVariableReference.of(String.class, "amount", Integer.class);
+    var list = ListVariableReference.of(String.class, "amount", Integer.class);
+
+    assertThat(basic)
+        .isEqualTo(new BasicVariableReference<>(String.class, "amount", Integer.class));
+    assertThat(list).isEqualTo(new ListVariableReference<>(String.class, "amount", Integer.class));
+    assertThat((Object) basic).isNotEqualTo(list);
+    assertThat(basic.entityClass()).isEqualTo(String.class);
+    assertThat(basic.variableName()).isEqualTo("amount");
+    assertThat(basic.valueClass()).isEqualTo(Integer.class);
+    assertThat(basic).isNotEqualTo(BasicVariableReference.of(String.class, "other", Integer.class));
+    assertThat((Object) basic)
+        .isNotEqualTo(BasicVariableReference.of(Object.class, "amount", Integer.class))
+        .isNotEqualTo(BasicVariableReference.of(String.class, "amount", Number.class));
+  }
+
+  @Test
+  void variableReferencesRejectMissingTypesAndBlankNames() {
+    assertThatNullPointerException()
+        .isThrownBy(() -> BasicVariableReference.of(null, "amount", Integer.class))
+        .withMessageContaining("entityClass");
+    assertThatNullPointerException()
+        .isThrownBy(() -> BasicVariableReference.of(String.class, null, Integer.class))
+        .withMessageContaining("variableName");
+    assertThatNullPointerException()
+        .isThrownBy(() -> BasicVariableReference.of(String.class, "amount", null))
+        .withMessageContaining("valueClass");
+    assertThatNullPointerException()
+        .isThrownBy(() -> ListVariableReference.of(null, "values", Integer.class))
+        .withMessageContaining("entityClass");
+    assertThatNullPointerException()
+        .isThrownBy(() -> ListVariableReference.of(String.class, null, Integer.class))
+        .withMessageContaining("variableName");
+    assertThatNullPointerException()
+        .isThrownBy(() -> ListVariableReference.of(String.class, "values", null))
+        .withMessageContaining("valueClass");
+    for (var name : List.of("", " ", "\t\n")) {
+      assertThatIllegalArgumentException()
+          .isThrownBy(() -> BasicVariableReference.of(String.class, name, Integer.class))
+          .withMessageContaining("blank variableName")
+          .withMessageContaining(String.class.getName());
+      assertThatIllegalArgumentException()
+          .isThrownBy(() -> ListVariableReference.of(String.class, name, Integer.class))
+          .withMessageContaining("blank variableName")
+          .withMessageContaining(String.class.getName());
+    }
+  }
+
+  @Test
   void evaluationPreservesStructuralAndInitializationOrderingWithoutNumericConversion() {
     var flawed = new MultistageEvaluation<>(new SimpleScore(-1, Long.MAX_VALUE), 0);
     var incomplete = new MultistageEvaluation<>(SimpleScore.of(Long.MAX_VALUE), 1);

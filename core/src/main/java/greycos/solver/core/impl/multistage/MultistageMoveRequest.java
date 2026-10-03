@@ -9,6 +9,7 @@ import java.util.function.BiConsumer;
 import greycos.solver.core.api.cotwin.lookup.Lookup;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.solver.multistage.BasicVariableStageProvider;
+import greycos.solver.core.api.solver.multistage.CrossVariableStageProvider;
 import greycos.solver.core.api.solver.multistage.ListVariableStageProvider;
 import greycos.solver.core.api.solver.multistage.MultistageStageResult;
 import greycos.solver.core.impl.move.PreparableMove;
@@ -64,7 +65,7 @@ public final class MultistageMoveRequest<Solution_> implements PreparableMove<So
               + ").");
     var transaction =
         new MultistageTransaction<>(
-            director, definition.variable, session.domain, definition.probeLimit, checkTermination);
+            director, session.domains, definition.probeLimit, checkTermination);
     var previousSuppression = director.isAllChangesWillBeUndoneBeforeStepEnds();
     PreparedMoveEvaluation.Status status = PreparedMoveEvaluation.Status.EMPTY;
     PreparedMultistageMove<Solution_> frozen = null;
@@ -115,7 +116,22 @@ public final class MultistageMoveRequest<Solution_> implements PreparableMove<So
       MultistageDefinition.Session<Solution_> session,
       MultistageTransaction<Solution_, Score_> transaction) {
     var random = new SplittableRandom(seed);
-    if (session.provider instanceof BasicVariableStageProvider<?, ?, ?, ?>) {
+    if (session.providerKind == MultistageDefinition.ProviderKind.CROSS) {
+      var provider = (CrossVariableStageProvider<Solution_, Score_>) session.provider;
+      var stages =
+          List.copyOf(
+              Objects.requireNonNull(
+                  provider.createStages(candidateIndex, random), "Multistage stages"));
+      for (var stage : stages) {
+        transaction.checkpoint();
+        var evaluator = new DefaultCrossVariableMoveEvaluator<Solution_, Score_>(transaction);
+        try {
+          if (!applyResult(stage.selectMove(evaluator), evaluator, transaction)) return false;
+        } finally {
+          evaluator.invalidate();
+        }
+      }
+    } else if (session.providerKind == MultistageDefinition.ProviderKind.BASIC) {
       var provider =
           (BasicVariableStageProvider<Solution_, Object, Object, Score_>) session.provider;
       var stages =

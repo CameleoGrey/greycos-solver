@@ -15,6 +15,7 @@ import greycos.solver.core.config.heuristic.selector.move.NearbyAutoConfiguratio
 import greycos.solver.core.config.heuristic.selector.move.factory.MoveIteratorFactoryConfig;
 import greycos.solver.core.config.heuristic.selector.move.factory.MoveListFactoryConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.CrossVariableMultistageMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
@@ -66,6 +67,9 @@ public class UnionMoveSelectorConfig extends MoveSelectorConfig<UnionMoveSelecto
     @XmlElement(
         name = PillarSwapMoveSelectorConfig.XML_ELEMENT_NAME,
         type = PillarSwapMoveSelectorConfig.class),
+    @XmlElement(
+        name = CrossVariableMultistageMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = CrossVariableMultistageMoveSelectorConfig.class),
     @XmlElement(
         name = MultistageMoveSelectorConfig.XML_ELEMENT_NAME,
         type = MultistageMoveSelectorConfig.class),

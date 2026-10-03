@@ -359,6 +359,7 @@
             <xs:element name="moveListFactory" type="tns:moveListFactoryConfig"/>
             <xs:element name="pillarChangeMoveSelector" type="tns:pillarChangeMoveSelectorConfig"/>
             <xs:element name="pillarSwapMoveSelector" type="tns:pillarSwapMoveSelectorConfig"/>
+            <xs:element name="crossVariableMultistageMoveSelector" type="tns:crossVariableMultistageMoveSelectorConfig"/>
             <xs:element name="multistageMoveSelector" type="tns:multistageMoveSelectorConfig"/>
             <xs:element name="listMultistageMoveSelector" type="tns:listMultistageMoveSelectorConfig"/>
             <xs:element name="ruinRecreateMoveSelector" type="tns:ruinRecreateMoveSelectorConfig"/>
@@ -511,6 +512,30 @@
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
+  <xs:complexType final="extension restriction" name="crossVariableMultistageMoveSelectorConfig">
+    <xs:complexContent>
+      <xs:extension base="tns:moveSelectorConfig">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="stageProviderClass" type="xs:string"/>
+          <xs:element maxOccurs="unbounded" minOccurs="0" name="variable" type="tns:multistageVariableConfig"/>
+          <xs:element minOccurs="0" name="candidateCountLimit" type="xs:int"/>
+          <xs:element minOccurs="0" name="probeCountLimit" type="xs:int"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType final="extension restriction" name="multistageVariableConfig">
+    <xs:complexContent>
+      <xs:extension base="tns:abstractConfig">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="kind" type="tns:multistageVariableKind"/>
+          <xs:element minOccurs="0" name="entityClass" type="xs:string"/>
+          <xs:element minOccurs="0" name="variableName" type="xs:string"/>
+          <xs:element minOccurs="0" name="valueClass" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
   <xs:complexType final="extension restriction" name="multistageMoveSelectorConfig">
     <xs:complexContent>
       <xs:extension base="tns:moveSelectorConfig">
@@ -618,6 +643,7 @@
             <xs:element name="moveListFactory" type="tns:moveListFactoryConfig"/>
             <xs:element name="pillarChangeMoveSelector" type="tns:pillarChangeMoveSelectorConfig"/>
             <xs:element name="pillarSwapMoveSelector" type="tns:pillarSwapMoveSelectorConfig"/>
+            <xs:element name="crossVariableMultistageMoveSelector" type="tns:crossVariableMultistageMoveSelectorConfig"/>
             <xs:element name="multistageMoveSelector" type="tns:multistageMoveSelectorConfig"/>
             <xs:element name="listMultistageMoveSelector" type="tns:listMultistageMoveSelectorConfig"/>
             <xs:element name="ruinRecreateMoveSelector" type="tns:ruinRecreateMoveSelectorConfig"/>
@@ -739,6 +765,7 @@
             <xs:element name="moveListFactory" type="tns:moveListFactoryConfig"/>
             <xs:element name="pillarChangeMoveSelector" type="tns:pillarChangeMoveSelectorConfig"/>
             <xs:element name="pillarSwapMoveSelector" type="tns:pillarSwapMoveSelectorConfig"/>
+            <xs:element name="crossVariableMultistageMoveSelector" type="tns:crossVariableMultistageMoveSelectorConfig"/>
             <xs:element name="multistageMoveSelector" type="tns:multistageMoveSelectorConfig"/>
             <xs:element name="listMultistageMoveSelector" type="tns:listMultistageMoveSelectorConfig"/>
             <xs:element name="ruinRecreateMoveSelector" type="tns:ruinRecreateMoveSelectorConfig"/>
@@ -847,6 +874,7 @@
             <xs:element name="moveListFactory" type="tns:moveListFactoryConfig"/>
             <xs:element name="pillarChangeMoveSelector" type="tns:pillarChangeMoveSelectorConfig"/>
             <xs:element name="pillarSwapMoveSelector" type="tns:pillarSwapMoveSelectorConfig"/>
+            <xs:element name="crossVariableMultistageMoveSelector" type="tns:crossVariableMultistageMoveSelectorConfig"/>
             <xs:element name="multistageMoveSelector" type="tns:multistageMoveSelectorConfig"/>
             <xs:element name="listMultistageMoveSelector" type="tns:listMultistageMoveSelectorConfig"/>
             <xs:element name="ruinRecreateMoveSelector" type="tns:ruinRecreateMoveSelectorConfig"/>
@@ -1047,6 +1075,12 @@
       <xs:enumeration value="NONE"/>
       <xs:enumeration value="SEQUENCE"/>
       <xs:enumeration value="ALL"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="multistageVariableKind">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="BASIC"/>
+      <xs:enumeration value="LIST"/>
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="constructionHeuristicPickEarlyType">

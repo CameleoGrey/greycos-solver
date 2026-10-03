@@ -21,9 +21,10 @@ import greycos.solver.core.api.score.Score;
  *
  * <p>The evaluator is valid only inside its stage callback. Direct mutation of the working
  * solution, its entities, values or problem facts is unsupported. All operations must come from
- * this evaluator. The solver owns scoring, recording, rollback and replay. In long custom loops
- * that only read data or construct alternatives, call {@link #checkTermination()} regularly; these
- * individual reads and construction calls do not poll the full termination policy.
+ * this stage's evaluator or its typed variable views. The solver owns scoring, recording, rollback
+ * and replay. In long custom loops that only read data or construct alternatives, call {@link
+ * #checkTermination()} regularly; these individual reads and construction calls do not poll the
+ * full termination policy.
  */
 public interface MultistageMoveEvaluator<Solution_, Score_ extends Score<Score_>> {
 

@@ -13,7 +13,8 @@ import greycos.solver.core.impl.score.director.InnerScoreDirector;
 final class MultistageDomain<Solution_> {
   final List<Object> entities;
   final Map<Object, Boolean> entityMembership = new IdentityHashMap<>();
-  private Map<Object, Boolean> values;
+  private final Map<GenuineVariableDescriptor<Solution_>, Map<Object, Boolean>> valuesByVariable =
+      new IdentityHashMap<>();
 
   MultistageDomain(GenuineVariableDescriptor<Solution_> variable, Solution_ solution) {
     this(variable.getEntityDescriptor(), solution);
@@ -29,6 +30,7 @@ final class MultistageDomain<Solution_> {
       GenuineVariableDescriptor<Solution_> variable,
       InnerScoreDirector<Solution_, ?> director,
       Runnable checkpoint) {
+    var values = valuesByVariable.get(variable);
     if (values == null) {
       checkpoint.run();
       var newValues = new IdentityHashMap<Object, Boolean>();
@@ -50,6 +52,7 @@ final class MultistageDomain<Solution_> {
       }
       checkpoint.run();
       values = newValues;
+      valuesByVariable.put(variable, values);
     }
     return values.containsKey(value);
   }

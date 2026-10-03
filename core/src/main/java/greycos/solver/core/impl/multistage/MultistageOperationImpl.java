@@ -5,7 +5,7 @@ import java.util.List;
 import greycos.solver.core.api.solver.multistage.MultistageOperation;
 
 /** Operations are intents resolved against live state, including within a sequence. */
-record MultistageOperationImpl<Solution_>(Object owner, List<Intent> intents)
+record MultistageOperationImpl<Solution_>(Object owner, List<Intent<Solution_>> intents)
     implements MultistageOperation<Solution_> {
   MultistageOperationImpl {
     intents = List.copyOf(intents);
@@ -22,5 +22,12 @@ record MultistageOperationImpl<Solution_>(Object owner, List<Intent> intents)
     RELOCATE
   }
 
-  record Intent(Kind kind, Object first, Object second, int from, int to, int index) {}
+  record Intent<Solution_>(
+      MultistageVariableContext<Solution_> context,
+      Kind kind,
+      Object first,
+      Object second,
+      int from,
+      int to,
+      int index) {}
 }

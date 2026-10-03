@@ -8,7 +8,8 @@ Local Search scores and accepts the completed candidate as one move.
 
 Use this when a later decision depends on an earlier change: remove several assignments, inspect the changed state,
 and choose their replacements one at a time. A basic-variable selector handles one ordinary planning variable;
-a list-variable selector handles one planning list variable.
+a list-variable selector handles one planning list variable. A cross-variable selector can change several declared
+basic variables and the model's one planning list variable in the same candidate.
 The feature is opt-in. Existing solver configurations retain their selectors and defaults.
 
 [#multistageConfiguration]
@@ -17,7 +18,11 @@ The feature is opt-in. Existing solver configurations retain their selectors and
 The stable API is in `greycos.solver.core.api.solver.multistage`.
 Implement `BasicVariableStageProvider<Solution_, Entity_, Value_, Score_>` for a basic variable,
 or `ListVariableStageProvider<Solution_, Entity_, Value_, Score_>` for a list variable.
+For a candidate that changes several variables, implement `CrossVariableStageProvider<Solution_, Score_>`
+and use <<crossVariableMultistageConfiguration,the cross-variable configuration>>.
 Providers must have a public no-argument constructor.
+
+The following properties apply to the basic and list selectors:
 
 [cols="2,1,4",options="header"]
 |===
@@ -98,6 +103,83 @@ Place this fragment directly inside the list model's Local Search configuration 
 Its provider is shown in <<multistageExamples,the list provider example>>.
 The snippets require the stated application model; they are not standalone applications.
 
+[#crossVariableMultistageConfiguration]
+== Declaring variables for a cross-variable candidate
+
+Use `CrossVariableMultistageMoveSelectorConfig` with a `CrossVariableStageProvider<Solution_, Score_>`.
+Declare every variable that its stages may access before the solver is built.
+The declarations are authoritative: a provider cannot open a view for another variable during evaluation.
+Each declaration identifies the variable kind, entity scope, variable name and value class.
+The selector validates these against the planning model at startup.
+Unknown variables, incompatible value types and duplicate declarations are rejected.
+
+For example, consider a `Vehicle` with an `Integer` basic planning variable `quantity` and a planning list
+variable `customers` containing `Customer` values. The quantity and list variables may belong to the same entity.
+The immutable references can be shared by the configuration and provider:
+
+[source,java]
+----
+static final BasicVariableReference<Vehicle, Integer> QUANTITY =
+        BasicVariableReference.of(Vehicle.class, "quantity", Integer.class);
+static final ListVariableReference<Vehicle, Customer> CUSTOMERS =
+        ListVariableReference.of(Vehicle.class, "customers", Customer.class);
+
+var selector = new CrossVariableMultistageMoveSelectorConfig()
+        .withStageProviderClass(OrderedStages.class)
+        .withVariables(QUANTITY, CUSTOMERS)
+        .withCandidateCountLimit(64)
+        .withProbeCountLimit(10000);
+----
+
+The reference classes are in `greycos.solver.core.api.solver.multistage`;
+the configuration class is in `greycos.solver.core.config.heuristic.selector.move.generic`.
+Use the exact declared value type, such as `Integer.class`, for a basic variable and the exact element type for a list variable.
+A superclass or subtype is not an interchangeable declaration.
+Equal references identify the same declaration; the provider need not hold the exact reference object used in configuration.
+
+The equivalent selector XML for application classes in package `example` is:
+
+[source,xml]
+----
+<crossVariableMultistageMoveSelector>
+  <stageProviderClass>example.OrderedStages</stageProviderClass>
+  <variable>
+    <kind>BASIC</kind>
+    <entityClass>example.Vehicle</entityClass>
+    <variableName>quantity</variableName>
+    <valueClass>java.lang.Integer</valueClass>
+  </variable>
+  <variable>
+    <kind>LIST</kind>
+    <entityClass>example.Vehicle</entityClass>
+    <variableName>customers</variableName>
+    <valueClass>example.Customer</valueClass>
+  </variable>
+  <candidateCountLimit>64</candidateCountLimit>
+  <probeCountLimit>10000</probeCountLimit>
+</crossVariableMultistageMoveSelector>
+----
+
+Place this selector directly in Local Search or inside a `unionMoveSelector`.
+The defaults remain 64 candidate requests per step and 10000 probes for the whole candidate.
+The cache, composition and phase restrictions described above also apply here.
+An unset declaration list inherits a copy of the parent list; an explicitly supplied list replaces it.
+An empty declaration list is invalid.
+
+A declaration covers one variable on the selected entity scope, including its supported inherited declarations.
+One `QUANTITY` declaration permits changing the quantities of several vehicles.
+If a model instead has distinct basic variables, such as `amountA` and `amountB`, declare both with separate
+`BasicVariableReference.of(entityClass, variableName, valueClass)` calls and include both in `withVariables(...)`.
+A candidate may change any subset of its declared variables.
+The cross-variable selector supports several ordinary basic variables and the model's single planning list variable
+across its owners; it does not add support for models with multiple planning list variables.
+All views retain the existing pinning, value-range and working-object identity checks.
+
+Obtain views inside each stage with `evaluator.basic(QUANTITY)` and `evaluator.list(CUSTOMERS)`.
+A view accepts only entities in its declared scope and values of the declared type and current range.
+Declaring a subtype does not authorize operations on unrelated owners or sibling subtypes.
+The common scoring methods on every view evaluate the entire candidate state, including changes to the other variables.
+
 [#multistageProviders]
 == Provider and stage lifecycle
 
@@ -132,7 +214,8 @@ Changing a time budget, hardware, worker count or algorithm configuration can ch
 All changes must be built through the current evaluator.
 The public API does not expose score-director mutation or arbitrary move execution.
 `workingSolution()` is for read-only inspection; never assign variables, change lists or edit problem facts directly.
-Do not retain evaluators or operations after the callback that created them.
+Do not retain evaluators, typed variable views or operations after the callback that created them.
+All views of a cross-variable evaluator share that callback's lifetime and become invalid together when it ends.
 
 [cols="2,4",options="header"]
 |===
@@ -140,7 +223,7 @@ Do not retain evaluators or operations after the callback that created them.
 |`evaluate(operation)` |Temporarily apply, update shadows, calculate an exact evaluation, then restore the stage baseline.
 |`evaluateAll(operations)` |Evaluate alternatives independently against the same baseline, preserving input order.
 |`bestFit(operations)` |Evaluate all alternatives and return an `apply` result for the greatest evaluation. An empty collection aborts the candidate.
-|`sequence(operations)` |Build one operation applying its components in order. Every component must belong to this stage.
+|`sequence(operations)` |Build one operation applying its components in order. Every component must belong to this stage; cross-variable components may come from different views. A probe scores the final sequence state once.
 |`currentEvaluation()` |Calculate the exact evaluation of the current prefix.
 |`checkTermination()` |Cooperatively check cancellation and budget exhaustion; call it in provider loops that do substantial work between probes.
 |===
@@ -156,10 +239,11 @@ Return `MultistageStageResult.apply(operation)` to retain one operation for the 
 `skip()` to continue unchanged, or `abortCandidate()` to undo the entire prefix and stop this candidate.
 A successful probe restores the current stage prefix and its stored score before `evaluate` returns.
 A safe operation-validation rejection preserves that prefix; the stage may choose another legal alternative.
-A partial mutation, listener, scoring or undo failure rebuilds the original candidate baseline, invalidates the evaluator and propagates.
+A partial mutation, listener, scoring or undo failure aborts the candidate and attempts to restore its original baseline.
+The evaluator becomes invalid and the original failure propagates; any recovery failure is attached as a suppressed exception.
 Let failures that require this exceptional recovery, cancellation and probe-budget exhaustion propagate;
 catching them does not permit the callback to resume the candidate.
-These abort paths restore the state from before the candidate.
+Cancellation and budget exhaustion also abort the candidate and trigger rollback.
 Ordinary constraint violations may remain in a completed candidate; normal Local Search acceptance still decides whether to use it.
 
 Here is a two-stage basic provider for the `AssignmentPlan` model described above.
@@ -236,13 +320,16 @@ Object references, indices and operation objects from a previous callback are no
 == Budgets, cancellation and replay
 
 Candidate and probe limits bound custom work independently of the Local Search forager.
-Probe limits include every alternative examined by `evaluateAll` and `bestFit`.
+Probe limits include every alternative examined by `evaluateAll` and `bestFit`, and every `currentEvaluation()` call.
+For a cross-variable candidate, the limit is shared by all stages and all variable views; opening another view does not reset it.
+Evaluating a compound sequence consumes one probe, regardless of its number of component operations.
 Do not return an infinite stage list or an infinite iterable of alternatives.
 Long custom loops must call `checkTermination()`, including loops that only read values or construct operations.
 The framework checks termination at stage, probe and mutation boundaries and in batches during its own enumeration.
 If a budget or solver termination interrupts repair, the whole unfinished candidate is undone.
 
-After evaluation, the engine freezes the concrete accepted operation sequence.
+After evaluation, the engine freezes the concrete accepted operation sequence, including each affected variable.
+Basic changes and list edits in a cross-variable candidate are recorded and restored together.
 Applying the winning move, rebasing it to another working clone, undoing it, and replaying it on workers
 use that recorded sequence; these paths do not invoke the provider or choose alternatives again.
 Rebasing maps entity/value identities to the receiving working solution.
@@ -309,3 +396,124 @@ public final class ReinsertStages implements
 If no legal replacement exists, `bestFit` aborts the candidate and restores the original state.
 For a model with pins, restrict the candidate population to movable tasks in stable order.
 Keep that population and its index mapping fixed during each step; recompute it when eligibility changes between steps.
+
+[#crossVariableMultistageExample]
+== Coordinating quantities and customer assignment
+
+Consider a planning solution `Plan` with a `vehicles` list, where each vehicle has the `quantity` and
+`customers` planning variables described above.
+The `QUANTITY` and `CUSTOMERS` references match the declarations shown above.
+Assume all vehicles and customers are movable, and each customer must be assigned exactly once.
+
+The hard constraint requires each vehicle's `quantity` to equal the demand of its assigned customers.
+The soft constraint minimizes `quantity * unitCost` across vehicles.
+Moving a customer of demand `d` from vehicle A to vehicle B therefore requires three changes:
+
+. Set A's quantity to `amountA - d`.
+. Set B's quantity to `amountB + d`.
+. Move the customer from A's list to B's list.
+
+Here `amountA` and `amountB` are the current values of the same `quantity` variable on two vehicles.
+Each individual change violates the hard equality until the other two changes complete.
+Local Search accepts or rejects their combined result as one candidate.
+
+=== Ordered stages
+
+`OrderedStages` keeps its current `Plan` in `solution` through `initialize`, releases it in `phaseEnded`,
+and returns one candidate while the source has a transferable customer.
+Its `createStages` implementation is:
+
+[source,java]
+----
+public List<CrossVariableCustomStage<Plan, HardSoftScore>> createStages(
+        long candidateIndex, RandomGenerator random) {
+    var source = solution.vehicles.getFirst();
+    var target = solution.vehicles.getLast();
+    var customer = source.customers.getFirst();
+    return List.of(
+        evaluator -> MultistageStageResult.apply(
+            evaluator.basic(QUANTITY).assign(source, source.quantity - customer.demand)),
+        evaluator -> MultistageStageResult.apply(
+            evaluator.basic(QUANTITY).assign(target, target.quantity + customer.demand)),
+        evaluator -> MultistageStageResult.apply(
+            evaluator.list(CUSTOMERS).place(customer, target, target.customers.size())));
+}
+----
+
+The second stage runs with A's new quantity; the third runs with both new quantities and updated shadows.
+A more selective third stage can inspect that changed state, enumerate `legalPositions(customer)`,
+and use `bestFit` to choose a destination. Build those alternatives inside the third callback.
+The operations and variable views from earlier callbacks have expired.
+
+Stage order does not add lookahead automatically.
+If the first stage uses `bestFit` to choose a quantity, its alternatives are scored before the later customer transfer.
+It can reject a quantity that would become useful after that transfer, or choose one that later stages cannot repair.
+To compare coordinated choices by their completed scores, explicitly build and probe whole combinations.
+
+=== One compound probe
+
+A provider can use the same candidate identities and create one stage whose sequence changes both quantities
+and moves the customer:
+
+[source,java]
+----
+return List.of(evaluator -> {
+    var quantity = evaluator.basic(QUANTITY);
+    var routes = evaluator.list(CUSTOMERS);
+    var operation = evaluator.sequence(List.of(
+        quantity.assign(source, source.quantity - customer.demand),
+        quantity.assign(target, target.quantity + customer.demand),
+        routes.place(customer, target, target.customers.size())));
+    var evaluation = evaluator.evaluate(operation);
+    return evaluation.isComplete() && evaluation.score().hardScore() == 0
+            ? MultistageStageResult.apply(operation)
+            : MultistageStageResult.abortCandidate();
+});
+----
+
+`source`, `target` and `customer` are selected as in `OrderedStages`.
+The operation uses views from the same callback. Its components run in order and update shadows,
+then the probe scores the completed state once. Before `evaluate` returns, both quantities, both lists,
+all shadows and the stored score return to the stage baseline.
+Returning `apply(operation)` retains that sequence for the candidate.
+For several coordinated alternatives, create one sequence per alternative and pass them to `bestFit`.
+This performs the joint comparison explicitly and consumes one probe per sequence.
+
+=== Integration tests
+
+From the repository root, run the quantity/list integration tests with a supported JDK:
+
+[source,shell]
+----
+./mvnw -pl core -Dtest=CrossVariableVehicleIntegrationTest test
+----
+
+The tests exercise ordered stages and compound probes with `NONE`, `1`, `2` and `4` move workers.
+They check committed assignments, list shadows, preservation of the input problem, independent score calculation,
+and that replay does not invoke the stage callbacks again.
+The shared planning model and assertions are test fixtures in `CrossVariableVehicleTestSupport`.
+
+=== Optional validation and measurements
+
+Run the bounded synthetic measurement harness explicitly:
+
+[source,shell]
+----
+./mvnw -pl core -am -Dtest=CrossVariablePerformanceIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false -Dgreycos.crossVariableBenchmark=true test
+----
+
+It performs three warmup runs and seven measured runs per scenario, writing
+`core/target/cross-variable-benchmark.csv`.
+The first comparison runs 200 steps on 32 entities through the existing single-variable and cross-variable APIs
+and requires identical state/score traces and matching candidate, probe and replay counts.
+The second gives ordinary selectors, single-variable multistage selectors and a cross-variable selector
+the same three-step budget for the coupled quantity/customer problem.
+The existing single-variable path runs the current implementation; it is not a pre-change source baseline.
+
+The CSV records elapsed time, current-thread allocated bytes, score calculations, move evaluations,
+provider candidates, stage callbacks, probes, prepared-step replays, completed steps, final scores and trace hashes.
+Runs use `NO_ASSERT` and `moveThreadCount=NONE`.
+Time and allocation include solving, step snapshots and independent score calculations; setup, final assertions
+and CSV export are outside the measured interval. An allocation value of `-1` means the JVM does not support the counter.
+Compare scores and actual work together: the coupled scenarios can evaluate different numbers of moves and probes
+under the same step budget. These small workloads do not establish a general solver speedup.

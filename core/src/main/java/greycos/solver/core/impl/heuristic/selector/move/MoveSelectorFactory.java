@@ -8,6 +8,7 @@ import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSel
 import greycos.solver.core.config.heuristic.selector.move.factory.MoveIteratorFactoryConfig;
 import greycos.solver.core.config.heuristic.selector.move.factory.MoveListFactoryConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.CrossVariableMultistageMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.PillarSwapMoveSelectorConfig;
@@ -26,6 +27,7 @@ import greycos.solver.core.impl.heuristic.selector.move.composite.UnionMoveSelec
 import greycos.solver.core.impl.heuristic.selector.move.factory.MoveIteratorFactoryFactory;
 import greycos.solver.core.impl.heuristic.selector.move.factory.MoveListFactoryFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.CrossVariableMultistageMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.MultistageMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.PillarChangeMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.PillarSwapMoveSelectorFactory;
@@ -43,7 +45,13 @@ public interface MoveSelectorFactory<Solution_> {
 
   static <Solution_> AbstractMoveSelectorFactory<Solution_, ?> create(
       MoveSelectorConfig<?> moveSelectorConfig) {
-    if (moveSelectorConfig instanceof MultistageMoveSelectorConfig multistageMoveSelectorConfig) {
+    if (moveSelectorConfig
+        instanceof
+        CrossVariableMultistageMoveSelectorConfig crossVariableMultistageMoveSelectorConfig) {
+      return new CrossVariableMultistageMoveSelectorFactory<>(
+          crossVariableMultistageMoveSelectorConfig);
+    } else if (moveSelectorConfig
+        instanceof MultistageMoveSelectorConfig multistageMoveSelectorConfig) {
       return new MultistageMoveSelectorFactory<>(multistageMoveSelectorConfig);
     } else if (moveSelectorConfig
         instanceof ListMultistageMoveSelectorConfig listMultistageMoveSelectorConfig) {
