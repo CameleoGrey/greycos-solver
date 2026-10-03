@@ -2,7 +2,6 @@ package greycos.solver.core.impl.localsearch.decider.gls;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
@@ -513,8 +512,9 @@ public final class GuidedLocalSearchDecider<Solution_>
       int unproductiveRounds = 0;
       int decisionPenaltyUpdates = 0;
       int transitionsWithoutPenalty = 0;
+      var replay = new GuidedLocalSearchCandidateReplay<Solution_>();
       while (!terminated(stepScope)) {
-        var result = runRound(stepScope, currentScore, currentPenalty);
+        var result = runRound(stepScope, currentScore, currentPenalty, replay);
         if (result.terminated()) {
           stepScope.setNoStepReason(NoStepReason.TERMINATED);
           return;
@@ -610,7 +610,8 @@ public final class GuidedLocalSearchDecider<Solution_>
   private RoundResult<Solution_> runRound(
       LocalSearchStepScope<Solution_> stepScope,
       InnerScore<?> currentScore,
-      GuidedLocalSearchNumber currentPenalty) {
+      GuidedLocalSearchNumber currentPenalty,
+      GuidedLocalSearchCandidateReplay<Solution_> replay) {
     decisionRounds++;
     LOGGER.debug(
         "{}GLS round ({}), step ({}), focus level ({}), guidance version ({}), penalty version ({}), state ({}).",
@@ -631,7 +632,10 @@ public final class GuidedLocalSearchDecider<Solution_>
             scale(),
             snapshots(),
             learning.snapshot());
-    Iterator<Move<Solution_>> iterator = repository.iterator();
+    var iterator =
+        replay.round(
+            repository.iterator(),
+            move -> selectionContext == null || selectionContext.isOrdinaryCandidate(move));
     long limit = searchMode == GuidedLocalSearchSearchMode.SAMPLED ? sampleSize : Long.MAX_VALUE;
     long attempted = 0;
     int inPlay = 0;
@@ -645,22 +649,21 @@ public final class GuidedLocalSearchDecider<Solution_>
       Candidate<Solution_> candidate;
       if (pipeline == null) {
         if (attempted >= limit || !iterator.hasNext()) break;
-        var move = iterator.next();
-        boolean ordinaryOrigin =
-            selectionContext == null || selectionContext.isOrdinaryCandidate(move);
+        var selection = iterator.next();
         attempted++;
         attemptedCandidates++;
-        candidate = evaluateSequential(stepScope, move, ordinaryOrigin);
+        candidate = evaluateSequential(stepScope, selection, replay);
       } else {
         while (inPlay < bufferSize && attempted < limit && !sourceExhausted) {
           if (!iterator.hasNext()) {
             sourceExhausted = true;
             break;
           }
-          var move = iterator.next();
-          boolean ordinaryOrigin =
-              selectionContext == null || selectionContext.isOrdinaryCandidate(move);
-          pipeline.submit(nextMoveIndex, move, new CandidateContext(context, ordinaryOrigin));
+          var selection = iterator.next();
+          pipeline.submit(
+              nextMoveIndex,
+              selection.move(),
+              new CandidateContext(context, selection.ordinaryOrigin(), selection.retainResult()));
           nextMoveIndex = Math.incrementExact(nextMoveIndex);
           attempted++;
           attemptedCandidates++;
@@ -689,6 +692,11 @@ public final class GuidedLocalSearchDecider<Solution_>
               && !result.score().isStructurallyFlawed()) {
             throw new IllegalStateException(
                 "Guided Local Search received a valid candidate without its feature evaluation.");
+          }
+          if (candidateContext.retainResult()
+              && result.score().isFullyAssigned()
+              && !result.score().isStructurallyFlawed()) {
+            replay.retain(result.move(), candidateContext.ordinaryOrigin());
           }
           candidate =
               new Candidate<>(
@@ -749,8 +757,11 @@ public final class GuidedLocalSearchDecider<Solution_>
   }
 
   private Candidate<Solution_> evaluateSequential(
-      LocalSearchStepScope<Solution_> stepScope, Move<Solution_> move, boolean ordinaryOrigin) {
+      LocalSearchStepScope<Solution_> stepScope,
+      GuidedLocalSearchCandidateReplay.Selection<Solution_> selection,
+      GuidedLocalSearchCandidateReplay<Solution_> replay) {
     var director = stepScope.getScoreDirector();
+    var move = selection.move();
     int moveIndex = nextMoveIndex;
     nextMoveIndex = Math.incrementExact(nextMoveIndex);
     if (!(move instanceof PreparableMove<Solution_>)
@@ -783,8 +794,7 @@ public final class GuidedLocalSearchDecider<Solution_>
               assertFromScratch,
               finalStateConsumer);
       if (result.status() != PreparedMoveEvaluation.Status.EVALUATED) return null;
-      move = PreparedMoveFilters.filter(result.move(), director);
-      if (move == null) return null;
+      move = result.move();
       score = result.score();
     } else {
       var evaluatedMove = move;
@@ -792,6 +802,12 @@ public final class GuidedLocalSearchDecider<Solution_>
           director.executeTemporaryMove(
               move, view -> finalStateConsumer.accept(view, evaluatedMove), assertFromScratch);
     }
+    var filteredMove = PreparedMoveFilters.filter(move, director);
+    if (filteredMove == null) return null;
+    if (selection.retainResult() && score.isFullyAssigned() && !score.isStructurallyFlawed()) {
+      replay.retain(move, selection.ordinaryOrigin());
+    }
+    move = filteredMove;
     if (assertUndo) {
       director.assertExpectedUndoMoveScore(
           move,
@@ -800,7 +816,7 @@ public final class GuidedLocalSearchDecider<Solution_>
               -1, stepScope.getPhaseScope().getPhaseIndex(), stepScope.getStepIndex(), moveIndex));
     }
     if (assertFromScratch) tracker.assertFromScratch();
-    return new Candidate<>(move, score, holder[0], automaticDelta[0], ordinaryOrigin);
+    return new Candidate<>(move, score, holder[0], automaticDelta[0], selection.ordinaryOrigin());
   }
 
   private static boolean validCandidate(InnerScoreDirector<?, ?> director) {
@@ -1206,7 +1222,7 @@ public final class GuidedLocalSearchDecider<Solution_>
       List<GuidedLocalSearchPenaltyTable.Snapshot<Object>> snapshots,
       GuidedLocalSearchLearning.Snapshot learning) {}
 
-  private record CandidateContext(RoundContext round, boolean ordinaryOrigin)
+  private record CandidateContext(RoundContext round, boolean ordinaryOrigin, boolean retainResult)
       implements MoveEvaluationPipeline.EvaluationContext {}
 
   private record CandidatePenalty(

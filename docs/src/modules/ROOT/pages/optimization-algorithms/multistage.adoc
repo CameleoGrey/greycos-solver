@@ -337,6 +337,20 @@ This is necessary because reevaluating a custom stage on a later state could cho
 Frozen replay is valid only for the corresponding baseline and lifecycle epoch.
 The engine invalidates speculative candidates when the working state is reset or replaced.
 
+=== Guided Local Search retries
+
+xref:optimization-algorithms/guided-local-search.adoc#guidedLocalSearchRounds[Guided Local Search]
+retains successfully prepared multistage moves for reconsideration within the same step.
+It alternates retained moves with fresh candidates while both are available, so a move rejected under earlier guidance
+can be considered again after penalties or focus change.
+Each reconsideration replays the frozen operations and recalculates the score and current GLS guidance.
+It does not invoke the multistage provider or stage callbacks, or consume additional probes.
+
+`candidateCountLimit` continues to bound fresh preparation requests per step, and `probeCountLimit` continues to bound
+probes within each preparation. Every reconsideration counts toward GLS `sampleSize` and `scoreCalculationCountLimit`.
+Retained moves are discarded when the step ends. This behavior requires no additional configuration;
+the restrictions on caching, Cartesian-product composition and GLS directed origin selection still apply.
+
 [#multistageExamples]
 == List provider example
 

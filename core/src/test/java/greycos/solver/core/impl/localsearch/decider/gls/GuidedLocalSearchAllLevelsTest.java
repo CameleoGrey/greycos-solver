@@ -22,8 +22,12 @@ import greycos.solver.core.api.localsearch.GuidedLocalSearchFeatureUpdater;
 import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.api.solver.multistage.BasicVariableCustomStage;
+import greycos.solver.core.api.solver.multistage.BasicVariableStageProvider;
+import greycos.solver.core.api.solver.multistage.MultistageStageResult;
 import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.move.factory.MoveIteratorFactoryConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.MultistageMoveSelectorConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
@@ -49,15 +53,17 @@ import greycos.solver.core.testcotwin.TestdataValue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @Timeout(30)
 class GuidedLocalSearchAllLevelsTest {
 
   @ParameterizedTest
-  @ValueSource(strings = {"NONE", "2"})
-  void implicitAllLevelsCrossesAnEarlierHardBarrierAndThenImprovesSoft(String threads) {
-    var solver = build(null, BridgeScore.class, 3, threads);
+  @CsvSource({"NONE,false", "2,false", "NONE,true", "2,true"})
+  void implicitAllLevelsCrossesAnEarlierHardBarrierAndThenImprovesSoft(
+      String threads, boolean multistage) {
+    var solver = build(null, BridgeScore.class, 3, threads, multistage);
     var trace = new ArrayList<BendableScore>();
     var focuses = observe(solver, trace);
     var best = solver.solve(solution("A", "B", "C", "D"));
@@ -206,8 +212,8 @@ class GuidedLocalSearchAllLevelsTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"NONE", "2"})
-  void repairPlateauExhaustsTheSameBoundedStrictRetryLoop(String threads) {
+  @CsvSource({"NONE,false", "2,false", "NONE,true", "2,true"})
+  void repairPlateauExhaustsTheSameBoundedStrictRetryLoop(String threads, boolean multistage) {
     var solver =
         build(
             new GuidedLocalSearchConfig()
@@ -219,7 +225,8 @@ class GuidedLocalSearchAllLevelsTest {
                 .withExcursionStepLimit(1),
             RepairPlateauScore.class,
             100,
-            threads);
+            threads,
+            multistage);
     var trace = new ArrayList<BendableScore>();
     var focuses = observe(solver, trace);
     var last = observeLastDecision(solver);
@@ -265,8 +272,8 @@ class GuidedLocalSearchAllLevelsTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"NONE", "2"})
-  void penaltyBudgetCountsAcrossFocusChangesWithinOneDecision(String threads) {
+  @CsvSource({"NONE,false", "2,false", "NONE,true", "2,true"})
+  void penaltyBudgetCountsAcrossFocusChangesWithinOneDecision(String threads, boolean multistage) {
     var solver =
         build(
             new GuidedLocalSearchConfig()
@@ -276,7 +283,8 @@ class GuidedLocalSearchAllLevelsTest {
                 .withFocusPenaltyUpdateLimit(1),
             FlatScore.class,
             100,
-            threads);
+            threads,
+            multistage);
     var trace = new ArrayList<BendableScore>();
     observe(solver, trace);
     var last = observeLastDecision(solver);
@@ -289,6 +297,10 @@ class GuidedLocalSearchAllLevelsTest {
     assertThat(decider(solver).getStatistics().penaltyUpdates()).isEqualTo(5);
     assertThat(decider(solver).getStatistics().decisionRounds()).isEqualTo(6);
     assertThat(decider(solver).getFocusSwitchCount()).isEqualTo(2);
+    // Each round must reevaluate the same candidate, including after the focus changes.
+    // The multistage selector may prepare only one candidate during this entire decision.
+    assertThat(decider(solver).getControllerDiagnostics().attemptedCandidates()).isEqualTo(6);
+    assertThat(decider(solver).getControllerDiagnostics().doableCandidates()).isEqualTo(6);
     assertThat(decider(solver).getControllerDiagnostics().penaltyUpdatesByLevel())
         .containsExactly(3L, 1L, 1L);
     assertThat(decider(solver).getControllerDiagnostics().penalizedFeaturesByLevel())
@@ -345,13 +357,29 @@ class GuidedLocalSearchAllLevelsTest {
       Class<? extends EasyScoreCalculator<MultiHardSolution, BendableScore>> calculator,
       int steps,
       String threads) {
+    return build(gls, calculator, steps, threads, false);
+  }
+
+  private static DefaultSolver<MultiHardSolution> build(
+      GuidedLocalSearchConfig gls,
+      Class<? extends EasyScoreCalculator<MultiHardSolution, BendableScore>> calculator,
+      int steps,
+      String threads,
+      boolean multistage) {
     var phase =
         new LocalSearchPhaseConfig()
             .withLocalSearchType(LocalSearchType.GUIDED_LOCAL_SEARCH)
             .withMoveSelectorConfig(
-                new MoveIteratorFactoryConfig()
-                    .withMoveIteratorFactoryClass(NextValueMoves.class)
-                    .withSelectionOrder(SelectionOrder.ORIGINAL))
+                multistage
+                    ? new MultistageMoveSelectorConfig()
+                        .withEntityClass(TestdataEntity.class)
+                        .withVariableName("value")
+                        .withStageProviderClass(NextValueStages.class)
+                        .withCandidateCountLimit(1)
+                        .withSelectionOrder(SelectionOrder.ORIGINAL)
+                    : new MoveIteratorFactoryConfig()
+                        .withMoveIteratorFactoryClass(NextValueMoves.class)
+                        .withSelectionOrder(SelectionOrder.ORIGINAL))
             .withTerminationConfig(new TerminationConfig().withStepCountLimit(steps));
     if (gls != null) phase.withGuidedLocalSearchConfig(gls);
     var config =
@@ -579,6 +607,30 @@ class GuidedLocalSearchAllLevelsTest {
     public Iterator<Move<MultiHardSolution>> createRandomMoveIterator(
         ScoreDirector<MultiHardSolution> director, RandomGenerator random) {
       return createOriginalMoveIterator(director);
+    }
+  }
+
+  public static class NextValueStages
+      implements BasicVariableStageProvider<
+          MultiHardSolution, TestdataEntity, TestdataValue, BendableScore> {
+    @Override
+    public long getCandidateCount() {
+      return 1;
+    }
+
+    @Override
+    public List<
+            BasicVariableCustomStage<
+                MultiHardSolution, TestdataEntity, TestdataValue, BendableScore>>
+        createStages(long candidateIndex, RandomGenerator random) {
+      return List.of(
+          evaluator -> {
+            var solution = evaluator.workingSolution();
+            var entity = solution.getEntityList().getFirst();
+            int index = solution.getValueList().indexOf(entity.getValue());
+            var target = solution.getValueList().get((index + 1) % solution.getValueList().size());
+            return MultistageStageResult.apply(evaluator.assign(entity, target));
+          });
     }
   }
 

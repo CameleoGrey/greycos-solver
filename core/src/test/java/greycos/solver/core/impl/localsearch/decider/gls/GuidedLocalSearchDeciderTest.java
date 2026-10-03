@@ -106,7 +106,7 @@ class GuidedLocalSearchDeciderTest {
 
   @ParameterizedTest
   @MethodSource("recoveryConfigurations")
-  void sampledRetriesDoNotInjectThePreviousRoundRetainedMove(String threads, int sampleSize) {
+  void sampledRetriesDoNotRetainOrdinaryMoves(String threads, int sampleSize) {
     var gls =
         new GuidedLocalSearchConfig()
             .withGuidanceMode(GuidedLocalSearchGuidanceMode.FIXED_TARGET)

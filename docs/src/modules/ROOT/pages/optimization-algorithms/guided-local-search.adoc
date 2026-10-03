@@ -166,6 +166,13 @@ it does not force an arbitrary escape move.
 Exhaustion ends the phase normally with `GUIDED_RETRY_EXHAUSTED`, including under step-count-only termination.
 This bound also applies when positive-cost features are constant and cannot change candidate ranking.
 
+For xref:optimization-algorithms/multistage.adoc#multistageReplay[multistage moves], GLS retains successfully prepared
+frozen moves within the current step and alternates them with fresh candidates while both are available.
+Reconsidering a retained move recalculates its score and current guidance without invoking the multistage provider,
+stage callbacks or additional probes. Preparation limits remain unchanged; each reconsideration counts toward
+`sampleSize` and `scoreCalculationCountLimit`. All retained moves are discarded at step end.
+This behavior requires no additional configuration and does not change the supported selectors or their restrictions.
+
 `maxUnproductiveRounds` counts consecutive sampled rounds with no admissible candidate.
 Reaching this bound can escalate an ordinary `ALL_LEVELS` focus if valid, fully initialized candidates were encountered.
 A fixed hard target can enter an excursion if a candidate respects its protected prefix.
