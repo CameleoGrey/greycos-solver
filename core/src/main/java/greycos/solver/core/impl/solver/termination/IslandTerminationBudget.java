@@ -275,7 +275,7 @@ public final class IslandTerminationBudget<Solution_> {
 
     @Override
     public double gradient() {
-      return 0.0;
+      return -1.0;
     }
   }
 
@@ -311,13 +311,11 @@ public final class IslandTerminationBudget<Solution_> {
 
     @Override
     public double gradient() {
-      double result = or ? 0.0 : 1.0;
+      double result = -1.0;
       for (var child : children) {
         if (child.applicable(search)) {
           var next = child.gradient();
-          if (next >= 0.0) {
-            result = or ? Math.max(result, next) : Math.min(result, next);
-          }
+          result = TerminationGradient.combine(!or, result, next);
         }
       }
       return result;
@@ -355,8 +353,7 @@ public final class IslandTerminationBudget<Solution_> {
 
     @Override
     public double gradient() {
-      var result = termination.calculatePhaseTimeGradient(scope);
-      return Double.isNaN(result) ? 1.0 : result;
+      return termination.calculatePhaseTimeGradient(scope);
     }
 
     @Override

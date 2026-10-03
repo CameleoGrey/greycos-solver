@@ -185,7 +185,9 @@ public final class PartitionTerminationBudget<Solution_> {
                 : termination.calculatePhaseTimeGradient(phaseScope);
       }
       // A zero elapsed-time limit is immediately complete, including at exactly its start.
-      if (Double.isNaN(gradient)) {
+      if (Double.isNaN(gradient)
+          && termination instanceof TimeMillisSpentTermination<?> spent
+          && spent.getTimeMillisSpentLimit() == 0) {
         gradient = terminated ? 1.0 : 0.0;
       }
       return new Progress(terminated, gradient, true);
@@ -215,7 +217,7 @@ public final class PartitionTerminationBudget<Solution_> {
         @Nullable AbstractPhaseScope<Solution_> phaseScope,
         boolean gradientOnly) {
       boolean terminated = and;
-      double gradient = and ? 1.0 : 0.0;
+      double gradient = -1.0;
       for (var child : children) {
         var next = child.evaluate(snapshot, solverScope, phaseScope, gradientOnly);
         if (!next.applicable()) {
@@ -225,10 +227,7 @@ public final class PartitionTerminationBudget<Solution_> {
           return new Progress(!and, -1.0, true);
         }
         terminated = and ? terminated && next.terminated() : terminated || next.terminated();
-        if (next.gradient() >= 0.0) {
-          gradient =
-              and ? Math.min(gradient, next.gradient()) : Math.max(gradient, next.gradient());
-        }
+        gradient = TerminationGradient.combine(and, gradient, next.gradient());
       }
       return new Progress(terminated, gradient, true);
     }
@@ -243,6 +242,7 @@ public final class PartitionTerminationBudget<Solution_> {
         @Nullable AbstractPhaseScope<Solution_> phaseScope,
         boolean gradientOnly) {
       if (phaseScope != null
+          && !(solverOrigin && termination instanceof SolverTermination)
           && termination instanceof PhaseTermination<Solution_> phaseTermination
           && !phaseTermination.isApplicableTo(phaseScope.getClass())) {
         return Progress.INAPPLICABLE;

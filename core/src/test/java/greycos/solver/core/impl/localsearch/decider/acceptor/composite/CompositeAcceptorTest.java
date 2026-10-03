@@ -5,6 +5,8 @@ import static greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -59,6 +61,35 @@ class CompositeAcceptorTest {
     assertThat(isCompositeAccepted(true, false, true)).isFalse();
     assertThat(isCompositeAccepted(true, true, false)).isFalse();
     assertThat(isCompositeAccepted(false, false, false)).isFalse();
+  }
+
+  @Test
+  void finalDecisionReachesChildrenSkippedByShortCircuit() {
+    Acceptor<TestdataSolution> first = mock(Acceptor.class);
+    Acceptor<TestdataSolution> skipped = mock(Acceptor.class);
+    var composite = new CompositeAcceptor<>(first, new CompositeAcceptor<>(skipped));
+    var moveScope = new LocalSearchMoveScope<TestdataSolution>(null, 0, null);
+    moveScope.setInitializedScore(SimpleScore.ZERO);
+
+    moveScope.setAccepted(composite.isAccepted(moveScope));
+    composite.moveEvaluated(moveScope);
+
+    assertThat(moveScope.getAccepted()).isFalse();
+    verify(skipped, never()).isAccepted(any());
+    verify(first).moveEvaluated(moveScope);
+    verify(skipped).moveEvaluated(moveScope);
+  }
+
+  @Test
+  void planningValueRequirementIncludesNestedChildren() {
+    Acceptor<TestdataSolution> ordinary = mock(Acceptor.class);
+    Acceptor<TestdataSolution> valueSensitive = mock(Acceptor.class);
+    var composite =
+        new CompositeAcceptor<>(ordinary, new CompositeAcceptor<>(ordinary, valueSensitive));
+
+    assertThat(composite.requiresPlanningValues()).isFalse();
+    when(valueSensitive.requiresPlanningValues()).thenReturn(true);
+    assertThat(composite.requiresPlanningValues()).isTrue();
   }
 
   private boolean isCompositeAccepted(boolean... childAccepts) {

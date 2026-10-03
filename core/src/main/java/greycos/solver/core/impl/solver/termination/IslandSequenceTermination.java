@@ -206,7 +206,8 @@ public final class IslandSequenceTermination<Solution_>
   private double evaluateGradient() {
     synchronized (quota) {
       refreshProgress();
-      return terminated ? 1.0 : root.applicable(searchActive) ? root.gradient() : 0.0;
+      var gradient = root.applicable(searchActive) ? root.gradient() : -1.0;
+      return terminated && gradient >= 0.0 && gradient <= 1.0 ? 1.0 : gradient;
     }
   }
 

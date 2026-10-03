@@ -6,8 +6,14 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.localsearch.decider.acceptor.AbstractAcceptor;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.score.director.InnerScore;
 
+/**
+ * Keeps history for final rejected proposals and executed transitions. Accepted proposals remain
+ * provisional until the forager chooses a step, so their scores must not enter history during
+ * acceptance checks. With one accepted move per step, this preserves the paper's iteration order.
+ */
 public class DiversifiedLateAcceptanceAcceptor<Solution_> extends AbstractAcceptor<Solution_> {
 
   // The worst score in the late elements list
@@ -57,11 +63,29 @@ public class DiversifiedLateAcceptanceAcceptor<Solution_> extends AbstractAccept
     var current =
         (InnerScore)
             moveScope.getStepScope().getPhaseScope().getLastCompletedStepScope().getScore();
-    var previous = current;
-    var accept = moveScore.compareTo(current) == 0 || moveScore.compareTo(getLateWorseScore()) > 0;
-    if (accept) {
-      current = moveScore;
+    return moveScore.compareTo(current) == 0 || moveScore.compareTo(getLateWorseScore()) > 0;
+  }
+
+  @Override
+  public void moveEvaluated(LocalSearchMoveScope<Solution_> moveScope) {
+    if (!moveScope.getScore().isStructurallyFlawed() && !moveScope.getAccepted()) {
+      var incumbent =
+          moveScope.getStepScope().getPhaseScope().getLastCompletedStepScope().getScore();
+      recordIteration(incumbent, incumbent);
     }
+  }
+
+  @Override
+  public void stepEnded(LocalSearchStepScope<Solution_> stepScope) {
+    super.stepEnded(stepScope);
+    var previous = stepScope.getPhaseScope().getLastCompletedStepScope().getScore();
+    // This also records a rejected fallback or an injected move that was actually executed.
+    recordIteration(stepScope.getScore(), previous);
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  private void recordIteration(InnerScore<?> currentScore, InnerScore<?> previous) {
+    var current = (InnerScore) currentScore;
     var lateScore = getPreviousScore(lateScoreIndex);
     // Improves the diversification to allow the next iterations to find a better solution
     var currentScoreCmp = current.compareTo(lateScore);
@@ -73,7 +97,6 @@ public class DiversifiedLateAcceptanceAcceptor<Solution_> extends AbstractAccept
       updateLateScore(current);
     }
     lateScoreIndex = (lateScoreIndex + 1) % lateAcceptanceSize;
-    return accept;
   }
 
   private <Score_ extends Score<Score_>> void updateLateScore(InnerScore<Score_> newScore) {

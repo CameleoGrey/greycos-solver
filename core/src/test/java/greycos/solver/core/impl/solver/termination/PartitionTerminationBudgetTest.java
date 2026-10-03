@@ -314,6 +314,16 @@ class PartitionTerminationBudgetTest {
   }
 
   @Test
+  void invalidSharedScoreGradientRemainsVisibleToCoolingClients() {
+    BestScoreTermination<TestdataSolution> termination = mock(BestScoreTermination.class);
+    doReturn(InnerScore.fullyAssigned(SimpleScore.ZERO)).when(parentPhase).getStartingScore();
+    when(termination.calculatePhaseTimeGradient(parentPhase)).thenReturn(Double.NaN);
+    var budget = new PartitionTerminationBudget<>(termination, parentPhase);
+    assertThat(budget.createChildTermination(parent).calculateSolverTimeGradient(mockSolverScope()))
+        .isNaN();
+  }
+
+  @Test
   void supportedStatefulCustomLeavesAreClonedAndReceiveLifecycleIndependently() {
     var original = supportedCustom();
     var first = mock(MockablePhaseTermination.class);

@@ -61,6 +61,24 @@ public class CompositeAcceptor<Solution_> extends AbstractAcceptor<Solution_> {
   }
 
   @Override
+  public void moveEvaluated(LocalSearchMoveScope<Solution_> moveScope) {
+    // Every child observes the final decision, including those skipped by short-circuiting.
+    for (var acceptor : acceptorList) {
+      acceptor.moveEvaluated(moveScope);
+    }
+  }
+
+  @Override
+  public boolean requiresPlanningValues() {
+    for (var acceptor : acceptorList) {
+      if (acceptor.requiresPlanningValues()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
   public void stepEnded(LocalSearchStepScope<Solution_> stepScope) {
     for (Acceptor<Solution_> acceptor : acceptorList) {
       acceptor.stepEnded(stepScope);

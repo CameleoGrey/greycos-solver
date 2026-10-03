@@ -1,8 +1,11 @@
 package greycos.solver.core.impl.localsearch.scope;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.impl.localsearch.decider.acceptor.tabu.PlanningValueSnapshot;
 import greycos.solver.core.impl.phase.scope.AbstractMoveScope;
 import greycos.solver.core.preview.api.move.Move;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
@@ -10,6 +13,7 @@ import greycos.solver.core.preview.api.move.Move;
 public final class LocalSearchMoveScope<Solution_> extends AbstractMoveScope<Solution_> {
 
   private Boolean accepted = null;
+  private @Nullable PlanningValueSnapshot planningValueSnapshot;
 
   public LocalSearchMoveScope(
       LocalSearchStepScope<Solution_> stepScope, int moveIndex, Move<Solution_> move) {
@@ -27,5 +31,13 @@ public final class LocalSearchMoveScope<Solution_> extends AbstractMoveScope<Sol
 
   public void setAccepted(Boolean accepted) {
     this.accepted = accepted;
+  }
+
+  public @Nullable PlanningValueSnapshot getPlanningValueSnapshot() {
+    return planningValueSnapshot;
+  }
+
+  public void setPlanningValueSnapshot(@Nullable PlanningValueSnapshot planningValueSnapshot) {
+    this.planningValueSnapshot = planningValueSnapshot;
   }
 }

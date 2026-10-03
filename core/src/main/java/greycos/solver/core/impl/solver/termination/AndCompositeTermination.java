@@ -50,39 +50,35 @@ final class AndCompositeTermination<Solution_> extends AbstractCompositeTerminat
 
   /**
    * Calculates the minimum timeGradient of all Terminations. Not supported timeGradients (-1.0) are
-   * ignored.
+   * ignored. If no applicable termination supports a gradient, returns -1.0.
    *
    * @return the minimum timeGradient of the Terminations.
    */
   @Override
   public double calculateSolverTimeGradient(SolverScope<Solution_> solverScope) {
-    var timeGradient = 1.0;
+    var timeGradient = -1.0;
     for (var termination : solverTerminationList) {
       var nextTimeGradient = termination.calculateSolverTimeGradient(solverScope);
-      if (nextTimeGradient >= 0.0) {
-        timeGradient = Math.min(timeGradient, nextTimeGradient);
-      }
+      timeGradient = TerminationGradient.combine(true, timeGradient, nextTimeGradient);
     }
     return timeGradient;
   }
 
   /**
    * Calculates the minimum timeGradient of all Terminations. Not supported timeGradients (-1.0) are
-   * ignored.
+   * ignored. If no applicable termination supports a gradient, returns -1.0.
    *
    * @return the minimum timeGradient of the Terminations.
    */
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> phaseScope) {
-    var timeGradient = 1.0;
+    var timeGradient = -1.0;
     for (var termination : phaseTerminationList) {
       if (!termination.isApplicableTo(phaseScope.getClass())) {
         continue;
       }
       var nextTimeGradient = termination.calculatePhaseTimeGradient(phaseScope);
-      if (nextTimeGradient >= 0.0) {
-        timeGradient = Math.min(timeGradient, nextTimeGradient);
-      }
+      timeGradient = TerminationGradient.combine(true, timeGradient, nextTimeGradient);
     }
     return timeGradient;
   }

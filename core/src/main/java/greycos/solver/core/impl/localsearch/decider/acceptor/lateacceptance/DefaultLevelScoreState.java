@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.localsearch.decider.acceptor.lateacceptance;
 
+import java.math.BigDecimal;
+
 import greycos.solver.core.api.score.IBendableScore;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
@@ -62,7 +64,14 @@ final class DefaultLevelScoreState<Solution_> implements LevelScoreState<Solutio
       var newBestScore = stepScope.getPhaseScope().getBestScore();
       var newBestScoreLevels = newBestScore.raw().toLevelNumbers();
       for (var i = 0; i < nonDominatedLevelCount; i++) {
-        if (!newBestScoreLevels[i].equals(previousBestScoreLevels[i])) {
+        var newLevel = newBestScoreLevels[i];
+        var previousLevel = previousBestScoreLevels[i];
+        // BigDecimal score comparisons ignore scale; history resets must do the same.
+        boolean unchanged =
+            newLevel instanceof BigDecimal decimalLevel
+                ? decimalLevel.compareTo((BigDecimal) previousLevel) == 0
+                : newLevel.equals(previousLevel);
+        if (!unchanged) {
           return true;
         }
       }

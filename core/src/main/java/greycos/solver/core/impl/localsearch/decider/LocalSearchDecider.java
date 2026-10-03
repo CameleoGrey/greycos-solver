@@ -7,6 +7,7 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
 import greycos.solver.core.impl.localsearch.decider.acceptor.Acceptor;
+import greycos.solver.core.impl.localsearch.decider.acceptor.tabu.PlanningValueSnapshot;
 import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
@@ -36,11 +37,14 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
   protected final MoveRepository<Solution_> moveRepository;
   protected final Acceptor<Solution_> acceptor;
   protected final LocalSearchForager<Solution_> forager;
+  protected final boolean requiresPlanningValues;
 
   protected boolean assertMoveScoreFromScratch = false;
   protected boolean assertExpectedUndoMoveScore = false;
   protected boolean resetOnPendingMove = false;
   private LocalSearchPhaseScope<Solution_> repositoryPhaseScope;
+  private LocalSearchCandidateLimit candidateLimit;
+  private boolean candidateLimitWarningLogged;
 
   public LocalSearchDecider(
       String logIndentation,
@@ -53,6 +57,7 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
     this.moveRepository = moveRepository;
     this.acceptor = acceptor;
     this.forager = forager;
+    requiresPlanningValues = acceptor.requiresPlanningValues();
   }
 
   public Termination<Solution_> getTermination() {
@@ -92,6 +97,7 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
   }
 
   public void phaseStarted(LocalSearchPhaseScope<Solution_> phaseScope) {
+    candidateLimitWarningLogged = false;
     startRepositoryPhase(phaseScope);
     acceptor.phaseStarted(phaseScope);
     forager.phaseStarted(phaseScope);
@@ -99,6 +105,10 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
 
   public void stepStarted(LocalSearchStepScope<Solution_> stepScope) {
     moveRepository.stepStarted(stepScope);
+    candidateLimit =
+        moveRepository.isNeverEnding()
+            ? new LocalSearchCandidateLimit(moveRepository.getSizeEstimate())
+            : null;
     acceptor.stepStarted(stepScope);
     forager.stepStarted(stepScope);
   }
@@ -126,8 +136,8 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
         for (var move : moveRepository) {
           var moveScope = new LocalSearchMoveScope<>(stepScope, moveIndex, move);
           moveIndex++;
-          doMove(moveScope);
-          if (forager.isQuitEarly()) {
+          boolean accepted = doMove(moveScope);
+          if (recordCandidate(stepScope, accepted) || forager.isQuitEarly()) {
             break;
           }
           stepScope.getPhaseScope().getSolverScope().checkYielding();
@@ -142,9 +152,12 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
     }
   }
 
-  protected <Score_ extends Score<Score_>> void doMove(LocalSearchMoveScope<Solution_> moveScope) {
+  protected <Score_ extends Score<Score_>> boolean doMove(
+      LocalSearchMoveScope<Solution_> moveScope) {
     var scoreDirector = moveScope.<Score_>getScoreDirector();
     var move = moveScope.getMove();
+    PlanningValueSnapshot[] planningValues =
+        requiresPlanningValues ? new PlanningValueSnapshot[1] : null;
     InnerScore<Score_> score;
     if (move instanceof PreparableMove<Solution_> preparableMove) {
       var stepScope = moveScope.getStepScope();
@@ -153,27 +166,45 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
               scoreDirector,
               () -> checkPreparationTermination(stepScope),
               assertMoveScoreFromScratch,
-              null);
+              requiresPlanningValues
+                  ? (view, frozenMove) ->
+                      planningValues[0] = PlanningValueSnapshot.capture(scoreDirector, frozenMove)
+                  : null);
       if (result.status() != PreparedMoveEvaluation.Status.EVALUATED) {
-        return;
+        return false;
       }
       move = PreparedMoveFilters.filter(result.move(), scoreDirector);
       if (move == null) {
-        return;
+        return false;
       }
       moveScope = new LocalSearchMoveScope<>(stepScope, moveScope.getMoveIndex(), move);
       score = result.score();
     } else {
       if (move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove
           && !selectorBasedMove.isMoveDoable(scoreDirector)) {
-        throw new IllegalStateException(
-            "Impossible state: Local search move selector (%s) provided a non-doable move (%s)."
-                .formatted(moveRepository, move));
+        logger.trace("{}        Ignoring non-doable move ({}).", logIndentation, move);
+        return false;
       }
-      score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
+      if (requiresPlanningValues) {
+        var evaluatedMove = move;
+        score =
+            scoreDirector.executeTemporaryMove(
+                move,
+                view ->
+                    planningValues[0] = PlanningValueSnapshot.capture(scoreDirector, evaluatedMove),
+                assertMoveScoreFromScratch);
+      } else {
+        score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
+      }
     }
     moveScope.setScore(score);
-    moveScope.setAccepted(acceptor.isAccepted(moveScope));
+    if (requiresPlanningValues) {
+      moveScope.setPlanningValueSnapshot(planningValues[0]);
+      requirePlanningValueSnapshot(moveScope);
+    }
+    boolean accepted = acceptor.isAccepted(moveScope);
+    moveScope.setAccepted(accepted);
+    acceptor.moveEvaluated(moveScope);
     forager.addMove(moveScope);
     if (assertExpectedUndoMoveScore) {
       scoreDirector.assertExpectedUndoMoveScore(
@@ -188,6 +219,40 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
         moveScope.getScore().raw(),
         moveScope.getAccepted(),
         moveScope.getMove());
+    return accepted;
+  }
+
+  protected void requirePlanningValueSnapshot(LocalSearchMoveScope<Solution_> moveScope) {
+    if (!moveScope.getScore().isStructurallyFlawed()
+        && moveScope.getPlanningValueSnapshot() == null) {
+      throw new IllegalStateException(
+          "The evaluated move (%s) at move index (%d) has no planning value metadata required by value tabu."
+              .formatted(moveScope.getMove(), moveScope.getMoveIndex()));
+    }
+  }
+
+  /** Counts consumed candidates only; workers may have evaluated additional speculative moves. */
+  protected boolean recordCandidate(LocalSearchStepScope<Solution_> stepScope, boolean accepted) {
+    if (candidateLimit == null || !candidateLimit.record(accepted)) {
+      return false;
+    }
+    if (!candidateLimitWarningLogged) {
+      candidateLimitWarningLogged = true;
+      logger.warn(
+          "{}Local Search step ({}) exhausted its sampling budget of ({}) consecutive candidates without acceptance from ({}). "
+              + "Using the configured forager. Configure a finite selectedCountLimit to control a larger sample explicitly.",
+          logIndentation,
+          stepScope.getStepIndex(),
+          candidateLimit.getLimit(),
+          moveRepository);
+    } else {
+      logger.debug(
+          "{}Local Search step ({}) exhausted its candidate sampling budget ({}).",
+          logIndentation,
+          stepScope.getStepIndex(),
+          candidateLimit.getLimit());
+    }
+    return true;
   }
 
   protected void checkPreparationTermination(LocalSearchStepScope<Solution_> stepScope) {
@@ -207,6 +272,8 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
         stepScope.setStepString(step.toString());
       }
       stepScope.setScore(pickedMoveScope.getScore());
+    } else if (candidateLimit != null && candidateLimit.isExhausted()) {
+      stepScope.setNoStepReason(LocalSearchStepScope.NoStepReason.NO_ADMISSIBLE_MOVE);
     }
   }
 
@@ -221,6 +288,7 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
   }
 
   public void phaseEnded(LocalSearchPhaseScope<Solution_> phaseScope) {
+    candidateLimit = null;
     endRepositoryPhase();
     acceptor.phaseEnded(phaseScope);
     forager.phaseEnded(phaseScope);

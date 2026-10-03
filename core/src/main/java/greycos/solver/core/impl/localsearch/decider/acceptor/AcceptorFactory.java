@@ -258,10 +258,11 @@ public class AcceptorFactory<Solution_> {
               .getScoreDefinition()
               .parseScore(acceptorConfig.getGreatDelugeWaterLevelIncrementScore()));
     } else if (acceptorConfig.getGreatDelugeWaterLevelIncrementRatio() != null) {
-      if (acceptorConfig.getGreatDelugeWaterLevelIncrementRatio() <= 0.0) {
+      if (!Double.isFinite(acceptorConfig.getGreatDelugeWaterLevelIncrementRatio())
+          || acceptorConfig.getGreatDelugeWaterLevelIncrementRatio() <= 0.0) {
         throw new IllegalArgumentException(
             """
-            The acceptorConfig.getGreatDelugeWaterLevelIncrementRatio() (%s) must be positive \
+            The acceptorConfig.getGreatDelugeWaterLevelIncrementRatio() (%s) must be finite and positive \
             because the water level should increase.\
             """
                 .formatted(acceptorConfig.getGreatDelugeWaterLevelIncrementRatio()));

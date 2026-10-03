@@ -6,12 +6,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import greycos.solver.core.api.score.BendableScore;
+import greycos.solver.core.api.score.HardSoftBigDecimalScore;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.localsearch.decider.acceptor.AbstractAcceptorTest;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.score.definition.BendableScoreDefinition;
+import greycos.solver.core.impl.score.definition.HardSoftBigDecimalScoreDefinition;
 import greycos.solver.core.impl.score.definition.HardSoftScoreDefinition;
 import greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -21,6 +24,36 @@ import greycos.solver.core.impl.solver.scope.SolverScope;
 import org.junit.jupiter.api.Test;
 
 class LateAcceptanceAcceptorTest extends AbstractAcceptorTest {
+
+  @Test
+  void decimalScaleChangeDoesNotEraseSoftScoreHistory() {
+    var acceptor = new LateAcceptanceAcceptor<>();
+    acceptor.setLateAcceptanceSize(3);
+    var scoreDirector = mock(InnerScoreDirector.class);
+    when(scoreDirector.getScoreDefinition()).thenReturn(new HardSoftBigDecimalScoreDefinition());
+    var solver = new SolverScope<>();
+    solver.setScoreDirector(scoreDirector);
+    var initial = HardSoftBigDecimalScore.parseScore("0.0hard/-100soft");
+    solver.setInitializedBestScore(initial);
+    var phase = new LocalSearchPhaseScope<>(solver, 0);
+    phase.reset();
+    acceptor.phaseStarted(phase);
+    var step = new LocalSearchStepScope<>(phase);
+    acceptor.stepStarted(step);
+    var improved = HardSoftBigDecimalScore.parseScore("0.00hard/-50soft");
+    solver.setInitializedBestScore(improved);
+    phase.setBestSolutionStepIndex(0);
+    step.setInitializedScore(improved);
+    acceptor.stepEnded(step);
+    phase.setLastCompletedStepScope(step);
+
+    assertThat(acceptor.getScore(0)).isEqualTo(InnerScore.fullyAssigned(improved));
+    assertThat(acceptor.getScore(1)).isEqualTo(InnerScore.fullyAssigned(initial));
+    assertThat(acceptor.getScore(2)).isEqualTo(InnerScore.fullyAssigned(initial));
+    var move = new LocalSearchMoveScope<>(new LocalSearchStepScope<>(phase), 0, null);
+    move.setInitializedScore(HardSoftBigDecimalScore.parseScore("0.00hard/-75soft"));
+    assertThat(acceptor.isAccepted(move)).isTrue();
+  }
 
   @Test
   void lateAcceptanceSize() {

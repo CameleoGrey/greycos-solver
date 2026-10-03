@@ -171,6 +171,23 @@ because the shuffling generates a random number for every element in the selecto
 taking up a lot of time, but only a few elements are actually selected.
 ====
 
+[#localSearchCandidateBudget]
+==== Candidate budget when no move is accepted
+
+A never-ending move selector can keep producing rejected candidates without reaching `acceptedCountLimit`.
+Local Search stops that selection round after a bounded number of consecutive consumed candidates without an accepted move.
+For a known, valid estimated neighborhood size, the budget is `min(327670, 10 * max(1, estimatedSize))`.
+If the estimate is unknown or invalid, the budget is `327670`.
+Every consumed candidate counts, including a candidate that cannot be executed or produces a structurally invalid solution.
+A candidate accepted by the final combined acceptor decision resets the counter.
+
+When the budget is exhausted, the forager picks from the candidates already evaluated using its usual rules,
+including its existing fallback to a rejected candidate when no candidate was accepted.
+The budget bounds sampling; exhausting it does not prove that every possible move was evaluated or that the solution is a local optimum.
+Finite selectors keep their own exhaustion rules.
+To set an explicit per-step selection bound, configure
+xref:optimization-algorithms/overview.adoc#limitedSelection[`selectedCountLimit`] on the outer move selector;
+the resulting finite selector uses that limit instead of this automatic budget.
 
 [#localSearchPickEarlyType]
 ==== Pick early type
@@ -338,21 +355,13 @@ To avoid hard coding the tabu size, configure a tabu ratio, relative to the numb
     </acceptor>
 ----
 * _Planning value tabu_ makes the planning values of recent steps tabu.
-For example, for school timetablig it makes the recently assigned timeslots tabu.
+For example, for school timetabling it makes the recently assigned timeslots tabu.
+Configure a fixed `valueTabuSize`:
 +
 [source,xml,options="nowrap"]
 ----
     <acceptor>
       <valueTabuSize>7</valueTabuSize>
-    </acceptor>
-----
-+
-To avoid hard coding the tabu size, configure a tabu ratio, relative to the number of values, for example 2%:
-+
-[source,xml,options="nowrap"]
-----
-    <acceptor>
-      <valueTabuRatio>0.02</valueTabuRatio>
     </acceptor>
 ----
 * _Move tabu_ makes recent steps tabu. It does not accept a move equal to one of those steps.
@@ -396,21 +405,27 @@ Use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Ben
 
 Simulated Annealing evaluates only a few moves per step, so it steps quickly.
 In the classic implementation, the first accepted move is the winning step.
-A move is accepted if it doesn't decrease the score or - in case it does decrease the score - it passes a random check.
-The chance that a decreasing move passes the random check decreases relative to the size of the score decrement and the time the phase has been running (which is represented as the temperature).
+A move whose score is equal to or better than the current score in lexicographic score order is always accepted.
+For a worse move, each score level that deteriorates contributes a factor `exp(-loss / temperature)`;
+the product of these factors is the acceptance probability.
+Improvements in other levels do not offset these penalties.
+A loss at a level with zero temperature rejects the move.
+Lexicographic improvements remain accepted even if a softer level deteriorates at zero temperature.
+As the termination time gradient increases from `0` to `1`, each level's temperature decreases from its starting value toward zero.
 
 image::optimization-algorithms/local-search/simulatedAnnealing.png[align="center"]
 
 Simulated Annealing does not always pick the move with the highest score, neither does it evaluate many moves per step.
 At least at first.
 Instead, it gives non improving moves also a chance to be picked, depending on its score and the time gradient of the ``Termination``.
-In the end, it gradually turns into Hill Climbing, only accepting improving moves.
+In the end, it gradually turns into Hill Climbing, accepting only moves that do not decrease the score.
 
 
 [#simulatedAnnealingConfiguration]
 === Configuration
 
 Start with a `simulatedAnnealingStartingTemperature` set to the maximum score delta a single move can cause.
+Every temperature level must be finite and nonnegative.
 Use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] to tweak the value.
 Advanced configuration:
 
@@ -429,6 +444,31 @@ Advanced configuration:
 
 Simulated Annealing should use a low ``acceptedCountLimit``.
 The classic algorithm uses an `acceptedCountLimit` of ``1``, but often `4` performs better.
+
+Simulated Annealing requires a termination that supplies a valid cooling time gradient.
+xref:optimization-algorithms/overview.adoc#diminishedReturnsTermination[Diminished Returns termination] does not supply one.
+Using it alone causes Simulated Annealing to fail because no cooling gradient is available.
+Combine it with a supported time or work limit, such as `secondsSpentLimit` or a phase `stepCountLimit`.
+For example, with a `SimpleScore`:
+
+[source,xml,options="nowrap"]
+----
+  <localSearch>
+    <termination>
+      <terminationCompositionStyle>OR</terminationCompositionStyle>
+      <diminishedReturns />
+      <stepCountLimit>10000</stepCountLimit>
+    </termination>
+    <acceptor>
+      <simulatedAnnealingStartingTemperature>10</simulatedAnnealingStartingTemperature>
+    </acceptor>
+    <forager>
+      <acceptedCountLimit>1</acceptedCountLimit>
+    </forager>
+  </localSearch>
+----
+
+Here, the step limit supplies the cooling gradient and either termination can end the phase.
 
 Simulated Annealing can be combined with a tabu acceptor at the same time.
 That gives Simulated Annealing salted with a bit of Tabu.
@@ -523,7 +563,18 @@ Use a lower tabu size than in a pure Tabu Search configuration.
 Diversified Late Acceptance is similar to Late Acceptance,
 but it offers different acceptance and replacement strategies.
 A move is accepted if its score matches the current solution score
-or is better than the late score (which is the winning score of a fixed number of steps ago).
+or is strictly better than the worst score in its circular history.
+The history is initialized with the best score at the start of the phase.
+
+The history advances once for each final rejection of a structurally valid candidate, using the unchanged current solution score,
+and once for each executed step, using the score of the chosen move.
+An accepted candidate that the forager does not choose does not advance the history.
+When acceptors are combined, their final combined decision determines whether a candidate was rejected.
+If the forager executes a rejected candidate as a fallback, its rejection and its later execution each advance the history.
+
+At each history update, the current slot is replaced if the resulting score is worse than the slot,
+or if it is better than the slot and strictly improves the solution score from before the update.
+The history index advances even when the slot is not replaced.
 
 Diversified Late Acceptance was first proposed in
 https://arxiv.org/pdf/1806.09328[Diversified Late Acceptance Search by M. Namazi, C. Sanderson, M. A. H. Newton, M. M. A. Polash, and A. Sattar]
@@ -535,35 +586,35 @@ Simplest configuration:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   <enablePreviewFeature>DIVERSIFIED_LATE_ACCEPTANCE</enablePreviewFeature>
-   ...
+  ...
   <localSearch>
     <localSearchType>DIVERSIFIED_LATE_ACCEPTANCE</localSearchType>
   </localSearch>
 </solver>
 ----
 
-The late elements list is updated as follows:
-
-* The current solution score is worse than the late score.
-* The current solution score is better than the late score and different from the previous one.
-
-The size of the late elements list is typically smaller.
-Advanced configuration:
+`lateAcceptanceSize` sets the history size.
+Advanced configuration must select `DIVERSIFIED_LATE_ACCEPTANCE` explicitly;
+`lateAcceptanceSize` alone selects ordinary Late Acceptance:
 
 [source,xml,options="nowrap"]
 ----
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
+  <enablePreviewFeature>DIVERSIFIED_LATE_ACCEPTANCE</enablePreviewFeature>
   ...
   <localSearch>
     ...
     <acceptor>
+      <acceptorType>DIVERSIFIED_LATE_ACCEPTANCE</acceptorType>
       <lateAcceptanceSize>5</lateAcceptanceSize>
     </acceptor>
     <forager>
       <acceptedCountLimit>1</acceptedCountLimit>
     </forager>
   </localSearch>
+</solver>
 ----
 
 [IMPORTANT]
@@ -579,12 +630,13 @@ It may be subject to change and must be enabled in the solver configuration by s
 [#greatDelugeAlgorithm]
 === Algorithm description
 
-Great Deluge algorithm is similar to the  <<simulatedAnnealing,Simulated Annealing>> algorithm, it evaluates only a few moves per steps,
-so it steps quickly. The first accepted move is the winning step. A move is accepted only if it is not lower than
-the score value (water level) that we are working with. It means Great Deluge is deterministic and opposite
-of Simulated Annealing has no randomization in it. The water level is increased after every step either about the fixed value
-or by percentual value.
-A gradual increase in water level gives Great Deluge more time to escape from local maxima.
+Great Deluge typically evaluates only a few moves per step.
+With `acceptedCountLimit` set to `1`, the first accepted move is the winning step.
+A move is accepted if its score is at least the water level,
+or if it strictly improves the current solution score, even below the water level (aspiration).
+These comparisons use lexicographic score order.
+Acceptance is deterministic; move selection and forager tie breaking may still be random.
+The water level rises after every executed step, using either a fixed increment or a ratio based on the initial score.
 
 
 [#greatDelugeConfiguration]
@@ -598,7 +650,9 @@ Simplest configuration:
   </localSearch>
 ----
 
-Great Deluge takes as starting water level best score from construction heuristic and uses default rain speed ratio. Advanced configuration:
+Great Deluge starts at the best score available when the phase starts.
+Its default water level increment ratio is `0.00000005`.
+Advanced configuration:
 
 [source,xml,options="nowrap"]
 ----
@@ -614,7 +668,9 @@ Great Deluge takes as starting water level best score from construction heuristi
 ----
 GreyCOS Solver implements two water level increment options:
 
-If `greatDelugeWaterLevelIncrementScore` is set, the water level is increased by a constant value.
+If `greatDelugeWaterLevelIncrementScore` is set, the water level is increased by that score after every step.
+The increment must be strictly positive in lexicographic score order and have finite levels.
+For example, with a `SimpleScore`:
 
 [source,xml,options="nowrap"]
 ----
@@ -622,7 +678,12 @@ If `greatDelugeWaterLevelIncrementScore` is set, the water level is increased by
   <greatDelugeWaterLevelIncrementScore>10</greatDelugeWaterLevelIncrementScore>
 </acceptor>
 ----
-To avoid hard coding the water level increment, configure a `greatDelugeWaterLevelIncrementRatio` (recommended) when the water level is increased by percentual value, so there is no need to know the size of the problem or value of a scoring function.
+Alternatively, configure a finite, strictly positive `greatDelugeWaterLevelIncrementRatio`.
+Each level rises by its initial absolute value multiplied by the ratio per step,
+subject to rounding for integer score types.
+The schedule uses the initial score, rather than the latest solution score; an initially zero level stays zero.
+Because water level comparisons are lexicographic, harder levels take precedence over softer levels.
+The appropriate ratio depends on the score scale and the expected number of steps.
 
 [source,xml,options="nowrap"]
 ----
@@ -631,8 +692,8 @@ To avoid hard coding the water level increment, configure a `greatDelugeWaterLev
 </acceptor>
 ----
 
-The algorithm takes as starting value the best score from the construction heuristic.
-Use the Benchmarker to fine-tune tweak your configuration.
+Configure only one increment option.
+Use the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[Benchmarker] to tune it for the workload and step horizon.
 
 [#stepCountingHillClimbing]
 == Step counting hill climbing

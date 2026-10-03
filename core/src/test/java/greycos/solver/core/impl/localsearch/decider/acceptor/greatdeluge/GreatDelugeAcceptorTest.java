@@ -1,12 +1,17 @@
 package greycos.solver.core.impl.localsearch.decider.acceptor.greatdeluge;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.mock;
 
+import java.math.BigDecimal;
 import java.util.stream.Stream;
 
+import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardMediumSoftScore;
+import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.SimpleBigDecimalScore;
 import greycos.solver.core.api.score.SimpleDoubleScore;
 import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.api.score.SimpleScore;
@@ -21,8 +26,175 @@ import greycos.solver.core.preview.api.move.Move;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GreatDelugeAcceptorTest extends AbstractAcceptorTest {
+
+  static Stream<Score<?>> ordinaryIntegralScores() {
+    return Stream.of(
+        SimpleScore.of(-8),
+        HardSoftScore.of(0, -8),
+        HardMediumSoftScore.of(0, 0, -8),
+        BendableScore.of(new long[] {0}, new long[] {-8}));
+  }
+
+  @ParameterizedTest
+  @MethodSource("ordinaryIntegralScores")
+  <Score_ extends Score<Score_>> void cachedIntegralBoundsPreserveFixedAndRatioDecisions(
+      Score_ initial) {
+    var increment = initial.divide(-8.0);
+    var raised = initial.add(increment);
+    var fixed = new GreatDelugeAcceptor<>();
+    fixed.setInitialWaterLevel(initial);
+    fixed.setWaterLevelIncrementScore(increment);
+    var fixedStep = start(fixed, initial.zero());
+    fixed.stepEnded(fixedStep);
+    assertAccepted(fixed, fixedStep, initial, false);
+    assertAccepted(fixed, fixedStep, raised, true);
+
+    var ratio = new GreatDelugeAcceptor<>();
+    ratio.setInitialWaterLevel(initial);
+    ratio.setWaterLevelIncrementRatio(0.1);
+    var ratioStep = start(ratio, initial.zero());
+    ratio.stepEnded(ratioStep);
+    assertAccepted(ratio, ratioStep, initial, true);
+    ratio.stepEnded(ratioStep);
+    assertAccepted(ratio, ratioStep, initial, false);
+    assertAccepted(ratio, ratioStep, raised, true);
+  }
+
+  @Test
+  void integralFixedBoundMayExceedLongRange() {
+    var acceptor = new GreatDelugeAcceptor<>();
+    acceptor.setWaterLevelIncrementScore(SimpleScore.ONE);
+    var step = start(acceptor, SimpleScore.of(Long.MAX_VALUE));
+    acceptor.stepEnded(step);
+    assertAccepted(acceptor, step, SimpleScore.of(Long.MAX_VALUE), false);
+    assertAccepted(acceptor, step, SimpleScore.ZERO, false);
+    acceptor.stepEnded(step);
+    assertAccepted(acceptor, step, SimpleScore.of(Long.MAX_VALUE), false);
+    acceptor.phaseEnded(step.getPhaseScope());
+    var restarted = start(acceptor, SimpleScore.ZERO);
+    assertAccepted(acceptor, restarted, SimpleScore.ZERO, true);
+  }
+
+  @Test
+  void integralLowerLevelCanCrossItsMinimum() {
+    var acceptor = new GreatDelugeAcceptor<>();
+    acceptor.setInitialWaterLevel(HardSoftScore.of(0, Long.MIN_VALUE));
+    acceptor.setWaterLevelIncrementScore(HardSoftScore.of(1, -1));
+    var step = start(acceptor, HardSoftScore.of(2, 0));
+    acceptor.stepEnded(step);
+    assertAccepted(acceptor, step, HardSoftScore.of(1, Long.MIN_VALUE), true);
+    assertAccepted(acceptor, step, HardSoftScore.of(0, Long.MAX_VALUE), false);
+  }
+
+  @Test
+  void integralRatioHandlesMinimumAndOverflowingIntermediate() {
+    var acceptor = new GreatDelugeAcceptor<>();
+    acceptor.setInitialWaterLevel(SimpleScore.of(Long.MIN_VALUE));
+    acceptor.setWaterLevelIncrementRatio(0.5);
+    var step = start(acceptor, SimpleScore.of(Long.MAX_VALUE));
+    acceptor.stepEnded(step);
+    assertAccepted(acceptor, step, SimpleScore.of(-4_611_686_018_427_387_904L), true);
+    assertAccepted(acceptor, step, SimpleScore.of(-4_611_686_018_427_387_905L), false);
+
+    acceptor.phaseEnded(step.getPhaseScope());
+    acceptor.setInitialWaterLevel(SimpleScore.of(-Long.MAX_VALUE));
+    acceptor.setWaterLevelIncrementRatio(1.5);
+    step = start(acceptor, SimpleScore.of(Long.MAX_VALUE));
+    acceptor.stepEnded(step);
+    assertAccepted(acceptor, step, SimpleScore.of(4_611_686_018_427_387_903L), true);
+    assertAccepted(acceptor, step, SimpleScore.of(4_611_686_018_427_387_902L), false);
+    acceptor.stepEnded(step);
+    assertAccepted(acceptor, step, SimpleScore.of(Long.MAX_VALUE), false);
+  }
+
+  @Test
+  void ratioKeepsOrdinaryIntegralAndDecimalRounding() {
+    var integral = new GreatDelugeAcceptor<>();
+    integral.setInitialWaterLevel(SimpleScore.of(-Long.MAX_VALUE));
+    integral.setWaterLevelIncrementRatio(0.5);
+    var integralStep = start(integral, SimpleScore.of(Long.MAX_VALUE));
+    integral.stepEnded(integralStep);
+    // The established in-range double product rounds MAX * .5 to 2^62.
+    assertAccepted(integral, integralStep, SimpleScore.of(-4_611_686_018_427_387_903L), true);
+    assertAccepted(integral, integralStep, SimpleScore.of(-4_611_686_018_427_387_904L), false);
+
+    var decimal = new GreatDelugeAcceptor<>();
+    decimal.setInitialWaterLevel(SimpleBigDecimalScore.of(new BigDecimal("-8.00")));
+    decimal.setWaterLevelIncrementRatio(0.0001);
+    var decimalStep = start(decimal, SimpleBigDecimalScore.ZERO);
+    decimal.stepEnded(decimalStep);
+    assertAccepted(decimal, decimalStep, SimpleBigDecimalScore.of(new BigDecimal("-8.00")), true);
+    assertAccepted(decimal, decimalStep, SimpleBigDecimalScore.of(new BigDecimal("-8.001")), false);
+  }
+
+  @Test
+  void accumulatedRatioMayExceedDoubleRange() {
+    var integral = new GreatDelugeAcceptor<>();
+    integral.setWaterLevelIncrementRatio(Double.MAX_VALUE);
+    var step = start(integral, SimpleScore.of(-1));
+    integral.stepEnded(step);
+    integral.stepEnded(step);
+    // The last score prevents aspiration from bypassing the bound.
+    step.getPhaseScope()
+        .getLastCompletedStepScope()
+        .setInitializedScore(SimpleScore.of(Long.MAX_VALUE));
+    assertAccepted(integral, step, SimpleScore.of(Long.MAX_VALUE), false);
+
+    var decimal = new GreatDelugeAcceptor<>();
+    decimal.setInitialWaterLevel(SimpleBigDecimalScore.of(new BigDecimal("-1.00")));
+    decimal.setWaterLevelIncrementRatio(Double.MAX_VALUE);
+    var decimalStep = start(decimal, SimpleBigDecimalScore.of(new BigDecimal("1E400")));
+    decimal.stepEnded(decimalStep);
+    decimal.stepEnded(decimalStep);
+    assertAccepted(decimal, decimalStep, SimpleBigDecimalScore.of(new BigDecimal("1E308")), false);
+    assertAccepted(decimal, decimalStep, SimpleBigDecimalScore.of(new BigDecimal("4E308")), true);
+  }
+
+  @ParameterizedTest
+  @ValueSource(doubles = {0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY})
+  void invalidRatioIsRejected(double ratio) {
+    var acceptor = new GreatDelugeAcceptor<>();
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> acceptor.setWaterLevelIncrementRatio(ratio));
+  }
+
+  @Test
+  void invalidOrMissingIncrementIsRejected() {
+    var acceptor = new GreatDelugeAcceptor<>();
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> acceptor.setWaterLevelIncrementScore(SimpleScore.ZERO));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> acceptor.setWaterLevelIncrementScore(SimpleScore.MINUS_ONE));
+    assertThatIllegalArgumentException().isThrownBy(() -> acceptor.phaseStarted(null));
+    acceptor.setWaterLevelIncrementScore(SimpleScore.ONE);
+    acceptor.setWaterLevelIncrementRatio(0.1);
+    assertThatIllegalArgumentException().isThrownBy(() -> acceptor.phaseStarted(null));
+  }
+
+  private static <Score_ extends Score<Score_>> LocalSearchStepScope<Object> start(
+      GreatDelugeAcceptor<Object> acceptor, Score_ bestScore) {
+    var solver = new SolverScope<>();
+    solver.setInitializedBestScore(bestScore);
+    var phase = new LocalSearchPhaseScope<>(solver, 0);
+    var last = new LocalSearchStepScope<>(phase, -1);
+    last.setInitializedScore(bestScore);
+    phase.setLastCompletedStepScope(last);
+    acceptor.phaseStarted(phase);
+    return new LocalSearchStepScope<>(phase);
+  }
+
+  private static <Score_ extends Score<Score_>> void assertAccepted(
+      GreatDelugeAcceptor<Object> acceptor,
+      LocalSearchStepScope<Object> step,
+      Score_ score,
+      boolean expected) {
+    var move = new LocalSearchMoveScope<>(step, 0, mock(Move.class));
+    move.setInitializedScore(score);
+    assertThat(acceptor.isAccepted(move)).isEqualTo(expected);
+  }
 
   static Stream<Score<?>> floatingMaximums() {
     return Stream.of(SimpleDoubleScore.of(Double.MAX_VALUE), SimpleFloatScore.of(Float.MAX_VALUE));

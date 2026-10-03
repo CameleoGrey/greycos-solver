@@ -156,8 +156,7 @@ final class IslandWorkQuota<Solution_> {
       @Override
       public double gradient() {
         synchronized (IslandWorkQuota.this) {
-          var gradient = termination.calculatePhaseTimeGradient(searchScope);
-          return Double.isNaN(gradient) ? 1.0 : gradient;
+          return termination.calculatePhaseTimeGradient(searchScope);
         }
       }
 

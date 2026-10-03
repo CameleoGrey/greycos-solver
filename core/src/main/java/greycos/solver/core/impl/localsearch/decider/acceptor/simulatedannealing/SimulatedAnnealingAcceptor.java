@@ -1,7 +1,12 @@
 package greycos.solver.core.impl.localsearch.decider.acceptor.simulatedannealing;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.MathContext;
+
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.impl.localsearch.decider.acceptor.AbstractAcceptor;
+import greycos.solver.core.impl.localsearch.decider.acceptor.AcceptorScoreMath;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
@@ -17,8 +22,8 @@ public class SimulatedAnnealingAcceptor<Solution_> extends AbstractAcceptor<Solu
   protected double[] startingTemperatureLevels;
   // No protected Score temperature do avoid rounding errors when using Score.multiply(double)
   protected double[] temperatureLevels;
-
-  protected double temperatureMinimum = 1.0E-100; // Double.MIN_NORMAL is E-308
+  private Number[] originalTemperatureLevels;
+  private BigDecimal[] extendedTemperatureLevels;
 
   public void setStartingTemperature(Score startingTemperature) {
     this.startingTemperature = startingTemperature;
@@ -31,8 +36,12 @@ public class SimulatedAnnealingAcceptor<Solution_> extends AbstractAcceptor<Solu
   @Override
   public void phaseStarted(LocalSearchPhaseScope<Solution_> phaseScope) {
     super.phaseStarted(phaseScope);
-    for (var startingTemperatureLevel : startingTemperature.toLevelDoubles()) {
-      if (startingTemperatureLevel < 0.0) {
+    if (startingTemperature == null) {
+      throw new IllegalArgumentException("The startingTemperature must be configured.");
+    }
+    originalTemperatureLevels = startingTemperature.toLevelNumbers();
+    for (var startingTemperatureLevel : originalTemperatureLevels) {
+      if (AcceptorScoreMath.signum(startingTemperatureLevel) < 0) {
         throw new IllegalArgumentException(
             "The startingTemperature ("
                 + startingTemperature
@@ -44,6 +53,7 @@ public class SimulatedAnnealingAcceptor<Solution_> extends AbstractAcceptor<Solu
     startingTemperatureLevels = startingTemperature.toLevelDoubles();
     temperatureLevels = startingTemperatureLevels;
     levelsLength = startingTemperatureLevels.length;
+    extendedTemperatureLevels = new BigDecimal[levelsLength];
   }
 
   @Override
@@ -51,6 +61,8 @@ public class SimulatedAnnealingAcceptor<Solution_> extends AbstractAcceptor<Solu
     super.phaseEnded(phaseScope);
     startingTemperatureLevels = null;
     temperatureLevels = null;
+    originalTemperatureLevels = null;
+    extendedTemperatureLevels = null;
     levelsLength = -1;
   }
 
@@ -64,22 +76,43 @@ public class SimulatedAnnealingAcceptor<Solution_> extends AbstractAcceptor<Solu
     if (moveScore.compareTo(lastStepScore) >= 0) {
       return true;
     }
-    var moveScoreDifferenceLevels = ScoreArithmetic.difference(lastStepScore, moveScore);
+    var moveScoreDifferenceLevels = AcceptorScoreMath.difference(lastStepScore, moveScore);
     var floatingDifference = FloatingScoreSupport.isFloatingScore(lastStepScore);
     var acceptChance = 1.0;
     for (var i = 0; i < levelsLength; i++) {
       var moveScoreDifferenceLevel = moveScoreDifferenceLevels[i];
       var temperatureLevel = temperatureLevels[i];
+      if (moveScoreDifferenceLevel instanceof Long integralLoss
+          && extendedTemperatureLevels[i] == null) {
+        if (integralLoss > 0L) {
+          // A zero temperature gives exp(-Infinity) = 0; the proposal still consumes one draw
+          // below.
+          acceptChance *= Math.exp(-integralLoss.doubleValue() / temperatureLevel);
+        }
+        continue;
+      }
       double acceptChanceLevel;
-      if (moveScoreDifferenceLevel.doubleValue() <= 0.0) {
+      if (AcceptorScoreMath.signum(moveScoreDifferenceLevel) <= 0) {
         // In this level, moveScore is better than the lastStepScore, so do not disrupt the
         // acceptChance
         acceptChanceLevel = 1.0;
+      } else if (extendedTemperatureLevels[i] != null) {
+        var lossOverTemperature =
+            FloatingScoreSupport.exact(moveScoreDifferenceLevel)
+                .divide(extendedTemperatureLevels[i], MathContext.DECIMAL128)
+                .doubleValue();
+        acceptChanceLevel = Math.exp(-lossOverTemperature);
+      } else if (temperatureLevel == 0.0) {
+        acceptChanceLevel = 0.0;
       } else {
+        var lossAsDouble = moveScoreDifferenceLevel.doubleValue();
         var lossOverTemperature =
             floatingDifference
+                    || moveScoreDifferenceLevel instanceof BigInteger
+                    || !Double.isFinite(lossAsDouble)
+                    || lossAsDouble == 0.0
                 ? ScoreArithmetic.ratio(moveScoreDifferenceLevel, temperatureLevel)
-                : moveScoreDifferenceLevel.doubleValue() / temperatureLevel;
+                : lossAsDouble / temperatureLevel;
         acceptChanceLevel = Math.exp(-lossOverTemperature);
       }
       acceptChance *= acceptChanceLevel;
@@ -93,12 +126,29 @@ public class SimulatedAnnealingAcceptor<Solution_> extends AbstractAcceptor<Solu
     // TimeGradient only refreshes at the beginning of a step, so this code is in stepStarted
     // instead of stepEnded
     var timeGradient = stepScope.getTimeGradient();
+    if (!Double.isFinite(timeGradient) || timeGradient < 0.0 || timeGradient > 1.0) {
+      throw new IllegalStateException(
+          "The simulated annealing timeGradient (%s) in phase (%s) must be finite and in [0, 1]. "
+                  .formatted(timeGradient, stepScope.getPhaseScope().getPhaseIndex())
+              + "Configure a termination that provides a time gradient, such as a spent-time "
+              + "or phase move/step-count limit; diminished returns or asynchronous termination alone "
+              + "cannot cool simulated annealing.");
+    }
     var reverseTimeGradient = 1.0 - timeGradient;
     temperatureLevels = new double[levelsLength];
     for (var i = 0; i < levelsLength; i++) {
-      temperatureLevels[i] = startingTemperatureLevels[i] * reverseTimeGradient;
-      if (temperatureLevels[i] < temperatureMinimum) {
-        temperatureLevels[i] = temperatureMinimum;
+      extendedTemperatureLevels[i] = null;
+      if (reverseTimeGradient == 0.0
+          || AcceptorScoreMath.signum(originalTemperatureLevels[i]) == 0) {
+        temperatureLevels[i] = 0.0;
+      } else {
+        var temperature = startingTemperatureLevels[i] * reverseTimeGradient;
+        temperatureLevels[i] = temperature;
+        if (!Double.isFinite(temperature) || temperature < Double.MIN_NORMAL) {
+          extendedTemperatureLevels[i] =
+              FloatingScoreSupport.exact(originalTemperatureLevels[i])
+                  .multiply(BigDecimal.valueOf(reverseTimeGradient));
+        }
       }
     }
     // TODO implement reheating

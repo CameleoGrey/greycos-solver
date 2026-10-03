@@ -9,6 +9,7 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline;
 import greycos.solver.core.impl.localsearch.decider.acceptor.Acceptor;
+import greycos.solver.core.impl.localsearch.decider.acceptor.tabu.PlanningValueSnapshot;
 import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
@@ -42,6 +43,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
   protected MoveEvaluationPipeline<Solution_> moveEvaluationPipeline;
   private MoveEvaluationPipeline.Diagnostics moveEvaluationDiagnostics;
   private long transferredCalculationCount;
+  private PlanningValueSnapshot.Rebaser<Solution_> planningValueRebaser;
 
   public MultiThreadedLocalSearchDecider(
       String logIndentation,
@@ -67,6 +69,11 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     try {
       moveEvaluationPipeline = createMoveEvaluationPipeline(phaseScope.getPhaseIndex());
       moveEvaluationPipeline.setTerminationCheck(() -> termination.isPhaseTerminated(phaseScope));
+      if (requiresPlanningValues) {
+        planningValueRebaser = new PlanningValueSnapshot.Rebaser<>(phaseScope.getScoreDirector());
+        moveEvaluationPipeline.setMetadataCollectorFactory(
+            director -> (view, move, context) -> PlanningValueSnapshot.capture(director, move));
+      }
       moveEvaluationPipeline.start(phaseScope.getScoreDirector());
     } catch (RuntimeException | Error failure) {
       try {
@@ -109,6 +116,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       failure = error;
     } finally {
       moveEvaluationPipeline = null;
+      planningValueRebaser = null;
     }
     try {
       super.phaseEnded(phaseScope);
@@ -137,6 +145,9 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
       // The adopted step must reach every worker before provider lifecycle callbacks reset state.
       if (moveEvaluationPipeline.awaitEvaluationQuiescence()) {
         super.resetLocalSearchState(stepScope);
+        if (requiresPlanningValues) {
+          planningValueRebaser = new PlanningValueSnapshot.Rebaser<>(stepScope.getScoreDirector());
+        }
       }
     } catch (InterruptedException interrupted) {
       Thread.currentThread().interrupt();
@@ -152,6 +163,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
         if (cleanup != exception) exception.addSuppressed(cleanup);
       } finally {
         moveEvaluationPipeline = null;
+        planningValueRebaser = null;
       }
     }
     super.solvingError(solverScope, exception);
@@ -200,7 +212,11 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
         }
         if (hasNextMove) {
           var move = moveIterator.next();
-          moveEvaluationPipeline.submit(selectMoveIndex, move);
+          if (requiresPlanningValues) {
+            moveEvaluationPipeline.submit(selectMoveIndex, move, PlanningValuesContext.INSTANCE);
+          } else {
+            moveEvaluationPipeline.submit(selectMoveIndex, move);
+          }
           selectMoveIndex++;
           movesInPlay++;
         }
@@ -253,6 +269,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
           "Impossible situation: no original move for move index (" + foragingMoveIndex + ").");
     }
 
+    boolean accepted = false;
     if (!result.isMoveDoable()) {
       logger.trace(
           "{}        Move index ({}) not doable, ignoring move ({}).",
@@ -262,15 +279,24 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
     } else {
       foragingMove = PreparedMoveFilters.filter(foragingMove, stepScope.getScoreDirector());
       if (foragingMove == null) {
-        return termination.isPhaseTerminated(stepScope.getPhaseScope())
+        stepScope.getPhaseScope().getSolverScope().checkYielding();
+        return recordCandidate(stepScope, false)
+                || termination.isPhaseTerminated(stepScope.getPhaseScope())
             ? ForageResult.STOP_FORAGING
             : ForageResult.CONTINUE;
       }
       LocalSearchMoveScope<Solution_> moveScope =
           new LocalSearchMoveScope<>(stepScope, foragingMoveIndex, foragingMove);
       moveScope.setScore(result.score());
-      boolean accepted = acceptor.isAccepted(moveScope);
+      if (requiresPlanningValues) {
+        if (result.metadata() instanceof PlanningValueSnapshot snapshot) {
+          moveScope.setPlanningValueSnapshot(planningValueRebaser.rebase(snapshot));
+        }
+        requirePlanningValueSnapshot(moveScope);
+      }
+      accepted = acceptor.isAccepted(moveScope);
       moveScope.setAccepted(accepted);
+      acceptor.moveEvaluated(moveScope);
       logger.trace(
           "{}        Move index ({}), score ({}), accepted ({}), move ({}).",
           logIndentation,
@@ -280,15 +306,21 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
           foragingMove);
       forager.addMove(moveScope);
       if (forager.isQuitEarly()) {
+        recordCandidate(stepScope, accepted);
         return ForageResult.STOP_FORAGING;
       }
     }
 
     stepScope.getPhaseScope().getSolverScope().checkYielding();
-    if (termination.isPhaseTerminated(stepScope.getPhaseScope())) {
+    if (recordCandidate(stepScope, accepted)
+        || termination.isPhaseTerminated(stepScope.getPhaseScope())) {
       return ForageResult.STOP_FORAGING;
     }
     return ForageResult.CONTINUE;
+  }
+
+  private enum PlanningValuesContext implements MoveEvaluationPipeline.EvaluationContext {
+    INSTANCE
   }
 
   @Override

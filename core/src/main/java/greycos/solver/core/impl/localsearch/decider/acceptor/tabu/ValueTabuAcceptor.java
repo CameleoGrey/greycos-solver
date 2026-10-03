@@ -15,6 +15,11 @@ public final class ValueTabuAcceptor<Solution_> extends AbstractTabuAcceptor<Sol
     super(logIndentation);
   }
 
+  @Override
+  public boolean requiresPlanningValues() {
+    return true;
+  }
+
   // ************************************************************************
   // Worker methods
   // ************************************************************************
@@ -22,7 +27,8 @@ public final class ValueTabuAcceptor<Solution_> extends AbstractTabuAcceptor<Sol
   @Override
   protected SequencedCollection<@Nullable Object> findTabu(
       LocalSearchMoveScope<Solution_> moveScope) {
-    return moveScope.getMove().getPlanningValues();
+    var snapshot = moveScope.getPlanningValueSnapshot();
+    return snapshot == null ? moveScope.getMove().getPlanningValues() : snapshot.values();
   }
 
   @Override

@@ -2,9 +2,17 @@ package greycos.solver.core.impl.localsearch.decider.acceptor.simulatedannealing
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.Mockito.mock;
 
+import java.math.BigDecimal;
+import java.util.stream.Stream;
+
+import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.HardMediumSoftScore;
+import greycos.solver.core.api.score.HardSoftScore;
+import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.SimpleBigDecimalScore;
 import greycos.solver.core.api.score.SimpleDoubleScore;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.localsearch.decider.acceptor.AbstractAcceptorTest;
@@ -17,8 +25,169 @@ import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.testutil.TestRandom;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class SimulatedAnnealingAcceptorTest extends AbstractAcceptorTest {
+
+  @Test
+  void smallFloatingTemperaturesKeepTheirScale() {
+    assertAcceptance(
+        SimpleDoubleScore.ZERO,
+        SimpleDoubleScore.of(-1e-200),
+        SimpleDoubleScore.of(1e-200),
+        0.0,
+        0.3,
+        true);
+    assertAcceptance(
+        SimpleDoubleScore.ZERO,
+        SimpleDoubleScore.of(-1e-200),
+        SimpleDoubleScore.of(1e-200),
+        0.0,
+        0.4,
+        false);
+    assertAcceptance(
+        SimpleDoubleScore.ZERO,
+        SimpleDoubleScore.of(-Double.MIN_VALUE),
+        SimpleDoubleScore.of(Double.MIN_VALUE),
+        0.5,
+        0.13,
+        true);
+    assertAcceptance(
+        SimpleDoubleScore.ZERO,
+        SimpleDoubleScore.of(-Double.MIN_VALUE),
+        SimpleDoubleScore.of(Double.MIN_VALUE),
+        0.5,
+        0.14,
+        false);
+    assertAcceptance(
+        SimpleDoubleScore.ZERO,
+        SimpleDoubleScore.of(-Double.MIN_VALUE),
+        SimpleDoubleScore.of(Double.MIN_VALUE),
+        0.25,
+        0.3,
+        false);
+  }
+
+  @Test
+  void zeroTemperatureRejectsLossAndStillConsumesRandom() {
+    assertAcceptance(
+        SimpleDoubleScore.ZERO,
+        SimpleDoubleScore.of(-1e-110),
+        SimpleDoubleScore.ZERO,
+        0.0,
+        0.0,
+        false);
+    assertAcceptance(
+        SimpleDoubleScore.ZERO,
+        SimpleDoubleScore.of(-1e-110),
+        SimpleDoubleScore.ONE,
+        1.0,
+        0.0,
+        false);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"1E400", "1E-400", "1E-200"})
+  void decimalTemperatureAndLossOutsideDoubleRange(String value) {
+    var temperature = SimpleBigDecimalScore.of(new BigDecimal(value));
+    assertAcceptance(SimpleBigDecimalScore.ZERO, temperature.negate(), temperature, 0.0, 0.3, true);
+    assertAcceptance(
+        SimpleBigDecimalScore.ZERO, temperature.negate(), temperature, 0.0, 0.4, false);
+    assertAcceptance(
+        SimpleBigDecimalScore.ZERO, temperature.negate(), temperature, 1.0, 0.0, false);
+  }
+
+  @Test
+  void integralLossMayExceedLongRange() {
+    assertAcceptance(
+        SimpleScore.of(Long.MAX_VALUE),
+        SimpleScore.of(Long.MIN_VALUE),
+        SimpleScore.ONE,
+        0.0,
+        0.5,
+        false);
+    assertAcceptance(
+        SimpleScore.ZERO,
+        SimpleScore.of(Long.MIN_VALUE),
+        SimpleScore.of(Long.MAX_VALUE),
+        0.0,
+        0.3,
+        true);
+    assertAcceptance(
+        SimpleScore.ZERO,
+        SimpleScore.of(Long.MIN_VALUE),
+        SimpleScore.of(Long.MAX_VALUE),
+        0.0,
+        0.4,
+        false);
+  }
+
+  static Stream<Score<?>> integralMaximums() {
+    return Stream.of(
+        SimpleScore.of(Long.MAX_VALUE),
+        HardSoftScore.of(Long.MAX_VALUE, Long.MAX_VALUE),
+        HardMediumSoftScore.of(Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE),
+        BendableScore.of(new long[] {Long.MAX_VALUE}, new long[] {Long.MAX_VALUE}));
+  }
+
+  @ParameterizedTest
+  @MethodSource("integralMaximums")
+  <Score_ extends Score<Score_>> void overflowingLossesPreserveLevelProbabilities(Score_ maximum) {
+    // Each level loses twice its temperature, and positive losses multiply their probabilities.
+    double probability = Math.exp(-2.0 * maximum.toLevelNumbers().length);
+    assertAcceptance(maximum, maximum.negate(), maximum, 0.0, probability / 2.0, true);
+    assertAcceptance(maximum, maximum.negate(), maximum, 0.0, probability * 2.0, false);
+  }
+
+  @Test
+  void tinyNegativeDecimalTemperatureIsRejected() {
+    var acceptor = new SimulatedAnnealingAcceptor<>();
+    acceptor.setStartingTemperature(SimpleBigDecimalScore.of(new BigDecimal("-1E-400")));
+    assertThatIllegalArgumentException().isThrownBy(() -> acceptor.phaseStarted(null));
+  }
+
+  @ParameterizedTest
+  @ValueSource(doubles = {-1.0, -0.01, 1.01, Double.NaN, Double.POSITIVE_INFINITY})
+  void unsupportedOrInvalidTimeGradientIsRejected(double gradient) {
+    var acceptor = new SimulatedAnnealingAcceptor<>();
+    acceptor.setStartingTemperature(SimpleScore.ONE);
+    acceptor.phaseStarted(null);
+    var step = new LocalSearchStepScope<>(new LocalSearchPhaseScope<>(new SolverScope<>(), 0));
+    step.setTimeGradient(gradient);
+    assertThatIllegalStateException()
+        .isThrownBy(() -> acceptor.stepStarted(step))
+        .withMessageContaining("timeGradient");
+  }
+
+  private static <Score_ extends Score<Score_>> void assertAcceptance(
+      Score_ lastScore,
+      Score_ candidate,
+      Score_ temperature,
+      double gradient,
+      double randomValue,
+      boolean expected) {
+    var acceptor = new SimulatedAnnealingAcceptor<>();
+    acceptor.setStartingTemperature(temperature);
+    var solver = new SolverScope<>();
+    solver.setInitializedBestScore(lastScore);
+    var random = new TestRandom(randomValue, 0.987654321);
+    solver.setWorkingRandom(random);
+    var phase = new LocalSearchPhaseScope<>(solver, 0);
+    var lastStep = new LocalSearchStepScope<>(phase, -1);
+    lastStep.setInitializedScore(lastScore);
+    phase.setLastCompletedStepScope(lastStep);
+    acceptor.phaseStarted(phase);
+    var step = new LocalSearchStepScope<>(phase);
+    step.setTimeGradient(gradient);
+    acceptor.stepStarted(step);
+    var move = new LocalSearchMoveScope<>(step, 0, mock(Move.class));
+    move.setInitializedScore(candidate);
+    assertThat(acceptor.isAccepted(move)).isEqualTo(expected);
+    assertThat(random.nextDouble()).isEqualTo(0.987654321);
+    acceptor.phaseEnded(phase);
+  }
 
   @Test
   void finiteEndpointsWithOverflowingDifferenceUseFiniteProbability() {

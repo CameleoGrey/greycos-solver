@@ -49,7 +49,7 @@ final class UnimprovedStepCountTermination<Solution_> extends AbstractPhaseTermi
 
   @Override
   public double calculateSolverTimeGradient(SolverScope<Solution_> solverScope) {
-    return 0.0; // Phase termination doesn't affect solver time gradient
+    return -1.0; // This phase termination does not provide a solver time gradient.
   }
 
   @Override

@@ -29,6 +29,16 @@ public final class MoveSelectorBasedMoveRepository<Solution_>
   }
 
   @Override
+  public long getSizeEstimate() {
+    try {
+      return moveSelector.getSize();
+    } catch (UnsupportedOperationException ignored) {
+      // Some custom selectors cannot supply a useful cardinality estimate.
+      return -1L;
+    }
+  }
+
+  @Override
   public void initialize(SessionContext<Solution_> context) {
     // No need to do anything.
   }

@@ -53,39 +53,35 @@ public final class OrCompositeTermination<Solution_> extends AbstractCompositeTe
 
   /**
    * Calculates the maximum timeGradient of all Terminations. Not supported timeGradients (-1.0) are
-   * ignored.
+   * ignored. If no applicable termination supports a gradient, returns -1.0.
    *
    * @return the maximum timeGradient of the terminations.
    */
   @Override
   public double calculateSolverTimeGradient(SolverScope<Solution_> solverScope) {
-    var timeGradient = 0.0;
+    var timeGradient = -1.0;
     for (var termination : solverTerminationList) {
       var nextTimeGradient = termination.calculateSolverTimeGradient(solverScope);
-      if (nextTimeGradient >= 0.0) {
-        timeGradient = Math.max(timeGradient, nextTimeGradient);
-      }
+      timeGradient = TerminationGradient.combine(false, timeGradient, nextTimeGradient);
     }
     return timeGradient;
   }
 
   /**
    * Calculates the maximum timeGradient of all Terminations. Not supported timeGradients (-1.0) are
-   * ignored.
+   * ignored. If no applicable termination supports a gradient, returns -1.0.
    *
    * @return the maximum timeGradient of the supported terminations.
    */
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> phaseScope) {
-    var timeGradient = 0.0;
+    var timeGradient = -1.0;
     for (var termination : phaseTerminationList) {
       if (!termination.isApplicableTo(phaseScope.getClass())) {
         continue;
       }
       var nextTimeGradient = termination.calculatePhaseTimeGradient(phaseScope);
-      if (nextTimeGradient >= 0.0) {
-        timeGradient = Math.max(timeGradient, nextTimeGradient);
-      }
+      timeGradient = TerminationGradient.combine(false, timeGradient, nextTimeGradient);
     }
     return timeGradient;
   }

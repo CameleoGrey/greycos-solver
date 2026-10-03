@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.config.solver.termination.DiminishedReturnsTerminationConfig;
 import greycos.solver.core.config.solver.termination.TerminationCompositionStyle;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.alns.AlnsPhaseScope;
@@ -34,6 +35,78 @@ import greycos.solver.core.testcotwin.TestdataSolution;
 import org.junit.jupiter.api.Test;
 
 class IslandTerminationBudgetTest {
+
+  @Test
+  void emptyAndDiminishedReturnsBudgetsDoNotInventCooling() {
+    for (var config :
+        List.of(new TerminationConfig(), new TerminationConfig().withDiminishedReturns())) {
+      var fixture = new Fixture(config);
+      var island = fixture.island();
+      assertThat(island.termination.calculateSolverTimeGradient(island.scope)).isEqualTo(-1.0);
+      var construction = new ConstructionHeuristicPhaseScope<>(island.scope, 0);
+      island.termination.phaseStarted(construction);
+      assertThat(island.termination.calculatePhaseTimeGradient(construction)).isEqualTo(-1.0);
+      var search = island.localSearch(1);
+      assertThat(island.termination.calculatePhaseTimeGradient(search)).isEqualTo(-1.0);
+      assertThat(PhaseTermination.bridge(island.termination).calculatePhaseTimeGradient(search))
+          .isEqualTo(-1.0);
+    }
+  }
+
+  @Test
+  void unsupportedNestedBranchesDoNotFreezeIslandCooling() {
+    for (var config :
+        List.of(
+            and(
+                or(
+                    new TerminationConfig().withDiminishedReturns(),
+                    new TerminationConfig().withDiminishedReturns()),
+                new TerminationConfig().withSpentLimit(Duration.ofMillis(100))),
+            or(
+                and(
+                    new TerminationConfig().withDiminishedReturns(),
+                    new TerminationConfig().withDiminishedReturns()),
+                new TerminationConfig().withSpentLimit(Duration.ofMillis(100))))) {
+      var fixture = new Fixture(config);
+      var island = fixture.island();
+      fixture.clock.now = 1_040;
+      assertThat(island.termination.calculateSolverTimeGradient(island.scope)).isEqualTo(0.4);
+      var search = island.localSearch(0);
+      assertThat(island.termination.calculatePhaseTimeGradient(search)).isEqualTo(0.4);
+      fixture.clock.now = 1_060;
+      assertThat(island.termination.calculatePhaseTimeGradient(search)).isEqualTo(0.6);
+    }
+  }
+
+  @Test
+  void nestedPartitionPreservesUnsupportedIslandCooling() {
+    var fixture = new Fixture(new TerminationConfig().withDiminishedReturns());
+    var island = fixture.island();
+    var phase = island.localSearch(0);
+    var partitionBudget =
+        new PartitionTerminationBudget<>(PhaseTermination.bridge(island.termination), phase);
+    var childScope = fixture.island().scope;
+    var child = partitionBudget.createChildTermination(childScope);
+    var childPhase = new LocalSearchPhaseScope<>(childScope, 0);
+    child.solvingStarted(childScope);
+    child.phaseStarted(childPhase);
+    assertThat(child.calculateSolverTimeGradient(childScope)).isEqualTo(-1.0);
+    assertThat(PhaseTermination.bridge(child).calculatePhaseTimeGradient(childPhase))
+        .isEqualTo(-1.0);
+  }
+
+  @Test
+  void terminatedDiminishedReturnsStillHasNoCoolingSchedule() {
+    var config =
+        new TerminationConfig()
+            .withDiminishedReturnsConfig(
+                new DiminishedReturnsTerminationConfig().withSlidingWindowMilliseconds(0L));
+    var island = new Fixture(config).island();
+    var phase = island.localSearch(0);
+    island.termination.stepStarted(new LocalSearchStepScope<>(phase, 0));
+    assertThat(island.termination.isPhaseTerminated(phase)).isTrue();
+    assertThat(island.termination.calculatePhaseTimeGradient(phase)).isEqualTo(-1.0);
+  }
 
   @Test
   void elapsedTimeStartsAtEnclosingEntryAndSurvivesInnerTransitions() {

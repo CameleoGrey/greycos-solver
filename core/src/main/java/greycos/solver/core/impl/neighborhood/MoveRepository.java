@@ -30,5 +30,10 @@ public sealed interface MoveRepository<Solution_>
 
   boolean isNeverEnding();
 
+  /** Approximate distinct candidate count, or a negative value when unavailable. */
+  default long getSizeEstimate() {
+    return -1L;
+  }
+
   void initialize(SessionContext<Solution_> context);
 }

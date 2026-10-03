@@ -30,8 +30,33 @@ import greycos.solver.core.impl.score.definition.HardSoftScoreDefinition;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AcceptorFactoryTest {
+
+  @ParameterizedTest
+  @ValueSource(doubles = {0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY})
+  void greatDelugeRejectsInvalidRatio(double ratio) {
+    var config = new LocalSearchAcceptorConfig();
+    config.setGreatDelugeWaterLevelIncrementRatio(ratio);
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () -> AcceptorFactory.create(config).buildAcceptor(mock(HeuristicConfigPolicy.class)))
+        .withMessageContaining("WaterLevelIncrementRatio");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"0hard/0soft", "0hard/-1soft", "-1hard/100soft"})
+  void greatDelugeRejectsNonPositiveIncrement(String increment) {
+    var config = new LocalSearchAcceptorConfig();
+    config.setGreatDelugeWaterLevelIncrementScore(increment);
+    var policy = mock(HeuristicConfigPolicy.class);
+    when(policy.getScoreDefinition()).thenReturn(new HardSoftScoreDefinition());
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> AcceptorFactory.create(config).buildAcceptor(policy))
+        .withMessageContaining("waterLevelIncrementScore");
+  }
 
   @Test
   <Solution_> void buildCompositeAcceptor() {

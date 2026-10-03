@@ -324,9 +324,11 @@ The solver will need many more steps to solve a large problem than it needs to s
 which is typically not the case.
 And even when you do, this score is dependent on the dataset and on the constraint weights configured.
 
-For the best experience overall, we recommend using the <<diminishedReturnsTermination,Diminished Returns termination>>.
-It is based on the rate of improvement of the solver,
-and should therefore be mostly independent of the factors listed above.
+The <<diminishedReturnsTermination,Diminished Returns termination>> uses the rate of improvement
+to adapt termination to the problem and available hardware.
+xref:optimization-algorithms/local-search.adoc#simulatedAnnealing[Simulated Annealing]
+also needs a termination that supplies a cooling time gradient.
+Combine Diminished Returns with a supported time or work limit when using that algorithm.
 
 
 [#combiningMultipleTerminations]
@@ -751,6 +753,11 @@ A computer that is twice as powerful should be given half the time.
 A problem with many entities will have larger score improvements than a problem with few entities.
 
 For these situations, the diminished returns termination is desirable since it terminates based on the relative rate of improvement, and behaves similarly on different hardware and different problem instances.
+
+This termination does not supply a cooling time gradient.
+It cannot be the sole termination for
+xref:optimization-algorithms/local-search.adoc#simulatedAnnealingConfiguration[Simulated Annealing];
+combine it with a supported limit such as `secondsSpentLimit` or a phase `stepCountLimit`.
 
 The diminished returns termination terminates when the rate of improvement is below a percentage of the initial rate of improvement.
 The rate of improvement is the softest score difference between the final best score and the initial best score in a window, divided by the duration of the window.
@@ -1760,7 +1767,7 @@ Selecting all possible moves sometimes does not scale well enough,
 especially for xref:optimization-algorithms/construction-heuristics.adoc#constructionHeuristics[construction heuristics],
 which don't support xref:optimization-algorithms/local-search.adoc#acceptedCountLimit[`acceptedCountLimit`].
 
-To limit the number of selected selection per step, apply a `selectedCountLimit` on the selector:
+To limit the number of selected moves per step, apply a `selectedCountLimit` on the selector:
 
 [source,xml,options="nowrap"]
 ----
@@ -1774,6 +1781,9 @@ To limit the number of selected selection per step, apply a `selectedCountLimit`
 To scale xref:optimization-algorithms/local-search.adoc#localSearch[Local Search],
 setting xref:optimization-algorithms/local-search.adoc#acceptedCountLimit[`acceptedCountLimit`]
 is usually better than using ``selectedCountLimit``.
+For never-ending selectors, Local Search also bounds consecutive consumed candidates without acceptance using
+the xref:optimization-algorithms/local-search.adoc#localSearchCandidateBudget[automatic candidate budget].
+An explicit `selectedCountLimit` on the outer selector makes it finite and supplies its own selection bound.
 ====
 
 
