@@ -7,6 +7,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -44,6 +46,9 @@ public final class DefaultSolverManager<Solution_> implements SolverManager<Solu
   private final SolverFactory<Solution_> solverFactory;
   private final ExecutorService solverThreadPool;
   private final ConcurrentMap<Object, DefaultSolverJob<Solution_>> problemIdToSolverJobMap;
+  private final Object admissionLock = new Object();
+  // Protected by admissionLock, together with registration and executor submission.
+  private boolean closed;
 
   public DefaultSolverManager(
       SolverFactory<Solution_> solverFactory, SolverManagerConfig solverManagerConfig) {
@@ -118,28 +123,46 @@ public final class DefaultSolverManager<Solution_> implements SolverManager<Solu
     BiConsumer<? super Object, ? super Throwable> finalExceptionHandler =
         (exceptionHandler != null) ? exceptionHandler : defaultExceptionHandler;
     var solverJob =
-        problemIdToSolverJobMap.compute(
+        new DefaultSolverJob<>(
+            this,
+            solver,
             problemId,
-            (key, oldSolverJob) -> {
-              if (oldSolverJob != null) {
-                // TODO Future features: automatically restart solving by calling reloadProblem()
-                throw new IllegalStateException(
-                    "The problemId (%s) is already solving.".formatted(problemId));
-              } else {
-                return new DefaultSolverJob<>(
-                    this,
-                    solver,
-                    problemId,
-                    problemFinder,
-                    bestSolutionConsumer,
-                    finalBestSolutionConsumer,
-                    initializedSolutionConsumer,
-                    solverJobStartedConsumer,
-                    finalExceptionHandler);
-              }
-            });
-    var future = solverThreadPool.submit(solverJob);
+            problemFinder,
+            bestSolutionConsumer,
+            finalBestSolutionConsumer,
+            initializedSolutionConsumer,
+            solverJobStartedConsumer,
+            finalExceptionHandler);
+    // Install the future before publishing the job; cancellation may immediately find it.
+    var future = new FutureTask<>(solverJob);
     solverJob.setFinalBestSolutionFuture(future);
+    try {
+      synchronized (admissionLock) {
+        if (closed) {
+          throw new RejectedExecutionException("The solver manager is already closed.");
+        }
+        if (problemIdToSolverJobMap.putIfAbsent(problemId, solverJob) != null) {
+          throw new IllegalStateException(
+              "The problemId (%s) is already solving.".formatted(problemId));
+        }
+        try {
+          solverThreadPool.execute(future);
+        } catch (RuntimeException | Error failure) {
+          problemIdToSolverJobMap.remove(problemId, solverJob);
+          throw failure;
+        }
+      }
+    } catch (RuntimeException | Error failure) {
+      // Future completion may invoke application code. Never do it under admissionLock.
+      try {
+        solverJob.close();
+      } catch (Throwable cleanupFailure) {
+        if (cleanupFailure != failure) {
+          failure.addSuppressed(cleanupFailure);
+        }
+      }
+      throw failure;
+    }
     return solverJob;
   }
 
@@ -181,11 +204,23 @@ public final class DefaultSolverManager<Solution_> implements SolverManager<Solu
 
   @Override
   public void close() {
-    solverThreadPool.shutdownNow();
-    problemIdToSolverJobMap.values().forEach(DefaultSolverJob::close);
+    List<DefaultSolverJob<Solution_>> solverJobs;
+    synchronized (admissionLock) {
+      closed = true;
+      solverJobs = List.copyOf(problemIdToSolverJobMap.values());
+      solverThreadPool.shutdownNow();
+    }
+    var closeActions = solverJobs.stream().map(DefaultSolverJob::prepareClose).toList();
+    // A synchronous change-future continuation can retrieve another queued job's final solution.
+    // Cancel every queued final future before any change completion or consumer shutdown.
+    closeActions.forEach(action -> action.completeTerminalBookkeeping());
+    closeActions.forEach(action -> action.requestSolverTermination());
+    closeActions.forEach(action -> action.finishClose());
+    // An active problem finder must not prevent queued cleanup or hold a startup lock here.
+    solverJobs.forEach(DefaultSolverJob::awaitConsumerClose);
   }
 
-  void unregisterSolverJob(Object problemId) {
-    problemIdToSolverJobMap.remove(getProblemIdOrThrow(problemId));
+  void unregisterSolverJob(Object problemId, DefaultSolverJob<Solution_> solverJob) {
+    problemIdToSolverJobMap.remove(getProblemIdOrThrow(problemId), solverJob);
   }
 }

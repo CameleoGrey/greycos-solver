@@ -75,7 +75,6 @@ public final class AcceptedLocalSearchForager<Solution_>
 
   @Override
   public void addMove(LocalSearchMoveScope<Solution_> moveScope) {
-    moveScope.getStepScope().getPhaseScope().addMoveEvaluationCount(moveScope.getMove(), 1);
     if (moveScope.getScore().isStructurallyFlawed()) {
       return;
     }

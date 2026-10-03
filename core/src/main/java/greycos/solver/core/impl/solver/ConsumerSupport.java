@@ -201,6 +201,7 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
         return;
       }
       finishing = true;
+      bestSolutionHolder.closeProblemChangeAdmission();
       var consumption = bestSolutionConsumption;
       if (consumption != null && !consumption.started) {
         // Canceling the timer does not complete this consumption. The same one-shot task is queued
@@ -258,9 +259,13 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
     }
   }
 
+  void requestClose() {
+    requestFinish(null);
+  }
+
   @Override
   public void close() {
-    requestFinish(null);
+    requestClose();
     if (SolverEventThreadContext.isActive()) {
       // Waiting from any event consumer can deadlock when callbacks close each other's jobs.
       return;

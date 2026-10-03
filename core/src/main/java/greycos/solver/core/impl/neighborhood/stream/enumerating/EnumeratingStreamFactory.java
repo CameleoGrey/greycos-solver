@@ -60,8 +60,7 @@ public final class EnumeratingStreamFactory<Solution_> {
     }
     // The sourceClass is a list variable value, therefore we need to specialize the exclusion
     // logic.
-    var parentEntityDescriptor = listVariableDescriptor.getEntityDescriptor();
-    if (!parentEntityDescriptor.supportsPinning()) { // Should have been eliminated earlier.
+    if (!listVariableDescriptor.supportsPinning()) { // Should have been eliminated earlier.
       throw new UnsupportedOperationException(
           "Impossible state: the list variable (%s) does not support pinning."
               .formatted(listVariableDescriptor.getVariableName()));

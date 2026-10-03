@@ -91,6 +91,9 @@ public abstract class AbstractScoreDirectorSemanticsTest {
         assertThat(scoreDirector2.calculateScore().raw()).isEqualTo(SimpleScore.of(1));
         assertThat(scoreDirector1.calculateScore().raw()).isEqualTo(SimpleScore.of(1));
 
+        // Its assignment must belong to the destination solution's value range.
+        // The removed entity is no longer part of the second working solution.
+        entity.setValue(solution1.getValueList().getFirst());
         // Add the same entity to the first score director, ensure it did not affect the second.
         scoreDirector1.beforeEntityAdded(entity);
         solution1.getEntityList().add(entity);

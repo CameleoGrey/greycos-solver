@@ -13,8 +13,8 @@ public sealed interface PhaseTermination<Solution_> extends Termination<Solution
     permits AbstractPhaseTermination, MockablePhaseTermination, UniversalTermination {
 
   /**
-   * @return false if the termination should be skipped on the given phase, when used as part of
-   *     {@link AbstractCompositeTermination}.
+   * @return false if the condition cannot be satisfied on the given phase. It remains an
+   *     unsatisfied operand in an AND expression; an OR may still terminate on another condition.
    */
   @SuppressWarnings("rawtypes")
   default boolean isApplicableTo(Class<? extends AbstractPhaseScope> phaseScopeClass) {

@@ -18,7 +18,9 @@ import greycos.solver.core.preview.api.move.SolutionView;
 import org.jspecify.annotations.NullMarked;
 
 /**
- * A selector-generated composite move made up of one or more child moves.
+ * A selector-generated composite move made up of one or more child moves. Shadow variables are
+ * updated between children, so later doability checks and child moves can depend on earlier
+ * changes.
  *
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
@@ -68,16 +70,24 @@ public final class SelectorBasedCompositeMove<Solution_>
   protected void execute(
       MutableSolutionView<Solution_> solutionView,
       VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
+    var updateBeforeNextChild = false;
     for (var move : moves) {
+      if (updateBeforeNextChild) {
+        scoreDirector.updateShadowVariables();
+        updateBeforeNextChild = false;
+      }
       if (move instanceof AbstractSelectorBasedMove<Solution_> selectorBasedMove) {
         if (selectorBasedMove.isMoveDoable(scoreDirector)) {
           selectorBasedMove.execute(solutionView, scoreDirector);
+          updateBeforeNextChild = true;
         }
       } else {
         // Keep preview child mutations on the active solution view, including its undo recorder.
         move.execute(solutionView);
       }
     }
+    // AbstractSelectorBasedMove.execute() updates shadows after the final child. Preview children
+    // use the active solution view, whose mutating operations already update their shadows.
   }
 
   @SuppressWarnings("unchecked")

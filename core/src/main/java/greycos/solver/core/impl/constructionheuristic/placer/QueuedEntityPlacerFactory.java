@@ -11,8 +11,11 @@ import greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig
 import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.composite.CartesianProductMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
 import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyMoveSelectorFactory;
+import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
@@ -61,6 +64,27 @@ public class QueuedEntityPlacerFactory<Solution_>
           EntitySelectorConfig.newMimicSelectorConfig(entitySelectorConfig.getId()));
     }
     return config;
+  }
+
+  /** Builds the same variable selector for ordinary construction and single-variable repair. */
+  public static <Solution_> ChangeMoveSelectorConfig buildChangeMoveSelectorConfig(
+      ValueSorterManner valueSorterManner,
+      String entitySelectorConfigId,
+      GenuineVariableDescriptor<Solution_> variableDescriptor) {
+    var valueSelector = new ValueSelectorConfig(variableDescriptor.getVariableName());
+    if (ValueSelectorConfig.hasSorter(valueSorterManner, variableDescriptor)) {
+      valueSelector
+          .withCacheType(
+              variableDescriptor.canExtractValueRangeFromSolution()
+                  ? SelectionCacheType.PHASE
+                  : SelectionCacheType.STEP)
+          .withSelectionOrder(SelectionOrder.SORTED)
+          .withSorterManner(valueSorterManner);
+    }
+    return new ChangeMoveSelectorConfig()
+        .withEntitySelectorConfig(
+            EntitySelectorConfig.newMimicSelectorConfig(entitySelectorConfigId))
+        .withValueSelectorConfig(valueSelector);
   }
 
   public QueuedEntityPlacerFactory(QueuedEntityPlacerConfig placerConfig) {

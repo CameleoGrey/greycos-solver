@@ -13,6 +13,7 @@ import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristi
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
 import greycos.solver.core.impl.score.definition.HardSoftDoubleScoreDefinition;
+import greycos.solver.core.impl.score.definition.HardSoftScoreDefinition;
 import greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
@@ -144,6 +145,14 @@ class DefaultConstructionHeuristicForagerTest<Solution_> {
         mock(ConstructionHeuristicMoveScope.class);
     when(moveScope.getStepScope()).thenReturn(stepScope);
     doReturn(score).when(moveScope).getScore();
+    InnerScoreDirector<Solution_, ?> director = mock(InnerScoreDirector.class);
+    doReturn(director).when(moveScope).getScoreDirector();
+    doReturn(
+            score.raw() instanceof SimpleScore
+                ? new SimpleScoreDefinition()
+                : new HardSoftScoreDefinition())
+        .when(director)
+        .getScoreDefinition();
     return moveScope;
   }
 }

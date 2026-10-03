@@ -39,6 +39,7 @@ class UnimprovedTimeMillisSpentTerminationTest {
         new UnimprovedTimeMillisSpentTermination<>(1000L, clock);
     termination.solvingStarted(solverScope);
     termination.phaseStarted(phaseScope);
+    termination.stepStarted(mock(AbstractStepScope.class));
 
     doReturn(1000L).when(clock).millis();
     doReturn(500L).when(solverScope).getBestSolutionTimeMillis();
@@ -110,6 +111,7 @@ class UnimprovedTimeMillisSpentTerminationTest {
 
     AbstractPhaseScope<TestdataSolution> lsPhaseScope = new LocalSearchPhaseScope<>(solverScope, 0);
     termination.phaseStarted(lsPhaseScope);
+    termination.stepStarted(mock(AbstractStepScope.class));
 
     // When local search starts, the unimproved termination should start triggering,
     // but the start time should act as if reset to zero.
@@ -183,5 +185,88 @@ class UnimprovedTimeMillisSpentTerminationTest {
     // Timeout
     clock.tick(Duration.ofMillis(1100L));
     assertThat(termination.isPhaseTerminated(phaseScope)).isTrue();
+  }
+
+  @Test
+  void repeatedSolvesAndRestartsDoNotSpendTheirIdleBudgetOnInitialization() {
+    var clock = new MockClock(Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC));
+    SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
+    var phaseScope = spy(new LocalSearchPhaseScope<>(solverScope, 0));
+    var termination = new UnimprovedTimeMillisSpentTermination<TestdataSolution>(1000L, clock);
+    for (int run = 0; run < 3; run++) {
+      doReturn(clock.millis()).when(solverScope).getBestSolutionTimeMillis();
+      doReturn(clock.millis()).when(phaseScope).getPhaseBestSolutionTimeMillis();
+      termination.solvingStarted(solverScope);
+      termination.phaseStarted(phaseScope);
+      clock.tick(Duration.ofSeconds(10));
+      assertThat(termination.isSolverTerminated(solverScope)).isFalse();
+      assertThat(termination.isPhaseTerminated(phaseScope)).isFalse();
+      assertThat(termination.calculateSolverTimeGradient(solverScope)).isZero();
+      assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isZero();
+      termination.stepStarted(mock(AbstractStepScope.class));
+      clock.tick(Duration.ofMillis(999));
+      assertThat(termination.isSolverTerminated(solverScope)).isFalse();
+      assertThat(termination.isPhaseTerminated(phaseScope)).isFalse();
+      clock.tick(Duration.ofMillis(1));
+      assertThat(termination.isSolverTerminated(solverScope)).isTrue();
+      assertThat(termination.isPhaseTerminated(phaseScope)).isTrue();
+      termination.phaseEnded(phaseScope);
+      termination.solvingEnded(solverScope);
+    }
+  }
+
+  @Test
+  void successiveImprovementPhasesPreserveOnlyGlobalIdleHistory() {
+    var clock = new MockClock(Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC));
+    SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
+    doReturn(0L).when(solverScope).getBestSolutionTimeMillis();
+    var first = spy(new LocalSearchPhaseScope<>(solverScope, 0));
+    var second = spy(new LocalSearchPhaseScope<>(solverScope, 1));
+    doReturn(0L).when(first).getPhaseBestSolutionTimeMillis();
+    var termination = new UnimprovedTimeMillisSpentTermination<TestdataSolution>(1000L, clock);
+    termination.solvingStarted(solverScope);
+    termination.phaseStarted(first);
+    termination.stepStarted(mock(AbstractStepScope.class));
+    clock.tick(Duration.ofMillis(700));
+    termination.phaseEnded(first);
+    doReturn(clock.millis()).when(second).getPhaseBestSolutionTimeMillis();
+    termination.phaseStarted(second);
+    clock.tick(Duration.ofMillis(100));
+    assertThat(termination.calculateSolverTimeGradient(solverScope)).isEqualTo(0.8);
+    assertThat(termination.calculatePhaseTimeGradient(second)).isZero();
+    termination.stepStarted(mock(AbstractStepScope.class));
+    clock.tick(Duration.ofMillis(200));
+    assertThat(termination.isSolverTerminated(solverScope)).isTrue();
+    assertThat(termination.isPhaseTerminated(second)).isFalse();
+    assertThat(termination.calculatePhaseTimeGradient(second)).isEqualTo(0.2);
+  }
+
+  @Test
+  void constructionStepsDoNotStartTheNextImprovementIdleClock() {
+    var clock = new MockClock(Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC));
+    SolverScope<TestdataSolution> solverScope = mock(SolverScope.class);
+    doReturn(0L).when(solverScope).getBestSolutionTimeMillis();
+    var search = spy(new LocalSearchPhaseScope<>(solverScope, 0));
+    doReturn(0L).when(search).getPhaseBestSolutionTimeMillis();
+    var termination = new UnimprovedTimeMillisSpentTermination<TestdataSolution>(1000L, clock);
+    termination.solvingStarted(solverScope);
+    termination.phaseStarted(search);
+    termination.stepStarted(mock(AbstractStepScope.class));
+    clock.tick(Duration.ofMillis(900));
+    termination.phaseEnded(search);
+    var construction = new ConstructionHeuristicPhaseScope<>(solverScope, 1);
+    termination.phaseStarted(construction);
+    termination.stepStarted(mock(AbstractStepScope.class));
+    clock.tick(Duration.ofSeconds(10));
+    assertThat(termination.isSolverTerminated(solverScope)).isFalse();
+    termination.phaseEnded(construction);
+    termination.phaseStarted(search);
+    clock.tick(Duration.ofSeconds(10));
+    assertThat(termination.isSolverTerminated(solverScope)).isFalse();
+    termination.stepStarted(mock(AbstractStepScope.class));
+    clock.tick(Duration.ofMillis(999));
+    assertThat(termination.isSolverTerminated(solverScope)).isFalse();
+    clock.tick(Duration.ofMillis(1));
+    assertThat(termination.isSolverTerminated(solverScope)).isTrue();
   }
 }

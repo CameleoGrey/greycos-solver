@@ -63,14 +63,13 @@ public class BestSolutionRecaller<Solution_> extends PhaseLifecycleListenerAdapt
             "Impossible state: The initial solution passed to the solver is inconsistent even after"
                 + " unassigning involved entities.");
       }
-      // Recovery changed the working clone; the original best still contains the loop.
-      solverScope.setBestSolution(scoreDirector.cloneWorkingSolution());
     }
     var score = innerScore.raw();
     solverScope.setBestScore(innerScore);
     solverScope.setBestSolutionTimeMillis(solverScope.getClock().millis());
-    // The original bestSolution might be the final bestSolution and should have an accurate Score
-    solverScope.getSolutionDescriptor().setScore(solverScope.getBestSolution(), score);
+    // Initialization may have repaired shadows or structural inconsistencies without changing the
+    // score. Always retain that refreshed state, and never modify a previously published best.
+    solverScope.setBestSolution(scoreDirector.cloneWorkingSolution());
     if (innerScore.isFullyAssigned()) {
       solverScope.setStartingInitializedScore(innerScore.raw());
     } else {

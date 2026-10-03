@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.score.director.stream;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -34,6 +35,9 @@ import org.jspecify.annotations.Nullable;
 public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends Score<Score_>>
     extends AbstractScoreDirector<
         Solution_, Score_, BavetConstraintStreamScoreDirectorFactory<Solution_, Score_>> {
+
+  private final Map<Object, BavetConstraintSession<Score_>> propertyChangeSessionMap =
+      new IdentityHashMap<>();
 
   private final boolean derived;
   private @Nullable BavetConstraintSession<Score_> session;
@@ -105,6 +109,7 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
 
   @Override
   public Map<ConstraintRef, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap() {
+    ensureWorkingSolutionStateFresh();
     if (!constraintMatchPolicy.isEnabled()) {
       throw new IllegalStateException(
           "When constraint matching is disabled, this method should not be called.");
@@ -123,6 +128,7 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
 
   @Override
   public void close() {
+    propertyChangeSessionMap.clear();
     super.close();
     if (session != null) {
       if (!derived) {
@@ -145,7 +151,6 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
           "The entity (%s) of class (%s) is not a configured @%s."
               .formatted(entity, entity.getClass(), PlanningEntity.class.getSimpleName()));
     }
-    session.insert(entity);
     super.afterEntityAdded(entityDescriptor, entity);
   }
 
@@ -173,7 +178,6 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
 
   @Override
   public void afterEntityRemoved(EntityDescriptor<Solution_> entityDescriptor, Object entity) {
-    session.retract(entity);
     super.afterEntityRemoved(entityDescriptor, entity);
   }
 
@@ -185,29 +189,46 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
 
   @Override
   public void afterProblemFactAdded(Object problemFact) {
-    session.insert(Objects.requireNonNull(problemFact));
+    Objects.requireNonNull(problemFact);
     super.afterProblemFactAdded(problemFact);
   }
 
   @Override
   public void beforeProblemPropertyChanged(Object problemFactOrEntity) {
-    // Since this is called when a fact (not a variable) changes,
-    // we need to retract and reinsert to update cached static data
     super.beforeProblemPropertyChanged(problemFactOrEntity);
-    session.retract(problemFactOrEntity);
+    if (canRefreshProblemProperties()
+        && getSolutionDescriptor().findEntityDescriptor(problemFactOrEntity.getClass()) != null) {
+      var originalSession = session;
+      propertyChangeSessionMap.put(problemFactOrEntity, originalSession);
+      originalSession.retract(problemFactOrEntity);
+      // Joins and groups may retain mutable property keys; remove them before user mutation.
+      originalSession.settle();
+    }
   }
 
   @Override
   public void afterProblemPropertyChanged(Object problemFactOrEntity) {
-    session.insert(problemFactOrEntity);
-    super.afterProblemPropertyChanged(problemFactOrEntity);
+    var originalSession = propertyChangeSessionMap.remove(problemFactOrEntity);
+    var retainScoringNetwork =
+        originalSession != null && originalSession == session && canRefreshProblemProperties();
+    super.afterProblemPropertyChanged(problemFactOrEntity, retainScoringNetwork);
+    if (retainScoringNetwork && originalSession == session && canRefreshProblemProperties()) {
+      originalSession.insert(problemFactOrEntity);
+    }
+  }
+
+  @Override
+  protected boolean canRefreshProblemProperties() {
+    return isProblemPropertyRefreshAllowed()
+        && scoreDirectorFactory.supportsEntityPropertyRefresh()
+        && session != null
+        && session.getNodeNetwork().hasOnlyOrdinaryRoots();
   }
 
   // public void beforeProblemFactRemoved(Object problemFact) // Do nothing
 
   @Override
   public void afterProblemFactRemoved(Object problemFact) {
-    session.retract(problemFact);
     super.afterProblemFactRemoved(problemFact);
   }
 

@@ -6,8 +6,16 @@ import java.math.MathContext;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import greycos.solver.core.api.score.BendableBigDecimalScore;
+import greycos.solver.core.api.score.BendableScore;
 import greycos.solver.core.api.score.FloatingScoreAccumulator;
+import greycos.solver.core.api.score.HardMediumSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardMediumSoftScore;
+import greycos.solver.core.api.score.HardSoftBigDecimalScore;
+import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.SimpleBigDecimalScore;
+import greycos.solver.core.api.score.SimpleScore;
 
 /** Arithmetic used outside score calculation, where differences need not fit in a score level. */
 public final class ScoreArithmetic {
@@ -83,7 +91,16 @@ public final class ScoreArithmetic {
 
   @SuppressWarnings({"rawtypes", "unchecked"})
   public static boolean isFeasibleDifference(Score<?> left, Score<?> right, int feasibleLevels) {
-    if (!FloatingScoreSupport.isFloatingScore(left)) {
+    if (!(FloatingScoreSupport.isFloatingScore(left)
+        || left instanceof SimpleScore
+        || left instanceof HardSoftScore
+        || left instanceof HardMediumSoftScore
+        || left instanceof BendableScore
+        || left instanceof SimpleBigDecimalScore
+        || left instanceof HardSoftBigDecimalScore
+        || left instanceof HardMediumSoftBigDecimalScore
+        || left instanceof BendableBigDecimalScore)) {
+      // A custom score owns its arithmetic and feasibility contract.
       return ((Score) left).subtract(right).isFeasible();
     }
     if (left.structuralScore() < right.structuralScore()) {
@@ -93,9 +110,16 @@ public final class ScoreArithmetic {
     var leftLevels = left.toLevelNumbers();
     var rightLevels = right.toLevelNumbers();
     for (int i = 0; i < feasibleLevels; i++) {
-      if (FloatingScoreSupport.exact(leftLevels[i])
-              .compareTo(FloatingScoreSupport.exact(rightLevels[i]))
-          < 0) {
+      var leftLevel = leftLevels[i];
+      var rightLevel = rightLevels[i];
+      // Integral hard differences may overflow even when both scores are representable.
+      // Keep the established componentwise feasibility test, without constructing a difference.
+      int comparison =
+          leftLevel instanceof Long && rightLevel instanceof Long
+              ? Long.compare(leftLevel.longValue(), rightLevel.longValue())
+              : FloatingScoreSupport.exact(leftLevel)
+                  .compareTo(FloatingScoreSupport.exact(rightLevel));
+      if (comparison < 0) {
         return false;
       }
     }

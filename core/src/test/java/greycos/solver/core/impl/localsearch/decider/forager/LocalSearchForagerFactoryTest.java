@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.lang.reflect.Field;
+import java.util.Map;
 
 import greycos.solver.core.config.localsearch.decider.forager.FinalistPodiumType;
 import greycos.solver.core.config.localsearch.decider.forager.LocalSearchForagerConfig;
@@ -158,6 +159,46 @@ class LocalSearchForagerFactoryTest {
   }
 
   // Test helper classes
+
+  @Test
+  void customPropertyConversionFailureIncludesContextAndCause() {
+    var config =
+        new LocalSearchForagerConfig()
+            .withForagerClass(TestCustomLocalSearchForager.class)
+            .withCustomProperties(Map.of("limit", "not-a-number"));
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> LocalSearchForagerFactory.create(config).buildForager())
+        .withMessageContaining(TestCustomLocalSearchForager.class.getName())
+        .withMessageContaining("limit")
+        .withMessageContaining("not-a-number")
+        .withCauseInstanceOf(NumberFormatException.class);
+  }
+
+  @Test
+  void customPropertyValidationFailureIsNotIgnored() {
+    var config =
+        new LocalSearchForagerConfig()
+            .withForagerClass(PositiveLimitForager.class)
+            .withCustomProperties(Map.of("limit", "-1"));
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> LocalSearchForagerFactory.create(config).buildForager())
+        .withMessageContaining(PositiveLimitForager.class.getName())
+        .withMessageContaining("limit")
+        .withMessageContaining("-1")
+        .withCauseInstanceOf(IllegalArgumentException.class);
+  }
+
+  public static class PositiveLimitForager extends TestCustomLocalSearchForager<Object> {
+    @Override
+    public void setLimit(String limit) {
+      if (Integer.parseInt(limit) <= 0) {
+        throw new IllegalArgumentException("The limit (" + limit + ") must be positive.");
+      }
+      super.setLimit(limit);
+    }
+  }
 
   public static class TestCustomLocalSearchForager<Solution_>
       implements LocalSearchForager<Solution_> {

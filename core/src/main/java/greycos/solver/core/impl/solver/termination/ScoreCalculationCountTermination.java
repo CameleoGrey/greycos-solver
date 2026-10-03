@@ -34,7 +34,7 @@ final class ScoreCalculationCountTermination<Solution_>
 
   @Override
   public boolean isPhaseTerminated(AbstractPhaseScope<Solution_> phaseScope) {
-    return isTerminated(phaseScope.getScoreDirector());
+    return phaseScope.getPhaseScoreCalculationCount() >= scoreCalculationCountLimit;
   }
 
   private boolean isTerminated(InnerScoreDirector<Solution_, ?> scoreDirector) {
@@ -49,13 +49,13 @@ final class ScoreCalculationCountTermination<Solution_>
 
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> phaseScope) {
-    return calculateTimeGradient(phaseScope.getScoreDirector());
+    return TerminationGradient.ratio(
+        phaseScope.getPhaseScoreCalculationCount(), scoreCalculationCountLimit);
   }
 
   private double calculateTimeGradient(InnerScoreDirector<Solution_, ?> scoreDirector) {
     var scoreCalculationCount = scoreDirector.getCalculationCount();
-    var timeGradient = scoreCalculationCount / ((double) scoreCalculationCountLimit);
-    return Math.min(timeGradient, 1.0);
+    return TerminationGradient.ratio(scoreCalculationCount, scoreCalculationCountLimit);
   }
 
   @Override

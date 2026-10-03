@@ -87,11 +87,11 @@ class AndCompositeTerminationTest extends AbstractCompositeTerminationTest {
 
     when(inapplicableTermination.isPhaseTerminated(phaseScope)).thenReturn(false);
     when(supportedTermination.isPhaseTerminated(phaseScope)).thenReturn(true);
-    assertThat(compositeTermination.isPhaseTerminated(phaseScope)).isTrue();
+    assertThat(compositeTermination.isPhaseTerminated(phaseScope)).isFalse();
 
     when(inapplicableTermination.isPhaseTerminated(phaseScope)).thenReturn(true);
     when(supportedTermination.isPhaseTerminated(phaseScope)).thenReturn(true);
-    assertThat(compositeTermination.isPhaseTerminated(phaseScope)).isTrue();
+    assertThat(compositeTermination.isPhaseTerminated(phaseScope)).isFalse();
   }
 
   @Test

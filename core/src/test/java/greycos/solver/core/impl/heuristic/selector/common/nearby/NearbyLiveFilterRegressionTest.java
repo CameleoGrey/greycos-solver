@@ -767,6 +767,7 @@ class NearbyLiveFilterRegressionTest {
       Selector<Solution_>... selectors) {
     InnerScoreDirector<Solution_, ?> director = mock(InnerScoreDirector.class);
     NearbyTestUtils.mockSupplyManager(director, state);
+    when(director.getSolutionDescriptor()).thenReturn(policy.getSolutionDescriptor());
     when(director.getWorkingSolution()).thenReturn(solution);
     doReturn(ValueRangeManager.of(policy.getSolutionDescriptor(), solution))
         .when(director)

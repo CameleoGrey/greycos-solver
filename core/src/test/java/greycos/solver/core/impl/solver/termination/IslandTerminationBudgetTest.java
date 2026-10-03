@@ -242,6 +242,7 @@ class IslandTerminationBudgetTest {
     expected.solvingStarted(expectedScope);
     expected.phaseStarted(expectedPhase);
     var expectedStep = new LocalSearchStepScope<>(expectedPhase, 0);
+    expected.stepStarted(expectedStep);
 
     var scores =
         List.of(HardSoftScore.of(-2, 1), HardSoftScore.of(-2, 2), HardSoftScore.of(-1, -100));

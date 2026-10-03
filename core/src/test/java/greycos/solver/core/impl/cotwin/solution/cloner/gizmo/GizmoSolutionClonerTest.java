@@ -18,8 +18,10 @@ import greycos.solver.core.impl.cotwin.common.accessor.gizmo.AccessorInfo;
 import greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoClassLoader;
 import greycos.solver.core.impl.cotwin.common.accessor.gizmo.GizmoMemberDescriptor;
 import greycos.solver.core.impl.cotwin.solution.cloner.AbstractSolutionClonerTest;
+import greycos.solver.core.impl.cotwin.solution.cloner.FieldAccessingSolutionCloner;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.testcotwin.TestdataValue;
+import greycos.solver.core.testcotwin.cascade.mixed.TestdataMixedCascadingSolution;
 import greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedChildEntity;
 import greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedExtendedSolution;
 import greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedSolution;
@@ -31,6 +33,36 @@ import io.quarkus.gizmo2.desc.FieldDesc;
 import io.quarkus.gizmo2.desc.MethodDesc;
 
 class GizmoSolutionClonerTest extends AbstractSolutionClonerTest {
+
+  @Test
+  void undeclaredEntitySubclassKeepsDeepFieldsAndSharedReferences() {
+    var solution = TestdataMixedCascadingSolution.generate(2, 1);
+    var route = new UndeclaredRoute();
+    route.visits.add(solution.visits.getFirst());
+    route.related = route;
+    route.other = solution.routes.get(1);
+    solution.routes.get(1).visits.getFirst().route = route;
+    solution.routes.set(0, route);
+    var descriptor = TestdataMixedCascadingSolution.buildSolutionDescriptor();
+    var reflectionClone = new FieldAccessingSolutionCloner<>(descriptor).cloneSolution(solution);
+    var generatedClone = createSolutionCloner(descriptor).cloneSolution(solution);
+    for (var clone : java.util.List.of(reflectionClone, generatedClone)) {
+      var clonedRoute = (UndeclaredRoute) clone.routes.getFirst();
+      assertThat(clonedRoute).isNotSameAs(route);
+      assertThat(clonedRoute.visits).containsExactly(clone.visits.getFirst());
+      assertThat(clonedRoute.visits.getFirst()).isNotSameAs(solution.visits.getFirst());
+      assertThat(clonedRoute.related).isSameAs(clonedRoute);
+      assertThat(clonedRoute.other).isSameAs(clone.routes.get(1));
+      assertThat(clone.routes.get(1).visits.getFirst().route).isSameAs(clonedRoute);
+      clonedRoute.visits.clear();
+      assertThat(route.visits).hasSize(1);
+    }
+  }
+
+  public static class UndeclaredRoute extends TestdataMixedCascadingSolution.Route {
+    public TestdataMixedCascadingSolution.Route related;
+    public TestdataMixedCascadingSolution.Route other;
+  }
 
   @Test
   void debuggingDisabled() {

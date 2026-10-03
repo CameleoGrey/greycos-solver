@@ -43,7 +43,7 @@ class UnimprovedTimeMillisSpentScoreDifferenceThresholdTerminationTest {
         .getBestScore();
     termination.solvingStarted(solverScope);
     termination.phaseStarted(phaseScope);
-    termination.stepEnded(stepScope);
+    termination.stepStarted(stepScope);
     doReturn(500L).when(clock).millis();
     doReturn(500L).when(solverScope).getBestSolutionTimeMillis();
     doReturn(InnerScore.fullyAssigned(SimpleDoubleScore.of(Double.MAX_VALUE)))
@@ -86,7 +86,7 @@ class UnimprovedTimeMillisSpentScoreDifferenceThresholdTerminationTest {
 
     termination.solvingStarted(solverScope);
     termination.phaseStarted(phaseScope);
-    termination.stepEnded(stepScope);
+    termination.stepStarted(stepScope);
 
     // time has not yet run out
     doReturn(START_TIME_MILLIS + 500).when(clock).millis();
@@ -142,7 +142,7 @@ class UnimprovedTimeMillisSpentScoreDifferenceThresholdTerminationTest {
 
     termination.solvingStarted(solverScope);
     termination.phaseStarted(phaseScope);
-    termination.stepEnded(stepScope);
+    termination.stepStarted(stepScope);
 
     // time has not yet run out
     doReturn(START_TIME_MILLIS + 500).when(clock).millis();
@@ -196,7 +196,7 @@ class UnimprovedTimeMillisSpentScoreDifferenceThresholdTerminationTest {
 
     termination.solvingStarted(solverScope);
     termination.phaseStarted(phaseScope);
-    termination.stepEnded(stepScope);
+    termination.stepStarted(stepScope);
 
     // time has not yet run out
     doReturn(START_TIME_MILLIS + 500).when(clock).millis();
@@ -239,7 +239,7 @@ class UnimprovedTimeMillisSpentScoreDifferenceThresholdTerminationTest {
 
     termination.solvingStarted(solverScope);
     termination.phaseStarted(phaseScope);
-    termination.stepEnded(stepScope);
+    termination.stepStarted(stepScope);
 
     // CH time has not yet run out
     doReturn(START_TIME_MILLIS + 500).when(clock).millis();
@@ -280,16 +280,16 @@ class UnimprovedTimeMillisSpentScoreDifferenceThresholdTerminationTest {
     doReturn(true).when(lsStepScope).getBestScoreImproved();
     doReturn(InnerScore.fullyAssigned(SimpleScore.of(5))).when(solverScope).getBestScore();
     termination.phaseStarted(lsPhaseScope);
-    termination.stepEnded(lsStepScope);
+    termination.stepStarted(lsStepScope);
 
     assertThat(termination.isPhaseTerminated(lsPhaseScope)).isFalse();
     assertThat(termination.calculatePhaseTimeGradient(lsPhaseScope))
         .isEqualTo(0.0, withPrecision(0.0));
     assertThat(termination.isSolverTerminated(solverScope)).isFalse();
     assertThat(termination.calculateSolverTimeGradient(solverScope))
-        .isEqualTo(0.5, withPrecision(0.0));
+        .isEqualTo(0.0, withPrecision(0.0));
 
-    // third step - score has improved beyond the threshold
+    // third step - the score increase from the initial local-search best is below the threshold
     doReturn(START_TIME_MILLIS + 1502).when(clock).millis();
     doReturn(START_TIME_MILLIS + 1502).when(solverScope).getBestSolutionTimeMillis();
     doReturn(InnerScore.fullyAssigned(SimpleScore.of(10))).when(solverScope).getBestScore();
@@ -300,16 +300,17 @@ class UnimprovedTimeMillisSpentScoreDifferenceThresholdTerminationTest {
         .isEqualTo(0.001, withPrecision(0.0));
     assertThat(termination.isSolverTerminated(solverScope)).isFalse();
     assertThat(termination.calculateSolverTimeGradient(solverScope))
-        .isEqualTo(0.501, withPrecision(0.0));
+        .isEqualTo(0.001, withPrecision(0.0));
 
     doReturn(START_TIME_MILLIS + 2001).when(clock).millis();
+    doReturn(false).when(lsStepScope).getBestScoreImproved();
     termination.stepEnded(lsStepScope);
     assertThat(termination.isPhaseTerminated(lsPhaseScope)).isFalse();
     assertThat(termination.calculatePhaseTimeGradient(lsPhaseScope))
         .isEqualTo(0.5, withPrecision(0.0));
     assertThat(termination.isSolverTerminated(solverScope)).isFalse();
     assertThat(termination.calculateSolverTimeGradient(solverScope))
-        .isEqualTo(1.0, withPrecision(0.0));
+        .isEqualTo(0.5, withPrecision(0.0));
 
     // fourth step - no more improvements
     doReturn(START_TIME_MILLIS + 2502).when(clock).millis();
@@ -322,7 +323,7 @@ class UnimprovedTimeMillisSpentScoreDifferenceThresholdTerminationTest {
     assertThat(termination.calculateSolverTimeGradient(solverScope))
         .isEqualTo(1.0, withPrecision(0.0));
 
-    termination.phaseEnded(phaseScope);
+    termination.phaseEnded(lsPhaseScope);
     termination.solvingEnded(solverScope);
   }
 }

@@ -2217,6 +2217,11 @@ public interface IncrementalScoreCalculator<Solution_, Score_ extends Score<Scor
 
 image::constraints-and-score/score-calculation/incrementalScoreCalculatorSequenceDiagram.png[align="center"]
 
+`resetWorkingSolution` initializes the calculator's state before variable-change callbacks,
+including callbacks that repair the initial list shadow variables.
+It may be called again when the working solution is replaced or its structure changes.
+Replace the previous solution's caches and totals on every reset; do not accumulate them across resets.
+
 Configure it in the solver configuration:
 
 [source,xml,options="nowrap"]

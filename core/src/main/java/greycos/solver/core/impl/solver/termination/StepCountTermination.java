@@ -33,8 +33,7 @@ final class StepCountTermination<Solution_> extends AbstractPhaseTermination<Sol
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> phaseScope) {
     int nextStepIndex = phaseScope.getNextStepIndex();
-    double timeGradient = nextStepIndex / ((double) stepCountLimit);
-    return Math.min(timeGradient, 1.0);
+    return TerminationGradient.ratio(nextStepIndex, stepCountLimit);
   }
 
   @Override

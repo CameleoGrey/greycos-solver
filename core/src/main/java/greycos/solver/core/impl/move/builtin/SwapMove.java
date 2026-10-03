@@ -49,9 +49,9 @@ public final class SwapMove<Solution_, Entity_> extends AbstractMove<Solution_> 
   private final Entity_ rightEntity;
 
   /**
-   * Cache of the values of the entities at the time of the first call of {@link
-   * #getCachedValues()}. Ideally, the method would first be called before the values are changed by
-   * the move, so that the {@link #toString()} method shows the original values.
+   * Values captured before the most recent execution, retained after undo for move metadata.
+   * Introspection before the first execution initializes this cache, but every execution refreshes
+   * it before any variable is changed.
    *
    * <p>The list is structured such that for each variable in {@link #variableMetaModelList}, in
    * order, it contains first the value of {@link #leftEntity} and then the value of {@link
@@ -101,7 +101,10 @@ public final class SwapMove<Solution_, Entity_> extends AbstractMove<Solution_> 
 
   @Override
   public void execute(MutableSolutionView<Solution_> solutionView) {
-    var cachedValues = getCachedValues();
+    valueCache =
+        MoveProviderUtil.refreshCachedValues(
+            leftEntity, rightEntity, variableMetaModelList, valueCache);
+    var cachedValues = valueCache;
     for (var i = 0; i < cachedValues.size(); i += 2) {
       var variableMetaModel = variableMetaModelList.get(i / 2);
       var oldLeftValue = cachedValues.get(i);

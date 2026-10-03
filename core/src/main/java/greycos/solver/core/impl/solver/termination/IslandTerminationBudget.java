@@ -383,6 +383,7 @@ public final class IslandTerminationBudget<Solution_> {
       scope.startAt(snapshot.searchStartMillis());
       termination.solvingStarted(scope.getSolverScope());
       termination.phaseStarted(scope);
+      termination.stepStarted(scope.getLastCompletedStepScope());
       started = true;
     }
 

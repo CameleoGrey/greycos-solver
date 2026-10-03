@@ -71,7 +71,15 @@ public final class BasicVariableState<Solution_>
       forEachEntity(
           scoreDirector,
           shadowVariableDescriptor.getEntityDescriptor().getEntityClass(),
-          value -> getInverseCollection(value).clear());
+          value -> {
+            var inverseCollection = getInverseCollection(value);
+            if (!inverseCollection.isEmpty()) {
+              // Calculators are initialized before shadow repair, including this bulk removal.
+              scoreDirector.beforeVariableChanged(shadowVariableDescriptor, value);
+              inverseCollection.clear();
+              scoreDirector.afterVariableChanged(shadowVariableDescriptor, value);
+            }
+          });
       forEachEntity(
           scoreDirector,
           sourceVariableDescriptor.getEntityDescriptor().getEntityClass(),

@@ -84,10 +84,10 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
   @Override
   public void setWorkingSolutionWithoutUpdatingShadows(Solution_ workingSolution) {
     super.setWorkingSolutionWithoutUpdatingShadows(workingSolution, null);
-    resetWorkingSolutionAndMaps(workingSolution);
   }
 
-  private void resetWorkingSolutionAndMaps(Solution_ workingSolution) {
+  @Override
+  protected void beforeShadowVariablesReset(Solution_ workingSolution) {
     constraintMatchTotalMap.clear();
     totalScore = getScoreDefinition().getZeroScore();
     if (floatingAccumulator != null) {
@@ -111,6 +111,7 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
 
   @Override
   public Map<ConstraintRef, ConstraintMatchTotal<Score_>> getConstraintMatchTotalMap() {
+    ensureWorkingSolutionStateFresh();
     if (!constraintMatchPolicy.isEnabled()) {
       throw new IllegalStateException(
           "When constraint matching ("
@@ -132,13 +133,13 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
 
   @Override
   public void afterEntityAdded(EntityDescriptor<Solution_> entityDescriptor, Object entity) {
-    resetWorkingSolutionAndMaps(workingSolution);
     super.afterEntityAdded(entityDescriptor, entity);
   }
 
   @Override
   public void beforeVariableChanged(
       VariableDescriptor<Solution_> variableDescriptor, Object entity) {
+    ensureWorkingSolutionStateFresh();
     incrementalScoreCalculator.beforeVariableChanged(entity, variableDescriptor.getVariableName());
     super.beforeVariableChanged(variableDescriptor, entity);
   }
@@ -153,6 +154,7 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
   @Override
   public void beforeListVariableElementAssigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
+    ensureWorkingSolutionStateFresh();
     incrementalScoreCalculator.beforeListVariableElementAssigned(
         variableDescriptor.getVariableName(), element);
     super.beforeListVariableElementAssigned(variableDescriptor, element);
@@ -169,6 +171,7 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
   @Override
   public void beforeListVariableElementUnassigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
+    ensureWorkingSolutionStateFresh();
     incrementalScoreCalculator.beforeListVariableElementUnassigned(
         variableDescriptor.getVariableName(), element);
     super.beforeListVariableElementUnassigned(variableDescriptor, element);
@@ -188,6 +191,7 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
       Object entity,
       int fromIndex,
       int toIndex) {
+    ensureWorkingSolutionStateFresh();
     incrementalScoreCalculator.beforeListVariableChanged(
         entity, variableDescriptor.getVariableName(), fromIndex, toIndex);
     super.beforeListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
@@ -206,7 +210,6 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
 
   @Override
   public void afterEntityRemoved(EntityDescriptor<Solution_> entityDescriptor, Object entity) {
-    resetWorkingSolutionAndMaps(workingSolution);
     super.afterEntityRemoved(entityDescriptor, entity);
   }
 
@@ -221,19 +224,16 @@ public final class IncrementalScoreDirector<Solution_, Score_ extends Score<Scor
 
   @Override
   public void afterProblemFactAdded(Object problemFact) {
-    resetWorkingSolutionAndMaps(workingSolution);
     super.afterProblemFactAdded(problemFact);
   }
 
   @Override
   public void afterProblemPropertyChanged(Object problemFactOrEntity) {
-    resetWorkingSolutionAndMaps(workingSolution);
     super.afterProblemPropertyChanged(problemFactOrEntity);
   }
 
   @Override
   public void afterProblemFactRemoved(Object problemFact) {
-    resetWorkingSolutionAndMaps(workingSolution);
     super.afterProblemFactRemoved(problemFact);
   }
 

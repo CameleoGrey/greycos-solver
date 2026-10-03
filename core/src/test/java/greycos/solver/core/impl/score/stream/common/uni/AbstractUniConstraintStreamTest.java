@@ -3903,7 +3903,9 @@ public abstract class AbstractUniConstraintStreamTest extends AbstractConstraint
     scoreDirector.afterProblemPropertyChanged(entity1);
     scoreDirector.calculateScore();
     assertThat(zeroWeightMonitorCount.get()).isZero();
-    assertThat(oneWeightMonitorCount.get()).isOne();
+    // Eligible property changes only reinsert the changed entity; zero-weight constraints stay
+    // disabled.
+    assertThat(oneWeightMonitorCount.get()).isEqualTo(1L);
   }
 
   @TestTemplate

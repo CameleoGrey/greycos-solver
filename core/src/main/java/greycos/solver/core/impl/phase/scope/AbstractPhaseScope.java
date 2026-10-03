@@ -159,7 +159,11 @@ public abstract class AbstractPhaseScope<Solution_> {
   }
 
   public long getPhaseScoreCalculationCount() {
-    return endingScoreCalculationCount
+    var currentScoreCalculationCount = endingScoreCalculationCount;
+    if (currentScoreCalculationCount == null) {
+      currentScoreCalculationCount = getScoreDirector().getCalculationCount();
+    }
+    return currentScoreCalculationCount
         - startingScoreCalculationCount
         + childThreadsScoreCalculationCount;
   }

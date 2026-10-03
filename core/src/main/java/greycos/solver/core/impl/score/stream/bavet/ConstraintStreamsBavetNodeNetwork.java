@@ -10,6 +10,8 @@ import greycos.solver.core.impl.bavet.common.AbstractNode;
 import greycos.solver.core.impl.bavet.common.AbstractRootNode;
 import greycos.solver.core.impl.bavet.common.InnerConstraintProfiler;
 import greycos.solver.core.impl.bavet.common.Propagator;
+import greycos.solver.core.impl.bavet.uni.ForEachFilteredUniNode;
+import greycos.solver.core.impl.bavet.uni.ForEachUnfilteredUniNode;
 import greycos.solver.core.impl.score.stream.bavet.common.Scorer;
 
 import org.jspecify.annotations.NullMarked;
@@ -52,6 +54,7 @@ public final class ConstraintStreamsBavetNodeNetwork extends AbstractBavetNodeNe
   private final Map<BavetConstraint<?>, Scorer<?>> constraintToScorerMap;
   private final @Nullable InnerConstraintProfiler constraintProfiler;
   private final boolean scoreDirectorDerived;
+  private final boolean ordinaryRootsOnly;
   private boolean printedInactiveConstraints = false;
 
   /**
@@ -72,6 +75,17 @@ public final class ConstraintStreamsBavetNodeNetwork extends AbstractBavetNodeNe
     this.constraintToScorerMap = constraintToScorerMap;
     this.constraintProfiler = constraintProfiler;
     this.scoreDirectorDerived = scoreDirectorDerived;
+    this.ordinaryRootsOnly =
+        declaredClassToNodeMap.values().stream()
+            .flatMap(List::stream)
+            .allMatch(
+                node ->
+                    node instanceof ForEachFilteredUniNode<?>
+                        || node instanceof ForEachUnfilteredUniNode<?>);
+  }
+
+  public boolean hasOnlyOrdinaryRoots() {
+    return ordinaryRootsOnly;
   }
 
   @Override

@@ -127,6 +127,11 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
    */
   void setWorkingSolutionWithoutUpdatingShadows(Solution_ workingSolution);
 
+  /** Rebuilds cached structural state after problem changes, if necessary. */
+  default void ensureWorkingSolutionStateFresh() {
+    // Directors without cached structural state need no refresh.
+  }
+
   /**
    * Different phases may need different move repositories, as they may be based on different sets
    * of moves. Therefore move repository cannot be injected at score director construction time.

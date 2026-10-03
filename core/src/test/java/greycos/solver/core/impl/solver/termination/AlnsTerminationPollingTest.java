@@ -197,6 +197,7 @@ class AlnsTerminationPollingTest {
             100, SimpleScore.ONE, timerClock);
     time.solvingStarted(fixture.solverScope);
     time.phaseStarted(fixture.phaseScope);
+    time.stepStarted(fixture.phaseScope.getLastCompletedStepScope());
     timerClock.reads = 0;
     var polling = fixture.polling(time);
     assertThat(polling.supportedForRepairAttempts()).isTrue();

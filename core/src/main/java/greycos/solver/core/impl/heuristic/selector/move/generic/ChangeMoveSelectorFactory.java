@@ -60,7 +60,11 @@ public class ChangeMoveSelectorFactory<Solution_>
                 entitySelector.getEntityDescriptor(),
                 minimumCacheType,
                 selectionOrder);
-    return new ChangeMoveSelector<>(entitySelector, valueSelector, randomSelection);
+    return new ChangeMoveSelector<>(
+        entitySelector,
+        valueSelector,
+        randomSelection,
+        configPolicy.isReinitializeVariableFilterEnabled());
   }
 
   @Override

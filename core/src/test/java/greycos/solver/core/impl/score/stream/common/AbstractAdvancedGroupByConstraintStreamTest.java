@@ -179,6 +179,13 @@ public abstract class AbstractAdvancedGroupByConstraintStreamTest
                     // Stream of all unique entity bi tuples that share a group
                     .groupBy((a, b) -> a.getEntityGroup(), countBi())
                     .groupBy(ConstraintCollectors.toList((a, b) -> a))
+                    .map(
+                        groups ->
+                            groups.stream()
+                                .sorted(
+                                    java.util.Comparator.comparing(
+                                        TestdataLavishEntityGroup::getCode))
+                                .toList())
                     .penalize(SimpleScore.ONE)
                     .asConstraint(TEST_CONSTRAINT_ID));
 

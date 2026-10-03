@@ -71,26 +71,21 @@ class SingleCascadingUpdateShadowVariableTest {
             variableDescriptor.getEntityDescriptor().getSolutionDescriptor());
 
     var solution = TestdataSingleCascadingSolution.generateUninitializedSolution(3, 2);
-    solution.getValueList().get(1).setCascadeValue(3);
-    solution.getValueList().get(1).setEntity(solution.getEntityList().get(0));
-    solution.getValueList().get(2).setEntity(solution.getEntityList().get(0));
-    solution.getValueList().get(2).setPrevious(solution.getValueList().get(1));
-    scoreDirector.setWorkingSolution(solution);
-
-    var entity = solution.getEntityList().get(0);
-    scoreDirector.beforeListVariableChanged(entity, "valueList", 0, 1);
+    var entity = solution.getEntityList().getFirst();
     entity.setValueList(solution.getValueList());
+    scoreDirector.setWorkingSolution(solution);
+    var firstCalls = entity.getValueList().get(0).getNumberOfCalls();
+    var secondCalls = entity.getValueList().get(1).getNumberOfCalls();
+    var thirdCalls = entity.getValueList().get(2).getNumberOfCalls();
+
+    // A no-op notification forces the specified range, then stops at the unchanged next value.
+    scoreDirector.beforeListVariableChanged(entity, "valueList", 0, 1);
     scoreDirector.afterListVariableChanged(entity, "valueList", 0, 1);
     scoreDirector.updateShadowVariables();
 
-    assertThat(entity.getValueList().get(0).getCascadeValue()).isEqualTo(2);
-    assertThat(entity.getValueList().get(0).getNumberOfCalls()).isOne();
-
-    assertThat(entity.getValueList().get(1).getCascadeValue()).isEqualTo(3);
-    assertThat(entity.getValueList().get(1).getNumberOfCalls()).isOne();
-
-    assertThat(entity.getValueList().get(2).getCascadeValue()).isNull();
-    // Stop on value2
-    assertThat(entity.getValueList().get(2).getNumberOfCalls()).isZero();
+    assertThat(entity.getValueList()).extracting(v -> v.getCascadeValue()).containsExactly(2, 3, 4);
+    assertThat(entity.getValueList().get(0).getNumberOfCalls()).isEqualTo(firstCalls + 1);
+    assertThat(entity.getValueList().get(1).getNumberOfCalls()).isEqualTo(secondCalls + 1);
+    assertThat(entity.getValueList().get(2).getNumberOfCalls()).isEqualTo(thirdCalls);
   }
 }

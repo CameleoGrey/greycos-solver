@@ -36,4 +36,14 @@ public sealed interface MoveRepository<Solution_>
   }
 
   void initialize(SessionContext<Solution_> context);
+
+  /** Rebuilds working-solution state without starting or ending the phase. */
+  default void resetWorkingSolution(SessionContext<Solution_> context) {
+    initialize(context);
+  }
+
+  /** Releases references to the working solution when its director is closed. */
+  default void dispose() {
+    // Selector and placer lifecycle is handled by their phase.
+  }
 }

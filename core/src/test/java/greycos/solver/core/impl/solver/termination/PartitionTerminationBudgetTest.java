@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
+import java.time.Clock;
 import java.util.List;
 
 import greycos.solver.core.api.score.HardSoftScore;
@@ -112,10 +113,15 @@ class PartitionTerminationBudgetTest {
                 new MoveCountTermination<>(20)),
             parentPhase);
     SolverScope<TestdataSolution> childScope = mockSolverScope();
-    var childPhase = phase(childScope);
-    when(childScope.getMoveEvaluationCount()).thenReturn(5L);
+    when(childScope.getClock()).thenReturn(Clock.systemUTC());
+    doReturn(mock(InnerScoreDirector.class)).when(childScope).getScoreDirector();
+    when(childScope.getMoveEvaluationCount()).thenReturn(2L);
+    var childPhase = spy(new LocalSearchPhaseScope<>(childScope, 1));
+    childPhase.startingNow();
+    when(childScope.getMoveEvaluationCount()).thenReturn(7L);
     when(childPhase.getNextStepIndex()).thenReturn(9);
-    var child = budget.createChildTermination(parent);
+    var child = budget.createChildTermination(childScope);
+    child.solvingStarted(childScope);
     child.phaseStarted(childPhase);
     assertThat(child.calculatePhaseTimeGradient(childPhase)).isEqualTo(0.5);
     assertThat(PhaseTermination.bridge(child).calculatePhaseTimeGradient(childPhase))
@@ -133,8 +139,10 @@ class PartitionTerminationBudgetTest {
     when(childPhase.getNextStepIndex()).thenReturn(10);
     assertThat(child.isPhaseTerminated(childPhase)).isTrue();
     when(childPhase.getNextStepIndex()).thenReturn(0);
-    when(childScope.getMoveEvaluationCount()).thenReturn(20L);
+    when(childScope.getMoveEvaluationCount()).thenReturn(22L);
     assertThat(child.isPhaseTerminated(childPhase)).isTrue();
+    child.phaseEnded(childPhase);
+    child.solvingEnded(childScope);
   }
 
   @Test

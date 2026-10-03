@@ -363,6 +363,15 @@ The following example will terminate after reaching a feasible score of at least
 This example ensures it does not just terminate after finding a feasible solution,
 but also completes any obvious improvements on that solution before terminating.
 
+A phase-only condition cannot satisfy an `AND` expression before a compatible phase is running.
+Nested expressions retain that condition; it is not removed from the conjunction.
+Within a phase, solver-level time and work limits retain their solver-wide counters,
+while phase-only conditions use the active phase's state.
+An explicitly phase-configured move or score-calculation limit counts only work done in that phase.
+Construction and earlier search phases do not consume its budget or advance its cooling gradient.
+An `OR` expression can still terminate through another satisfied condition.
+An applicable zero time or work budget is already complete, including when it contributes to a cooling time gradient.
+
 
 [#asynchronousTermination]
 ==== Asynchronous termination from another thread
@@ -566,6 +575,10 @@ Just like <<timeMillisSpentTermination,time spent termination>>, combinations ar
 
 It is preffered to configure this termination on a specific `Phase` (such as ``<localSearch>``) instead of on the `Solver` itself.
 
+A positive idle budget starts with the first eligible search step, so initial setup does not consume it.
+Reusing the solver or restarting after problem changes resets this state.
+Solver-level history continues across consecutive improvement phases; a phase-configured budget starts fresh for that phase.
+
 Several phases, such as construction heuristics, do not count towards this termination because
 they only trigger new best solution events when they are done.
 If such a phase is encountered, the termination is disabled and when the next phase is started,
@@ -584,6 +597,8 @@ which will send time gradient based algorithms (such as Simulated Annealing) on 
 ====
 
 Optionally, configure a score difference threshold by which the best score must improve in the specified time.
+The initialized best score at the start of eligible search is the first comparison point.
+The first improvement that meets the threshold therefore extends the deadline, just like later qualifying improvements.
 For example, if the score doesn't improve by at least `100` soft points every 30 seconds or less, it terminates:
 
 [source,xml,options="nowrap"]

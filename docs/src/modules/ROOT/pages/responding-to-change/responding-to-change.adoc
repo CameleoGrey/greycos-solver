@@ -550,6 +550,11 @@ Otherwise, if the `workingSolution` and `bestSolution` are used in different thr
 . For performance reasons, it is recommended to submit problem changes in batches.
 To do that, use `addProblemChanges(List<ProblemChange>)` method instead of `addProblemChange(ProblemChange)`.
 
+A `SolverJob` accepts problem changes while it is scheduled or actively solving.
+The returned future completes after a solution containing the changes has been consumed.
+If a queued job is canceled, or its manager closes before it starts, its pending change futures are canceled.
+Changes submitted after the job stops accepting them are rejected.
+
 [#cloningSolutionsToAvoidRaceConditions]
 ==== Cloning solutions to avoid race conditions in real-time planning
 
@@ -563,6 +568,9 @@ The process occurs as follows:
 
 . The `Solver` stops.
 . Runs the `ProblemChange`.
+. Refreshes shadow variables and structural scoring state before the next change or best-solution publication.
++
+Within a callback, call `ProblemChangeDirector.updateShadowVariables()` before directly reading shadows affected by its changes.
 . **restarts**.
 +
 This is a _warm start_ because its initial solution is the adjusted best solution of the previous run.

@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.localsearch.decider.forager;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.Objects;
 
@@ -68,7 +69,7 @@ public class LocalSearchForagerFactory<Solution_> {
 
         return forager;
       }
-    } catch (Exception e) {
+    } catch (ReflectiveOperationException e) {
       throw new IllegalStateException(
           "Failed to instantiate custom forager (" + foragerClass.getName() + ").", e);
     }
@@ -107,13 +108,24 @@ public class LocalSearchForagerFactory<Solution_> {
     for (var entry : customProperties.entrySet()) {
       var propertyName = entry.getKey();
       var propertyValue = entry.getValue();
+      if (propertyName == null || propertyName.isEmpty()) {
+        // No setter can correspond to an unnamed optional property.
+        continue;
+      }
 
       try {
         var setterName =
             "set" + Character.toUpperCase(propertyName.charAt(0)) + propertyName.substring(1);
         var setter = forager.getClass().getMethod(setterName, String.class);
         setter.invoke(forager, propertyValue);
-      } catch (Exception e) {
+      } catch (NoSuchMethodException e) {
+        // Unknown optional properties have historically been ignored.
+      } catch (ReflectiveOperationException | SecurityException e) {
+        var cause = e instanceof InvocationTargetException invocation ? invocation.getCause() : e;
+        throw new IllegalArgumentException(
+            "The custom forager (%s) property (%s) with value (%s) could not be set."
+                .formatted(forager.getClass().getName(), propertyName, propertyValue),
+            cause);
       }
     }
   }

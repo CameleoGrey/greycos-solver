@@ -65,9 +65,9 @@ public final class PillarSwapMove<Solution_, Entity_> extends AbstractMove<Solut
   private final Sample<Entity_> rightPillar;
 
   /**
-   * Cache of the values of the pillars' representative members at the time of the first call of
-   * {@link #getCachedValues()}. Ideally, the method would first be called before the values are
-   * changed by the move, so that the {@link #toString()} method shows the original values.
+   * Values of the pillars' representative members before the most recent execution, retained after
+   * undo for move metadata. Introspection may initialize the cache, but every execution refreshes
+   * it before any member is changed.
    *
    * <p>The list is structured such that for each variable in {@link #variableMetaModelList}, in
    * order, it contains first the value of {@link #leftPillar} and then the value of {@link
@@ -114,7 +114,13 @@ public final class PillarSwapMove<Solution_, Entity_> extends AbstractMove<Solut
 
   @Override
   public void execute(MutableSolutionView<Solution_> solutionView) {
-    var cachedValues = getCachedValues(); // [left.v1, right.v1, left.v2, right.v2, ...]
+    valueList =
+        MoveProviderUtil.refreshCachedValues(
+            Objects.requireNonNull(leftPillar.representative()),
+            Objects.requireNonNull(rightPillar.representative()),
+            variableMetaModelList,
+            valueList);
+    var cachedValues = valueList; // [left.v1, right.v1, left.v2, right.v2, ...]
     for (var i = 0; i < cachedValues.size(); i += 2) {
       var variableMetaModel = variableMetaModelList.get(i / 2);
       var oldLeftValue = cachedValues.get(i);

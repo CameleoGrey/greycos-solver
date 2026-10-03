@@ -50,7 +50,7 @@ public final class ConstructionHeuristicNearbyMoveSelectorFactory {
       HeuristicConfigPolicy<Solution_> configPolicy) {
     if (!configPolicy.isConstructionHeuristicNearbyAutoConfigurationEnabled()
         || configPolicy.getConstructionHeuristicNearbyProfiles().isEmpty()
-        || hasExplicitRandomSelection(sourceConfig)
+        || hasExplicitRandomizedSelection(sourceConfig)
         || delegate instanceof ConstructionHeuristicNearbyMoveSelector<?>) {
       return delegate;
     }
@@ -61,39 +61,45 @@ public final class ConstructionHeuristicNearbyMoveSelectorFactory {
             delegate, source, configPolicy.getConstructionHeuristicNearbySelectionSize());
   }
 
-  private static boolean hasExplicitRandomSelection(MoveSelectorConfig<?> config) {
+  private static boolean isRandomized(SelectionOrder order) {
+    return order == SelectionOrder.RANDOM || order == SelectionOrder.SHUFFLED;
+  }
+
+  private static boolean hasExplicitRandomizedSelection(MoveSelectorConfig<?> config) {
     if (config == null) {
       return false;
     }
-    if (config.getSelectionOrder() == SelectionOrder.RANDOM) {
+    if (isRandomized(config.getSelectionOrder())) {
       return true;
     }
     if (config instanceof ChangeMoveSelectorConfig change) {
       var entity = change.getEntitySelectorConfig();
       var value = change.getValueSelectorConfig();
-      return entity != null && entity.getSelectionOrder() == SelectionOrder.RANDOM
-          || value != null && value.getSelectionOrder() == SelectionOrder.RANDOM;
+      return entity != null && isRandomized(entity.getSelectionOrder())
+          || value != null && isRandomized(value.getSelectionOrder());
     }
     if (config instanceof ListChangeMoveSelectorConfig list) {
       var source = list.getValueSelectorConfig();
       var destination = list.getDestinationSelectorConfig();
       var entity = destination == null ? null : destination.getEntitySelectorConfig();
       var value = destination == null ? null : destination.getValueSelectorConfig();
-      return source != null && source.getSelectionOrder() == SelectionOrder.RANDOM
-          || entity != null && entity.getSelectionOrder() == SelectionOrder.RANDOM
-          || value != null && value.getSelectionOrder() == SelectionOrder.RANDOM;
+      return source != null && isRandomized(source.getSelectionOrder())
+          || entity != null && isRandomized(entity.getSelectionOrder())
+          || value != null && isRandomized(value.getSelectionOrder());
     }
     if (config instanceof UnionMoveSelectorConfig union) {
       var children = union.getMoveSelectorList();
       return children != null
           && children.stream()
-              .anyMatch(ConstructionHeuristicNearbyMoveSelectorFactory::hasExplicitRandomSelection);
+              .anyMatch(
+                  ConstructionHeuristicNearbyMoveSelectorFactory::hasExplicitRandomizedSelection);
     }
     if (config instanceof CartesianProductMoveSelectorConfig product) {
       var children = product.getMoveSelectorList();
       return children != null
           && children.stream()
-              .anyMatch(ConstructionHeuristicNearbyMoveSelectorFactory::hasExplicitRandomSelection);
+              .anyMatch(
+                  ConstructionHeuristicNearbyMoveSelectorFactory::hasExplicitRandomizedSelection);
     }
     return false;
   }
@@ -102,7 +108,7 @@ public final class ConstructionHeuristicNearbyMoveSelectorFactory {
       MoveSelector<Solution_> delegate,
       MoveSelectorConfig<?> config,
       HeuristicConfigPolicy<Solution_> policy) {
-    if (config != null && config.getSelectionOrder() == SelectionOrder.RANDOM) {
+    if (config != null && isRandomized(config.getSelectionOrder())) {
       return null;
     }
     var base = unwrap(delegate);
@@ -276,7 +282,7 @@ public final class ConstructionHeuristicNearbyMoveSelectorFactory {
       HeuristicConfigPolicy<Solution_> policy) {
     if (config.hasNearbySelectionConfig()
         || delegate.isNeverEnding()
-        || config.getSelectionOrder() == SelectionOrder.RANDOM) {
+        || isRandomized(config.getSelectionOrder())) {
       return null;
     }
     var base = unwrap(delegate);

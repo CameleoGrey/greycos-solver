@@ -21,6 +21,9 @@ public interface LocalSearchForager<Solution_>
   boolean supportsNeverEndingMoveSelector();
 
   /**
+   * Receives an evaluated move. The decider has already recorded its move evaluation count.
+   * Implementations must not increment that count again.
+   *
    * @param moveScope never null
    */
   void addMove(LocalSearchMoveScope<Solution_> moveScope);

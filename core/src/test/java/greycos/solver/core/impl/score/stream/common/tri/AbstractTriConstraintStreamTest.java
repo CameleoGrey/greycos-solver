@@ -425,7 +425,7 @@ public abstract class AbstractTriConstraintStreamTest extends AbstractConstraint
     // Incremental
     var entity = solution.getFirstEntity();
     scoreDirector.beforeEntityRemoved(entity);
-    solution.getEntityGroupList().remove(entity);
+    solution.getEntityList().remove(entity);
     scoreDirector.afterEntityRemoved(entity);
     assertScore(scoreDirector);
   }
@@ -649,7 +649,7 @@ public abstract class AbstractTriConstraintStreamTest extends AbstractConstraint
     // Incremental
     var entity = solution.getFirstEntity();
     scoreDirector.beforeEntityRemoved(entity);
-    solution.getEntityGroupList().remove(entity);
+    solution.getEntityList().remove(entity);
     scoreDirector.afterEntityRemoved(entity);
     assertScore(
         scoreDirector,

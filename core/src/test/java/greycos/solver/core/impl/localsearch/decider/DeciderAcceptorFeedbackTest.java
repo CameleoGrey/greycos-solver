@@ -132,6 +132,7 @@ class DeciderAcceptorFeedbackTest {
     assertThat(foraged)
         .extracting(LocalSearchMoveScope::getMoveIndex)
         .containsExactly(0, 1, 2, 3, 4);
+    assertThat(solverScope.getMoveEvaluationCount()).isEqualTo(5L);
     verify(forager).pickMove(stepScope);
     if (threaded) {
       verify(pipeline, times(5)).take();

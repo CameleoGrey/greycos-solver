@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 
+import greycos.solver.core.api.score.BendableScore;
+import greycos.solver.core.api.score.HardSoftBigDecimalScore;
 import greycos.solver.core.api.score.HardSoftDoubleScore;
+import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.score.SimpleDoubleScore;
 import greycos.solver.core.api.score.SimpleFloatScore;
 import greycos.solver.core.impl.alns.AlnsScoreMath;
@@ -30,6 +33,41 @@ class ScoreArithmeticTest {
   void feasibilityDifferenceDoesNotConstructAnOverflowingSoftLevel() {
     var high = HardSoftDoubleScore.of(0.5, Double.MAX_VALUE);
     var low = HardSoftDoubleScore.of(0.25, -Double.MAX_VALUE);
+    assertThat(ScoreArithmetic.isFeasibleDifference(high, low, 1)).isTrue();
+    assertThat(ScoreArithmetic.isFeasibleDifference(low, high, 1)).isFalse();
+  }
+
+  @Test
+  void integralFeasibilityUsesExactComponentwiseComparisons() {
+    var low = HardSoftScore.of(Long.MIN_VALUE, Long.MAX_VALUE);
+    var high = HardSoftScore.of(1, Long.MIN_VALUE);
+    assertThat(ScoreArithmetic.isFeasibleDifference(low, high, 1)).isFalse();
+    assertThat(ScoreArithmetic.isFeasibleDifference(high, low, 1)).isTrue();
+    assertThat(ScoreArithmetic.isFeasibleDifference(HardSoftScore.of(1, Long.MAX_VALUE), high, 1))
+        .isTrue();
+    var baseline = BendableScore.of(new long[] {0, 0}, new long[] {Long.MIN_VALUE});
+    assertThat(
+            ScoreArithmetic.isFeasibleDifference(
+                BendableScore.of(new long[] {1, -1}, new long[] {Long.MAX_VALUE}), baseline, 2))
+        .isFalse();
+    assertThat(
+            ScoreArithmetic.isFeasibleDifference(
+                BendableScore.of(new long[] {1, 0}, new long[] {Long.MAX_VALUE}), baseline, 2))
+        .isTrue();
+    assertThat(
+            ScoreArithmetic.isFeasibleDifference(
+                new HardSoftScore(Long.MIN_VALUE, 0, 0), new HardSoftScore(0, 0, 0), 1))
+        .isFalse();
+  }
+
+  @Test
+  void decimalHardDifferencesRetainExactOrderingAndIgnoreSoftLevels() {
+    var low =
+        HardSoftBigDecimalScore.of(
+            new BigDecimal("9007199254740992.0000000000001"), BigDecimal.ONE);
+    var high =
+        HardSoftBigDecimalScore.of(
+            new BigDecimal("9007199254740992.0000000000002"), BigDecimal.TEN.negate());
     assertThat(ScoreArithmetic.isFeasibleDifference(high, low, 1)).isTrue();
     assertThat(ScoreArithmetic.isFeasibleDifference(low, high, 1)).isFalse();
   }

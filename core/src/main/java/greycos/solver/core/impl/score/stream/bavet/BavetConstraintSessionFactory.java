@@ -38,7 +38,9 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
   private final SolutionDescriptor<Solution_> solutionDescriptor;
   private final ConstraintMetaModel constraintMetaModel;
   private final @Nullable InnerConstraintProfiler constraintProfiler;
+  private final boolean entityPropertyRefreshSupported;
 
+  @SuppressWarnings("unchecked")
   public BavetConstraintSessionFactory(
       SolutionDescriptor<Solution_> solutionDescriptor,
       ConstraintMetaModel constraintMetaModel,
@@ -46,6 +48,21 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
     this.solutionDescriptor = Objects.requireNonNull(solutionDescriptor);
     this.constraintMetaModel = Objects.requireNonNull(constraintMetaModel);
     this.constraintProfiler = profilingEnabled ? new DefaultConstraintProfiler() : null;
+    // Inspect every constraint, including those whose current weight is zero.
+    var allStreams = new LinkedHashSet<BavetAbstractConstraintStream<Solution_>>();
+    for (var constraint : constraintMetaModel.getConstraints()) {
+      ((BavetConstraint<Solution_>) constraint).collectActiveConstraintStreams(allStreams);
+    }
+    this.entityPropertyRefreshSupported =
+        solutionDescriptor.getListVariableDescriptor() == null
+            && solutionDescriptor.getConstraintWeightSupplier() == null
+            && solutionDescriptor.getEntityDescriptors().stream()
+                .allMatch(entity -> entity.getShadowVariableDescriptors().isEmpty())
+            && allStreams.stream().noneMatch(BavetPrecomputeStream.class::isInstance);
+  }
+
+  public boolean supportsEntityPropertyRefresh() {
+    return entityPropertyRefreshSupported;
   }
 
   // ************************************************************************

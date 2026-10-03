@@ -1024,7 +1024,16 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     if (entity == null) {
       return false; // Null is never pinned.
     }
-    return !entityDescriptor.isMovable(backingScoreDirector.getWorkingSolution(), entity);
+    // A list variable may be declared on a base class while its owner is pinned on a subtype.
+    // This also protects destinations produced by a neighborhood over the base entity type.
+    var effectiveEntityDescriptor =
+        entityDescriptor.hasAnyListVariables()
+                && entity.getClass() != entityDescriptor.getEntityClass()
+            ? backingScoreDirector
+                .getSolutionDescriptor()
+                .findEntityDescriptorOrFail(entity.getClass())
+            : entityDescriptor;
+    return !effectiveEntityDescriptor.isMovable(backingScoreDirector.getWorkingSolution(), entity);
   }
 
   protected static <Solution_, Entity_, Value_> ElementPosition getPositionOf(

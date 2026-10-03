@@ -16,7 +16,6 @@ import greycos.solver.core.impl.solver.thread.ChildThreadType;
 import greycos.solver.core.impl.util.Pair;
 
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 
 @NullMarked
 final class UnimprovedTimeMillisSpentScoreDifferenceThresholdTermination<Solution_>
@@ -27,10 +26,13 @@ final class UnimprovedTimeMillisSpentScoreDifferenceThresholdTermination<Solutio
   private final Score<?> unimprovedScoreDifferenceThreshold;
   private final Clock clock;
 
-  private @Nullable Queue<Pair<Long, InnerScore<?>>> bestScoreImprovementHistoryQueue;
-  // safeTimeMillis is until when we're safe from termination
+  private final Queue<Pair<Long, InnerScore<?>>> solverBestScoreHistory = new ArrayDeque<>();
+  private final Queue<Pair<Long, InnerScore<?>>> phaseBestScoreHistory = new ArrayDeque<>();
+  // safeTimeMillis is until when we're safe from termination.
   private long solverSafeTimeMillis = -1L;
   private long phaseSafeTimeMillis = -1L;
+  private boolean solverCounterStarted = false;
+  private boolean phaseCounterStarted = false;
   private boolean currentPhaseSendsBestSolutionEvents = false;
 
   long getUnimprovedTimeMillisSpentLimit() {
@@ -66,37 +68,67 @@ final class UnimprovedTimeMillisSpentScoreDifferenceThresholdTermination<Solutio
   }
 
   void resetState() {
-    bestScoreImprovementHistoryQueue = new ArrayDeque<>();
-    solverSafeTimeMillis = clock.millis() + unimprovedTimeMillisSpentLimit;
+    solverBestScoreHistory.clear();
+    phaseBestScoreHistory.clear();
+    solverSafeTimeMillis = -1L;
+    phaseSafeTimeMillis = -1L;
+    solverCounterStarted = false;
+    phaseCounterStarted = false;
+    currentPhaseSendsBestSolutionEvents = false;
   }
 
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
-    bestScoreImprovementHistoryQueue = null;
-    solverSafeTimeMillis = -1L;
+    resetState();
   }
 
   @Override
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
-    phaseSafeTimeMillis = phaseScope.getStartingSystemTimeMillis() + unimprovedTimeMillisSpentLimit;
-    /*
-     * Construction heuristics and similar phases only trigger best solution events at the end.
-     * This means that these phases only provide a meaningful result at their end.
-     * Unimproved time spent termination is not useful for these phases,
-     * as it would terminate the solver prematurely,
-     * skipping any useful phases that follow it, such as local search.
-     * We avoid that by never terminating during these phases,
-     * and resetting the counter to zero when the next phase starts.
-     */
+    phaseBestScoreHistory.clear();
+    phaseCounterStarted = false;
+    phaseSafeTimeMillis = -1L;
+    // Construction and similar phases only publish useful best solutions at their end.
     currentPhaseSendsBestSolutionEvents = phaseScope.isPhaseSendingBestSolutionEvents();
+    if (!currentPhaseSendsBestSolutionEvents) {
+      solverBestScoreHistory.clear();
+      solverCounterStarted = false;
+      solverSafeTimeMillis = -1L;
+    }
+  }
+
+  @Override
+  public void stepStarted(AbstractStepScope<Solution_> stepScope) {
+    if (!currentPhaseSendsBestSolutionEvents || (solverCounterStarted && phaseCounterStarted)) {
+      return;
+    }
+    // Setup does not consume a fresh idle budget. Keep global history across consecutive
+    // improvement phases, while every phase gets its own initial best and deadline.
+    var now = clock.millis();
+    var bestScore = stepScope.getPhaseScope().getBestScore();
+    if (!solverCounterStarted) {
+      solverSafeTimeMillis = now + unimprovedTimeMillisSpentLimit;
+      solverCounterStarted = true;
+      seedHistory(solverBestScoreHistory, now, bestScore);
+    }
+    if (!phaseCounterStarted) {
+      phaseSafeTimeMillis = now + unimprovedTimeMillisSpentLimit;
+      phaseCounterStarted = true;
+      seedHistory(phaseBestScoreHistory, now, bestScore);
+    }
+  }
+
+  private void seedHistory(
+      Queue<Pair<Long, InnerScore<?>>> history, long now, InnerScore<?> bestScore) {
+    if (bestScore != null && bestScore.isFullyAssigned()) {
+      history.add(new Pair<>(now, bestScore));
+    }
   }
 
   @Override
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
+    phaseBestScoreHistory.clear();
+    phaseCounterStarted = false;
     phaseSafeTimeMillis = -1L;
-    if (!currentPhaseSendsBestSolutionEvents) { // The next phase starts all over.
-      resetState();
-    }
   }
 
   @Override
@@ -106,46 +138,69 @@ final class UnimprovedTimeMillisSpentScoreDifferenceThresholdTermination<Solutio
     }
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
   @Override
   public void bestScoreImproved(AbstractStepScope<Solution_> stepScope) {
+    if (!currentPhaseSendsBestSolutionEvents) {
+      return;
+    }
     var solverScope = stepScope.getPhaseScope().getSolverScope();
-    var bestSolutionTimeMillis = solverScope.getBestSolutionTimeMillis();
     var bestScore = solverScope.getBestScore();
+    if (bestScore == null || !bestScore.isFullyAssigned()) {
+      return;
+    }
+    var bestSolutionTimeMillis = solverScope.getBestSolutionTimeMillis();
+    if (solverCounterStarted) {
+      solverSafeTimeMillis =
+          recordImprovement(
+              solverBestScoreHistory, solverSafeTimeMillis, bestSolutionTimeMillis, bestScore);
+    }
+    if (phaseCounterStarted) {
+      phaseSafeTimeMillis =
+          recordImprovement(
+              phaseBestScoreHistory, phaseSafeTimeMillis, bestSolutionTimeMillis, bestScore);
+    }
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  private long recordImprovement(
+      Queue<Pair<Long, InnerScore<?>>> history,
+      long safeTimeMillis,
+      long bestSolutionTimeMillis,
+      InnerScore<?> bestScore) {
     var bestScoreValue = (Score) bestScore.raw();
-    for (var it = bestScoreImprovementHistoryQueue.iterator(); it.hasNext(); ) {
-      var bestScoreImprovement = it.next();
-      var bestScoreImprovementValue = bestScoreImprovement.value().raw();
+    while (!history.isEmpty()) {
+      var previous = history.element();
       var timeLimitNotYetReached =
-          bestScoreImprovement.key() + unimprovedTimeMillisSpentLimit >= bestSolutionTimeMillis;
+          previous.key() + unimprovedTimeMillisSpentLimit >= bestSolutionTimeMillis;
       var scoreImprovedOverThreshold =
           ScoreArithmetic.differenceAtLeast(
-              bestScoreValue, bestScoreImprovementValue, unimprovedScoreDifferenceThreshold);
-      if (scoreImprovedOverThreshold && timeLimitNotYetReached) {
-        it.remove();
-        var safeTimeMillis = bestSolutionTimeMillis + unimprovedTimeMillisSpentLimit;
-        solverSafeTimeMillis = safeTimeMillis;
-        phaseSafeTimeMillis = safeTimeMillis;
-      } else {
+              bestScoreValue, previous.value().raw(), unimprovedScoreDifferenceThreshold);
+      if (!scoreImprovedOverThreshold || !timeLimitNotYetReached) {
         break;
       }
+      history.remove();
+      safeTimeMillis = bestSolutionTimeMillis + unimprovedTimeMillisSpentLimit;
     }
-    bestScoreImprovementHistoryQueue.add(new Pair<>(bestSolutionTimeMillis, bestScore));
+    history.add(new Pair<>(bestSolutionTimeMillis, bestScore));
+    return safeTimeMillis;
   }
 
   @Override
   public boolean isSolverTerminated(SolverScope<Solution_> solverScope) {
-    return isTerminated(solverSafeTimeMillis);
+    return isTerminated(solverCounterStarted, solverSafeTimeMillis);
   }
 
   @Override
   public boolean isPhaseTerminated(AbstractPhaseScope<Solution_> phaseScope) {
-    return isTerminated(phaseSafeTimeMillis);
+    return isTerminated(phaseCounterStarted, phaseSafeTimeMillis);
   }
 
-  private boolean isTerminated(long safeTimeMillis) {
-    if (!currentPhaseSendsBestSolutionEvents) { // This phase never terminates early.
+  private boolean isTerminated(boolean counterStarted, long safeTimeMillis) {
+    if (!canEvaluate(counterStarted)) {
       return false;
+    }
+    if (unimprovedTimeMillisSpentLimit == 0L) {
+      return true;
     }
     // It's possible that there is already an improving move in the forager
     // that will end up pushing the safeTimeMillis further
@@ -159,22 +214,29 @@ final class UnimprovedTimeMillisSpentScoreDifferenceThresholdTermination<Solutio
 
   @Override
   public double calculateSolverTimeGradient(SolverScope<Solution_> solverScope) {
-    return calculateTimeGradient(solverSafeTimeMillis);
+    return calculateTimeGradient(solverCounterStarted, solverSafeTimeMillis);
   }
 
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> phaseScope) {
-    return calculateTimeGradient(phaseSafeTimeMillis);
+    return calculateTimeGradient(phaseCounterStarted, phaseSafeTimeMillis);
   }
 
-  private double calculateTimeGradient(long safeTimeMillis) {
-    if (!currentPhaseSendsBestSolutionEvents) {
+  private double calculateTimeGradient(boolean counterStarted, long safeTimeMillis) {
+    if (!canEvaluate(counterStarted)) {
       return 0.0;
+    }
+    if (unimprovedTimeMillisSpentLimit == 0L) {
+      return 1.0;
     }
     var now = clock.millis();
     var unimprovedTimeMillisSpent = now - (safeTimeMillis - unimprovedTimeMillisSpentLimit);
-    var timeGradient = unimprovedTimeMillisSpent / ((double) unimprovedTimeMillisSpentLimit);
-    return Math.min(timeGradient, 1.0);
+    return TerminationGradient.ratio(unimprovedTimeMillisSpent, unimprovedTimeMillisSpentLimit);
+  }
+
+  private boolean canEvaluate(boolean counterStarted) {
+    return currentPhaseSendsBestSolutionEvents
+        && (counterStarted || unimprovedTimeMillisSpentLimit == 0L);
   }
 
   @Override

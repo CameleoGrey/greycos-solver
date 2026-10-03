@@ -107,6 +107,41 @@ class ProgressiveConstructionHeuristicDeciderTest {
     }
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void cancellationWhileSeekingNextMoveDoesNotCommitPartialPlacement(boolean interrupt)
+      throws Exception {
+    var fixture = new Fixture(false, ConstructionHeuristicPickEarlyType.NEVER);
+    var calls = new AtomicInteger();
+    Iterator<Move<Object>> moves =
+        new Iterator<>() {
+          @Override
+          public boolean hasNext() {
+            if (calls.getAndIncrement() == 0) {
+              return true;
+            }
+            if (interrupt) {
+              Thread.currentThread().interrupt();
+            } else {
+              fixture.plumbing.terminateEarly();
+            }
+            return false;
+          }
+
+          @Override
+          public Move<Object> next() {
+            return fixture.cursor.next();
+          }
+        };
+    try {
+      fixture.decider.decideNextStep(fixture.step, moves);
+      assertThat(calls).hasValue(2);
+      assertThat(fixture.step.getStep()).isNull();
+    } finally {
+      Thread.interrupted();
+    }
+  }
+
   private static final class Fixture {
 
     private final RecordingCursor cursor = new RecordingCursor();
@@ -114,6 +149,7 @@ class ProgressiveConstructionHeuristicDeciderTest {
     private final ConstructionHeuristicDecider<Object> decider;
     private final ConstructionHeuristicStepScope<Object> step;
     private boolean failScoring;
+    private final BasicPlumbingTermination<Object> plumbing = new BasicPlumbingTermination<>(false);
 
     @SuppressWarnings("unchecked")
     private Fixture(boolean threaded, ConstructionHeuristicPickEarlyType pickEarly)
@@ -124,8 +160,7 @@ class ProgressiveConstructionHeuristicDeciderTest {
       var phase = new ConstructionHeuristicPhaseScope<>(solverScope, 0);
       phase.getLastCompletedStepScope().setInitializedScore(SimpleScore.ZERO);
       step = new ConstructionHeuristicStepScope<>(phase, 0);
-      PhaseTermination<Object> termination =
-          PhaseTermination.bridge(new BasicPlumbingTermination<>(false));
+      PhaseTermination<Object> termination = PhaseTermination.bridge(plumbing);
       var forager = new DefaultConstructionHeuristicForager<Object>(pickEarly);
       pipeline = mock(MoveEvaluationPipeline.class);
       if (threaded) {

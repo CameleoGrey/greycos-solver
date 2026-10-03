@@ -205,7 +205,7 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
     boolean accepted = acceptor.isAccepted(moveScope);
     moveScope.setAccepted(accepted);
     acceptor.moveEvaluated(moveScope);
-    forager.addMove(moveScope);
+    addMoveToForager(moveScope);
     if (assertExpectedUndoMoveScore) {
       scoreDirector.assertExpectedUndoMoveScore(
           moveScope.getMove(),
@@ -220,6 +220,11 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
         moveScope.getAccepted(),
         moveScope.getMove());
     return accepted;
+  }
+
+  protected void addMoveToForager(LocalSearchMoveScope<Solution_> moveScope) {
+    moveScope.getStepScope().getPhaseScope().addMoveEvaluationCount(moveScope.getMove(), 1L);
+    forager.addMove(moveScope);
   }
 
   protected void requirePlanningValueSnapshot(LocalSearchMoveScope<Solution_> moveScope) {

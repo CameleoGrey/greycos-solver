@@ -31,7 +31,7 @@ final class MoveCountTermination<Solution_> extends AbstractUniversalTermination
 
   @Override
   public boolean isPhaseTerminated(AbstractPhaseScope<Solution_> phaseScope) {
-    return isTerminated(phaseScope.getSolverScope());
+    return phaseScope.getPhaseMoveEvaluationCount() >= moveCountLimit;
   }
 
   private boolean isTerminated(SolverScope<Solution_> solverScope) {
@@ -46,13 +46,12 @@ final class MoveCountTermination<Solution_> extends AbstractUniversalTermination
 
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> phaseScope) {
-    return calculateTimeGradient(phaseScope.getSolverScope());
+    return TerminationGradient.ratio(phaseScope.getPhaseMoveEvaluationCount(), moveCountLimit);
   }
 
   private double calculateTimeGradient(SolverScope<Solution_> solverScope) {
     var moveEvaluationCount = solverScope.getMoveEvaluationCount();
-    var timeGradient = moveEvaluationCount / ((double) moveCountLimit);
-    return Math.min(timeGradient, 1.0);
+    return TerminationGradient.ratio(moveEvaluationCount, moveCountLimit);
   }
 
   @Override

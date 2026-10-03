@@ -117,7 +117,8 @@ class ProblemChangeLifecycleTest {
         });
 
     assertThatThrownBy(() -> solver.solve(problem()))
-        .isInstanceOf(IllegalStateException.class)
+        // The structural refresh validates lookup IDs before the final publication check.
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("planningId (null)");
     assertThat(publishedIds).isNotEmpty().allSatisfy(ids -> assertThat(ids).doesNotContainNull());
     assertThat(solver.getSolverScope().getScoreDirector().getWorkingSolution()).isNull();

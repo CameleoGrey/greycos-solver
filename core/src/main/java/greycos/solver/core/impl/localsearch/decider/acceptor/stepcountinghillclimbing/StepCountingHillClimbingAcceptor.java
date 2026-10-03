@@ -59,23 +59,20 @@ public class StepCountingHillClimbingAcceptor<Solution_> extends AbstractAccepto
   @Override
   public void stepEnded(LocalSearchStepScope<Solution_> stepScope) {
     super.stepEnded(stepScope);
-    count += determineCountIncrement(stepScope);
-    if (count >= stepCountingHillClimbingSize) {
+    var increment = determineCountIncrement(stepScope);
+    if (increment >= stepCountingHillClimbingSize - count) {
       thresholdScore = stepScope.getScore();
       count = 0;
+    } else {
+      // The increment is smaller than the remaining threshold, so this addition cannot overflow.
+      count += (int) increment;
     }
   }
 
-  private int determineCountIncrement(LocalSearchStepScope<Solution_> stepScope) {
+  private long determineCountIncrement(LocalSearchStepScope<Solution_> stepScope) {
     return switch (stepCountingHillClimbingType) {
-      case SELECTED_MOVE -> {
-        long selectedMoveCount = stepScope.getSelectedMoveCount();
-        yield selectedMoveCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) selectedMoveCount;
-      }
-      case ACCEPTED_MOVE -> {
-        long acceptedMoveCount = stepScope.getAcceptedMoveCount();
-        yield acceptedMoveCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) acceptedMoveCount;
-      }
+      case SELECTED_MOVE -> stepScope.getSelectedMoveCount();
+      case ACCEPTED_MOVE -> stepScope.getAcceptedMoveCount();
       case STEP -> 1;
       case EQUAL_OR_IMPROVING_STEP ->
           stepScope

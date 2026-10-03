@@ -2,14 +2,35 @@ package greycos.solver.core.impl.localsearch.decider.acceptor.tabu.size;
 
 import static greycos.solver.core.testutil.PlannerTestUtils.mockSolverScope;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.when;
 
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class EntityRatioTabuSizeStrategyTest {
+
+  @ParameterizedTest
+  @ValueSource(
+      doubles = {
+        Double.NaN,
+        Double.POSITIVE_INFINITY,
+        Double.NEGATIVE_INFINITY,
+        0.0,
+        1.0,
+        -0.1,
+        1.1
+      })
+  void invalidRatioFailsFast(double ratio) {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> new EntityRatioTabuSizeStrategy<>(ratio))
+        .withMessageContaining("tabuRatio (" + ratio + ")")
+        .withMessageContaining("finite");
+  }
 
   @Test
   <Solution_> void tabuSize() {

@@ -1,11 +1,13 @@
 package greycos.solver.core.impl.heuristic.selector.move.generic;
 
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
 import greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
+import greycos.solver.core.impl.constructionheuristic.placer.QueuedEntityPlacerFactory;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
@@ -54,13 +56,15 @@ public final class RuinRecreateMoveSelectorFactory<Solution_>
                       .map(GenuineVariableDescriptor::getVariableName)
                       .toList()));
     }
-    var variableDescriptor = genuineVariableDescriptorList.get(0);
-    if (genuineVariableDescriptorList.size() > 1) {
+    GenuineVariableDescriptor<Solution_> variableDescriptor;
+    if (config.getVariableName() != null) {
       variableDescriptor =
           genuineVariableDescriptorList.stream()
               .filter(v -> v.getVariableName().equals(config.getVariableName()))
               .findFirst()
               .orElse(null);
+    } else {
+      variableDescriptor = genuineVariableDescriptorList.getFirst();
     }
     if (variableDescriptor == null) {
       throw new UnsupportedOperationException(
@@ -76,7 +80,13 @@ public final class RuinRecreateMoveSelectorFactory<Solution_>
         new ConstructionHeuristicPhaseConfig()
             .withEntityPlacerConfig(
                 new QueuedEntityPlacerConfig()
-                    .withEntitySelectorConfig(nestedEntitySelectorConfig));
+                    .withEntitySelectorConfig(nestedEntitySelectorConfig)
+                    .withMoveSelectorConfigs(
+                        QueuedEntityPlacerFactory.buildChangeMoveSelectorConfig(
+                            ConstructionHeuristicType.ALLOCATE_ENTITY_FROM_QUEUE
+                                .getDefaultValueSorterManner(),
+                            nestedEntitySelectorConfig.getId(),
+                            variableDescriptor)));
     constructionHeuristicPhaseConfig.setNearbySelectionAutoConfigurationEnabled(
         config.getNearbySelectionAutoConfigurationEnabled());
     var constructionHeuristicPhaseBuilder =

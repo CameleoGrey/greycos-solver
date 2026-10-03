@@ -53,8 +53,7 @@ final class TimeMillisSpentTermination<Solution_> extends AbstractUniversalTermi
   }
 
   private double calculateTimeGradient(long timeMillisSpent) {
-    var timeGradient = timeMillisSpent / ((double) timeMillisSpentLimit);
-    return Math.min(timeGradient, 1.0);
+    return TerminationGradient.ratio(timeMillisSpent, timeMillisSpentLimit);
   }
 
   @Override

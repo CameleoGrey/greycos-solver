@@ -17,6 +17,9 @@ import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 
 final class ListVariableStateCarrier<Solution_> {
 
+  static final int POSITION_CHANGED = 1;
+  static final int SHADOW_CHANGED = 2;
+
   private final ListVariableDescriptor<Solution_> sourceVariableDescriptor;
   private final Consumer<Object> notifier;
 
@@ -232,7 +235,7 @@ final class ListVariableStateCarrier<Solution_> {
     }
   }
 
-  public boolean changeElement(Object entity, List<Object> elements, int index) {
+  public int changeElement(Object entity, List<Object> elements, int index) {
     var element = elements.get(index);
     var difference = processElementPosition(entity, element, index);
     var elementUpdateSent = false;
@@ -275,7 +278,8 @@ final class ListVariableStateCarrier<Solution_> {
             sourceVariableDescriptor, element);
       }
     }
-    return difference.anythingChanged;
+    return (difference.anythingChanged ? POSITION_CHANGED : 0)
+        | (elementUpdateSent ? SHADOW_CHANGED : 0);
   }
 
   /** Initialize once per observer before a mutation, never from already changed list contents. */

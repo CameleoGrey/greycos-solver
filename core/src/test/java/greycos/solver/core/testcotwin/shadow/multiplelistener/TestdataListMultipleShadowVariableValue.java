@@ -96,7 +96,7 @@ public class TestdataListMultipleShadowVariableValue extends TestdataObject {
   }
 
   public void updateCascadeValue() {
-    this.cascadeValue = index + 10;
+    this.cascadeValue = index == null ? null : index + 10;
   }
 
   public List<TestdataListMultipleShadowVariableEntity> getEntityHistory() {

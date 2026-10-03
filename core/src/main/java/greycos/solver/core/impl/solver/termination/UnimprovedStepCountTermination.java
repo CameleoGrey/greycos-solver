@@ -38,8 +38,7 @@ final class UnimprovedStepCountTermination<Solution_> extends AbstractPhaseTermi
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> phaseScope) {
     var unimprovedStepCount = calculateUnimprovedStepCount(phaseScope);
-    var timeGradient = unimprovedStepCount / ((double) unimprovedStepCountLimit);
-    return Math.min(timeGradient, 1.0);
+    return TerminationGradient.ratio(unimprovedStepCount, unimprovedStepCountLimit);
   }
 
   @Override

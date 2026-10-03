@@ -6,7 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.data.Offset.offset;
 import static org.mockito.Mockito.when;
 
-import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import java.time.Clock;
+
+import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
+import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
@@ -18,26 +21,31 @@ class MoveCountTerminationTest {
   @Test
   void phaseTermination() {
     var termination = new MoveCountTermination<TestdataSolution>(4);
-    var phaseScope = Mockito.mock(AbstractPhaseScope.class);
-    var moveScope = mockSolverScope();
-    when(phaseScope.getSolverScope()).thenReturn(moveScope);
+    SolverScope<TestdataSolution> moveScope = mockSolverScope();
+    when(moveScope.getClock()).thenReturn(Clock.systemUTC());
+    org.mockito.Mockito.doReturn(Mockito.mock(InnerScoreDirector.class))
+        .when(moveScope)
+        .getScoreDirector();
+    when(moveScope.getMoveEvaluationCount()).thenReturn(100L);
+    var phaseScope = new LocalSearchPhaseScope<>(moveScope, 1);
+    phaseScope.startingNow();
 
-    when(moveScope.getMoveEvaluationCount()).thenReturn(0L);
+    when(moveScope.getMoveEvaluationCount()).thenReturn(100L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isFalse();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(0.0, offset(0.0));
-    when(moveScope.getMoveEvaluationCount()).thenReturn(1L);
+    when(moveScope.getMoveEvaluationCount()).thenReturn(101L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isFalse();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(0.25, offset(0.0));
-    when(moveScope.getMoveEvaluationCount()).thenReturn(2L);
+    when(moveScope.getMoveEvaluationCount()).thenReturn(102L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isFalse();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(0.5, offset(0.0));
-    when(moveScope.getMoveEvaluationCount()).thenReturn(3L);
+    when(moveScope.getMoveEvaluationCount()).thenReturn(103L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isFalse();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(0.75, offset(0.0));
-    when(moveScope.getMoveEvaluationCount()).thenReturn(4L);
+    when(moveScope.getMoveEvaluationCount()).thenReturn(104L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isTrue();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(1.0, offset(0.0));
-    when(moveScope.getMoveEvaluationCount()).thenReturn(5L);
+    when(moveScope.getMoveEvaluationCount()).thenReturn(105L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isTrue();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(1.0, offset(0.0));
   }

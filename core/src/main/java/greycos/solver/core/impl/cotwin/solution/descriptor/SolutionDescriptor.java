@@ -662,6 +662,9 @@ public final class SolutionDescriptor<Solution_> {
 
     problemFactOrEntityClassSet = collectEntityAndProblemFactClasses();
     listVariableDescriptor = findListVariableDescriptor();
+    if (listVariableDescriptor != null) {
+      listVariableDescriptor.linkPinningSupport();
+    }
 
     // And finally log the successful completion of processing.
     if (LOGGER.isTraceEnabled()) {

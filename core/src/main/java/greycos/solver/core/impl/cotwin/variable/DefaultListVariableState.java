@@ -19,6 +19,12 @@ final class DefaultListVariableState<Solution_>
 
   private final ListVariableDescriptor<Solution_> sourceVariableDescriptor;
   private final ListVariableStateCarrier<Solution_> stateCarrier;
+  private final @Nullable ShadowChangeConsumer shadowChangeConsumer;
+
+  @FunctionalInterface
+  interface ShadowChangeConsumer {
+    void accept(Object entity, int fromIndex, int toIndex);
+  }
 
   private boolean previousExternalized = false;
   private boolean nextExternalized = false;
@@ -27,6 +33,14 @@ final class DefaultListVariableState<Solution_>
 
   public DefaultListVariableState(
       ListVariableDescriptor<Solution_> sourceVariableDescriptor, Consumer<Object> notifier) {
+    this(sourceVariableDescriptor, notifier, null);
+  }
+
+  DefaultListVariableState(
+      ListVariableDescriptor<Solution_> sourceVariableDescriptor,
+      Consumer<Object> notifier,
+      @Nullable ShadowChangeConsumer shadowChangeConsumer) {
+    this.shadowChangeConsumer = shadowChangeConsumer;
     this.sourceVariableDescriptor = sourceVariableDescriptor;
     this.stateCarrier = new ListVariableStateCarrier<>(sourceVariableDescriptor, notifier);
   }
@@ -115,13 +129,23 @@ final class DefaultListVariableState<Solution_>
         previousExternalized || stateCarrier.tracksRelationships()
             ? Math.min(toIndex + 1, elementCount)
             : toIndex;
+    var firstShadowChange = Integer.MAX_VALUE;
+    var lastShadowChange = -1;
     for (var index = firstChangeIndex; index < elementCount; index++) {
-      var positionsDiffer = stateCarrier.changeElement(entity, assignedElements, index);
-      if (!positionsDiffer && index >= lastChangeIndex) {
-        // Position is unchanged and we are past the part of the list that changed.
-        // We can terminate the loop prematurely.
-        return;
+      var changes = stateCarrier.changeElement(entity, assignedElements, index);
+      if (shadowChangeConsumer != null
+          && (changes & ListVariableStateCarrier.SHADOW_CHANGED) != 0) {
+        firstShadowChange = Math.min(firstShadowChange, index);
+        lastShadowChange = index;
       }
+      if ((changes & ListVariableStateCarrier.POSITION_CHANGED) == 0 && index >= lastChangeIndex) {
+        // Position is unchanged and we are past the part of the list that changed.
+        break;
+      }
+    }
+    if (lastShadowChange >= 0) {
+      // Covers changed boundary neighbors and any index-shadow suffix beyond the caller's range.
+      shadowChangeConsumer.accept(entity, firstShadowChange, lastShadowChange + 1);
     }
   }
 

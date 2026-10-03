@@ -193,9 +193,9 @@ public final class MoveProviderUtil {
   }
 
   /**
-   * The values {@code leftEntity} and {@code rightEntity} would take after swapping every variable
-   * in {@code variableMetaModelList}, one pair per variable in that order: for variables v1 and v2,
-   * the result is [left.v1, right.v1, left.v2, right.v2].
+   * The current values of {@code leftEntity} and {@code rightEntity}, one pair per variable in
+   * {@code variableMetaModelList} order: for variables v1 and v2, the result is [left.v1, right.v1,
+   * left.v2, right.v2].
    */
   public static <Solution_, Entity_> List<@Nullable Object> cachedValuesOf(
       Entity_ leftEntity,
@@ -210,6 +210,26 @@ public final class MoveProviderUtil {
       valueList.add(variableDescriptor.getValue(rightEntity));
     }
     return valueList;
+  }
+
+  /** Refreshes private move metadata before execution, reusing its storage across evaluations. */
+  static <Solution_, Entity_> List<@Nullable Object> refreshCachedValues(
+      Entity_ leftEntity,
+      Entity_ rightEntity,
+      List<PlanningVariableMetaModel<Solution_, Entity_, Object>> variableMetaModelList,
+      @Nullable List<@Nullable Object> cachedValues) {
+    if (cachedValues == null) {
+      return cachedValuesOf(leftEntity, rightEntity, variableMetaModelList);
+    }
+    for (var i = 0; i < variableMetaModelList.size(); i++) {
+      var variableDescriptor =
+          ((DefaultPlanningVariableMetaModel<Solution_, Entity_, Object>)
+                  variableMetaModelList.get(i))
+              .variableDescriptor();
+      cachedValues.set(2 * i, variableDescriptor.getValue(leftEntity));
+      cachedValues.set(2 * i + 1, variableDescriptor.getValue(rightEntity));
+    }
+    return cachedValues;
   }
 
   /**

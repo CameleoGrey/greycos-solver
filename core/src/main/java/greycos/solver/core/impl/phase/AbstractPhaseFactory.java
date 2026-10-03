@@ -66,7 +66,7 @@ public abstract class AbstractPhaseFactory<
         this.getClass().getSimpleName().replace("PhaseFactory", "").replace("Default", "");
     if (solverTermination != resultingTermination) {
       // Only fail if the user put the inapplicable termination on the phase, not on the solver.
-      // On the solver level, inapplicable phase terminations are skipped.
+      // On the solver level, phase conditions remain unsatisfied in incompatible phases.
       // Otherwise you would only be able to configure a global phase-level termination on the
       // solver
       // if it was applicable to all phases.
@@ -83,7 +83,7 @@ public abstract class AbstractPhaseFactory<
           """
           The solver-level termination ({}) includes phase-level terminations ({}) \
           which are not applicable to the phase ({}).
-          These phase-level terminations will not take effect in this phase.\
+          These phase-level conditions cannot be satisfied in this phase.\
           """,
           solverTermination,
           inapplicableTerminationList,

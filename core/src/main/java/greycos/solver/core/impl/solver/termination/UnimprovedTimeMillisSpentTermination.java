@@ -19,8 +19,10 @@ final class UnimprovedTimeMillisSpentTermination<Solution_>
   private final long unimprovedTimeMillisSpentLimit;
   private final Clock clock;
 
-  private boolean isCounterStarted = false;
+  private boolean solverCounterStarted = false;
+  private boolean phaseCounterStarted = false;
   private boolean currentPhaseSendsBestSolutionEvents = false;
+  private long solverStartedTimeMillis = -1L;
   private long phaseStartedTimeMillis = -1L;
 
   public UnimprovedTimeMillisSpentTermination(long unimprovedTimeMillisSpentLimit) {
@@ -42,6 +44,15 @@ final class UnimprovedTimeMillisSpentTermination<Solution_>
   }
 
   @Override
+  public void solvingStarted(SolverScope<Solution_> solverScope) {
+    solverCounterStarted = false;
+    phaseCounterStarted = false;
+    currentPhaseSendsBestSolutionEvents = false;
+    solverStartedTimeMillis = -1L;
+    phaseStartedTimeMillis = -1L;
+  }
+
+  @Override
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
     /*
      * Construction heuristics and similar phases only trigger best solution events at the end.
@@ -53,65 +64,100 @@ final class UnimprovedTimeMillisSpentTermination<Solution_>
      * and resetting the counter to zero when the next phase starts.
      */
     currentPhaseSendsBestSolutionEvents = phaseScope.isPhaseSendingBestSolutionEvents();
+    phaseCounterStarted = false;
+    if (!currentPhaseSendsBestSolutionEvents) {
+      solverCounterStarted = false;
+    }
   }
 
   @Override
   public void stepStarted(AbstractStepScope<Solution_> stepScope) {
-    // We reset the count only when the first step begins,
-    // as all necessary resources are loaded, and the phase is ready for execution
-    if (!isCounterStarted) {
-      phaseStartedTimeMillis = clock.millis();
-      isCounterStarted = true;
+    if (!currentPhaseSendsBestSolutionEvents) {
+      return;
+    }
+    // Initialization must not consume a fresh idle budget. Global history remains continuous
+    // across successive improvement phases; a phase-local budget always starts over.
+    if (!solverCounterStarted || !phaseCounterStarted) {
+      var now = clock.millis();
+      if (!solverCounterStarted) {
+        solverStartedTimeMillis = now;
+        solverCounterStarted = true;
+      }
+      if (!phaseCounterStarted) {
+        phaseStartedTimeMillis = now;
+        phaseCounterStarted = true;
+      }
     }
   }
 
   @Override
   public boolean isSolverTerminated(SolverScope<Solution_> solverScope) {
+    if (!canEvaluate(solverCounterStarted)) {
+      return false;
+    }
+    if (unimprovedTimeMillisSpentLimit == 0L) {
+      return true;
+    }
     long bestSolutionTimeMillis = solverScope.getBestSolutionTimeMillis();
-    return isTerminated(bestSolutionTimeMillis);
+    return isTerminated(bestSolutionTimeMillis, solverStartedTimeMillis);
   }
 
   @Override
   public boolean isPhaseTerminated(AbstractPhaseScope<Solution_> phaseScope) {
-    if (!isCounterStarted) {
+    if (!canEvaluate(phaseCounterStarted)) {
       return false;
+    }
+    if (unimprovedTimeMillisSpentLimit == 0L) {
+      return true;
     }
     var bestSolutionTimeMillis = phaseScope.getPhaseBestSolutionTimeMillis();
-    return isTerminated(bestSolutionTimeMillis);
+    return isTerminated(bestSolutionTimeMillis, phaseStartedTimeMillis);
   }
 
-  private boolean isTerminated(long bestSolutionTimeMillis) {
-    if (!currentPhaseSendsBestSolutionEvents) { // This phase never terminates early.
-      return false;
-    }
-    return getUnimprovedTimeMillisSpent(bestSolutionTimeMillis) >= unimprovedTimeMillisSpentLimit;
+  private boolean canEvaluate(boolean counterStarted) {
+    return currentPhaseSendsBestSolutionEvents
+        && (counterStarted || unimprovedTimeMillisSpentLimit == 0L);
   }
 
-  private long getUnimprovedTimeMillisSpent(long bestSolutionTimeMillis) {
+  private boolean isTerminated(long bestSolutionTimeMillis, long counterStartTimeMillis) {
+    return getUnimprovedTimeMillisSpent(bestSolutionTimeMillis, counterStartTimeMillis)
+        >= unimprovedTimeMillisSpentLimit;
+  }
+
+  private long getUnimprovedTimeMillisSpent(
+      long bestSolutionTimeMillis, long counterStartTimeMillis) {
     var now = clock.millis();
-    return now - Math.max(bestSolutionTimeMillis, phaseStartedTimeMillis);
+    return now - Math.max(bestSolutionTimeMillis, counterStartTimeMillis);
   }
 
   @Override
   public double calculateSolverTimeGradient(SolverScope<Solution_> solverScope) {
+    if (!canEvaluate(solverCounterStarted)) {
+      return 0.0;
+    }
+    if (unimprovedTimeMillisSpentLimit == 0L) {
+      return 1.0;
+    }
     long bestSolutionTimeMillis = solverScope.getBestSolutionTimeMillis();
-    return calculateTimeGradient(bestSolutionTimeMillis);
+    return calculateTimeGradient(bestSolutionTimeMillis, solverStartedTimeMillis);
   }
 
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> phaseScope) {
-    var bestSolutionTimeMillis = phaseScope.getPhaseBestSolutionTimeMillis();
-    return calculateTimeGradient(bestSolutionTimeMillis);
-  }
-
-  private double calculateTimeGradient(long bestSolutionTimeMillis) {
-    if (!currentPhaseSendsBestSolutionEvents) {
+    if (!canEvaluate(phaseCounterStarted)) {
       return 0.0;
     }
-    var timeGradient =
-        getUnimprovedTimeMillisSpent(bestSolutionTimeMillis)
-            / ((double) unimprovedTimeMillisSpentLimit);
-    return Math.min(timeGradient, 1.0);
+    if (unimprovedTimeMillisSpentLimit == 0L) {
+      return 1.0;
+    }
+    var bestSolutionTimeMillis = phaseScope.getPhaseBestSolutionTimeMillis();
+    return calculateTimeGradient(bestSolutionTimeMillis, phaseStartedTimeMillis);
+  }
+
+  private double calculateTimeGradient(long bestSolutionTimeMillis, long counterStartTimeMillis) {
+    return TerminationGradient.ratio(
+        getUnimprovedTimeMillisSpent(bestSolutionTimeMillis, counterStartTimeMillis),
+        unimprovedTimeMillisSpentLimit);
   }
 
   @Override

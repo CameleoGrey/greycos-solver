@@ -127,7 +127,7 @@ class DefaultProblemChangeDirectorTest {
   }
 
   @Test
-  void verify_ResetSolutionIfEntitiesAddedOrRemoved() {
+  void delegatesStructuralRefreshToScoreDirector() {
     var entityGroupOne = new TestdataLavishEntityGroup("entityGroupOne");
     var addedEntity = new TestdataLavishEntity("newly added entity", entityGroupOne);
     var removedEntity = new TestdataLavishEntity("entity to remove", entityGroupOne);
@@ -146,8 +146,8 @@ class DefaultProblemChangeDirectorTest {
     var testdataSolution = TestdataLavishSolution.generateSolution();
     addProblemChange.doChange(testdataSolution, defaultProblemChangeDirector);
 
-    verify(scoreDirectorMock, times(1)).setWorkingSolution(any());
-    verify(scoreDirectorMock, times(0)).updateShadowVariables();
+    verify(scoreDirectorMock, times(0)).setWorkingSolution(any());
+    verify(scoreDirectorMock, times(1)).updateShadowVariables();
 
     ProblemChange<TestdataLavishSolution> removeProblemChange =
         ((workingSolution, problemChangeDirector) -> {
@@ -160,12 +160,12 @@ class DefaultProblemChangeDirectorTest {
     testdataSolution = TestdataLavishSolution.generateSolution();
     removeProblemChange.doChange(testdataSolution, defaultProblemChangeDirector);
 
-    verify(scoreDirectorMock, times(2)).setWorkingSolution(any());
-    verify(scoreDirectorMock, times(0)).updateShadowVariables();
+    verify(scoreDirectorMock, times(0)).setWorkingSolution(any());
+    verify(scoreDirectorMock, times(2)).updateShadowVariables();
   }
 
   @Test
-  void verify_ResetSolutionOnceIfEntitiesAddedOrRemovedThenVariablesChanged() {
+  void delegatesEveryExplicitBarrierToScoreDirector() {
     var entityGroupOne = new TestdataLavishEntityGroup("entityGroupOne");
     var valueGroupOne = new TestdataLavishValueGroup("valueGroupOne");
     var addedEntity = new TestdataLavishEntity("newly added entity", entityGroupOne);
@@ -216,7 +216,7 @@ class DefaultProblemChangeDirectorTest {
 
     problemChange.doChange(testdataSolution, defaultProblemChangeDirector);
 
-    verify(scoreDirectorMock, times(1)).setWorkingSolution(any());
-    verify(scoreDirectorMock, times(1)).updateShadowVariables();
+    verify(scoreDirectorMock, times(0)).setWorkingSolution(any());
+    verify(scoreDirectorMock, times(2)).updateShadowVariables();
   }
 }

@@ -9,9 +9,9 @@ public final class EntityRatioTabuSizeStrategy<Solution_>
 
   public EntityRatioTabuSizeStrategy(double tabuRatio) {
     this.tabuRatio = tabuRatio;
-    if (tabuRatio <= 0.0 || tabuRatio >= 1.0) {
+    if (!Double.isFinite(tabuRatio) || tabuRatio <= 0.0 || tabuRatio >= 1.0) {
       throw new IllegalArgumentException(
-          "The tabuRatio (" + tabuRatio + ") must be between 0.0 and 1.0.");
+          "The tabuRatio (" + tabuRatio + ") must be finite and strictly between 0.0 and 1.0.");
     }
   }
 

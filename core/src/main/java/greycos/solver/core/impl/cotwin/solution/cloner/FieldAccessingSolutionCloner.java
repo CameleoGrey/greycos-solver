@@ -116,7 +116,14 @@ public final class FieldAccessingSolutionCloner<Solution_> implements SolutionCl
     }
     var unprocessedQueue = new ArrayDeque<Unprocessed>(expectedObjectCountRef.get());
     var fieldType = originalValue.getClass();
-    return clone(originalValue, originalToCloneMap, unprocessedQueue, fieldType);
+    var clone = clone(originalValue, originalToCloneMap, unprocessedQueue, fieldType);
+    while (!unprocessedQueue.isEmpty()) {
+      var unprocessed = unprocessedQueue.remove();
+      var cloneValue = process(unprocessed, originalToCloneMap, unprocessedQueue);
+      FieldCloningUtils.setObjectFieldValue(
+          unprocessed.bean, unprocessed.cloner.getFieldHandles(), cloneValue);
+    }
+    return clone;
   }
 
   private Object clone(

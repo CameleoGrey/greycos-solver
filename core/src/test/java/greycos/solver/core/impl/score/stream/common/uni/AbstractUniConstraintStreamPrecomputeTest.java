@@ -100,7 +100,7 @@ public abstract class AbstractUniConstraintStreamPrecomputeTest extends Abstract
     // Incrementally update a variable
     Mockito.reset(entity1);
     scoreDirector.beforeVariableChanged(entity1, "value");
-    entity1.setValue(new TestdataLavishValue());
+    entity1.setValue(solution.getValueList().get(1));
     scoreDirector.afterVariableChanged(entity1, "value");
     assertScore(scoreDirector, assertMatch(entity1), assertMatch(entity2));
     Mockito.verify(entity1, Mockito.never()).getEntityGroup();

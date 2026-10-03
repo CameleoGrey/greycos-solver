@@ -3,7 +3,6 @@ package greycos.solver.core.impl.solver.termination;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
@@ -28,14 +27,14 @@ abstract sealed class AbstractCompositeTermination<Solution_>
   protected final List<SolverTermination<Solution_>> solverTerminationList;
 
   protected AbstractCompositeTermination(List<Termination<Solution_>> terminationList) {
-    this.terminationList = Objects.requireNonNull(terminationList);
+    this.terminationList = List.copyOf(terminationList);
     this.phaseTerminationList =
-        terminationList.stream()
+        this.terminationList.stream()
             .filter(PhaseTermination.class::isInstance)
             .map(t -> (PhaseTermination<Solution_>) t)
             .toList();
     this.solverTerminationList =
-        terminationList.stream()
+        this.terminationList.stream()
             .filter(SolverTermination.class::isInstance)
             .map(t -> (SolverTermination<Solution_>) t)
             .toList();

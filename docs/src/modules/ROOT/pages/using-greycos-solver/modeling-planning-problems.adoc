@@ -1069,6 +1069,11 @@ It then automatically calls `updateArrivalTime` for the subsequent customers
 and stops when the `arrivalTime` value does not change after running target method
 or when it reaches the end.
 
+Changes to genuine or other shadow variables on a list element also schedule its cascading update.
+Changes on the list owner schedule the list from its beginning.
+Initialization and an explicit shadow refresh also update unassigned elements;
+the target method must handle an element whose inverse owner is `null`.
+
 [WARNING]
 ====
 A user-defined logic can only change shadow variables.

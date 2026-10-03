@@ -12,8 +12,45 @@ import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class StepCountingHillClimbingAcceptorTest extends AbstractAcceptorTest {
+
+  @ParameterizedTest
+  @EnumSource(
+      value = StepCountingHillClimbingType.class,
+      names = {"SELECTED_MOVE", "ACCEPTED_MOVE"})
+  void largeIncrementResetsThresholdWithoutOverflow(StepCountingHillClimbingType type) {
+    var acceptor = new StepCountingHillClimbingAcceptor<Object>(Integer.MAX_VALUE, type);
+    var solverScope = new SolverScope<Object>();
+    solverScope.setInitializedBestScore(SimpleScore.of(-100));
+    var phaseScope = new LocalSearchPhaseScope<>(solverScope, 0);
+    acceptor.phaseStarted(phaseScope);
+
+    var first = new LocalSearchStepScope<>(phaseScope, 0);
+    first.setSelectedMoveCount(1L);
+    first.setAcceptedMoveCount(1L);
+    first.setScore(InnerScore.fullyAssigned(SimpleScore.of(-90)));
+    acceptor.stepEnded(first);
+    assertThat(acceptor.thresholdScore.raw()).isEqualTo(SimpleScore.of(-100));
+
+    var second = new LocalSearchStepScope<>(phaseScope, 1);
+    second.setSelectedMoveCount((long) Integer.MAX_VALUE);
+    second.setAcceptedMoveCount((long) Integer.MAX_VALUE);
+    second.setScore(InnerScore.fullyAssigned(SimpleScore.of(-80)));
+    acceptor.stepEnded(second);
+    assertThat(acceptor.thresholdScore.raw()).isEqualTo(SimpleScore.of(-80));
+    assertThat(acceptor.count).isZero();
+
+    var third = new LocalSearchStepScope<>(phaseScope, 2);
+    third.setSelectedMoveCount(Long.MAX_VALUE);
+    third.setAcceptedMoveCount(Long.MAX_VALUE);
+    third.setScore(InnerScore.fullyAssigned(SimpleScore.of(-70)));
+    acceptor.stepEnded(third);
+    assertThat(acceptor.thresholdScore.raw()).isEqualTo(SimpleScore.of(-70));
+    assertThat(acceptor.count).isZero();
+  }
 
   @Test
   void typeStep() {

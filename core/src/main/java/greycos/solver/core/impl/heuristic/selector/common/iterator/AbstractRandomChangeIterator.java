@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.heuristic.selector.common.iterator;
 
 import java.util.Iterator;
+import java.util.function.BooleanSupplier;
 
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
@@ -13,9 +14,21 @@ public abstract class AbstractRandomChangeIterator<Solution_, Move_ extends Move
   private final ValueSelector<Solution_> valueSelector;
 
   private Iterator<Object> entityIterator;
+  private final BooleanSupplier exhaustionProven;
+  private final BooleanSupplier terminated;
 
   public AbstractRandomChangeIterator(
       EntitySelector<Solution_> entitySelector, ValueSelector<Solution_> valueSelector) {
+    this(entitySelector, valueSelector, () -> false, () -> Thread.currentThread().isInterrupted());
+  }
+
+  public AbstractRandomChangeIterator(
+      EntitySelector<Solution_> entitySelector,
+      ValueSelector<Solution_> valueSelector,
+      BooleanSupplier exhaustionProven,
+      BooleanSupplier terminated) {
+    this.exhaustionProven = exhaustionProven;
+    this.terminated = terminated;
     this.entitySelector = entitySelector;
     this.valueSelector = valueSelector;
     entityIterator = entitySelector.iterator();
@@ -40,14 +53,26 @@ public abstract class AbstractRandomChangeIterator<Solution_, Move_ extends Move
 
     Iterator<Object> valueIterator = valueSelector.iterator(entity);
     int entityIteratorCreationCount = 0;
+    boolean exhaustionChecked = false;
     // This loop is mostly only relevant when the entityIterator or valueIterator is non-random or
     // shuffled
     while (!valueIterator.hasNext()) {
+      if (terminated.getAsBoolean()) {
+        return noUpcomingSelection();
+      }
+      if (!exhaustionChecked) {
+        exhaustionChecked = true;
+        if (exhaustionProven.getAsBoolean() || terminated.getAsBoolean()) {
+          return noUpcomingSelection();
+        }
+      }
+      // A random entity iterator may never end. The caller may prove exhaustion, but a retry
+      // limit alone must not hide a rare eligible entity or replace the configured sampler.
       // Try the next entity
       if (!entityIterator.hasNext()) {
         entityIterator = entitySelector.iterator();
         entityIteratorCreationCount++;
-        if (entityIteratorCreationCount >= 2) {
+        if (entityIteratorCreationCount >= 2 || !entityIterator.hasNext()) {
           // All entity-value combinations have been tried (some even more than once)
           return noUpcomingSelection();
         }

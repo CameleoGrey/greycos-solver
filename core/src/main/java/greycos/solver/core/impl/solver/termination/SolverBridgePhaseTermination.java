@@ -10,8 +10,9 @@ import greycos.solver.core.impl.solver.thread.ChildThreadType;
 import org.jspecify.annotations.NullMarked;
 
 /**
- * Delegates phase calls (such as {@link #isPhaseTerminated(AbstractPhaseScope)}) to solver calls
- * (such as {@link SolverTermination#isSolverTerminated(SolverScope)}) on the bridged termination.
+ * Evaluates a solver's complete termination expression within a phase. Solver-capable leaves use
+ * their solver predicates and gradients; phase-only leaves use the active phase. An unavailable
+ * condition cannot satisfy an AND expression.
  *
  * <p>Had this not happened, the solver-level termination running at phase-level would call {@link
  * #isPhaseTerminated(AbstractPhaseScope)} instead of {@link
@@ -33,19 +34,13 @@ final class SolverBridgePhaseTermination<Solution_> extends AbstractPhaseTermina
   }
 
   @Override
-  @SuppressWarnings({"rawtypes", "unchecked"})
   public boolean isPhaseTerminated(AbstractPhaseScope<Solution_> phaseScope) {
-    var terminated = solverTermination.isSolverTerminated(phaseScope.getSolverScope());
-    // If the solver is not finished yet, we need to check the phase termination
-    if (!terminated && solverTermination instanceof PhaseTermination phaseTermination) {
-      return phaseTermination.isPhaseTerminated(phaseScope);
-    }
-    return terminated;
+    return TerminationEvaluation.isPhaseTerminated(solverTermination, phaseScope, true);
   }
 
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> phaseScope) {
-    return solverTermination.calculateSolverTimeGradient(phaseScope.getSolverScope());
+    return TerminationEvaluation.calculatePhaseTimeGradient(solverTermination, phaseScope, true);
   }
 
   @Override

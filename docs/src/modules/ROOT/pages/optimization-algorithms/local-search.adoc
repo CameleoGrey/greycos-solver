@@ -131,6 +131,13 @@ Normally it picks the accepted move with the highest score.
 If several accepted moves have the highest score, one is picked randomly to break the tie.
 Breaking ties randomly leads to better results.
 
+A custom `foragerClass` with a no-argument constructor receives `customProperties` through public string setters.
+If a setter rejects a value, solver construction fails with the forager class, property name, value, and original cause.
+Unknown optional properties without a corresponding setter remain ignored.
+A forager constructed with `LocalSearchForagerConfig` receives the configuration directly and validates its own properties.
+The decider counts evaluated moves before forwarding them to the forager, including a custom forager.
+A custom forager supplies its selected and accepted step counts; it must not increment the solver's move evaluation count itself.
+
 [NOTE]
 ====
 It is possible to disable breaking ties randomly by explicitly setting `breakTieRandomly` to ``false``, but that's almost never a good idea:

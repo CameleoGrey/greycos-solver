@@ -29,6 +29,7 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
               || !solutionView.isPinned(this.<Object, Object>getVariableMetaModel(), value);
 
   private boolean allowsUnassignedValues = true;
+  private boolean supportsPinning;
 
   public ListVariableDescriptor(
       int ordinal,
@@ -165,17 +166,38 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
   }
 
   public boolean supportsPinning() {
-    return entityDescriptor.supportsPinning();
+    return supportsPinning;
+  }
+
+  /** Called after every entity descriptor has linked its inherited variables and pin readers. */
+  public void linkPinningSupport() {
+    supportsPinning =
+        entityDescriptor.getSolutionDescriptor().getEntityDescriptors().stream()
+            .anyMatch(
+                descriptor ->
+                    descriptor.getGenuineVariableDescriptor(getVariableName()) == this
+                        && descriptor.supportsPinning());
+  }
+
+  private EntityDescriptor<Solution_> getEntityDescriptor(Object entity) {
+    // Most domains have no entity inheritance. Subclasses use the solution descriptor's existing
+    // class cache, including its nearest-configured-ancestor behavior for unconfigured subclasses.
+    return entity.getClass() == entityDescriptor.getEntityClass()
+        ? entityDescriptor
+        : entityDescriptor.getSolutionDescriptor().findEntityDescriptorOrFail(entity.getClass());
   }
 
   public boolean isElementPinned(Solution_ workingSolution, Object entity, int index) {
     if (!supportsPinning()) {
       return false;
-    } else if (!entityDescriptor.isMovable(
+    }
+    var effectiveEntityDescriptor = getEntityDescriptor(entity);
+    if (!effectiveEntityDescriptor.isMovable(
         workingSolution, entity)) { // Skipping due to @PlanningPin.
       return true;
     } else {
-      return index < getFirstUnpinnedIndex(entity);
+      var pinIndexReader = effectiveEntityDescriptor.getEffectivePlanningPinToIndexReader();
+      return pinIndexReader != null && index < pinIndexReader.applyAsInt(entity);
     }
   }
 
@@ -202,7 +224,11 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
   }
 
   public int getFirstUnpinnedIndex(Object entity) {
-    var effectivePlanningPinToIndexReader = entityDescriptor.getEffectivePlanningPinToIndexReader();
+    if (!supportsPinning) {
+      return 0;
+    }
+    var effectivePlanningPinToIndexReader =
+        getEntityDescriptor(entity).getEffectivePlanningPinToIndexReader();
     if (effectivePlanningPinToIndexReader == null) { // There is no @PlanningPinToIndex.
       return 0;
     } else {

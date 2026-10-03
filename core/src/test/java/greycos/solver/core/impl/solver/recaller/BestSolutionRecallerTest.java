@@ -17,8 +17,32 @@ import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class BestSolutionRecallerTest {
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 1})
+  void solvingStartedReplacesBestWithRefreshedCloneEvenWhenScoreIsEqual(int newScoreValue) {
+    SolverScope<TestdataSolution> solverScope = createSolverScope();
+    var publishedBest = TestdataSolution.generateSolution();
+    publishedBest.setScore(SimpleScore.ZERO);
+    solverScope.setBestSolution(publishedBest);
+    var refreshedBest = TestdataSolution.generateSolution();
+    var score = SimpleScore.of(newScoreValue);
+    refreshedBest.setScore(score);
+    var director = solverScope.getScoreDirector();
+    doReturn(InnerScore.fullyAssigned(score)).when(director).calculateScore();
+    when(director.cloneWorkingSolution()).thenReturn(refreshedBest);
+
+    BestSolutionRecaller<TestdataSolution> recaller = createBestSolutionRecaller();
+    recaller.solvingStarted(solverScope);
+
+    assertThat(solverScope.getBestSolution()).isSameAs(refreshedBest);
+    assertThat(solverScope.getBestScore()).isEqualTo(InnerScore.fullyAssigned(score));
+    assertThat(publishedBest.getScore()).isEqualTo(SimpleScore.ZERO);
+  }
 
   private static <Solution_> SolverScope<Solution_> createSolverScope() {
     var solverScope = new SolverScope<Solution_>();

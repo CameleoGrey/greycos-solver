@@ -45,12 +45,13 @@ public interface SolverJob<Solution_> {
 
   /**
    * Schedules a batch of {@link ProblemChange problem changes} to be processed by the underlying
-   * {@link Solver} and returns immediately.
+   * {@link Solver} and returns immediately. Changes may be submitted while the job is scheduled or
+   * actively solving.
    *
    * @param problemChangeList at least one problem change to be processed
-   * @return completes after the best solution containing this change has been consumed.
-   * @throws IllegalStateException if the underlying {@link Solver} is not in the {@link
-   *     SolverStatus#SOLVING_ACTIVE} state
+   * @return completes after the best solution containing these changes has been consumed; canceled
+   *     if the job terminates without delivering a solution containing them
+   * @throws IllegalStateException if the job has stopped accepting changes or has terminated
    * @see ProblemChange Learn more about problem change semantics.
    */
   CompletableFuture<Void> addProblemChanges(List<ProblemChange<Solution_>> problemChangeList);

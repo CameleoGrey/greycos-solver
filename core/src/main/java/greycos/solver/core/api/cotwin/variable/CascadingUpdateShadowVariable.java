@@ -24,8 +24,9 @@ import java.lang.annotation.Target;
  * which they are executed. Therefore, caution is required when using multiple {@code targetMethod}
  * per model.
  *
- * <p>Except for {@link PiggybackShadowVariable}, the use of {@link CascadingUpdateShadowVariable}
- * as a source for other variables, such as {@link ShadowVariable}, is not allowed.
+ * <p>The use of {@link CascadingUpdateShadowVariable} as a source for other variables, such as
+ * {@link ShadowVariable}, is not allowed. Multiple fields updated by the same target method must
+ * each use this annotation with the same {@link #targetMethodName()}.
  *
  * <p>Important: it must only change the shadow variable(s) for which it's configured. It should
  * never change a genuine variable or a problem fact. It can change its shadow variable(s) on

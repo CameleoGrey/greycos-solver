@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
@@ -39,7 +38,6 @@ import greycos.solver.core.impl.cotwin.variable.violation.ShadowVariablesAssert;
 import greycos.solver.core.impl.cotwin.variable.violation.TrackerResolver;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.ScoreDirector;
-import greycos.solver.core.impl.util.LinkedIdentityHashSet;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -66,6 +64,8 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
   // Indexed by [{@link EntityDescriptor#getOrdinal()}][{@link VariableDescriptor#getOrdinal()}].
   private final List<BasicVariableChangeHandler<Solution_>>[][] basicVariableChangeHandlerArray;
   private final @Nullable ListVariableDescriptor<Solution_> listVariableDescriptor;
+  private final boolean[][] sameListShadowVariables;
+  private boolean handlingListStateChanges;
   // The single source of truth for the list variable state, created at first request.
   private @Nullable ListVariableState<Solution_, ?, ?> listVariableState;
   // The single source of truth for the list variable tracker, created at first request.
@@ -73,8 +73,11 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
   // The current list of variable change handlers
   private final List<ListVariableChangeHandler<Solution_>> listVariableChangeHandlerList;
 
-  private final List<ListVariableChange> listVariableChangeList;
-  private final Set<Object> unassignedValueWithEmptyInverseEntitySet;
+  private final @Nullable CascadingUpdateQueue cascadingUpdateQueue;
+  private final boolean hasCascadingUpdates;
+  private final @Nullable Class<?> listElementClass;
+  private final @Nullable Class<?> listOwnerClass;
+  private boolean updatingCascadingVariables;
   private final List<CascadingUpdateShadowVariableDescriptor<Solution_>>
       cascadingUpdateShadowVarDescriptorList;
   private final IntFunction<TopologicalOrderGraph> shadowVariableGraphCreator;
@@ -83,6 +86,7 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
   private boolean hasBasicVariableChangeHandlers = false;
   private boolean dirty = false;
   private boolean updateSuccessful = true;
+  private boolean shadowUpdateFailed;
   @Nullable private DefaultShadowVariableSession<Solution_> shadowVariableSession = null;
   private ConsistencyTracker<Solution_> consistencyTracker = new ConsistencyTracker<>();
 
@@ -94,19 +98,32 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
 
     var solutionDescriptor = scoreDirector.getSolutionDescriptor();
     var entityDescriptorList = solutionDescriptor.getEntityDescriptors();
+    this.listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
+    this.sameListShadowVariables = new boolean[entityDescriptorList.size()][];
     this.basicVariableChangeHandlerArray = new List[entityDescriptorList.size()][];
     for (var entityDescriptor : entityDescriptorList) {
       var declaredVariableDescriptorList = entityDescriptor.getDeclaredVariableDescriptors();
       var array = new List[declaredVariableDescriptorList.size()];
+      var sameListShadows = new boolean[declaredVariableDescriptorList.size()];
+      sameListShadowVariables[entityDescriptor.getOrdinal()] = sameListShadows;
       for (var variableDescriptor : declaredVariableDescriptorList) {
         array[variableDescriptor.getOrdinal()] =
             new ArrayList<BasicVariableChangeHandler<Solution_>>();
+        if (listVariableDescriptor != null
+            && (variableDescriptor instanceof IndexShadowVariableDescriptor<?>
+                || variableDescriptor instanceof InverseRelationShadowVariableDescriptor<?>
+                || variableDescriptor instanceof PreviousElementShadowVariableDescriptor<?>
+                || variableDescriptor instanceof NextElementShadowVariableDescriptor<?>)) {
+          sameListShadows[variableDescriptor.getOrdinal()] =
+              ((ShadowVariableDescriptor<Solution_>) variableDescriptor)
+                      .getSourceVariableDescriptor()
+                  == listVariableDescriptor;
+        }
       }
       basicVariableChangeHandlerArray[entityDescriptor.getOrdinal()] = array;
     }
 
     // Fields specific to list variable; will be ignored if not necessary.
-    this.listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
     this.listVariableChangeHandlerList =
         listVariableDescriptor == null ? Collections.emptyList() : new ArrayList<>();
     this.cascadingUpdateShadowVarDescriptorList =
@@ -115,10 +132,11 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
                 .flatMap(e -> e.getDeclaredCascadingUpdateShadowVariableDescriptors().stream())
                 .toList()
             : Collections.emptyList();
-    var hasCascadingUpdates = !cascadingUpdateShadowVarDescriptorList.isEmpty();
-    this.listVariableChangeList = new ArrayList<>();
-    this.unassignedValueWithEmptyInverseEntitySet =
-        hasCascadingUpdates ? new LinkedIdentityHashSet<>() : Collections.emptySet();
+    this.hasCascadingUpdates = !cascadingUpdateShadowVarDescriptorList.isEmpty();
+    this.listElementClass = hasCascadingUpdates ? listVariableDescriptor.getElementType() : null;
+    this.listOwnerClass =
+        hasCascadingUpdates ? listVariableDescriptor.getEntityDescriptor().getEntityClass() : null;
+    this.cascadingUpdateQueue = hasCascadingUpdates ? new CascadingUpdateQueue() : null;
     this.shadowVariableGraphCreator = shadowVariableGraphCreator;
   }
 
@@ -291,7 +309,10 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
     }
     if (listVariableState == null) { // The list state has not been loaded yet.
       listVariableState =
-          new DefaultListVariableState<>(targetVariableDescriptor, getStateChangeNotifier());
+          new DefaultListVariableState<>(
+              targetVariableDescriptor,
+              getStateChangeNotifier(),
+              hasCascadingUpdates ? this::scheduleListShadowChanges : null);
       registerListVariableHandler(listVariableState, reset);
     }
     return (ListVariableState<Solution_, Entity_, Value_>) listVariableState;
@@ -424,6 +445,11 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
   }
 
   public void resetWorkingSolution() {
+    // No callback for the new solution may reach the graph of the previous solution.
+    shadowVariableSession = null;
+    clearPendingShadowVariableUpdates();
+    updateSuccessful = true;
+    shadowUpdateFailed = false;
     for (var handler : listVariableChangeHandlerList) {
       handler.resetWorkingSolution(scoreDirector);
     }
@@ -455,6 +481,11 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
   }
 
   public void close() {
+    clearPendingShadowVariableUpdates();
+    shadowVariableSession = null;
+    if (cascadingUpdateQueue != null) {
+      cascadingUpdateQueue.close();
+    }
     // Release observer references even if another variable handler fails while closing.
     workingSolutionMutationObserverChanged();
     for (var handler : listVariableChangeHandlerList) {
@@ -487,6 +518,7 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
 
   public void afterVariableChanged(
       VariableDescriptor<Solution_> variableDescriptor, Object entity) {
+    scheduleCascadingUpdate(variableDescriptor, entity);
     if (!hasBasicVariableChangeHandlers && shadowVariableSession == null) {
       return;
     }
@@ -502,12 +534,17 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
 
   public void afterElementUnassigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
-    for (var handler : listVariableChangeHandlerList) {
-      handler.afterListElementUnassigned(scoreDirector, element);
+    for (var i = 0; i < listVariableChangeHandlerList.size(); i++) {
+      var handler = listVariableChangeHandlerList.get(i);
+      handlingListStateChanges = hasCascadingUpdates && handler == listVariableState;
+      try {
+        handler.afterListElementUnassigned(scoreDirector, element);
+      } finally {
+        handlingListStateChanges = false;
+      }
     }
-    if (!cascadingUpdateShadowVarDescriptorList
-        .isEmpty()) { // Only necessary if there is a cascade.
-      unassignedValueWithEmptyInverseEntitySet.add(element);
+    if (hasCascadingUpdates) {
+      cascadingUpdateQueue.addChangedElement(element);
       dirty = true;
     }
     if (shadowVariableSession != null) {
@@ -546,11 +583,15 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
         i < listVariableChangeHandlerList.size();
         i++) { // Avoid iterator allocations on the hot path.
       var handler = listVariableChangeHandlerList.get(i);
-      handler.afterListVariableChanged(scoreDirector, entity, fromIndex, toIndex);
+      handlingListStateChanges = hasCascadingUpdates && handler == listVariableState;
+      try {
+        handler.afterListVariableChanged(scoreDirector, entity, fromIndex, toIndex);
+      } finally {
+        handlingListStateChanges = false;
+      }
     }
-    if (!cascadingUpdateShadowVarDescriptorList
-        .isEmpty()) { // Only necessary if there is a cascade.
-      listVariableChangeList.add(new ListVariableChange(entity, fromIndex, toIndex));
+    if (hasCascadingUpdates) {
+      cascadingUpdateQueue.addRange(entity, fromIndex, toIndex);
       dirty = true;
     }
     if (shadowVariableSession != null) {
@@ -566,30 +607,62 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
     return (InnerScoreDirector<Solution_, Score_>) scoreDirector;
   }
 
+  public boolean hasShadowUpdateFailed() {
+    return shadowUpdateFailed;
+  }
+
   public boolean updateShadowVariables() {
-    if (!dirty) {
-      // Shortcut in case the trigger is called multiple times in a row,
-      // without any notifications inbetween.
-      // This is better than trying to ensure that the situation never ever occurs.
+    if (!dirty || shadowUpdateFailed) {
       return updateSuccessful;
     }
-    if (listVariableDescriptor != null) {
-      // If there is no cascade, skip the whole thing.
-      // If there are no events and no newly unassigned variables, skip the whole thing as well.
-      if (!cascadingUpdateShadowVarDescriptorList.isEmpty()
-          && !(listVariableChangeList.isEmpty()
-              && unassignedValueWithEmptyInverseEntitySet.isEmpty())) {
+    try {
+      // Cascades run last, including changes caused by declarative shadow variables.
+      if (shadowVariableSession != null && !shadowVariableSession.updateVariables()) {
+        updateSuccessful = false;
+        return false;
+      }
+      if (hasCascadingUpdates && !cascadingUpdateQueue.isEmpty()) {
         triggerCascadingUpdateShadowVariableUpdate();
       }
-      listVariableChangeList.clear();
-    }
-    if (shadowVariableSession != null && !shadowVariableSession.updateVariables()) {
+      dirty = false;
+      updateSuccessful = true;
+      return true;
+    } catch (RuntimeException | Error failure) {
+      if (cascadingUpdateQueue != null) {
+        cascadingUpdateQueue.clear();
+      }
+      // Dropped work after a throwing user callback requires a full refresh before retrying.
+      shadowUpdateFailed = true;
       updateSuccessful = false;
-      return false;
+      throw failure;
     }
-    dirty = false;
-    updateSuccessful = true;
-    return true;
+  }
+
+  private void scheduleCascadingUpdate(VariableDescriptor<Solution_> descriptor, Object entity) {
+    if (!hasCascadingUpdates
+        || updatingCascadingVariables
+        || descriptor instanceof CascadingUpdateShadowVariableDescriptor<?>) {
+      return;
+    }
+    if (listElementClass.isInstance(entity)
+        && !(handlingListStateChanges
+            && sameListShadowVariables[descriptor.getEntityDescriptor().getOrdinal()][
+                descriptor.getOrdinal()])) {
+      // List-state callbacks are covered by their exact changed span or explicit unassignment.
+      // Other callbacks still resolve their position only after all changes, including transfers
+      // and unassignments.
+      cascadingUpdateQueue.addChangedElement(entity);
+      dirty = true;
+    }
+    if (listOwnerClass.isInstance(entity)) {
+      cascadingUpdateQueue.addRange(entity, 0, listVariableDescriptor.getListSize(entity));
+      dirty = true;
+    }
+  }
+
+  private void scheduleListShadowChanges(Object entity, int fromIndex, int toIndex) {
+    cascadingUpdateQueue.addRange(entity, fromIndex, toIndex);
+    dirty = true;
   }
 
   public List<VariableLoop> getVariableLoops() {
@@ -599,58 +672,64 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
     return shadowVariableSession.getVariableLoops();
   }
 
-  /** Triggers all cascading update shadow variable user-logic. */
+  /** Runs only affected ranges and suffixes, never unrelated lists. */
   private void triggerCascadingUpdateShadowVariableUpdate() {
-    if (listVariableChangeList.isEmpty() || cascadingUpdateShadowVarDescriptorList.isEmpty()) {
-      return;
-    }
-    for (var cascadingUpdateShadowVariableDescriptor : cascadingUpdateShadowVarDescriptorList) {
-      cascadeListVariableChangedNotifications(cascadingUpdateShadowVariableDescriptor);
-      // When the unassigned element has no inverse entity,
-      // it indicates that it is not reverting to a previous entity.
-      // In this case, we need to invoke the cascading logic,
-      // or its related shadow variables will remain unchanged.
-      cascadeUnassignedValues(cascadingUpdateShadowVariableDescriptor);
-    }
-    unassignedValueWithEmptyInverseEntitySet.clear();
-  }
-
-  private void cascadeListVariableChangedNotifications(
-      CascadingUpdateShadowVariableDescriptor<Solution_> cascadingUpdateShadowVariableDescriptor) {
-    for (var change : listVariableChangeList) {
-      cascadeListVariableValueUpdates(
-          listVariableDescriptor.getValue(change.entity()),
-          change.fromIndex(),
-          change.toIndex(),
-          cascadingUpdateShadowVariableDescriptor);
+    try {
+      for (var i = 0; i < cascadingUpdateQueue.changedElementCount(); i++) {
+        var element = cascadingUpdateQueue.changedElement(i);
+        var entity = listVariableState.getInverseSingleton(element);
+        if (entity == null) {
+          cascadingUpdateQueue.addUnassignedElement(element);
+        } else {
+          var index = listVariableState.getIndexOrFail(element);
+          cascadingUpdateQueue.addRange(entity, index, index + 1);
+        }
+      }
+      cascadingUpdateQueue.prepareRanges();
+      updatingCascadingVariables = true;
+      for (var descriptorIndex = 0;
+          descriptorIndex < cascadingUpdateShadowVarDescriptorList.size();
+          descriptorIndex++) {
+        var descriptor = cascadingUpdateShadowVarDescriptorList.get(descriptorIndex);
+        for (var i = 0; i < cascadingUpdateQueue.updateCount(); i++) {
+          cascadeListVariableValueUpdates(cascadingUpdateQueue.updates(i), descriptor);
+        }
+        // Every descriptor sees the same final unassigned values.
+        for (var i = 0; i < cascadingUpdateQueue.unassignedElementCount(); i++) {
+          var element = cascadingUpdateQueue.unassignedElement(i);
+          if (descriptor.getEntityDescriptor().getEntityClass().isInstance(element)) {
+            descriptor.update(scoreDirector, element);
+          }
+        }
+      }
+    } finally {
+      updatingCascadingVariables = false;
+      cascadingUpdateQueue.clear();
     }
   }
 
   private void cascadeListVariableValueUpdates(
-      List<Object> values,
-      int fromIndex,
-      int toIndex,
-      CascadingUpdateShadowVariableDescriptor<Solution_> cascadingUpdateShadowVariableDescriptor) {
-    for (var currentIndex = fromIndex; currentIndex < values.size(); currentIndex++) {
-      var value = values.get(currentIndex);
-      // The value is present in the unassigned values,
-      // but the cascade logic is triggered by a list event.
-      // So, we can remove it from the unassigned list
-      // since the entity will be reverted to a previous entity.
-      unassignedValueWithEmptyInverseEntitySet.remove(value);
-      // Force updates within the range.
-      // Outside the range, only update while the values keep changing.
-      var forceUpdate = currentIndex < toIndex;
-      if (!cascadingUpdateShadowVariableDescriptor.update(scoreDirector, value) && !forceUpdate) {
-        break;
+      CascadingUpdateQueue.ListUpdates updates,
+      CascadingUpdateShadowVariableDescriptor<Solution_> descriptor) {
+    var values = listVariableDescriptor.getValue(Objects.requireNonNull(updates.entity()));
+    var rangeIndex = 0;
+    while (rangeIndex < updates.rangeCount()) {
+      var fromIndex = updates.fromIndex(rangeIndex);
+      var toIndex = updates.toIndex(rangeIndex++);
+      for (var index = fromIndex; index < values.size(); index++) {
+        // Extend through ranges reached during propagation; jump over untouched gaps after
+        // convergence.
+        while (rangeIndex < updates.rangeCount() && updates.fromIndex(rangeIndex) <= index) {
+          toIndex = Math.max(toIndex, updates.toIndex(rangeIndex++));
+        }
+        var value = values.get(index);
+        if (!descriptor.getEntityDescriptor().getEntityClass().isInstance(value)) {
+          continue;
+        }
+        if (!descriptor.update(scoreDirector, value) && index >= toIndex) {
+          break;
+        }
       }
-    }
-  }
-
-  private void cascadeUnassignedValues(
-      CascadingUpdateShadowVariableDescriptor<Solution_> cascadingUpdateShadowVariableDescriptor) {
-    for (var unassignedValue : unassignedValueWithEmptyInverseEntitySet) {
-      cascadingUpdateShadowVariableDescriptor.update(scoreDirector, unassignedValue);
     }
   }
 
@@ -676,6 +755,8 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
    * @param workingSolution working solution
    */
   public boolean forceUpdateAllShadowVariables(Solution_ workingSolution) {
+    shadowUpdateFailed = false;
+    updateSuccessful = true;
     scoreDirector
         .getSolutionDescriptor()
         .visitAllEntities(workingSolution, this::simulateGenuineVariableChange);
@@ -687,10 +768,20 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
    * and avoid executing custom listener logic.
    */
   public void clearPendingShadowVariableUpdates() {
+    if (cascadingUpdateQueue != null) {
+      cascadingUpdateQueue.clear();
+    }
     dirty = false;
   }
 
   private void simulateGenuineVariableChange(Object entity) {
+    if (hasCascadingUpdates
+        && listElementClass.isInstance(entity)
+        && listVariableState.getInverseSingleton(entity) == null) {
+      // Shadow-only values are included; no list event visits an initially unassigned value.
+      cascadingUpdateQueue.addChangedElement(entity);
+      dirty = true;
+    }
     var entityDescriptor =
         scoreDirector.getSolutionDescriptor().findEntityDescriptorOrFail(entity.getClass());
     if (!entityDescriptor.isGenuine()) {
@@ -724,8 +815,6 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
                 ScoreDirector.class.getSimpleName(),
                 ScoreDirector.class.getSimpleName()));
   }
-
-  private record ListVariableChange(Object entity, int fromIndex, int toIndex) {}
 
   private record SupplyWithDemandCount(Supply supply, long demandCount) {}
 }

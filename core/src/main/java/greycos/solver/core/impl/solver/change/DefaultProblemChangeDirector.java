@@ -14,8 +14,6 @@ public final class DefaultProblemChangeDirector<Solution_> implements ProblemCha
 
   private final InnerScoreDirector<Solution_, ?> scoreDirector;
 
-  private boolean problemEntitiesChanged = false;
-
   public DefaultProblemChangeDirector(InnerScoreDirector<Solution_, ?> scoreDirector) {
     this.scoreDirector = scoreDirector;
   }
@@ -28,7 +26,6 @@ public final class DefaultProblemChangeDirector<Solution_> implements ProblemCha
     scoreDirector.beforeEntityAdded(entity);
     entityConsumer.accept(entity);
     scoreDirector.afterEntityAdded(entity);
-    problemEntitiesChanged = true;
   }
 
   @Override
@@ -40,7 +37,6 @@ public final class DefaultProblemChangeDirector<Solution_> implements ProblemCha
     scoreDirector.beforeEntityRemoved(workingEntity);
     entityConsumer.accept(workingEntity);
     scoreDirector.afterEntityRemoved(workingEntity);
-    problemEntitiesChanged = true;
   }
 
   @Override
@@ -109,12 +105,6 @@ public final class DefaultProblemChangeDirector<Solution_> implements ProblemCha
 
   @Override
   public void updateShadowVariables() {
-    if (problemEntitiesChanged) {
-      // Need to rebuild the declarative shadow variable graph
-      scoreDirector.setWorkingSolution(scoreDirector.getWorkingSolution());
-      problemEntitiesChanged = false;
-    } else {
-      scoreDirector.updateShadowVariables();
-    }
+    scoreDirector.updateShadowVariables();
   }
 }

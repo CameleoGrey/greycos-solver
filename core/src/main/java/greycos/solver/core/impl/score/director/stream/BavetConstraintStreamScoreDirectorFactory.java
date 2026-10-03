@@ -133,6 +133,10 @@ public sealed class BavetConstraintStreamScoreDirectorFactory<
         inheritedScoreDirectorFactory.assertionScoreDirectorFactory;
   }
 
+  public boolean supportsEntityPropertyRefresh() {
+    return constraintSessionFactory.supportsEntityPropertyRefresh();
+  }
+
   public BavetConstraintSession<Score_> newSession(
       @Nullable Solution_ workingSolution,
       ConsistencyTracker<Solution_> consistencyTracker,

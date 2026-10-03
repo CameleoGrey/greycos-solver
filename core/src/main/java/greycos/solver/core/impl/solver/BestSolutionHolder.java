@@ -10,7 +10,6 @@ import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
-import java.util.function.UnaryOperator;
 
 import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.change.ProblemChange;
@@ -41,6 +40,8 @@ final class BestSolutionHolder<Solution_> {
       problemChangesPerVersionMap = createNewProblemChangesMap();
   private volatile @Nullable VersionedBestSolution<Solution_> versionedBestSolution = null;
   private volatile BigInteger currentVersion = BigInteger.ZERO;
+  // Protected by this monitor, together with registration and solver queue admission.
+  private boolean problemChangeAdmissionClosed;
 
   private static SortedMap<BigInteger, List<CompletableFuture<Void>>> createNewProblemChangesMap() {
     return createNewProblemChangesMap(Collections.emptySortedMap());
@@ -55,8 +56,9 @@ final class BestSolutionHolder<Solution_> {
     return this.versionedBestSolution == null;
   }
 
-  @Nullable BestSolutionContainingProblemChanges<Solution_> take() {
-    var latestVersionedBestSolution = resetVersionedBestSolution();
+  synchronized @Nullable BestSolutionContainingProblemChanges<Solution_> take() {
+    var latestVersionedBestSolution = versionedBestSolution;
+    versionedBestSolution = null;
     if (latestVersionedBestSolution == null) {
       return null;
     }
@@ -67,8 +69,9 @@ final class BestSolutionHolder<Solution_> {
       return null;
     }
     var boundaryVersion = bestSolutionVersion.add(BigInteger.ONE);
-    var oldProblemChangesPerVersion =
-        replaceMapSynchronized(map -> createNewProblemChangesMap(map.tailMap(boundaryVersion)));
+    var oldProblemChangesPerVersion = problemChangesPerVersionMap;
+    problemChangesPerVersionMap =
+        createNewProblemChangesMap(oldProblemChangesPerVersion.tailMap(boundaryVersion));
     var containedProblemChanges =
         oldProblemChangesPerVersion.headMap(boundaryVersion).values().stream()
             .flatMap(Collection::stream)
@@ -79,25 +82,15 @@ final class BestSolutionHolder<Solution_> {
         containedProblemChanges);
   }
 
-  private synchronized @Nullable VersionedBestSolution<Solution_> resetVersionedBestSolution() {
-    var oldVersionedBestSolution = this.versionedBestSolution;
-    this.versionedBestSolution = null;
-    return oldVersionedBestSolution;
-  }
-
-  private synchronized SortedMap<BigInteger, List<CompletableFuture<Void>>> replaceMapSynchronized(
-      UnaryOperator<SortedMap<BigInteger, List<CompletableFuture<Void>>>> replaceFunction) {
-    var oldMap = problemChangesPerVersionMap;
-    problemChangesPerVersionMap = replaceFunction.apply(oldMap);
-    return oldMap;
-  }
-
   void set(
       Solution_ bestSolution,
       EventProducerId producerId,
       BooleanSupplier isEveryProblemChangeProcessed) {
-    if (isEveryProblemChangeProcessed.getAsBoolean()) {
-      synchronized (this) {
+    // Registration also acquires this monitor before the solver's problem-change queue lock.
+    // Keep the processed check and version assignment together; otherwise a newly queued change
+    // could be acknowledged by a solution produced before that change was applied.
+    synchronized (this) {
+      if (isEveryProblemChangeProcessed.getAsBoolean()) {
         versionedBestSolution =
             new VersionedBestSolution<>(bestSolution, producerId, currentVersion);
         currentVersion = currentVersion.add(BigInteger.ONE);
@@ -109,6 +102,10 @@ final class BestSolutionHolder<Solution_> {
       Solver<Solution_> solver, List<ProblemChange<Solution_>> problemChangeList) {
     var futureProblemChange = new CompletableFuture<Void>();
     synchronized (this) {
+      if (problemChangeAdmissionClosed) {
+        throw new IllegalStateException(
+            "Cannot add problem changes after the solver job has stopped accepting them.");
+      }
       var futureProblemChangeList =
           problemChangesPerVersionMap.computeIfAbsent(currentVersion, version -> new ArrayList<>());
       futureProblemChangeList.add(futureProblemChange);
@@ -117,23 +114,26 @@ final class BestSolutionHolder<Solution_> {
     return futureProblemChange;
   }
 
+  synchronized void closeProblemChangeAdmission() {
+    problemChangeAdmissionClosed = true;
+  }
+
+  synchronized List<CompletableFuture<Void>> closeAndDrainPendingChanges() {
+    problemChangeAdmissionClosed = true;
+    var pendingChanges =
+        problemChangesPerVersionMap.values().stream().flatMap(Collection::stream).toList();
+    problemChangesPerVersionMap = createNewProblemChangesMap();
+    return pendingChanges;
+  }
+
   void cancelPendingChanges() {
-    replaceMapSynchronized(map -> createNewProblemChangesMap()).values().stream()
-        .flatMap(Collection::stream)
+    // CompletableFuture continuations may reenter a job or manager; run them outside the monitor.
+    closeAndDrainPendingChanges()
         .forEach(pendingProblemChange -> pendingProblemChange.cancel(false));
   }
 
   void cancelPendingChangesQuietly() {
-    replaceMapSynchronized(map -> createNewProblemChangesMap()).values().stream()
-        .flatMap(Collection::stream)
-        .forEach(
-            pendingProblemChange -> {
-              try {
-                pendingProblemChange.cancel(false);
-              } catch (java.util.concurrent.CancellationException e) {
-                // Ignore - future was already completed
-              }
-            });
+    cancelPendingChanges();
   }
 
   private record VersionedBestSolution<Solution_>(

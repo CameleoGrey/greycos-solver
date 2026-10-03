@@ -14,6 +14,10 @@ Its solution isn't always feasible, but it finds it fast so metaheuristics can f
 
 Construction heuristics terminate automatically, so there's usually no need to configure a `Termination` on the construction heuristic phase specifically.
 
+When several basic variables allow unassigned values, construction also evaluates leaving all of them unassigned.
+This applies when their assignment moves are combined into a composite move.
+Time limits and external termination requests are checked even when the selector keeps returning non-doable moves.
+
 
 [#firstFit]
 == First fit
@@ -888,6 +892,8 @@ This rule does not guarantee that construction produces a feasible solution.
 
 Explicit nearby selectors, selection orders, selector limits, and
 <<constructionHeuristicsPickEarlyType,early pick rules>> remain authoritative.
+Candidate selector trees with an explicit `RANDOM` or `SHUFFLED` order are not rewritten by automatic nearby selection.
+Their configured sampling, cached order, and random-number consumption remain in control.
 In particular, an explicit early pick rule may finish a step before the current batch is exhausted.
 Candidates still respect pinning, filters, value ranges for each entity, and list insertion eligibility.
 For an explicitly sorted move selector, nearby selection chooses a prefix for each origin,

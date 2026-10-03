@@ -304,7 +304,7 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
           moveScope.getScore().raw(),
           moveScope.getAccepted(),
           foragingMove);
-      forager.addMove(moveScope);
+      addMoveToForager(moveScope);
       if (forager.isQuitEarly()) {
         recordCandidate(stepScope, accepted);
         return ForageResult.STOP_FORAGING;

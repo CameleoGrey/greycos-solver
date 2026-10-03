@@ -71,10 +71,9 @@ class AcceptorCoolingTerminationTest {
   void factorySupportedCoolingSurvivesDiminishedReturns(boolean and) {
     SolverScope<TestdataSolution> scope = mockSolverScope();
     when(scope.calculateTimeMillisSpentUpToNow()).thenReturn(60L);
+    var phase = startedPhase(scope);
     when(scope.getMoveEvaluationCount()).thenReturn(4L);
-    LocalSearchPhaseScope<TestdataSolution> phase = mock(LocalSearchPhaseScope.class);
-    when(phase.getSolverScope()).thenReturn(scope);
-    when(phase.calculatePhaseTimeMillisSpentUpToNow()).thenReturn(20L);
+    when(scope.getClock()).thenReturn(Clock.fixed(Instant.ofEpochMilli(20L), ZoneOffset.UTC));
     var config =
         new TerminationConfig()
             .withDiminishedReturns()
@@ -103,8 +102,8 @@ class AcceptorCoolingTerminationTest {
             .withTerminationConfigList(
                 List.of(unsupported, new TerminationConfig().withMoveCountLimit(10L)));
     SolverScope<TestdataSolution> scope = mockSolverScope();
+    var phase = startedPhase(scope);
     when(scope.getMoveEvaluationCount()).thenReturn(3L);
-    var phase = new LocalSearchPhaseScope<>(scope, 0);
     assertThat(buildPhase(config).calculatePhaseTimeGradient(phase)).isEqualTo(0.3);
     assertThat(buildSolver(config).calculateSolverTimeGradient(scope)).isEqualTo(0.3);
   }

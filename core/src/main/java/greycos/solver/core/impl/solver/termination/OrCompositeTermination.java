@@ -27,12 +27,7 @@ public final class OrCompositeTermination<Solution_> extends AbstractCompositeTe
    */
   @Override
   public boolean isSolverTerminated(SolverScope<Solution_> solverScope) {
-    for (var termination : solverTerminationList) {
-      if (termination.isSolverTerminated(solverScope)) {
-        return true;
-      }
-    }
-    return false;
+    return TerminationEvaluation.isSolverTerminated(this, solverScope);
   }
 
   /**
@@ -40,15 +35,7 @@ public final class OrCompositeTermination<Solution_> extends AbstractCompositeTe
    */
   @Override
   public boolean isPhaseTerminated(AbstractPhaseScope<Solution_> phaseScope) {
-    for (var termination : phaseTerminationList) {
-      if (!termination.isApplicableTo(phaseScope.getClass())) {
-        continue;
-      }
-      if (termination.isPhaseTerminated(phaseScope)) {
-        return true;
-      }
-    }
-    return false;
+    return TerminationEvaluation.isPhaseTerminated(this, phaseScope, false);
   }
 
   /**
@@ -59,12 +46,7 @@ public final class OrCompositeTermination<Solution_> extends AbstractCompositeTe
    */
   @Override
   public double calculateSolverTimeGradient(SolverScope<Solution_> solverScope) {
-    var timeGradient = -1.0;
-    for (var termination : solverTerminationList) {
-      var nextTimeGradient = termination.calculateSolverTimeGradient(solverScope);
-      timeGradient = TerminationGradient.combine(false, timeGradient, nextTimeGradient);
-    }
-    return timeGradient;
+    return TerminationEvaluation.calculateSolverTimeGradient(this, solverScope);
   }
 
   /**
@@ -75,15 +57,7 @@ public final class OrCompositeTermination<Solution_> extends AbstractCompositeTe
    */
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> phaseScope) {
-    var timeGradient = -1.0;
-    for (var termination : phaseTerminationList) {
-      if (!termination.isApplicableTo(phaseScope.getClass())) {
-        continue;
-      }
-      var nextTimeGradient = termination.calculatePhaseTimeGradient(phaseScope);
-      timeGradient = TerminationGradient.combine(false, timeGradient, nextTimeGradient);
-    }
-    return timeGradient;
+    return TerminationEvaluation.calculatePhaseTimeGradient(this, phaseScope, false);
   }
 
   @Override

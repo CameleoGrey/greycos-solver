@@ -458,7 +458,10 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
         // otherwise a capped row containing only pinned values would have no valid destination.
         if (!listVariableDescriptor.supportsPinning()
             || (getEntityDescriptor().matchesEntity(destination)
-                ? getEntityDescriptor().isMovable(scoreDirector.getWorkingSolution(), destination)
+                ? scoreDirector
+                    .getSolutionDescriptor()
+                    .findEntityDescriptorOrFail(destination.getClass())
+                    .isMovable(scoreDirector.getWorkingSolution(), destination)
                 : !listVariableState.isPinned(destination))) {
           return destination;
         }

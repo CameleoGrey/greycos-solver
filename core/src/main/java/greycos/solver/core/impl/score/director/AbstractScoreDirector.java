@@ -113,6 +113,15 @@ public abstract class AbstractScoreDirector<
   protected @Nullable Solution_ workingSolution;
   private int workingInitScore = 0;
   private boolean lastVariableUpdateSuccessful = true;
+  private WorkingSolutionState workingSolutionState = WorkingSolutionState.CLEAN;
+  private @Nullable Throwable workingSolutionFailure;
+
+  private enum WorkingSolutionState {
+    CLEAN,
+    PROPERTY_DIRTY,
+    DIRTY,
+    REBUILDING
+  }
 
   private final boolean isStepAssertOrMore;
   private final boolean isAssertClonedSolution;
@@ -198,12 +207,14 @@ public abstract class AbstractScoreDirector<
   @Override
   public BasicVariableState<Solution_> getBasicVariableState(
       VariableDescriptor<Solution_> variableDescriptor) {
+    ensureWorkingSolutionStateFresh();
     return Objects.requireNonNull(variableSupport.getBasicVariableState(variableDescriptor));
   }
 
   @Override
   public <Entity_, Value_> ListVariableState<Solution_, Entity_, Value_> getListVariableState(
       ListVariableDescriptor<Solution_> variableDescriptor) {
+    ensureWorkingSolutionStateFresh();
     return Objects.requireNonNull(variableSupport.getListVariableState(variableDescriptor));
   }
 
@@ -224,6 +235,7 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public int getWorkingInitScore() {
+    ensureWorkingSolutionStateFresh();
     return workingInitScore;
   }
 
@@ -234,6 +246,7 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public int getWorkingGenuineEntityCount() {
+    ensureWorkingSolutionStateFresh();
     return workingGenuineEntityCount;
   }
 
@@ -280,11 +293,13 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public SupplyManager getSupplyManager() {
+    ensureWorkingSolutionStateFresh();
     return variableSupport;
   }
 
   @Override
   public ValueRangeManager<Solution_> getValueRangeManager() {
+    ensureWorkingSolutionStateFresh();
     return valueRangeManager;
   }
 
@@ -331,6 +346,7 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public final InnerScore<Score_> calculateScore() {
+    ensureWorkingSolutionStateFresh();
     if (lastVariableUpdateSuccessful) {
       return innerCalculateScore();
     } else {
@@ -354,6 +370,37 @@ public abstract class AbstractScoreDirector<
    */
   protected void setWorkingSolutionWithoutUpdatingShadows(
       Solution_ workingSolution, Consumer<Object> entityAndFactVisitor) {
+    var previousState = workingSolutionState;
+    workingSolutionState = WorkingSolutionState.REBUILDING;
+    var initialized = false;
+    // Initial shadow repairs must not notify a repository holding the previous solution.
+    neighborhoodsElementUpdateNotifier.setMoveRepository(null);
+    try {
+      refreshWorkingSolutionMetadata(workingSolution, entityAndFactVisitor);
+
+      beforeShadowVariablesReset(workingSolution);
+      variableSupport.resetWorkingSolution();
+      if (moveRepository != null) {
+        moveRepository.resetWorkingSolution(new SessionContext<>(this));
+      }
+      initialized = true;
+    } finally {
+      neighborhoodsElementUpdateNotifier.setMoveRepository(
+          moveRepository instanceof NeighborhoodsBasedMoveRepository<Solution_> repository
+              ? repository
+              : null);
+      if (!initialized) {
+        workingSolutionState = WorkingSolutionState.DIRTY;
+      } else if (previousState != WorkingSolutionState.REBUILDING) {
+        workingSolutionState = WorkingSolutionState.CLEAN;
+      }
+    }
+  }
+
+  /** Refreshes all metadata even when an eligible backend can retain its scoring network. */
+  private void refreshWorkingSolutionMetadata(
+      Solution_ workingSolution, @Nullable Consumer<Object> entityAndFactVisitor) {
+    lastVariableUpdateSuccessful = true;
     invalidateWorkingSolutionObserver();
     this.workingSolution = requireNonNull(workingSolution);
     // Reset the ValueRangeManager with the new working solution BEFORE visiting entities.
@@ -404,11 +451,6 @@ public abstract class AbstractScoreDirector<
             + initializationStatistics.uninitializedVariableCount());
     assertInitScoreZeroOrLess();
     workingGenuineEntityCount = initializationStatistics.genuineEntityCount();
-
-    variableSupport.resetWorkingSolution();
-    if (moveRepository != null) {
-      moveRepository.initialize(new SessionContext<>(this));
-    }
   }
 
   /**
@@ -420,10 +462,81 @@ public abstract class AbstractScoreDirector<
   public final void setWorkingSolution(Solution_ workingSolution) {
     var originalShouldAssert = expectShadowVariablesInCorrectState;
     expectShadowVariablesInCorrectState = false;
-    setWorkingSolutionWithoutUpdatingShadows(workingSolution);
-    forceUpdateShadowVariables();
-    expectShadowVariablesInCorrectState = originalShouldAssert;
-    afterSetWorkingSolution();
+    workingSolutionState = WorkingSolutionState.REBUILDING;
+    try {
+      setWorkingSolutionWithoutUpdatingShadows(workingSolution);
+      forceUpdateShadowVariables();
+      afterSetWorkingSolution();
+      workingSolutionState = WorkingSolutionState.CLEAN;
+      workingSolutionFailure = null;
+    } catch (RuntimeException | Error failure) {
+      workingSolutionFailure = failure;
+      lastVariableUpdateSuccessful = false;
+      workingSolutionState = WorkingSolutionState.DIRTY;
+      throw failure;
+    } finally {
+      expectShadowVariablesInCorrectState = originalShouldAssert;
+    }
+  }
+
+  /** Initializes backend state before list/basic shadow repair can emit variable notifications. */
+  protected void beforeShadowVariablesReset(Solution_ workingSolution) {
+    // Most backends already have their state ready.
+  }
+
+  @Override
+  public final void ensureWorkingSolutionStateFresh() {
+    if (workingSolutionState == WorkingSolutionState.REBUILDING) {
+      return; // Shadow repairs emit notifications while the backend is being rebuilt.
+    }
+    if (workingSolutionFailure != null) {
+      throw new IllegalStateException(
+          "The shadow variables might be stale after a failed working solution update."
+              + "\nCall forceUpdateShadowVariables() to rebuild and retry explicitly.",
+          workingSolutionFailure);
+    }
+    if (workingSolutionState == WorkingSolutionState.DIRTY) {
+      setWorkingSolution(requireNonNull(workingSolution));
+    } else if (workingSolutionState == WorkingSolutionState.PROPERTY_DIRTY) {
+      if (!canRefreshProblemProperties()) {
+        setWorkingSolution(requireNonNull(workingSolution));
+        return;
+      }
+      workingSolutionState = WorkingSolutionState.REBUILDING;
+      try {
+        refreshWorkingSolutionMetadata(requireNonNull(workingSolution), null);
+        workingSolutionState = WorkingSolutionState.CLEAN;
+      } catch (RuntimeException | Error failure) {
+        workingSolutionFailure = failure;
+        lastVariableUpdateSuccessful = false;
+        workingSolutionState = WorkingSolutionState.DIRTY;
+        throw failure;
+      }
+    }
+  }
+
+  /** Backend opt-in; common metadata and validation are always refreshed. */
+  protected boolean canRefreshProblemProperties() {
+    return false;
+  }
+
+  protected final boolean isProblemPropertyRefreshAllowed() {
+    return (workingSolutionState == WorkingSolutionState.CLEAN
+            || workingSolutionState == WorkingSolutionState.PROPERTY_DIRTY)
+        && workingSolutionFailure == null
+        && !variableSupport.hasShadowUpdateFailed()
+        && moveRepository == null;
+  }
+
+  private void markWorkingSolutionStructureDirty() {
+    if (workingSolutionState == WorkingSolutionState.REBUILDING) {
+      throw new IllegalStateException(
+          "The working solution structure changed while its shadow variables were being initialized."
+              + "\nMaybe a shadow variable callback is changing a problem fact or entity collection?");
+    }
+    workingSolutionState = WorkingSolutionState.DIRTY;
+    // Invalidate ranges immediately; rebuilding all other state waits until a dependent operation.
+    valueRangeManager.reset(workingSolution);
   }
 
   /**
@@ -435,6 +548,7 @@ public abstract class AbstractScoreDirector<
   }
 
   public List<VariableLoop> computeVariableLoops() {
+    ensureWorkingSolutionStateFresh();
     return variableSupport.getVariableLoops();
   }
 
@@ -516,6 +630,9 @@ public abstract class AbstractScoreDirector<
   public void setMoveRepository(@Nullable MoveRepository<Solution_> moveRepository) {
     if (this.moveRepository == moveRepository) { // Prevent double initialization
       return;
+    }
+    if (moveRepository != null) {
+      ensureWorkingSolutionStateFresh();
     }
     this.moveRepository = moveRepository;
     if (moveRepository != null) {
@@ -628,7 +745,22 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public void updateShadowVariables() {
-    lastVariableUpdateSuccessful = variableSupport.updateShadowVariables();
+    if (workingSolutionFailure != null && workingSolutionState != WorkingSolutionState.REBUILDING) {
+      lastVariableUpdateSuccessful = false;
+      return;
+    }
+    if (workingSolutionState == WorkingSolutionState.DIRTY
+        || workingSolutionState == WorkingSolutionState.PROPERTY_DIRTY) {
+      ensureWorkingSolutionStateFresh();
+      return; // The refresh has already established valid shadow state.
+    }
+    try {
+      lastVariableUpdateSuccessful = variableSupport.updateShadowVariables();
+    } catch (RuntimeException | Error failure) {
+      workingSolutionFailure = failure;
+      lastVariableUpdateSuccessful = false;
+      throw failure;
+    }
   }
 
   @Override
@@ -648,8 +780,24 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public void forceUpdateShadowVariables() {
-    lastVariableUpdateSuccessful =
-        variableSupport.forceUpdateAllShadowVariables(getWorkingSolution());
+    if (workingSolutionState != WorkingSolutionState.REBUILDING
+        && (workingSolutionFailure != null
+            || variableSupport.hasShadowUpdateFailed()
+            || workingSolutionState == WorkingSolutionState.DIRTY)) {
+      // A callback may have mutated a shadow after its before-notification and then thrown.
+      // Reset eager incremental caches before emitting any further repair notifications.
+      setWorkingSolution(requireNonNull(workingSolution));
+      return;
+    }
+    ensureWorkingSolutionStateFresh();
+    try {
+      lastVariableUpdateSuccessful =
+          variableSupport.forceUpdateAllShadowVariables(getWorkingSolution());
+    } catch (RuntimeException | Error failure) {
+      workingSolutionFailure = failure;
+      lastVariableUpdateSuccessful = false;
+      throw failure;
+    }
   }
 
   protected void setCalculatedScore(Score_ score) {
@@ -705,7 +853,14 @@ public abstract class AbstractScoreDirector<
   public void close() {
     var observer = workingSolutionMutationObserver;
     workingSolutionMutationObserver = null;
+    if (moveRepository != null) {
+      moveRepository.dispose();
+      moveRepository = null;
+      neighborhoodsElementUpdateNotifier.setMoveRepository(null);
+    }
     workingSolution = null;
+    workingSolutionState = WorkingSolutionState.CLEAN;
+    workingSolutionFailure = null;
     workingInitScore = 0;
     if (lookUpEnabled) {
       lookUpManager.reset();
@@ -746,6 +901,7 @@ public abstract class AbstractScoreDirector<
     if (lookUpEnabled) {
       lookUpManager.addWorkingObject(entity);
     }
+    markWorkingSolutionStructureDirty();
     if (!allChangesWillBeUndoneBeforeStepEnds) {
       if (moveRepository
           instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {
@@ -761,6 +917,7 @@ public abstract class AbstractScoreDirector<
   @Override
   public void beforeVariableChanged(
       VariableDescriptor<Solution_> variableDescriptor, Object entity) {
+    ensureWorkingSolutionStateFresh();
     if (workingSolutionMutationObserver != null) {
       workingSolutionMutationObserver.beforeVariableChanged(
           entity, variableDescriptor.getVariableName());
@@ -792,6 +949,7 @@ public abstract class AbstractScoreDirector<
   @Override
   public void beforeListVariableElementAssigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
+    ensureWorkingSolutionStateFresh();
     if (workingSolutionMutationObserver != null) {
       workingSolutionMutationObserver.beforeListVariableElementAssigned(
           variableDescriptor.getVariableName(), element);
@@ -816,6 +974,7 @@ public abstract class AbstractScoreDirector<
   @Override
   public void beforeListVariableElementUnassigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
+    ensureWorkingSolutionStateFresh();
     if (workingSolutionMutationObserver != null) {
       workingSolutionMutationObserver.beforeListVariableElementUnassigned(
           variableDescriptor.getVariableName(), element);
@@ -843,6 +1002,7 @@ public abstract class AbstractScoreDirector<
       Object entity,
       int fromIndex,
       int toIndex) {
+    ensureWorkingSolutionStateFresh();
     // Pinning is implemented in generic moves, but custom moves need to take it into account as
     // well.
     // This fail-fast exists to detect situations where pinned things are being moved, in case of
@@ -895,6 +1055,7 @@ public abstract class AbstractScoreDirector<
     if (lookUpEnabled) {
       lookUpManager.removeWorkingObject(entity);
     }
+    markWorkingSolutionStructureDirty();
     if (!allChangesWillBeUndoneBeforeStepEnds) {
       if (moveRepository
           instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {
@@ -922,7 +1083,7 @@ public abstract class AbstractScoreDirector<
     if (lookUpEnabled) {
       lookUpManager.addWorkingObject(problemFact);
     }
-    variableSupport.resetWorkingSolution(); // TODO do not nuke the shadow variable state
+    markWorkingSolutionStructureDirty();
     // Notify the move repository of the change, allowing an update to move generating.
     if (moveRepository
         instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {
@@ -937,14 +1098,19 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public void afterProblemPropertyChanged(Object problemFactOrEntity) {
+    afterProblemPropertyChanged(problemFactOrEntity, false);
+  }
+
+  protected final void afterProblemPropertyChanged(
+      Object problemFactOrEntity, boolean retainScoringNetwork) {
     invalidateWorkingSolutionObserver();
-    if (isConstraintConfiguration(problemFactOrEntity)) {
-      setWorkingSolution(
-          workingSolution); // Nuke everything and recalculate, constraint weights have changed.
+    if (retainScoringNetwork && isProblemPropertyRefreshAllowed()) {
+      workingSolutionState = WorkingSolutionState.PROPERTY_DIRTY;
+      valueRangeManager.reset(workingSolution);
     } else {
-      variableSupport.resetWorkingSolution(); // TODO do not nuke the shadow variable state
-      neighborhoodsElementUpdateNotifier.accept(problemFactOrEntity);
+      markWorkingSolutionStructureDirty();
     }
+    neighborhoodsElementUpdateNotifier.accept(problemFactOrEntity);
   }
 
   @Override
@@ -966,7 +1132,7 @@ public abstract class AbstractScoreDirector<
     if (lookUpEnabled) {
       lookUpManager.removeWorkingObject(problemFact);
     }
-    variableSupport.resetWorkingSolution(); // TODO do not nuke the shadow variable state
+    markWorkingSolutionStructureDirty();
     // Notify the move repository of the change, allowing an update to move generating.
     if (moveRepository
         instanceof NeighborhoodsBasedMoveRepository<Solution_> neighborhoodsBasedMoveRepository) {

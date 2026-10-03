@@ -90,8 +90,9 @@ public class DefaultConstructionHeuristicPhase<Solution_>
               .notInAnyListValueCount();
     }
 
-    TerminationStatus earlyTerminationStatus = null;
-    while (moveRepository.hasNext()) {
+    TerminationStatus earlyTerminationStatus =
+        maxStepCount == 0 ? TerminationStatus.regular(phaseScope.getNextStepIndex()) : null;
+    while (maxStepCount != 0 && moveRepository.hasNext()) {
       var stepScope = new ConstructionHeuristicStepScope<>(phaseScope);
       stepStarted(stepScope);
       decider.decideNextStep(stepScope, moveRepository.iterator());
@@ -141,7 +142,7 @@ public class DefaultConstructionHeuristicPhase<Solution_>
         // choosing no assignment would repeat the same decision indefinitely.
         earlyTerminationStatus = TerminationStatus.regular(phaseScope.getNextStepIndex());
         break;
-      } else if (hasListVariable && stepScope.getStepIndex() >= maxStepCount) {
+      } else if (hasListVariable && (long) stepScope.getStepIndex() + 1 >= maxStepCount) {
         earlyTerminationStatus = TerminationStatus.regular(phaseScope.getNextStepIndex());
         break;
       } else if (phaseTermination.isPhaseTerminated(phaseScope)) {

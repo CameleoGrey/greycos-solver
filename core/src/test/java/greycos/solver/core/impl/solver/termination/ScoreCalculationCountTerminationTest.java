@@ -7,8 +7,10 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+
 import greycos.solver.core.api.score.SimpleScore;
-import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.testcotwin.TestdataSolution;
@@ -48,28 +50,48 @@ class ScoreCalculationCountTerminationTest {
   @Test
   void phaseTermination() {
     PhaseTermination<TestdataSolution> termination = new ScoreCalculationCountTermination<>(1000L);
-    AbstractPhaseScope<TestdataSolution> phaseScope = mock(AbstractPhaseScope.class);
+    SolverScope<TestdataSolution> solverScope = mockSolverScope();
     InnerScoreDirector<TestdataSolution, SimpleScore> scoreDirector =
         mock(InnerScoreDirector.class);
-    doReturn(scoreDirector).when(phaseScope).getScoreDirector();
+    doReturn(scoreDirector).when(solverScope).getScoreDirector();
+    when(solverScope.getClock()).thenReturn(Clock.systemUTC());
+    when(scoreDirector.getCalculationCount()).thenReturn(2000L);
+    var phaseScope = new LocalSearchPhaseScope<>(solverScope, 1);
+    phaseScope.startingNow();
 
-    when(scoreDirector.getCalculationCount()).thenReturn(0L);
+    when(scoreDirector.getCalculationCount()).thenReturn(2000L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isFalse();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(0.0, offset(0.0));
-    when(scoreDirector.getCalculationCount()).thenReturn(100L);
+    when(scoreDirector.getCalculationCount()).thenReturn(2100L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isFalse();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(0.1, offset(0.0));
-    when(scoreDirector.getCalculationCount()).thenReturn(500L);
+    when(scoreDirector.getCalculationCount()).thenReturn(2500L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isFalse();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(0.5, offset(0.0));
-    when(scoreDirector.getCalculationCount()).thenReturn(700L);
+    when(scoreDirector.getCalculationCount()).thenReturn(2700L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isFalse();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(0.7, offset(0.0));
-    when(scoreDirector.getCalculationCount()).thenReturn(1000L);
+    when(scoreDirector.getCalculationCount()).thenReturn(3000L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isTrue();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(1.0, offset(0.0));
-    when(scoreDirector.getCalculationCount()).thenReturn(1200L);
+    when(scoreDirector.getCalculationCount()).thenReturn(3200L);
     assertThat(termination.isPhaseTerminated(phaseScope)).isTrue();
     assertThat(termination.calculatePhaseTimeGradient(phaseScope)).isEqualTo(1.0, offset(0.0));
+  }
+
+  @Test
+  void phaseCountIncludesChildrenAndFreezesAtPhaseEnd() {
+    var solverScope = new SolverScope<TestdataSolution>();
+    InnerScoreDirector<TestdataSolution, SimpleScore> director = mock(InnerScoreDirector.class);
+    solverScope.setScoreDirector(director);
+    when(director.getCalculationCount()).thenReturn(20L);
+    var phaseScope = new LocalSearchPhaseScope<>(solverScope, 1);
+    phaseScope.startingNow();
+    phaseScope.addChildThreadsScoreCalculationCount(3L);
+    when(director.getCalculationCount()).thenReturn(25L);
+    assertThat(phaseScope.getPhaseScoreCalculationCount()).isEqualTo(8L);
+    phaseScope.endingNow();
+    when(director.getCalculationCount()).thenReturn(100L);
+    assertThat(phaseScope.getPhaseScoreCalculationCount()).isEqualTo(8L);
   }
 }

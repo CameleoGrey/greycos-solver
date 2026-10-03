@@ -55,13 +55,29 @@ public final class NeighborhoodsBasedMoveRepository<Solution_>
     if (neighborhoodSession != null) {
       throw new IllegalStateException("Impossible state: move repository initialized twice.");
     }
-    neighborhoodSession = moveStreamFactory.createSession(context);
+    var newSession = moveStreamFactory.createSession(context);
     moveStreamFactory
         .getSolutionDescriptor()
-        .visitAll(context.workingSolution(), neighborhoodSession::insert);
-    neighborhoodSession.settle();
-    moveIterableList =
-        moveStreamList.stream().map(m -> m.getMoveIterable(neighborhoodSession)).toList();
+        .visitAll(context.workingSolution(), newSession::insert);
+    newSession.settle();
+    var newIterables = moveStreamList.stream().map(m -> m.getMoveIterable(newSession)).toList();
+    neighborhoodSession = newSession;
+    moveIterableList = newIterables;
+  }
+
+  @Override
+  public void resetWorkingSolution(SessionContext<Solution_> context) {
+    neighborhoodSession = null;
+    moveIterableList = null;
+    // Keep the phase's random generator when only its working state is replaced.
+    initialize(context);
+  }
+
+  @Override
+  public void dispose() {
+    neighborhoodSession = null;
+    moveIterableList = null;
+    workingRandom = null;
   }
 
   public void insert(Object planningEntityOrProblemFact) {
@@ -102,9 +118,7 @@ public final class NeighborhoodsBasedMoveRepository<Solution_>
 
   @Override
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
-    neighborhoodSession = null;
-    moveIterableList = null;
-    workingRandom = null;
+    dispose();
     phaseScope.getScoreDirector().setMoveRepository(null);
   }
 
