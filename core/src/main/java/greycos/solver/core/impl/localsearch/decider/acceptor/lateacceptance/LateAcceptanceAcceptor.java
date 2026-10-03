@@ -79,6 +79,18 @@ public class LateAcceptanceAcceptor<Solution_> extends AbstractAcceptor<Solution
   }
 
   @Override
+  public void migrationStepEnded(LocalSearchStepScope<Solution_> stepScope) {
+    // A migrant contributes one score, including when it improves a hard or medium level.
+    scoreBuffer.update(stepScope.getScore());
+    bestScoreState.update(stepScope);
+  }
+
+  @Override
+  public void resetAfterMigration(LocalSearchPhaseScope<Solution_> phaseScope) {
+    // Keep the island's score history and its current position in the circular buffer.
+  }
+
+  @Override
   public void phaseEnded(LocalSearchPhaseScope<Solution_> phaseScope) {
     super.phaseEnded(phaseScope);
     scoreBuffer = null;

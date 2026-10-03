@@ -284,7 +284,11 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
 
   public void stepEnded(LocalSearchStepScope<Solution_> stepScope) {
     moveRepository.stepEnded(stepScope);
-    acceptor.stepEnded(stepScope);
+    if (resetOnPendingMove) {
+      acceptor.migrationStepEnded(stepScope);
+    } else {
+      acceptor.stepEnded(stepScope);
+    }
     forager.stepEnded(stepScope);
     if (resetOnPendingMove) {
       resetOnPendingMove = false;
@@ -303,10 +307,9 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
     var phaseScope = stepScope.getPhaseScope();
     phaseScope.setLastCompletedStepScope(stepScope);
     endRepositoryPhase();
-    acceptor.phaseEnded(phaseScope);
     forager.phaseEnded(phaseScope);
     startRepositoryPhase(phaseScope);
-    acceptor.phaseStarted(phaseScope);
+    acceptor.resetAfterMigration(phaseScope);
     forager.phaseStarted(phaseScope);
   }
 

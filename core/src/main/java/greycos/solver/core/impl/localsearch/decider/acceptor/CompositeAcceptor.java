@@ -86,6 +86,20 @@ public class CompositeAcceptor<Solution_> extends AbstractAcceptor<Solution_> {
   }
 
   @Override
+  public void migrationStepEnded(LocalSearchStepScope<Solution_> stepScope) {
+    for (var acceptor : acceptorList) {
+      acceptor.migrationStepEnded(stepScope);
+    }
+  }
+
+  @Override
+  public void resetAfterMigration(LocalSearchPhaseScope<Solution_> phaseScope) {
+    for (var acceptor : acceptorList) {
+      acceptor.resetAfterMigration(phaseScope);
+    }
+  }
+
+  @Override
   public void phaseEnded(LocalSearchPhaseScope<Solution_> phaseScope) {
     for (Acceptor<Solution_> acceptor : acceptorList) {
       acceptor.phaseEnded(phaseScope);

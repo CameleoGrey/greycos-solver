@@ -844,6 +844,10 @@ Ring migration is controlled separately by `migrationFrequency`, whose default i
 Choose a smaller value to exchange solutions around the ring more frequently.
 Migration copies planning assignments, respects pinned entities and list prefixes, and updates list assignment shadows.
 Evaluating an adopted solution consumes one local-search move evaluation, including for move-count termination and monitoring.
+Both ring migration and global-best adoption require a score strictly better than the receiving island's best so far.
+In Local Search with Late Acceptance, adoption writes the migrant's score into the next history slot and advances the circular buffer.
+The remaining history is retained, including when the migrant improves a hard or medium score level.
+Equal or worse migrants leave the working solution and Late Acceptance history unchanged.
 
 Termination configured on `islandModel` spans the inner phase sequence.
 Each island receives its own cumulative step, move-evaluation, and score-calculation quota.

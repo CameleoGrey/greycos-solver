@@ -3,6 +3,8 @@ package greycos.solver.core.impl.localsearch.decider.acceptor;
 import greycos.solver.core.impl.localsearch.decider.forager.LocalSearchForager;
 import greycos.solver.core.impl.localsearch.event.LocalSearchPhaseLifecycleListener;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchMoveScope;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.preview.api.move.Move;
 
 /**
@@ -29,6 +31,23 @@ public interface Acceptor<Solution_> extends LocalSearchPhaseLifecycleListener<S
    */
   default void moveEvaluated(LocalSearchMoveScope<Solution_> moveScope) {
     // Most acceptors only need the selected step.
+  }
+
+  /**
+   * Records a completed step that adopted a migrant, instead of calling {@code stepEnded()}.
+   * Acceptors may preserve their history even when the migrant improves higher score levels.
+   */
+  default void migrationStepEnded(LocalSearchStepScope<Solution_> stepScope) {
+    stepEnded(stepScope);
+  }
+
+  /**
+   * Refreshes acceptance state after the migration step has been recorded. The default restarts
+   * the acceptor; acceptors with reusable history may retain it instead.
+   */
+  default void resetAfterMigration(LocalSearchPhaseScope<Solution_> phaseScope) {
+    phaseEnded(phaseScope);
+    phaseStarted(phaseScope);
   }
 
   /**
