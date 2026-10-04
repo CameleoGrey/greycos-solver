@@ -37,9 +37,8 @@ Luckily, defining constraints in GreyCOS Solver is very flexible through the fol
 * **Score signum (positive or negative)**: maximize or minimize a constraint type
 * **Score weight**: put a cost/profit on a constraint type
 * **Score level (hard, soft, ...)**: prioritize a group of constraint types
-* *Pareto scoring* (rarely used)
 
-Take the time to acquaint yourself with the first three techniques.
+Take the time to acquaint yourself with these three techniques.
 Once you understand them, formalizing most business constraints becomes straightforward.
 
 [NOTE]
@@ -196,44 +195,39 @@ so a structurally sound score is printed as usual, for example ``0hard/-5soft``.
 
 
 [#paretoScoring]
-=== Pareto scoring (AKA multi-objective optimization scoring)
+=== Multiple objectives and Pareto dominance
 
-Far less common is the use case of pareto optimization, which is also known as _multi-objective optimization_.
-In pareto scoring, score constraints are in the same score level, yet they are not weighted against each other.
-When two scores are compared, each of the score constraints are compared individually and the score with the most dominating score constraints wins.
-Pareto scoring can even be combined with score levels and score constraint weighting.
+GreyCOS Solver supports multiple objectives through constraint weights and score levels.
+It does not support Pareto scoring or Pareto-front enumeration.
+Within a score level, weighted constraint matches are added together to express trade-offs.
+Across score levels, lexicographic comparison expresses strict priorities.
+These two approaches can be combined in one score.
 
-Consider this example with positive constraints, where we want to get the most apples and oranges.
-Since it is impossible to compare apples and oranges, we cannot weigh them against each other.
-Yet, despite that we cannot compare them, we can state that two apples are better than one apple.
-Similarly, we can state that two apples and one orange are better than just one orange.
-So despite our inability to compare some Scores conclusively (at which point we declare them equal), we can find a set of optimal scores.
-Those are called pareto optimal.
+For example, suppose both apples and oranges are desirable.
+Solution A contains three apples and one orange; solution B contains one apple and six oranges.
+Giving each apple a weight of two and each orange a weight of one in the same score level
+gives A a score of seven and B a score of eight, so B is preferred.
+Putting apples in a higher-priority score level than oranges instead prefers A.
+The choice of weights and levels defines the ordering used by the solver.
 
-image::constraints-and-score/overview/paretoOptimizationScoring.png[align="center"]
+Pareto dominance describes a different comparison: one solution dominates another
+if it is at least as good in every objective and strictly better in at least one.
+For example, three apples and two oranges dominate three apples and one orange.
+A and B above are incomparable under Pareto dominance: each is better in one objective.
+Incomparability does not mean equality.
+A solution is Pareto optimal if no feasible solution dominates it;
+the Pareto front is the set of nondominated objective vectors over all feasible solutions.
 
-Scores are considered equal far more often.
-It is left up to a human to choose the better out of a set of best solutions (with equal scores) found by GreyCOS Solver.
-In the example above, the user must choose between solution A (three apples and one orange) and solution B (one apple and six oranges).
-It is guaranteed that GreyCOS Solver has not found another solution which has more apples or more oranges or even a better combination of both (such as two apples and three oranges).
-
-Pareto scoring is currently not supported in GreyCOS Solver.
-
-[NOTE]
-====
-A pareto ``Score``'s `compareTo` method is not transitive because it does a pareto comparison.
-For example: having two apples is greater than one apple.
-One apple is equal to One orange.
-Yet, two apples are not greater than one orange (but actually equal).
-Pareto comparison violates the contract of the interface ``java.lang.Comparable``'s `compareTo` method,
-but GreyCOS Solver's systems are __pareto comparison safe__, unless explicitly stated otherwise in this documentation.
-====
+GreyCOS Solver searches for a better score under the configured scalar or lexicographic ordering.
+A heuristic run does not certify Pareto optimality or the completeness of a Pareto front.
+Do not implement Pareto dominance by returning zero from `Score.compareTo` for incomparable solutions:
+this can violate the `Comparable` contract on which score ordering depends.
 
 
 [#combiningScoreTechniques]
 === Combining score techniques
 
-All the score techniques mentioned above, can be combined seamlessly:
+Score sign, constraint weights, and score levels can be combined:
 
 image::constraints-and-score/overview/scoreComposition.png[align="center"]
 

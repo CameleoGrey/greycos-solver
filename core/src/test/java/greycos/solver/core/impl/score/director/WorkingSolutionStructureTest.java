@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.calculator.IncrementalScoreCalculator;
@@ -34,6 +35,9 @@ import greycos.solver.core.testcotwin.TestdataValue;
 import greycos.solver.core.testcotwin.cascade.mixed.TestdataMixedCascadingSolution;
 import greycos.solver.core.testcotwin.cascade.mixed.TestdataMixedCascadingSolution.Route;
 import greycos.solver.core.testcotwin.cascade.mixed.TestdataMixedCascadingSolution.Visit;
+import greycos.solver.core.testcotwin.score.lavish.TestdataLavishEntity;
+import greycos.solver.core.testcotwin.score.lavish.TestdataLavishExtra;
+import greycos.solver.core.testcotwin.score.lavish.TestdataLavishSolution;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -225,6 +229,93 @@ class WorkingSolutionStructureTest {
   }
 
   @Test
+  void ordinaryFactProblemChangesPublishCorrectScoresBeforeRestart() {
+    var config =
+        new SolverConfig()
+            .withSolutionClass(TestdataLavishSolution.class)
+            .withEntityClasses(TestdataLavishEntity.class)
+            .withConstraintProviderClass(OrdinaryFactJoinProvider.class)
+            .withEnvironmentMode(EnvironmentMode.NO_ASSERT)
+            .withMoveThreadCount("NONE")
+            .withPhases(new ConstructionHeuristicPhaseConfig());
+    var solver =
+        (DefaultSolver<TestdataLavishSolution>)
+            SolverFactory.<TestdataLavishSolution>create(config).buildSolver();
+    var replayFactory =
+        new BavetConstraintStreamScoreDirectorFactory<TestdataLavishSolution, SimpleScore>(
+            TestdataLavishSolution.buildSolutionDescriptor(),
+            new OrdinaryFactJoinProvider(),
+            EnvironmentMode.NO_ASSERT);
+    var startedRuns = new AtomicInteger();
+    var publications = new ArrayList<TestdataLavishSolution>();
+    var expectedExtraCounts = List.of(1, 0, 1);
+    solver.addEventListener(
+        event -> {
+          if (event.getProducerId().equals(EventProducerId.problemChange())) {
+            var publicationIndex = publications.size();
+            // This callback must precede the next run, which could otherwise repair stale scoring.
+            assertThat(startedRuns).hasValue(publicationIndex + 1);
+            var published = event.getNewBestSolution();
+            assertThat(published.getExtraList()).hasSize(expectedExtraCounts.get(publicationIndex));
+            assertOrdinaryFactPublication(replayFactory, published);
+            publications.add(published);
+          }
+        });
+    solver.addPhaseLifecycleListener(
+        new PhaseLifecycleListenerAdapter<>() {
+          @Override
+          public void solvingStarted(SolverScope<TestdataLavishSolution> scope) {
+            startedRuns.incrementAndGet();
+          }
+
+          @Override
+          public void solvingEnded(SolverScope<TestdataLavishSolution> scope) {
+            var changeIndex = startedRuns.get() - 1;
+            if (changeIndex < expectedExtraCounts.size()) {
+              solver.addProblemChange(
+                  (solution, changes) -> {
+                    // Problem facts are shared by solution clones; retain earlier publications.
+                    solution.setExtraList(new ArrayList<>(solution.getExtraList()));
+                    if (expectedExtraCounts.get(changeIndex) == 0) {
+                      changes.removeProblemFact(
+                          solution.getExtraList().getFirst(), solution.getExtraList()::remove);
+                    } else {
+                      changes.addProblemFact(
+                          new TestdataLavishExtra("extra" + changeIndex),
+                          solution.getExtraList()::add);
+                    }
+                  });
+            }
+          }
+        });
+
+    var result = solver.solve(TestdataLavishSolution.generateSolution(2, 3));
+    assertThat(startedRuns).hasValue(4);
+    assertThat(publications).hasSize(3);
+    for (var index = 0; index < publications.size(); index++) {
+      var published = publications.get(index);
+      assertThat(published.getExtraList()).hasSize(expectedExtraCounts.get(index));
+      assertOrdinaryFactPublication(replayFactory, published);
+    }
+    assertThat(result.getScore()).isEqualTo(SimpleScore.of(-3));
+    assertThat(solver.isEveryProblemChangeProcessed()).isTrue();
+  }
+
+  private static void assertOrdinaryFactPublication(
+      BavetConstraintStreamScoreDirectorFactory<TestdataLavishSolution, SimpleScore> factory,
+      TestdataLavishSolution published) {
+    var publishedScore = published.getScore();
+    var expectedScore =
+        SimpleScore.of(-(long) published.getEntityList().size() * published.getExtraList().size());
+    assertThat(publishedScore).isEqualTo(expectedScore);
+    try (var independent = factory.buildScoreDirector()) {
+      independent.setWorkingSolution(
+          factory.getSolutionDescriptor().getSolutionCloner().cloneSolution(published));
+      assertThat(independent.calculateScore().raw()).isEqualTo(publishedScore);
+    }
+  }
+
+  @Test
   void retainedListAndBasicStatesAreRefreshedBeforeNewListOperations() {
     var solution = TestdataMixedCascadingSolution.generate(1, 1);
     var descriptor = TestdataMixedCascadingSolution.buildSolutionDescriptor();
@@ -308,6 +399,19 @@ class WorkingSolutionStructureTest {
     public Constraint[] defineConstraints(ConstraintFactory factory) {
       return new Constraint[] {
         factory.forEach(TestdataValue.class).penalize(SimpleScore.ONE).asConstraint("values")
+      };
+    }
+  }
+
+  public static class OrdinaryFactJoinProvider implements ConstraintProvider {
+    @Override
+    public Constraint[] defineConstraints(ConstraintFactory factory) {
+      return new Constraint[] {
+        factory
+            .forEach(TestdataLavishEntity.class)
+            .join(TestdataLavishExtra.class)
+            .penalize(SimpleScore.ONE)
+            .asConstraint("ordinaryFactJoin")
       };
     }
   }

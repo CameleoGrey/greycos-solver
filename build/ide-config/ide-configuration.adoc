@@ -1,60 +1,56 @@
 = IDE code style setup
 
-Every Maven build formats the source code with the standard code style.
-This avoids merge conflicts and code style discussions.
+Maven is the authority for the repository's code style.
+The Spotless execution in `build/build-parent/pom.xml` uses Google Java Format for Java layout,
+then applies the separate import order in `build/ide-config/src/main/resources/eclipse.importorder`,
+removes unused imports, and removes non-static wildcard imports.
+Use explicit imports for both ordinary and static imports.
+The import groups are `java`, `jakarta`, `javax`, `greycos`, `org`, and `com`, in that order.
 
-Configure it in your favorite IDE too:
+During a normal build, the formatting execution runs in the `compile` phase.
+When the `CI` environment variable is set, it checks formatting instead of applying changes.
+From the repository root, explicitly apply the configured formatting with:
+
+[source,shell]
+----
+./mvnw compile -Dspotless.goal=apply
+----
+
+To check formatting without applying formatting changes, use:
+
+[source,shell]
+----
+./mvnw compile -Dspotless.goal=check
+----
+
+Use the Maven formatter before committing, even if your editor also formats Java.
+An editor's Google Java Format integration covers Java layout; it must also respect the separate import policy.
+The existing `eclipse-format.xml` file describes a different layout engine and is not the Maven Java formatter configuration.
 
 == IDEA setup
 
-. Open the _Settings_ window (or _Preferences_ depending on your edition) and navigate to _Plugins_.
-
-. Install the https://plugins.jetbrains.com/plugin/6546-eclipse-code-formatter[Eclipse Code Formatter Plugin] from the IntelliJ Marketplace.
-
-. Restart your IDE.
-
-. Open the _Settings_ window again and navigate to _Other Settings -> Eclipse Code Formatter_.
-
-. Select _Use the Eclipse Code Formatter_
-
-. Change the _Eclipse Java Formatter Config File_ to point to the `eclipse-format.xml`
-file in the `build/ide-config/src/main/resources/` directory.
-
-. Make sure the _Optimize Imports_ box is ticked
-
-. select the `eclipse.importorder` file as the import order config file.
-
-. Open the _Editor -> Code Style -> Java -> Imports_ settings and set the _Class count to use import with '\*'_ to 999. This is to avoid the `*` imports, which should only be used in special cases.
+. In _Settings -> Editor -> Code Style -> Java -> Imports_, configure the import layout
+with the groups listed above, separated by blank lines.
+. Set both _Class count to use import with '*'_ and _Names count to use static import with '*'_
+to 999 to discourage wildcard imports, and enable _Use single class import_.
+. Use the Maven commands above to format and check the project.
+Do not select the Eclipse Code Formatter plugin as the repository's Java formatter.
 
 == Eclipse setup
 
-. Open the _Preferences_ window, and then navigate to _Java -> Code Style -> Formatter_.
-
-. Click _Import_ and then select the `build/ide-config/src/main/resources/eclipse-format.xml` file in the `ide-configuration` directory.
-
-. Navigate to _Java -> Code Style -> Organize Imports_.
-
-. Click Import and select the `build/ide-config/src/main/resources/eclipse.importorder` file.
+. Open _Preferences -> Java -> Code Style -> Organize Imports_.
+. Import `build/ide-config/src/main/resources/eclipse.importorder`.
+. Set the thresholds for wildcard imports and static wildcard imports to 999.
+. Use the Maven commands above for Java layout.
+Importing `eclipse-format.xml` into Eclipse's formatter does not reproduce Google Java Format.
 
 == VS Code setup
 
-. Open the _Extensions_ window (Ctrl+Shift+X) and search for _Language Support for Java(TM)_ and install it.
+Add the following import-order setting to the workspace's `.vscode/settings.json`:
 
-. Create a settings file for your workspace
-+
-[source,shell]
-----
-cd greycos
-mkdir .vscode
-touch .vscode/settings.json
-----
-
-. Put in the `settings.json` file the following content:
-+
 [source,json]
 ----
 {
-    "java.format.settings.url": "build/ide-config/src/main/resources/eclipse-format.xml",
     "java.completion.importOrder": [
         "java",
         "jakarta",
@@ -65,3 +61,7 @@ touch .vscode/settings.json
     ]
 }
 ----
+
+Use the Maven commands above for Java layout and final import cleanup.
+Remove any `java.format.settings.url` setting that points to `eclipse-format.xml`;
+that setting selects the Eclipse layout configuration, not the Maven formatter.

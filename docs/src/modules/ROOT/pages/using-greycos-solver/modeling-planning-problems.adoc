@@ -2049,7 +2049,7 @@ public class Job {
     private Collection<Job> dependencies;
 
     @ShadowVariable(supplierName="startDateSupplier")
-    private LocalDateTime startDate;
+    private LocalDate startDate;
 
     @ShadowVariable(supplierName="endDateSupplier")
     private LocalDate endDate;
@@ -2108,7 +2108,12 @@ public class Job {
 |Accesses `endDate` of each element in the `dependencies` collection.
 |===
 
-The supplier method may include only one optional parameter, the solution class. Here’s an example to show this.
+[#customShadowVariableSolutionParameter]
+==== Accessing solution facts
+
+A supplier method may take one optional parameter whose type is the planning solution class.
+Use this parameter to read problem facts from the working solution instead of obtaining the solution from a listener's `ScoreDirector`.
+The following model computes a job's end date from two planning variables and an immutable duration policy shared by all jobs:
 
 [tabs]
 ====
@@ -2116,34 +2121,62 @@ Java::
 +
 [source,java,options="nowrap"]
 ----
+public record ScheduleRules(int durationInDays) {
+}
+
 @PlanningSolution
-public class PackagingSchedule {
-    ...
+public class Schedule {
+
+    @PlanningEntityCollectionProperty
+    public List<Job> jobs;
+
+    @ValueRangeProvider(id = "startDateRange")
+    public List<LocalDate> startDateRange;
+
+    @ValueRangeProvider(id = "delayRange")
+    public List<Integer> delayRange;
+
+    @ProblemFactProperty
+    public ScheduleRules rules;
+
+    @PlanningScore
+    public SimpleScore score;
 }
 
 @PlanningEntity
 public class Job {
 
-    ...
+    @PlanningVariable(valueRangeProviderRefs = "startDateRange", allowsUnassigned = true)
+    public LocalDate startDate;
 
-    private LocalDateTime startDate;
+    @PlanningVariable(valueRangeProviderRefs = "delayRange", allowsUnassigned = true)
+    public Integer delayDays;
 
-    @ShadowVariable(supplierName="processStartDate")
-    private boolean startDateOnHoliday;
+    @ShadowVariable(supplierName = "endDateSupplier")
+    public LocalDate endDate;
 
-    @ShadowSources("startDate")
-    public boolean processStartDate(PackagingSchedule schedule) {
-        if (startDate == null) {
-            return false;
-        } else {
-            return schedule.isHoliday(startDate);
+    @ShadowSources({"startDate", "delayDays"})
+    public LocalDate endDateSupplier(Schedule schedule) {
+        if (startDate == null || delayDays == null) {
+            return null;
         }
+        return startDate.plusDays((long) schedule.rules.durationInDays() + delayDays);
     }
-
 }
 ----
 
 ====
+
+For a start date of January 5, a delay of two days and a duration policy of three days, the end date is January 10.
+Changing either planning variable triggers recalculation because both appear in `@ShadowSources`.
+If either variable is unassigned, the supplier returns `null`, clearing the previous end date.
+
+The solution parameter provides access to facts; it does not declare dependencies on every planning variable in the solution.
+Keep all planning-variable dependencies explicit in `@ShadowSources`.
+The example keeps `ScheduleRules` unchanged during solving; do not mutate problem facts directly while a solver is running.
+
+When testing this model, pass the solution instance to `SolutionManager.updateShadowVariables(schedule)`.
+The overload taking a solution class and individual entities does not provide the solution instance needed by this supplier.
 
 [#customShadowVariableMultipleVariables]
 ==== Updating multiple fields at once
@@ -2456,10 +2489,10 @@ public class Job {
     private Collection<Job> alignedJobs;
 
     @ShadowVariable(supplierName="readyDateSupplier")
-    private LocalDateTime readyDate;
+    private LocalDate readyDate;
 
     @ShadowVariable(supplierName="startDateSupplier")
-    private LocalDateTime startDate;
+    private LocalDate startDate;
 
     @ShadowSources(/* ... */)
     public LocalDate readyDateSupplier() {
@@ -2504,202 +2537,67 @@ Do not create intermediate custom Shadow Variables when it is possible to comput
 NOTE: These are tips and tricks for optimal performance and needn't be followed to the letter. The solver will work correctly even if you decide not to follow any of the advice, albeit with slightly lesser performance.
 
 [#customVariableListener]
-=== Custom `VariableListener`
+=== Migrating custom variable listeners
 
-[WARNING]
-====
-*Deprecation notice*: Using `VariableListeners` effectively required intimate knowledge of some internal solver concepts.
-We recommend all users of `VariableListeners` to migrate to xref:customShadowVariable[custom shadow variables], which provide a much simpler way to handle updating shadow variables.
-====
+`VariableListener` and `ListVariableListener` are deprecated.
+Define new custom shadow variables with `@ShadowVariable(supplierName = "...")` and `@ShadowSources`.
+The current `@ShadowVariable` annotation no longer accepts a listener class or listener source declarations.
 
-To update a shadow variable, GreyCOS Solver uses a ``VariableListener``.
-To define a custom shadow variable, write a custom ``VariableListener``:
-implement the interface and annotate it on the shadow variable that needs to change.
+To migrate an existing listener:
 
-[tabs]
-====
-Java::
-+
-[source,java,options="nowrap"]
-----
-    @PlanningVariable(...)
-    public Standstill getPreviousStandstill() {
-        return previousStandstill;
-    }
+. Move the calculation into a supplier method on the entity that owns the shadow variable.
+Return the calculated value instead of assigning the field or invoking `ScoreDirector` notification methods.
+The solver assigns the return value to the annotated shadow variable and notifies dependent calculations.
+. List every planning variable read by the calculation in `@ShadowSources`.
+Replace several listener source declarations with one array of source paths, as in `@ShadowSources({"startDate", "delayDays"})`.
+For a source on another entity, use the appropriate property path, such as `"previous.endDate"`.
+Register every entity class involved in the model.
+. If the listener reads facts from the working solution, give the supplier a parameter of the solution type.
+The xref:customShadowVariableSolutionParameter[solution facts example] reads a shared duration policy this way.
+Passing the solution does not replace explicit source declarations.
+. Handle unassigned sources explicitly.
+For example, return `null` when a job has no start date, so its old end date is cleared.
+. Remove manual callback ordering, propagation loops and duplicate-event handling.
+Declare dependencies on other shadow variables and let the solver update them in dependency order.
 
-    @ShadowVariable(
-            variableListenerClass = VehicleUpdatingVariableListener.class,
-            sourceVariableName = "previousStandstill")
-    public Vehicle getVehicle() {
-        return vehicle;
-    }
-----
-====
+A supplier computes its return value without changing genuine variables, problem facts or other shadow variables.
+Do not keep mutable listener state in the supplier or rely on how often the supplier is called.
 
-<<shadowVariable,Register this class as a planning entity>> if it isn't already.
-Otherwise GreyCOS Solver won't detect it and the shadow variable won't update.
+==== Migrating list variable listeners
 
-The `sourceVariableName` is the (genuine or shadow) variable that triggers changes to the annotated shadow variable.
-If the source variable is declared on a different class than the annotated shadow variable's class,
-also specify the `sourceEntityClass` and make sure the shadow variable's class is <<shadowVariable,registered as a planning entity>>.
+Use the xref:listVariableShadowVariables[built-in list shadow variables] for the owning entity, previous or next element, and index.
+For example, a visit's arrival-time supplier can depend on its previous visit's departure-time shadow variable
+and its owning vehicle, instead of manually traversing the remainder of a route after a list change.
+Handle an unassigned visit by returning the appropriate empty value, such as `null`.
 
-Implement the `VariableListener` interface.
-For example, the `VehicleUpdatingVariableListener` assures that every `Customer` in a chain has the same ``Vehicle``, namely the chain's anchor.
+For an aggregate on the entity that owns the list, a source such as `"visits[].departureTime"`
+tracks both list membership and each element's declarative shadow variable.
+The supplier must also return the correct value for an empty list.
+Use the supported xref:customShadowVariable[`@ShadowSources` path forms];
+a bare planning list variable is not a supported source.
 
-[tabs]
-====
-Java::
-+
-[source,java,options="nowrap"]
-----
-public class VehicleUpdatingVariableListener implements VariableListener<VehicleRoutePlan, Customer> {
+==== Migrating multiple shadow outputs
 
-    public void afterEntityAdded(ScoreDirector<VehicleRoutePlan> scoreDirector, Visit customer) {
-        updateVehicle(scoreDirector, customer);
-    }
-
-    public void afterVariableChanged(ScoreDirector<VehicleRoutePlan> scoreDirector, Visit customer) {
-        updateVehicle(scoreDirector, customer);
-    }
-
-    ...
-
-    protected void updateVehicle(ScoreDirector<VehicleRoutePlan> scoreDirector, Visit sourceCustomer) {
-        Standstill previousStandstill = sourceCustomer.getPreviousStandstill();
-        Vehicle vehicle = previousStandstill == null ? null : previousStandstill.getVehicle();
-        Visit shadowCustomer = sourceCustomer;
-        while (shadowCustomer != null && shadowCustomer.getVehicle() != vehicle) {
-            scoreDirector.beforeVariableChanged(shadowCustomer, "vehicle");
-            shadowCustomer.setVehicle(vehicle);
-            scoreDirector.afterVariableChanged(shadowCustomer, "vehicle");
-            shadowCustomer = shadowCustomer.getNextCustomer();
-        }
-    }
-
-}
-----
-
-
-====
-
-[WARNING]
-====
-A `VariableListener` can only change shadow variables.
-It must never change a genuine planning variable or a problem fact.
-====
-
-[WARNING]
-====
-Any change of a shadow variable must be told to the ``ScoreDirector`` with `before*()` and `after*()` methods.
-====
-
-==== Multiple source variables
-
-If your custom variable listener needs multiple source variables to compute the shadow variable, annotate the shadow variable with multiple `@ShadowVariable` annotations, one per each source variable.
-
-[tabs]
-====
-Java::
-+
-[source,java,options="nowrap"]
-----
-    @PlanningVariable(...)
-    public ExecutionMode getExecutionMode() {
-        return executionMode;
-    }
-
-    @PlanningVariable(...)
-    public Integer getDelay() {
-        return delay;
-    }
-
-    @ShadowVariable(
-            variableListenerClass = PredecessorsDoneDateUpdatingVariableListener.class,
-            sourceVariableName = "executionMode")
-    @ShadowVariable(
-            variableListenerClass = PredecessorsDoneDateUpdatingVariableListener.class,
-            sourceVariableName = "delay")
-    public Integer getPredecessorsDoneDate() {
-        return predecessorsDoneDate;
-    }
-----
-====
-
-==== Piggyback shadow variable
-
-If one `VariableListener` changes two or more shadow variables (because having two separate ``VariableListener``s would be inefficient), then annotate only the first shadow variable with `@ShadowVariable` and specify the `variableListenerClass` there.
-Use `@PiggybackShadowVariable` on each shadow variable updated by that variable listener and reference the first shadow variable:
-
-[tabs]
-====
-Java::
-+
-[source,java,options="nowrap"]
-----
-    @PlanningVariable(...)
-    public Standstill getPreviousStandstill() {
-        return previousStandstill;
-    }
-
-    @ShadowVariable(
-            variableListenerClass = TransportTimeAndCapacityUpdatingVariableListener.class,
-            sourceVariableName = "previousStandstill")
-    public Integer getTransportTime() {
-        return transportTime;
-    }
-
-    @PiggybackShadowVariable(shadowVariableName = "transportTime")
-    public Integer getCapacity() {
-        return capacity;
-    }
-----
-====
-
+A listener that previously assigned several shadow fields needs an explicit model for those outputs.
+Use separate suppliers when each field has its own calculation, declaring any dependencies between them.
+When the values are always calculated together, return one immutable wrapper, such as a record,
+and expose its components through accessors.
+See xref:customShadowVariableMultipleVariables[updating multiple fields at once] for an example.
+This replaces the old piggyback annotation pattern without assignments to additional shadow fields inside a supplier.
 
 [#variableListenerTriggeringOrder]
-==== VariableListener triggering order
+==== Shadow variable dependency order
 
-All shadow variables are triggered by a ``VariableListener``, regardless if it's a built-in or a custom shadow variable.
-The genuine and shadow variables form a graph, that determines the order in which the ``afterEntityAdded()``, `afterVariableChanged()` and `afterEntityRemoved()` methods are called:
+The declared sources form a dependency graph.
+When a genuine variable changes, the solver updates affected shadow variables before their dependents.
+For example, if `endDate` depends on `startDate` and another shadow depends on `endDate`,
+the end-date calculation precedes the dependent calculation.
 
-image::using-greycos-solver/modeling-planning-problems/shadowVariableOrder.png[align="center"]
-
-[NOTE]
-====
-In the example above, D could have also been ordered after E (or F) because there is no direct or indirect dependency between D and E (or F).
-====
-
-GreyCOS Solver guarantees that:
-
-* The first ``VariableListener``'s `after*()` methods trigger _after_ the last genuine variable has changed. Therefore the genuine variables (A and B in the example above) are guaranteed to be in a consistent state across all its instances (with values A1, A2 and B1 in the example above) because the entire `Move` has been applied.
-* The second ``VariableListener``'s `after*()` methods trigger _after_ the last first shadow variable has changed. Therefore the first shadow variable (C in the example above) are guaranteed to be in a consistent state across all its instances (with values C1 and C2 in the example above). And the genuine variables too.
-* And so forth.
-
-GreyCOS Solver does not guarantee the order in which the `after*()` methods are called for the _same_``VariableListener`` with different parameters (such as A1 and A2 in the example above), although they are likely to be in the order in which they were affected.
-
-By default, GreyCOS Solver does not guarantee that the events are unique.
-For example, if a shadow variable on an entity is changed twice in the same move (for example by two different genuine variables), then that will cause the same event twice on the ``VariableListener``s that are listening to that original shadow variable.
-To avoid dealing with that complexity, overwrite the method `requiresUniqueEntityEvents()` to receive unique events at the cost of a small performance penalty:
-
-[tabs]
-====
-Java::
-+
-[source,java,options="nowrap"]
-----
-public class StartTimeUpdatingVariableListener implements VariableListener<TaskAssigningSolution, Task> {
-
-    @Override
-    public boolean requiresUniqueEntityEvents() {
-        return true;
-    }
-
-    ...
-}
-----
-
-
-====
+There is no ordering contract between independent suppliers or between unrelated entities.
+A supplier must produce the same result for the same source values and facts,
+without relying on callback order or an invocation count.
+Declare all dependencies and use xref:detectingInconsistencies[shadow variable consistency detection]
+to handle models in which dependency loops can occur.
 
 === Shadow variable cloning
 
@@ -2825,9 +2723,11 @@ Java::
 
 [WARNING]
 ====
-Models using xref:#customVariableListener[custom variable listeners] are not compatible with `SolutionManager::updateShadowVariables(Class, Object...)`,
-leading to failure if attempted.
-However, this limitation does not apply when the solution is passed instead.
+If a supplier xref:customShadowVariableSolutionParameter[reads facts through a solution parameter],
+use `SolutionManager.updateShadowVariables(solution)`.
+The overload `SolutionManager.updateShadowVariables(SolutionClass.class, entities...)`
+has no solution instance to pass to the supplier.
+Include every entity referenced by a declared source when using the class-and-entities overload.
 ====
 
 In the following example, a model that uses a planning list variable is employed to demonstrate the test feature.

@@ -9,7 +9,9 @@ import java.util.List;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.stream.Constraint;
 import greycos.solver.core.api.score.stream.ConstraintCollectors;
+import greycos.solver.core.api.score.stream.ConstraintFactory;
 import greycos.solver.core.api.score.stream.ConstraintProvider;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.bavet.common.AbstractNode;
 import greycos.solver.core.impl.bavet.common.StreamKind;
 import greycos.solver.core.impl.bavet.common.tuple.ActivitySupport;
@@ -17,12 +19,16 @@ import greycos.solver.core.impl.bavet.uni.AbstractForEachUniNode;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirector;
+import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
 import greycos.solver.core.impl.score.stream.bavet.BavetConstraintStreamImplSupport;
+import greycos.solver.core.impl.solver.change.DefaultProblemChangeDirector;
 import greycos.solver.core.testcotwin.score.lavish.TestdataLavishEntity;
 import greycos.solver.core.testcotwin.score.lavish.TestdataLavishExtra;
 import greycos.solver.core.testcotwin.score.lavish.TestdataLavishSolution;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /** See {@link ActivitySupport}. */
 class BavetNodeDeactivationTest {
@@ -305,5 +311,124 @@ class BavetNodeDeactivationTest {
     var net = settle(provider, solutionWithExtras());
 
     assertThat(active(net, StreamKind.PRECOMPUTE)).isTrue();
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "JOIN, false",
+    "JOIN, true",
+    "EXISTS, false",
+    "EXISTS, true",
+    "NOT_EXISTS, false",
+    "NOT_EXISTS, true",
+    "PRECOMPUTE, false",
+    "PRECOMPUTE, true",
+    "SHARED_BRANCH, false",
+    "SHARED_BRANCH, true"
+  })
+  void ordinaryFactTransitionsRefreshInactiveBranches(
+      FactConstraintShape shape, boolean explicitShadowBarrier) {
+    var solution = TestdataLavishSolution.generateSolution(2, 3);
+    var factory =
+        new BavetConstraintStreamScoreDirectorFactory<TestdataLavishSolution, SimpleScore>(
+            TestdataLavishSolution.buildSolutionDescriptor(), shape, EnvironmentMode.NO_ASSERT);
+    try (var director = factory.createScoreDirectorBuilder().withLookUpEnabled(true).build()) {
+      director.setWorkingSolution(solution);
+      assertFactScore(factory, director, solution, shape);
+      var changes = new DefaultProblemChangeDirector<>(director);
+      var extra = new TestdataLavishExtra("changingExtra");
+      for (var extraCount : new int[] {1, 0, 1}) {
+        // Extras are ordinary facts, independent of the populated entity value range.
+        solution.setExtraList(new ArrayList<>(solution.getExtraList()));
+        if (extraCount == 0) {
+          changes.removeProblemFact(extra, solution.getExtraList()::remove);
+        } else {
+          changes.addProblemFact(extra, solution.getExtraList()::add);
+        }
+        if (explicitShadowBarrier) {
+          changes.updateShadowVariables();
+        }
+        assertThat(solution.getExtraList()).hasSize(extraCount);
+        assertFactScore(factory, director, solution, shape);
+      }
+    }
+  }
+
+  private static void assertFactScore(
+      BavetConstraintStreamScoreDirectorFactory<TestdataLavishSolution, SimpleScore> factory,
+      InnerScoreDirector<TestdataLavishSolution, SimpleScore> director,
+      TestdataLavishSolution solution,
+      FactConstraintShape shape) {
+    var score = director.calculateScore();
+    assertThat(score.raw()).isEqualTo(shape.expectedScore(solution));
+    try (var independent = factory.buildScoreDirector()) {
+      independent.setWorkingSolution(
+          factory.getSolutionDescriptor().getSolutionCloner().cloneSolution(solution));
+      assertThat(score).isEqualTo(independent.calculateScore());
+    }
+  }
+
+  private enum FactConstraintShape implements ConstraintProvider {
+    JOIN,
+    EXISTS,
+    NOT_EXISTS,
+    PRECOMPUTE,
+    SHARED_BRANCH;
+
+    @Override
+    public Constraint[] defineConstraints(ConstraintFactory factory) {
+      var entities = factory.forEach(TestdataLavishEntity.class);
+      return switch (this) {
+        case JOIN ->
+            new Constraint[] {
+              entities
+                  .join(TestdataLavishExtra.class)
+                  .penalize(SimpleScore.ONE)
+                  .asConstraint("joinExtras")
+            };
+        case EXISTS ->
+            new Constraint[] {
+              entities
+                  .ifExists(TestdataLavishExtra.class)
+                  .penalize(SimpleScore.ONE)
+                  .asConstraint("existsExtra")
+            };
+        case NOT_EXISTS ->
+            new Constraint[] {
+              entities
+                  .ifNotExists(TestdataLavishExtra.class)
+                  .penalize(SimpleScore.ONE)
+                  .asConstraint("noExtra")
+            };
+        case PRECOMPUTE ->
+            new Constraint[] {
+              factory
+                  .precompute(data -> data.forEachUnfiltered(TestdataLavishExtra.class))
+                  .penalize(SimpleScore.ONE)
+                  .asConstraint("precomputedExtras")
+            };
+        case SHARED_BRANCH ->
+            new Constraint[] {
+              entities.penalize(SimpleScore.ONE).asConstraint("entities"),
+              entities
+                  .join(TestdataLavishExtra.class)
+                  .penalize(SimpleScore.ONE)
+                  .asConstraint("joinExtras")
+            };
+      };
+    }
+
+    SimpleScore expectedScore(TestdataLavishSolution solution) {
+      long entityCount = solution.getEntityList().size();
+      long extraCount = solution.getExtraList().size();
+      return SimpleScore.of(
+          switch (this) {
+            case JOIN -> -entityCount * extraCount;
+            case EXISTS -> extraCount > 0 ? -entityCount : 0;
+            case NOT_EXISTS -> extraCount == 0 ? -entityCount : 0;
+            case PRECOMPUTE -> -extraCount;
+            case SHARED_BRANCH -> -entityCount - entityCount * extraCount;
+          });
+    }
   }
 }
