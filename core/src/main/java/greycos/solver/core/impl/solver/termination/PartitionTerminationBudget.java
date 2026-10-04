@@ -98,6 +98,9 @@ public final class PartitionTerminationBudget<Solution_> {
       return new Definition<>() {
         @Override
         public boolean definitelyTerminated(List<Progress> snapshot) {
+          if (children.isEmpty()) {
+            return false;
+          }
           return and
               ? children.stream().allMatch(c -> c.definitelyTerminated(snapshot))
               : children.stream().anyMatch(c -> c.definitelyTerminated(snapshot));
@@ -216,11 +219,14 @@ public final class PartitionTerminationBudget<Solution_> {
         SolverScope<Solution_> solverScope,
         @Nullable AbstractPhaseScope<Solution_> phaseScope,
         boolean gradientOnly) {
-      boolean terminated = and;
+      boolean terminated = and && !children.isEmpty();
       double gradient = -1.0;
       for (var child : children) {
         var next = child.evaluate(snapshot, solverScope, phaseScope, gradientOnly);
         if (!next.applicable()) {
+          if (!gradientOnly && and) {
+            return new Progress(false, -1.0, true);
+          }
           continue;
         }
         if (!gradientOnly && next.terminated() != and) {
@@ -241,6 +247,13 @@ public final class PartitionTerminationBudget<Solution_> {
         SolverScope<Solution_> solverScope,
         @Nullable AbstractPhaseScope<Solution_> phaseScope,
         boolean gradientOnly) {
+      // A nested partition adapter retains its own leaf origins. Pass the current child phase
+      // through for predicates, while preserving the existing solver-origin gradient endpoint.
+      if (!gradientOnly
+          && phaseScope != null
+          && termination instanceof PartitionTermination<Solution_> partitionTermination) {
+        return new Progress(partitionTermination.isPhaseTerminated(phaseScope), -1.0, true);
+      }
       if (phaseScope != null
           && !(solverOrigin && termination instanceof SolverTermination)
           && termination instanceof PhaseTermination<Solution_> phaseTermination

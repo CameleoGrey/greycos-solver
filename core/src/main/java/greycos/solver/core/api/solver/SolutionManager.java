@@ -88,6 +88,16 @@ public interface SolutionManager<Solution_, Score_ extends Score<Score_>> {
    * {@link SolutionManager#update(Object)}. Unlike the latter method, it does not require the
    * complete configuration necessary to obtain an instance of {@link SolutionManager}.
    *
+   * <p>Only the supplied objects are updated. Built-in inverse and list relationships are rebuilt
+   * from the supplied entities' current assignments; include all relevant owners, sources and
+   * targets to reconstruct complete relationships. Existing inverse collections are cleared and
+   * repopulated in place. Referenced facts may be omitted, but entities referenced through
+   * declarative shadow dependencies must be supplied.
+   *
+   * <p>Declarative shadows are calculated after built-in relationships. Cascading updates run
+   * afterwards, in each supplied owner's list order, followed by supplied unassigned elements. This
+   * method does not construct a solution or read its value ranges.
+   *
    * <p>However, this method requires that the entity does not define any shadow variables that rely
    * on listeners, as that would require a complete solution.
    *

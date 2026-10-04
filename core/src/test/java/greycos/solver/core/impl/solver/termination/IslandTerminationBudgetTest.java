@@ -33,20 +33,72 @@ import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class IslandTerminationBudgetTest {
+
+  @ParameterizedTest
+  @CsvSource({
+    "true, false, false", "true, true, false", "true, false, true", "true, true, true",
+    "false, false, false", "false, true, false", "false, false, true", "false, true, true"
+  })
+  void inapplicableOperandsStayUnsatisfiedUntilSearchAcrossCompositionAndOrder(
+      boolean and, boolean reverse, boolean nested) {
+    var unavailable = new TerminationConfig().withUnimprovedStepCountLimit(2);
+    if (nested) {
+      unavailable = or(unavailable);
+    }
+    var expired = new TerminationConfig().withSpentLimit(Duration.ZERO);
+    var operands = reverse ? List.of(unavailable, expired) : List.of(expired, unavailable);
+    var fixture =
+        new Fixture(
+            new TerminationConfig()
+                .withTerminationCompositionStyle(
+                    and ? TerminationCompositionStyle.AND : TerminationCompositionStyle.OR)
+                .withTerminationConfigList(operands));
+    var island = fixture.island();
+    assertThat(island.termination.isSolverTerminated(island.scope)).isEqualTo(!and);
+    var construction = new ConstructionHeuristicPhaseScope<>(island.scope, 0);
+    island.termination.phaseStarted(construction);
+    assertThat(island.termination.isPhaseTerminated(construction)).isEqualTo(!and);
+    assertThat(island.termination.calculatePhaseTimeGradient(construction)).isEqualTo(1.0);
+    island.termination.phaseEnded(construction);
+    assertThat(island.termination.isSolverTerminated(island.scope)).isEqualTo(!and);
+    var first = island.localSearch(1);
+    island.step(first, 0);
+    assertThat(island.termination.isPhaseTerminated(first)).isEqualTo(!and);
+    island.termination.phaseEnded(first);
+    assertThat(island.termination.isSolverTerminated(island.scope)).isEqualTo(!and);
+    var second = island.localSearch(2);
+    island.step(second, 0);
+    assertThat(island.termination.isPhaseTerminated(second)).isTrue();
+    island.termination.phaseEnded(second);
+    // Only the complete expression latches, and it stays complete outside a search phase.
+    assertThat(island.termination.isSolverTerminated(island.scope)).isTrue();
+    var custom = new CustomPhaseScope<>(island.scope, 3);
+    island.termination.phaseStarted(custom);
+    assertThat(island.termination.isPhaseTerminated(custom)).isTrue();
+  }
 
   @Test
   void emptyAndDiminishedReturnsBudgetsDoNotInventCooling() {
     for (var config :
-        List.of(new TerminationConfig(), new TerminationConfig().withDiminishedReturns())) {
+        List.of(
+            new TerminationConfig(),
+            and(),
+            or(),
+            new TerminationConfig().withDiminishedReturns())) {
       var fixture = new Fixture(config);
       var island = fixture.island();
+      assertThat(island.termination.isSolverTerminated(island.scope)).isFalse();
       assertThat(island.termination.calculateSolverTimeGradient(island.scope)).isEqualTo(-1.0);
       var construction = new ConstructionHeuristicPhaseScope<>(island.scope, 0);
       island.termination.phaseStarted(construction);
+      assertThat(island.termination.isPhaseTerminated(construction)).isFalse();
       assertThat(island.termination.calculatePhaseTimeGradient(construction)).isEqualTo(-1.0);
       var search = island.localSearch(1);
+      assertThat(island.termination.isPhaseTerminated(search)).isFalse();
       assertThat(island.termination.calculatePhaseTimeGradient(search)).isEqualTo(-1.0);
       assertThat(PhaseTermination.bridge(island.termination).calculatePhaseTimeGradient(search))
           .isEqualTo(-1.0);

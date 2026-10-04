@@ -566,7 +566,14 @@ class QueuedSolverJobLifecycleTest {
                     (ignored, failure) -> {
                       assertThat(manager.getSolverStatus("rejected"))
                           .isEqualTo(SolverStatus.NOT_SOLVING);
-                      runBounded(manager::close);
+                      // Reentrant close runs in callback context. A fresh external close thread
+                      // would correctly wait for this continuation and create a user-code cycle.
+                      manager.close();
+                      // Still prove that callback delivery holds no manager admission lock.
+                      runBounded(
+                          () ->
+                              assertThatThrownBy(() -> manager.solve("closed", problem("closed")))
+                                  .isInstanceOf(RejectedExecutionException.class));
                       return null;
                     }));
             throw submissionFailure;

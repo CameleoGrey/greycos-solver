@@ -45,6 +45,11 @@ final class TerminationEvaluation {
       }
       return and;
     }
+    // The partition adapter owns the origin of each leaf and needs the supplied child phase
+    // to evaluate inherited phase-only conditions. Its solver predicate is intentionally unscoped.
+    if (termination instanceof PartitionTermination<Solution_> partitionTermination) {
+      return partitionTermination.isPhaseTerminated(scope);
+    }
     if (solverConfiguration
         && termination instanceof SolverTermination<Solution_> solverTermination) {
       return solverTermination.isSolverTerminated(scope.getSolverScope());

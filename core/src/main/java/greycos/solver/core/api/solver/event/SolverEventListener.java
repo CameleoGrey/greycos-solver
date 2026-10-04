@@ -16,9 +16,10 @@ import org.jspecify.annotations.NonNull;
 public interface SolverEventListener<Solution_> extends EventListener {
 
   /**
-   * Called once every time when a better {@link PlanningSolution} is found. The {@link
-   * PlanningSolution} is guaranteed to be initialized. Early in the solving process it's usually
-   * called more frequently than later on.
+   * Called when a new best {@link PlanningSolution} is published. The solution may be
+   * uninitialized, for example when construction terminates early. Check {@link
+   * BestSolutionChangedEvent#isNewBestSolutionInitialized()} and {@link Score#isFeasible()}
+   * separately before using a result that must be initialized and feasible.
    *
    * <p>Called from the solver thread. <b>Should return fast, because it steals time from the {@link
    * Solver}.</b>

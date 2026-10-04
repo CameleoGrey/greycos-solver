@@ -12,22 +12,15 @@ import java.util.Map;
 import java.util.Objects;
 
 import greycos.solver.core.api.cotwin.entity.PlanningEntity;
-import greycos.solver.core.api.cotwin.variable.CascadingUpdateShadowVariable;
-import greycos.solver.core.api.cotwin.variable.IndexShadowVariable;
-import greycos.solver.core.api.cotwin.variable.InverseRelationShadowVariable;
-import greycos.solver.core.api.cotwin.variable.NextElementShadowVariable;
-import greycos.solver.core.api.cotwin.variable.PreviousElementShadowVariable;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
-import greycos.solver.core.impl.cotwin.solution.descriptor.DefaultShadowVariableMetaModel;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
-import greycos.solver.core.impl.cotwin.variable.cascade.CascadingUpdateShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.declarative.ChangedVariableNotifier;
 import greycos.solver.core.impl.cotwin.variable.declarative.DefaultShadowVariableSessionFactory;
-import greycos.solver.core.impl.cotwin.variable.declarative.VariableReferenceGraph;
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.inverserelation.InverseRelationShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.nextprev.NextElementShadowVariableDescriptor;
@@ -36,10 +29,8 @@ import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import greycos.solver.core.impl.score.director.AbstractScoreDirector;
 import greycos.solver.core.impl.score.director.AbstractScoreDirectorFactory;
 import greycos.solver.core.impl.score.director.InnerScore;
-import greycos.solver.core.preview.api.cotwin.metamodel.ShadowVariableMetaModel;
 
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 
 /** Utility class for updating shadow variables at entity level. */
 @NullMarked
@@ -76,234 +67,189 @@ public final class ShadowVariableUpdateHelper<Solution_> {
     var solutionDescriptor =
         SolutionDescriptor.buildSolutionDescriptor(
             Objects.requireNonNull(solutionClass), entityClassList.toArray(new Class<?>[0]));
-    // No solution, we trigger all supported events manually
     var session = InternalShadowVariableSession.build(solutionDescriptor, entities);
-    // Update all built-in shadow variables
-    var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
-    if (listVariableDescriptor == null) {
-      session.processBasicVariable(entities);
-    } else {
-      session.processListVariable(entities);
-      session.processCascadingVariable(entities);
-    }
+    // Validate dependencies before mutating supplied objects, without capturing stale graph edges.
+    session.graphDescriptor().assertingNoReferencedMissingEntities();
+    session.processBasicVariables();
+    session.processListVariables();
     session.processDeclarativeVariables();
+    session.processCascadingVariables();
   }
 
   private record InternalShadowVariableSession<Solution_>(
-      SolutionDescriptor<Solution_> solutionDescriptor, VariableReferenceGraph graph) {
+      SolutionDescriptor<Solution_> solutionDescriptor,
+      List<EntityWithDescriptor<Solution_>> entities,
+      Map<Object, EntityDescriptor<Solution_>> entityDescriptors,
+      DefaultShadowVariableSessionFactory.GraphDescriptor<Solution_> graphDescriptor) {
 
     public static <Solution_> InternalShadowVariableSession<Solution_> build(
-        SolutionDescriptor<Solution_> solutionDescriptor, Object... entities) {
+        SolutionDescriptor<Solution_> solutionDescriptor, Object... suppliedEntities) {
+      var entities = new ArrayList<EntityWithDescriptor<Solution_>>();
+      var entityDescriptors = new IdentityHashMap<Object, EntityDescriptor<Solution_>>();
+      for (var entity : suppliedEntities) {
+        var descriptor = solutionDescriptor.findEntityDescriptor(entity.getClass());
+        if (descriptor != null && entityDescriptors.putIfAbsent(entity, descriptor) == null) {
+          entities.add(new EntityWithDescriptor<>(entity, descriptor));
+        }
+      }
       return new InternalShadowVariableSession<>(
           solutionDescriptor,
-          DefaultShadowVariableSessionFactory.buildGraph(
-              new DefaultShadowVariableSessionFactory.GraphDescriptor<>(
-                      solutionDescriptor, ChangedVariableNotifier.empty(), entities)
-                  .assertingNoReferencedMissingEntities()));
+          entities,
+          entityDescriptors,
+          new DefaultShadowVariableSessionFactory.GraphDescriptor<>(
+              solutionDescriptor, ChangedVariableNotifier.empty(), suppliedEntities));
     }
 
-    /**
-     * Identify and auto-update {@link InverseRelationShadowVariable inverse shadow variables} of
-     * shadow entities.
-     *
-     * @param entities the entities to be analyzed
-     */
-    public void processBasicVariable(Object... entities) {
-      var shadowEntityToUpdate = new IdentityHashMap<Object, ShadowEntityVariable>();
-      for (var entityWithDescriptor : fetchEntityAndDescriptors(entities)) {
-        // Iterate over all basic variables and update the inverse relation field
-        for (var variableDescriptor :
-            fetchBasicDescriptors(entityWithDescriptor.entityDescriptor())) {
-          var shadowEntity = variableDescriptor.getValue(entityWithDescriptor.entity());
-          addShadowEntity(
-              entityWithDescriptor, variableDescriptor, shadowEntity, shadowEntityToUpdate);
-        }
-      }
-      shadowEntityToUpdate.forEach(
-          (key, value) -> updateShadowVariable(value.variableName(), key, value.values()));
-    }
-
-    private void addShadowEntity(
-        EntityWithDescriptor<Solution_> entityWithDescriptor,
-        BasicVariableDescriptor<Solution_> variableDescriptor,
-        Object shadowEntity,
-        Map<Object, ShadowEntityVariable> shadowEntityToUpdate) {
-      // If the planning value is set, we update the inverse element collection
-      var descriptor =
-          findShadowVariableDescriptor(
-              shadowEntity.getClass(), InverseRelationShadowVariableDescriptor.class);
-      if (descriptor != null) {
-        var values = (Collection<Object>) descriptor.getValue(shadowEntity);
-        if (values == null) {
-          throw new IllegalStateException(
-              "The entity (%s) has a variable (%s) with value (%s) which has a sourceVariableName variable (%s) which is null."
-                  .formatted(
-                      entityWithDescriptor.entity().getClass(),
-                      variableDescriptor.getVariableName(),
-                      shadowEntity,
-                      descriptor.getVariableName()));
-        }
-        if (!values.contains(entityWithDescriptor.entity())) {
-          values.add(entityWithDescriptor.entity());
-        }
-        shadowEntityToUpdate.putIfAbsent(
-            shadowEntity, new ShadowEntityVariable(descriptor.getVariableName(), values));
-      }
-    }
-
-    /**
-     * Identify and auto-update the following shadow variables of shadow entities: {@link
-     * InverseRelationShadowVariable }, {@link PreviousElementShadowVariable}, {@link
-     * NextElementShadowVariable}, and {@link IndexShadowVariable}.
-     *
-     * @param entities the entities to be analyzed
-     */
-    public void processListVariable(Object... entities) {
-      var listVariableDescriptor =
-          Objects.requireNonNull(solutionDescriptor.getListVariableDescriptor());
-      // We filter all planning entities and update the shadow variables of their planning values.
-      // There is no need to evaluate other variables from the entity,
-      // as we fail fast when variables based on listeners are detected.
-      var planningEntityList =
-          Arrays.stream(entities)
-              .filter(
-                  entity ->
-                      listVariableDescriptor
-                          .getEntityDescriptor()
-                          .getEntityClass()
-                          .equals(entity.getClass()))
-              .toList();
-      for (var entity : planningEntityList) {
-        var values = listVariableDescriptor.getValue(entity);
-        if (values.isEmpty()) {
-          continue;
-        }
-        var entityType = values.getFirst().getClass();
-        for (var i = 0; i < values.size(); i++) {
-          var shadowEntity = values.get(i);
-          // Inverse relation
-          updateShadowVariable(
-              entityType, InverseRelationShadowVariableDescriptor.class, shadowEntity, entity);
-          // Previous element
-          var previousElement = i > 0 ? values.get(i - 1) : null;
-          updateShadowVariable(
-              entityType,
-              PreviousElementShadowVariableDescriptor.class,
-              shadowEntity,
-              previousElement);
-          // Next element
-          var nextElement = i < values.size() - 1 ? values.get(i + 1) : null;
-          updateShadowVariable(
-              entityType, NextElementShadowVariableDescriptor.class, shadowEntity, nextElement);
-          // Index
-          updateShadowVariable(entityType, IndexShadowVariableDescriptor.class, shadowEntity, i);
-        }
-      }
-    }
-
-    /**
-     * Identify and auto-update {@link CascadingUpdateShadowVariable shadow variables} of entities.
-     *
-     * @param entities the entities to be analyzed
-     */
     @SuppressWarnings("unchecked")
-    public void processCascadingVariable(Object... entities) {
-      var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
-      if (listVariableDescriptor != null) {
-        for (var entity : entities) {
-          var cascadingVariableDescriptor =
-              findShadowVariableDescriptor(
-                  entity.getClass(), CascadingUpdateShadowVariableDescriptor.class);
-          if (cascadingVariableDescriptor != null) {
-            cascadingVariableDescriptor.update(
-                new InternalScoreDirector.Builder<>(solutionDescriptor).build(), entity);
+    public void processBasicVariables() {
+      // Index by source descriptor and target identity; names alone do not identify a variable.
+      var inverseCollections =
+          new IdentityHashMap<
+              BasicVariableDescriptor<Solution_>, Map<Object, List<Collection<Object>>>>();
+      for (var target : entities) {
+        for (var shadowDescriptor : target.entityDescriptor().getShadowVariableDescriptors()) {
+          if (shadowDescriptor instanceof InverseRelationShadowVariableDescriptor<Solution_>
+              && shadowDescriptor.getSourceVariableDescriptor()
+                  instanceof BasicVariableDescriptor<Solution_> sourceDescriptor) {
+            var collection = (Collection<Object>) shadowDescriptor.getValue(target.entity());
+            if (collection == null) {
+              throw new IllegalStateException(
+                  "The entity (%s) has a variable (%s) with value (%s) which has a sourceVariableName variable (%s) which is null."
+                      .formatted(
+                          sourceDescriptor.getEntityDescriptor().getEntityClass(),
+                          sourceDescriptor.getVariableName(),
+                          target.entity(),
+                          shadowDescriptor.getVariableName()));
+            }
+            inverseCollections
+                .computeIfAbsent(sourceDescriptor, ignored -> new IdentityHashMap<>())
+                .computeIfAbsent(target.entity(), ignored -> new ArrayList<>())
+                .add(collection);
+          }
+        }
+      }
+      // Validate every collection before clearing any of them; retain its identity and type.
+      inverseCollections
+          .values()
+          .forEach(
+              targets ->
+                  targets.values().forEach(collections -> collections.forEach(Collection::clear)));
+      for (var source : entities) {
+        for (var sourceDescriptor : source.entityDescriptor().getBasicVariableDescriptorList()) {
+          var targets = inverseCollections.get(sourceDescriptor);
+          var target = sourceDescriptor.getValue(source.entity());
+          if (targets != null && target != null) {
+            var collections = targets.get(target);
+            if (collections != null) {
+              collections.forEach(collection -> collection.add(source.entity()));
+            }
           }
         }
       }
     }
 
-    @SuppressWarnings("unchecked")
-    private <T> @Nullable T findShadowVariableDescriptor(
-        Class<?> entityType, Class<T> descriptorType) {
-      var valueMetaModel =
-          solutionDescriptor.getMetaModel().entities().stream()
-              .filter(type -> type.type().equals(entityType))
-              .findFirst()
-              .orElse(null);
-      if (valueMetaModel == null) {
-        return null;
+    public void processListVariables() {
+      // Supplied elements may have been removed from a list since the previous update.
+      for (var target : entities) {
+        for (var shadowDescriptor : target.entityDescriptor().getShadowVariableDescriptors()) {
+          if (isListRelationship(shadowDescriptor)) {
+            shadowDescriptor.setValue(target.entity(), null);
+          }
+        }
       }
-      return (T)
-          valueMetaModel.variables().stream()
-              .filter(ShadowVariableMetaModel.class::isInstance)
-              .map(DefaultShadowVariableMetaModel.class::cast)
-              .map(DefaultShadowVariableMetaModel::variableDescriptor)
-              .filter(descriptorType::isInstance)
-              .findFirst()
-              .orElse(null);
+      for (var owner : entities) {
+        for (var variableDescriptor : owner.entityDescriptor().getGenuineVariableDescriptorList()) {
+          if (!(variableDescriptor instanceof ListVariableDescriptor<Solution_> listDescriptor)) {
+            continue;
+          }
+          var values = listDescriptor.getValue(owner.entity());
+          for (var index = 0; index < values.size(); index++) {
+            var target = values.get(index);
+            var targetDescriptor = entityDescriptors.get(target);
+            if (targetDescriptor == null) {
+              continue;
+            }
+            for (var shadowDescriptor : targetDescriptor.getShadowVariableDescriptors()) {
+              if (shadowDescriptor.getSourceVariableDescriptor() != listDescriptor) {
+                continue;
+              }
+              if (shadowDescriptor instanceof InverseRelationShadowVariableDescriptor<Solution_>) {
+                shadowDescriptor.setValue(target, owner.entity());
+              } else if (shadowDescriptor instanceof IndexShadowVariableDescriptor<Solution_>) {
+                shadowDescriptor.setValue(target, index);
+              } else if (shadowDescriptor
+                  instanceof PreviousElementShadowVariableDescriptor<Solution_>) {
+                shadowDescriptor.setValue(target, index > 0 ? values.get(index - 1) : null);
+              } else if (shadowDescriptor
+                  instanceof NextElementShadowVariableDescriptor<Solution_>) {
+                shadowDescriptor.setValue(
+                    target, index + 1 < values.size() ? values.get(index + 1) : null);
+              }
+            }
+          }
+        }
+      }
     }
 
-    private void updateShadowVariable(
-        String variableName, Object destination, @Nullable Object value) {
-      var variableDescriptor =
-          solutionDescriptor
-              .getEntityDescriptorStrict(destination.getClass())
-              .getVariableDescriptor(variableName);
-      if (solutionDescriptor.getDeclarativeShadowVariableDescriptors().isEmpty()
-          && variableDescriptor != null) {
-        variableDescriptor.setValue(destination, value);
-      } else if (variableDescriptor != null) {
-        var variableMetamodel =
-            solutionDescriptor.getMetaModel().entity(destination.getClass()).variable(variableName);
-        graph.beforeVariableChanged(variableMetamodel, destination);
-        variableDescriptor.setValue(destination, value);
-        graph.afterVariableChanged(variableMetamodel, destination);
-      }
-    }
-
-    @SuppressWarnings("rawtypes")
-    private void updateShadowVariable(
-        Class<?> entityType,
-        Class<? extends ShadowVariableDescriptor> descriptorType,
-        Object destination,
-        @Nullable Object value) {
-      var descriptor = findShadowVariableDescriptor(entityType, descriptorType);
-      if (descriptor != null) {
-        updateShadowVariable(descriptor.getVariableName(), destination, value);
-      }
+    private boolean isListRelationship(ShadowVariableDescriptor<Solution_> descriptor) {
+      return descriptor.getSourceVariableDescriptor() instanceof ListVariableDescriptor<Solution_>
+          && (descriptor instanceof InverseRelationShadowVariableDescriptor<Solution_>
+              || descriptor instanceof IndexShadowVariableDescriptor<Solution_>
+              || descriptor instanceof PreviousElementShadowVariableDescriptor<Solution_>
+              || descriptor instanceof NextElementShadowVariableDescriptor<Solution_>);
     }
 
     public void processDeclarativeVariables() {
-      if (!solutionDescriptor.getDeclarativeShadowVariableDescriptors().isEmpty()) {
-        graph.updateChanged();
-      }
+      // Recheck dependencies introduced by repaired relationships and build all edges afresh.
+      DefaultShadowVariableSessionFactory.buildGraph(
+              graphDescriptor.assertingNoReferencedMissingEntities())
+          .updateChanged();
     }
 
-    private List<EntityWithDescriptor<Solution_>> fetchEntityAndDescriptors(Object... entities) {
-      var descriptorList = new ArrayList<EntityWithDescriptor<Solution_>>();
-      var genuineEntityDescriptorCollection = solutionDescriptor.getGenuineEntityDescriptors();
-      for (var entity : entities) {
-        genuineEntityDescriptorCollection.stream()
-            .filter(
-                variableDescriptor -> variableDescriptor.getEntityClass().equals(entity.getClass()))
-            .findFirst()
-            .ifPresent(
-                genuineEntityDescriptor ->
-                    descriptorList.add(
-                        new EntityWithDescriptor<>(entity, genuineEntityDescriptor)));
+    public void processCascadingVariables() {
+      if (solutionDescriptor.getListVariableDescriptor() == null) {
+        return;
       }
-      return descriptorList;
-    }
-
-    private List<BasicVariableDescriptor<Solution_>> fetchBasicDescriptors(
-        EntityDescriptor<Solution_> entityDescriptor) {
-      var descriptorList = new ArrayList<BasicVariableDescriptor<Solution_>>();
-      for (var descriptor : entityDescriptor.getDeclaredGenuineVariableDescriptors()) {
-        if (descriptor instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor) {
-          descriptorList.add(basicVariableDescriptor);
+      var descriptors =
+          solutionDescriptor.getEntityDescriptors().stream()
+              .flatMap(
+                  descriptor ->
+                      descriptor.getDeclaredCascadingUpdateShadowVariableDescriptors().stream())
+              .distinct()
+              .toList();
+      if (descriptors.isEmpty()) {
+        return;
+      }
+      var orderedEntities = new ArrayList<Object>();
+      var visited = new IdentityHashMap<Object, Boolean>();
+      // List order, not argument order, determines when a predecessor's cascade is available.
+      for (var owner : entities) {
+        for (var variableDescriptor : owner.entityDescriptor().getGenuineVariableDescriptorList()) {
+          if (variableDescriptor instanceof ListVariableDescriptor<Solution_> listDescriptor) {
+            for (var element : listDescriptor.getValue(owner.entity())) {
+              if (entityDescriptors.containsKey(element)
+                  && visited.put(element, Boolean.TRUE) == null) {
+                orderedEntities.add(element);
+              }
+            }
+          }
         }
       }
-      return descriptorList;
+      // Unassigned supplied elements also need their cascades refreshed.
+      for (var entity : entities) {
+        if (visited.put(entity.entity(), Boolean.TRUE) == null) {
+          orderedEntities.add(entity.entity());
+        }
+      }
+      try (var scoreDirector = new InternalScoreDirector.Builder<>(solutionDescriptor).build()) {
+        for (var entity : orderedEntities) {
+          for (var descriptor : descriptors) {
+            if (descriptor.getEntityDescriptor().matchesEntity(entity)) {
+              descriptor.update(scoreDirector, entity);
+            }
+          }
+        }
+      }
     }
   }
 
@@ -380,8 +326,6 @@ public final class ShadowVariableUpdateHelper<Solution_> {
       }
     }
   }
-
-  private record ShadowEntityVariable(String variableName, Collection<Object> values) {}
 
   private record EntityWithDescriptor<Solution_>(
       Object entity, EntityDescriptor<Solution_> entityDescriptor) {}

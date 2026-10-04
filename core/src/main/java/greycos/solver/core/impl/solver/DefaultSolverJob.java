@@ -12,7 +12,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -63,12 +62,14 @@ public final class DefaultSolverJob<Solution_>
   private final BiConsumer<? super Object, ? super Throwable> exceptionHandler;
 
   private final CountDownLatch terminatedLatch;
-  private final ReentrantLock solverStatusModifyingLock;
   // Never held while finding a problem, running callbacks, completing futures or waiting.
-  // Lock order: startup/status lock -> lifecycleLock -> bestSolutionHolder -> solver plumbing.
+  // Lock order: lifecycleLock -> bestSolutionHolder -> solver plumbing.
   private final Object lifecycleLock = new Object();
   private volatile boolean shutdownRequested;
+  // Retained so repeated callers can help finish bookkeeping selected by another thread.
+  private @Nullable TerminationActions terminationActions;
   private final AtomicBoolean terminatedEarly = new AtomicBoolean(false);
+  private final AtomicBoolean cleanupScheduled = new AtomicBoolean();
   private final BestSolutionHolder<Solution_> bestSolutionHolder = new BestSolutionHolder<>();
   private final AtomicReference<SolverStatus> solverStatus =
       new AtomicReference<>(SolverStatus.SOLVING_SCHEDULED);
@@ -105,7 +106,6 @@ public final class DefaultSolverJob<Solution_>
     this.solverJobStartedConsumer = solverJobStartedConsumer;
     this.exceptionHandler = exceptionHandler;
     this.terminatedLatch = new CountDownLatch(1);
-    this.solverStatusModifyingLock = new ReentrantLock();
   }
 
   public void setFinalBestSolutionFuture(Future<Solution_> finalBestSolutionFuture) {
@@ -132,11 +132,9 @@ public final class DefaultSolverJob<Solution_>
     boolean started = false;
     boolean cancelledBeforeStart = false;
     boolean failed = false;
-    solverStatusModifyingLock.lock();
     try {
       if (solverStatus.get() != SolverStatus.SOLVING_SCHEDULED) {
         cancelledBeforeStart = true;
-        unlockStartupLock();
         cancelSkippedStart();
         throw new CancellationException("The solver job did not start.");
       }
@@ -162,15 +160,14 @@ public final class DefaultSolverJob<Solution_>
         }
       }
       if (cancelledBeforeStart) {
-        unlockStartupLock();
         cancelSkippedStart();
         currentConsumerSupport.close();
         throw new CancellationException("The solver job did not start.");
       }
 
       var problem = problemFinder.apply(problemId);
-      // add a phase lifecycle listener that unlock the solver status lock when solving started
-      solver.addPhaseLifecycleListener(new UnlockLockPhaseLifecycleListener());
+      // Restore durable requests after solve() resets its plumbing termination.
+      solver.addPhaseLifecycleListener(new TerminationRequestPhaseLifecycleListener());
       // add a phase lifecycle listener that consumes the first initialized solution
       solver.addPhaseLifecycleListener(
           new FirstInitializedSolutionPhaseLifecycleListener(currentConsumerSupport));
@@ -186,7 +183,6 @@ public final class DefaultSolverJob<Solution_>
         throw e;
       }
       failed = true;
-      unlockStartupLock();
       try {
         exceptionHandler.accept(problemId, e);
       } catch (Throwable handlerFailure) {
@@ -194,7 +190,6 @@ public final class DefaultSolverJob<Solution_>
       }
       throw new IllegalStateException("Solving failed for problemId (%s).".formatted(problemId), e);
     } finally {
-      unlockStartupLock();
       if (!cancelledBeforeStart) {
         try {
           solvingTerminated(failed);
@@ -219,12 +214,6 @@ public final class DefaultSolverJob<Solution_>
     // Only getFinalBestSolution() retrieves canceled input; never call problemFinder here.
   }
 
-  private void unlockStartupLock() {
-    if (solverStatusModifyingLock.isHeldByCurrentThread()) {
-      solverStatusModifyingLock.unlock();
-    }
-  }
-
   private void onBestSolutionChangedEvent(
       BestSolutionChangedEvent<Solution_> bestSolutionChangedEvent) {
     var currentConsumerSupport = consumerSupport.get();
@@ -245,7 +234,7 @@ public final class DefaultSolverJob<Solution_>
   private void solvingTerminated(boolean cancelPendingChanges) {
     TerminationActions actions;
     synchronized (lifecycleLock) {
-      actions = selectTermination(false);
+      actions = selectTermination(false, false);
     }
     finishTermination(actions);
     if (cancelPendingChanges) {
@@ -254,10 +243,11 @@ public final class DefaultSolverJob<Solution_>
     awaitConsumerClose();
   }
 
-  // Called only with lifecycleLock held. Active represented changes remain for consumer delivery.
-  private @Nullable TerminationActions selectTermination(boolean cancelFinalFuture) {
-    if (solverStatus.get() == SolverStatus.NOT_SOLVING) {
-      return null;
+  // Called only with lifecycleLock held. Active represented changes remain for normal delivery.
+  private TerminationActions selectTermination(boolean cancelFinalFuture, boolean interruptSolver) {
+    if (terminationActions != null
+        && (!interruptSolver || terminationActions.cancelledFuture != null)) {
+      return terminationActions;
     }
     bestSolutionHolder.closeProblemChangeAdmission();
     var pendingChanges =
@@ -265,8 +255,12 @@ public final class DefaultSolverJob<Solution_>
             ? bestSolutionHolder.closeAndDrainPendingChanges()
             : List.<CompletableFuture<Void>>of();
     solverStatus.set(SolverStatus.NOT_SOLVING);
-    return new TerminationActions(
-        cancelFinalFuture ? finalBestSolutionFuture.get() : null, pendingChanges);
+    terminationActions =
+        new TerminationActions(
+            cancelFinalFuture ? finalBestSolutionFuture.get() : null,
+            pendingChanges,
+            interruptSolver);
+    return terminationActions;
   }
 
   private void finishTermination(@Nullable TerminationActions actions) {
@@ -278,10 +272,17 @@ public final class DefaultSolverJob<Solution_>
     if (actions == null) {
       return;
     }
-    // Change-future continuations can synchronously retrieve another job's final solution.
-    // Manager shutdown completes this stage for every job before invoking any such continuation.
-    if (actions.cancelledFuture() != null) {
-      actions.cancelledFuture().cancel(false);
+    // These actions are idempotent. A concurrent caller need not await the selecting thread.
+    // Manager shutdown completes this stage for every job before dispatching change callbacks.
+    if (actions.cancelledFuture != null) {
+      actions.cancelledFuture.cancel(actions.interruptSolver);
+    }
+    if (actions.interruptSolver) {
+      var currentConsumerSupport = consumerSupport.get();
+      if (currentConsumerSupport != null) {
+        // Seal event admission before releasing terminal waiters, without draining callbacks here.
+        currentConsumerSupport.requestClose();
+      }
     }
     solverManager.unregisterSolverJob(problemId, this);
     terminatedLatch.countDown();
@@ -289,12 +290,30 @@ public final class DefaultSolverJob<Solution_>
 
   private void cancelPendingChanges(@Nullable TerminationActions actions) {
     if (actions != null) {
-      actions.pendingChanges().forEach(pendingChange -> pendingChange.cancel(false));
+      synchronized (actions) {
+        if (!actions.pendingChanges.isEmpty()) {
+          bestSolutionHolder.cancelPendingChanges(actions.pendingChanges);
+          // Tasks retain only the futures whose inline continuations are still running.
+          actions.pendingChanges = List.of();
+        }
+      }
     }
   }
 
-  private record TerminationActions(
-      @Nullable Future<?> cancelledFuture, List<CompletableFuture<Void>> pendingChanges) {}
+  private static final class TerminationActions {
+    private final @Nullable Future<?> cancelledFuture;
+    private List<CompletableFuture<Void>> pendingChanges;
+    private final boolean interruptSolver;
+
+    private TerminationActions(
+        @Nullable Future<?> cancelledFuture,
+        List<CompletableFuture<Void>> pendingChanges,
+        boolean interruptSolver) {
+      this.cancelledFuture = cancelledFuture;
+      this.pendingChanges = pendingChanges;
+      this.interruptSolver = interruptSolver;
+    }
+  }
 
   @Override
   public CompletableFuture<Void> addProblemChanges(
@@ -318,63 +337,64 @@ public final class DefaultSolverJob<Solution_>
 
   @Override
   public void terminateEarly() {
-    boolean waitForTermination = false;
-    TerminationActions actions = null;
-    solverStatusModifyingLock.lock();
-    try {
-      synchronized (lifecycleLock) {
-        if (!terminatedEarly.getAndSet(true)) {
-          switch (solverStatus.get()) {
-            case SOLVING_SCHEDULED:
-              actions = selectTermination(true);
-              break;
-            case SOLVING_ACTIVE:
-              // Retain accepted changes for delivery while rejecting admission during shutdown.
-              bestSolutionHolder.closeProblemChangeAdmission();
-              // Startup owns the status lock until after plumbing termination is reset.
-              solver.terminateEarly();
-              waitForTermination = true;
-              break;
-            case NOT_SOLVING:
-              break;
-          }
-        }
-      }
-    } finally {
-      solverStatusModifyingLock.unlock();
-    }
-    finishTermination(actions);
-    // A restart may need its event consumer to finish before another lifecycle event is queued.
-    // Solver-thread callbacks likewise cannot await their own call() completion.
-    if (waitForTermination
-        && Thread.currentThread() != activeCallThread
-        && !SolverEventThreadContext.isActive()) {
-      awaitTermination();
-    }
+    terminateEarly(earlyTerminationDeadline());
   }
 
-  private void awaitTermination() {
+  static long earlyTerminationDeadline() {
+    return System.nanoTime() + EARLY_TERMINATION_TIMEOUT.toNanos();
+  }
+
+  // An absolute monotonic deadline keeps startup, repeated calls and cancellation publication
+  // within the same budget. Package-private for short, deterministic lifecycle tests.
+  void terminateEarly(long deadlineNanos) {
+    TerminationActions actions;
+    boolean terminateSolver;
+    synchronized (lifecycleLock) {
+      terminatedEarly.set(true);
+      bestSolutionHolder.closeProblemChangeAdmission();
+      terminateSolver = solverStatus.get() == SolverStatus.SOLVING_ACTIVE;
+      actions =
+          solverStatus.get() == SolverStatus.SOLVING_SCHEDULED
+              ? selectTermination(true, false)
+              : terminationActions;
+    }
+    if (terminateSolver) {
+      // Application problem finders and startup code never block recording this request.
+      // The solvingStarted listener restores it if solve() subsequently resets termination.
+      solver.terminateEarly();
+    }
+    finishTermination(actions);
+    if (actions != null) {
+      scheduleCleanup();
+    }
+    if (Thread.currentThread() == activeCallThread || SolverEventThreadContext.isActive()) {
+      return;
+    }
     try {
-      // Wait for solver termination; accepted consumer callbacks may still be draining.
-      var terminatedCorrectly =
-          terminatedLatch.await(EARLY_TERMINATION_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-      if (!terminatedCorrectly) {
+      // Every external caller waits, including a repeated call after callback cancellation and
+      // NOT_SOLVING published before another thread finishes terminal bookkeeping.
+      if (!terminatedLatch.await(
+          Math.max(0L, deadlineNanos - System.nanoTime()), TimeUnit.NANOSECONDS)) {
         LOGGER.warn(
-            """
-            The terminateEarly() call did not complete within ({}) for problemId ({}).
-            The final best solution may not have been consumed yet. This is likely a bug.
-            Please report this issue to GreyCOS with details on how to reproduce it.""",
-            EARLY_TERMINATION_TIMEOUT,
+            "The terminateEarly() wait expired for problemId ({}). "
+                + "The solver may still be running; subsequent solutions will be ignored.",
             problemId);
-        var future = finalBestSolutionFuture.get();
-        if (future != null && !future.isDone()) {
-          future.cancel(true);
+        synchronized (lifecycleLock) {
+          actions = selectTermination(true, true);
         }
-        solvingTerminated(false);
+        finishTermination(actions);
+        scheduleCleanup();
+      } else {
+        synchronized (lifecycleLock) {
+          actions = terminationActions;
+        }
+        // Another thread may have completed bookkeeping but not yet dispatched cancellation.
+        cancelPendingChanges(actions);
       }
+      bestSolutionHolder.awaitCancellationPublication(deadlineNanos);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("The terminateEarly() call is interrupted.", e);
+      LOGGER.debug("The terminateEarly() wait is interrupted for problemId ({}).", problemId);
     }
   }
 
@@ -487,13 +507,16 @@ public final class DefaultSolverJob<Solution_>
       shutdownRequested = true;
       switch (solverStatus.get()) {
         case SOLVING_SCHEDULED:
-          actions = selectTermination(true);
+          actions = selectTermination(true, false);
           break;
         case SOLVING_ACTIVE:
           bestSolutionHolder.closeProblemChangeAdmission();
           terminateSolver = true;
           break;
         case NOT_SOLVING:
+          // Another caller may have published NOT_SOLVING before canceling the final future.
+          // Include its selected work in the manager's all-jobs bookkeeping barrier.
+          actions = terminationActions;
           break;
       }
       currentConsumerSupport = consumerSupport.get();
@@ -531,6 +554,15 @@ public final class DefaultSolverJob<Solution_>
       if (currentConsumerSupport != null) {
         currentConsumerSupport.requestClose();
       }
+      scheduleCleanup();
+    }
+  }
+
+  private void scheduleCleanup() {
+    if (cleanupScheduled.compareAndSet(false, true)) {
+      // A canceled queued job has no solver thread to drain its continuations. Keep public
+      // manager.close() ownership until actual callback cleanup, independently of solver exit.
+      Thread.ofVirtual().name("solver-job-cleanup").start(this::awaitConsumerClose);
     }
   }
 
@@ -539,48 +571,24 @@ public final class DefaultSolverJob<Solution_>
     if (currentConsumerSupport != null) {
       currentConsumerSupport.close();
     }
+    TerminationActions actions;
+    synchronized (lifecycleLock) {
+      actions = terminationActions;
+    }
+    cancelPendingChanges(actions);
+    bestSolutionHolder.awaitCancellationCompletion();
+    if (!SolverEventThreadContext.isActive()) {
+      solverManager.unregisterSolverJobCleanup(this);
+    }
   }
 
-  /**
-   * A listener that unlocks the solverStatusModifyingLock when Solving has started.
-   *
-   * <p>It prevents the following scenario caused by unlocking before Solving started:
-   *
-   * <dl>
-   *   <dt>Thread 1
-   *   <dd>
-   *       <pre>
-   *           solverStatusModifyingLock.unlock()
-   *           > solver.solve(...) // executes second
-   *     </pre>
-   *   <dt>Thread 2
-   *   <dd>
-   *       <pre>
-   *           case SOLVING_ACTIVE:
-   *           >solver.terminateEarly(); // executes first
-   *     </pre>
-   * </dl>
-   *
-   * <p>The solver.solve() call resets the terminateEarly flag, and thus the solver will not be
-   * terminated by the call, which means terminatedLatch will not be decremented, causing Thread 2
-   * to wait forever (at least until another Thread calls terminateEarly again).
-   *
-   * <p>To prevent Thread 2 from potentially waiting forever, we only unlock the lock after the
-   * solvingStarted phase lifecycle event is fired, meaning the terminateEarly flag will not be
-   * reset and thus the solver will actually terminate.
-   */
-  private final class UnlockLockPhaseLifecycleListener
+  /** Restores termination requests made before solve() resets plumbing termination. */
+  private final class TerminationRequestPhaseLifecycleListener
       extends PhaseLifecycleListenerAdapter<Solution_> {
     @Override
     public void solvingStarted(SolverScope<Solution_> solverScope) {
-      // A problem finder may cancel its own job before solve() resets plumbing termination.
-      // Restore that request after the reset, while the initial status lock is still held.
       if (terminatedEarly.get() || shutdownRequested) {
         solver.terminateEarly();
-      }
-      // The solvingStarted event can be emitted as a result of addProblemChange().
-      if (solverStatusModifyingLock.isHeldByCurrentThread()) {
-        solverStatusModifyingLock.unlock();
       }
     }
   }

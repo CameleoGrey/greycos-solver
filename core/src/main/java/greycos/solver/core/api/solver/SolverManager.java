@@ -210,6 +210,9 @@ public interface SolverManager<Solution_> extends AutoCloseable {
   /**
    * Terminates the solver or cancels the solver job if it hasn't (re)started yet.
    *
+   * <p>Uses the per-call waiting, callback, interruption and one-minute deadline behavior of {@link
+   * SolverJob#terminateEarly()}, with the deadline measured from entry to this method.
+   *
    * <p>Does nothing if the solver already terminated or the problemId was never added. To
    * distinguish between both cases, use {@link SolverJob#terminateEarly()} instead. Here, that
    * distinction is not supported because it would cause a memory leak.

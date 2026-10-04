@@ -42,6 +42,7 @@ final class BestSolutionHolder<Solution_> {
   private volatile BigInteger currentVersion = BigInteger.ZERO;
   // Protected by this monitor, together with registration and solver queue admission.
   private boolean problemChangeAdmissionClosed;
+  private final ProblemChangeCancellation cancellation = new ProblemChangeCancellation();
 
   private static SortedMap<BigInteger, List<CompletableFuture<Void>>> createNewProblemChangesMap() {
     return createNewProblemChangesMap(Collections.emptySortedMap());
@@ -127,9 +128,23 @@ final class BestSolutionHolder<Solution_> {
   }
 
   void cancelPendingChanges() {
-    // CompletableFuture continuations may reenter a job or manager; run them outside the monitor.
-    closeAndDrainPendingChanges()
-        .forEach(pendingProblemChange -> pendingProblemChange.cancel(false));
+    var changes = closeAndDrainPendingChanges();
+    cancelPendingChanges(changes);
+    // Retain immediate state publication for internal normal-completion callers, independently
+    // of the application continuations running on cancellation tasks.
+    ProblemChangeCancellation.awaitPublication(changes);
+  }
+
+  void cancelPendingChanges(List<CompletableFuture<Void>> pendingChanges) {
+    cancellation.dispatch(pendingChanges);
+  }
+
+  void awaitCancellationPublication(long deadlineNanos) throws InterruptedException {
+    cancellation.awaitPublication(deadlineNanos);
+  }
+
+  void awaitCancellationCompletion() {
+    cancellation.awaitCompletion();
   }
 
   void cancelPendingChangesQuietly() {

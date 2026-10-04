@@ -286,6 +286,7 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
       while (true) {
         try {
           if (consumerExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)) {
+            bestSolutionHolder.awaitCancellationCompletion();
             return;
           }
         } catch (InterruptedException e) {

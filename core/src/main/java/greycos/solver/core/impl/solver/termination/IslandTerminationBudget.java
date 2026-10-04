@@ -301,8 +301,12 @@ public final class IslandTerminationBudget<Solution_> {
 
     @Override
     public boolean isTerminated() {
+      if (children.isEmpty()) {
+        return false;
+      }
       for (var child : children) {
-        if (child.applicable(search) && child.isTerminated() == or) {
+        boolean terminated = child.applicable(search) && child.isTerminated();
+        if (terminated == or) {
           return or;
         }
       }

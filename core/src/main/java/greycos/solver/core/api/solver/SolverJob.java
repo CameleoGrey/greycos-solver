@@ -62,15 +62,20 @@ public interface SolverJob<Solution_> {
    *
    * <p>Does nothing if the solver already terminated.
    *
-   * <p>Waits for the termination or cancellation to complete before returning. During termination,
-   * a {@code bestSolutionConsumer} could still be called. When the solver terminates, the {@code
-   * finalBestSolutionConsumer} is executed with the latest best solution. These consumers run on a
-   * consumer thread independently of the termination and may still run even after this method
-   * returns.
+   * <p>Each call from an external thread waits for termination or cancellation to complete, even if
+   * termination was already requested. Calls from this job's solver thread or a solver event or
+   * inline problem-change completion callback record the request and return without waiting. During
+   * termination, a {@code bestSolutionConsumer} could still be called. When the solver terminates,
+   * the {@code finalBestSolutionConsumer} is executed with the latest best solution. These
+   * consumers run on a consumer thread independently of the termination and may still run even
+   * after this method returns.
    *
-   * <p>It waits for no more than one minute, at which point it returns. In this case the solver
+   * <p>The wait is limited to one minute from method entry, including problem loading and startup.
+   * If interrupted while waiting, it returns with the interrupt flag restored and the termination
+   * request retained. At the time limit, it cancels the final result and closes event admission
+   * without waiting for accepted callbacks or problem-change continuations to finish. The solver
    * might still be running in the background, but it will be terminated as soon as possible. Any
-   * best solutions from that point on will be ignored.
+   * best solutions from that point on will be ignored; previously accepted callbacks may still run.
    */
   void terminateEarly();
 

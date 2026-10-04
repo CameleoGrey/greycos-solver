@@ -2,6 +2,7 @@ package greycos.solver.core.impl.solver;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -46,6 +47,9 @@ public final class DefaultSolverManager<Solution_> implements SolverManager<Solu
   private final SolverFactory<Solution_> solverFactory;
   private final ExecutorService solverThreadPool;
   private final ConcurrentMap<Object, DefaultSolverJob<Solution_>> problemIdToSolverJobMap;
+  // Job IDs may be reused as soon as solving ends; callback cleanup has separate ownership.
+  private final Set<DefaultSolverJob<Solution_>> solverJobsAwaitingCleanup =
+      ConcurrentHashMap.newKeySet();
   private final Object admissionLock = new Object();
   // Protected by admissionLock, together with registration and executor submission.
   private boolean closed;
@@ -141,6 +145,8 @@ public final class DefaultSolverManager<Solution_> implements SolverManager<Solu
         if (closed) {
           throw new RejectedExecutionException("The solver manager is already closed.");
         }
+        // Install cleanup ownership before publishing the job to concurrent cancellation.
+        solverJobsAwaitingCleanup.add(solverJob);
         if (problemIdToSolverJobMap.putIfAbsent(problemId, solverJob) != null) {
           throw new IllegalStateException(
               "The problemId (%s) is already solving.".formatted(problemId));
@@ -191,6 +197,7 @@ public final class DefaultSolverManager<Solution_> implements SolverManager<Solu
 
   @Override
   public void terminateEarly(Object problemId) {
+    long deadlineNanos = DefaultSolverJob.earlyTerminationDeadline();
     var solverJob = getSolverJob(problemId);
     if (solverJob == null) {
       // We cannot distinguish between "already terminated" and "never solved" without causing a
@@ -199,7 +206,7 @@ public final class DefaultSolverManager<Solution_> implements SolverManager<Solu
           "Ignoring terminateEarly() call because problemId ({}) is not solving.", problemId);
       return;
     }
-    solverJob.terminateEarly();
+    solverJob.terminateEarly(deadlineNanos);
   }
 
   @Override
@@ -207,7 +214,7 @@ public final class DefaultSolverManager<Solution_> implements SolverManager<Solu
     List<DefaultSolverJob<Solution_>> solverJobs;
     synchronized (admissionLock) {
       closed = true;
-      solverJobs = List.copyOf(problemIdToSolverJobMap.values());
+      solverJobs = List.copyOf(solverJobsAwaitingCleanup);
       solverThreadPool.shutdownNow();
     }
     var closeActions = solverJobs.stream().map(DefaultSolverJob::prepareClose).toList();
@@ -218,6 +225,10 @@ public final class DefaultSolverManager<Solution_> implements SolverManager<Solu
     closeActions.forEach(action -> action.finishClose());
     // An active problem finder must not prevent queued cleanup or hold a startup lock here.
     solverJobs.forEach(DefaultSolverJob::awaitConsumerClose);
+  }
+
+  void unregisterSolverJobCleanup(DefaultSolverJob<Solution_> solverJob) {
+    solverJobsAwaitingCleanup.remove(solverJob);
   }
 
   void unregisterSolverJob(Object problemId, DefaultSolverJob<Solution_> solverJob) {

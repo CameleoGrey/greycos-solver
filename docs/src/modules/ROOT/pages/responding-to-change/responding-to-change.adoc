@@ -631,7 +631,7 @@ Java::
 ----
     public void bestSolutionChanged(BestSolutionChangedEvent<VehicleRoutePlan> event) {
         if (event.isEveryProblemChangeProcessed()
-                // Ignore infeasible (including uninitialized) solutions
+                && event.isNewBestSolutionInitialized()
                 && event.getNewBestSolution().getScore().isFeasible()) {
             ...
         }
@@ -641,8 +641,9 @@ Java::
 
 ====
 
-. Use the event's `isNewBestSolutionInitialized()` method instead of `Score.isFeasible()` to only ignore uninitialized solutions,
-but do accept infeasible solutions too.
+. Initialization and score feasibility are separate checks.
+For example, construction can terminate early with required assignments still missing even when the score has no hard violations.
+To accept initialized but infeasible solutions, retain `isNewBestSolutionInitialized()` and omit the `Score.isFeasible()` check.
 
 
 [#recommendedFitAPI]

@@ -2730,6 +2730,16 @@ has no solution instance to pass to the supplier.
 Include every entity referenced by a declared source when using the class-and-entities overload.
 ====
 
+The class-and-entities overload can be called again after changing assignments.
+It rebuilds basic inverse collections and list owner, index, previous-element and next-element shadows
+for the supplied objects, then updates declarative shadows and finally cascading shadows.
+It supports models containing both basic and list variables.
+Include the source entities and affected inverse owners, including an old owner whose inverse collection becomes empty.
+Also include elements removed from a planning list so their list shadows can be cleared.
+Basic inverse collections must be non-null and mutable; the update preserves each collection instance.
+Null basic assignments contribute no inverse membership.
+Objects omitted from the arguments are not updated, and this overload does not construct a solution or evaluate its value ranges.
+
 In the following example, a model that uses a planning list variable is employed to demonstrate the test feature.
 
 [tabs]

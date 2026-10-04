@@ -32,11 +32,67 @@ import greycos.solver.core.impl.solver.thread.ChildThreadType;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class PartitionTerminationBudgetTest {
 
   private final SolverScope<TestdataSolution> parent = mockSolverScope();
   private final AbstractPhaseScope<TestdataSolution> parentPhase = phase(parent);
+
+  @ParameterizedTest
+  @CsvSource({
+    "true, false, false", "true, true, false", "true, false, true", "true, true, true",
+    "false, false, false", "false, true, false", "false, false, true", "false, true, true"
+  })
+  void inapplicableOperandsStayUnsatisfiedAcrossCompositionAndOrder(
+      boolean and, boolean reverse, boolean nested) {
+    Termination<TestdataSolution> unavailable = new UnimprovedStepCountTermination<>(2);
+    if (nested) {
+      unavailable = UniversalTermination.or(unavailable);
+    }
+    var expired = new TimeMillisSpentTermination<TestdataSolution>(0);
+    var operands = reverse ? List.of(unavailable, expired) : List.of(expired, unavailable);
+    var definition =
+        and ? new AndCompositeTermination<>(operands) : new OrCompositeTermination<>(operands);
+    var budget = new PartitionTerminationBudget<>(definition, parentPhase);
+    SolverScope<TestdataSolution> childScope = mockSolverScope();
+    var child = budget.createChildTermination(childScope);
+    var bridge = PhaseTermination.bridge(child);
+    child.solvingStarted(childScope);
+    assertThat(budget.isDefinitelyTerminated()).isEqualTo(!and);
+    assertThat(child.isSolverTerminated(childScope)).isEqualTo(!and);
+    var construction = new ConstructionHeuristicPhaseScope<>(childScope, 0);
+    child.phaseStarted(construction);
+    assertThat(child.isPhaseTerminated(construction)).isEqualTo(!and);
+    assertThat(bridge.isPhaseTerminated(construction)).isEqualTo(!and);
+    // Predicate applicability must not discard the supported shared-time cooling gradient.
+    assertThat(bridge.calculatePhaseTimeGradient(construction)).isEqualTo(1.0);
+    child.phaseEnded(construction);
+    assertThat(child.isSolverTerminated(childScope)).isEqualTo(!and);
+    child.solvingEnded(childScope);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void emptyExpressionsCannotTerminateAChildOrProveParentCompletion(boolean and) {
+    UniversalTermination<TestdataSolution> empty =
+        and ? new AndCompositeTermination<>(List.of()) : new OrCompositeTermination<>(List.of());
+    var expired = new TimeMillisSpentTermination<TestdataSolution>(0);
+    for (var definition : List.of(empty, UniversalTermination.and(expired, empty))) {
+      var budget = new PartitionTerminationBudget<>(definition, parentPhase);
+      var child = budget.createChildTermination(parent);
+      assertThat(budget.isDefinitelyTerminated()).isFalse();
+      assertThat(child.isSolverTerminated(parent)).isFalse();
+      assertThat(child.isPhaseTerminated(parentPhase)).isFalse();
+      assertThat(PhaseTermination.bridge(child).isPhaseTerminated(parentPhase)).isFalse();
+    }
+    var orBudget =
+        new PartitionTerminationBudget<>(UniversalTermination.or(expired, empty), parentPhase);
+    assertThat(orBudget.isDefinitelyTerminated()).isTrue();
+    assertThat(orBudget.createChildTermination(parent).isPhaseTerminated(parentPhase)).isTrue();
+  }
 
   @Test
   void phaseClockAndSolverClockRetainTheirOrigins() {
@@ -50,13 +106,17 @@ class PartitionTerminationBudgetTest {
     SolverScope<TestdataSolution> child = mockSolverScope();
     var phaseTermination = phaseBudget.createChildTermination(parent);
     var solverTermination = solverBudget.createChildTermination(parent);
+    var childPhase = phase(child);
     assertThat(phaseTermination.calculateSolverTimeGradient(child)).isEqualTo(0.2);
     assertThat(solverTermination.calculateSolverTimeGradient(child)).isEqualTo(0.9);
     assertThat(phaseTermination.isSolverTerminated(child)).isFalse();
+    assertThat(PhaseTermination.bridge(phaseTermination).isPhaseTerminated(childPhase)).isFalse();
     when(parentPhase.calculatePhaseTimeMillisSpentUpToNow()).thenReturn(100L);
     phaseBudget.refresh();
     assertThat(phaseTermination.isSolverTerminated(child)).isTrue();
     assertThat(solverTermination.isSolverTerminated(child)).isFalse();
+    assertThat(PhaseTermination.bridge(phaseTermination).isPhaseTerminated(childPhase)).isTrue();
+    assertThat(PhaseTermination.bridge(solverTermination).isPhaseTerminated(childPhase)).isFalse();
   }
 
   @Test
@@ -305,10 +365,16 @@ class PartitionTerminationBudgetTest {
     var plumbing = new BasicPlumbingTermination<TestdataSolution>(false);
     var budget = new PartitionTerminationBudget<>(PhaseTermination.bridge(plumbing), parentPhase);
     var child = budget.createChildTermination(parent);
+    var bridge = PhaseTermination.bridge(child);
+    var polling = new AlnsTerminationPolling<>(parentPhase, bridge);
     plumbing.terminateEarly();
     assertThat(child.isSolverTerminated(mockSolverScope())).isFalse();
+    assertThat(bridge.isPhaseTerminated(parentPhase)).isFalse();
+    assertThat(polling.checkProbe()).isFalse();
     budget.refresh();
     assertThat(child.isSolverTerminated(mockSolverScope())).isTrue();
+    assertThat(bridge.isPhaseTerminated(parentPhase)).isTrue();
+    assertThat(polling.checkProbe()).isTrue();
     assertThat(budget.isDefinitelyTerminated()).isTrue();
     assertThat(child.calculateSolverTimeGradient(mockSolverScope())).isEqualTo(-1.0);
   }

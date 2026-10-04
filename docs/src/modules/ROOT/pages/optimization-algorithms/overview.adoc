@@ -396,6 +396,14 @@ The solver then terminates at its earliest convenience.
 After termination,
 the `Solver.solve(Solution)` method returns in the solver thread (which is the original thread that called it).
 
+For a managed job, `SolverJob.terminateEarly()` and `SolverManager.terminateEarly(problemId)`
+wait for termination or cancellation for at most one minute per call.
+Each external caller waits independently, including when another caller has already requested cancellation.
+Calls from the solver thread or an event consumer only request cancellation, so they do not wait for their own work to finish.
+Consumer callbacks and problem-change future continuations can still be running after the method returns.
+At the timeout, the job stops accepting changes and new publications, but application code that does not respond to interruption may still be running.
+`SolverManager.close()` also drains its pending cleanup and has no one-minute return limit.
+
 [NOTE]
 ====
 When an `ExecutorService` shuts down, it interrupts all threads in its thread pool.
@@ -856,9 +864,10 @@ public interface Solver<Solution_> {
 ====
 
 The ``BestSolutionChangedEvent``'s `newBestSolution` may not be initialized or feasible.
-Use the `isFeasible()` method on ``BestSolutionChangedEvent``'s new best `Score` to detect such cases.
-Use the event's `isNewBestSolutionInitialized()` method to only ignore uninitialized solutions,
-but also accept infeasible solutions.
+Check the event's `isNewBestSolutionInitialized()` method to detect missing required assignments.
+Check `isFeasible()` on its new best `Score` separately to detect structural flaws or hard-constraint violations.
+To accept only initialized, feasible solutions, require both checks to pass.
+In real-time planning, also check `isEveryProblemChangeProcessed()` before using the result.
 
 [WARNING]
 ====
