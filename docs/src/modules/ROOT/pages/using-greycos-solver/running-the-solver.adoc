@@ -105,8 +105,7 @@ You can set the environment mode in the solver configuration XML file:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   <environmentMode>STEP_ASSERT</environmentMode>
   ...
 </solver>
@@ -567,8 +566,7 @@ For more detailed monitoring, GreyCOS Solver can be configured to monitor additi
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   <monitoring>
     <metric>BEST_SCORE</metric>
     <metric>SCORE_CALCULATION_COUNT</metric>
@@ -677,8 +675,7 @@ To change the root seed, specify `randomSeed`:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   <randomSeed>0</randomSeed>
   ...
 </solver>

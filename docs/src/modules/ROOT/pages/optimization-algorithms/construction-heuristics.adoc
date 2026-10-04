@@ -850,7 +850,7 @@ XML::
 +
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   <!-- Domain and score configuration. -->
   <nearbyDistanceMeterClass>org.acme.vehiclerouting.domain.solver.nearby.CustomerNearbyDistanceMeter</nearbyDistanceMeterClass>
   <constructionHeuristic>

@@ -32,7 +32,7 @@ Preview features need to be activated in the solverConfig.xml file.
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   <enablePreviewFeature>DIVERSIFIED_LATE_ACCEPTANCE</enablePreviewFeature>
   <enablePreviewFeature>PLANNING_SOLUTION_DIFF</enablePreviewFeature>
 </solver>

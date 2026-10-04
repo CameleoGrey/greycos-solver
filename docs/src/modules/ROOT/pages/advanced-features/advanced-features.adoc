@@ -128,7 +128,7 @@ set `nearbyDistanceMeterClass` at solver level:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   ...
   <nearbyDistanceMeterClass>org.acme.schooltimetabling.cotwin.solver.nearby.LectureNearbyDistanceMeter</nearbyDistanceMeterClass>
   ...
@@ -181,7 +181,7 @@ for Local Search:
 [source,xml,options="nowrap"]
 ----
 <?xml version="1.0" encoding="UTF-8"?>
-<solver xmlns="https://greycos.ai/xsd/solver">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
     ...
     <nearbyDistanceMeterClass>org.acme.vehiclerouting.domain.solver.nearby.CustomerNearbyDistanceMeter</nearbyDistanceMeterClass>
     ...
@@ -443,8 +443,7 @@ XML::
 Add the following to your `solverConfig.xml`:
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
 
     ...
     <moveThreadCount>AUTO</moveThreadCount>
@@ -525,8 +524,7 @@ There are additional parameters you can supply to your `solverConfig.xml`:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   <moveThreadCount>4</moveThreadCount>
   <threadFactoryClass>...MyAppServerThreadFactory</threadFactoryClass>
   ...
@@ -815,8 +813,7 @@ and the <<partitionedSearch,Partition Search threads>> with it:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   <threadFactoryClass>...MyAppServerThreadFactory</threadFactoryClass>
   ...
 </solver>

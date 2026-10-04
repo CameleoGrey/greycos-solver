@@ -503,6 +503,12 @@ This example focuses on processes assigned to computers above a configured cost 
 selecting at most the requested size in encounter order. It assumes the existing Cloud Balancing
 model with mandatory `CloudProcess.computer` assignments.
 
+The Cloud Balancing and Vehicle Routing models used below live in the separate
+https://github.com/CameleoGrey/greycos_java_examples[GreyCOS Java examples repository].
+That repository is private; access is required to use its domain classes and runnable programs.
+See its https://github.com/CameleoGrey/greycos_java_examples/blob/main/README.md[README]
+for dependency setup and commands. The inline snippets illustrate the extension patterns using those models.
+
 For these two Cloud Balancing classes, imports are `java.util.ArrayList`,
 `java.util.List`, the types in `greycos.solver.core.api.solver.alns`,
 `greycos.solver.core.api.score.HardSoftScore`, and
@@ -735,10 +741,14 @@ legal insertion positions still may violate scored hard constraints. A geographi
 does not by itself enforce pickup-delivery pairing, precedence, time windows, or optional-work policy.
 Those belong in the decision model and constraints, with specialized operators where helpful.
 
-The repository's `examples.vehiclerouting.VehicleRoutingALNS` contains relatedness and detour-ranking
-callbacks. `VehicleRoutingALNSNearby` illustrates a larger custom repair, but also depends on
+The examples repository's
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/src/main/java/examples/vehiclerouting/VehicleRoutingALNS.java[`VehicleRoutingALNS`]
+contains relatedness and detour-ranking callbacks.
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/src/main/java/examples/vehiclerouting/VehicleRoutingALNSNearby.java[`VehicleRoutingALNSNearby`]
+illustrates a larger custom repair, but also depends on
 implementation-level nearby utilities; the public-only patterns above avoid that coupling.
-See the repository's `examples/README.adoc` for the current example configurations and commands.
+See the https://github.com/CameleoGrey/greycos_java_examples/blob/main/README.md#time-windowed-vehicle-routing[Vehicle Routing instructions]
+for the current example configurations and commands; repository access is required.
 After solving, reconstruct routes by business IDs and independently replay travel, timing, capacity,
 and served-work totals before accepting a result.
 
@@ -1069,7 +1079,11 @@ For a controlled comparison of clock-polling overhead,
 checkpoint. It does not change the configured mode or the set of supported repair-attempt configurations.
 Keep this diagnostic setting consistent when comparing throughput and report it with the termination budget.
 
-For real-domain experiments, the repository's `examples/README.adoc` documents the available
-Vehicle Routing ALNS programs, configurations, and validation tests. Start from those actual
+For real-domain experiments, the separate examples repository's
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/README.md[README]
+documents the available Vehicle Routing ALNS programs, configurations, and validation tests.
+Repository access is required. Follow its
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/README.md#tests-and-further-checks[test setup and compilation caveats]
+before running validation tests. Start from those actual
 resources and compare solution quality at matched wall-clock budgets across multiple seeds; their individual settings are examples,
 not framework defaults or evidence of a universally best portfolio.

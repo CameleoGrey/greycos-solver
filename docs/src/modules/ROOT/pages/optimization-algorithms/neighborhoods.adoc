@@ -1320,7 +1320,7 @@ and reference the implementation class in the solver configuration like so:
 
 [source,xml]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   ...
   <enablePreviewFeature>NEIGHBORHOODS</enablePreviewFeature>
   <constructionHeuristic/>
@@ -1395,5 +1395,5 @@ configuring both together throws an exception at solver build time.
 All move providers included in the neighborhood have the same probability of being selected to generate a move.
 
 We are actively working on adding more advanced moves in the default neighborhood,
-such as xref:optimization-algorithms/move-selector-reference.adoc#nearbySelection[nearby selection].
+such as xref:advanced-features/advanced-features.adoc#nearbySelection[nearby selection].
 The Neighborhoods API is still far from being a full replacement of Move Selectors.

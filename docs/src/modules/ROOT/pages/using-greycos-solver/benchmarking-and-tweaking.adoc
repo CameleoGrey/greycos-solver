@@ -92,8 +92,7 @@ A benchmark configuration XML file looks like this:
 [source,xml,options="nowrap"]
 ----
 <?xml version="1.0" encoding="UTF-8"?>
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   <benchmarkDirectory>local/data/</benchmarkDirectory>
 
   <inheritedSolverBenchmark>
@@ -326,8 +325,7 @@ To avoid that distortion, the benchmarker runs some of the benchmarks for 30 sec
 
 [source,xml,options="nowrap"]
 ----
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   ...
   <warmUpSecondsSpentLimit>60</warmUpSecondsSpentLimit>
   ...
@@ -338,8 +336,7 @@ Turn off the warm up phase altogether by setting it to zero:
 
 [source,xml,options="nowrap"]
 ----
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   ...
   <warmUpSecondsSpentLimit>0</warmUpSecondsSpentLimit>
   ...
@@ -361,8 +358,7 @@ To quickly configure and run a benchmark for typical solver configs, use a `solv
 [source,xml,options="nowrap"]
 ----
 <?xml version="1.0" encoding="UTF-8"?>
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   <benchmarkDirectory>local/</benchmarkDirectory>
 
   <inheritedSolverBenchmark>
@@ -466,8 +462,7 @@ If you share the benchmark report with people from another country, consider ove
 
 [source,xml,options="nowrap"]
 ----
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   ...
   <benchmarkReport>
     <locale>en_US</locale>
@@ -489,8 +484,7 @@ Configure it like this:
 
 [source,xml,options="nowrap"]
 ----
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   ...
   <benchmarkReport>
     <solverRankingType>TOTAL_SCORE</solverRankingType>
@@ -655,8 +649,7 @@ To configure one or more, add a `problemStatisticType` line for each one:
 
 [source,xml,options="nowrap"]
 ----
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   <benchmarkDirectory>local/</benchmarkDirectory>
   <inheritedSolverBenchmark>
     <problemBenchmarks>
@@ -897,8 +890,7 @@ To configure one, add a `singleStatisticType` line:
 
 [source,xml,options="nowrap"]
 ----
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   ...
   <inheritedSolverBenchmark>
     <problemBenchmarks>
@@ -1024,8 +1016,7 @@ you can run multiple benchmarks in parallel on multiple threads to get your benc
 
 [source,xml,options="nowrap"]
 ----
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   ...
   <parallelBenchmarkCount>AUTO</parallelBenchmarkCount>
   ...
@@ -1070,8 +1061,7 @@ for example when running benchmarks on an application server or a cloud platform
 
 [source,xml,options="nowrap"]
 ----
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   ...
   <threadFactoryClass>...MyCustomThreadFactory</threadFactoryClass>
   ...
@@ -1096,8 +1086,7 @@ Just add a `<subSingleCount>` element to an <<inheritedSolverBenchmark,`<inherit
 [source,xml,options="nowrap"]
 ----
 <?xml version="1.0" encoding="UTF-8"?>
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   ...
   <inheritedSolverBenchmark>
     ...
@@ -1130,8 +1119,7 @@ To reduce the verbosity of such a benchmark configuration, you can use a http://
 
 [source,xml,options="nowrap"]
 ----
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   ...
   <inheritedSolverBenchmark>
     ...
@@ -1165,8 +1153,7 @@ To configure Matrix Benchmarking for Simulated Annealing (or any other configura
 
 [source,xml,options="nowrap"]
 ----
-<plannerBenchmark xmlns="https://greycos.ai/xsd/benchmark" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/benchmark https://greycos.ai/xsd/benchmark/benchmark.xsd">
+<plannerBenchmark xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/benchmark">
   ...
   <inheritedSolverBenchmark>
     ...

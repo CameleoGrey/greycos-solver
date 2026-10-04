@@ -39,8 +39,7 @@ Simplest configuration of Brute Force:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   ...
   <exhaustiveSearch>
     <exhaustiveSearchType>BRUTE_FORCE</exhaustiveSearchType>
@@ -90,8 +89,7 @@ Simplest configuration of Branch And Bound:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   ...
   <exhaustiveSearch>
     <exhaustiveSearchType>BRANCH_AND_BOUND</exhaustiveSearchType>

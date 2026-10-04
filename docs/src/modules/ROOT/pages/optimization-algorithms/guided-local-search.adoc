@@ -263,8 +263,11 @@ Defaults are resolved when the solver is built.
 Existing explicit sample sizes, factors, scale overrides, targets, and reset settings remain effective.
 For changed search behavior, see the xref:upgrading-greycos-solver/upgrade-to-latest.adoc#guidedLocalSearchUpgrade[GLS upgrade notes].
 
-The following complete solver configuration uses the time-windowed routing model from the examples module.
-It uses automatic features, directed generated selectors, and a 30-second solver-wide budget, including construction:
+The following complete solver configuration uses the time-windowed routing model from the separate
+https://github.com/CameleoGrey/greycos_java_examples[GreyCOS Java examples repository].
+That repository is private; access is required to use its domain classes, runnable programs, and benchmarks.
+The inline configuration and Java snippets below assume those domain classes are available.
+The configuration uses automatic features, directed generated selectors, and a 30-second solver-wide budget, including construction:
 
 [source,xml]
 ----
@@ -345,12 +348,19 @@ public final class GuidedRoutingSolver {
 
 Call `GuidedRoutingSolver.buildSolver().solve(problem)` with an imported routing solution.
 For an executable example with 80% nearby and 20% broad move selection, use
-`examples.vehiclerouting.VehicleRoutingGuidedLocalSearch` and its
-`examples/vehiclerouting/vehicleRoutingGuidedLocalSearchSolverConfig.xml` resource.
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/src/main/java/examples/vehiclerouting/VehicleRoutingGuidedLocalSearch.java[`VehicleRoutingGuidedLocalSearch`]
+and its
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/src/main/resources/examples/vehiclerouting/vehicleRoutingGuidedLocalSearchSolverConfig.xml[solver XML].
+The XML's classpath resource name is `examples/vehiclerouting/vehicleRoutingGuidedLocalSearchSolverConfig.xml`.
+Follow the examples repository's
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/README.md[README] for dependency setup and run commands.
 The GLS-to-Late-Acceptance routing pipeline bounds its GLS phase to 60 seconds and uses a 30-second
 original-best idle limit before handing the retained best to Late Acceptance.
 The same GLS configuration is available in island local-search shorthand.
-For plain planning variables, see `examples.cloudbalancing.CloudBalancingGuidedLocalSearch`.
+For plain planning variables, see
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/src/main/java/examples/cloudbalancing/CloudBalancingGuidedLocalSearch.java[`CloudBalancingGuidedLocalSearch`]
+and its
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/src/main/resources/examples/cloudbalancing/cloudBalancingGuidedLocalSearchSolverConfig.xml[solver XML].
 
 For exhaustive list search, replace the local-search element above with:
 
@@ -486,8 +496,14 @@ For throughput measurements, disable assertions and compare the same initialized
 worker counts, and solve budgets. Measure original score and feasibility together with candidate throughput,
 penalty rounds, and memory. A faster feature evaluator alone does not establish better solution quality.
 
-The opt-in routing and cloud benchmarks under `examples/src/test/java/examples` export input and artifact hashes,
+The examples repository's opt-in
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/src/test/java/examples/vehiclerouting/VehicleRoutingGuidedLocalSearchBenchmarkTest.java[routing benchmark]
+and
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/src/test/java/examples/cloudbalancing/CloudBalancingGuidedLocalSearchBenchmarkTest.java[cloud benchmark]
+export input and artifact hashes,
 initialized assignments, effective configurations, original-score trajectories, diagnostics, and independently replayed results.
+Repository access is required. Before running them, follow the README's
+https://github.com/CameleoGrey/greycos_java_examples/blob/main/README.md#tests-and-further-checks[test setup, compilation caveats, and opt-in properties].
 Use saved construction-heuristic starts for paired comparisons and verify their assignments and scores before measuring search.
 Preserve the effective construction configuration, including explicit nearby selectors and any enabled automatic nearby selection.
 Use `NONE` for sequential search; a move-thread count of `1` creates one move worker.

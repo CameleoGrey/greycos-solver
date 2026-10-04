@@ -356,8 +356,7 @@ The solver configuration needs to declare each planning entity class:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
 ...
 <entityClass>org.acme.schooltimetabling.domain.Lesson</entityClass>
 ...
@@ -606,8 +605,7 @@ One way to deal with this is to filter the entity selector of the placer in the 
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   ...
   <constructionHeuristic>
     <queuedEntityPlacer>
@@ -797,8 +795,7 @@ One way to deal with this is to filter the entity selector of the placer in the 
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   ...
   <constructionHeuristic>
     <queuedValuePlacer>
@@ -2892,8 +2889,7 @@ The solver configuration needs to declare the planning solution class:
 
 [source,xml,options="nowrap"]
 ----
-<solver xmlns="https://greycos.ai/xsd/solver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://greycos.ai/xsd/solver https://greycos.ai/xsd/solver/solver.xsd">
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
   ...
   <solutionClass>org.acme.schooltimetabling.Timetable</solutionClass>
   ...
@@ -2947,8 +2943,6 @@ It is ignored on parent classes or subclasses without that annotation.
 
 In rare cases, a planning entity might be a singleton: use `@PlanningEntityProperty` on its getter (or field) instead.
 
-Both annotations can also be <<autoDiscoverSolutionProperties,auto discovered>> if enabled.
-
 
 [#scoreOfASolution]
 === `Score` of a Solution (`@PlanningScore`)
@@ -2990,8 +2984,6 @@ public class Timetable {
 ====
 
 Some use cases use xref:constraints-and-score/overview.adoc#scoreType[other score types].
-
-This annotation can also be <<autoDiscoverSolutionProperties,auto discovered>> if enabled.
 
 
 [#problemFacts]
@@ -3047,8 +3039,6 @@ It is ignored on parent classes or subclasses without that annotation.
 ====
 
 In rare cases, a problem fact might be a singleton: use `@ProblemFactProperty` on its method (or field) instead.
-
-Both annotations can also be <<autoDiscoverSolutionProperties,auto discovered>> if enabled.
 
 
 [#cachedProblemFact]

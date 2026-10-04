@@ -18,7 +18,7 @@ The GreyCOS Team <https://github.com/CameleoGrey/greycos-solver>
 
 // PDF uses :title-logo-image: on first page, no need to repeat image later on
 ifndef::backend-pdf[]
-image::shared/greycos-solver-logo.png[align="center"]
+image::shared/GreyCOS_logo_no_background.png[align="center"]
 endif::[]
 
 include::introduction.adoc[leveloffset=+1]
