@@ -18,9 +18,21 @@ For example:
 [#compatibilityMatrix]
 == Compatibility matrix
 
-GreyCOS Solver 2.x uses Java 21 as its bytecode baseline,
+GreyCOS Solver uses Java 21 as its bytecode baseline,
 integrates with Quarkus 3.x, and targets Spring Boot 4.1.
-Use Java 25 for native-image builds and CI parity with the project build.
+Java 21 and 25 are the validated JVM targets; use Java 25 for the full `-Dfull` project build.
+Native-image builds use a Java 25-based toolchain and require separate validation;
+JVM validation does not establish native-image compatibility.
+
+JDK 26+ compatibility has not been qualified.
+In plain Java, the default `AUTO` cloning path uses reflection,
+including mutation of `final` instance fields when cloning those fields.
+JDK 26 warns by default when final-field mutation has not been enabled;
+`--illegal-final-field-mutation=deny` rejects such writes.
+Before deploying on JDK 26+, test the application's cotwin model and cloning configuration with this strict setting.
+If reflective final-field mutation is required, enable it for the module performing the mutation
+(`--enable-final-field-mutation=ALL-UNNAMED` for classpath deployments), with the required package openness.
+See https://docs.oracle.com/en/java/javase/26/migrate/preparing-final-field-mutation-restrictions.html[Oracle's final-field mutation migration guidance].
 
 
 [#integrationWithPersistentStorage]
@@ -287,7 +299,8 @@ the _GreyCOS AI constraint solver_ extension before generating your application.
 [#integrationWithQuarkusVersionPolicy]
 === Supported Quarkus versions
 
-GreyCOS tracks the latest Quarkus 3 release and validates its native integration on Java 25.
+GreyCOS integrates with Quarkus 3.
+For native-image requirements, see the <<compatibilityMatrix,compatibility matrix>>.
 Quarkus supplies its own Jackson 2 stack; keep it separate from the standalone Jackson 3 persistence modules.
 
 [#integrationWithQuarkusProperties]

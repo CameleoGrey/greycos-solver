@@ -15,6 +15,10 @@ import org.jspecify.annotations.NullMarked;
  * Assigns a non-null value to each entity whose planning variable is currently unassigned (null).
  * Only generates moves where the value is in range for that entity.
  *
+ * <p>Pinned entities are excluded as move sources. A pinned entity may still be a destination value
+ * when it belongs to the source entity's value range; assigning it does not change its own planning
+ * variables.
+ *
  * <p>{@code ChangeMoveProvider} makes this same move too, whenever its own {@code crossingNull} is
  * {@code true} - but there, only when the randomly drawn entity happens to already be unassigned,
  * so it arrives rarely. This class exists to make it happen often.
@@ -54,7 +58,7 @@ public final class AssignMoveProvider<Solution_, Entity_, Value_>
     return moveStreamFactory
         .pick(unassignedEntities)
         .pick(
-            moveStreamFactory.forEach(variableMetaModel.type(), false),
+            moveStreamFactory.forEachUnfiltered(variableMetaModel.type(), false),
             NeighborhoodsJoiners.filtering(nodeSharingSupportFunctions.valueInRangeFilter()))
         .asMove(
             (view, entity, value) ->

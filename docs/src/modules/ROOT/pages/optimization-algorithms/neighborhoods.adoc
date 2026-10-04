@@ -985,6 +985,11 @@ By default, `forEach` will exclude pinned items, as generating moves for pinned 
 Additionally, it allows to specify whether it should include `null` in the resulting dataset or not;
 this is useful when generating moves for nullable planning variables.
 
+For destination values of a basic planning variable, use `forEachUnfiltered` when the values can themselves be pinned entities.
+Assigning such a value changes the source entity's variable, not the pinned destination's variables.
+Keep pin filtering on the source entities and check that each destination belongs to the source entity's value range.
+The built-in `ChangeMoveProvider` and `AssignMoveProvider` apply this distinction automatically.
+
 Every enumerating stream is terminated one of two ways: `MoveStreamFactory.pick()`, handing the rows
 to the <<neighborhoodsPicking,picking layer>> below, or `asCachedDataset()`, handing you the dataset handle to resolve and
 pick yourself. Both terminal operations keep the dataset in memory and up to date;

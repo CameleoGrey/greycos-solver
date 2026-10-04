@@ -14,6 +14,10 @@ import org.jspecify.annotations.NullMarked;
 /**
  * For each entity with a non-null value, creates a move to change it to a different non-null value.
  *
+ * <p>Pinned entities are excluded as move sources. A pinned entity may still be a destination value
+ * when it belongs to the source entity's value range; assigning it does not change its own planning
+ * variables.
+ *
  * <p>When {@code crossingNull} is {@code true} (the default whenever the variable {@link
  * PlanningVariableMetaModel#allowsUnassigned() allows unassigned values}), this provider also
  * creates null-to-non-null (assign) and non-null-to-null (unassign) moves. This does not remove the
@@ -76,7 +80,7 @@ public final class ChangeMoveProvider<Solution_, Entity_, Value_>
     return moveStreamFactory
         .pick(entities)
         .pick(
-            moveStreamFactory.forEach(variableMetaModel.type(), crossingNull),
+            moveStreamFactory.forEachUnfiltered(variableMetaModel.type(), crossingNull),
             NeighborhoodsJoiners.filtering(nodeSharingSupportFunctions.differentValueFilter()),
             NeighborhoodsJoiners.filtering(nodeSharingSupportFunctions.valueInRangeFilter()))
         .asMove(

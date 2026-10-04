@@ -142,7 +142,10 @@ public interface SolutionManager<Solution_, Score_ extends Score<Score_>> {
    * Calculates and retrieves information about which constraints contributed to the solution's
    * score.
    *
-   * @param solution must be fully initialized otherwise an exception is thrown
+   * <p>The solution may be partially initialized. Use {@link ScoreAnalysis#isSolutionInitialized()}
+   * to check whether it was fully initialized at analysis time.
+   *
+   * @param solution the solution to analyze
    * @param fetchPolicy if unsure, pick {@link ScoreAnalysisFetchPolicy#FETCH_MATCH_COUNT}
    * @param solutionUpdatePolicy if unsure, pick {@link SolutionUpdatePolicy#UPDATE_ALL}
    * @throws IllegalStateException when constraint matching is disabled or not supported by the
