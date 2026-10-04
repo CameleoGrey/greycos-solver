@@ -847,7 +847,6 @@ public final class GuidedLocalSearchDecider<Solution_>
     scope.setStep(candidate.move());
     scope.setScore(candidate.score());
     scope.setAcceptedMoveCount(scope.getAcceptedMoveCount() + 1L);
-    if (LOGGER.isDebugEnabled()) scope.setStepString(candidate.move().toString());
     if (pipeline != null) {
       if (scope.getScoreDirector().requiresFlushing() && scope.getStepIndex() % 100 == 99) {
         scope.getScoreDirector().calculateScore();

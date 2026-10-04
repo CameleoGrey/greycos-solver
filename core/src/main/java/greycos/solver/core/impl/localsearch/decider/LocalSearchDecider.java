@@ -125,9 +125,6 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
         var score = scoreDirector.executeTemporaryMove(move, assertMoveScoreFromScratch);
         stepScope.getPhaseScope().addMoveEvaluationCount(move, 1L);
         stepScope.setStep(move);
-        if (logger.isDebugEnabled()) {
-          stepScope.setStepString(move.toString());
-        }
         stepScope.setScore(score);
         stepScope.setSelectedMoveCount(1L);
         stepScope.setAcceptedMoveCount(1L);
@@ -273,9 +270,6 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
     if (pickedMoveScope != null) {
       var step = pickedMoveScope.getMove();
       stepScope.setStep(step);
-      if (logger.isDebugEnabled()) {
-        stepScope.setStepString(step.toString());
-      }
       stepScope.setScore(pickedMoveScope.getScore());
     } else if (candidateLimit != null && candidateLimit.isExhausted()) {
       stepScope.setNoStepReason(LocalSearchStepScope.NoStepReason.NO_ADMISSIBLE_MOVE);

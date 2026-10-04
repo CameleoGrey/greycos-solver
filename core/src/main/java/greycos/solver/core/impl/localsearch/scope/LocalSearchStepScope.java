@@ -59,7 +59,8 @@ public final class LocalSearchStepScope<Solution_> extends AbstractStepScope<Sol
   }
 
   /**
-   * @return null if logging level is too high
+   * @return the move description captured before execution, or null if this step is not selected
+   *     for DEBUG logging
    */
   public String getStepString() {
     return stepString;

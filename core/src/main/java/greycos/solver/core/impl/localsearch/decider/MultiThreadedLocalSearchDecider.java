@@ -188,9 +188,6 @@ public class MultiThreadedLocalSearchDecider<Solution_> extends LocalSearchDecid
           stepScope.getScoreDirector().executeTemporaryMove(move, assertMoveScoreFromScratch);
       stepScope.getPhaseScope().addMoveEvaluationCount(move, 1L);
       stepScope.setStep(move);
-      if (logger.isDebugEnabled()) {
-        stepScope.setStepString(move.toString());
-      }
       stepScope.setScore(score);
       stepScope.setSelectedMoveCount(1L);
       stepScope.setAcceptedMoveCount(1L);

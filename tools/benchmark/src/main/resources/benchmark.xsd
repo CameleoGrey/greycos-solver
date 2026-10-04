@@ -1921,6 +1921,8 @@
                     
           <xs:element minOccurs="0" name="localSearchType" type="tns:localSearchType"/>
                     
+          <xs:element minOccurs="0" name="stepLoggingMode" type="tns:localSearchStepLoggingMode"/>
+                    
           <xs:element minOccurs="0" name="guidedLocalSearch" type="tns:guidedLocalSearchConfig"/>
                     
           <xs:choice minOccurs="0">
@@ -2518,6 +2520,18 @@
       <xs:enumeration value="STRATEGIC_OSCILLATION_BY_LEVEL"/>
             
       <xs:enumeration value="STRATEGIC_OSCILLATION_BY_LEVEL_ON_BEST_SCORE"/>
+          
+    </xs:restriction>
+      
+  </xs:simpleType>
+    
+  <xs:simpleType name="localSearchStepLoggingMode">
+        
+    <xs:restriction base="xs:string">
+            
+      <xs:enumeration value="ALL"/>
+            
+      <xs:enumeration value="BEST_SCORE_IMPROVED"/>
           
     </xs:restriction>
       

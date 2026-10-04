@@ -354,7 +354,7 @@ Meanwhile, the code is disrupted from doing further harm or obfuscating the erro
 ====
 * **warn**: Log suspicious circumstances.
 * **info**: Log every phase and the solver itself. See xref:optimization-algorithms/overview.adoc#scopeOverview[scope overview].
-* **debug**: Log every step of every phase. See xref:optimization-algorithms/overview.adoc#scopeOverview[scope overview].
+* **debug**: By default, log every step of every phase. See xref:optimization-algorithms/overview.adoc#scopeOverview[scope overview].
 * **trace**: Log every move of every step of every phase. See xref:optimization-algorithms/overview.adoc#scopeOverview[scope overview].
 
 [NOTE]
@@ -392,6 +392,45 @@ INFO  Local Search phase (1) ended: time spent (100), best score (0hard/1soft), 
 INFO  Solving ended: time spent (100), best score (0hard/1soft), move evaluation speed (1100/sec), phase total (2), environment mode (PHASE_ASSERT), move thread count (NONE).
 ----
 All time spent values are in milliseconds.
+
+[#localSearchStepLogging]
+To reduce step logging for fast stepping Local Search algorithms, such as Late Acceptance or Great Deluge,
+set `stepLoggingMode` to `BEST_SCORE_IMPROVED` on the Local Search phase:
+
+[source,xml,options="nowrap"]
+----
+<localSearch>
+  <stepLoggingMode>BEST_SCORE_IMPROVED</stepLoggingMode>
+</localSearch>
+----
+
+The equivalent Java configuration is:
+
+[source,java,options="nowrap"]
+----
+import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchStepLoggingMode;
+
+var localSearchPhaseConfig = new LocalSearchPhaseConfig()
+    .withStepLoggingMode(LocalSearchStepLoggingMode.BEST_SCORE_IMPROVED);
+----
+
+Keep `debug` enabled for the Local Search phase logger (`greycos.solver.core.impl.localsearch.DefaultLocalSearchPhase`)
+or its parent package.
+This setting filters its completed `LS step` messages; it does not enable logging by itself.
+Only a step that strictly improves the solver's historical best score is logged.
+Equal scores and improvements over the preceding step that remain below the historical best are omitted.
+For nested solvers, the comparison uses the best score of the solver running that phase.
+The step message format and original step indices are preserved, so indices may have gaps.
+The solver also skips preparing the picked-move description for suppressed step messages.
+
+The default mode is `ALL`, which preserves logging of every completed step.
+Set `ALL` explicitly to override an inherited `BEST_SCORE_IMPROVED` setting.
+At `trace` level, the same step filter still applies, while move diagnostics remain available.
+The filter also applies to completed `LS step` messages that report premature termination.
+Phase summaries, standalone termination and no-selected-move diagnostics, and Guided Local Search round messages
+retain their existing logger controls.
+The setting does not change search decisions, best-solution events or metrics.
 
 [tabs]
 ====

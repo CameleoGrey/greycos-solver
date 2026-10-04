@@ -25,6 +25,7 @@ import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPha
 import greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchStepLoggingMode;
 import greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 import greycos.solver.core.testcotwin.TestdataSolution;
 import greycos.solver.jackson.impl.cotwin.solution.JacksonSolutionFileIO;
@@ -32,6 +33,7 @@ import greycos.solver.jackson.impl.cotwin.solution.JacksonSolutionFileIO;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.xml.sax.SAXParseException;
@@ -189,6 +191,48 @@ class PlannerBenchmarkConfigTest {
       assertThat(writer.toString()).doesNotContain("nearbySelectionAutoConfigurationEnabled");
     }
     // Restore the namespace omitted by write() so the round trip validates the benchmark schema.
+    var roundTripXml =
+        writer
+            .toString()
+            .replace(
+                "<plannerBenchmark>",
+                "<plannerBenchmark xmlns=\"" + PlannerBenchmarkConfig.XML_NAMESPACE + "\">");
+    assertThat(io.read(new StringReader(roundTripXml)))
+        .usingRecursiveComparison()
+        .isEqualTo(config);
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @EnumSource(LocalSearchStepLoggingMode.class)
+  void stepLoggingModeValidatesRoundTripsAndInherits(LocalSearchStepLoggingMode mode) {
+    var modeElement = mode == null ? "" : "<stepLoggingMode>" + mode + "</stepLoggingMode>";
+    var xml =
+        """
+        <plannerBenchmark xmlns="%s">
+          <inheritedSolverBenchmark>
+            <solver><localSearch>%s</localSearch></solver>
+          </inheritedSolverBenchmark>
+          <solverBenchmark><name>Inherited step logging</name></solverBenchmark>
+        </plannerBenchmark>
+        """
+            .formatted(PlannerBenchmarkConfig.XML_NAMESPACE, modeElement);
+    var io = new PlannerBenchmarkConfigIO();
+    var config = io.read(new StringReader(xml));
+    var inherited = config.getInheritedSolverBenchmarkConfig();
+    var effective =
+        config.getSolverBenchmarkConfigList().getFirst().copyConfig().inherit(inherited);
+    var phase =
+        (LocalSearchPhaseConfig) effective.getSolverConfig().getPhaseConfigList().getFirst();
+    assertThat(phase.getStepLoggingMode()).isEqualTo(mode);
+    var writer = new StringWriter();
+    io.write(config, writer);
+    if (mode == null) {
+      assertThat(writer.toString()).doesNotContain("stepLoggingMode");
+    } else {
+      assertThat(writer.toString()).contains(modeElement);
+    }
+    // Restore the namespace so the round trip validates the generated benchmark schema too.
     var roundTripXml =
         writer
             .toString()

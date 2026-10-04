@@ -38,6 +38,7 @@ import org.jspecify.annotations.Nullable;
     propOrder = {
       "moveThreadCount",
       "localSearchType",
+      "stepLoggingMode",
       "guidedLocalSearchConfig",
       "moveSelectorConfig",
       "neighborhoodProviderClass",
@@ -52,6 +53,7 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
   // and also because the input config file should match the output config file
 
   protected LocalSearchType localSearchType = null;
+  protected LocalSearchStepLoggingMode stepLoggingMode = null;
   protected String moveThreadCount = null;
 
   @XmlElements({
@@ -128,6 +130,19 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
 
   public void setLocalSearchType(@Nullable LocalSearchType localSearchType) {
     this.localSearchType = localSearchType;
+  }
+
+  /**
+   * Selects which completed steps produce DEBUG messages. Defaults to {@link
+   * LocalSearchStepLoggingMode#ALL} when unspecified. This does not enable DEBUG logging or filter
+   * other diagnostic messages, including TRACE move messages.
+   */
+  public @Nullable LocalSearchStepLoggingMode getStepLoggingMode() {
+    return stepLoggingMode;
+  }
+
+  public void setStepLoggingMode(@Nullable LocalSearchStepLoggingMode stepLoggingMode) {
+    this.stepLoggingMode = stepLoggingMode;
   }
 
   public @Nullable String getMoveThreadCount() {
@@ -209,6 +224,12 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
     return this;
   }
 
+  public @NonNull LocalSearchPhaseConfig withStepLoggingMode(
+      @NonNull LocalSearchStepLoggingMode stepLoggingMode) {
+    this.stepLoggingMode = stepLoggingMode;
+    return this;
+  }
+
   public @NonNull LocalSearchPhaseConfig withMoveSelectorConfig(
       @NonNull MoveSelectorConfig moveSelectorConfig) {
     this.moveSelectorConfig = moveSelectorConfig;
@@ -246,6 +267,9 @@ public class LocalSearchPhaseConfig extends PhaseConfig<LocalSearchPhaseConfig> 
     localSearchType =
         ConfigUtils.inheritOverwritableProperty(
             localSearchType, inheritedConfig.getLocalSearchType());
+    stepLoggingMode =
+        ConfigUtils.inheritOverwritableProperty(
+            stepLoggingMode, inheritedConfig.getStepLoggingMode());
     moveThreadCount =
         ConfigUtils.inheritOverwritableProperty(
             moveThreadCount, inheritedConfig.getMoveThreadCount());

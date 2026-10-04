@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.localsearch;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
@@ -8,6 +9,7 @@ import java.util.function.IntFunction;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.solver.event.EventProducerId;
+import greycos.solver.core.config.localsearch.LocalSearchStepLoggingMode;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.localsearch.decider.LocalSearchPhaseDecider;
@@ -36,6 +38,7 @@ import io.micrometer.core.instrument.Tags;
 public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
     implements LocalSearchPhase<Solution_>, LocalSearchPhaseLifecycleListener<Solution_> {
   protected final LocalSearchPhaseDecider<Solution_> decider;
+  private final LocalSearchStepLoggingMode stepLoggingMode;
   protected final AtomicLong acceptedMoveCountPerStep = new AtomicLong(0);
   protected final AtomicLong selectedMoveCountPerStep = new AtomicLong(0);
   protected final Map<String, ConstraintMatchMetricHandle> constraintIdToMetricHandleMap =
@@ -48,6 +51,7 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
   private DefaultLocalSearchPhase(Builder<Solution_> builder) {
     super(builder);
     decider = builder.decider;
+    stepLoggingMode = builder.stepLoggingMode;
   }
 
   @Override
@@ -153,6 +157,13 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
 
   protected void doStep(LocalSearchStepScope<Solution_> stepScope) {
     var step = stepScope.getStep();
+    if (logger.isDebugEnabled()
+        && (stepLoggingMode == LocalSearchStepLoggingMode.ALL
+            || stepScope.getScore().compareTo(stepScope.getPhaseScope().getBestScore()) > 0)) {
+      // Capture before execution: move descriptions can read the current planning values.
+      // The recaller confirms the improvement after execution, before the step is logged.
+      stepScope.setStepString(step.toString());
+    }
     stepScope.getScoreDirector().executeMove(step);
     predictWorkingStepScore(stepScope, step);
     var solver = stepScope.getPhaseScope().getSolverScope().getSolver();
@@ -188,7 +199,9 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
         stepScope,
         decider.getUncreditedCalculationCount());
     var phaseScope = stepScope.getPhaseScope();
-    if (logger.isDebugEnabled()) {
+    if (logger.isDebugEnabled()
+        && (stepLoggingMode == LocalSearchStepLoggingMode.ALL
+            || stepScope.getBestScoreImproved())) {
       if (stepScope.getAcceptedMoveCount() == 0 && phaseTermination.isPhaseTerminated(phaseScope)) {
         // Terminated early
         logger.debug(
@@ -398,6 +411,7 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
       extends AbstractPhaseBuilder<Solution_, DefaultLocalSearchPhase<Solution_>> {
 
     private final LocalSearchPhaseDecider<Solution_> decider;
+    private LocalSearchStepLoggingMode stepLoggingMode = LocalSearchStepLoggingMode.ALL;
 
     public Builder(
         int phaseIndex,
@@ -407,6 +421,11 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
         LocalSearchPhaseDecider<Solution_> decider) {
       super(phaseIndex, environmentMode, logIndentation, phaseTermination);
       this.decider = decider;
+    }
+
+    public Builder<Solution_> withStepLoggingMode(LocalSearchStepLoggingMode stepLoggingMode) {
+      this.stepLoggingMode = Objects.requireNonNull(stepLoggingMode);
+      return this;
     }
 
     @Override

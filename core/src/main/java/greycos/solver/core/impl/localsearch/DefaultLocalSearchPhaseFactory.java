@@ -22,6 +22,7 @@ import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureCompositio
 import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchSearchMode;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchStepLoggingMode;
 import greycos.solver.core.config.localsearch.LocalSearchType;
 import greycos.solver.core.config.localsearch.decider.acceptor.AcceptorType;
 import greycos.solver.core.config.localsearch.decider.acceptor.LocalSearchAcceptorConfig;
@@ -106,6 +107,9 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
             solverConfigPolicy.getLogIndentation(),
             phaseTermination,
             decider)
+        .withStepLoggingMode(
+            Objects.requireNonNullElse(
+                phaseConfig.getStepLoggingMode(), LocalSearchStepLoggingMode.ALL))
         .enableAssertions()
         .build();
   }
