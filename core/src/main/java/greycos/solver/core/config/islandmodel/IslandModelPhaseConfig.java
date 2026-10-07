@@ -11,6 +11,7 @@ import jakarta.xml.bind.annotation.XmlType;
 import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
 import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.composite.CartesianProductMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
@@ -158,6 +159,9 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
         name = ConstructionHeuristicPhaseConfig.XML_ELEMENT_NAME,
         type = ConstructionHeuristicPhaseConfig.class),
     @XmlElement(name = AlnsPhaseConfig.XML_ELEMENT_NAME, type = AlnsPhaseConfig.class),
+    @XmlElement(
+        name = GeneticAlgorithmPhaseConfig.XML_ELEMENT_NAME,
+        type = GeneticAlgorithmPhaseConfig.class),
     @XmlElement(name = CustomPhaseConfig.XML_ELEMENT_NAME, type = CustomPhaseConfig.class),
     @XmlElement(
         name = ExhaustiveSearchPhaseConfig.XML_ELEMENT_NAME,

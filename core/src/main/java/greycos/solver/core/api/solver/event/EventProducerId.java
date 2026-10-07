@@ -63,6 +63,10 @@ public interface EventProducerId {
     return new PhaseEventProducerId(PhaseType.ALNS, phaseIndex);
   }
 
+  static EventProducerId geneticAlgorithm(int phaseIndex) {
+    return new PhaseEventProducerId(PhaseType.GENETIC_ALGORITHM, phaseIndex);
+  }
+
   static EventProducerId exhaustiveSearch(int phaseIndex) {
     return new PhaseEventProducerId(PhaseType.EXHAUSTIVE_SEARCH, phaseIndex);
   }

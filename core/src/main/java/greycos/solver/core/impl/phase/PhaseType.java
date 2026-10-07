@@ -12,6 +12,8 @@ import greycos.solver.core.impl.phase.custom.CustomPhase;
 public enum PhaseType {
   /** Adaptive large neighborhood search. */
   ALNS("Adaptive Large Neighborhood Search"),
+  /** Genetic algorithm with a serial incremental scoring workspace. */
+  GENETIC_ALGORITHM("Genetic Algorithm"),
   /** The type of phase associated with {@link ConstructionHeuristicPhase}. */
   CONSTRUCTION_HEURISTIC("Construction Heuristic"),
 

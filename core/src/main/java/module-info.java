@@ -50,6 +50,7 @@ module greycos.solver.core {
   exports greycos.solver.core.config.heuristic.selector.value;
   exports greycos.solver.core.config.islandmodel;
   exports greycos.solver.core.config.alns;
+  exports greycos.solver.core.config.geneticalgorithm;
   exports greycos.solver.core.config.localsearch;
   exports greycos.solver.core.config.localsearch.decider.acceptor;
   exports greycos.solver.core.config.localsearch.decider.acceptor.stepcountinghillclimbing;
@@ -97,6 +98,7 @@ module greycos.solver.core {
   exports greycos.solver.core.impl.io.jaxb;
   exports greycos.solver.core.impl.localsearch.scope;
   exports greycos.solver.core.impl.alns;
+  exports greycos.solver.core.impl.geneticalgorithm;
   exports greycos.solver.core.impl.phase.event;
   exports greycos.solver.core.impl.phase.scope;
   exports greycos.solver.core.impl.score to
@@ -177,6 +179,9 @@ module greycos.solver.core {
       jakarta.xml.bind,
       org.glassfish.jaxb.runtime;
   opens greycos.solver.core.config.islandmodel to
+      jakarta.xml.bind,
+      org.glassfish.jaxb.runtime;
+  opens greycos.solver.core.config.geneticalgorithm to
       jakarta.xml.bind,
       org.glassfish.jaxb.runtime;
   opens greycos.solver.core.config.alns to

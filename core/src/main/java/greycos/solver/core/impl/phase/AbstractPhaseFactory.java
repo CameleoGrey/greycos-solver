@@ -6,6 +6,7 @@ import java.util.Objects;
 import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
@@ -18,6 +19,7 @@ import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.alns.AlnsPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.exhaustivesearch.scope.ExhaustiveSearchPhaseScope;
+import greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmPhaseScope;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.islandmodel.IslandModelPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
@@ -96,6 +98,8 @@ public abstract class AbstractPhaseFactory<
   private Class<? extends AbstractPhaseScope> getPhaseScopeClass() {
     if (phaseConfig instanceof AlnsPhaseConfig) {
       return AlnsPhaseScope.class;
+    } else if (phaseConfig instanceof GeneticAlgorithmPhaseConfig) {
+      return GeneticAlgorithmPhaseScope.class;
     } else if (phaseConfig instanceof ConstructionHeuristicPhaseConfig) {
       return ConstructionHeuristicPhaseScope.class;
     } else if (phaseConfig instanceof CustomPhaseConfig) {

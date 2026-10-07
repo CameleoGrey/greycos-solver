@@ -5,6 +5,7 @@ import java.util.List;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
+import greycos.solver.core.impl.geneticalgorithm.DefaultGeneticAlgorithmPhaseFactory;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.phase.AbstractPhaseFactory;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
@@ -37,6 +38,8 @@ public class DefaultIslandModelPhaseFactory<Solution_>
       SolverTermination<Solution_> solverTermination) {
 
     var configurationPath = "phase[" + phaseIndex + "].islandModel";
+    DefaultGeneticAlgorithmPhaseFactory.validateNoNestedPhases(
+        phaseConfig.getPhaseConfigList(), configurationPath);
     validateConfig(phaseConfig, configurationPath);
     validateConfigList(phaseConfig.getPhaseConfigList(), configurationPath);
     validateTerminationConfigs(phaseConfig, solverConfigPolicy, configurationPath);
@@ -104,9 +107,13 @@ public class DefaultIslandModelPhaseFactory<Solution_>
       var childPath = configurationPath + ".phase[" + index + "]";
       if (phase instanceof IslandModelPhaseConfig island) {
         childPath += ".islandModel";
+        DefaultGeneticAlgorithmPhaseFactory.validateNoNestedPhases(
+            island.getPhaseConfigList(), childPath);
         validateConfig(island, childPath);
         validateConfigList(island.getPhaseConfigList(), childPath);
       } else if (phase instanceof PartitionedSearchPhaseConfig partition) {
+        DefaultGeneticAlgorithmPhaseFactory.validateNoNestedPhases(
+            partition.getPhaseConfigList(), childPath + ".partitionedSearch");
         validateConfigList(partition.getPhaseConfigList(), childPath + ".partitionedSearch");
       }
     }

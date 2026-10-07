@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.alns.AlnsStepScope;
+import greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
@@ -224,6 +225,9 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
     }
     if (stepScope instanceof AlnsStepScope<Solution_> alnsStepScope) {
       return alnsStepScope.getOperatorPairId();
+    }
+    if (stepScope instanceof GeneticAlgorithmStepScope<Solution_> geneticStepScope) {
+      return geneticStepScope.getMoveTypeDescription();
     }
     if (stepScope instanceof LocalSearchStepScope<Solution_> localSearchStepScope) {
       return localSearchStepScope.getStep().describe();

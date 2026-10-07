@@ -10,6 +10,7 @@ import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.config.util.ConfigUtils;
+import greycos.solver.core.impl.geneticalgorithm.DefaultGeneticAlgorithmPhaseFactory;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
 import greycos.solver.core.impl.phase.AbstractPhaseFactory;
@@ -49,6 +50,9 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
       HeuristicConfigPolicy<Solution_> solverConfigPolicy,
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
+
+    DefaultGeneticAlgorithmPhaseFactory.validateNoNestedPhases(
+        phaseConfig.getPhaseConfigList(), "phase[" + phaseIndex + "].partitionedSearch");
 
     HeuristicConfigPolicy<Solution_> phaseConfigPolicy =
         solverConfigPolicy.copyPhaseConfigPolicy(resolveEnvironmentMode(solverConfigPolicy));

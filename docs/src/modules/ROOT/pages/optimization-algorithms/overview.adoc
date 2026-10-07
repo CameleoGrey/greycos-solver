@@ -112,6 +112,7 @@ Each of these algorithm families have multiple optimization algorithms:
 |    xref:optimization-algorithms/local-search.adoc#stepCountingHillClimbing[Step Counting Hill Climbing] |5/5 |4/5 |3/5 |5/5 |Yes
 |    xref:optimization-algorithms/local-search.adoc#variableNeighborhoodDescent[Variable Neighborhood Descent] |3/5 |3/5 |2/5 |5/5 |Yes
 6+|  xref:optimization-algorithms/alns.adoc#alns[Adaptive Large Neighborhood Search] (ALNS): adaptive destroy/repair search from an initialized solution.
+6+|  xref:optimization-algorithms/genetic-algorithm.adoc#geneticAlgorithm[Genetic Algorithm] (GA): serial population search for initialized basic-variable models, using incremental scoring.
 |===
 
 To learn more about metaheuristics, see http://www.cs.gmu.edu/~sean/book/metaheuristics/[Essentials of Metaheuristics] or http://www.cleveralgorithms.com/[Clever Algorithms].
@@ -153,6 +154,11 @@ such as removing customers from routes and reinserting them.
 ALNS is a separate phase that learns which destroy/repair operators earn rewards;
 it can follow construction heuristics and be combined with Local Search in a phase sequence.
 Compare solution quality and resource use on representative inputs under the same budget.
+
+The opt-in xref:optimization-algorithms/genetic-algorithm.adoc#geneticAlgorithm[Genetic Algorithm]
+phase searches a population of assignment snapshots using one retained incremental scoring workspace.
+Its first stage supports initialized basic-variable models and serial evaluation.
+Compare its feasibility, quality and resource use against local search under matched budgets.
 
 Other experiments can also be run.
 For example, the following multiple algorithms can be combined together:

@@ -3,6 +3,7 @@ package greycos.solver.core.impl.solver.monitoring;
 import java.util.Map;
 
 import greycos.solver.core.impl.alns.AlnsStepScope;
+import greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -34,6 +35,8 @@ public final class SolverMetricSamples {
       moveType = localStep.getStep().describe();
     } else if (step instanceof AlnsStepScope<?> alnsStep) {
       moveType = alnsStep.getOperatorPairId();
+    } else if (step instanceof GeneticAlgorithmStepScope<?> geneticStep) {
+      moveType = geneticStep.getMoveTypeDescription();
     }
     return capture(
         scope,

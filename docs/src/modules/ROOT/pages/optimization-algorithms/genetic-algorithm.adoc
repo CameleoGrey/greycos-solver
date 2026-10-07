@@ -1,0 +1,241 @@
+[#geneticAlgorithm]
+= Genetic Algorithm
+
+The genetic algorithm (GA) phase searches a population of assignment snapshots while keeping one
+working solution for incremental scoring. It uses the application's normal `ConstraintProvider`
+and native score ordering. The solver retains the best solution independently of population replacement.
+GA is opt-in; the default construction heuristic and local search configuration is unchanged.
+
+Stage 1 supports initialized solutions with basic planning variables and finite countable value
+ranges. A model containing a planning list variable is rejected, including a model combining basic
+and list variables. GA runs serially and cannot be nested inside an island model or partitioned search.
+Offspring local improvement and parallel population evaluators are outside this stage.
+
+[#geneticAlgorithmConfiguration]
+== Configuration
+
+Add a GA phase after construction, or supply a fully initialized input:
+
+[source,xml]
+----
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
+  <!-- solutionClass, entityClass and scoreDirectorFactory configuration -->
+  <termination>
+    <secondsSpentLimit>10</secondsSpentLimit>
+  </termination>
+  <constructionHeuristic/>
+  <geneticAlgorithm>
+    <termination>
+      <moveCountLimit>10000</moveCountLimit>
+    </termination>
+    <populationSize>128</populationSize>
+  </geneticAlgorithm>
+  <localSearch/>
+</solver>
+----
+
+The phase-local move limit gives the following local-search phase a chance to run within the global
+time limit. Each completed seed or offspring attempt counts as one GA step and one move evaluation,
+including cached duplicates, unchanged proposals and invalid proposals. The captured initial member
+does not consume an attempt. A score calculation is counted only when it actually happens.
+
+The corresponding Java phase configuration is:
+
+[source,java]
+----
+new GeneticAlgorithmPhaseConfig()
+        .withPopulationSize(128)
+        .withCrossoverProbability(0.5)
+        .withPBestRate(0.05)
+        .withMutationRateMultiplier(0.0)
+        .withTabuEntityRate(0.0)
+        .withTerminationConfig(new TerminationConfig().withMoveCountLimit(10_000L));
+----
+
+[cols="2,1,4",options="header"]
+|===
+|Property |Default |Meaning
+|`populationSize` |`128` |Positive number of population entries; duplicate assignments are permitted.
+|`crossoverProbability` |`0.5` |Probability of applying the shared crossover to a parent pair; finite value in `[0, 1]`.
+|`pBestRate` |`0.05` |Upper bound on the sampled ranked prefix or suffix fraction; finite value in `(0.000001, 1]`.
+|`mutationRateMultiplier` |`0.0` |Finite nonnegative multiplier for mutation size. Zero still performs each operator's minimum mutation.
+|`tabuEntityRate` |`0.0` |Finite rate in `[0, 1]` limiting recent selected positions within mutation groups.
+|`noProgressAttemptLimit` |`max(128, 10 * populationSize)` |Positive number of consecutive attempts without fresh valid offspring scoring before the phase exits.
+|`moveThreadCount` |Inherited |The effective setting must disable move workers. Set `NONE` on this phase to override a solver-wide setting.
+|`mutationOperator` |All six equally |Optional named probabilities. An explicit list disables omitted operators.
+|===
+
+The no-progress limit counts lack of fresh valid scoring, not lack of a better best score.
+It also bounds a population that repeatedly generates cached or unchanged proposals when the only
+configured work limit counts score calculations. The phase logs its exit reason and work counters.
+
+For example, enable only change and cyclic swap:
+
+[source,xml]
+----
+<geneticAlgorithm>
+  <mutationOperator>
+    <type>CHANGE</type>
+    <probability>0.75</probability>
+  </mutationOperator>
+  <mutationOperator>
+    <type>SWAP</type>
+    <probability>0.25</probability>
+  </mutationOperator>
+</geneticAlgorithm>
+----
+
+Each type may occur once. Probabilities must be finite and nonnegative, and their sum must be one.
+At runtime, weights are renormalized over eligible operators; a group that is too small for an
+operator does not make that operator applicable.
+
+[#geneticAlgorithmStrategy]
+== Selection, crossover and mutation
+
+The initial input occupies the first population slot. Every remaining slot receives one independently
+sampled assignment proposal. A valid proposal is admitted even if it duplicates another entry; an
+invalid seed uses the initial member for that slot. There is no retry loop to force uniqueness.
+
+At each generation, GA freezes the population in best-first native score order, breaking ties by
+discovery identity. For each parent, it samples a fraction uniformly from `[0.000001, pBestRate)`,
+rounds the corresponding prefix size upward, and samples a member uniformly from that best prefix.
+It generates children in pairs and produces exactly `populationSize` offspring attempts per complete
+generation; odd populations omit the unused second child.
+
+The GreyJack source uses one crossover weight shared by all assignment positions. In this basic
+variable port, that retains or exchanges the complete parent assignment arrays before mutation.
+This differs from independently choosing a parent for each gene. Mutation runs on every produced
+child regardless of whether crossover occurred.
+
+Movable positions are grouped by entity type and planning-variable descriptor, in stable entity
+encounter order. Pinned positions and singleton ranges do not participate. The phase first chooses
+an eligible operator by its weight, then uniformly chooses one of that operator's eligible groups.
+
+[cols="1,1,4",options="header"]
+|===
+|Type |Minimum group size |Operation
+|`CHANGE` |1 |Independently sample each selected recipient's actual value range.
+|`SWAP` |2 |Cyclically rotate values across selected positions.
+|`SWAP_EDGES` |3 |Exchange selected adjacent edges, preserving the source's sequential behavior when edges overlap.
+|`SCRAMBLE` |3 |Shuffle a contiguous segment of three to six positions, bounded by group size.
+|`INSERTION` |2 |Remove one value and insert it at another selected position, shifting intervening assignments.
+|`INVERSE` |2 |Reverse the interval between two selected positions.
+|===
+
+These intervals refer to the group's entity encounter order; they do not imply a planning list.
+Permutation proposals are rejected as a whole if any transferred value is outside its recipient's
+range. Recent selected positions are held in bounded tabu storage; old entries expire as necessary
+to allow a mutation to select its required positions.
+
+For each child, GA samples an existing member from a randomly sized worst suffix of the frozen
+population, using the same rank-fraction rule. Sampling is with replacement. The child wins if its
+score is equal or better; otherwise the sampled existing member wins. Winners are buffered and
+installed together after the entire generation completes. Duplicate entries can survive, and the
+best population member can disappear. Best-solution publication therefore uses the solver's
+independent best archive and does not insert an elite into the population.
+
+This preserves the chosen GreyJack strategy with explicit GreyCOS adaptations: native score
+ordering, the solver's seeded random generator, no unused child for odd populations, descriptor-based
+groups and range validation, and no score calculation for a cached duplicate. It does not reproduce
+GreyJack's entropy-seeded random trajectory.
+
+[#geneticAlgorithmIncrementalScoring]
+== Incremental scoring and lifecycle
+
+Population genomes contain immutable genuine-assignment arrays and exact cached scores. They do
+not contain separately editable shadows or cloned mutable working entities. The evaluator compares
+the current workspace with each new child using the normal value equality semantics, then applies
+only changed assignments through planning-variable notifications. It updates shadows after the
+complete delta and calculates the score through the standard phase scoring path.
+
+With Bavet, this retains the existing working object graph and scoring session across offspring.
+Replacing the entire working solution for every child would rebuild that session. Reusing a
+score-director factory alone would not provide the same incremental behavior.
+
+A valid child can remain materialized even when population replacement rejects it. A cached child
+does not need to be materialized or scored; its fitness is separate from the current workspace score.
+A completed structural-invalidity result restores the previous genuine assignments through
+notifications, updates shadows, recalculates the score and verifies restoration. Setter, listener,
+scoring and callback exceptions abort the phase instead of being counted as rejected offspring.
+
+Best improvements are published before population replacement. If termination interrupts a
+generation, unfinished replacement buffers are discarded and already published improvements remain
+available. Problem-change restarts and solver reuse reconstruct the population, cached fitness,
+range mappings and mutation state. Normal phase transitions may rebuild working scoring state.
+
+Standard step and score statistics remain available. GA phase and step diagnostics additionally
+identify generation, population diversity, parent and replacement member identities, mutation type
+and group, attempt outcome, admission, and changed assignments. A cached attempt's workspace score
+can differ from its candidate fitness; interpret those fields separately.
+
+Session retention establishes incremental evaluation, but does not establish a speedup. Broad
+assignment changes can affect many constraints, and genome construction, diffing, cloning a new
+published best, and population maintenance also consume resources. Benchmark representative models
+against serial local search and applicable ALNS under matched starts and budgets.
+
+[#geneticAlgorithmExample]
+== Runnable example and evidence harness
+
+Core test sources contain `greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmExample`.
+It assigns tasks to machines with hard capacity limits and soft load-balancing and preference costs.
+Its plain Java replay validates task and machine identities, immutable input data, complete assignments
+and both score levels without calling Constraint Streams. The example exports assignments by stable
+business ID, reloads them into a fresh model, and checks assignment equality and replayed score.
+
+After building the project and compiling its test sources, run from the repository root:
+
+[source,shell]
+----
+./mvnw -pl core exec:java \
+  -Dexec.classpathScope=test \
+  -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmExample \
+  -Dexec.args="80 37 2000 target/genetic-algorithm/assignments.csv"
+----
+
+The bounded `GeneticAlgorithmBenchmark` harness first verifies every evaluator result against
+independent business replay. It then compares full working-solution replacement with retained deltas
+on the same pregenerated sparse and broad assignment sequences. Both measured evaluators calculate
+every candidate, isolating the evaluation mechanism from the GA fitness cache. It verifies exactly
+one retained session and one new session per full replacement.
+
+The search comparison runs GA, serial Late Acceptance local search and basic-variable ALNS from
+the same initialized assignments, with the same prescribed seeds and no move workers. Separate runs
+use a physical score-calculation threshold and a wall-clock limit. Thresholds may be crossed at
+different algorithm boundaries; the report includes actual work and time rather than treating the
+configured threshold as exact equality. A 60-second fallback bounds each fixed-work run. No-progress
+exit can stop GA earlier.
+
+[source,shell]
+----
+./mvnw -pl core exec:java \
+  -Dexec.classpathScope=test \
+  -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmBenchmark \
+  -Dexec.args="80 256 250 1000 11,37,83 target/genetic-algorithm/benchmark"
+----
+
+Arguments specify task count, evaluator candidate count, search milliseconds, search score-call
+threshold, comma-separated seeds and output directory. `results.csv` records correctness,
+completeness, feasibility, exact scores, score calls, session counts, assignment distance, setup and
+work time, thread allocation and garbage collection. `metadata.properties` records JVM, heap,
+processor, source revision and dirty status, warmup, termination and counter definitions. Search results also export assignment files
+and independently verify their reloads.
+
+Every search row also reports time to the same prespecified target: a feasible solution whose soft
+penalty is at most the theoretical balanced integer load penalty plus half the initial preference
+penalty. The threshold comes only from the input, before search. Time is zero when the initialized
+input already meets it, otherwise the first matching best-solution event is recorded; `unreached`
+and `-1` distinguish a missed target from a measured success. The target need not be achievable.
+For a dirty checkout, retain the qualification diff with the report; the HEAD revision alone does
+not identify uncommitted changes. The `greycos.gaBenchmark.revision` system property can provide an
+external exact revision identifier.
+
+Evaluator session counts are exact and include initial setup. Search session counts observe
+distinct sessions at phase and completed-step boundaries; they do not instrument every session
+constructor. Evaluator assignment distance is the sum between successive candidates; search
+distance compares the initial and returned best assignments. Allocation uses the current thread's
+JVM counter, or `-1` where unsupported. Verification and export happen outside measured work time.
+
+The harness is bounded evidence, not a statistical performance qualification. It does not assert
+timing thresholds, prove optimality, or justify a general speedup claim. Larger studies need multiple
+fresh JVM runs, representative instances, held-out seeds, sufficient warmup, and separate assessment
+of feasibility, solution quality, resource use and setup cost.

@@ -6,6 +6,7 @@ import java.util.List;
 import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
@@ -16,6 +17,7 @@ import greycos.solver.core.impl.alns.DefaultAlnsPhaseFactory;
 import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhaseFactory;
 import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyProfileResolver;
 import greycos.solver.core.impl.exhaustivesearch.DefaultExhaustiveSearchPhaseFactory;
+import greycos.solver.core.impl.geneticalgorithm.DefaultGeneticAlgorithmPhaseFactory;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.islandmodel.DefaultIslandModelPhaseFactory;
 import greycos.solver.core.impl.localsearch.DefaultLocalSearchPhaseFactory;
@@ -29,6 +31,8 @@ public interface PhaseFactory<Solution_> {
   static <Solution_> PhaseFactory<Solution_> create(PhaseConfig<?> phaseConfig) {
     if (phaseConfig instanceof AlnsPhaseConfig alnsPhaseConfig) {
       return new DefaultAlnsPhaseFactory<>(alnsPhaseConfig);
+    } else if (phaseConfig instanceof GeneticAlgorithmPhaseConfig geneticAlgorithmPhaseConfig) {
+      return new DefaultGeneticAlgorithmPhaseFactory<>(geneticAlgorithmPhaseConfig);
     } else if (IslandModelPhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
       return new DefaultIslandModelPhaseFactory<>((IslandModelPhaseConfig) phaseConfig);
     } else if (LocalSearchPhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
@@ -137,6 +141,7 @@ public interface PhaseFactory<Solution_> {
   static boolean requiresInitializedSolution(PhaseConfig<?> phaseConfig) {
     return phaseConfig instanceof LocalSearchPhaseConfig
         || phaseConfig instanceof AlnsPhaseConfig
+        || phaseConfig instanceof GeneticAlgorithmPhaseConfig
         || phaseConfig instanceof IslandModelPhaseConfig;
   }
 

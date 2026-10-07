@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
+  <randomSeed>0</randomSeed>
+  <geneticAlgorithm>
+    <termination><stepCountLimit>8</stepCountLimit></termination>
+    <populationSize>4</populationSize>
+    <moveThreadCount>NONE</moveThreadCount>
+    <mutationOperator><type>CHANGE</type><probability>1.0</probability></mutationOperator>
+  </geneticAlgorithm>
+</solver>

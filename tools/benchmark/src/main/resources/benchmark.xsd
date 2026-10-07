@@ -239,6 +239,8 @@
                         
             <xs:element name="alns" type="tns:alnsPhaseConfig"/>
                         
+            <xs:element name="geneticAlgorithm" type="tns:geneticAlgorithmPhaseConfig"/>
+                        
             <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
                         
             <xs:element name="customPhase" type="tns:customPhaseConfig"/>
@@ -582,6 +584,58 @@
           <xs:element minOccurs="0" name="initialWeight" type="xs:double"/>
                     
           <xs:element minOccurs="0" name="customProperties" type="tns:jaxbAdaptedMap"/>
+                  
+        </xs:sequence>
+              
+      </xs:extension>
+          
+    </xs:complexContent>
+      
+  </xs:complexType>
+    
+  <xs:complexType final="extension restriction" name="geneticAlgorithmPhaseConfig">
+        
+    <xs:complexContent>
+            
+      <xs:extension base="tns:phaseConfig">
+                
+        <xs:sequence>
+                    
+          <xs:element minOccurs="0" name="populationSize" type="xs:int"/>
+                    
+          <xs:element minOccurs="0" name="crossoverProbability" type="xs:double"/>
+                    
+          <xs:element minOccurs="0" name="pBestRate" type="xs:double"/>
+                    
+          <xs:element minOccurs="0" name="mutationRateMultiplier" type="xs:double"/>
+                    
+          <xs:element minOccurs="0" name="tabuEntityRate" type="xs:double"/>
+                    
+          <xs:element minOccurs="0" name="noProgressAttemptLimit" type="xs:long"/>
+                    
+          <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
+                    
+          <xs:element maxOccurs="unbounded" minOccurs="0" name="mutationOperator" type="tns:geneticAlgorithmMutationOperatorConfig"/>
+                  
+        </xs:sequence>
+              
+      </xs:extension>
+          
+    </xs:complexContent>
+      
+  </xs:complexType>
+    
+  <xs:complexType final="extension restriction" name="geneticAlgorithmMutationOperatorConfig">
+        
+    <xs:complexContent>
+            
+      <xs:extension base="tns:abstractConfig">
+                
+        <xs:sequence>
+                    
+          <xs:element minOccurs="0" name="type" type="tns:geneticAlgorithmMutationType"/>
+                    
+          <xs:element minOccurs="0" name="probability" type="xs:double"/>
                   
         </xs:sequence>
               
@@ -1749,6 +1803,8 @@
                         
             <xs:element name="alns" type="tns:alnsPhaseConfig"/>
                         
+            <xs:element name="geneticAlgorithm" type="tns:geneticAlgorithmPhaseConfig"/>
+                        
             <xs:element name="customPhase" type="tns:customPhaseConfig"/>
                         
             <xs:element name="exhaustiveSearch" type="tns:exhaustiveSearchPhaseConfig"/>
@@ -1995,6 +2051,8 @@
                         
             <xs:element name="alns" type="tns:alnsPhaseConfig"/>
                         
+            <xs:element name="geneticAlgorithm" type="tns:geneticAlgorithmPhaseConfig"/>
+                        
             <xs:element name="constructionHeuristic" type="tns:constructionHeuristicPhaseConfig"/>
                         
             <xs:element name="customPhase" type="tns:customPhaseConfig"/>
@@ -2186,6 +2244,26 @@
       <xs:enumeration value="HILL_CLIMBING"/>
             
       <xs:enumeration value="SIMULATED_ANNEALING"/>
+          
+    </xs:restriction>
+      
+  </xs:simpleType>
+    
+  <xs:simpleType name="geneticAlgorithmMutationType">
+        
+    <xs:restriction base="xs:string">
+            
+      <xs:enumeration value="CHANGE"/>
+            
+      <xs:enumeration value="SWAP"/>
+            
+      <xs:enumeration value="SWAP_EDGES"/>
+            
+      <xs:enumeration value="SCRAMBLE"/>
+            
+      <xs:enumeration value="INSERTION"/>
+            
+      <xs:enumeration value="INVERSE"/>
           
     </xs:restriction>
       

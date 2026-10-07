@@ -926,5 +926,31 @@
   {
     "name": "greycos.solver.core.config.alns.AlnsSelectionPolicyType",
     "allDeclaredFields": true
+  },
+  {
+    "name": "greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig",
+    "allDeclaredFields": true,
+    "queryAllDeclaredMethods": true,
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmMutationOperatorConfig",
+    "allDeclaredFields": true,
+    "queryAllDeclaredMethods": true,
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmMutationType",
+    "allDeclaredFields": true
   }
 ]

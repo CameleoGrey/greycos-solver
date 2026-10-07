@@ -13,6 +13,7 @@ import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
@@ -49,6 +50,9 @@ public final class PartitionedSearchPhaseConfig extends PhaseConfig<PartitionedS
 
   @XmlElements({
     @XmlElement(name = AlnsPhaseConfig.XML_ELEMENT_NAME, type = AlnsPhaseConfig.class),
+    @XmlElement(
+        name = GeneticAlgorithmPhaseConfig.XML_ELEMENT_NAME,
+        type = GeneticAlgorithmPhaseConfig.class),
     @XmlElement(
         name = ConstructionHeuristicPhaseConfig.XML_ELEMENT_NAME,
         type = ConstructionHeuristicPhaseConfig.class),
