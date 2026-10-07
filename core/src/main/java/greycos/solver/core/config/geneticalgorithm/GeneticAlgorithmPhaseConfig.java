@@ -17,8 +17,8 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Opt-in serial genetic algorithm for initialized solutions with basic planning variables. Defaults
- * are applied after inheritance by {@link #resolve()}.
+ * Opt-in serial genetic algorithm for initialized solutions with basic planning variables, one
+ * planning list variable, or both. Defaults are applied after inheritance by {@link #resolve()}.
  */
 @XmlType(
     propOrder = {

@@ -65,7 +65,8 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       var workspace = new GeneticAlgorithmWorkspace<>(director, initialScore);
       scope.getLastCompletedStepScope().setScore(initialScore);
       metrics.phaseStarted(scope);
-      var operators = new GeneticAlgorithmOperators<>(workspace.slots(), config);
+      var operators =
+          new GeneticAlgorithmOperators<>(workspace.slots(), workspace.listModel(), config);
       if (!operators.hasMovableSlots()) {
         scope.setPopulationSize(1, 1);
         scope.setTerminationReason("no movable assignments");

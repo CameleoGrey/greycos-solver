@@ -12,6 +12,8 @@ import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmMutationType;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * The serial GreyJack mutation portfolio. All values are discrete assignments; legality of a
  * permutation in recipient-specific ranges is checked by the workspace before materialization.
@@ -21,7 +23,9 @@ public final class GeneticAlgorithmOperators<Solution_> {
   private static final double MINIMUM_RANK_FRACTION = 0.000001;
 
   public record Mutation(
-      GeneticAlgorithmGenome genome, GeneticAlgorithmMutationType type, String group) {}
+      GeneticAlgorithmGenome genome,
+      @Nullable GeneticAlgorithmMutationType type,
+      @Nullable String group) {}
 
   public record Pair(
       GeneticAlgorithmGenome first, GeneticAlgorithmGenome second, boolean crossed) {}
@@ -48,6 +52,7 @@ public final class GeneticAlgorithmOperators<Solution_> {
       GeneticAlgorithmMutationType type, double weight, List<Group> groups) {}
 
   private final List<GeneticAlgorithmSlot<Solution_>> slots;
+  private final @Nullable GeneticAlgorithmListOperators<Solution_> listOperators;
   private final List<EligibleOperator> operators;
   private final double totalWeight;
   private final double crossoverProbability;
@@ -55,7 +60,16 @@ public final class GeneticAlgorithmOperators<Solution_> {
 
   public GeneticAlgorithmOperators(
       List<GeneticAlgorithmSlot<Solution_>> slots, GeneticAlgorithmPhaseConfig resolvedConfig) {
+    this(slots, null, resolvedConfig);
+  }
+
+  public GeneticAlgorithmOperators(
+      List<GeneticAlgorithmSlot<Solution_>> slots,
+      @Nullable GeneticAlgorithmListModel<Solution_> listModel,
+      GeneticAlgorithmPhaseConfig resolvedConfig) {
     this.slots = List.copyOf(slots);
+    listOperators =
+        listModel == null ? null : new GeneticAlgorithmListOperators<>(listModel, resolvedConfig);
     crossoverProbability = resolvedConfig.getCrossoverProbability();
     var groupedSlots = new LinkedHashMap<GroupKey, List<Integer>>();
     for (int i = 0; i < slots.size(); i++) {
@@ -66,7 +80,8 @@ public final class GeneticAlgorithmOperators<Solution_> {
         groupedSlots.computeIfAbsent(key, ignored -> new ArrayList<>()).add(i);
       }
     }
-    movableSlots = !groupedSlots.isEmpty();
+    movableSlots =
+        !groupedSlots.isEmpty() || (listOperators != null && listOperators.hasMovableValues());
     var groups = new ArrayList<Group>(groupedSlots.size());
     groupedSlots.forEach(
         (key, ids) ->
@@ -89,13 +104,16 @@ public final class GeneticAlgorithmOperators<Solution_> {
       }
       var eligibleGroups =
           groups.stream().filter(group -> group.slots.length >= minimum(type)).toList();
-      if (!eligibleGroups.isEmpty()) {
+      if (!eligibleGroups.isEmpty() || listOperators != null) {
         eligibleOperators.add(new EligibleOperator(type, weight, eligibleGroups));
       }
     }
     operators = List.copyOf(eligibleOperators);
     totalWeight = operators.stream().mapToDouble(EligibleOperator::weight).sum();
-    if (movableSlots && operators.isEmpty()) {
+    if (movableSlots
+        && (listOperators == null
+            ? operators.isEmpty()
+            : eligibleOperators(listModel.initialLists()).isEmpty())) {
       throw new IllegalArgumentException(
           "The geneticAlgorithm mutationOperatorConfigList ("
               + resolvedConfig.getMutationOperatorConfigList()
@@ -117,7 +135,9 @@ public final class GeneticAlgorithmOperators<Solution_> {
         values[i] = slot.valueRange().get(random.nextLong(slot.valueRange().getSize()));
       }
     }
-    return new GeneticAlgorithmGenome(values);
+    return listOperators == null
+        ? new GeneticAlgorithmGenome(values)
+        : new GeneticAlgorithmGenome(values, listOperators.sampleSeed(random));
   }
 
   /** Selects a uniformly sampled member of a randomly sized best prefix or worst suffix. */
@@ -161,17 +181,46 @@ public final class GeneticAlgorithmOperators<Solution_> {
         secondValues[i] = first.value(i);
       }
     }
-    return new Pair(
-        new GeneticAlgorithmGenome(firstValues), new GeneticAlgorithmGenome(secondValues), true);
+    return listOperators == null
+        ? new Pair(
+            new GeneticAlgorithmGenome(firstValues), new GeneticAlgorithmGenome(secondValues), true)
+        : new Pair(
+            new GeneticAlgorithmGenome(firstValues, second.lists()),
+            new GeneticAlgorithmGenome(secondValues, first.lists()),
+            true);
   }
 
   public Mutation mutate(GeneticAlgorithmGenome parent, RandomGenerator random) {
     checkSize(parent);
-    if (operators.isEmpty()) {
-      throw new IllegalStateException("The geneticAlgorithm has no movable assignments to mutate.");
+    EligibleOperator operator;
+    Group group;
+    if (listOperators == null) {
+      if (operators.isEmpty()) {
+        throw new IllegalStateException(
+            "The geneticAlgorithm has no movable assignments to mutate.");
+      }
+      operator = selectOperator(random.nextDouble());
+      group = operator.groups().get(random.nextInt(operator.groups().size()));
+    } else {
+      var lists = parent.lists();
+      var eligible = eligibleOperators(lists);
+      if (eligible.isEmpty()) {
+        // Crossover may still have changed the candidate; normal evaluation determines its outcome.
+        return new Mutation(parent, null, null);
+      }
+      double weight = eligible.stream().mapToDouble(EligibleOperator::weight).sum();
+      operator = selectOperator(eligible, weight, random.nextDouble());
+      boolean listEligible = listOperators.isEligible(operator.type(), lists);
+      int selectedGroup = random.nextInt(operator.groups().size() + (listEligible ? 1 : 0));
+      if (selectedGroup == operator.groups().size()) {
+        return new Mutation(
+            new GeneticAlgorithmGenome(
+                parent.toArray(), listOperators.mutate(operator.type(), lists, random)),
+            operator.type(),
+            listOperators.name());
+      }
+      group = operator.groups().get(selectedGroup);
     }
-    var operator = selectOperator(random.nextDouble());
-    var group = operator.groups().get(random.nextInt(operator.groups().size()));
     var values = parent.toArray();
     int count = group.slots.length;
     switch (operator.type()) {
@@ -227,10 +276,28 @@ public final class GeneticAlgorithmOperators<Solution_> {
         }
       }
     }
-    return new Mutation(new GeneticAlgorithmGenome(values), operator.type(), group.name);
+    return new Mutation(
+        listOperators == null
+            ? new GeneticAlgorithmGenome(values)
+            : new GeneticAlgorithmGenome(values, parent.lists()),
+        operator.type(),
+        group.name);
+  }
+
+  private List<EligibleOperator> eligibleOperators(int[][] lists) {
+    return operators.stream()
+        .filter(
+            operator ->
+                !operator.groups().isEmpty() || listOperators.isEligible(operator.type(), lists))
+        .toList();
   }
 
   private EligibleOperator selectOperator(double draw) {
+    return selectOperator(operators, totalWeight, draw);
+  }
+
+  private static EligibleOperator selectOperator(
+      List<EligibleOperator> operators, double totalWeight, double draw) {
     double remaining = draw * totalWeight;
     for (var operator : operators) {
       if (remaining < operator.weight()) {
@@ -306,6 +373,15 @@ public final class GeneticAlgorithmOperators<Solution_> {
               + genome.size()
               + ") must equal the assignment slot count ("
               + slots.size()
+              + ").");
+    }
+    int ownerCount = listOperators == null ? 0 : listOperators.ownerCount();
+    if (genome.listCount() != ownerCount) {
+      throw new IllegalArgumentException(
+          "The geneticAlgorithm genome list count ("
+              + genome.listCount()
+              + ") must equal the owner count ("
+              + ownerCount
               + ").");
     }
   }

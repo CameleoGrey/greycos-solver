@@ -18,6 +18,7 @@ import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.geneticalgorithm.DefaultGeneticAlgorithmPhaseFactory;
 import greycos.solver.core.impl.heuristic.thread.MoveThreadingWorkload.BasicWorkload;
+import greycos.solver.core.impl.heuristic.thread.MoveThreadingWorkload.ListSolution;
 import greycos.solver.core.impl.heuristic.thread.MoveThreadingWorkload.ListWorkload;
 import greycos.solver.core.impl.io.jaxb.GreyCOSXmlSerializationException;
 import greycos.solver.core.impl.io.jaxb.SolverConfigIO;
@@ -31,9 +32,11 @@ import greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedValue;
 import greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@Timeout(30)
 class GeneticAlgorithmPhaseConfigTest {
 
   @Test
@@ -311,20 +314,29 @@ class GeneticAlgorithmPhaseConfigTest {
         .hasMessageContaining("moveThreadCount (1)");
   }
 
-  @Test
-  void listAndMixedModelsAreRejectedAtBuildTime() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void listAndMixedModelsSolveThroughJavaAndXmlConfiguration(boolean xml) {
+    var workload = new ListWorkload();
     var listConfig =
-        new ListWorkload()
+        workload
             .solverConfig(
                 "NONE",
                 0L,
                 1,
-                new TerminationConfig().withStepCountLimit(1),
+                new TerminationConfig().withStepCountLimit(12),
                 EnvironmentMode.NO_ASSERT)
-            .withPhases(new GeneticAlgorithmPhaseConfig());
-    assertThatThrownBy(() -> SolverFactory.create(listConfig).buildSolver())
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("list and mixed models");
+            .withPhases(
+                new GeneticAlgorithmPhaseConfig()
+                    .withPopulationSize(4)
+                    .withTerminationConfig(new TerminationConfig().withStepCountLimit(12)));
+    // The workload disables all metrics for benchmarks; exercise the standard XML defaults here.
+    listConfig.setMonitoringConfig(null);
+    var listResult =
+        SolverFactory.<ListSolution>create(configure(listConfig, xml))
+            .buildSolver()
+            .solve(workload.createProblem(8));
+    assertThat(workload.score(listResult)).isEqualTo(workload.recompute(listResult));
     var mixedConfig =
         PlannerTestUtils.buildSolverConfig(
                 TestdataMixedSolution.class,
@@ -332,10 +344,35 @@ class GeneticAlgorithmPhaseConfigTest {
                 TestdataMixedValue.class,
                 TestdataMixedOtherValue.class)
             .withEasyScoreCalculatorClass(TestdataMixedEasyScoreCalculator.class)
-            .withPhases(new GeneticAlgorithmPhaseConfig());
-    assertThatThrownBy(() -> SolverFactory.create(mixedConfig).buildSolver())
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("list and mixed models");
+            .withTerminationConfig(new TerminationConfig().withStepCountLimit(12))
+            .withPhases(new GeneticAlgorithmPhaseConfig().withPopulationSize(4));
+    var mixedInput = TestdataMixedSolution.generateUninitializedSolution(2, 8, 2);
+    for (var entity : mixedInput.getEntityList()) {
+      entity.setBasicValue(mixedInput.getOtherValueList().getFirst());
+      entity.setSecondBasicValue(mixedInput.getOtherValueList().getLast());
+    }
+    for (var i = 0; i < mixedInput.getValueList().size(); i++) {
+      mixedInput.getEntityList().get(i % 2).getValueList().add(mixedInput.getValueList().get(i));
+    }
+    var mixedResult =
+        SolverFactory.<TestdataMixedSolution>create(configure(mixedConfig, xml))
+            .buildSolver()
+            .solve(mixedInput);
+    assertThat(mixedResult.getScore())
+        .isEqualTo(new TestdataMixedEasyScoreCalculator().calculateScore(mixedResult));
+    assertThat(
+            mixedResult.getEntityList().stream()
+                .flatMap(entity -> entity.getValueList().stream())
+                .toList())
+        .containsExactlyInAnyOrderElementsOf(mixedResult.getValueList());
+  }
+
+  private static SolverConfig configure(SolverConfig config, boolean xml) {
+    if (!xml) return config;
+    var io = new SolverConfigIO();
+    var writer = new StringWriter();
+    io.write(config, writer);
+    return io.read(new StringReader(writer.toString()));
   }
 
   @Test

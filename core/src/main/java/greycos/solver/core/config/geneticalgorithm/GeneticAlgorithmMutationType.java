@@ -2,7 +2,7 @@ package greycos.solver.core.config.geneticalgorithm;
 
 /** Mutation operators supported by the genetic algorithm. */
 public enum GeneticAlgorithmMutationType {
-  /** Assign independently sampled values to selected assignments. */
+  /** Sample basic values, or relocate list values to compatible owners or allowed unassignment. */
   CHANGE,
   /** Rotate values among selected assignments. */
   SWAP,

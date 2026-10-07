@@ -122,6 +122,7 @@ public final class GeneticAlgorithmStepScope<Solution_> extends AbstractStepScop
     this.admitted = admitted;
   }
 
+  /** Changed basic slots plus list values whose owner or index changed during materialization. */
   public int getChangedAssignmentCount() {
     return changedAssignmentCount;
   }
@@ -155,6 +156,9 @@ public final class GeneticAlgorithmStepScope<Solution_> extends AbstractStepScop
   }
 
   public String getMoveTypeDescription() {
-    return "GeneticAlgorithm/" + (seeding ? "SEED" : mutationType) + "/" + outcome;
+    return "GeneticAlgorithm/"
+        + (seeding ? "SEED" : mutationType == null ? "NONE" : mutationType)
+        + "/"
+        + outcome;
   }
 }

@@ -11,7 +11,7 @@ import greycos.solver.core.impl.phase.AbstractPhaseFactory;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.termination.SolverTermination;
 
-/** Builds the serial, basic-variable genetic algorithm. */
+/** Builds the serial genetic algorithm for basic, list, and mixed models. */
 public final class DefaultGeneticAlgorithmPhaseFactory<Solution_>
     extends AbstractPhaseFactory<Solution_, GeneticAlgorithmPhaseConfig> {
 
@@ -29,10 +29,6 @@ public final class DefaultGeneticAlgorithmPhaseFactory<Solution_>
     var environmentMode = resolveEnvironmentMode(solverConfigPolicy);
     var policy = solverConfigPolicy.copyPhaseConfigPolicy(environmentMode);
     var resolvedConfig = phaseConfig.resolve();
-    if (policy.getSolutionDescriptor().hasListVariable()) {
-      throw new UnsupportedOperationException(
-          "The geneticAlgorithm phase supports only basic planning variables; list and mixed models are not supported.");
-    }
     var moveThreadCount =
         resolveMoveThreadCount(
             resolvedConfig.getMoveThreadCount(), policy.getMoveThreadCount(), true);
@@ -66,7 +62,7 @@ public final class DefaultGeneticAlgorithmPhaseFactory<Solution_>
         throw new UnsupportedOperationException(
             "The geneticAlgorithm phase at ("
                 + childPath
-                + ") cannot be nested under islandModel or partitionedSearch in Stage 1.");
+                + ") cannot be nested under islandModel or partitionedSearch.");
       } else if (phase instanceof IslandModelPhaseConfig island) {
         validateNoNestedPhases(island.getPhaseConfigList(), childPath + ".islandModel");
       } else if (phase instanceof PartitionedSearchPhaseConfig partition) {

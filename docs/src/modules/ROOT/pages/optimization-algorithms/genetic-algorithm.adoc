@@ -6,10 +6,11 @@ working solution for incremental scoring. It uses the application's normal `Cons
 and native score ordering. The solver retains the best solution independently of population replacement.
 GA is opt-in; the default construction heuristic and local search configuration is unchanged.
 
-Stage 1 supports initialized solutions with basic planning variables and finite countable value
-ranges. A model containing a planning list variable is rejected, including a model combining basic
-and list variables. GA runs serially and cannot be nested inside an island model or partitioned search.
-Offspring local improvement and parallel population evaluators are outside this stage.
+GA supports initialized solutions with basic planning variables, one planning list variable, or
+both, using finite countable value ranges. Basic variables may belong to list owners, list elements,
+or other planning entities. List values may be unassigned when the model permits it; all required
+assignments must be initialized. GA runs serially and cannot be nested inside an island model or
+partitioned search. Offspring local improvement and parallel population evaluators are not supported.
 
 [#geneticAlgorithmConfiguration]
 == Configuration
@@ -102,12 +103,12 @@ rounds the corresponding prefix size upward, and samples a member uniformly from
 It generates children in pairs and produces exactly `populationSize` offspring attempts per complete
 generation; odd populations omit the unused second child.
 
-The GreyJack source uses one crossover weight shared by all assignment positions. In this basic
-variable port, that retains or exchanges the complete parent assignment arrays before mutation.
-This differs from independently choosing a parent for each gene. Mutation runs on every produced
-child regardless of whether crossover occurred.
+The GreyJack source uses one crossover weight shared by all assignment positions. This retains or
+exchanges the complete movable parent assignment before mutation, including all basic and list
+assignments in a mixed model. Fixed assignments remain intact. Crossover does not combine arbitrary
+list fragments. Mutation is attempted on every produced child regardless of whether crossover occurred.
 
-Movable positions are grouped by entity type and planning-variable descriptor, in stable entity
+Movable basic positions are grouped by entity type and planning-variable descriptor, in stable entity
 encounter order. Pinned positions and singleton ranges do not participate. The phase first chooses
 an eligible operator by its weight, then uniformly chooses one of that operator's eligible groups.
 
@@ -127,6 +128,54 @@ Permutation proposals are rejected as a whole if any transferred value is outsid
 range. Recent selected positions are held in bounded tabu storage; old entries expire as necessary
 to allow a mutation to select its required positions.
 
+[#geneticAlgorithmListOperators]
+=== List and mixed models
+
+One additional mutation group contains all owners of the planning list descriptor. The same
+configured operator weights apply to basic and list groups: select the eligible type first, then
+uniformly select one eligible group. List eligibility is computed from the proposed child's current
+lists. An operator cannot select a segment across an owner boundary or through a pinned prefix.
+
+[cols="1,4",options="header"]
+|===
+|Type |List operation
+|`CHANGE` |Relocate selected movable values, including unassigned ones, to compatible owners and insertion gaps. Include unassignment as a destination when allowed.
+|`SWAP` |Cyclically rotate assigned values among selected unpinned positions, possibly on different owners.
+|`SWAP_EDGES` |Sequentially exchange endpoints of actual adjacent pairs within unpinned suffixes. Selected edges may belong to different owners.
+|`SCRAMBLE` |Shuffle a contiguous segment of three to six elements within one unpinned suffix.
+|`INSERTION` |Relocate one assigned value within or between owners, preserving assigned membership.
+|`INVERSE` |Reverse an interval within one unpinned suffix.
+|===
+
+For list seeding, copy fixed owner lists and pinned prefixes, shuffle the remaining canonical values,
+then append each to a uniformly selected compatible movable owner. Allowed unassignment is one
+additional destination. Entity-specific value ranges are honored. A required value with no legal
+destination makes the proposal invalid; the ordinary initial-member fallback applies.
+
+List mutation uses stable value identities for tabu storage, since positions change after transfers.
+Its tenure is `ceil(tabuEntityRate * movableValueCount)`. Only selected anchors are recorded:
+selected values for change and swap, edge starts for edge swaps, the segment start for scramble,
+the moved value for insertion, and endpoints for inverse. Old anchors expire when needed to permit
+selection. Change, swap and edge swaps retain the mutation multiplier and minimum-count rules;
+the other operators retain their bounded selection sizes. Permutations outside recipient ranges
+reject the whole proposal without score-guided repair or retries.
+
+A configured portfolio with no eligible operation on the initialized input fails at startup when
+movable assignments exist. If a later child has no eligible operation, mutation is skipped and the
+child proceeds through normal evaluation. Its diagnostic mutation type is `NONE`; crossover may
+still have changed the candidate. Normal attempt accounting and no-progress termination apply.
+
+An owner's `@PlanningPin` freezes its complete list and basic variables. `@PlanningPinToIndex`
+freezes only the prefix; a prefix ending at the current list size still permits appending. Pinning
+a list element's basic variables does not pin its position in another entity's list. Conversely,
+a fixed list position does not automatically pin the element's basic variables.
+
+List snapshots use canonical phase-local element identities and require a value universe that fits
+an integer-indexed array. They include values absent from current lists, including values available
+only in pinned owners' ranges. Initial lists must contain the same object instances as the value
+range; equal but distinct clones are rejected. Basic value ranges retain their existing long-indexed sampling.
+Value ranges and pins remain stable during a phase and are recaptured after a problem-change restart.
+
 For each child, GA samples an existing member from a randomly sized worst suffix of the frozen
 population, using the same rank-fraction rule. Sampling is with replacement. The child wins if its
 score is equal or better; otherwise the sampled existing member wins. Winners are buffered and
@@ -143,10 +192,12 @@ GreyJack's entropy-seeded random trajectory.
 == Incremental scoring and lifecycle
 
 Population genomes contain immutable genuine-assignment arrays and exact cached scores. They do
-not contain separately editable shadows or cloned mutable working entities. The evaluator compares
-the current workspace with each new child using the normal value equality semantics, then applies
-only changed assignments through planning-variable notifications. It updates shadows after the
-complete delta and calculates the score through the standard phase scoring path.
+not contain separately editable shadows or cloned mutable working entities. Basic assignments use
+normal value equality; ordered list snapshots use canonical element identities. The evaluator
+validates the complete mixed candidate before any notification, then applies only changed basics
+and differing list intervals. It brackets all affected owners together and emits membership events
+only when values become assigned or unassigned. Transfers between owners remain assigned. Shadows
+update after the complete delta, and scoring follows the standard phase scoring path.
 
 With Bavet, this retains the existing working object graph and scoring session across offspring.
 Replacing the entire working solution for every child would rebuild that session. Reusing a
@@ -165,7 +216,8 @@ range mappings and mutation state. Normal phase transitions may rebuild working 
 
 Standard step and score statistics remain available. GA phase and step diagnostics additionally
 identify generation, population diversity, parent and replacement member identities, mutation type
-and group, attempt outcome, admission, and changed assignments. A cached attempt's workspace score
+and group, attempt outcome, admission, and changed assignments. The change count adds changed basic
+slots and list values whose owner or index changed, including shifted suffixes. A cached attempt's workspace score
 can differ from its candidate fitness; interpret those fields separately.
 
 Session retention establishes incremental evaluation, but does not establish a speedup. Broad
@@ -239,3 +291,61 @@ The harness is bounded evidence, not a statistical performance qualification. It
 timing thresholds, prove optimality, or justify a general speedup claim. Larger studies need multiple
 fresh JVM runs, representative instances, held-out seeds, sufficient warmup, and separate assessment
 of feasibility, solution quality, resource use and setup cost.
+
+[#geneticAlgorithmListExamples]
+=== List and mixed examples
+
+`GeneticAlgorithmListExample` sequences tasks on machines. Hard penalties measure capacity excess;
+soft costs measure position-weighted processing time and setup between adjacent task families.
+`GeneticAlgorithmMixedExample` uses a separate mixed model in which each task also selects a
+processing mode that changes its duration and incurs a mode cost. Both use the same solver-free
+business records and arithmetic replay, and neither relies on Constraint Streams to validate the
+business result.
+
+The examples validate canonical task and machine identities, immutable input data, exact list
+membership and order, processing modes, and derived owner/index state. Versioned CSV exports use
+stable business IDs and an input fingerprint. Reload constructs a fresh model and verifies exact
+assignments and the independently replayed score.
+
+After compiling the core test sources, run either example:
+
+[source,shell]
+----
+./mvnw -pl core exec:java \
+  -Dexec.classpathScope=test \
+  -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmListExample \
+  -Dexec.args="80 37 2000 target/genetic-algorithm/stage2/list.csv"
+
+./mvnw -pl core exec:java \
+  -Dexec.classpathScope=test \
+  -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmMixedExample \
+  -Dexec.args="80 37 2000 target/genetic-algorithm/stage2/mixed.csv"
+----
+
+Arguments are task count, random seed, physical score-call limit, and output file. A score-call
+threshold is checked at solver boundaries; actual work may exceed it. Both examples report required
+completeness, feasibility, score, and replay separately.
+
+`GeneticAlgorithmListBenchmark` runs both models. It compares retained deltas and full replacement
+on identical sparse and broad candidate sequences, then compares GA, serial Late Acceptance, and
+ALNS from matched initialized assignments. It uses the same seeds, separate score-call and wall-clock
+budgets, and a 60-second fallback for work-limited searches. The prespecified quality target is a
+feasible score whose soft penalty is at most 90 percent of the initial penalty. Missed targets remain
+explicitly unreached.
+
+[source,shell]
+----
+./mvnw -pl core exec:java \
+  -Dexec.classpathScope=test \
+  -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmListBenchmark \
+  -Dexec.args="80 256 500 2000 11,37,83 target/genetic-algorithm/stage2/benchmark-80"
+----
+
+Repeat with task counts 256 and 1,024 to reproduce the Stage 2 qualification matrix. Arguments use
+the same order as the basic-variable benchmark. The CSV includes actual scores, resource use,
+physical score calls, session counts, assignment distance, changed lists, and replay status.
+Evaluator distances and changed-list counts accumulate consecutive transitions; search distances
+compare the initialized input with the returned best. Session counts are exact for evaluator runs
+and observed at phase/step boundaries for searches. Independent replay and export are outside
+measured work. These are bounded workload observations; session retention alone establishes no
+speedup, feasibility-discovery capability, or general search-quality advantage.

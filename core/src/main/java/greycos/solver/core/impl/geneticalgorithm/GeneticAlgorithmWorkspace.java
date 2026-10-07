@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.geneticalgorithm;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -24,6 +25,7 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
 
   private final InnerScoreDirector<Solution_, Score_> director;
   private final List<GeneticAlgorithmSlot<Solution_>> slots;
+  private final @Nullable GeneticAlgorithmListModel<Solution_> listModel;
   private GeneticAlgorithmGenome genome;
   private InnerScore<Score_> score;
   private boolean awaitingScore;
@@ -48,9 +50,7 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
           for (var variableDescriptor : entityDescriptor.getGenuineVariableDescriptorList()) {
             if (!(variableDescriptor
                 instanceof BasicVariableDescriptor<Solution_> basicVariableDescriptor)) {
-              throw new IllegalArgumentException(
-                  "The genetic algorithm supports only basic planning variables, but found (%s)."
-                      .formatted(variableDescriptor.getSimpleEntityAndVariableName()));
+              continue; // List assignments are captured together, including global membership.
             }
             ValueRange<Object> range =
                 valueRangeManager.getFromEntity(
@@ -77,12 +77,20 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
           }
         });
     slots = List.copyOf(capturedSlots);
-    genome = new GeneticAlgorithmGenome(values.toArray());
+    listModel =
+        solutionDescriptor.hasListVariable() ? new GeneticAlgorithmListModel<>(director) : null;
+    genome =
+        new GeneticAlgorithmGenome(
+            values.toArray(), listModel == null ? new int[0][] : listModel.initialLists());
     score = initialScore;
   }
 
   public List<GeneticAlgorithmSlot<Solution_>> slots() {
     return slots;
+  }
+
+  public @Nullable GeneticAlgorithmListModel<Solution_> listModel() {
+    return listModel;
   }
 
   public GeneticAlgorithmGenome genome() {
@@ -123,6 +131,12 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
           "The genetic algorithm candidate assignment count (%d) differs from the workspace slot count (%d)."
               .formatted(candidate.size(), slots.size()));
     }
+    var candidateLists = candidate.lists();
+    requireListCount(candidateLists);
+    // Validate the entire mixed proposal before notifying even its first basic assignment.
+    if (listModel != null && !listModel.isValid(candidateLists)) {
+      return new Transition(false, 0);
+    }
     var changedIndices = new ArrayList<Integer>();
     for (var i = 0; i < slots.size(); i++) {
       var value = candidate.value(i);
@@ -135,28 +149,20 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
       }
       changedIndices.add(i);
     }
-    if (changedIndices.isEmpty()) {
+    var listChanges = prepareListChanges(candidateLists);
+    var changedCount = changedIndices.size() + listChanges.changedAssignmentCount();
+    if (changedCount == 0) {
       return new Transition(true, 0);
     }
-    apply(candidate, changedIndices);
+    apply(candidate, changedIndices, listChanges);
     if (!director.isLastVariableUpdateSuccessful()) {
-      apply(genome, changedIndices);
-      if (!director.isLastVariableUpdateSuccessful()) {
-        throw new IllegalStateException(
-            "Restoring a structurally invalid genetic algorithm candidate failed to restore valid shadows.");
-      }
-      var restoredScore = director.calculateScore();
-      if (!restoredScore.equals(score)) {
-        throw new IllegalStateException(
-            "Restoring a structurally invalid genetic algorithm candidate produced score (%s), expected (%s)."
-                .formatted(restoredScore, score));
-      }
-      requireValidScore(restoredScore);
-      return new Transition(false, changedIndices.size());
+      // The cached genome is still the baseline; restoration must diff against the actual graph.
+      restore(genome, score);
+      return new Transition(false, changedCount);
     }
     genome = candidate;
     awaitingScore = true;
-    return new Transition(true, changedIndices.size());
+    return new Transition(true, changedCount);
   }
 
   /**
@@ -167,6 +173,12 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
     if (previous.size() != slots.size()) {
       throw new IllegalArgumentException(
           "The restored genetic algorithm genome has an incompatible slot count.");
+    }
+    var previousLists = previous.lists();
+    requireListCount(previousLists);
+    if (listModel != null && !listModel.isValid(previousLists)) {
+      throw new IllegalArgumentException(
+          "The restored genetic algorithm list assignments are invalid.");
     }
     var changedIndices = new ArrayList<Integer>();
     for (var i = 0; i < slots.size(); i++) {
@@ -184,8 +196,9 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
         changedIndices.add(i);
       }
     }
-    if (!changedIndices.isEmpty()) {
-      apply(previous, changedIndices);
+    var listChanges = prepareListChanges(previousLists);
+    if (!changedIndices.isEmpty() || listChanges.changedAssignmentCount() != 0) {
+      apply(previous, changedIndices, listChanges);
     }
     if (!director.isLastVariableUpdateSuccessful()) {
       throw new IllegalStateException(
@@ -203,7 +216,86 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
     awaitingScore = false;
   }
 
-  private void apply(GeneticAlgorithmGenome target, List<Integer> changedIndices) {
+  private void requireListCount(int[][] lists) {
+    var expected = listModel == null ? 0 : listModel.ownerCount();
+    if (lists.length != expected) {
+      throw new IllegalArgumentException(
+          "The genetic algorithm candidate list count (%d) differs from the workspace owner count (%d)."
+              .formatted(lists.length, expected));
+    }
+  }
+
+  private PreparedListChanges prepareListChanges(int[][] targetLists) {
+    if (listModel == null) {
+      return new PreparedListChanges(List.of(), List.of(), List.of(), 0);
+    }
+    var currentLists = listModel.captureLists();
+    var oldOwners = new int[listModel.valueCount()];
+    var newOwners = new int[listModel.valueCount()];
+    var oldIndexes = new int[listModel.valueCount()];
+    var newIndexes = new int[listModel.valueCount()];
+    Arrays.fill(oldOwners, -1);
+    Arrays.fill(newOwners, -1);
+    var changes = new ArrayList<PreparedListChange>();
+    for (var owner = 0; owner < currentLists.length; owner++) {
+      var current = currentLists[owner];
+      var target = targetLists[owner];
+      for (var i = 0; i < current.length; i++) {
+        oldOwners[current[i]] = owner;
+        oldIndexes[current[i]] = i;
+      }
+      for (var i = 0; i < target.length; i++) {
+        newOwners[target[i]] = owner;
+        newIndexes[target[i]] = i;
+      }
+      var from = 0;
+      var commonLength = Math.min(current.length, target.length);
+      while (from < commonLength && current[from] == target[from]) {
+        from++;
+      }
+      if (from == current.length && from == target.length) {
+        continue;
+      }
+      var oldEnd = current.length;
+      var newEnd = target.length;
+      while (oldEnd > from && newEnd > from && current[oldEnd - 1] == target[newEnd - 1]) {
+        oldEnd--;
+        newEnd--;
+      }
+      var replacement = new ArrayList<Object>(newEnd - from);
+      for (var i = from; i < newEnd; i++) {
+        replacement.add(listModel.value(target[i]));
+      }
+      var entity = listModel.owner(owner);
+      changes.add(
+          new PreparedListChange(
+              entity,
+              listModel.variableDescriptor().getValue(entity),
+              replacement,
+              from,
+              oldEnd,
+              newEnd));
+    }
+    var assignedValues = new ArrayList<Object>();
+    var unassignedValues = new ArrayList<Object>();
+    var changedCount = 0;
+    for (var id = 0; id < oldOwners.length; id++) {
+      if (oldOwners[id] != newOwners[id] || oldIndexes[id] != newIndexes[id]) {
+        changedCount++;
+      }
+      if (oldOwners[id] < 0 && newOwners[id] >= 0) {
+        assignedValues.add(listModel.value(id));
+      } else if (oldOwners[id] >= 0 && newOwners[id] < 0) {
+        unassignedValues.add(listModel.value(id));
+      }
+    }
+    return new PreparedListChanges(changes, assignedValues, unassignedValues, changedCount);
+  }
+
+  private void apply(
+      GeneticAlgorithmGenome target,
+      List<Integer> changedIndices,
+      PreparedListChanges listChanges) {
     Move<Solution_> delta =
         solutionView -> {
           var notifyingDirector =
@@ -213,10 +305,51 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
             notifyingDirector.changeVariableFacade(
                 slot.variableDescriptor(), slot.entity(), target.value(index));
           }
+          if (listModel != null) {
+            var variableDescriptor = listModel.variableDescriptor();
+            for (var value : listChanges.assignedValues()) {
+              notifyingDirector.beforeListVariableElementAssigned(variableDescriptor, value);
+            }
+            for (var value : listChanges.unassignedValues()) {
+              notifyingDirector.beforeListVariableElementUnassigned(variableDescriptor, value);
+            }
+            for (var change : listChanges.changes()) {
+              notifyingDirector.beforeListVariableChanged(
+                  variableDescriptor, change.entity(), change.from(), change.oldEnd());
+            }
+            for (var change : listChanges.changes()) {
+              change.currentList().subList(change.from(), change.oldEnd()).clear();
+              change.currentList().addAll(change.from(), change.replacement());
+            }
+            for (var change : listChanges.changes()) {
+              notifyingDirector.afterListVariableChanged(
+                  variableDescriptor, change.entity(), change.from(), change.newEnd());
+            }
+            for (var value : listChanges.unassignedValues()) {
+              notifyingDirector.afterListVariableElementUnassigned(variableDescriptor, value);
+            }
+            for (var value : listChanges.assignedValues()) {
+              notifyingDirector.afterListVariableElementAssigned(variableDescriptor, value);
+            }
+          }
         };
     // Updating shadows only after the whole delta also supports compound dependency changes.
     director.getMoveDirector().executeAllowingStructurallyFlawedSolutions(delta);
   }
+
+  private record PreparedListChanges(
+      List<PreparedListChange> changes,
+      List<Object> assignedValues,
+      List<Object> unassignedValues,
+      int changedAssignmentCount) {}
+
+  private record PreparedListChange(
+      Object entity,
+      List<Object> currentList,
+      List<Object> replacement,
+      int from,
+      int oldEnd,
+      int newEnd) {}
 
   private static boolean isInRange(GeneticAlgorithmSlot<?> slot, @Nullable Object value) {
     // Numeric range implementations require a correctly typed value even for contains().

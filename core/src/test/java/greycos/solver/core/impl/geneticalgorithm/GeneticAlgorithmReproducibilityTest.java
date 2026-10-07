@@ -7,8 +7,13 @@ import static greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmIntegrat
 import static greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmIntegrationTest.solver;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmMutationType;
@@ -47,6 +52,17 @@ class GeneticAlgorithmReproducibilityTest {
     var secondTrace = trace(secondSolver);
     var second = secondSolver.solve(problem(5, 12));
 
+    // Captured on Stage 1 revision 8d076e50db before adding list-variable support. Include every
+    // logical step, final assignments and physical score calls to guard the original strategy.
+    var stageOneDigests =
+        Map.of(
+            0L, "dbe35aaf6be23e995bfe9c0a60d035dcb4f26e2cb0181c8c1a36bb9710bfc80e",
+            37L, "2ff1874ae630586bda561b80e0fdba12a333550788283d895ba4f16b91324283",
+            997L, "1186e43237b1dfc1dfc9459509573441ec48ab6747df8113985ac261eea8cc2d");
+    assertThat(
+            baselineDigest(
+                firstTrace, first, firstSolver.getSolverScope().getScoreCalculationCount()))
+        .isEqualTo(stageOneDigests.get(seed));
     assertThat(firstTrace).hasSize(34);
     assertThat(secondTrace).containsExactlyElementsOf(firstTrace);
     assertThat(assignments(second)).containsExactlyElementsOf(assignments(first));
@@ -121,6 +137,18 @@ class GeneticAlgorithmReproducibilityTest {
     }
     assertThat(result.getScore()).isEqualTo(bestScores.getLast());
     assertReplay(result);
+  }
+
+  private static String baselineDigest(
+      List<Step> trace, TestdataSolution result, long calculations) {
+    try {
+      var text = trace + "|" + assignments(result) + "|" + result.getScore() + "|" + calculations;
+      return HexFormat.of()
+          .formatHex(
+              MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException impossible) {
+      throw new IllegalStateException(impossible);
+    }
   }
 
   private static List<Step> trace(DefaultSolver<TestdataSolution> solver) {
