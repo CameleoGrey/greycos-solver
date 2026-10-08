@@ -34,19 +34,26 @@ public final class GeneticAlgorithmExample {
   private GeneticAlgorithmExample() {}
 
   public static void main(String[] args) throws IOException {
-    if (args.length != 0 && args.length != 4) {
-      throw new IllegalArgumentException("Usage: [<tasks> <seed> <attempts> <assignment.csv>]");
+    if (args.length != 0 && args.length != 4 && args.length != 5) {
+      throw new IllegalArgumentException(
+          "Usage: [<tasks> <seed> <moves> <assignment.csv> [<localImprovementMoves>]]");
     }
     int size = args.length == 0 ? 80 : Integer.parseInt(args[0]);
     long seed = args.length == 0 ? 37L : Long.parseLong(args[1]);
     long attempts = args.length == 0 ? 2000L : Long.parseLong(args[2]);
     Path output = Path.of(args.length == 0 ? "target/genetic-algorithm/assignments.csv" : args[3]);
+    long localImprovementMoves = args.length == 5 ? Long.parseLong(args[4]) : 0L;
     if (attempts < 1) throw new IllegalArgumentException("The attempts must be positive.");
+    if (localImprovementMoves < 0)
+      throw new IllegalArgumentException("The local-improvement move limit must be nonnegative.");
     var input = problem(size);
     var initial = replay(input);
     var config =
         config(seed)
-            .withPhases(new GeneticAlgorithmPhaseConfig().withPopulationSize(32))
+            .withPhases(
+                new GeneticAlgorithmPhaseConfig()
+                    .withPopulationSize(32)
+                    .withLocalImprovementMoveCountLimit(localImprovementMoves))
             .withTerminationConfig(new TerminationConfig().withMoveCountLimit(attempts));
     var result = SolverFactory.<TaskMachineSolution>create(config).buildSolver().solve(input);
     verify(result);

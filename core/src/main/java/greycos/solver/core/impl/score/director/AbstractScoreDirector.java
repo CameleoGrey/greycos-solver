@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
@@ -667,6 +668,17 @@ public abstract class AbstractScoreDirector<
       Move<Solution_> move,
       @Nullable Consumer<SolutionView<Solution_>> consumer,
       boolean assertMoveScoreFromScratch) {
+    return executeTemporaryMoveWithScore(
+        move,
+        consumer == null ? null : (view, score) -> consumer.accept(view),
+        assertMoveScoreFromScratch);
+  }
+
+  @Override
+  public InnerScore<Score_> executeTemporaryMoveWithScore(
+      Move<Solution_> move,
+      @Nullable BiConsumer<SolutionView<Solution_>, InnerScore<Score_>> consumer,
+      boolean assertMoveScoreFromScratch) {
     // This change and resulting before/after events will not be propagated to a neighborhood
     // session,
     // as they will be immediately undone.
@@ -689,7 +701,7 @@ public abstract class AbstractScoreDirector<
                   assertWorkingScoreFromScratch(score, move);
                 }
                 if (consumer != null) {
-                  consumer.accept(moveDirector);
+                  consumer.accept(moveDirector, score);
                 }
                 return score;
               }));

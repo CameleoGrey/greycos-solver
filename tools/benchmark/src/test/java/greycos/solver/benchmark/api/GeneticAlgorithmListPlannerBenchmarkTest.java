@@ -7,6 +7,7 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,19 +28,21 @@ import greycos.solver.core.testcotwin.list.TestdataListSolution;
 import greycos.solver.core.testcotwin.list.TestdataListValue;
 
 import org.jspecify.annotations.NonNull;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GeneticAlgorithmListPlannerBenchmarkTest {
 
-  @Test
+  @ParameterizedTest
+  @ValueSource(longs = {0L, 4L})
   @Timeout(60)
-  void everyListMutationProducesReportStatisticsAndReloadableXmlResult(@TempDir Path directory)
-      throws Exception {
+  void everyListMutationProducesReportStatisticsAndReloadableXmlResult(
+      long localImprovementMoveCountLimit, @TempDir Path directory) throws Exception {
     var solverBenchmarks =
         Arrays.stream(GeneticAlgorithmMutationType.values())
-            .map(GeneticAlgorithmListPlannerBenchmarkTest::solverBenchmarkXml)
+            .map(type -> solverBenchmarkXml(type, localImprovementMoveCountLimit))
             .collect(Collectors.joining());
     var xml =
         """
@@ -76,6 +79,8 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
     var report = Files.readString(htmlPath);
     var solverResults = benchmark.getPlannerBenchmarkResult().getSolverBenchmarkResultList();
     assertThat(solverResults).hasSize(GeneticAlgorithmMutationType.values().length);
+    var moveCounts = new HashMap<String, Long>();
+    long totalProbes = 0L;
     for (var solverResult : solverResults) {
       var type = GeneticAlgorithmMutationType.valueOf(solverResult.getName().substring(5));
       assertThat(report).contains(solverResult.getName());
@@ -88,7 +93,6 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
       assertThat(runResult.getSucceeded()).isTrue();
       assertThat(runResult.isInitialized()).isTrue();
       assertThat(runResult.getScore()).isEqualTo(expectedScore);
-      assertThat(runResult.getMoveEvaluationCount()).isEqualTo(12L);
       var runDirectory = runResult.getResultDirectory().toPath();
       for (var statistic :
           List.of(
@@ -113,8 +117,29 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
       assertThat(moveTypeRows)
           .allSatisfy(row -> assertThat(row.get(1)).startsWith("GeneticAlgorithm/"))
           .anySatisfy(row -> assertThat(row.get(1)).startsWith("GeneticAlgorithm/" + type + "/"));
+      long probes =
+          moveTypeRows.stream()
+              .filter(row -> row.get(1).startsWith("GeneticAlgorithm/LOCAL_IMPROVEMENT/"))
+              .mapToLong(row -> Long.parseLong(row.get(2)))
+              .sum();
+      long offspring =
+          moveTypeRows.stream()
+              .filter(row -> !row.get(1).startsWith("GeneticAlgorithm/LOCAL_IMPROVEMENT/"))
+              .mapToLong(row -> Long.parseLong(row.get(2)))
+              .sum();
+      assertThat(offspring).isEqualTo(12L);
+      // Three diversified seeding steps receive no probes; nine generation attempts may improve.
+      assertThat(probes).isBetween(0L, 9L * localImprovementMoveCountLimit);
+      assertThat(runResult.getMoveEvaluationCount()).isEqualTo(offspring + probes);
       assertThat(moveTypeRows.stream().mapToLong(row -> Long.parseLong(row.get(2))).sum())
-          .isEqualTo(12L);
+          .isEqualTo(runResult.getMoveEvaluationCount());
+      moveCounts.put(solverResult.getName(), runResult.getMoveEvaluationCount());
+      totalProbes += probes;
+    }
+    if (localImprovementMoveCountLimit == 0L) {
+      assertThat(totalProbes).isZero();
+    } else {
+      assertThat(totalProbes).isPositive();
     }
 
     var restored = new BenchmarkResultIO().readPlannerBenchmarkResultList(directory.toFile());
@@ -133,6 +158,8 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
           (GeneticAlgorithmPhaseConfig)
               solverResult.getSolverConfig().getPhaseConfigList().getFirst();
       assertThat(phase.getMoveThreadCount()).isEqualTo(SolverConfig.MOVE_THREAD_COUNT_NONE);
+      assertThat(phase.getLocalImprovementMoveCountLimit())
+          .isEqualTo(localImprovementMoveCountLimit);
       assertThat(phase.getMutationOperatorConfigList())
           .singleElement()
           .satisfies(
@@ -147,7 +174,8 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
       assertThat(runResult.getSucceeded()).isTrue();
       assertThat(runResult.isInitialized()).isTrue();
       assertThat(runResult.getScore()).isEqualTo(expectedScore);
-      assertThat(runResult.getMoveEvaluationCount()).isEqualTo(12L);
+      assertThat(runResult.getMoveEvaluationCount())
+          .isEqualTo(moveCounts.get(solverResult.getName()));
     }
     assertThat(problem.getEntityList())
         .allSatisfy(entity -> assertThat(entity.getValueList()).hasSize(3));
@@ -161,7 +189,8 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
         .toList();
   }
 
-  private static String solverBenchmarkXml(GeneticAlgorithmMutationType type) {
+  private static String solverBenchmarkXml(
+      GeneticAlgorithmMutationType type, long localImprovementMoveCountLimit) {
     return """
         <solverBenchmark>
           <name>List %s</name>
@@ -178,6 +207,7 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
               <termination><stepCountLimit>12</stepCountLimit></termination>
               <populationSize>4</populationSize>
               <crossoverProbability>1.0</crossoverProbability>
+              <localImprovementMoveCountLimit>%d</localImprovementMoveCountLimit>
               <moveThreadCount>NONE</moveThreadCount>
               <mutationOperator><type>%s</type><probability>1.0</probability></mutationOperator>
             </geneticAlgorithm>
@@ -198,6 +228,7 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
             TestdataListEntity.class.getName(),
             TestdataListValue.class.getName(),
             ListConstraints.class.getName(),
+            localImprovementMoveCountLimit,
             type);
   }
 

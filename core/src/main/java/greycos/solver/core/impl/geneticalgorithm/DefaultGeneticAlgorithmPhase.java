@@ -3,6 +3,8 @@ package greycos.solver.core.impl.geneticalgorithm;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -11,11 +13,13 @@ import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
 import greycos.solver.core.impl.phase.AbstractPhase;
 import greycos.solver.core.impl.phase.PhaseType;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.random.DefaultRandomSource;
+import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
@@ -27,6 +31,8 @@ import greycos.solver.core.impl.solver.termination.PhaseTermination;
 public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase<Solution_> {
   private final GeneticAlgorithmPhaseConfig config;
   private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
+  private final Function<RandomSource, GeneticAlgorithmLocalImprovementMoves<Solution_>>
+      localImprovementMovesFactory;
   // Keep gauge backing objects reachable after the phase; replace them on every run.
   private GeneticAlgorithmMetrics<Solution_> metrics;
 
@@ -34,6 +40,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     super(builder);
     config = builder.config.copyConfig();
     bestSolutionRecaller = builder.bestSolutionRecaller;
+    localImprovementMovesFactory = builder.localImprovementMovesFactory;
   }
 
   @Override
@@ -57,6 +64,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     // Backend changes must precede capturing phase-relative counters and the workspace director.
     solverScope.getSolver().prepareForPhase(scope);
     Throwable originalFailure = null;
+    GeneticAlgorithmLocalImprovementMoves<Solution_> localMoves = null;
     try {
       phaseStarted(scope);
       assertWorkingSolutionInitialized(scope);
@@ -71,17 +79,23 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         scope.setPopulationSize(1, 1);
         scope.setTerminationReason("no movable assignments");
       } else {
-        new Search<>(scope, workspace, operators).run();
+        if (localImprovementMovesFactory != null) {
+          localMoves = localImprovementMovesFactory.apply(solverScope.getWorkingRandom());
+          localMoves.initialize(workspace);
+          localMoves.solvingStarted(solverScope);
+          localMoves.phaseStarted(scope);
+        }
+        new Search<>(scope, workspace, operators, localMoves).run();
       }
     } catch (RuntimeException | Error failure) {
       originalFailure = failure;
       throw failure;
     } finally {
-      finishPhase(scope, originalFailure);
+      finishPhase(scope, localMoves, originalFailure);
     }
     logger.info(
         "{}Genetic Algorithm phase ({}) ended: time spent ({}), best score ({}), attempts ({}),"
-            + " generations ({}), population ({}, distinct {}), reason ({}).",
+            + " generations ({}), population ({}, distinct {}), local probes ({}), local accepted ({}), reason ({}).",
         logIndentation,
         phaseIndex,
         scope.calculateSolverTimeMillisSpentUpToNow(),
@@ -90,13 +104,28 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         scope.getGeneration(),
         scope.getPopulationSize(),
         scope.getDistinctPopulationSize(),
+        scope.getLocalImprovementProbeCount(),
+        scope.getLocalImprovementAcceptedCount(),
         scope.getTerminationReason());
   }
 
-  private void finishPhase(GeneticAlgorithmPhaseScope<Solution_> scope, Throwable originalFailure) {
-    runCleanup(
-        originalFailure,
-        List.of(scope::endingNow, () -> metrics.phaseEnded(scope), () -> phaseEnded(scope)));
+  private void finishPhase(
+      GeneticAlgorithmPhaseScope<Solution_> scope,
+      GeneticAlgorithmLocalImprovementMoves<Solution_> localMoves,
+      Throwable originalFailure) {
+    var cleanup = new ArrayList<Runnable>();
+    if (localMoves != null) {
+      cleanup.add(() -> localMoves.phaseEnded(scope));
+      cleanup.add(() -> localMoves.solvingEnded(scope.getSolverScope()));
+    }
+    cleanup.add(scope::endingNow);
+    // Failed probes may leave deferred undo updates or uncertain state. Keep the last stable step
+    // metrics instead of sampling unverified constraint totals during exceptional teardown.
+    if (originalFailure == null || localMoves == null) {
+      cleanup.add(() -> metrics.phaseEnded(scope));
+    }
+    cleanup.add(() -> phaseEnded(scope));
+    runCleanup(originalFailure, cleanup);
   }
 
   private static void runCleanup(Throwable originalFailure, List<Runnable> actions) {
@@ -123,6 +152,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     private final GeneticAlgorithmPhaseScope<Solution_> scope;
     private final GeneticAlgorithmWorkspace<Solution_, Score_> workspace;
     private final GeneticAlgorithmOperators<Solution_> operators;
+    private final GeneticAlgorithmLocalImprovementMoves<Solution_> localMoves;
     private final List<Individual<Score_>> population = new ArrayList<>();
     private final List<Individual<Score_>> winners = new ArrayList<>();
     private final GeneticAlgorithmPopulationDiversity populationDiversity =
@@ -140,10 +170,12 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     private Search(
         GeneticAlgorithmPhaseScope<Solution_> scope,
         GeneticAlgorithmWorkspace<Solution_, Score_> workspace,
-        GeneticAlgorithmOperators<Solution_> operators) {
+        GeneticAlgorithmOperators<Solution_> operators,
+        GeneticAlgorithmLocalImprovementMoves<Solution_> localMoves) {
       this.scope = scope;
       this.workspace = workspace;
       this.operators = operators;
+      this.localMoves = localMoves;
     }
 
     private void run() {
@@ -204,7 +236,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       return pair.first();
     }
 
-    /** Null means cancellation before materialization; there is no completed-attempt credit. */
+    /** Null means interruption; completed probes retain their separate work credits. */
     private Individual<Score_> attempt(
         boolean seeding,
         Individual<Score_> seedFallback,
@@ -214,6 +246,8 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       step.setGeneration(seeding ? 0 : scope.getGeneration() + 1);
       step.setBeforeScore(workspace.score());
       step.setBestBeforeScore(scope.getBestScore());
+      var attemptEntryGenome = workspace.genome();
+      var attemptEntryScore = workspace.score();
       var randomSource = (DefaultRandomSource) scope.getWorkingRandom();
       var previousRandom = randomSource.moveRandom().getDelegate();
       boolean lifecycleCompleted = false;
@@ -235,6 +269,18 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         step.setCandidateId(nextId++);
         if (stopped()) return null;
         var candidate = evaluate(step, genome);
+        if (localMoves != null
+            && !seeding
+            && step.getOutcome() == GeneticAlgorithmOutcome.EVALUATED) {
+          if (!improve(step)) {
+            workspace.restore(attemptEntryGenome, attemptEntryScore);
+            step.setScore(workspace.score());
+            return null;
+          }
+          candidate =
+              new Individual<>(workspace.genome(), workspace.score(), step.getCandidateId());
+          step.setCandidateScore(candidate.score());
+        }
         Individual<Score_> nativeIndividual = seedFallback;
         if (!seeding) {
           nativeIndividual =
@@ -339,11 +385,126 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
           }
           workspace.scored(candidateScore);
           step.setOutcome(GeneticAlgorithmOutcome.EVALUATED);
-          bestSolutionRecaller.processWorkingSolutionDuringStep(step);
+          if (localMoves == null) {
+            bestSolutionRecaller.processWorkingSolutionDuringStep(step);
+          } else {
+            publishBest(step, () -> bestSolutionRecaller.processWorkingSolutionDuringStep(step));
+          }
         }
       }
       step.setCandidateScore(candidateScore);
       return new Individual<>(genome, candidateScore, step.getCandidateId());
+    }
+
+    /** Greedy probes own their work credits; they never create additional GA steps. */
+    private boolean improve(GeneticAlgorithmStepScope<Solution_> step) {
+      if (stopped()) return false;
+      Throwable originalFailure = null;
+      try {
+        localMoves.stepStarted(step);
+        boolean needsScoreRefresh = false;
+        for (long probe = 0; probe < config.getLocalImprovementMoveCountLimit(); probe++) {
+          if (stopped()) return false;
+          var move = localMoves.nextMove(scope.getWorkingRandom().moveIteratorUsage());
+          if (move == null) break;
+          // Selection may invoke user range/filter code; cancellation is safe before application.
+          if (stopped()) return false;
+          InnerScoreDirector<Solution_, Score_> director = scope.getScoreDirector();
+          var baselineGenome = workspace.genome();
+          var baselineScore = workspace.score();
+          var improvedGenome = new AtomicReference<GeneticAlgorithmGenome>();
+          InnerScore<Score_> probeScore = baselineScore;
+          String outcome = "NO_CHANGE";
+          if (!(move instanceof AbstractSelectorBasedMove<Solution_> selectorMove)
+              || selectorMove.isMoveDoable(director)) {
+            probeScore =
+                director.executeTemporaryMoveWithScore(
+                    move,
+                    (view, score) -> {
+                      if (score.isFullyAssigned()
+                          && !score.isStructurallyFlawed()
+                          && score.compareTo(baselineScore) > 0) {
+                        improvedGenome.set(workspace.captureGenome());
+                        publishBest(
+                            step,
+                            () ->
+                                bestSolutionRecaller.processWorkingSolutionDuringMove(score, step));
+                      }
+                    },
+                    getEnvironmentMode().isFullyAsserted());
+            needsScoreRefresh = true;
+            if (!probeScore.isFullyAssigned() || probeScore.isStructurallyFlawed()) {
+              workspace.restore(baselineGenome, baselineScore);
+              needsScoreRefresh = false;
+              outcome = "INVALID";
+            } else {
+              outcome = improvedGenome.get() == null ? "REJECTED" : "IMPROVING";
+            }
+          }
+          // executeTemporaryMoveWithScore has finished its required undo before this credit.
+          scope.getSolverScope().addMoveEvaluationCount(1);
+          step.recordLocalImprovementProbe();
+          if (scope.getSolverScope().isMetricEnabled(SolverMetric.MOVE_COUNT_PER_TYPE)) {
+            scope
+                .getSolverScope()
+                .addMoveEvaluationCountPerType(
+                    "GeneticAlgorithm/LOCAL_IMPROVEMENT/" + move.describe() + "/" + outcome, 1);
+          }
+          if (stopped()) return false;
+          if (improvedGenome.get() != null) {
+            var transition = workspace.transition(improvedGenome.get());
+            if (!transition.valid()) {
+              throw new IllegalStateException(
+                  "A valid local improvement could not be materialized.");
+            }
+            calculateWorkingStepScore(step, "Genetic Algorithm local improvement " + move);
+            if (!step.getScore().equals(probeScore)) {
+              throw new IllegalStateException(
+                  "The materialized local improvement score (%s) differs from its probe score (%s)."
+                      .formatted(step.getScore(), probeScore));
+            }
+            workspace.scored(step.getScore());
+            needsScoreRefresh = false;
+            step.recordLocalImprovementAccepted();
+            localMoves.reset();
+            if (stopped()) return false;
+          }
+        }
+        if (stopped()) return false;
+        if (needsScoreRefresh) {
+          // Temporary undo queues Bavet updates. Flush before completion listeners/metrics read
+          // constraint totals; restoring only the score field would expose the last trial's totals.
+          workspace.restore(workspace.genome(), workspace.score());
+          step.setScore(workspace.score());
+        }
+        return !stopped();
+      } catch (RuntimeException | Error failure) {
+        originalFailure = failure;
+        throw failure;
+      } finally {
+        // Only selector cleanup: an interrupted offspring must not fire GA completion callbacks.
+        runCleanup(originalFailure, List.of(() -> localMoves.stepEnded(step)));
+      }
+    }
+
+    private void publishBest(GeneticAlgorithmStepScope<Solution_> step, Runnable publication) {
+      InnerScore<Score_> previousBest = scope.getBestScore();
+      Throwable originalFailure = null;
+      try {
+        publication.run();
+      } catch (RuntimeException | Error failure) {
+        originalFailure = failure;
+        throw failure;
+      } finally {
+        // The recaller updates the archive before firing external listeners. Even if a listener
+        // fails, sample that archive's totals before the temporary move is undone.
+        if (scope.<Score_>getBestScore().compareTo(previousBest) > 0) {
+          runCleanup(
+              originalFailure,
+              List.of(
+                  () -> metrics.recordBest(scope), () -> phaseTermination.bestScoreImproved(step)));
+        }
+      }
     }
 
     private Individual<Score_> cached(GeneticAlgorithmGenome genome) {
@@ -385,6 +546,8 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       extends AbstractPhaseBuilder<Solution_, DefaultGeneticAlgorithmPhase<Solution_>> {
     private final GeneticAlgorithmPhaseConfig config;
     private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
+    private Function<RandomSource, GeneticAlgorithmLocalImprovementMoves<Solution_>>
+        localImprovementMovesFactory;
 
     public Builder(
         int phaseIndex,
@@ -396,6 +559,12 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       super(phaseIndex, environmentMode, logIndentation, phaseTermination);
       this.config = config;
       this.bestSolutionRecaller = bestSolutionRecaller;
+    }
+
+    public Builder<Solution_> withLocalImprovementMovesFactory(
+        Function<RandomSource, GeneticAlgorithmLocalImprovementMoves<Solution_>> factory) {
+      localImprovementMovesFactory = factory;
+      return this;
     }
 
     @Override

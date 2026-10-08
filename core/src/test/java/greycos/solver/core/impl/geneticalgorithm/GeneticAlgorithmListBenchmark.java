@@ -93,6 +93,14 @@ public final class GeneticAlgorithmListBenchmark {
             "move_threads=NONE",
             "environment=NO_ASSERT",
             "population_size=32",
+            "local_improvement_move_count_limit=32 for GA_LOCAL; 0 for GA",
+            "algorithms=" + String.join(",", GeneticAlgorithmBenchmark.selectedAlgorithms()),
+            "models=" + String.join(",", selectedModels()),
+            "budgets=" + String.join(",", GeneticAlgorithmBenchmark.selectedBudgets()),
+            "evaluator_enabled=" + !Boolean.getBoolean("greycos.gaBenchmark.skipEvaluators"),
+            "order_policy=evaluator AB/BA alternates by seed/model/shape; search rotates by seed/model and reverses by budget",
+            "order_offset=" + Integer.getInteger("greycos.gaBenchmark.orderOffset", 0),
+            "reverse_order=" + Boolean.getBoolean("greycos.gaBenchmark.reverseOrder"),
             "seeds=" + String.join(",", seeds),
             "source_revision="
                 + System.getProperty("greycos.gaBenchmark.revision", git("rev-parse", "HEAD")),
@@ -120,11 +128,17 @@ public final class GeneticAlgorithmListBenchmark {
         "category,algorithm,model,shape,seed,tasks,candidates,budget_kind,budget,verified,complete,feasible,"
             + "initial_score,result_score,assignment_sha256,score_calls,session_builds,session_count_scope,"
             + "assignment_distance,changed_list_count,setup_ns,work_ns,allocated_bytes,gc_count,gc_ms,moves,verification_ns,"
-            + "target_score,target_status,time_to_target_ns");
-    run(listModel(), size, count, millis, calls, seeds, output, rows);
-    run(mixedModel(), size, count, millis, calls, seeds, output, rows);
+            + "target_score,target_status,time_to_target_ns,local_improvement_probes,local_improvement_accepted");
+    if (selectedModels().contains("list_only"))
+      run(listModel(), size, count, millis, calls, seeds, output, rows);
+    if (selectedModels().contains("mixed"))
+      run(mixedModel(), size, count, millis, calls, seeds, output, rows);
     System.out.println(
         "Correctness and independent replay: PASS; evidence: " + output.toAbsolutePath());
+  }
+
+  private static List<String> selectedModels() {
+    return GeneticAlgorithmBenchmark.selection("models", List.of("list_only", "mixed"));
   }
 
   private static <S> void run(
@@ -137,9 +151,16 @@ public final class GeneticAlgorithmListBenchmark {
       Path output,
       List<String> rows)
       throws IOException {
-    for (String seedText : seeds) {
-      long seed = Long.parseLong(seedText);
-      for (String shape : List.of("sparse", "broad")) {
+    for (int seedIndex = 0; seedIndex < seeds.length; seedIndex++) {
+      long seed = Long.parseLong(seeds[seedIndex]);
+      int orderIndex =
+          seedIndex
+              + (model.mixed ? 1 : 0)
+              + Integer.getInteger("greycos.gaBenchmark.orderOffset", 0);
+      for (String shape :
+          Boolean.getBoolean("greycos.gaBenchmark.skipEvaluators")
+              ? List.<String>of()
+              : List.of("sparse", "broad")) {
         long started = System.nanoTime();
         var input = GeneticAlgorithmSequenceDomain.input(size, model.mixed);
         var candidates = candidates(input, count, seed, shape);
@@ -153,8 +174,8 @@ public final class GeneticAlgorithmListBenchmark {
         for (boolean retained : new boolean[] {false, true}) {
           evaluate(model, size, candidates, expected, retained, true);
         }
-        var order = new ArrayList<>(List.of(false, true));
-        Collections.shuffle(order, new Random(seed));
+        var order =
+            GeneticAlgorithmBenchmark.evaluatorOrder(orderIndex + (shape.equals("broad") ? 1 : 0));
         for (boolean retained : order) {
           var result = evaluate(model, size, candidates, expected, retained, false);
           rows.add(
@@ -172,13 +193,13 @@ public final class GeneticAlgorithmListBenchmark {
                   preparationNanos));
         }
       }
-      var algorithms = new ArrayList<>(List.of("GA", "LS", "ALNS"));
-      Collections.shuffle(algorithms, new Random(seed));
+      var algorithms = GeneticAlgorithmBenchmark.searchOrder(orderIndex, false);
       for (var algorithm : algorithms)
         search(model, size, seed, algorithm, "score_calls", 200, null);
-      for (var kind : List.of("score_calls", "milliseconds")) {
+      for (var kind : GeneticAlgorithmBenchmark.selectedBudgets()) {
         long budget = kind.equals("score_calls") ? calls : millis;
-        for (var algorithm : algorithms) {
+        for (var algorithm :
+            GeneticAlgorithmBenchmark.searchOrder(orderIndex, kind.equals("milliseconds"))) {
           var result =
               search(
                   model,
@@ -342,7 +363,9 @@ public final class GeneticAlgorithmListBenchmark {
           candidates.length,
           System.nanoTime() - verificationStarted,
           null,
-          -1);
+          -1,
+          0,
+          0);
     }
   }
 
@@ -408,6 +431,10 @@ public final class GeneticAlgorithmListBenchmark {
     PhaseConfig<?> phase =
         switch (algorithm) {
           case "GA" -> new GeneticAlgorithmPhaseConfig().withPopulationSize(32);
+          case "GA_LOCAL", "GA_PLUS_LOCAL" ->
+              new GeneticAlgorithmPhaseConfig()
+                  .withPopulationSize(32)
+                  .withLocalImprovementMoveCountLimit(32L);
           case "LS" ->
               new LocalSearchPhaseConfig()
                   .withMoveSelectorConfig(new UnionMoveSelectorConfig().withMoveSelectorList(moves))
@@ -496,7 +523,9 @@ public final class GeneticAlgorithmListBenchmark {
         solver.getSolverScope().getMoveEvaluationCount(),
         System.nanoTime() - verificationStarted,
         target,
-        targetTime[0]);
+        targetTime[0],
+        sessions.localImprovementProbes,
+        sessions.localImprovementAccepted);
   }
 
   static Model<GeneticAlgorithmListExample.SequenceSolution> listModel() {
@@ -632,7 +661,9 @@ public final class GeneticAlgorithmListBenchmark {
         result.target == null
             ? "not_applicable"
             : result.timeToTargetNanos < 0 ? "unreached" : "reached",
-        Long.toString(result.timeToTargetNanos));
+        Long.toString(result.timeToTargetNanos),
+        Long.toString(result.localImprovementProbes),
+        Long.toString(result.localImprovementAccepted));
   }
 
   record Result(
@@ -650,7 +681,9 @@ public final class GeneticAlgorithmListBenchmark {
       long moves,
       long verificationNanos,
       HardSoftScore target,
-      long timeToTargetNanos) {}
+      long timeToTargetNanos,
+      long localImprovementProbes,
+      long localImprovementAccepted) {}
 
   record Resources(long allocatedBytes, long gcCount, long gcMillis) {
     static Resources capture() {
@@ -682,6 +715,8 @@ public final class GeneticAlgorithmListBenchmark {
   private static final class SessionRecorder<S> extends PhaseLifecycleListenerAdapter<S> {
     private Object previous;
     private long builds;
+    private long localImprovementProbes;
+    private long localImprovementAccepted;
 
     private void observe(AbstractPhaseScope<S> scope) {
       Object session =
@@ -705,6 +740,10 @@ public final class GeneticAlgorithmListBenchmark {
     @Override
     public void phaseEnded(AbstractPhaseScope<S> scope) {
       observe(scope);
+      if (scope instanceof GeneticAlgorithmPhaseScope<?> gaScope) {
+        localImprovementProbes += gaScope.getLocalImprovementProbeCount();
+        localImprovementAccepted += gaScope.getLocalImprovementAcceptedCount();
+      }
     }
   }
 }

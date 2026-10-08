@@ -22,6 +22,8 @@ public final class GeneticAlgorithmStepScope<Solution_> extends AbstractStepScop
   private InnerScore<?> beforeScore;
   private InnerScore<?> bestBeforeScore;
   private InnerScore<?> candidateScore;
+  private long localImprovementProbeCount;
+  private long localImprovementAcceptedCount;
 
   public GeneticAlgorithmStepScope(GeneticAlgorithmPhaseScope<Solution_> phaseScope) {
     this(phaseScope, phaseScope.getNextStepIndex());
@@ -160,5 +162,23 @@ public final class GeneticAlgorithmStepScope<Solution_> extends AbstractStepScop
         + (seeding ? "SEED" : mutationType == null ? "NONE" : mutationType)
         + "/"
         + outcome;
+  }
+
+  public long getLocalImprovementProbeCount() {
+    return localImprovementProbeCount;
+  }
+
+  public long getLocalImprovementAcceptedCount() {
+    return localImprovementAcceptedCount;
+  }
+
+  public void recordLocalImprovementProbe() {
+    localImprovementProbeCount++;
+    phaseScope.recordLocalImprovementProbe();
+  }
+
+  public void recordLocalImprovementAccepted() {
+    localImprovementAcceptedCount++;
+    phaseScope.recordLocalImprovementAccepted();
   }
 }

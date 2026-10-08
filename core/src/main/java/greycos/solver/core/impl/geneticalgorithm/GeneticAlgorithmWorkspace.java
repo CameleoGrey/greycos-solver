@@ -97,6 +97,29 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
     return genome;
   }
 
+  /** Captures a scored temporary move without changing ownership of the retained baseline. */
+  public GeneticAlgorithmGenome captureGenome() {
+    var values = new Object[slots.size()];
+    for (var i = 0; i < slots.size(); i++) {
+      var slot = slots.get(i);
+      var value = slot.variableDescriptor().getValue(slot.entity());
+      if (!isInRange(slot, value) || (!slot.movable() && !Objects.equals(value, genome.value(i)))) {
+        throw new IllegalStateException(
+            "The local improvement changed variable (%s) on entity (%s) to an invalid or pinned value (%s)."
+                .formatted(
+                    slot.variableDescriptor().getSimpleEntityAndVariableName(),
+                    slot.entity(),
+                    value));
+      }
+      values[i] = value;
+    }
+    var lists = listModel == null ? new int[0][] : listModel.captureLists();
+    if (listModel != null && !listModel.isValid(lists)) {
+      throw new IllegalStateException("The local improvement produced invalid list assignments.");
+    }
+    return new GeneticAlgorithmGenome(values, lists);
+  }
+
   public InnerScore<Score_> score() {
     if (awaitingScore) {
       throw new IllegalStateException(

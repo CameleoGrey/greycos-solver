@@ -94,6 +94,14 @@ public final class GeneticAlgorithmMetrics<Solution_> {
         .publish(() -> sampleConstraints(phaseScope, true, false));
   }
 
+  /** Sample while the published best is materialized, before a temporary probe is undone. */
+  public void recordBest(GeneticAlgorithmPhaseScope<Solution_> phaseScope) {
+    phaseScope
+        .getSolverScope()
+        .getMetricRun()
+        .publish(() -> sampleConstraints(phaseScope, false, true));
+  }
+
   @SuppressWarnings({"rawtypes", "unchecked"})
   private void sampleConstraints(
       GeneticAlgorithmPhaseScope<Solution_> phaseScope, boolean sampleStep, boolean sampleBest) {

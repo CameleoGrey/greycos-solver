@@ -10,7 +10,8 @@ GA supports initialized solutions with basic planning variables, one planning li
 both, using finite countable value ranges. Basic variables may belong to list owners, list elements,
 or other planning entities. List values may be unassigned when the model permits it; all required
 assignments must be initialized. GA runs serially and cannot be nested inside an island model or
-partitioned search. Offspring local improvement and parallel population evaluators are not supported.
+partitioned search. Bounded offspring local improvement is opt-in. Parallel population evaluators
+are not supported.
 
 [#geneticAlgorithmConfiguration]
 == Configuration
@@ -37,8 +38,10 @@ Add a GA phase after construction, or supply a fully initialized input:
 
 The phase-local move limit gives the following local-search phase a chance to run within the global
 time limit. Each completed seed or offspring attempt counts as one GA step and one move evaluation,
-including cached duplicates, unchanged proposals and invalid proposals. The captured initial member
-does not consume an attempt. A score calculation is counted only when it actually happens.
+including cached duplicates, unchanged proposals and invalid proposals. With local improvement
+enabled, each completed nested probe consumes an additional move evaluation, without creating a
+GA step. The captured initial member does not consume an attempt. A score calculation is counted
+only when it actually happens, including probe evaluation, accepted-move commit and recovery.
 
 The corresponding Java phase configuration is:
 
@@ -62,6 +65,7 @@ new GeneticAlgorithmPhaseConfig()
 |`mutationRateMultiplier` |`0.0` |Finite nonnegative multiplier for mutation size. Zero still performs each operator's minimum mutation.
 |`tabuEntityRate` |`0.0` |Finite rate in `[0, 1]` limiting recent selected positions within mutation groups.
 |`noProgressAttemptLimit` |`max(128, 10 * populationSize)` |Positive number of consecutive attempts without fresh valid offspring scoring before the phase exits.
+|`localImprovementMoveCountLimit` |`0` |Nonnegative maximum number of local probes for each freshly scored generation child. Zero disables local improvement.
 |`moveThreadCount` |Inherited |The effective setting must disable move workers. Set `NONE` on this phase to override a solver-wide setting.
 |`mutationOperator` |All six equally |Optional named probabilities. An explicit list disables omitted operators.
 |===
@@ -188,6 +192,58 @@ ordering, the solver's seeded random generator, no unused child for odd populati
 groups and range validation, and no score calculation for a cached duplicate. It does not reproduce
 GreyJack's entropy-seeded random trajectory.
 
+[#geneticAlgorithmLocalImprovement]
+=== Offspring local improvement
+
+Set `localImprovementMoveCountLimit` to enable bounded improvement of generation children:
+
+[source,xml]
+----
+<geneticAlgorithm>
+  <localImprovementMoveCountLimit>32</localImprovementMoveCountLimit>
+</geneticAlgorithm>
+----
+
+The Java equivalent is `new GeneticAlgorithmPhaseConfig().withLocalImprovementMoveCountLimit(32L)`.
+The default is zero; negative limits fail at startup. With the feature disabled, the existing
+population strategy and random trajectory remain unchanged. The value 32 is an example setting,
+not a generally optimal tuning choice.
+
+Improvement runs only after a generation child receives a fresh valid score. Initial population
+capture, diversified seeding, cached duplicates, unchanged proposals and structurally invalid
+proposals do not run local improvement. The child is already materialized in the retained scoring
+workspace; improvement does not start another solver or rebuild the Bavet session.
+
+Each probe chooses uniformly among the available move families: one basic value change, one list
+relocation, or one list swap. Pure basic models have only value changes; list-only models have
+relocation and swap; mixed models can use all three. Moves honor the current value ranges, pins,
+list membership and allowed unassignment. A family that has no available move does not participate.
+Basic changes sample a movable slot uniformly, then sample its finite value range. A selected
+move that makes no change still consumes one probe and move credit, without a score calculation.
+Temporary probes use normal notifications, shadow propagation, native scoring and undo. Only a
+strictly better native score is accepted; equal scores are rejected. Accepted assignments and
+their exact scores become the child's final genome and fitness for the existing replacement rule.
+
+Every completed probe receives one move credit after its temporary state has been undone, even if
+termination then prevents committing an improving probe. The accepted-probe counter advances only
+after a change has been committed and its fresh score has been verified. The enclosing offspring
+receives its separate move credit and GA step only when the attempt completes. Score-call limits
+include actual scoring for the child, probes, accepted commits and restoration. A final rejected
+temporary probe also requires a verified baseline score refresh before step metrics: undo queues
+incremental scoring updates, and restoring the score field alone would leave them pending. Undo
+and synchronization do not receive separate logical move credits. Consequently, a move limit
+permits fewer offspring when local improvement is enabled.
+
+Limits and cancellation are checked at safe probe boundaries. If a probe exhausts the remaining
+budget or cancellation interrupts the attempt, GA restores the workspace state from before that
+offspring attempt and discards the unfinished attempt and generation replacement buffer. Completed
+probe credits, actual score calls and already published best improvements remain recorded.
+The solver can therefore return a best solution discovered during an interrupted attempt, including
+an improving probe published before termination prevented its commit. Accepted-probe counts can
+include earlier completed commits from that same interrupted attempt.
+If scoring or a listener throws, the phase aborts. Step metrics retain their last stable sample;
+best metrics retain any valid best solution already published before the failure.
+
 [#geneticAlgorithmIncrementalScoring]
 == Incremental scoring and lifecycle
 
@@ -219,6 +275,8 @@ identify generation, population diversity, parent and replacement member identit
 and group, attempt outcome, admission, and changed assignments. The change count adds changed basic
 slots and list values whose owner or index changed, including shifted suffixes. A cached attempt's workspace score
 can differ from its candidate fitness; interpret those fields separately.
+Phase diagnostics also count completed local-improvement probes and accepted probes, including
+completed probes belonging to an interrupted offspring attempt.
 
 Session retention establishes incremental evaluation, but does not establish a speedup. Broad
 assignment changes can affect many constraints, and genome construction, diffing, cloning a new
@@ -241,8 +299,12 @@ After building the project and compiling its test sources, run from the reposito
 ./mvnw -pl core exec:java \
   -Dexec.classpathScope=test \
   -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmExample \
-  -Dexec.args="80 37 2000 target/genetic-algorithm/assignments.csv"
+  -Dexec.args="80 37 2000 target/genetic-algorithm/assignments.csv 32"
 ----
+
+Arguments are task count, random seed, total move limit, output file and an optional per-child
+local-improvement probe limit. Omitting the fifth argument retains the original zero limit.
+The total move limit includes both completed offspring attempts and nested probes.
 
 The bounded `GeneticAlgorithmBenchmark` harness first verifies every evaluator result against
 independent business replay. It then compares full working-solution replacement with retained deltas
@@ -250,7 +312,8 @@ on the same pregenerated sparse and broad assignment sequences. Both measured ev
 every candidate, isolating the evaluation mechanism from the GA fitness cache. It verifies exactly
 one retained session and one new session per full replacement.
 
-The search comparison runs GA, serial Late Acceptance local search and basic-variable ALNS from
+The search comparison runs GA, GA with 32 local probes per child (`GA_LOCAL`), serial Late Acceptance
+local search and basic-variable ALNS from
 the same initialized assignments, with the same prescribed seeds and no move workers. Separate runs
 use a physical score-calculation threshold and a wall-clock limit. Thresholds may be crossed at
 different algorithm boundaries; the report includes actual work and time rather than treating the
@@ -262,15 +325,26 @@ exit can stop GA earlier.
 ./mvnw -pl core exec:java \
   -Dexec.classpathScope=test \
   -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmBenchmark \
-  -Dexec.args="80 256 250 1000 11,37,83 target/genetic-algorithm/benchmark"
+  -Dexec.args="80 256 500 2000 11,37,83 target/genetic-algorithm/benchmark"
 ----
 
 Arguments specify task count, evaluator candidate count, search milliseconds, search score-call
 threshold, comma-separated seeds and output directory. `results.csv` records correctness,
 completeness, feasibility, exact scores, score calls, session counts, assignment distance, setup and
-work time, thread allocation and garbage collection. `metadata.properties` records JVM, heap,
+work time, thread allocation, garbage collection, completed local probes and accepted local probes.
+`metadata.properties` records JVM, heap,
 processor, source revision and dirty status, warmup, termination and counter definitions. Search results also export assignment files
-and independently verify their reloads.
+and independently verify their reloads. Evaluator ordering alternates explicitly between full
+replacement first and retained deltas first by seed and shape. Search order rotates by seed and
+reverses for the second budget kind; no random shuffle determines execution order.
+
+The `greycos.gaBenchmark.reverseOrder=true` JVM property reverses these orders for a paired run.
+`greycos.gaBenchmark.orderOffset` shifts the seed/model order index. For focused fresh-JVM runs,
+`greycos.gaBenchmark.algorithms` selects a comma-separated subset of `GA,GA_LOCAL,LS,ALNS`
+(`GA_PLUS_LOCAL` is an alias for `GA_LOCAL`), `greycos.gaBenchmark.budgets` selects `score_calls`
+or `milliseconds`, and `greycos.gaBenchmark.skipEvaluators=true` skips evaluator comparisons.
+Each selected search still receives its own 200-score-call warmup solve. These optional properties
+do not change the existing six positional arguments or the solver's configuration defaults.
 
 Every search row also reports time to the same prespecified target: a feasible solution whose soft
 penalty is at most the theoretical balanced integer load penalty plus half the initial preference
@@ -314,20 +388,23 @@ After compiling the core test sources, run either example:
 ./mvnw -pl core exec:java \
   -Dexec.classpathScope=test \
   -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmListExample \
-  -Dexec.args="80 37 2000 target/genetic-algorithm/stage2/list.csv"
+  -Dexec.args="80 37 2000 target/genetic-algorithm/stage3/list.csv 32"
 
 ./mvnw -pl core exec:java \
   -Dexec.classpathScope=test \
   -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmMixedExample \
-  -Dexec.args="80 37 2000 target/genetic-algorithm/stage2/mixed.csv"
+  -Dexec.args="80 37 2000 target/genetic-algorithm/stage3/mixed.csv 32"
 ----
 
-Arguments are task count, random seed, physical score-call limit, and output file. A score-call
+Arguments are task count, random seed, physical score-call limit, output file, and an optional
+local-improvement probe limit per child. Omitting the fifth argument retains the original zero
+limit. A score-call
 threshold is checked at solver boundaries; actual work may exceed it. Both examples report required
 completeness, feasibility, score, and replay separately.
 
 `GeneticAlgorithmListBenchmark` runs both models. It compares retained deltas and full replacement
-on identical sparse and broad candidate sequences, then compares GA, serial Late Acceptance, and
+on identical sparse and broad candidate sequences, then compares GA, GA with local improvement,
+serial Late Acceptance, and
 ALNS from matched initialized assignments. It uses the same seeds, separate score-call and wall-clock
 budgets, and a 60-second fallback for work-limited searches. The prespecified quality target is a
 feasible score whose soft penalty is at most 90 percent of the initial penalty. Missed targets remain
@@ -338,14 +415,27 @@ explicitly unreached.
 ./mvnw -pl core exec:java \
   -Dexec.classpathScope=test \
   -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmListBenchmark \
-  -Dexec.args="80 256 500 2000 11,37,83 target/genetic-algorithm/stage2/benchmark-80"
+  -Dexec.args="80 256 500 2000 11,37,83 target/genetic-algorithm/stage3/benchmark-80"
 ----
 
-Repeat with task counts 256 and 1,024 to reproduce the Stage 2 qualification matrix. Arguments use
+Repeat with task counts 256 and 1,024 and then run the matrix in fresh JVMs with
+`greycos.gaBenchmark.reverseOrder=true` to counterbalance execution order. Arguments use
 the same order as the basic-variable benchmark. The CSV includes actual scores, resource use,
-physical score calls, session counts, assignment distance, changed lists, and replay status.
+physical score calls, session counts, assignment distance, changed lists, local probe/acceptance
+counts, and replay status. `greycos.gaBenchmark.models=list_only` or `mixed` selects one model;
+both run by default. Evaluator ordering also alternates by model, and search ordering rotates by
+model in addition to seed.
 Evaluator distances and changed-list counts accumulate consecutive transitions; search distances
 compare the initialized input with the returned best. Session counts are exact for evaluator runs
 and observed at phase/step boundaries for searches. Independent replay and export are outside
 measured work. These are bounded workload observations; session retention alone establishes no
 speedup, feasibility-discovery capability, or general search-quality advantage.
+
+The 2026-10-08 qualification measured the 32-probe setting on the basic, list-only and mixed fixtures
+at 80, 256 and 1,024 tasks, seeds 11, 37 and 83, and separate 2,000-score-call and 500 ms limits.
+Across two counterbalanced repetitions in 12 fresh JVMs, GA with local improvement returned a worse
+final score than plain GA in all 108 paired comparisons (54 distinct cases repeated twice).
+All 432 search results passed replay and export/reload and remained complete and feasible from
+feasible starts. This establishes neither feasibility discovery nor optimality. The tested
+32-probe setting is not qualified as a beneficial default; local improvement remains opt-in with
+default zero. Evaluate other limits on representative workloads before enabling it.

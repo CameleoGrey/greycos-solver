@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
@@ -218,6 +219,16 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
   InnerScore<Score_> executeTemporaryMove(
       Move<Solution_> move,
       @Nullable Consumer<SolutionView<Solution_>> consumer,
+      boolean assertMoveScoreFromScratch);
+
+  /**
+   * As defined by {@link #executeTemporaryMove(Move, Consumer, boolean)}, with the exact native
+   * score supplied to the callback while the move is still applied. The callback must not change
+   * the working solution.
+   */
+  InnerScore<Score_> executeTemporaryMoveWithScore(
+      Move<Solution_> move,
+      @Nullable BiConsumer<SolutionView<Solution_>, InnerScore<Score_>> consumer,
       boolean assertMoveScoreFromScratch);
 
   /** As defined by {@link #executeTemporaryMove(Move, Consumer, boolean)}, but with no consumer. */

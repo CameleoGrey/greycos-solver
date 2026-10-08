@@ -85,7 +85,7 @@ public final class GeneticAlgorithmBenchmark {
         "category,algorithm,shape,seed,tasks,candidates,budget_kind,budget,verified,complete,feasible,"
             + "initial_score,result_score,assignment_sha256,score_calls,session_builds,session_count_scope,"
             + "assignment_distance,setup_ns,work_ns,allocated_bytes,gc_count,gc_ms,moves,verification_ns,"
-            + "target_score,target_status,time_to_target_ns");
+            + "target_score,target_status,time_to_target_ns,local_improvement_probes,local_improvement_accepted");
     var metadata =
         List.of(
             "java_version=" + System.getProperty("java.version"),
@@ -97,6 +97,13 @@ public final class GeneticAlgorithmBenchmark {
             "move_threads=NONE",
             "environment=NO_ASSERT",
             "population_size=32",
+            "local_improvement_move_count_limit=32 for GA_LOCAL; 0 for GA",
+            "algorithms=" + String.join(",", selectedAlgorithms()),
+            "budgets=" + String.join(",", selectedBudgets()),
+            "evaluator_enabled=" + !Boolean.getBoolean("greycos.gaBenchmark.skipEvaluators"),
+            "order_policy=evaluator AB/BA alternates by seed and shape; search rotates by seed and reverses by budget",
+            "order_offset=" + Integer.getInteger("greycos.gaBenchmark.orderOffset", 0),
+            "reverse_order=" + Boolean.getBoolean("greycos.gaBenchmark.reverseOrder"),
             "warmup=one evaluator pass per shape and one 200-score-call search per algorithm",
             "seeds=" + String.join(",", seeds),
             "source_revision="
@@ -116,9 +123,13 @@ public final class GeneticAlgorithmBenchmark {
             "timing=single-process bounded evidence; no speedup or significance claim");
     Files.write(output.resolve("metadata.properties"), metadata);
 
-    for (String seedText : seeds) {
-      long seed = Long.parseLong(seedText);
-      for (String shape : List.of("sparse", "broad")) {
+    for (int seedIndex = 0; seedIndex < seeds.length; seedIndex++) {
+      long seed = Long.parseLong(seeds[seedIndex]);
+      int orderIndex = seedIndex + Integer.getInteger("greycos.gaBenchmark.orderOffset", 0);
+      for (String shape :
+          Boolean.getBoolean("greycos.gaBenchmark.skipEvaluators")
+              ? List.<String>of()
+              : List.of("sparse", "broad")) {
         long preparationStarted = System.nanoTime();
         var candidates = candidates(size, count, seed, shape);
         var expected = expected(size, candidates);
@@ -128,8 +139,7 @@ public final class GeneticAlgorithmBenchmark {
         for (boolean retained : new boolean[] {false, true}) {
           evaluate(size, candidates, expected, retained);
         }
-        var order = new ArrayList<>(List.of(false, true));
-        Collections.shuffle(order, new Random(seed));
+        var order = evaluatorOrder(orderIndex + (shape.equals("broad") ? 1 : 0));
         for (boolean retained : order) {
           var result = evaluate(size, candidates, expected, retained);
           rows.add(
@@ -146,11 +156,10 @@ public final class GeneticAlgorithmBenchmark {
                   preparationNanos));
         }
       }
-      var order = new ArrayList<>(List.of("GA", "LS", "ALNS"));
-      Collections.shuffle(order, new Random(seed));
+      var order = searchOrder(orderIndex, false);
       for (String algorithm : order) search(size, seed, algorithm, "score_calls", 200, null);
-      for (String budgetKind : List.of("score_calls", "milliseconds")) {
-        for (String algorithm : order) {
+      for (String budgetKind : selectedBudgets()) {
+        for (String algorithm : searchOrder(orderIndex, budgetKind.equals("milliseconds"))) {
           long budget = budgetKind.equals("score_calls") ? callLimit : millis;
           var result =
               search(
@@ -178,6 +187,45 @@ public final class GeneticAlgorithmBenchmark {
     }
     System.out.println(
         "Correctness and independent replay: PASS; evidence: " + output.toAbsolutePath());
+  }
+
+  static List<String> selectedAlgorithms() {
+    return selection("algorithms", List.of("GA", "GA_LOCAL", "LS", "ALNS"));
+  }
+
+  static List<String> selectedBudgets() {
+    return selection("budgets", List.of("score_calls", "milliseconds"));
+  }
+
+  static List<String> selection(String name, List<String> allowed) {
+    var selected =
+        Arrays.stream(
+                System.getProperty("greycos.gaBenchmark." + name, String.join(",", allowed))
+                    .split(",", -1))
+            .map(
+                value ->
+                    name.equals("algorithms") && value.equals("GA_PLUS_LOCAL") ? "GA_LOCAL" : value)
+            .toList();
+    if (selected.isEmpty()
+        || !allowed.containsAll(selected)
+        || selected.stream().distinct().count() != selected.size()) {
+      throw new IllegalArgumentException("Invalid benchmark " + name + ": " + selected);
+    }
+    return selected;
+  }
+
+  static List<Boolean> evaluatorOrder(int ordinal) {
+    boolean reversed =
+        Math.floorMod(ordinal, 2) != 0 ^ Boolean.getBoolean("greycos.gaBenchmark.reverseOrder");
+    return reversed ? List.of(true, false) : List.of(false, true);
+  }
+
+  static List<String> searchOrder(int ordinal, boolean reverse) {
+    var order = new ArrayList<>(selectedAlgorithms());
+    Collections.rotate(order, -Math.floorMod(ordinal, order.size()));
+    if (reverse ^ Boolean.getBoolean("greycos.gaBenchmark.reverseOrder"))
+      Collections.reverse(order);
+    return order;
   }
 
   private static int[][] candidates(int size, int count, long seed, String shape) {
@@ -295,7 +343,9 @@ public final class GeneticAlgorithmBenchmark {
           candidates.length,
           System.nanoTime() - verificationStarted,
           null,
-          -1);
+          -1,
+          0,
+          0);
     }
   }
 
@@ -309,6 +359,10 @@ public final class GeneticAlgorithmBenchmark {
     PhaseConfig<?> phase =
         switch (algorithm) {
           case "GA" -> new GeneticAlgorithmPhaseConfig().withPopulationSize(32);
+          case "GA_LOCAL", "GA_PLUS_LOCAL" ->
+              new GeneticAlgorithmPhaseConfig()
+                  .withPopulationSize(32)
+                  .withLocalImprovementMoveCountLimit(32L);
           case "LS" ->
               new LocalSearchPhaseConfig()
                   .withMoveSelectorConfig(
@@ -392,7 +446,9 @@ public final class GeneticAlgorithmBenchmark {
         solver.getSolverScope().getMoveEvaluationCount(),
         System.nanoTime() - verificationStarted,
         target,
-        targetTime[0]);
+        targetTime[0],
+        sessions.localImprovementProbes,
+        sessions.localImprovementAccepted);
   }
 
   /**
@@ -490,7 +546,9 @@ public final class GeneticAlgorithmBenchmark {
         result.target == null
             ? "not_applicable"
             : result.timeToTargetNanos < 0 ? "unreached" : "reached",
-        Long.toString(result.timeToTargetNanos));
+        Long.toString(result.timeToTargetNanos),
+        Long.toString(result.localImprovementProbes),
+        Long.toString(result.localImprovementAccepted));
   }
 
   private record Result(
@@ -507,7 +565,9 @@ public final class GeneticAlgorithmBenchmark {
       long moves,
       long verificationNanos,
       HardSoftScore target,
-      long timeToTargetNanos) {}
+      long timeToTargetNanos,
+      long localImprovementProbes,
+      long localImprovementAccepted) {}
 
   private record Resources(long allocatedBytes, long gcCount, long gcMillis) {
     static Resources capture() {
@@ -540,6 +600,8 @@ public final class GeneticAlgorithmBenchmark {
       extends PhaseLifecycleListenerAdapter<TaskMachineSolution> {
     private Object previous;
     private long builds;
+    private long localImprovementProbes;
+    private long localImprovementAccepted;
 
     private void observe(AbstractPhaseScope<TaskMachineSolution> scope) {
       Object session =
@@ -563,6 +625,10 @@ public final class GeneticAlgorithmBenchmark {
     @Override
     public void phaseEnded(AbstractPhaseScope<TaskMachineSolution> scope) {
       observe(scope);
+      if (scope instanceof GeneticAlgorithmPhaseScope<?> gaScope) {
+        localImprovementProbes += gaScope.getLocalImprovementProbeCount();
+        localImprovementAccepted += gaScope.getLocalImprovementAcceptedCount();
+      }
     }
   }
 }

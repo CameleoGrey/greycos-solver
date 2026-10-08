@@ -41,21 +41,28 @@ public final class GeneticAlgorithmListExample {
   private GeneticAlgorithmListExample() {}
 
   public static void main(String[] args) throws IOException {
-    if (args.length != 0 && args.length != 4) {
-      throw new IllegalArgumentException("Usage: [<tasks> <seed> <scoreCalls> <assignment.csv>]");
+    if (args.length != 0 && args.length != 4 && args.length != 5) {
+      throw new IllegalArgumentException(
+          "Usage: [<tasks> <seed> <scoreCalls> <assignment.csv> [<localImprovementMoves>]]");
     }
     int size = args.length == 0 ? 80 : Integer.parseInt(args[0]);
     long seed = args.length == 0 ? 37L : Long.parseLong(args[1]);
     long calls = args.length == 0 ? 2000L : Long.parseLong(args[2]);
     Path output =
         Path.of(args.length == 0 ? "target/genetic-algorithm/list-only-assignments.csv" : args[3]);
+    long localImprovementMoves = args.length == 5 ? Long.parseLong(args[4]) : 0L;
     if (calls < 2)
       throw new IllegalArgumentException("The score-call budget must be at least two.");
+    if (localImprovementMoves < 0)
+      throw new IllegalArgumentException("The local-improvement move limit must be nonnegative.");
     var input = problem(size);
     var initial = replay(input);
     var solverConfig =
         config(seed)
-            .withPhases(new GeneticAlgorithmPhaseConfig().withPopulationSize(32))
+            .withPhases(
+                new GeneticAlgorithmPhaseConfig()
+                    .withPopulationSize(32)
+                    .withLocalImprovementMoveCountLimit(localImprovementMoves))
             .withTerminationConfig(new TerminationConfig().withScoreCalculationCountLimit(calls));
     var result = SolverFactory.<SequenceSolution>create(solverConfig).buildSolver().solve(input);
     verify(result);

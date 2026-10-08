@@ -10,6 +10,8 @@ public final class GeneticAlgorithmPhaseScope<Solution_> extends AbstractPhaseSc
   private int populationSize;
   private int distinctPopulationSize;
   private long noProgressAttemptCount;
+  private long localImprovementProbeCount;
+  private long localImprovementAcceptedCount;
   private String terminationReason = "configured termination";
 
   public GeneticAlgorithmPhaseScope(SolverScope<Solution_> solverScope, int phaseIndex) {
@@ -49,6 +51,23 @@ public final class GeneticAlgorithmPhaseScope<Solution_> extends AbstractPhaseSc
 
   public long getNoProgressAttemptCount() {
     return noProgressAttemptCount;
+  }
+
+  /** Completed probes, including probes in interrupted offspring. */
+  public long getLocalImprovementProbeCount() {
+    return localImprovementProbeCount;
+  }
+
+  public long getLocalImprovementAcceptedCount() {
+    return localImprovementAcceptedCount;
+  }
+
+  public void recordLocalImprovementProbe() {
+    localImprovementProbeCount++;
+  }
+
+  public void recordLocalImprovementAccepted() {
+    localImprovementAcceptedCount++;
   }
 
   public void recordOutcome(GeneticAlgorithmOutcome outcome) {

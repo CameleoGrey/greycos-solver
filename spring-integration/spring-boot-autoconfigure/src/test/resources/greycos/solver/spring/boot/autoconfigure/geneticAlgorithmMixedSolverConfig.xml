@@ -14,6 +14,7 @@
     <populationSize>4</populationSize>
     <crossoverProbability>1.0</crossoverProbability>
     <mutationRateMultiplier>2.0</mutationRateMultiplier>
+    <localImprovementMoveCountLimit>8</localImprovementMoveCountLimit>
     <moveThreadCount>NONE</moveThreadCount>
   </geneticAlgorithm>
 </solver>

@@ -49,6 +49,7 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThat(original.getMutationRateMultiplier()).isNull();
     assertThat(original.getTabuEntityRate()).isNull();
     assertThat(original.getNoProgressAttemptLimit()).isNull();
+    assertThat(original.getLocalImprovementMoveCountLimit()).isNull();
     assertThat(original.getMoveThreadCount()).isNull();
     assertThat(original.getMutationOperatorConfigList()).isNull();
     assertThat(resolved.getPopulationSize()).isEqualTo(128);
@@ -57,6 +58,7 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThat(resolved.getMutationRateMultiplier()).isEqualTo(0.0);
     assertThat(resolved.getTabuEntityRate()).isEqualTo(0.0);
     assertThat(resolved.getNoProgressAttemptLimit()).isEqualTo(1280L);
+    assertThat(resolved.getLocalImprovementMoveCountLimit()).isZero();
     assertThat(resolved.getMutationOperatorConfigList())
         .extracting(GeneticAlgorithmMutationOperatorConfig::getType)
         .containsExactly(GeneticAlgorithmMutationType.values());
@@ -86,6 +88,7 @@ class GeneticAlgorithmPhaseConfigTest {
             .withMutationRateMultiplier(2.5)
             .withTabuEntityRate(0.3)
             .withNoProgressAttemptLimit(500L)
+            .withLocalImprovementMoveCountLimit(17L)
             .withMoveThreadCount("NONE")
             .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
             .withTerminationConfig(new TerminationConfig().withStepCountLimit(7))
@@ -107,6 +110,14 @@ class GeneticAlgorithmPhaseConfigTest {
             .resolve();
     assertThat(inherited.getPopulationSize()).isEqualTo(3);
     assertThat(inherited.getCrossoverProbability()).isEqualTo(0.2);
+    assertThat(inherited.getLocalImprovementMoveCountLimit()).isEqualTo(17L);
+    assertThat(
+            new GeneticAlgorithmPhaseConfig()
+                .withLocalImprovementMoveCountLimit(0L)
+                .inherit(original)
+                .resolve()
+                .getLocalImprovementMoveCountLimit())
+        .isZero();
     assertThat(inherited.getMutationOperatorConfigList())
         .extracting(GeneticAlgorithmMutationOperatorConfig::getType)
         .containsExactly(GeneticAlgorithmMutationType.INVERSE);
@@ -178,6 +189,28 @@ class GeneticAlgorithmPhaseConfigTest {
             () -> new GeneticAlgorithmPhaseConfig().withNoProgressAttemptLimit(0L).resolve())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("noProgressAttemptLimit (0)");
+  }
+
+  @Test
+  void localImprovementLimitAcceptsNonnegativeLongValues() {
+    for (long limit : new long[] {0L, 1L, Long.MAX_VALUE}) {
+      assertThat(
+              new GeneticAlgorithmPhaseConfig()
+                  .withLocalImprovementMoveCountLimit(limit)
+                  .resolve()
+                  .getLocalImprovementMoveCountLimit())
+          .isEqualTo(limit);
+    }
+    for (long limit : new long[] {-1L, Long.MIN_VALUE}) {
+      assertThatThrownBy(
+              () ->
+                  new GeneticAlgorithmPhaseConfig()
+                      .withLocalImprovementMoveCountLimit(limit)
+                      .resolve())
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("localImprovementMoveCountLimit (" + limit + ")")
+          .hasMessageContaining("nonnegative");
+    }
   }
 
   @Test
@@ -262,6 +295,7 @@ class GeneticAlgorithmPhaseConfigTest {
             <mutationRateMultiplier>2.5</mutationRateMultiplier>
             <tabuEntityRate>0.1</tabuEntityRate>
             <noProgressAttemptLimit>99</noProgressAttemptLimit>
+            <localImprovementMoveCountLimit>21</localImprovementMoveCountLimit>
             <moveThreadCount>NONE</moveThreadCount>
             <mutationOperator><type>CHANGE</type><probability>0.3</probability></mutationOperator>
             <mutationOperator><type>INVERSE</type><probability>0.7</probability></mutationOperator>
@@ -273,6 +307,7 @@ class GeneticAlgorithmPhaseConfigTest {
     var config = io.read(new StringReader(xml));
     var phase = (GeneticAlgorithmPhaseConfig) config.getPhaseConfigList().getFirst();
     assertThat(phase.resolve().getPopulationSize()).isEqualTo(5);
+    assertThat(phase.getLocalImprovementMoveCountLimit()).isEqualTo(21L);
     assertThat(phase.getMutationOperatorConfigList())
         .extracting(GeneticAlgorithmMutationOperatorConfig::getType)
         .containsExactly(GeneticAlgorithmMutationType.CHANGE, GeneticAlgorithmMutationType.INVERSE);

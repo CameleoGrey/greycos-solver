@@ -827,17 +827,36 @@ public sealed class MoveDirector<Solution_, Score_ extends Score<Score_>>
     var previousScore = solutionDescriptor.<Score_>getScore(workingSolution);
     var ephemeralMoveDirector = borrowEphemeralMoveDirector();
     var moveExecuted = false;
+    Throwable originalFailure = null;
     try {
       ephemeralMoveDirector.executeAllowingStructurallyFlawedSolutions(move);
       moveExecuted = true;
       return postprocessor.apply(backingScoreDirector.calculateScore());
+    } catch (RuntimeException | Error failure) {
+      originalFailure = failure;
+      throw failure;
     } finally {
       if (moveExecuted) {
         try {
           ephemeralMoveDirector.close(); // This undoes the move.
+        } catch (RuntimeException | Error undoFailure) {
+          if (originalFailure == null) {
+            originalFailure = undoFailure;
+            throw undoFailure;
+          } else if (originalFailure != undoFailure) {
+            originalFailure.addSuppressed(undoFailure);
+          }
         } finally {
           releaseEphemeralMoveDirector(ephemeralMoveDirector);
-          solutionDescriptor.setScore(workingSolution, previousScore);
+          try {
+            solutionDescriptor.setScore(workingSolution, previousScore);
+          } catch (RuntimeException | Error scoreRestorationFailure) {
+            if (originalFailure == null) {
+              throw scoreRestorationFailure;
+            } else if (originalFailure != scoreRestorationFailure) {
+              originalFailure.addSuppressed(scoreRestorationFailure);
+            }
+          }
         }
       }
     }

@@ -3,6 +3,7 @@ package greycos.solver.spring.boot.autoconfigure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.StringWriter;
+import java.util.concurrent.atomic.AtomicLong;
 
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.stream.Constraint;
@@ -14,7 +15,12 @@ import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmMutationOpera
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmMutationType;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
 import greycos.solver.core.config.solver.SolverConfig;
+import greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmPhaseScope;
+import greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmStepScope;
 import greycos.solver.core.impl.io.jaxb.SolverConfigIO;
+import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
+import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
+import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.solver.DefaultSolver;
 import greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedEntity;
 import greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedOtherValue;
@@ -85,6 +91,7 @@ class GreyCOSSolverGeneticAlgorithmListAutoConfigurationTest {
     var phase = (GeneticAlgorithmPhaseConfig) config.getPhaseConfigList().getFirst();
     assertThat(phase.getMoveThreadCount()).isEqualTo(SolverConfig.MOVE_THREAD_COUNT_NONE);
     assertThat(phase.getCrossoverProbability()).isEqualTo(1.0);
+    assertThat(phase.getLocalImprovementMoveCountLimit()).isEqualTo(8L);
     assertThat(phase.resolve().getMutationOperatorConfigList())
         .extracting(GeneticAlgorithmMutationOperatorConfig::getType)
         .containsExactly(GeneticAlgorithmMutationType.values());
@@ -101,10 +108,36 @@ class GreyCOSSolverGeneticAlgorithmListAutoConfigurationTest {
     SolutionManager.updateShadowVariables(problem);
     var initialScore = replayScore(problem);
     var solver = (DefaultSolver<TestdataMixedSolution>) factory.buildSolver();
+    var completedSteps = new AtomicLong();
+    var completedProbes = new AtomicLong();
+    solver.addPhaseLifecycleListener(
+        new PhaseLifecycleListenerAdapter<>() {
+          @Override
+          public void stepEnded(AbstractStepScope<TestdataMixedSolution> stepScope) {
+            var step = (GeneticAlgorithmStepScope<TestdataMixedSolution>) stepScope;
+            completedSteps.incrementAndGet();
+            completedProbes.addAndGet(step.getLocalImprovementProbeCount());
+            assertThat(step.getLocalImprovementProbeCount()).isBetween(0L, 8L);
+            if (step.isSeeding()) {
+              assertThat(step.getLocalImprovementProbeCount()).isZero();
+            }
+          }
+
+          @Override
+          public void phaseEnded(AbstractPhaseScope<TestdataMixedSolution> phaseScope) {
+            assertThat(
+                    ((GeneticAlgorithmPhaseScope<TestdataMixedSolution>) phaseScope)
+                        .getLocalImprovementProbeCount())
+                .isEqualTo(completedProbes.get());
+          }
+        });
 
     var result = solver.solve(problem);
 
-    assertThat(solver.getSolverScope().getMoveEvaluationCount()).isEqualTo(16L);
+    assertThat(completedSteps).hasValue(16L);
+    assertThat(completedProbes.get()).isPositive();
+    assertThat(solver.getSolverScope().getMoveEvaluationCount())
+        .isEqualTo(completedSteps.get() + completedProbes.get());
     assertThat(result.getScore())
         .isEqualTo(replayScore(result))
         .isGreaterThanOrEqualTo(initialScore);

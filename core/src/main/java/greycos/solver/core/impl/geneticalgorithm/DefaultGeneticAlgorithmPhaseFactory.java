@@ -3,10 +3,15 @@ package greycos.solver.core.impl.geneticalgorithm;
 import java.util.List;
 
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
+import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory;
 import greycos.solver.core.impl.phase.AbstractPhaseFactory;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.termination.SolverTermination;
@@ -38,15 +43,42 @@ public final class DefaultGeneticAlgorithmPhaseFactory<Solution_>
               + moveThreadCount
               + "). Set its moveThreadCount to NONE to use serial evaluation.");
     }
-    return new DefaultGeneticAlgorithmPhase.Builder<>(
+    var builder =
+        new DefaultGeneticAlgorithmPhase.Builder<>(
             phaseIndex,
             environmentMode,
             policy.getLogIndentation(),
             buildPhaseTermination(policy, solverTermination),
             resolvedConfig,
-            bestSolutionRecaller)
-        .enableAssertions()
-        .build();
+            bestSolutionRecaller);
+    if (resolvedConfig.getLocalImprovementMoveCountLimit() > 0L) {
+      // Each solve gets fresh selector state and mimic registrations, including problem restarts.
+      builder.withLocalImprovementMovesFactory(
+          random ->
+              buildLocalImprovementMoves(
+                  policy
+                      .copyPhaseConfigPolicy(environmentMode)
+                      .cloneBuilder()
+                      .withRandom(random)
+                      .build()));
+    }
+    return builder.enableAssertions().build();
+  }
+
+  static <Solution_> GeneticAlgorithmLocalImprovementMoves<Solution_> buildLocalImprovementMoves(
+      HeuristicConfigPolicy<Solution_> policy) {
+    if (!policy.getSolutionDescriptor().hasListVariable()) {
+      return new GeneticAlgorithmLocalImprovementMoves<>(List.of());
+    }
+    var listChange =
+        MoveSelectorFactory.<Solution_>create(new ListChangeMoveSelectorConfig())
+            .buildMoveSelector(
+                policy, SelectionCacheType.JUST_IN_TIME, SelectionOrder.RANDOM, false);
+    var listSwap =
+        MoveSelectorFactory.<Solution_>create(new ListSwapMoveSelectorConfig())
+            .buildMoveSelector(
+                policy, SelectionCacheType.JUST_IN_TIME, SelectionOrder.RANDOM, false);
+    return new GeneticAlgorithmLocalImprovementMoves<>(List.of(listChange, listSwap));
   }
 
   /** Rejects unsupported descendants before any enclosing phase can start workers. */
