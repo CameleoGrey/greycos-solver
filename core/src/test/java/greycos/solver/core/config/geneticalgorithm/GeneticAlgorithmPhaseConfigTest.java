@@ -51,6 +51,7 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThat(original.getMigrationRate()).isNull();
     assertThat(original.getNoProgressAttemptLimit()).isNull();
     assertThat(original.getLocalImprovementMoveCountLimit()).isNull();
+    assertThat(original.getEvaluatorThreadCount()).isNull();
     assertThat(original.getMoveThreadCount()).isNull();
     assertThat(original.getMutationOperatorConfigList()).isNull();
     assertThat(resolved.getPopulationSize()).isEqualTo(128);
@@ -61,6 +62,7 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThat(resolved.getMigrationRate()).isEqualTo(0.00001);
     assertThat(resolved.getNoProgressAttemptLimit()).isEqualTo(1280L);
     assertThat(resolved.getLocalImprovementMoveCountLimit()).isZero();
+    assertThat(resolved.getEvaluatorThreadCount()).isZero();
     assertThat(resolved.getMutationOperatorConfigList())
         .extracting(GeneticAlgorithmMutationOperatorConfig::getType)
         .containsExactly(GeneticAlgorithmMutationType.values());
@@ -92,6 +94,7 @@ class GeneticAlgorithmPhaseConfigTest {
             .withMigrationRate(0.4)
             .withNoProgressAttemptLimit(500L)
             .withLocalImprovementMoveCountLimit(17L)
+            .withEvaluatorThreadCount(0)
             .withMoveThreadCount("NONE")
             .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
             .withTerminationConfig(new TerminationConfig().withStepCountLimit(7))
@@ -298,6 +301,54 @@ class GeneticAlgorithmPhaseConfigTest {
   }
 
   @Test
+  void evaluatorThreadCountSupportsCopyInheritanceAndAnExplicitSerialOverride() {
+    var original = new GeneticAlgorithmPhaseConfig().withEvaluatorThreadCount(4);
+    assertThat(original.copyConfig()).usingRecursiveComparison().isEqualTo(original);
+    assertThat(
+            new GeneticAlgorithmPhaseConfig().inherit(original).resolve().getEvaluatorThreadCount())
+        .isEqualTo(4);
+    assertThat(
+            new GeneticAlgorithmPhaseConfig()
+                .withEvaluatorThreadCount(0)
+                .inherit(original)
+                .resolve()
+                .getEvaluatorThreadCount())
+        .isZero();
+    original.setEvaluatorThreadCount(null);
+    assertThat(original.resolve().getEvaluatorThreadCount()).isZero();
+  }
+
+  @Test
+  void evaluatorThreadCountRejectsNegativeValuesAndLocalImprovementComposition() {
+    for (var count : new int[] {0, 1, Integer.MAX_VALUE}) {
+      assertThat(
+              new GeneticAlgorithmPhaseConfig()
+                  .withEvaluatorThreadCount(count)
+                  .resolve()
+                  .getEvaluatorThreadCount())
+          .isEqualTo(count);
+    }
+    for (var count : new int[] {-1, Integer.MIN_VALUE}) {
+      assertThatThrownBy(
+              () -> new GeneticAlgorithmPhaseConfig().withEvaluatorThreadCount(count).resolve())
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("evaluatorThreadCount (" + count + ")")
+          .hasMessageContaining("nonnegative");
+    }
+    var conflicting =
+        new GeneticAlgorithmPhaseConfig()
+            .withEvaluatorThreadCount(2)
+            .withLocalImprovementMoveCountLimit(1L);
+    assertThatThrownBy(conflicting::resolve)
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("evaluatorThreadCount (2)")
+        .hasMessageContaining("localImprovementMoveCountLimit (1)");
+    assertThatThrownBy(() -> SolverFactory.create(basicConfig(conflicting)).buildSolver())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("localImprovementMoveCountLimit (1)");
+  }
+
+  @Test
   void xmlRoundTripAndGeneratedSchemaSupportAllConfiguration() {
     var xml =
         """
@@ -313,6 +364,7 @@ class GeneticAlgorithmPhaseConfigTest {
             <migrationRate>0.4</migrationRate>
             <noProgressAttemptLimit>99</noProgressAttemptLimit>
             <localImprovementMoveCountLimit>21</localImprovementMoveCountLimit>
+            <evaluatorThreadCount>0</evaluatorThreadCount>
             <moveThreadCount>NONE</moveThreadCount>
             <mutationOperator><type>CHANGE</type><probability>0.3</probability></mutationOperator>
             <mutationOperator><type>INVERSE</type><probability>0.7</probability></mutationOperator>
@@ -325,6 +377,7 @@ class GeneticAlgorithmPhaseConfigTest {
     var phase = (GeneticAlgorithmPhaseConfig) config.getPhaseConfigList().getFirst();
     assertThat(phase.resolve().getPopulationSize()).isEqualTo(5);
     assertThat(phase.getLocalImprovementMoveCountLimit()).isEqualTo(21L);
+    assertThat(phase.getEvaluatorThreadCount()).isZero();
     assertThat(phase.getMigrationRate()).isEqualTo(0.4);
     assertThat(phase.getMutationOperatorConfigList())
         .extracting(GeneticAlgorithmMutationOperatorConfig::getType)
@@ -336,6 +389,20 @@ class GeneticAlgorithmPhaseConfigTest {
         .isEqualTo(config);
     assertThatThrownBy(() -> io.read(new StringReader(xml.replace("INVERSE", "UNKNOWN"))))
         .isInstanceOf(GreyCOSXmlSerializationException.class);
+  }
+
+  @Test
+  void xmlRoundTripPreservesPositiveEvaluatorThreadCount() {
+    var config =
+        new SolverConfig()
+            .withPhases(new GeneticAlgorithmPhaseConfig().withEvaluatorThreadCount(4));
+    var restored = configure(config, true);
+    assertThat(restored).usingRecursiveComparison().isEqualTo(config);
+    assertThat(
+            ((GeneticAlgorithmPhaseConfig) restored.getPhaseConfigList().getFirst())
+                .resolve()
+                .getEvaluatorThreadCount())
+        .isEqualTo(4);
   }
 
   @Test
@@ -351,9 +418,10 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThat(PhaseType.GENETIC_ALGORITHM.getPhaseName()).isEqualTo("Genetic Algorithm");
   }
 
-  @Test
-  void phaseNoneOverridesSolverWorkersAndEnabledWorkersAreRejected() {
-    var phase = new GeneticAlgorithmPhaseConfig();
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void phaseNoneOverridesSolverWorkersAndEnabledWorkersAreRejected(int evaluatorThreadCount) {
+    var phase = new GeneticAlgorithmPhaseConfig().withEvaluatorThreadCount(evaluatorThreadCount);
     var config = basicConfig(phase).withMoveThreadCount("2");
     assertThatThrownBy(() -> SolverFactory.create(config).buildSolver())
         .isInstanceOf(UnsupportedOperationException.class)
@@ -428,9 +496,11 @@ class GeneticAlgorithmPhaseConfigTest {
     return io.read(new StringReader(writer.toString()));
   }
 
-  @Test
-  void partitionedAncestorsFailBeforeFactoryCreatesWorkers() {
-    var geneticAlgorithm = new GeneticAlgorithmPhaseConfig();
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void partitionedAncestorsFailBeforeFactoryCreatesWorkers(int evaluatorThreadCount) {
+    var geneticAlgorithm =
+        new GeneticAlgorithmPhaseConfig().withEvaluatorThreadCount(evaluatorThreadCount);
     for (PhaseConfig<?> enclosing :
         List.of(
             new PartitionedSearchPhaseConfig().withPhaseConfigs(geneticAlgorithm),

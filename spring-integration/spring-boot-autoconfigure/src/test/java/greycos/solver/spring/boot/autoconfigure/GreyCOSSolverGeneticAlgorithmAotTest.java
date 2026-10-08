@@ -34,6 +34,7 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
             .withTabuEntityRate(0.1)
             .withMigrationRate(0.2)
             .withNoProgressAttemptLimit(99L)
+            .withEvaluatorThreadCount(4)
             .withMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_NONE)
             .withMutationOperators(
                 operator(GeneticAlgorithmMutationType.CHANGE, 0.05),
@@ -61,6 +62,7 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
     assertThat(restoredPhase.getTabuEntityRate()).isEqualTo(0.1);
     assertThat(restoredPhase.getMigrationRate()).isEqualTo(0.2);
     assertThat(restoredPhase.getNoProgressAttemptLimit()).isEqualTo(99L);
+    assertThat(restoredPhase.getEvaluatorThreadCount()).isEqualTo(4);
     assertThat(restoredPhase.getMoveThreadCount()).isEqualTo(SolverConfig.MOVE_THREAD_COUNT_NONE);
     assertThat(restoredPhase.getMutationOperatorConfigList())
         .extracting(
@@ -93,6 +95,7 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
     assertThat(resolved.getTabuEntityRate()).isZero();
     assertThat(resolved.getMigrationRate()).isEqualTo(0.00001);
     assertThat(resolved.getNoProgressAttemptLimit()).isEqualTo(1280L);
+    assertThat(resolved.getEvaluatorThreadCount()).isZero();
     assertThat(resolved.getMoveThreadCount()).isNull();
     assertThat(resolved.getEnvironmentMode()).isNull();
     assertThat(resolved.getTerminationConfig()).isNull();
@@ -102,6 +105,21 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
     assertThat(resolved.getMutationOperatorConfigList())
         .allSatisfy(operator -> assertThat(operator.getProbability()).isEqualTo(1.0 / 6.0));
     assertThat(phase).usingRecursiveComparison().isEqualTo(new GeneticAlgorithmPhaseConfig());
+  }
+
+  @Test
+  void aotConfigurationPreservesAnExplicitSerialEvaluatorOverride() {
+    var config =
+        new SolverConfig()
+            .withPhases(new GeneticAlgorithmPhaseConfig().withEvaluatorThreadCount(0));
+
+    var restored = restore(config);
+
+    assertThat(restored).usingRecursiveComparison().isEqualTo(config);
+    assertThat(
+            ((GeneticAlgorithmPhaseConfig) restored.getPhaseConfigList().getFirst())
+                .getEvaluatorThreadCount())
+        .isZero();
   }
 
   @Test

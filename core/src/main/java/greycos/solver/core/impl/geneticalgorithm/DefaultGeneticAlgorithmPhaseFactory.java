@@ -16,8 +16,9 @@ import greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory;
 import greycos.solver.core.impl.phase.AbstractPhaseFactory;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.termination.SolverTermination;
+import greycos.solver.core.impl.solver.thread.ChildThreadType;
 
-/** Builds the serial genetic algorithm for basic, list, and mixed models. */
+/** Builds the genetic algorithm for basic, list, and mixed models. */
 public final class DefaultGeneticAlgorithmPhaseFactory<Solution_>
     extends AbstractPhaseFactory<Solution_, GeneticAlgorithmPhaseConfig> {
 
@@ -52,6 +53,9 @@ public final class DefaultGeneticAlgorithmPhaseFactory<Solution_>
             buildPhaseTermination(policy, solverTermination),
             resolvedConfig,
             bestSolutionRecaller);
+    if (resolvedConfig.getEvaluatorThreadCount() > 0) {
+      builder.withEvaluatorThreadFactory(policy.buildThreadFactory(ChildThreadType.MOVE_THREAD));
+    }
     if (resolvedConfig.getLocalImprovementMoveCountLimit() > 0L) {
       // Each solve gets fresh selector state and mimic registrations, including problem restarts.
       builder.withLocalImprovementMovesFactory(
@@ -120,6 +124,11 @@ public final class DefaultGeneticAlgorithmPhaseFactory<Solution_>
       var childPath = configurationPath + ".phase[" + index + "]";
       if (phase instanceof GeneticAlgorithmPhaseConfig geneticAlgorithm) {
         var resolved = geneticAlgorithm.resolve();
+        if (resolved.getEvaluatorThreadCount() > 0) {
+          throw new UnsupportedOperationException(
+              "The geneticAlgorithm phase at (%s) with evaluatorThreadCount (%s) cannot be nested under islandModel. Set evaluatorThreadCount to 0 to use island execution."
+                  .formatted(childPath, resolved.getEvaluatorThreadCount()));
+        }
         var configuredCount = resolved.getMoveThreadCount();
         var effectiveCount = configuredCount == null ? inheritedMoveThreadCount : configuredCount;
         var moveThreadCount =

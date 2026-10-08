@@ -1,18 +1,19 @@
 [#geneticAlgorithm]
 = Genetic Algorithm
 
-The genetic algorithm (GA) phase searches a population of assignment snapshots while keeping one
-working solution for incremental scoring. It uses the application's normal `ConstraintProvider`
+The genetic algorithm (GA) phase searches a population of assignment snapshots while retaining
+working solutions for incremental scoring. It uses the application's normal `ConstraintProvider`
 and native score ordering. The solver retains the best solution independently of population replacement.
 GA is opt-in; the default construction heuristic and local search configuration is unchanged.
 
 GA supports initialized solutions with basic planning variables, one planning list variable, or
 both, using finite countable value ranges. Basic variables may belong to list owners, list elements,
 or other planning entities. List values may be unassigned when the model permits it; all required
-assignments must be initialized. Each GA phase runs serially, either standalone or inside an
-asynchronous island model, including Java-configured nested islands. GA cannot run under a
+assignments must be initialized. By default, each GA phase runs serially, either standalone or inside an
+asynchronous island model, including Java-configured nested islands. A standalone phase can enable
+a bounded pool of parallel evaluators. GA cannot run under a
 partitioned-search ancestor, and move workers must be disabled. Bounded offspring local improvement
-is opt-in. Parallel population evaluators are not supported.
+is opt-in and requires serial evaluation.
 
 [#geneticAlgorithmConfiguration]
 == Configuration
@@ -68,6 +69,7 @@ new GeneticAlgorithmPhaseConfig()
 |`migrationRate` |`0.00001` |Finite rate in `[0, 1]` controlling the number of population entries exchanged inside islands. Zero disables GA population exchange; the setting has no effect on standalone GA.
 |`noProgressAttemptLimit` |`max(128, 10 * populationSize)` |Positive number of consecutive attempts without fresh valid offspring scoring before the phase exits.
 |`localImprovementMoveCountLimit` |`0` |Nonnegative maximum number of local probes for each freshly scored generation child. Zero disables local improvement.
+|`evaluatorThreadCount` |`0` |Nonnegative number of private evaluator workers. Zero retains serial execution; positive values enable a standalone pool without local improvement.
 |`moveThreadCount` |Inherited |The effective setting must disable move workers. Set `NONE` on this phase to override a solver-wide setting.
 |`mutationOperator` |All six equally |Optional named probabilities. An explicit list disables omitted operators.
 |===
@@ -312,6 +314,65 @@ ownership, admission and accounting behavior; they do not establish a speedup or
 advantage. Compare island counts and migration settings on representative problems under matched
 work and elapsed-time budgets, including runs with `migrationRate` set to zero.
 
+[#geneticAlgorithmEvaluatorPool]
+== Parallel evaluator pool
+
+Set `evaluatorThreadCount` to evaluate generation offspring concurrently within one population:
+
+[source,xml]
+----
+<geneticAlgorithm>
+  <termination><moveCountLimit>10000</moveCountLimit></termination>
+  <evaluatorThreadCount>4</evaluatorThreadCount>
+  <moveThreadCount>NONE</moveThreadCount>
+</geneticAlgorithm>
+----
+
+The Java equivalent is `new GeneticAlgorithmPhaseConfig().withEvaluatorThreadCount(4)`.
+Null or zero preserves serial execution. A positive value creates that many evaluator workers in
+addition to the coordinator thread. Population initialization and diversified seeding remain serial;
+workers start only when generation work remains. The pool currently requires a standalone GA phase
+with `localImprovementMoveCountLimit` equal to zero. Combining it with islands, partitioned search,
+or enabled move workers fails before worker startup. The existing serial combinations remain available.
+
+Each evaluator owns its working graph, score director, value ranges, shadows and retained scoring
+session. Assignment records map to worker-local identities; mutable planning entities and list IDs
+are never used directly across workspaces. Cloned objects require the normal lookup support used by
+multithreaded solving, normally stable `@PlanningId` values. Non-immutable basic range values must
+be canonical solution objects. Large finite numeric ranges do not need to be enumerated to transport
+assignments. Problem facts shared by the normal solution cloner must
+remain immutable during solving.
+
+The coordinator selects parents, applies crossover and mutation, and consumes results in proposal
+order. The number of outstanding attempts is bounded by the worker count, including completed
+results waiting for earlier attempts. Duplicate decisions still use the current logical workspace,
+population and already selected generation winners. Dependencies between repeated proposals can
+temporarily limit concurrency. Population replacement still waits for a complete generation.
+
+Pooled search uses a dedicated seeded proposal stream. With the same input, seed and deterministic
+step or move limit, changing the evaluator count preserves the logical search decisions and final
+assignments. Enabling the pool does not promise the existing serial random trajectory. Physical
+score limits, elapsed-time limits and external cancellation can end at different logical prefixes.
+
+Worker-native scores remain authoritative. Before publishing an improvement, the coordinator
+materializes its genuine assignments and updates shadows through normal notifications, then uses
+the standard predicted-score and best-solution lifecycle. It verifies and settles its retained score
+state before sampling constraint totals, periodically, at generation boundaries and on normal exit.
+Assertion modes retain their additional score and shadow checks.
+
+All completed worker score calculations count toward solver-wide and phase-local score limits,
+including worker initialization, recovery and results discarded after termination. Coordinator
+verification also counts. Only completed logical attempts receive GA step and move credits.
+Score and time limits are cooperative targets: work already in flight and required cleanup can
+cross them. Cancellation stops submissions and joins workers before normal phase completion.
+An unfinished generation does not replace the population; already published best solutions remain
+available. A worker that fails to stop prevents unsafe reuse of the same solver.
+
+Parallel evaluation adds graph cloning, assignment transport, coordinator updates and thread
+coordination. It can cost more than serial evaluation on inexpensive constraints or duplicate-heavy
+populations. Compare complete search quality and resource use on representative models; worker
+count alone does not establish speedup.
+
 [#geneticAlgorithmIncrementalScoring]
 == Incremental scoring and lifecycle
 
@@ -507,3 +568,43 @@ All 432 search results passed replay and export/reload and remained complete and
 feasible starts. This establishes neither feasibility discovery nor optimality. The tested
 32-probe setting is not qualified as a beneficial default; local improvement remains opt-in with
 default zero. Evaluate other limits on representative workloads before enabling it.
+
+[#geneticAlgorithmEvaluatorExample]
+=== Evaluator pool example and comparisons
+
+`GeneticAlgorithmEvaluatorExample` runs standalone pooled GA on the same basic, list-only or mixed
+business models. It independently replays the returned solution and checks exact export/reload:
+
+[source,shell]
+----
+./mvnw -pl core exec:java \
+  -Dexec.classpathScope=test \
+  -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmEvaluatorExample \
+  -Dexec.args="mixed 80 37 20000 target/genetic-algorithm/stage4b/mixed.csv 4"
+----
+
+Arguments are model (`basic`, `list_only` or `mixed`), task count, seed, physical score-call target,
+output file and evaluator worker count. The target includes worker initialization and coordinator
+verification, and actual work can exceed it through cooperative termination.
+
+`GeneticAlgorithmEvaluatorBenchmark` compares serial GA, one/two/four evaluator workers, serial
+Late Acceptance and ALNS, and GA/LA islands with matching worker counts. Pool and island variants
+include one coordinator in their declared thread allocation. It also compares full replacement,
+retained serial deltas and the production pool on identical sparse and broad candidate sequences.
+Untimed correctness passes verify actual evaluated assignments against independent business replay.
+
+[source,shell]
+----
+./mvnw -pl core exec:java \
+  -Dexec.classpathScope=test \
+  -Dexec.mainClass=greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmEvaluatorBenchmark \
+  -Dexec.args="mixed 80 2000 20000 11,37,83 target/genetic-algorithm/stage4b/benchmark-80"
+----
+
+`results.csv` records whole-search quality, actual physical work, replay status, setup and cleanup,
+process CPU, all-thread allocation, garbage collection and worker diagnostics. `evaluator-results.csv`
+isolates the fixed candidate sequences. Session counts identify their observation scope and exclude
+temporary assertion directors. The metadata describes budget, warmup, execution order and resource
+accounting. Repeat all three models at sizes 80, 256 and 1,024 in fresh JVMs with opposite execution
+orders before interpreting performance. These measurements do not establish general speedup,
+optimality or feasibility discovery from the feasible example starts.

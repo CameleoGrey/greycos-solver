@@ -19,16 +19,18 @@ import greycos.solver.core.testcotwin.TestdataConstraintProvider;
 import greycos.solver.core.testcotwin.TestdataEntity;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GeneticAlgorithmPlannerBenchmarkTest {
 
-  @Test
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
   @Timeout(30)
   void xmlConfiguredGeneticAlgorithmProducesReportStatisticsAndReloadableResult(
-      @TempDir Path directory) throws Exception {
+      int evaluatorThreadCount, @TempDir Path directory) throws Exception {
     var xml =
         """
         <plannerBenchmark xmlns="%s">
@@ -45,6 +47,7 @@ class GeneticAlgorithmPlannerBenchmarkTest {
               <geneticAlgorithm>
                 <termination><stepCountLimit>8</stepCountLimit></termination>
                 <populationSize>4</populationSize>
+                <evaluatorThreadCount>%s</evaluatorThreadCount>
                 <mutationOperator><type>CHANGE</type><probability>1.0</probability></mutationOperator>
               </geneticAlgorithm>
             </solver>
@@ -63,7 +66,8 @@ class GeneticAlgorithmPlannerBenchmarkTest {
                 PlannerBenchmarkConfig.XML_NAMESPACE,
                 TestdataSolution.class.getName(),
                 TestdataEntity.class.getName(),
-                TestdataConstraintProvider.class.getName());
+                TestdataConstraintProvider.class.getName(),
+                evaluatorThreadCount);
     var io = new PlannerBenchmarkConfigIO();
     var parsed = io.read(new StringReader(xml));
     var writer = new StringWriter();
@@ -122,6 +126,11 @@ class GeneticAlgorithmPlannerBenchmarkTest {
     assertThat(solverResult.getSolverConfig().getPhaseConfigList())
         .singleElement()
         .isInstanceOf(GeneticAlgorithmPhaseConfig.class);
+    assertThat(
+            ((GeneticAlgorithmPhaseConfig)
+                    solverResult.getSolverConfig().getPhaseConfigList().getFirst())
+                .getEvaluatorThreadCount())
+        .isEqualTo(evaluatorThreadCount);
     var runResult =
         solverResult
             .getSingleBenchmarkResultList()

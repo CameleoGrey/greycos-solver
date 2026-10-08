@@ -27,6 +27,30 @@ import org.junit.jupiter.api.Timeout;
 class GeneticAlgorithmIslandPlacementTest {
 
   @Test
+  void evaluatorPoolIsRejectedBelowAnyIslandAncestorBeforeWorkersAreCreated() {
+    for (var phase :
+        List.of(
+            island(new GeneticAlgorithmPhaseConfig().withEvaluatorThreadCount(1)),
+            island(island(new GeneticAlgorithmPhaseConfig().withEvaluatorThreadCount(2))),
+            island(
+                island(island(new GeneticAlgorithmPhaseConfig().withEvaluatorThreadCount(4)))))) {
+      assertThatThrownBy(() -> SolverFactory.create(config(phase)))
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining("geneticAlgorithm phase at (")
+          .hasMessageContaining("evaluatorThreadCount (")
+          .hasMessageContaining("cannot be nested under islandModel")
+          .hasMessageContaining("Set evaluatorThreadCount to 0");
+    }
+  }
+
+  @Test
+  void explicitZeroEvaluatorCountRetainsNestedIslandSupport() {
+    var phase = island(island(new GeneticAlgorithmPhaseConfig().withEvaluatorThreadCount(0)));
+    assertThatCode(() -> SolverFactory.create(config(phase)).buildSolver())
+        .doesNotThrowAnyException();
+  }
+
+  @Test
   void effectiveEnabledMoveWorkersFailWhenFactoryIsCreated() {
     for (var island :
         List.of(

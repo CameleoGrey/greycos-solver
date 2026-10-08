@@ -19,6 +19,12 @@ public final class GeneticAlgorithmMetrics<Solution_> {
   private final Map<Tags, ScoreLevels> stepConstraintScores = new HashMap<>();
   private final Map<Tags, ScoreLevels> bestConstraintScores = new HashMap<>();
   private final Map<String, AtomicLong> constraintCounts = new HashMap<>();
+  private Runnable beforeConstraintSampling = () -> {};
+
+  /** Drains deferred coordinator scoring only when a constraint metric is actually sampled. */
+  public void setBeforeConstraintSampling(Runnable beforeConstraintSampling) {
+    this.beforeConstraintSampling = beforeConstraintSampling;
+  }
 
   public void phaseStarted(GeneticAlgorithmPhaseScope<Solution_> phaseScope) {
     var solverScope = phaseScope.getSolverScope();
@@ -119,6 +125,7 @@ public final class GeneticAlgorithmMetrics<Solution_> {
         || !phaseScope.getScoreDirector().getConstraintMatchPolicy().isEnabled()) {
       return;
     }
+    beforeConstraintSampling.run();
     var scoreDefinition = solverScope.getScoreDefinition();
     for (var total : phaseScope.getScoreDirector().getConstraintMatchTotalMap().values()) {
       var tags =

@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
       "migrationRate",
       "noProgressAttemptLimit",
       "localImprovementMoveCountLimit",
+      "evaluatorThreadCount",
       "moveThreadCount",
       "mutationOperatorConfigList"
     })
@@ -44,6 +45,7 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
   private Double migrationRate;
   private Long noProgressAttemptLimit;
   private Long localImprovementMoveCountLimit;
+  private Integer evaluatorThreadCount;
   private String moveThreadCount;
 
   @XmlElement(name = "mutationOperator")
@@ -176,6 +178,25 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
     return this;
   }
 
+  /**
+   * Number of private evaluator workers. Null or zero retains serial evaluation; positive values
+   * enable a bounded evaluator pool with exactly that many workers. The pool cannot be combined
+   * with local improvement, island execution, partitioned search, or enabled move workers.
+   */
+  public @Nullable Integer getEvaluatorThreadCount() {
+    return evaluatorThreadCount;
+  }
+
+  public void setEvaluatorThreadCount(@Nullable Integer evaluatorThreadCount) {
+    this.evaluatorThreadCount = evaluatorThreadCount;
+  }
+
+  public @NonNull GeneticAlgorithmPhaseConfig withEvaluatorThreadCount(
+      @NonNull Integer evaluatorThreadCount) {
+    setEvaluatorThreadCount(evaluatorThreadCount);
+    return this;
+  }
+
   /** Overrides the solver move-thread count; use NONE to disable move workers. */
   public @Nullable String getMoveThreadCount() {
     return moveThreadCount;
@@ -229,6 +250,7 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
             resolved.noProgressAttemptLimit, Math.max(128L, 10L * resolved.populationSize));
     resolved.localImprovementMoveCountLimit =
         Objects.requireNonNullElse(resolved.localImprovementMoveCountLimit, 0L);
+    resolved.evaluatorThreadCount = Objects.requireNonNullElse(resolved.evaluatorThreadCount, 0);
     if (resolved.populationSize < 1) {
       throw new IllegalArgumentException(
           "The populationSize (" + resolved.populationSize + ") must be positive.");
@@ -242,6 +264,18 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
           "The localImprovementMoveCountLimit ("
               + resolved.localImprovementMoveCountLimit
               + ") must be nonnegative.");
+    }
+    if (resolved.evaluatorThreadCount < 0) {
+      throw new IllegalArgumentException(
+          "The evaluatorThreadCount (" + resolved.evaluatorThreadCount + ") must be nonnegative.");
+    }
+    if (resolved.evaluatorThreadCount > 0 && resolved.localImprovementMoveCountLimit > 0L) {
+      throw new UnsupportedOperationException(
+          "The geneticAlgorithm evaluatorThreadCount ("
+              + resolved.evaluatorThreadCount
+              + ") cannot be combined with localImprovementMoveCountLimit ("
+              + resolved.localImprovementMoveCountLimit
+              + "). Set one of these properties to 0.");
     }
     validateUnitInterval("crossoverProbability", resolved.crossoverProbability);
     validateUnitInterval("tabuEntityRate", resolved.tabuEntityRate);
@@ -329,6 +363,9 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
     localImprovementMoveCountLimit =
         ConfigUtils.inheritOverwritableProperty(
             localImprovementMoveCountLimit, inheritedConfig.localImprovementMoveCountLimit);
+    evaluatorThreadCount =
+        ConfigUtils.inheritOverwritableProperty(
+            evaluatorThreadCount, inheritedConfig.evaluatorThreadCount);
     moveThreadCount =
         ConfigUtils.inheritOverwritableProperty(moveThreadCount, inheritedConfig.moveThreadCount);
     if (mutationOperatorConfigList == null && inheritedConfig.mutationOperatorConfigList != null) {

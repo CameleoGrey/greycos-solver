@@ -36,28 +36,39 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 @ResourceLock("yamlAndXml")
+@Timeout(30)
 class GreyCOSSolverGeneticAlgorithmListAutoConfigurationTest {
 
   private static final String SOLVER_XML =
       "greycos/solver/spring/boot/autoconfigure/geneticAlgorithmMixedSolverConfig.xml";
+  private static final String POOL_SOLVER_XML =
+      "greycos/solver/spring/boot/autoconfigure/geneticAlgorithmEvaluatorPoolSolverConfig.xml";
 
   @Test
-  @Timeout(30)
-  @SuppressWarnings("unchecked")
   void xmlConfiguredMixedDomainSolvesThroughAutoConfiguredBeans() {
+    xmlConfiguredMixedDomainSolvesThroughAutoConfiguredBeans(0);
+  }
+
+  @Test
+  void xmlConfiguredMixedPoolSolvesThroughAutoConfiguredBeans() {
+    xmlConfiguredMixedDomainSolvesThroughAutoConfiguredBeans(2);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void xmlConfiguredMixedDomainSolvesThroughAutoConfiguredBeans(int evaluatorThreadCount) {
     new ApplicationContextRunner()
         .withConfiguration(
             AutoConfigurations.of(
                 GreyCOSSolverAutoConfiguration.class, GreyCOSSolverBeanFactory.class))
         .withUserConfiguration(NormalSpringTestConfiguration.class)
-        .withPropertyValues("greycos.solver-config-xml=" + SOLVER_XML)
+        .withPropertyValues("greycos.solver-config-xml=" + solverXml(evaluatorThreadCount))
         .run(
             context -> {
               assertThat(context).hasNotFailed();
               var config = context.getBean(SolverConfig.class);
-              assertMixedConfiguration(config);
+              assertMixedConfiguration(config, evaluatorThreadCount);
               SolverFactory<TestdataMixedSolution> factory = context.getBean(SolverFactory.class);
-              var result = solveAndReplay(factory);
+              var result = solveAndReplay(factory, evaluatorThreadCount);
               SolutionManager<TestdataMixedSolution, SimpleScore> manager =
                   context.getBean(SolutionManager.class);
               assertThat(manager.update(result)).isEqualTo(replayScore(result));
@@ -65,20 +76,32 @@ class GreyCOSSolverGeneticAlgorithmListAutoConfigurationTest {
   }
 
   @Test
-  @Timeout(30)
   void aotRestoredMixedConfigurationBuildsAndSolves() {
-    var config = SolverConfig.createFromXmlResource(SOLVER_XML);
+    aotRestoredMixedConfigurationBuildsAndSolves(0);
+  }
+
+  @Test
+  void aotRestoredMixedPoolConfigurationBuildsAndSolves() {
+    aotRestoredMixedConfigurationBuildsAndSolves(2);
+  }
+
+  private void aotRestoredMixedConfigurationBuildsAndSolves(int evaluatorThreadCount) {
+    var config = SolverConfig.createFromXmlResource(solverXml(evaluatorThreadCount));
     var writer = new StringWriter();
     new SolverConfigIO().write(config, writer);
 
     var restored = new GreyCOSSolverAotFactory().solverConfigSupplier(writer.toString());
 
     assertThat(restored).usingRecursiveComparison().isEqualTo(config);
-    assertMixedConfiguration(restored);
-    solveAndReplay(SolverFactory.create(restored));
+    assertMixedConfiguration(restored, evaluatorThreadCount);
+    solveAndReplay(SolverFactory.create(restored), evaluatorThreadCount);
   }
 
-  private static void assertMixedConfiguration(SolverConfig config) {
+  private static String solverXml(int evaluatorThreadCount) {
+    return evaluatorThreadCount == 0 ? SOLVER_XML : POOL_SOLVER_XML;
+  }
+
+  private static void assertMixedConfiguration(SolverConfig config, int evaluatorThreadCount) {
     assertThat(config.getSolutionClass()).isEqualTo(TestdataMixedSolution.class);
     assertThat(config.getEntityClassList())
         .containsExactly(
@@ -91,14 +114,16 @@ class GreyCOSSolverGeneticAlgorithmListAutoConfigurationTest {
     var phase = (GeneticAlgorithmPhaseConfig) config.getPhaseConfigList().getFirst();
     assertThat(phase.getMoveThreadCount()).isEqualTo(SolverConfig.MOVE_THREAD_COUNT_NONE);
     assertThat(phase.getCrossoverProbability()).isEqualTo(1.0);
-    assertThat(phase.getLocalImprovementMoveCountLimit()).isEqualTo(8L);
+    assertThat(phase.getLocalImprovementMoveCountLimit())
+        .isEqualTo(evaluatorThreadCount == 0 ? 8L : 0L);
+    assertThat(phase.resolve().getEvaluatorThreadCount()).isEqualTo(evaluatorThreadCount);
     assertThat(phase.resolve().getMutationOperatorConfigList())
         .extracting(GeneticAlgorithmMutationOperatorConfig::getType)
         .containsExactly(GeneticAlgorithmMutationType.values());
   }
 
   private static TestdataMixedSolution solveAndReplay(
-      SolverFactory<TestdataMixedSolution> factory) {
+      SolverFactory<TestdataMixedSolution> factory, int evaluatorThreadCount) {
     var problem = TestdataMixedSolution.generateUninitializedSolution(3, 9, 3);
     for (var entity : problem.getEntityList()) {
       entity.setBasicValue(problem.getOtherValueList().getFirst());
@@ -135,7 +160,11 @@ class GreyCOSSolverGeneticAlgorithmListAutoConfigurationTest {
     var result = solver.solve(problem);
 
     assertThat(completedSteps).hasValue(16L);
-    assertThat(completedProbes.get()).isPositive();
+    if (evaluatorThreadCount == 0) {
+      assertThat(completedProbes.get()).isPositive();
+    } else {
+      assertThat(completedProbes.get()).isZero();
+    }
     assertThat(solver.getSolverScope().getMoveEvaluationCount())
         .isEqualTo(completedSteps.get() + completedProbes.get());
     assertThat(result.getScore())

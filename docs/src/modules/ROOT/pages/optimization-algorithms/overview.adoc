@@ -112,7 +112,7 @@ Each of these algorithm families have multiple optimization algorithms:
 |    xref:optimization-algorithms/local-search.adoc#stepCountingHillClimbing[Step Counting Hill Climbing] |5/5 |4/5 |3/5 |5/5 |Yes
 |    xref:optimization-algorithms/local-search.adoc#variableNeighborhoodDescent[Variable Neighborhood Descent] |3/5 |3/5 |2/5 |5/5 |Yes
 6+|  xref:optimization-algorithms/alns.adoc#alns[Adaptive Large Neighborhood Search] (ALNS): adaptive destroy/repair search from an initialized solution.
-6+|  xref:optimization-algorithms/genetic-algorithm.adoc#geneticAlgorithm[Genetic Algorithm] (GA): serial population search for initialized basic, list, and mixed models, using incremental scoring.
+6+|  xref:optimization-algorithms/genetic-algorithm.adoc#geneticAlgorithm[Genetic Algorithm] (GA): population search for initialized basic, list, and mixed models, using incremental scoring and optional parallel evaluation.
 |===
 
 To learn more about metaheuristics, see http://www.cs.gmu.edu/~sean/book/metaheuristics/[Essentials of Metaheuristics] or http://www.cleveralgorithms.com/[Clever Algorithms].
@@ -156,8 +156,9 @@ it can follow construction heuristics and be combined with Local Search in a pha
 Compare solution quality and resource use on representative inputs under the same budget.
 
 The opt-in xref:optimization-algorithms/genetic-algorithm.adoc#geneticAlgorithm[Genetic Algorithm]
-phase searches a population of assignment snapshots using one retained incremental scoring workspace.
-It supports initialized basic, list, and mixed models with serial evaluation.
+phase searches a population of assignment snapshots using retained incremental scoring workspaces.
+It supports initialized basic, list, and mixed models with serial evaluation, asynchronous islands,
+or an optional standalone evaluator pool.
 Compare its feasibility, quality and resource use against local search under matched budgets.
 
 Other experiments can also be run.

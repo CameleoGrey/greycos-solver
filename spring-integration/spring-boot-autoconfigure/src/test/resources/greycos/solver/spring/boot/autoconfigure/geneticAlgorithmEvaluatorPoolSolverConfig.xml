@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
+  <environmentMode>FULL_ASSERT</environmentMode>
+  <randomSeed>0</randomSeed>
+  <solutionClass>greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedSolution</solutionClass>
+  <entityClass>greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedEntity</entityClass>
+  <entityClass>greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedValue</entityClass>
+  <entityClass>greycos.solver.core.testcotwin.mixed.singleentity.TestdataMixedOtherValue</entityClass>
+  <scoreDirectorFactory>
+    <constraintProviderClass>greycos.solver.spring.boot.autoconfigure.GreyCOSSolverGeneticAlgorithmListAutoConfigurationTest$MixedConstraints</constraintProviderClass>
+  </scoreDirectorFactory>
+  <geneticAlgorithm>
+    <termination><stepCountLimit>16</stepCountLimit></termination>
+    <populationSize>4</populationSize>
+    <crossoverProbability>1.0</crossoverProbability>
+    <mutationRateMultiplier>2.0</mutationRateMultiplier>
+    <localImprovementMoveCountLimit>0</localImprovementMoveCountLimit>
+    <evaluatorThreadCount>2</evaluatorThreadCount>
+    <moveThreadCount>NONE</moveThreadCount>
+  </geneticAlgorithm>
+</solver>

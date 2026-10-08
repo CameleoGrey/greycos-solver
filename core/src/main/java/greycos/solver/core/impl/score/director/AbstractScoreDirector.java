@@ -852,8 +852,19 @@ public abstract class AbstractScoreDirector<
                 .withConstraintMatchPolicy(constraintMatchPolicy)
                 .withForceAllowInconsistentSolutions(!ignoreInconsistentSolutions)
                 .buildDerived();
-        childThreadScoreDirector.setWorkingSolution(cloneWorkingSolution());
-        return childThreadScoreDirector;
+        try {
+          childThreadScoreDirector.setWorkingSolution(cloneWorkingSolution());
+          return childThreadScoreDirector;
+        } catch (RuntimeException | Error failure) {
+          try {
+            childThreadScoreDirector.close();
+          } catch (RuntimeException | Error closeFailure) {
+            if (failure != closeFailure) {
+              failure.addSuppressed(closeFailure);
+            }
+          }
+          throw failure;
+        }
       }
       default ->
           throw new IllegalStateException(

@@ -31,18 +31,21 @@ import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class GeneticAlgorithmListPlannerBenchmarkTest {
 
   @ParameterizedTest
-  @ValueSource(longs = {0L, 4L})
+  @CsvSource({"0, 0", "4, 0", "0, 2"})
   @Timeout(60)
   void everyListMutationProducesReportStatisticsAndReloadableXmlResult(
-      long localImprovementMoveCountLimit, @TempDir Path directory) throws Exception {
+      long localImprovementMoveCountLimit, int evaluatorThreadCount, @TempDir Path directory)
+      throws Exception {
     var solverBenchmarks =
         Arrays.stream(GeneticAlgorithmMutationType.values())
-            .map(type -> solverBenchmarkXml(type, localImprovementMoveCountLimit))
+            .map(
+                type ->
+                    solverBenchmarkXml(type, localImprovementMoveCountLimit, evaluatorThreadCount))
             .collect(Collectors.joining());
     var xml =
         """
@@ -160,6 +163,7 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
       assertThat(phase.getMoveThreadCount()).isEqualTo(SolverConfig.MOVE_THREAD_COUNT_NONE);
       assertThat(phase.getLocalImprovementMoveCountLimit())
           .isEqualTo(localImprovementMoveCountLimit);
+      assertThat(phase.getEvaluatorThreadCount()).isEqualTo(evaluatorThreadCount);
       assertThat(phase.getMutationOperatorConfigList())
           .singleElement()
           .satisfies(
@@ -190,7 +194,9 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
   }
 
   private static String solverBenchmarkXml(
-      GeneticAlgorithmMutationType type, long localImprovementMoveCountLimit) {
+      GeneticAlgorithmMutationType type,
+      long localImprovementMoveCountLimit,
+      int evaluatorThreadCount) {
     return """
         <solverBenchmark>
           <name>List %s</name>
@@ -208,6 +214,7 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
               <populationSize>4</populationSize>
               <crossoverProbability>1.0</crossoverProbability>
               <localImprovementMoveCountLimit>%d</localImprovementMoveCountLimit>
+              <evaluatorThreadCount>%d</evaluatorThreadCount>
               <moveThreadCount>NONE</moveThreadCount>
               <mutationOperator><type>%s</type><probability>1.0</probability></mutationOperator>
             </geneticAlgorithm>
@@ -229,6 +236,7 @@ class GeneticAlgorithmListPlannerBenchmarkTest {
             TestdataListValue.class.getName(),
             ListConstraints.class.getName(),
             localImprovementMoveCountLimit,
+            evaluatorThreadCount,
             type);
   }
 

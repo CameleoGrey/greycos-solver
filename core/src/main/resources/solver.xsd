@@ -212,6 +212,7 @@
           <xs:element minOccurs="0" name="migrationRate" type="xs:double"/>
           <xs:element minOccurs="0" name="noProgressAttemptLimit" type="xs:long"/>
           <xs:element minOccurs="0" name="localImprovementMoveCountLimit" type="xs:long"/>
+          <xs:element minOccurs="0" name="evaluatorThreadCount" type="xs:int"/>
           <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
           <xs:element maxOccurs="unbounded" minOccurs="0" name="mutationOperator" type="tns:geneticAlgorithmMutationOperatorConfig"/>
         </xs:sequence>

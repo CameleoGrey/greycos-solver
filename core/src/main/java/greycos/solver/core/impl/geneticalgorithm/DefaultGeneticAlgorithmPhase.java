@@ -1,15 +1,20 @@
 package greycos.solver.core.impl.geneticalgorithm;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.solver.event.EventProducerId;
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmMutationType;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
@@ -26,14 +31,15 @@ import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
 
 /**
- * Serial population search with immutable genomes and a retained evaluation workspace. Population
- * admission never determines workspace ownership or best-solution publication.
+ * Population search with immutable genomes and retained evaluation workspaces. Optional bounded
+ * workers score candidates while the coordinator owns population admission and best publication.
  */
 public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase<Solution_> {
   private final GeneticAlgorithmPhaseConfig config;
   private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
   private final Function<RandomSource, GeneticAlgorithmLocalImprovementMoves<Solution_>>
       localImprovementMovesFactory;
+  private final ThreadFactory evaluatorThreadFactory;
   // Keep gauge backing objects reachable after the phase; replace them on every run.
   private GeneticAlgorithmMetrics<Solution_> metrics;
   private GeneticAlgorithmMigration<Solution_> migration;
@@ -47,6 +53,14 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
   private long committedBatches;
   private long completedGenerations;
   private boolean workspaceChangedOutsideStep;
+  private GeneticAlgorithmEvaluatorPool.Diagnostics evaluatorDiagnostics;
+  private volatile Supplier<GeneticAlgorithmEvaluatorPool.Diagnostics> liveEvaluatorDiagnostics;
+
+  /** Final pool counters remain available after workers have closed; null means no pool started. */
+  public GeneticAlgorithmEvaluatorPool.Diagnostics getEvaluatorDiagnostics() {
+    var live = liveEvaluatorDiagnostics;
+    return live == null ? evaluatorDiagnostics : live.get();
+  }
 
   public long getCompletedGenerations() {
     return completedGenerations;
@@ -80,6 +94,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     config = builder.config.copyConfig();
     bestSolutionRecaller = builder.bestSolutionRecaller;
     localImprovementMovesFactory = builder.localImprovementMovesFactory;
+    evaluatorThreadFactory = builder.evaluatorThreadFactory;
   }
 
   /** Attaches the owning island transport; the endpoint never owns the evaluation workspace. */
@@ -109,6 +124,8 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     evaluatedEntries = admittedEntries = rejectedEntries = committedBatches = 0;
     completedGenerations = 0;
     workspaceChangedOutsideStep = false;
+    evaluatorDiagnostics = null;
+    liveEvaluatorDiagnostics = null;
     // Backend changes must precede capturing phase-relative counters and the workspace director.
     solverScope.getSolver().prepareForPhase(scope);
     Throwable originalFailure = null;
@@ -170,7 +187,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     cleanup.add(scope::endingNow);
     // Failed probes may leave deferred undo updates or uncertain state. Keep the last stable step
     // metrics instead of sampling unverified constraint totals during exceptional teardown.
-    if (originalFailure == null || localMoves == null) {
+    if (originalFailure == null || (localMoves == null && config.getEvaluatorThreadCount() == 0)) {
       cleanup.add(() -> metrics.phaseEnded(scope, !workspaceChangedOutsideStep));
     }
     cleanup.add(() -> phaseEnded(scope));
@@ -217,6 +234,9 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     private long firstParentId;
     private long secondParentId;
     private boolean crossed;
+    private GeneticAlgorithmEvaluatorPool<Solution_, Score_> evaluatorPool;
+    private boolean coordinatorScoreDirty;
+    private long pooledAttemptCount;
 
     private Search(
         GeneticAlgorithmPhaseScope<Solution_> scope,
@@ -247,6 +267,10 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         if (winner == null) return;
         addPopulationMember(winner);
       }
+      if (config.getEvaluatorThreadCount() > 0) {
+        if (!stopped()) runPooled();
+        return;
+      }
       while (!stopped()) {
         population.sort(ranking);
         winners.clear();
@@ -268,6 +292,337 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         updatePopulationDiagnostics();
         if (!migrateAtGenerationBoundary()) return;
       }
+    }
+
+    /**
+     * The proposal stream is separate from step callbacks and is split once, before any workers
+     * start. Worker count and completion order therefore cannot change genetic decisions.
+     */
+    private void runPooled() {
+      var proposalRandom = ((DefaultRandomSource) scope.getWorkingRandom()).moveRandom().split();
+      evaluatorPool =
+          evaluatorThreadFactory == null
+              ? new GeneticAlgorithmEvaluatorPool<>(
+                  scope.getScoreDirector(),
+                  workspace,
+                  scope.getSolverScope(),
+                  config.getEvaluatorThreadCount())
+              : new GeneticAlgorithmEvaluatorPool<>(
+                  scope.getScoreDirector(),
+                  workspace,
+                  scope.getSolverScope(),
+                  config.getEvaluatorThreadCount(),
+                  evaluatorThreadFactory);
+      metrics.setBeforeConstraintSampling(this::verifyCoordinatorScore);
+      liveEvaluatorDiagnostics = evaluatorPool::getDiagnostics;
+      Throwable originalFailure = null;
+      try {
+        if (!evaluatorPool.start(this::stopped)) return;
+        while (!stopped()) {
+          population.sort(ranking);
+          winners.clear();
+          pendingChild = null;
+          int preparedCount = 0;
+          while (preparedCount < population.size()) {
+            var window = new ArrayList<PreparedAttempt>(config.getEvaluatorThreadCount());
+            while (window.size() < config.getEvaluatorThreadCount()
+                && preparedCount < population.size()) {
+              if (stopped()) return;
+              var prepared = prepareAttempt(proposalRandom);
+              preparedCount++;
+              boolean dependency = prepareEvaluation(prepared, window);
+              window.add(prepared);
+              if (dependency) break;
+            }
+            for (var prepared : window) {
+              if (stopped()) return;
+              var result = awaitEvaluation(prepared);
+              if (stopped()) return;
+              var winner = attemptPooled(prepared, result);
+              if (winner == null) return;
+              winners.add(winner);
+              pooledAttemptCount++;
+              if (pooledAttemptCount % 100 == 0) verifyCoordinatorScore();
+            }
+          }
+          verifyCoordinatorScore();
+          population.clear();
+          population.addAll(winners);
+          winners.clear();
+          pendingChild = null;
+          scope.setGeneration(scope.getGeneration() + 1);
+          completedGenerations = scope.getGeneration();
+          updatePopulationDiagnostics();
+        }
+      } catch (RuntimeException | Error failure) {
+        originalFailure = failure;
+        throw failure;
+      } finally {
+        var cleanup = new ArrayList<Runnable>();
+        var progress = evaluatorPool.getDiagnostics();
+        boolean abort =
+            originalFailure != null
+                || Thread.currentThread().isInterrupted()
+                || progress.submittedCount() > progress.consumedCount();
+        cleanup.add(abort ? evaluatorPool::abort : evaluatorPool::close);
+        cleanup.add(evaluatorPool::transferCalculationCount);
+        cleanup.add(
+            () -> {
+              evaluatorDiagnostics = evaluatorPool.getDiagnostics();
+              liveEvaluatorDiagnostics = null;
+            });
+        // A failed setter, scorer or callback may have left uncertain state. Never replace that
+        // initiating failure with speculative verification of the coordinator graph.
+        if (originalFailure == null) cleanup.add(this::verifyCoordinatorScore);
+        cleanup.add(() -> metrics.setBeforeConstraintSampling(() -> {}));
+        runCleanup(originalFailure, cleanup);
+      }
+    }
+
+    private final class PreparedAttempt {
+      private final GeneticAlgorithmGenome genome;
+      private final long id;
+      private final long firstParent;
+      private final long secondParent;
+      private final boolean didCross;
+      private final GeneticAlgorithmMutationType mutationType;
+      private final String mutationGroup;
+      private final Individual<Score_> nativeIndividual;
+      private GeneticAlgorithmEvaluatorPool.Ticket<Score_> ticket;
+
+      private PreparedAttempt(
+          GeneticAlgorithmOperators.Mutation mutation, Individual<Score_> nativeIndividual) {
+        genome = mutation.genome();
+        id = nextId++;
+        firstParent = firstParentId;
+        secondParent = secondParentId;
+        didCross = crossed;
+        mutationType = mutation.type();
+        mutationGroup = mutation.group();
+        this.nativeIndividual = nativeIndividual;
+      }
+    }
+
+    private PreparedAttempt prepareAttempt(RandomGenerator random) {
+      var child = nextChild(random);
+      var mutation = operators.mutate(child, random);
+      var nativeIndividual =
+          population.get(
+              GeneticAlgorithmOperators.selectRankedIndex(
+                  population.size(), config.getPBestRate(), false, random));
+      return new PreparedAttempt(mutation, nativeIndividual);
+    }
+
+    /**
+     * An unresolved equal fresh child, or the current workspace behind unresolved fresh children,
+     * is a dependency barrier. Admission and validity must resolve before deciding whether this
+     * proposal is a cached duplicate. The bounded equality scan also avoids hashing mutable values.
+     */
+    private boolean prepareEvaluation(PreparedAttempt prepared, List<PreparedAttempt> preceding) {
+      if (cached(prepared.genome) != null) return false;
+      boolean hasFreshPredecessor = false;
+      for (var previous : preceding) {
+        if (previous.ticket == null) continue;
+        hasFreshPredecessor = true;
+        if (previous.genome.equals(prepared.genome)) return true;
+      }
+      if (prepared.genome.equals(workspace.genome())) return hasFreshPredecessor;
+      prepared.ticket = evaluatorPool.submit(prepared.id, prepared.genome);
+      return false;
+    }
+
+    private GeneticAlgorithmEvaluatorPool.Result<Score_> awaitEvaluation(PreparedAttempt prepared) {
+      if (prepared.genome.equals(workspace.genome()) || cached(prepared.genome) != null) {
+        if (prepared.ticket != null) {
+          throw new IllegalStateException(
+              "A genetic algorithm evaluator job became a duplicate before ordered commitment.");
+        }
+        return null;
+      }
+      if (prepared.ticket == null) {
+        prepared.ticket = evaluatorPool.submit(prepared.id, prepared.genome);
+      }
+      while (!stopped()) {
+        try {
+          var result = evaluatorPool.poll(prepared.ticket, 10L);
+          evaluatorPool.transferCalculationCount();
+          if (result != null) return result;
+        } catch (InterruptedException interrupted) {
+          Thread.currentThread().interrupt();
+          return null;
+        }
+      }
+      return null;
+    }
+
+    private Individual<Score_> attemptPooled(
+        PreparedAttempt prepared, GeneticAlgorithmEvaluatorPool.Result<Score_> result) {
+      var step = new GeneticAlgorithmStepScope<>(scope);
+      step.setGeneration(scope.getGeneration() + 1);
+      step.setBeforeScore(workspace.score());
+      step.setBestBeforeScore(scope.getBestScore());
+      step.setCandidateId(prepared.id);
+      step.setParentIds(prepared.firstParent, prepared.secondParent);
+      step.setCrossed(prepared.didCross);
+      step.setMutationType(prepared.mutationType);
+      step.setMutationGroup(prepared.mutationGroup);
+      step.setNativeId(prepared.nativeIndividual.id());
+      var randomSource = (DefaultRandomSource) scope.getWorkingRandom();
+      var previousRandom = randomSource.moveRandom().getDelegate();
+      boolean lifecycleCompleted = false;
+      boolean credited = false;
+      boolean typeCredited = false;
+      Throwable attemptFailure = null;
+      try {
+        stepStarted(step);
+        if (stopped()) return null;
+        var candidate = evaluatePooled(step, prepared, result);
+        boolean admitted =
+            candidate != null
+                && candidate.score().compareTo(prepared.nativeIndividual.score()) >= 0;
+        step.setAdmitted(admitted);
+        var winner = admitted ? candidate : prepared.nativeIndividual;
+        scope.getSolverScope().addMoveEvaluationCount(1);
+        credited = true;
+        if (scope.getSolverScope().isMetricEnabled(SolverMetric.MOVE_COUNT_PER_TYPE)) {
+          scope.getSolverScope().addMoveEvaluationCountPerType(step.getMoveTypeDescription(), 1);
+          typeCredited = true;
+        }
+        metrics.record(step);
+        stepEnded(step);
+        lifecycleCompleted = true;
+        workspaceChangedOutsideStep = false;
+        scope.commitStep(step);
+        SolverMetricSamples.publishIslandStep(scope.getSolverScope(), step);
+        return winner;
+      } catch (RuntimeException | Error failure) {
+        attemptFailure = failure;
+        throw failure;
+      } finally {
+        if (!lifecycleCompleted) {
+          var cleanup = new ArrayList<Runnable>();
+          if (credited) cleanup.add(() -> scope.getSolverScope().addMoveEvaluationCount(-1));
+          if (typeCredited) {
+            cleanup.add(
+                () -> {
+                  scope
+                      .getSolverScope()
+                      .addMoveEvaluationCountPerType(step.getMoveTypeDescription(), -1);
+                  scope
+                      .getSolverScope()
+                      .getMoveEvaluationCountPerType()
+                      .remove(step.getMoveTypeDescription(), 0L);
+                });
+          }
+          cleanup.add(() -> metrics.restoreStepCounts(scope.getLastCompletedStepScope()));
+          cleanup.add(() -> randomSource.restoreState(previousRandom));
+          runCleanup(attemptFailure, cleanup);
+        }
+      }
+    }
+
+    private Individual<Score_> evaluatePooled(
+        GeneticAlgorithmStepScope<Solution_> step,
+        PreparedAttempt prepared,
+        GeneticAlgorithmEvaluatorPool.Result<Score_> result) {
+      InnerScore<Score_> candidateScore;
+      if (prepared.genome.equals(workspace.genome())) {
+        step.setOutcome(GeneticAlgorithmOutcome.NO_CHANGE);
+        candidateScore = workspace.score();
+        step.setScore(workspace.score());
+      } else {
+        var duplicate = cached(prepared.genome);
+        if (duplicate != null) {
+          step.setOutcome(GeneticAlgorithmOutcome.DUPLICATE);
+          candidateScore = duplicate.score();
+          step.setScore(workspace.score());
+        } else {
+          Objects.requireNonNull(
+              result, "A fresh genetic algorithm candidate needs an evaluator result.");
+          if (result.workId() != prepared.id) {
+            throw new IllegalStateException(
+                "The genetic algorithm evaluator result work ID (%d) differs from its attempt ID (%d)."
+                    .formatted(result.workId(), prepared.id));
+          }
+          if (!result.valid()) {
+            step.setOutcome(GeneticAlgorithmOutcome.INVALID);
+            step.setChangedAssignmentCount(
+                result.changedAssignmentCount() == 0
+                    ? 0
+                    : logicalChangedAssignmentCount(prepared.genome));
+            step.setScore(workspace.score());
+            return null;
+          }
+          var transition = workspace.transition(prepared.genome);
+          if (!transition.valid()) {
+            throw new IllegalStateException(
+                "A worker-valid genetic algorithm candidate was invalid in the coordinator workspace.");
+          }
+          step.setChangedAssignmentCount(transition.changedAssignmentCount());
+          candidateScore = Objects.requireNonNull(result.score());
+          step.setScore(candidateScore);
+          coordinatorScoreDirty = true;
+          predictWorkingStepScore(step, "Genetic Algorithm evaluator candidate " + prepared.id);
+          workspace.scored(candidateScore);
+          if (assertExpectedStepScore || assertShadowVariablesAreNotStaleAfterStep) {
+            coordinatorScoreDirty = false;
+          }
+          step.setOutcome(GeneticAlgorithmOutcome.EVALUATED);
+          publishBest(step, () -> bestSolutionRecaller.processWorkingSolutionDuringStep(step));
+        }
+      }
+      step.setCandidateScore(candidateScore);
+      return new Individual<>(prepared.genome, candidateScore, prepared.id);
+    }
+
+    /** Count logical assignment differences independently of the worker's preceding job. */
+    private int logicalChangedAssignmentCount(GeneticAlgorithmGenome candidate) {
+      int changed = 0;
+      var baseline = workspace.genome();
+      for (int i = 0; i < baseline.size(); i++) {
+        if (!Objects.equals(baseline.value(i), candidate.value(i))) changed++;
+      }
+      if (workspace.listModel() != null) {
+        int valueCount = workspace.listModel().valueCount();
+        var oldOwners = new int[valueCount];
+        var newOwners = new int[valueCount];
+        var oldIndexes = new int[valueCount];
+        var newIndexes = new int[valueCount];
+        Arrays.fill(oldOwners, -1);
+        Arrays.fill(newOwners, -1);
+        var oldLists = baseline.lists();
+        var newLists = candidate.lists();
+        for (int owner = 0; owner < oldLists.length; owner++) {
+          for (int index = 0; index < oldLists[owner].length; index++) {
+            int value = oldLists[owner][index];
+            oldOwners[value] = owner;
+            oldIndexes[value] = index;
+          }
+          for (int index = 0; index < newLists[owner].length; index++) {
+            int value = newLists[owner][index];
+            newOwners[value] = owner;
+            newIndexes[value] = index;
+          }
+        }
+        for (int value = 0; value < valueCount; value++) {
+          if (oldOwners[value] != newOwners[value] || oldIndexes[value] != newIndexes[value])
+            changed++;
+        }
+      }
+      return changed;
+    }
+
+    private void verifyCoordinatorScore() {
+      if (!coordinatorScoreDirty) return;
+      var predicted = workspace.score();
+      InnerScore<Score_> actual = scope.calculateScore();
+      if (!actual.equals(predicted)) {
+        throw new IllegalStateException(
+            "The genetic algorithm coordinator score (%s) differs from its evaluator prediction (%s)."
+                .formatted(actual, predicted));
+      }
+      workspace.scored(actual);
+      coordinatorScoreDirty = false;
     }
 
     /** Migrants are evaluated serially and become population members in one batch commit. */
@@ -408,7 +763,10 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     }
 
     private GeneticAlgorithmGenome nextChild() {
-      var random = scope.getWorkingRandom().moveIteratorUsage();
+      return nextChild(scope.getWorkingRandom().moveIteratorUsage());
+    }
+
+    private GeneticAlgorithmGenome nextChild(RandomGenerator random) {
       if (pendingChild != null) {
         var child = pendingChild;
         pendingChild = null;
@@ -713,6 +1071,10 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     }
 
     private boolean stopped() {
+      if (evaluatorPool != null) {
+        evaluatorPool.transferCalculationCount();
+        evaluatorPool.checkFailure();
+      }
       scope.getSolverScope().checkYielding();
       if (Thread.currentThread().isInterrupted() || phaseTermination.isPhaseTerminated(scope))
         return true;
@@ -747,6 +1109,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
     private Function<RandomSource, GeneticAlgorithmLocalImprovementMoves<Solution_>>
         localImprovementMovesFactory;
+    private ThreadFactory evaluatorThreadFactory;
 
     public Builder(
         int phaseIndex,
@@ -763,6 +1126,11 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     public Builder<Solution_> withLocalImprovementMovesFactory(
         Function<RandomSource, GeneticAlgorithmLocalImprovementMoves<Solution_>> factory) {
       localImprovementMovesFactory = factory;
+      return this;
+    }
+
+    public Builder<Solution_> withEvaluatorThreadFactory(ThreadFactory threadFactory) {
+      evaluatorThreadFactory = threadFactory;
       return this;
     }
 
