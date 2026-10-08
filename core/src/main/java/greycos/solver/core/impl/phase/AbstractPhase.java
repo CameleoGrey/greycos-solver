@@ -7,6 +7,7 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.alns.AlnsStepScope;
+import greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmStepScope;
 import greycos.solver.core.impl.localsearch.DefaultLocalSearchPhase;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
@@ -222,10 +223,11 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
     }
     phaseTermination.stepEnded(stepScope);
     phaseLifecycleSupport.fireStepEnded(stepScope);
-    // LS and ALNS finish collecting their metrics after this superclass callback.
+    // LS and ALNS finish collecting metrics later; GA first commits its provisional step credit.
     if (!isNested()
         && !(stepScope instanceof LocalSearchStepScope)
-        && !(stepScope instanceof AlnsStepScope)) {
+        && !(stepScope instanceof AlnsStepScope)
+        && !(stepScope instanceof GeneticAlgorithmStepScope)) {
       SolverMetricSamples.publishIslandStep(stepScope.getPhaseScope().getSolverScope(), stepScope);
     }
   }

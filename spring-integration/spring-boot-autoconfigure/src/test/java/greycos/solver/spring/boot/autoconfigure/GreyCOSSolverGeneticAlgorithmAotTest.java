@@ -32,6 +32,7 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
             .withPBestRate(0.25)
             .withMutationRateMultiplier(2.5)
             .withTabuEntityRate(0.1)
+            .withMigrationRate(0.2)
             .withNoProgressAttemptLimit(99L)
             .withMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_NONE)
             .withMutationOperators(
@@ -58,6 +59,7 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
     assertThat(restoredPhase.getPBestRate()).isEqualTo(0.25);
     assertThat(restoredPhase.getMutationRateMultiplier()).isEqualTo(2.5);
     assertThat(restoredPhase.getTabuEntityRate()).isEqualTo(0.1);
+    assertThat(restoredPhase.getMigrationRate()).isEqualTo(0.2);
     assertThat(restoredPhase.getNoProgressAttemptLimit()).isEqualTo(99L);
     assertThat(restoredPhase.getMoveThreadCount()).isEqualTo(SolverConfig.MOVE_THREAD_COUNT_NONE);
     assertThat(restoredPhase.getMutationOperatorConfigList())
@@ -89,6 +91,7 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
     assertThat(resolved.getPBestRate()).isEqualTo(0.05);
     assertThat(resolved.getMutationRateMultiplier()).isZero();
     assertThat(resolved.getTabuEntityRate()).isZero();
+    assertThat(resolved.getMigrationRate()).isEqualTo(0.00001);
     assertThat(resolved.getNoProgressAttemptLimit()).isEqualTo(1280L);
     assertThat(resolved.getMoveThreadCount()).isNull();
     assertThat(resolved.getEnvironmentMode()).isNull();

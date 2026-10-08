@@ -2,6 +2,8 @@ package greycos.solver.core.impl.solver.termination;
 
 import greycos.solver.core.impl.alns.AlnsPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
+import greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmPhaseScope;
+import greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.phase.custom.scope.CustomPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
@@ -96,10 +98,15 @@ public final class IslandSequenceTermination<Solution_>
     }
     currentPhase = phaseScope;
     searchActive = isSearchPhase(phaseScope);
-    if (phaseScope instanceof LocalSearchPhaseScope || phaseScope instanceof AlnsPhaseScope) {
+    if (phaseScope instanceof LocalSearchPhaseScope
+        || phaseScope instanceof AlnsPhaseScope
+        || phaseScope instanceof GeneticAlgorithmPhaseScope) {
       budget.searchStarted();
     }
     if (member != null) {
+      if (phaseScope instanceof GeneticAlgorithmPhaseScope<Solution_> geneticScope) {
+        geneticScope.addCommittedStepListener(this::stepCommitted);
+      }
       if (scoresComparableToOwner) {
         quota.recordBest(solverScope.getBestScore());
       }
@@ -123,6 +130,15 @@ public final class IslandSequenceTermination<Solution_>
 
   @Override
   public void stepEnded(AbstractStepScope<Solution_> stepScope) {
+    if (stepScope instanceof GeneticAlgorithmStepScope) {
+      // Its outer move credit is still provisional until every ordinary callback returns.
+      publishWork();
+      return;
+    }
+    stepCommitted(stepScope);
+  }
+
+  private void stepCommitted(AbstractStepScope<Solution_> stepScope) {
     if (member != null) {
       quota.stepEnded(
           member,
@@ -153,7 +169,9 @@ public final class IslandSequenceTermination<Solution_>
       workProgress =
           quota.publish(
               member,
-              solverScope.getMoveEvaluationCount(),
+              currentPhase instanceof GeneticAlgorithmPhaseScope<Solution_> geneticScope
+                  ? geneticScope.getCommittedMoveEvaluationCount()
+                  : solverScope.getMoveEvaluationCount(),
               solverScope.getScoreDirector().getCalculationCount());
     } else {
       workProgress = quota.snapshot();

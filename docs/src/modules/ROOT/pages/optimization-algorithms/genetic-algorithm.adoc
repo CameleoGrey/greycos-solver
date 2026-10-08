@@ -9,9 +9,10 @@ GA is opt-in; the default construction heuristic and local search configuration 
 GA supports initialized solutions with basic planning variables, one planning list variable, or
 both, using finite countable value ranges. Basic variables may belong to list owners, list elements,
 or other planning entities. List values may be unassigned when the model permits it; all required
-assignments must be initialized. GA runs serially and cannot be nested inside an island model or
-partitioned search. Bounded offspring local improvement is opt-in. Parallel population evaluators
-are not supported.
+assignments must be initialized. Each GA phase runs serially, either standalone or inside an
+asynchronous island model, including Java-configured nested islands. GA cannot run under a
+partitioned-search ancestor, and move workers must be disabled. Bounded offspring local improvement
+is opt-in. Parallel population evaluators are not supported.
 
 [#geneticAlgorithmConfiguration]
 == Configuration
@@ -64,6 +65,7 @@ new GeneticAlgorithmPhaseConfig()
 |`pBestRate` |`0.05` |Upper bound on the sampled ranked prefix or suffix fraction; finite value in `(0.000001, 1]`.
 |`mutationRateMultiplier` |`0.0` |Finite nonnegative multiplier for mutation size. Zero still performs each operator's minimum mutation.
 |`tabuEntityRate` |`0.0` |Finite rate in `[0, 1]` limiting recent selected positions within mutation groups.
+|`migrationRate` |`0.00001` |Finite rate in `[0, 1]` controlling the number of population entries exchanged inside islands. Zero disables GA population exchange; the setting has no effect on standalone GA.
 |`noProgressAttemptLimit` |`max(128, 10 * populationSize)` |Positive number of consecutive attempts without fresh valid offspring scoring before the phase exits.
 |`localImprovementMoveCountLimit` |`0` |Nonnegative maximum number of local probes for each freshly scored generation child. Zero disables local improvement.
 |`moveThreadCount` |Inherited |The effective setting must disable move workers. Set `NONE` on this phase to override a solver-wide setting.
@@ -243,6 +245,72 @@ an improving probe published before termination prevented its commit. Accepted-p
 include earlier completed commits from that same interrupted attempt.
 If scoring or a listener throws, the phase aborts. Step metrics retain their last stable sample;
 best metrics retain any valid best solution already published before the failure.
+
+[#geneticAlgorithmIslands]
+== GA inside islands
+
+Each island owns its population, random stream, working solution and retained scoring session.
+Place GA inside `islandModel` after initialization, or pass a fully initialized solution:
+
+[source,xml]
+----
+<islandModel>
+  <islandCount>4</islandCount>
+  <migrationFrequency>10</migrationFrequency>
+  <constructionHeuristic/>
+  <geneticAlgorithm>
+    <termination><moveCountLimit>10000</moveCountLimit></termination>
+    <populationSize>128</populationSize>
+    <migrationRate>0.00001</migrationRate>
+    <moveThreadCount>NONE</moveThreadCount>
+  </geneticAlgorithm>
+</islandModel>
+----
+
+The `migrationFrequency` is measured in completed GA generations, excluding initial capture,
+seeding and interrupted generations. Its public default remains `Integer.MAX_VALUE`; the value
+`10` above is an example setting. Setting `migrationRate` to zero disables both sending and
+receiving GA population batches. The rate does not affect standalone GA or its random trajectory.
+The default `localImprovementMoveCountLimit` remains zero inside islands as well.
+
+For a population of size `P` and positive migration rate, each exchange sends the best
+`max(1, ceil(migrationRate * P))` population entries in native score order to the next island in
+the ring. Exchange is asynchronous: a recipient consumes the latest complete available batch
+at a safe generation boundary, and a newer complete batch can supersede an unread older batch.
+There is no generation barrier across islands. The sender publishes detached assignment snapshots;
+the receiver maps them to its own planning entities and values and scores them using notifications
+through its own retained session. Migration requires stable planning IDs, value ranges and pinning
+invariants. Invalid migration invariants abort the solve instead of becoming rejected offspring.
+
+The recipient freezes its ranked worst entries before examining the batch, pairs them with the
+ranked incoming entries, and replaces an entry only when the incoming native score is strictly
+better. An equal score retains the resident entry. A migrant can improve the population even if
+it is worse than the island's best archive. Duplicate population entries remain permitted.
+Accepted replacements are committed together only after the complete batch has been processed;
+GA does not rerank the population between individual pairs. Best improvements are published as
+soon as they are scored, independently of admission. The next generation reranks the committed
+population before selecting parents.
+
+Migration creates no GA steps or move-evaluation credits and does not run offspring local
+improvement. Actual receiver score calculations, including recovery, remain counted physical work.
+If termination or cancellation interrupts a batch, the receiver restores and freshly verifies
+its workspace from batch entry and discards all pending population replacements. Completed score
+calculations and already published best improvements remain recorded. A fatal scoring, listener
+or invariant failure aborts the phase; it is not treated as an ordinary rejected batch.
+
+GA publishes improvements to the shared island best archive, but does not import that archive
+into its population. `compareGlobalEnabled` and `receiveGlobalUpdateFrequency` continue to control
+global-best adoption for local search and ALNS; they do not enable another GA migration path.
+Enclosing island termination and score targets still observe GA's published improvements when
+population exchange is disabled. Java configuration also permits GA inside nested islands, as
+long as no enclosing phase is partitioned search. XML supports GA inside an island phase but
+does not expose nested island phases.
+
+Island scheduling and batch arrival order depend on thread execution. A fixed random seed does
+not make asynchronous island runs reproduce a standalone serial trace. These rules establish
+ownership, admission and accounting behavior; they do not establish a speedup or a search-quality
+advantage. Compare island counts and migration settings on representative problems under matched
+work and elapsed-time budgets, including runs with `migrationRate` set to zero.
 
 [#geneticAlgorithmIncrementalScoring]
 == Incremental scoring and lifecycle

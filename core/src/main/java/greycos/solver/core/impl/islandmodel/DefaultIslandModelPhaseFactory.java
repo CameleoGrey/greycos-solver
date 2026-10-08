@@ -38,8 +38,7 @@ public class DefaultIslandModelPhaseFactory<Solution_>
       SolverTermination<Solution_> solverTermination) {
 
     var configurationPath = "phase[" + phaseIndex + "].islandModel";
-    DefaultGeneticAlgorithmPhaseFactory.validateNoNestedPhases(
-        phaseConfig.getPhaseConfigList(), configurationPath);
+    DefaultGeneticAlgorithmPhaseFactory.validateIslandPlacement(phaseConfig, configurationPath);
     validateConfig(phaseConfig, configurationPath);
     validateConfigList(phaseConfig.getPhaseConfigList(), configurationPath);
     validateTerminationConfigs(phaseConfig, solverConfigPolicy, configurationPath);
@@ -107,8 +106,7 @@ public class DefaultIslandModelPhaseFactory<Solution_>
       var childPath = configurationPath + ".phase[" + index + "]";
       if (phase instanceof IslandModelPhaseConfig island) {
         childPath += ".islandModel";
-        DefaultGeneticAlgorithmPhaseFactory.validateNoNestedPhases(
-            island.getPhaseConfigList(), childPath);
+        DefaultGeneticAlgorithmPhaseFactory.validateIslandPlacement(island, childPath);
         validateConfig(island, childPath);
         validateConfigList(island.getPhaseConfigList(), childPath);
       } else if (phase instanceof PartitionedSearchPhaseConfig partition) {

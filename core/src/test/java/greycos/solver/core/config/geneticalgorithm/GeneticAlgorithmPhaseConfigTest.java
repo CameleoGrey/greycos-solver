@@ -48,6 +48,7 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThat(original.getPBestRate()).isNull();
     assertThat(original.getMutationRateMultiplier()).isNull();
     assertThat(original.getTabuEntityRate()).isNull();
+    assertThat(original.getMigrationRate()).isNull();
     assertThat(original.getNoProgressAttemptLimit()).isNull();
     assertThat(original.getLocalImprovementMoveCountLimit()).isNull();
     assertThat(original.getMoveThreadCount()).isNull();
@@ -57,6 +58,7 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThat(resolved.getPBestRate()).isEqualTo(0.05);
     assertThat(resolved.getMutationRateMultiplier()).isEqualTo(0.0);
     assertThat(resolved.getTabuEntityRate()).isEqualTo(0.0);
+    assertThat(resolved.getMigrationRate()).isEqualTo(0.00001);
     assertThat(resolved.getNoProgressAttemptLimit()).isEqualTo(1280L);
     assertThat(resolved.getLocalImprovementMoveCountLimit()).isZero();
     assertThat(resolved.getMutationOperatorConfigList())
@@ -87,6 +89,7 @@ class GeneticAlgorithmPhaseConfigTest {
             .withPBestRate(0.1)
             .withMutationRateMultiplier(2.5)
             .withTabuEntityRate(0.3)
+            .withMigrationRate(0.4)
             .withNoProgressAttemptLimit(500L)
             .withLocalImprovementMoveCountLimit(17L)
             .withMoveThreadCount("NONE")
@@ -110,6 +113,14 @@ class GeneticAlgorithmPhaseConfigTest {
             .resolve();
     assertThat(inherited.getPopulationSize()).isEqualTo(3);
     assertThat(inherited.getCrossoverProbability()).isEqualTo(0.2);
+    assertThat(inherited.getMigrationRate()).isEqualTo(0.4);
+    assertThat(
+            new GeneticAlgorithmPhaseConfig()
+                .withMigrationRate(0.0)
+                .inherit(original)
+                .resolve()
+                .getMigrationRate())
+        .isZero();
     assertThat(inherited.getLocalImprovementMoveCountLimit()).isEqualTo(17L);
     assertThat(
             new GeneticAlgorithmPhaseConfig()
@@ -139,6 +150,9 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThatThrownBy(() -> new GeneticAlgorithmPhaseConfig().withTabuEntityRate(value).resolve())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("tabuEntityRate");
+    assertThatThrownBy(() -> new GeneticAlgorithmPhaseConfig().withMigrationRate(value).resolve())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("migrationRate");
   }
 
   @ParameterizedTest
@@ -172,6 +186,7 @@ class GeneticAlgorithmPhaseConfigTest {
             new GeneticAlgorithmPhaseConfig()
                 .withCrossoverProbability(0.0)
                 .withTabuEntityRate(1.0)
+                .withMigrationRate(0.0)
                 .withPBestRate(Math.nextUp(0.000001))
                 .resolve())
         .isNotNull();
@@ -179,6 +194,7 @@ class GeneticAlgorithmPhaseConfigTest {
             new GeneticAlgorithmPhaseConfig()
                 .withCrossoverProbability(1.0)
                 .withTabuEntityRate(0.0)
+                .withMigrationRate(1.0)
                 .withPBestRate(1.0)
                 .resolve())
         .isNotNull();
@@ -294,6 +310,7 @@ class GeneticAlgorithmPhaseConfigTest {
             <pBestRate>0.25</pBestRate>
             <mutationRateMultiplier>2.5</mutationRateMultiplier>
             <tabuEntityRate>0.1</tabuEntityRate>
+            <migrationRate>0.4</migrationRate>
             <noProgressAttemptLimit>99</noProgressAttemptLimit>
             <localImprovementMoveCountLimit>21</localImprovementMoveCountLimit>
             <moveThreadCount>NONE</moveThreadCount>
@@ -308,6 +325,7 @@ class GeneticAlgorithmPhaseConfigTest {
     var phase = (GeneticAlgorithmPhaseConfig) config.getPhaseConfigList().getFirst();
     assertThat(phase.resolve().getPopulationSize()).isEqualTo(5);
     assertThat(phase.getLocalImprovementMoveCountLimit()).isEqualTo(21L);
+    assertThat(phase.getMigrationRate()).isEqualTo(0.4);
     assertThat(phase.getMutationOperatorConfigList())
         .extracting(GeneticAlgorithmMutationOperatorConfig::getType)
         .containsExactly(GeneticAlgorithmMutationType.CHANGE, GeneticAlgorithmMutationType.INVERSE);
@@ -411,11 +429,10 @@ class GeneticAlgorithmPhaseConfigTest {
   }
 
   @Test
-  void nestedPhasesFailBeforeFactoryCreatesWorkers() {
+  void partitionedAncestorsFailBeforeFactoryCreatesWorkers() {
     var geneticAlgorithm = new GeneticAlgorithmPhaseConfig();
     for (PhaseConfig<?> enclosing :
         List.of(
-            new IslandModelPhaseConfig().withPhaseConfigList(List.of(geneticAlgorithm)),
             new PartitionedSearchPhaseConfig().withPhaseConfigs(geneticAlgorithm),
             new IslandModelPhaseConfig()
                 .withPhaseConfigList(
@@ -425,8 +442,17 @@ class GeneticAlgorithmPhaseConfigTest {
                     new IslandModelPhaseConfig().withPhaseConfigList(List.of(geneticAlgorithm))))) {
       assertThatThrownBy(() -> SolverFactory.create(basicConfig(enclosing)))
           .isInstanceOf(UnsupportedOperationException.class)
-          .hasMessageContaining("cannot be nested under islandModel or partitionedSearch");
+          .hasMessageContaining("cannot be nested under partitionedSearch");
     }
+  }
+
+  @Test
+  void islandAndNestedIslandSequencesAcceptGeneticAlgorithm() {
+    var geneticAlgorithm = new GeneticAlgorithmPhaseConfig();
+    var island = new IslandModelPhaseConfig().withPhaseConfigList(List.of(geneticAlgorithm));
+    assertThat(SolverFactory.create(basicConfig(island)).buildSolver()).isNotNull();
+    var nested = new IslandModelPhaseConfig().withPhaseConfigList(List.of(island));
+    assertThat(SolverFactory.create(basicConfig(nested)).buildSolver()).isNotNull();
   }
 
   private static GeneticAlgorithmMutationOperatorConfig operator(

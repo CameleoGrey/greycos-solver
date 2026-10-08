@@ -3,7 +3,10 @@ package greycos.solver.core.impl.islandmodel;
 import java.util.BitSet;
 import java.util.Objects;
 
+import greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmMigrationBatch;
 import greycos.solver.core.impl.score.director.InnerScore;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * Message sent between island agents during migration. Contains agent's best solution (migrant) and
@@ -15,13 +18,27 @@ public class AgentUpdate<Solution_> {
   private final Solution_ migrant;
   private final InnerScore<?> migrantScore;
   private final BitSet aliveBits;
+  private final @Nullable GeneticAlgorithmMigrationBatch<Solution_> populationBatch;
 
   public AgentUpdate(int agentId, Solution_ migrant, InnerScore<?> migrantScore, BitSet aliveBits) {
+    this(agentId, migrant, migrantScore, aliveBits, null);
+  }
+
+  public AgentUpdate(
+      int agentId,
+      Solution_ migrant,
+      InnerScore<?> migrantScore,
+      BitSet aliveBits,
+      @Nullable GeneticAlgorithmMigrationBatch<Solution_> populationBatch) {
     this.agentId = agentId;
     this.migrant = Objects.requireNonNull(migrant, "Migrant cannot be null");
     this.migrantScore = Objects.requireNonNull(migrantScore, "Migrant score cannot be null");
     this.aliveBits =
         (BitSet) Objects.requireNonNull(aliveBits, "Alive bits cannot be null").clone();
+    if (populationBatch != null && populationBatch.sourceIslandId() != agentId) {
+      throw new IllegalArgumentException("The population batch must belong to its sending agent.");
+    }
+    this.populationBatch = populationBatch;
   }
 
   public int getAgentId() {
@@ -40,6 +57,11 @@ public class AgentUpdate<Solution_> {
     return (BitSet) aliveBits.clone();
   }
 
+  /** Null denotes an incumbent message; an empty population batch remains a population message. */
+  public @Nullable GeneticAlgorithmMigrationBatch<Solution_> getPopulationBatch() {
+    return populationBatch;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -52,12 +74,13 @@ public class AgentUpdate<Solution_> {
     return agentId == that.agentId
         && Objects.equals(migrant, that.migrant)
         && Objects.equals(migrantScore, that.migrantScore)
-        && Objects.equals(aliveBits, that.aliveBits);
+        && Objects.equals(aliveBits, that.aliveBits)
+        && Objects.equals(populationBatch, that.populationBatch);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(agentId, migrant, migrantScore, aliveBits);
+    return Objects.hash(agentId, migrant, migrantScore, aliveBits, populationBatch);
   }
 
   @Override
@@ -71,6 +94,8 @@ public class AgentUpdate<Solution_> {
         + migrantScore
         + ", aliveBits="
         + aliveBits
+        + ", populationBatch="
+        + populationBatch
         + '}';
   }
 }

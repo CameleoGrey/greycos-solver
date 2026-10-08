@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
+  <randomSeed>0</randomSeed>
+  <solutionClass>greycos.solver.core.testcotwin.TestdataSolution</solutionClass>
+  <entityClass>greycos.solver.core.testcotwin.TestdataEntity</entityClass>
+  <scoreDirectorFactory>
+    <constraintProviderClass>greycos.solver.core.testcotwin.TestdataConstraintProvider</constraintProviderClass>
+  </scoreDirectorFactory>
+  <islandModel>
+    <islandCount>2</islandCount>
+    <migrationFrequency>1</migrationFrequency>
+    <geneticAlgorithm>
+      <termination><stepCountLimit>11</stepCountLimit></termination>
+      <populationSize>4</populationSize>
+      <migrationRate>0.0</migrationRate>
+      <moveThreadCount>NONE</moveThreadCount>
+      <mutationOperator><type>CHANGE</type><probability>1.0</probability></mutationOperator>
+    </geneticAlgorithm>
+  </islandModel>
+</solver>

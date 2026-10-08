@@ -17,8 +17,8 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Opt-in serial genetic algorithm for initialized solutions with basic planning variables, one
- * planning list variable, or both. Defaults are applied after inheritance by {@link #resolve()}.
+ * Opt-in genetic algorithm for initialized solutions with basic planning variables, one planning
+ * list variable, or both. Defaults are applied after inheritance by {@link #resolve()}.
  */
 @XmlType(
     propOrder = {
@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
       "pBestRate",
       "mutationRateMultiplier",
       "tabuEntityRate",
+      "migrationRate",
       "noProgressAttemptLimit",
       "localImprovementMoveCountLimit",
       "moveThreadCount",
@@ -40,6 +41,7 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
   private Double pBestRate;
   private Double mutationRateMultiplier;
   private Double tabuEntityRate;
+  private Double migrationRate;
   private Long noProgressAttemptLimit;
   private Long localImprovementMoveCountLimit;
   private String moveThreadCount;
@@ -116,6 +118,24 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
 
   public @NonNull GeneticAlgorithmPhaseConfig withTabuEntityRate(@NonNull Double tabuEntityRate) {
     setTabuEntityRate(tabuEntityRate);
+    return this;
+  }
+
+  /**
+   * Finite fraction in [0, 1] of the population exchanged at an island migration boundary. Defaults
+   * to 0.00001, which sends at least one member when enabled. Zero disables population exchange.
+   * The enclosing island migration frequency counts completed generations for this phase.
+   */
+  public @Nullable Double getMigrationRate() {
+    return migrationRate;
+  }
+
+  public void setMigrationRate(@Nullable Double migrationRate) {
+    this.migrationRate = migrationRate;
+  }
+
+  public @NonNull GeneticAlgorithmPhaseConfig withMigrationRate(@NonNull Double migrationRate) {
+    setMigrationRate(migrationRate);
     return this;
   }
 
@@ -203,6 +223,7 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
     resolved.mutationRateMultiplier =
         Objects.requireNonNullElse(resolved.mutationRateMultiplier, 0.0);
     resolved.tabuEntityRate = Objects.requireNonNullElse(resolved.tabuEntityRate, 0.0);
+    resolved.migrationRate = Objects.requireNonNullElse(resolved.migrationRate, 0.00001);
     resolved.noProgressAttemptLimit =
         Objects.requireNonNullElse(
             resolved.noProgressAttemptLimit, Math.max(128L, 10L * resolved.populationSize));
@@ -224,6 +245,7 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
     }
     validateUnitInterval("crossoverProbability", resolved.crossoverProbability);
     validateUnitInterval("tabuEntityRate", resolved.tabuEntityRate);
+    validateUnitInterval("migrationRate", resolved.migrationRate);
     if (!Double.isFinite(resolved.pBestRate)
         || resolved.pBestRate <= 0.000001
         || resolved.pBestRate > 1.0) {
@@ -299,6 +321,8 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
             mutationRateMultiplier, inheritedConfig.mutationRateMultiplier);
     tabuEntityRate =
         ConfigUtils.inheritOverwritableProperty(tabuEntityRate, inheritedConfig.tabuEntityRate);
+    migrationRate =
+        ConfigUtils.inheritOverwritableProperty(migrationRate, inheritedConfig.migrationRate);
     noProgressAttemptLimit =
         ConfigUtils.inheritOverwritableProperty(
             noProgressAttemptLimit, inheritedConfig.noProgressAttemptLimit);

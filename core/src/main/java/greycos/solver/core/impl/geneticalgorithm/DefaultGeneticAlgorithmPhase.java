@@ -18,6 +18,7 @@ import greycos.solver.core.impl.phase.AbstractPhase;
 import greycos.solver.core.impl.phase.PhaseType;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSamples;
 import greycos.solver.core.impl.solver.random.DefaultRandomSource;
 import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
@@ -35,12 +36,55 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       localImprovementMovesFactory;
   // Keep gauge backing objects reachable after the phase; replace them on every run.
   private GeneticAlgorithmMetrics<Solution_> metrics;
+  private GeneticAlgorithmMigration<Solution_> migration;
+  private long exportedBatches;
+  private long exportedEntries;
+  private long receivedBatches;
+  private long receivedEntries;
+  private long evaluatedEntries;
+  private long admittedEntries;
+  private long rejectedEntries;
+  private long committedBatches;
+  private long completedGenerations;
+  private boolean workspaceChangedOutsideStep;
+
+  public long getCompletedGenerations() {
+    return completedGenerations;
+  }
+
+  /** Immutable counters; exported batches count calls to the owning island endpoint. */
+  public record MigrationDiagnostics(
+      long exportedBatches,
+      long exportedEntries,
+      long receivedBatches,
+      long receivedEntries,
+      long evaluatedEntries,
+      long admittedEntries,
+      long rejectedEntries,
+      long committedBatches) {}
+
+  public MigrationDiagnostics getMigrationDiagnostics() {
+    return new MigrationDiagnostics(
+        exportedBatches,
+        exportedEntries,
+        receivedBatches,
+        receivedEntries,
+        evaluatedEntries,
+        admittedEntries,
+        rejectedEntries,
+        committedBatches);
+  }
 
   private DefaultGeneticAlgorithmPhase(Builder<Solution_> builder) {
     super(builder);
     config = builder.config.copyConfig();
     bestSolutionRecaller = builder.bestSolutionRecaller;
     localImprovementMovesFactory = builder.localImprovementMovesFactory;
+  }
+
+  /** Attaches the owning island transport; the endpoint never owns the evaluation workspace. */
+  public void setMigration(GeneticAlgorithmMigration<Solution_> migration) {
+    this.migration = migration;
   }
 
   @Override
@@ -61,11 +105,16 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
   private <Score_ extends Score<Score_>> void solveTyped(SolverScope<Solution_> solverScope) {
     var scope = new GeneticAlgorithmPhaseScope<>(solverScope, phaseIndex);
     metrics = new GeneticAlgorithmMetrics<>();
+    exportedBatches = exportedEntries = receivedBatches = receivedEntries = 0;
+    evaluatedEntries = admittedEntries = rejectedEntries = committedBatches = 0;
+    completedGenerations = 0;
+    workspaceChangedOutsideStep = false;
     // Backend changes must precede capturing phase-relative counters and the workspace director.
     solverScope.getSolver().prepareForPhase(scope);
     Throwable originalFailure = null;
     GeneticAlgorithmLocalImprovementMoves<Solution_> localMoves = null;
     try {
+      if (migration != null) migration.phaseStarted();
       phaseStarted(scope);
       assertWorkingSolutionInitialized(scope);
       InnerScoreDirector<Solution_, Score_> director = solverScope.getScoreDirector();
@@ -122,9 +171,10 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     // Failed probes may leave deferred undo updates or uncertain state. Keep the last stable step
     // metrics instead of sampling unverified constraint totals during exceptional teardown.
     if (originalFailure == null || localMoves == null) {
-      cleanup.add(() -> metrics.phaseEnded(scope));
+      cleanup.add(() -> metrics.phaseEnded(scope, !workspaceChangedOutsideStep));
     }
     cleanup.add(() -> phaseEnded(scope));
+    if (migration != null) cleanup.add(migration::phaseEnded);
     runCleanup(originalFailure, cleanup);
   }
 
@@ -153,6 +203,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     private final GeneticAlgorithmWorkspace<Solution_, Score_> workspace;
     private final GeneticAlgorithmOperators<Solution_> operators;
     private final GeneticAlgorithmLocalImprovementMoves<Solution_> localMoves;
+    private final GeneticAlgorithmMigrationCodec<Solution_, Score_> migrationCodec;
     private final List<Individual<Score_>> population = new ArrayList<>();
     private final List<Individual<Score_>> winners = new ArrayList<>();
     private final GeneticAlgorithmPopulationDiversity populationDiversity =
@@ -176,6 +227,10 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       this.workspace = workspace;
       this.operators = operators;
       this.localMoves = localMoves;
+      migrationCodec =
+          migration != null && config.getMigrationRate() > 0.0
+              ? new GeneticAlgorithmMigrationCodec<>(workspace, scope.getScoreDirector())
+              : null;
     }
 
     private void run() {
@@ -209,7 +264,146 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         // An unused second child of an odd population is neither mutated nor evaluated.
         pendingChild = null;
         scope.setGeneration(generation);
+        completedGenerations = generation;
         updatePopulationDiagnostics();
+        if (!migrateAtGenerationBoundary()) return;
+      }
+    }
+
+    /** Migrants are evaluated serially and become population members in one batch commit. */
+    private boolean migrateAtGenerationBoundary() {
+      if (migrationCodec == null || scope.getGeneration() % migration.frequency() != 0) return true;
+      if (stopped()) return false;
+      population.sort(ranking);
+      int exportCount = Math.max(1, (int) Math.ceil(config.getMigrationRate() * population.size()));
+      var leading = population.subList(0, exportCount);
+      var emigrants =
+          migrationCodec.export(
+              leading.stream().map(Individual::genome).toList(),
+              leading.stream().map(Individual::score).toList());
+      if (stopped()) return false;
+      // Export is deliberately completed before importing, so a migrant cannot be relayed at the
+      // same boundary. The endpoint keeps the whole latest batch, never a mixture of donors.
+      exportedBatches++;
+      exportedEntries += emigrants.size();
+      var batch = migration.exchange(scope.getGeneration(), emigrants);
+      if (stopped()) return false;
+      if (batch == null) return true;
+      receivedBatches++;
+      int importCount = Math.min(population.size(), batch.entries().size());
+      receivedEntries += importCount;
+      if (importCount == 0) return true;
+      int replacementStart = population.size() - importCount;
+      var replacements = new ArrayList<Individual<Score_>>(importCount);
+      var entryGenome = workspace.genome();
+      var entryScore = workspace.score();
+      boolean entryWorkspaceChangedOutsideStep = workspaceChangedOutsideStep;
+      boolean workspaceTouched = false;
+      boolean committed = false;
+      Throwable originalFailure = null;
+      try {
+        for (int i = 0; i < importCount; i++) {
+          if (stopped()) return false;
+          var migrant = batch.entries().get(i);
+          var genome = migrationCodec.importGenome(migrant.assignments());
+          // Rebase/range code may invoke user code. Cancellation still precedes any notification.
+          if (stopped()) return false;
+          workspaceTouched = true;
+          workspaceChangedOutsideStep = true;
+          var transition = workspace.transition(genome);
+          if (!transition.valid()) {
+            throw new IllegalStateException(
+                "The migrated assignments are structurally invalid or violate recipient pins or ranges.");
+          }
+          var publication =
+              new GeneticAlgorithmStepScope<>(
+                  scope, scope.getLastCompletedStepScope().getStepIndex());
+          publication.setGeneration(scope.getGeneration());
+          calculateWorkingStepScore(
+              publication, "Genetic Algorithm migrant from island " + batch.sourceIslandId());
+          InnerScore<Score_> verifiedScore = publication.getScore();
+          if (!verifiedScore.isFullyAssigned() || verifiedScore.isStructurallyFlawed()) {
+            throw new IllegalStateException(
+                "The migrated assignments produced an invalid native score ("
+                    + verifiedScore
+                    + ").");
+          }
+          if (!verifiedScore.equals(migrant.score())) {
+            throw new IllegalStateException(
+                "The migrated native score ("
+                    + verifiedScore
+                    + ") differs from the advertised score ("
+                    + migrant.score()
+                    + ").");
+          }
+          workspace.scored(verifiedScore);
+          evaluatedEntries++;
+          publishBest(
+              publication,
+              () -> bestSolutionRecaller.processWorkingSolutionDuringStep(publication));
+          // Pair against the original ranked suffix. Previously staged replacements never alter
+          // a later migrant's admission threshold, and the archived best is not an admission gate.
+          var nativeMember = population.get(replacementStart + i);
+          replacements.add(
+              verifiedScore.compareTo(nativeMember.score()) > 0
+                  ? new Individual<>(genome, verifiedScore, -1L)
+                  : null);
+        }
+        if (stopped()) return false;
+        boolean membershipChanged = false;
+        for (int i = 0; i < replacements.size(); i++) {
+          var replacement = replacements.get(i);
+          if (replacement == null) continue;
+          population.set(
+              replacementStart + i,
+              new Individual<>(replacement.genome(), replacement.score(), nextId++));
+          membershipChanged = true;
+          admittedEntries++;
+        }
+        rejectedEntries += replacements.stream().filter(java.util.Objects::isNull).count();
+        committedBatches++;
+        committed = true;
+        if (membershipChanged) {
+          scope.resetNoProgressAttemptCount();
+          population.sort(ranking);
+          updatePopulationDiagnostics();
+        }
+        return true;
+      } catch (RuntimeException | Error failure) {
+        originalFailure = failure;
+        failure.addSuppressed(
+            new IllegalStateException(
+                "Genetic Algorithm migration invariant failed for donor island ("
+                    + batch.sourceIslandId()
+                    + "), donor generation ("
+                    + batch.generation()
+                    + "), recipient generation ("
+                    + scope.getGeneration()
+                    + ")."));
+        throw failure;
+      } finally {
+        if (!committed && workspaceTouched) {
+          runCleanup(
+              originalFailure,
+              List.of(
+                  () -> {
+                    try {
+                      workspace.restore(entryGenome, entryScore);
+                      workspaceChangedOutsideStep = entryWorkspaceChangedOutsideStep;
+                    } catch (RuntimeException | Error restorationFailure) {
+                      restorationFailure.addSuppressed(
+                          new IllegalStateException(
+                              "Restoring Genetic Algorithm migration from donor island ("
+                                  + batch.sourceIslandId()
+                                  + "), donor generation ("
+                                  + batch.generation()
+                                  + "), recipient generation ("
+                                  + scope.getGeneration()
+                                  + ")."));
+                      throw restorationFailure;
+                    }
+                  }));
+        }
       }
     }
 
@@ -307,8 +501,9 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         metrics.record(step);
         stepEnded(step);
         lifecycleCompleted = true;
-        scope.recordOutcome(step.getOutcome());
-        scope.setLastCompletedStepScope(step);
+        workspaceChangedOutsideStep = false;
+        scope.commitStep(step);
+        SolverMetricSamples.publishIslandStep(scope.getSolverScope(), step);
         logger.debug(
             "{}    Genetic Algorithm step ({}), generation ({}), score ({}), candidate ({}),"
                 + " parents ({}, {}), mutation ({}, {}), outcome ({}), admitted ({}), changed ({}).",
@@ -385,7 +580,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
           }
           workspace.scored(candidateScore);
           step.setOutcome(GeneticAlgorithmOutcome.EVALUATED);
-          if (localMoves == null) {
+          if (localMoves == null && migration == null) {
             bestSolutionRecaller.processWorkingSolutionDuringStep(step);
           } else {
             publishBest(step, () -> bestSolutionRecaller.processWorkingSolutionDuringStep(step));
@@ -502,7 +697,11 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
           runCleanup(
               originalFailure,
               List.of(
-                  () -> metrics.recordBest(scope), () -> phaseTermination.bestScoreImproved(step)));
+                  () -> metrics.recordBest(scope),
+                  () -> phaseTermination.bestScoreImproved(step),
+                  () -> {
+                    if (migration != null) migration.publishBest();
+                  }));
         }
       }
     }

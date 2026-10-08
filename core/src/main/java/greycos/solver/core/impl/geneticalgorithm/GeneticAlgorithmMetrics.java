@@ -88,10 +88,15 @@ public final class GeneticAlgorithmMetrics<Solution_> {
   }
 
   public void phaseEnded(GeneticAlgorithmPhaseScope<Solution_> phaseScope) {
+    phaseEnded(phaseScope, true);
+  }
+
+  /** Migrant workspaces do not represent completed offspring and must not replace STEP gauges. */
+  public void phaseEnded(GeneticAlgorithmPhaseScope<Solution_> phaseScope, boolean sampleStep) {
     phaseScope
         .getSolverScope()
         .getMetricRun()
-        .publish(() -> sampleConstraints(phaseScope, true, false));
+        .publish(() -> sampleConstraints(phaseScope, sampleStep, false));
   }
 
   /** Sample while the published best is materialized, before a temporary probe is undone. */

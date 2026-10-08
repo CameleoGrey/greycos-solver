@@ -10,6 +10,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapM
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
+import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory;
 import greycos.solver.core.impl.phase.AbstractPhaseFactory;
@@ -81,7 +82,7 @@ public final class DefaultGeneticAlgorithmPhaseFactory<Solution_>
     return new GeneticAlgorithmLocalImprovementMoves<>(List.of(listChange, listSwap));
   }
 
-  /** Rejects unsupported descendants before any enclosing phase can start workers. */
+  /** Rejects GA below a partitioned-search ancestor, including intervening island phases. */
   public static void validateNoNestedPhases(
       List<? extends PhaseConfig> phases, String configurationPath) {
     if (phases == null) {
@@ -94,9 +95,43 @@ public final class DefaultGeneticAlgorithmPhaseFactory<Solution_>
         throw new UnsupportedOperationException(
             "The geneticAlgorithm phase at ("
                 + childPath
-                + ") cannot be nested under islandModel or partitionedSearch.");
+                + ") cannot be nested under partitionedSearch.");
       } else if (phase instanceof IslandModelPhaseConfig island) {
         validateNoNestedPhases(island.getPhaseConfigList(), childPath + ".islandModel");
+      } else if (phase instanceof PartitionedSearchPhaseConfig partition) {
+        validateNoNestedPhases(partition.getPhaseConfigList(), childPath + ".partitionedSearch");
+      }
+    }
+  }
+
+  /** Validates the effective configuration of every island GA before workers are created. */
+  public static void validateIslandPlacement(
+      IslandModelPhaseConfig island, String configurationPath) {
+    var phases = island.getPhaseConfigList();
+    if (phases == null) {
+      return;
+    }
+    var inheritedMoveThreadCount = island.getMoveThreadCount();
+    if (inheritedMoveThreadCount == null) {
+      inheritedMoveThreadCount = SolverConfig.MOVE_THREAD_COUNT_NONE;
+    }
+    for (int index = 0; index < phases.size(); index++) {
+      var phase = phases.get(index);
+      var childPath = configurationPath + ".phase[" + index + "]";
+      if (phase instanceof GeneticAlgorithmPhaseConfig geneticAlgorithm) {
+        var resolved = geneticAlgorithm.resolve();
+        var configuredCount = resolved.getMoveThreadCount();
+        var effectiveCount = configuredCount == null ? inheritedMoveThreadCount : configuredCount;
+        var moveThreadCount =
+            new DefaultGeneticAlgorithmPhaseFactory<>(resolved)
+                .resolveMoveThreadCount(effectiveCount, true);
+        if (moveThreadCount != null) {
+          throw new UnsupportedOperationException(
+              "The geneticAlgorithm phase at (%s) does not support moveThreadCount (%s). Set its moveThreadCount to NONE to use serial evaluation."
+                  .formatted(childPath, moveThreadCount));
+        }
+      } else if (phase instanceof IslandModelPhaseConfig nestedIsland) {
+        validateIslandPlacement(nestedIsland, childPath + ".islandModel");
       } else if (phase instanceof PartitionedSearchPhaseConfig partition) {
         validateNoNestedPhases(partition.getPhaseConfigList(), childPath + ".partitionedSearch");
       }

@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.islandmodel;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
@@ -8,12 +9,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import greycos.solver.core.impl.alns.AlnsPhase;
+import greycos.solver.core.impl.geneticalgorithm.DefaultGeneticAlgorithmPhase;
+import greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmMigration;
+import greycos.solver.core.impl.geneticalgorithm.GeneticAlgorithmMigrationBatch;
 import greycos.solver.core.impl.localsearch.LocalSearchPhase;
+import greycos.solver.core.impl.move.SolutionAssignments;
 import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +47,8 @@ public class IslandAgent<Solution_> implements Runnable {
   private volatile AgentStatus status = AgentStatus.ALIVE;
   private volatile BitSet aliveBits;
   private volatile int stepsUntilNextMigration;
+  private volatile List<IslandGeneticAlgorithmDiagnostics> geneticAlgorithmDiagnostics = List.of();
+  private volatile List<IslandRunDiagnostics> islandDiagnostics = List.of();
 
   public IslandAgent(
       int agentId,
@@ -66,6 +74,8 @@ public class IslandAgent<Solution_> implements Runnable {
     this.completionLatch =
         Objects.requireNonNull(completionLatch, "Completion latch cannot be null");
     this.stepsUntilNextMigration = config.getMigrationFrequency();
+    aliveBits = new BitSet(config.getIslandCount());
+    aliveBits.set(0, config.getIslandCount());
   }
 
   @Override
@@ -85,6 +95,9 @@ public class IslandAgent<Solution_> implements Runnable {
 
       var globalBestUpdater = new GlobalBestUpdater<Solution_>(globalState, agentId);
       for (Phase<Solution_> phase : phases) {
+        if (phase instanceof DefaultGeneticAlgorithmPhase<Solution_> geneticAlgorithm) {
+          geneticAlgorithm.setMigration(createGeneticAlgorithmMigration(globalBestUpdater));
+        }
         if (phase instanceof LocalSearchPhase || phase instanceof AlnsPhase) {
           MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
           phase.addPhaseLifecycleListener(migrationTrigger);
@@ -125,12 +138,55 @@ public class IslandAgent<Solution_> implements Runnable {
       }
       throw new IllegalStateException("Island agent " + agentId + " failed.", e);
     } finally {
-      executionState.set(ExecutionState.CLOSED);
-      completionLatch.countDown();
+      try {
+        captureGeneticAlgorithmDiagnostics();
+      } finally {
+        executionState.set(ExecutionState.CLOSED);
+        completionLatch.countDown();
+      }
     }
 
     awaitAllAgentsAndRelayMigrations();
     LOGGER.info("Agent {} terminated", agentId);
+  }
+
+  private void captureGeneticAlgorithmDiagnostics() {
+    var diagnostics = new ArrayList<IslandGeneticAlgorithmDiagnostics>();
+    var directDiagnostics = new ArrayList<IslandGeneticAlgorithmDiagnostics>();
+    var runs = new ArrayList<IslandRunDiagnostics>();
+    for (var phase : phases) {
+      if (phase instanceof DefaultGeneticAlgorithmPhase<Solution_> geneticAlgorithm) {
+        var phaseDiagnostics =
+            new IslandGeneticAlgorithmDiagnostics(
+                islandScope.getMetricSource(),
+                geneticAlgorithm.getPhaseIndex(),
+                geneticAlgorithm.getCompletedGenerations(),
+                geneticAlgorithm.getMigrationDiagnostics());
+        diagnostics.add(phaseDiagnostics);
+        directDiagnostics.add(phaseDiagnostics);
+      } else if (phase instanceof DefaultIslandModelPhase<Solution_> island) {
+        diagnostics.addAll(island.getGeneticAlgorithmMigrationDiagnostics());
+        runs.addAll(island.getIslandDiagnostics());
+      }
+    }
+    geneticAlgorithmDiagnostics = List.copyOf(diagnostics);
+    runs.addFirst(
+        new IslandRunDiagnostics(
+            agentId,
+            islandScope.getMetricSource(),
+            islandScope.getScoreCalculationCount(),
+            islandScope.getMoveEvaluationCount(),
+            -1L,
+            directDiagnostics));
+    islandDiagnostics = List.copyOf(runs);
+  }
+
+  List<IslandGeneticAlgorithmDiagnostics> getGeneticAlgorithmDiagnostics() {
+    return geneticAlgorithmDiagnostics;
+  }
+
+  List<IslandRunDiagnostics> getIslandDiagnostics() {
+    return islandDiagnostics;
   }
 
   /** Claims cleanup only when cancellation prevented the agent from entering its lifecycle. */
@@ -150,6 +206,115 @@ public class IslandAgent<Solution_> implements Runnable {
     NEW,
     RUNNING,
     CLOSED
+  }
+
+  /** A separate endpoint preserves population batches instead of applying the archive-best gate. */
+  GeneticAlgorithmMigration<Solution_> createGeneticAlgorithmMigration(
+      GlobalBestUpdater<Solution_> bestUpdater) {
+    return new GeneticAlgorithmMigration<>() {
+      private @Nullable Thread owner;
+
+      @Override
+      public int frequency() {
+        return config.getMigrationFrequency();
+      }
+
+      @Override
+      public void phaseStarted() {
+        if (owner != null) {
+          throw new IllegalStateException(
+              "The genetic algorithm migration endpoint is already active.");
+        }
+        owner = Thread.currentThread();
+        // A previous local-search phase may have queued a global import. GA only imports the ring.
+        islandScope.consumePendingMove();
+        pollLatestMigration();
+      }
+
+      @Override
+      public @Nullable GeneticAlgorithmMigrationBatch<Solution_> exchange(
+          long generation, List<GeneticAlgorithmMigrationBatch.Entry<Solution_>> emigrants) {
+        requireOwner();
+        if (config.getIslandCount() <= 1) {
+          return null; // A single island must not compete against its own exported population.
+        }
+        var batch = new GeneticAlgorithmMigrationBatch<>(agentId, generation, emigrants);
+        sender.replace(
+            new AgentUpdate<>(
+                agentId,
+                getCurrentBestSolution(),
+                getCurrentBestScore(),
+                snapshotAliveBits(),
+                batch));
+        var update = pollLatestMigration();
+        if (update == null || update.getAgentId() == agentId) {
+          return null;
+        }
+        if (update.getPopulationBatch() != null) {
+          return update.getPopulationBatch();
+        }
+        // A local-search or ALNS neighbor exports an incumbent, which competes as one individual.
+        var score = update.getMigrantScore();
+        if (score.isStructurallyFlawed() || !score.isFullyAssigned()) {
+          return null;
+        }
+        return new GeneticAlgorithmMigrationBatch<>(
+            update.getAgentId(),
+            0L,
+            List.of(
+                new GeneticAlgorithmMigrationBatch.Entry<>(
+                    SolutionAssignments.capture(
+                        islandScope.getScoreDirector().getSolutionDescriptor(),
+                        update.getMigrant()),
+                    score)));
+      }
+
+      @Override
+      public void publishBest() {
+        requireOwner();
+        bestUpdater.publishCurrentBest(islandScope);
+      }
+
+      @Override
+      public void phaseEnded() {
+        if (owner == null) {
+          return;
+        }
+        requireOwner();
+        try {
+          islandScope.consumePendingMove();
+          // Population messages do not outlive the receiving GA phase.
+          pollLatestMigration();
+        } finally {
+          owner = null;
+        }
+      }
+
+      private void requireOwner() {
+        if (owner != Thread.currentThread()) {
+          throw new IllegalStateException(
+              "The genetic algorithm migration endpoint must run on its active solver thread.");
+        }
+      }
+    };
+  }
+
+  private @Nullable AgentUpdate<Solution_> pollLatestMigration() {
+    AgentUpdate<Solution_> latest = null;
+    // Bound the drain even if a faster neighbor keeps publishing. Production channels hold one
+    // item.
+    for (int remaining = receiver.capacity(); remaining > 0; remaining--) {
+      var update = receiver.tryReceive();
+      if (update == null) {
+        break;
+      }
+      latest = update;
+    }
+    if (latest != null) {
+      applyIncomingAliveBits(latest.getAliveBits());
+      updateAliveAgentsCount();
+    }
+    return latest;
   }
 
   void checkAndPerformMigration() {

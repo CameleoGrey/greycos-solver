@@ -611,6 +611,8 @@
                     
           <xs:element minOccurs="0" name="tabuEntityRate" type="xs:double"/>
                     
+          <xs:element minOccurs="0" name="migrationRate" type="xs:double"/>
+                    
           <xs:element minOccurs="0" name="noProgressAttemptLimit" type="xs:long"/>
                     
           <xs:element minOccurs="0" name="localImprovementMoveCountLimit" type="xs:long"/>

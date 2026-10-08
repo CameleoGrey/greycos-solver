@@ -824,6 +824,9 @@ and the <<partitionedSearch,Partition Search threads>> with it:
 
 The island model runs several searches concurrently, each with its own working solution and random stream.
 Each island runs the same configured phase sequence and can adopt better solutions from other islands.
+The sequence may include serial xref:optimization-algorithms/genetic-algorithm.adoc#geneticAlgorithmIslands[GA phases]
+with independent populations and retained scoring sessions. GA requires disabled move workers and
+cannot have a partitioned-search ancestor.
 Compare solution quality and resource use on representative problems before choosing the island count and migration settings.
 
 [IMPORTANT]
@@ -835,12 +838,20 @@ on all planning entity and planning value classes to enable solution cloning and
 ==== Migration and termination
 
 The default `islandCount` is `4`.
-With `compareGlobalEnabled` enabled by default, each island checks the shared global best every
+With `compareGlobalEnabled` enabled by default, local search and ALNS check the shared global best every
 `receiveGlobalUpdateFrequency` completed local-search steps or ALNS trials; the default is `400`.
 Ring migration is controlled separately by `migrationFrequency`, whose default is `Integer.MAX_VALUE`.
 Choose a smaller value to exchange solutions around the ring more frequently.
 Migration copies planning assignments, respects pinned entities and list prefixes, and updates list assignment shadows.
-Evaluating an adopted solution consumes one local-search move evaluation, including for move-count termination and monitoring.
+Evaluating an adopted local-search solution consumes one local-search move evaluation, including for move-count termination and monitoring.
+
+GA measures `migrationFrequency` in completed generations and exchanges ranked population batches
+through the asynchronous ring. Its `migrationRate` defaults to `0.00001`; zero disables its population
+exchange. GA does not import the shared global best through `compareGlobalEnabled`.
+Receiver scoring uses the island's retained session and counts actual score calculations without
+adding GA steps or move-evaluation credits. See
+xref:optimization-algorithms/genetic-algorithm.adoc#geneticAlgorithmIslands[GA inside islands]
+for batch admission, interruption and ownership rules.
 
 Termination configured on `islandModel` spans the inner phase sequence.
 Each island receives its own cumulative step, move-evaluation, and score-calculation quota.

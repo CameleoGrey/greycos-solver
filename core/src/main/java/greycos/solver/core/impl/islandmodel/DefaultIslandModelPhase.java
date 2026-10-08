@@ -15,6 +15,7 @@ import java.util.function.IntFunction;
 
 import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.alns.AlnsPhaseConfig;
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
 import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
@@ -62,6 +63,9 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
   private final int receiveGlobalUpdateFrequency;
   private final long migrationTimeout;
   private volatile SharedGlobalState<Solution_> globalState;
+  private volatile List<IslandGeneticAlgorithmDiagnostics> geneticAlgorithmMigrationDiagnostics =
+      List.of();
+  private volatile List<IslandRunDiagnostics> islandDiagnostics = List.of();
   private final HeuristicConfigPolicy<Solution_> configPolicy;
   private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
   private final SolverTermination<Solution_> solverTermination;
@@ -100,6 +104,8 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
   @Override
   public void solve(SolverScope<Solution_> solverScope) {
+    geneticAlgorithmMigrationDiagnostics = List.of();
+    islandDiagnostics = List.of();
     var phaseScope = new IslandModelPhaseScope<>(solverScope, phaseIndex);
     boolean phaseLifecycleStarted = false;
     var runState = new SharedGlobalState<Solution_>();
@@ -335,6 +341,12 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
         executor.shutdown();
       }
       restoreInterrupt |= awaitAgentExecutorTermination(executor);
+      geneticAlgorithmMigrationDiagnostics =
+          agents.stream()
+              .flatMap(agent -> agent.getGeneticAlgorithmDiagnostics().stream())
+              .toList();
+      islandDiagnostics =
+          agents.stream().flatMap(agent -> agent.getIslandDiagnostics().stream()).toList();
       if (restoreInterrupt) Thread.currentThread().interrupt();
     }
   }
@@ -502,6 +514,9 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       } else if (phaseConfig instanceof AlnsPhaseConfig alnsPhaseConfig
           && alnsPhaseConfig.getMoveThreadCount() == null) {
         alnsPhaseConfig.setMoveThreadCount(defaultMoveThreadCount);
+      } else if (phaseConfig instanceof GeneticAlgorithmPhaseConfig geneticAlgorithmPhaseConfig
+          && geneticAlgorithmPhaseConfig.getMoveThreadCount() == null) {
+        geneticAlgorithmPhaseConfig.setMoveThreadCount(defaultMoveThreadCount);
       }
     }
   }
@@ -560,6 +575,15 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
   public SharedGlobalState<Solution_> getGlobalState() {
     return globalState;
+  }
+
+  /** Final immutable per-island counters for the most recent solve, including nested islands. */
+  public List<IslandGeneticAlgorithmDiagnostics> getGeneticAlgorithmMigrationDiagnostics() {
+    return geneticAlgorithmMigrationDiagnostics;
+  }
+
+  public List<IslandRunDiagnostics> getIslandDiagnostics() {
+    return islandDiagnostics;
   }
 
   private SolverEventSupport<Solution_> getSolverEventSupport(SolverScope<Solution_> solverScope) {

@@ -40,6 +40,14 @@ public final class SolutionAssignments<Solution_> {
     this.listChangeMap = Collections.unmodifiableMap(listChangeMap);
   }
 
+  /** Builds a genuine-only snapshot without materializing its assignments on a solution. */
+  public static <Solution_> SolutionAssignments<Solution_> of(
+      Map<GenuineVariableDescriptor<Solution_>, List<BasicChangeRecord<?>>> basicChanges,
+      Map<ListVariableDescriptor<Solution_>, List<ListChangeRecord<?>>> listChanges) {
+    return new SolutionAssignments<>(
+        new LinkedHashMap<>(basicChanges), new LinkedHashMap<>(listChanges));
+  }
+
   public static <Solution_> SolutionAssignments<Solution_> capture(
       SolutionDescriptor<Solution_> solutionDescriptor, Solution_ sourceSolution) {
     Map<GenuineVariableDescriptor<Solution_>, List<BasicChangeRecord<?>>> basicChangeMap =
@@ -323,8 +331,8 @@ public final class SolutionAssignments<Solution_> {
     private final E entity;
     private final Object value;
 
-    private BasicChangeRecord(E entity, Object value) {
-      this.entity = entity;
+    public BasicChangeRecord(E entity, Object value) {
+      this.entity = Objects.requireNonNull(entity);
       this.value = value;
     }
 
@@ -341,7 +349,7 @@ public final class SolutionAssignments<Solution_> {
     private final E entity;
     private final List<Object> values;
 
-    private ListChangeRecord(E entity, List<Object> values) {
+    public ListChangeRecord(E entity, List<Object> values) {
       this.entity = Objects.requireNonNull(entity);
       this.values = List.copyOf(values);
     }
