@@ -22,6 +22,8 @@ import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.alns.AlnsRepairOperatorConfig;
 import greycos.solver.core.config.alns.AlnsRepairOperatorType;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmStepLoggingMode;
 import greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinRecreateMoveSelectorConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
@@ -224,6 +226,75 @@ class PlannerBenchmarkConfigTest {
         config.getSolverBenchmarkConfigList().getFirst().copyConfig().inherit(inherited);
     var phase =
         (LocalSearchPhaseConfig) effective.getSolverConfig().getPhaseConfigList().getFirst();
+    assertThat(phase.getStepLoggingMode()).isEqualTo(mode);
+    var writer = new StringWriter();
+    io.write(config, writer);
+    if (mode == null) {
+      assertThat(writer.toString()).doesNotContain("stepLoggingMode");
+    } else {
+      assertThat(writer.toString()).contains(modeElement);
+    }
+    // Restore the namespace so the round trip validates the generated benchmark schema too.
+    var roundTripXml =
+        writer
+            .toString()
+            .replace(
+                "<plannerBenchmark>",
+                "<plannerBenchmark xmlns=\"" + PlannerBenchmarkConfig.XML_NAMESPACE + "\">");
+    assertThat(io.read(new StringReader(roundTripXml)))
+        .usingRecursiveComparison()
+        .isEqualTo(config);
+  }
+
+  @Test
+  void geneticAlgorithmStepLoggingModeRejectsUnknownValue() {
+    var xml =
+        """
+        <plannerBenchmark xmlns="%s">
+          <solverBenchmark>
+            <solver><geneticAlgorithm><stepLoggingMode>IMPROVED</stepLoggingMode></geneticAlgorithm></solver>
+          </solverBenchmark>
+        </plannerBenchmark>
+        """
+            .formatted(PlannerBenchmarkConfig.XML_NAMESPACE);
+
+    assertThatExceptionOfType(GreyCOSXmlSerializationException.class)
+        .isThrownBy(() -> new PlannerBenchmarkConfigIO().read(new StringReader(xml)))
+        .withRootCauseExactlyInstanceOf(SAXParseException.class);
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @EnumSource(GeneticAlgorithmStepLoggingMode.class)
+  void geneticAlgorithmStepLoggingModeValidatesRoundTripsAndInherits(
+      GeneticAlgorithmStepLoggingMode mode) {
+    var modeElement = mode == null ? "" : "<stepLoggingMode>" + mode + "</stepLoggingMode>";
+    var xml =
+        """
+        <plannerBenchmark xmlns="%s">
+          <inheritedSolverBenchmark>
+            <solver><geneticAlgorithm>%s</geneticAlgorithm></solver>
+          </inheritedSolverBenchmark>
+          <solverBenchmark><name>Inherited GA step logging</name></solverBenchmark>
+        </plannerBenchmark>
+        """
+            .formatted(PlannerBenchmarkConfig.XML_NAMESPACE, modeElement);
+    var io = new PlannerBenchmarkConfigIO();
+    var config = io.read(new StringReader(xml));
+    var inherited = config.getInheritedSolverBenchmarkConfig();
+    var effective =
+        config.getSolverBenchmarkConfigList().getFirst().copyConfig().inherit(inherited);
+    var phase =
+        (GeneticAlgorithmPhaseConfig) effective.getSolverConfig().getPhaseConfigList().getFirst();
+    assertThat(phase.getStepLoggingMode()).isEqualTo(mode);
+    assertThat(phase.resolve().getStepLoggingMode())
+        .isEqualTo(mode == null ? GeneticAlgorithmStepLoggingMode.ALL : mode);
+    var override =
+        new GeneticAlgorithmPhaseConfig()
+            .withStepLoggingMode(GeneticAlgorithmStepLoggingMode.ALL)
+            .inherit(phase);
+    assertThat(override.copyConfig().getStepLoggingMode())
+        .isEqualTo(GeneticAlgorithmStepLoggingMode.ALL);
     assertThat(phase.getStepLoggingMode()).isEqualTo(mode);
     var writer = new StringWriter();
     io.write(config, writer);

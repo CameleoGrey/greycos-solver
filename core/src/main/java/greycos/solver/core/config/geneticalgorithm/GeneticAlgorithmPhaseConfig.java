@@ -32,6 +32,7 @@ import org.jspecify.annotations.Nullable;
       "localImprovementMoveCountLimit",
       "evaluatorThreadCount",
       "moveThreadCount",
+      "stepLoggingMode",
       "mutationOperatorConfigList"
     })
 public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgorithmPhaseConfig> {
@@ -47,6 +48,7 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
   private Long localImprovementMoveCountLimit;
   private Integer evaluatorThreadCount;
   private String moveThreadCount;
+  private GeneticAlgorithmStepLoggingMode stepLoggingMode;
 
   @XmlElement(name = "mutationOperator")
   private List<GeneticAlgorithmMutationOperatorConfig> mutationOperatorConfigList;
@@ -212,6 +214,25 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
   }
 
   /**
+   * Selects which completed steps produce DEBUG messages. Defaults to {@link
+   * GeneticAlgorithmStepLoggingMode#ALL} when unspecified. This does not enable DEBUG logging or
+   * filter other diagnostic messages.
+   */
+  public @Nullable GeneticAlgorithmStepLoggingMode getStepLoggingMode() {
+    return stepLoggingMode;
+  }
+
+  public void setStepLoggingMode(@Nullable GeneticAlgorithmStepLoggingMode stepLoggingMode) {
+    this.stepLoggingMode = stepLoggingMode;
+  }
+
+  public @NonNull GeneticAlgorithmPhaseConfig withStepLoggingMode(
+      @NonNull GeneticAlgorithmStepLoggingMode stepLoggingMode) {
+    setStepLoggingMode(stepLoggingMode);
+    return this;
+  }
+
+  /**
    * Null enables all six mutations equally. An explicit list disables omitted mutations and must
    * contain unique types with finite nonnegative probabilities summing to one.
    */
@@ -251,6 +272,8 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
     resolved.localImprovementMoveCountLimit =
         Objects.requireNonNullElse(resolved.localImprovementMoveCountLimit, 0L);
     resolved.evaluatorThreadCount = Objects.requireNonNullElse(resolved.evaluatorThreadCount, 0);
+    resolved.stepLoggingMode =
+        Objects.requireNonNullElse(resolved.stepLoggingMode, GeneticAlgorithmStepLoggingMode.ALL);
     if (resolved.populationSize < 1) {
       throw new IllegalArgumentException(
           "The populationSize (" + resolved.populationSize + ") must be positive.");
@@ -368,6 +391,8 @@ public final class GeneticAlgorithmPhaseConfig extends PhaseConfig<GeneticAlgori
             evaluatorThreadCount, inheritedConfig.evaluatorThreadCount);
     moveThreadCount =
         ConfigUtils.inheritOverwritableProperty(moveThreadCount, inheritedConfig.moveThreadCount);
+    stepLoggingMode =
+        ConfigUtils.inheritOverwritableProperty(stepLoggingMode, inheritedConfig.stepLoggingMode);
     if (mutationOperatorConfigList == null && inheritedConfig.mutationOperatorConfigList != null) {
       mutationOperatorConfigList =
           new ArrayList<>(inheritedConfig.mutationOperatorConfigList.size());

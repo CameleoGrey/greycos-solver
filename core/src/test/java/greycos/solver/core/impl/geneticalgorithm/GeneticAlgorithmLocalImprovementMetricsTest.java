@@ -287,7 +287,7 @@ class GeneticAlgorithmLocalImprovementMetricsTest {
     }
   }
 
-  private static DefaultSolver<TestdataSolution> controlledSolver(TestMeters meters) {
+  static DefaultSolver<TestdataSolution> controlledSolver(TestMeters meters) {
     return controlledSolver(
         meters, new TerminationConfig().withStepCountLimit(100), UnaryOperator.identity());
   }
@@ -385,12 +385,12 @@ class GeneticAlgorithmLocalImprovementMetricsTest {
         .isEqualTo(solver.getSolverScope().getMoveEvaluationCount());
   }
 
-  private static final class TestMeters implements AutoCloseable {
+  static final class TestMeters implements AutoCloseable {
     private final String tag = UUID.randomUUID().toString();
     private final Tags tags = SolverTags.withProblemId(tag).asTags();
     private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
 
-    private TestMeters() {
+    TestMeters() {
       Metrics.addRegistry(registry);
     }
 

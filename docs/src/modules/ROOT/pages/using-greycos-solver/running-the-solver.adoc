@@ -431,6 +431,27 @@ Phase summaries, standalone termination and no-selected-move diagnostics, and Gu
 retain their existing logger controls.
 The setting does not change search decisions, best-solution events or metrics.
 
+The xref:optimization-algorithms/genetic-algorithm.adoc#geneticAlgorithmStepLogging[Genetic Algorithm phase]
+also supports `stepLoggingMode`:
+
+[source,xml,options="nowrap"]
+----
+<geneticAlgorithm>
+  <stepLoggingMode>BEST_SCORE_IMPROVED</stepLoggingMode>
+</geneticAlgorithm>
+----
+
+Its default is `ALL`. Keep `debug` enabled for
+`greycos.solver.core.impl.geneticalgorithm.DefaultGeneticAlgorithmPhase` or its parent package.
+The filter logs only completed attempts that strictly improve the owning solver's historical best;
+equal scores and improvements that remain below that best are omitted. Within an island, this is
+the island solver's best score. Local improvement can publish multiple best solutions during one
+attempt but produces only one completed-attempt line. Interrupted attempts and migration do not
+produce synthetic step messages.
+xref:optimization-algorithms/overview.adoc#SolverEventListener[`BestSolutionChangedEvent`] behavior
+and the `INFO` phase summary are unchanged. Step logging is not a complete best-solution event stream;
+public solver events in island search report only strict global improvements.
+
 [tabs]
 ====
 Java::

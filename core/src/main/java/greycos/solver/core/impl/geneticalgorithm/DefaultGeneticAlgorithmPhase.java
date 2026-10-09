@@ -16,6 +16,7 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmMutationType;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmStepLoggingMode;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
@@ -173,6 +174,46 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         scope.getLocalImprovementProbeCount(),
         scope.getLocalImprovementAcceptedCount(),
         scope.getTerminationReason());
+  }
+
+  private void logStep(GeneticAlgorithmStepScope<Solution_> step) {
+    if (!logger.isDebugEnabled()
+        || (config.getStepLoggingMode() == GeneticAlgorithmStepLoggingMode.BEST_SCORE_IMPROVED
+            && !step.getBestScoreImproved())) {
+      return;
+    }
+    var scope = step.getPhaseScope();
+    var islandSuffix = "";
+    for (var tag : scope.getSolverScope().getMonitoringTags()) {
+      if (tag.getKey().equals("island.id") && !tag.getValue().equals("root")) {
+        islandSuffix = ", island (" + tag.getValue() + ")";
+        break;
+      }
+    }
+    // Only completed attempts are logged. Local probes share their outer attempt's best flag;
+    // migration and interrupted attempts may publish best solutions without completing a step.
+    logger.debug(
+        "{}    Genetic Algorithm step ({}), phase ({}), generation ({}), time spent ({}), score ({}),"
+            + " {} best score ({}), candidate score ({}), candidate ({}), parents ({}, {}),"
+            + " mutation ({}, {}), outcome ({}), admitted ({}), changed ({}){}.",
+        logIndentation,
+        step.getStepIndex(),
+        phaseIndex,
+        step.getGeneration(),
+        scope.calculateSolverTimeMillisSpentUpToNow(),
+        step.getScore().raw(),
+        step.getBestScoreImproved() ? "new" : "   ",
+        scope.getBestScore().raw(),
+        step.getCandidateScore() == null ? null : step.getCandidateScore().raw(),
+        step.getCandidateId(),
+        step.getFirstParentId(),
+        step.getSecondParentId(),
+        step.getMutationType(),
+        step.getMutationGroup(),
+        step.getOutcome(),
+        step.isAdmitted(),
+        step.getChangedAssignmentCount(),
+        islandSuffix);
   }
 
   private void finishPhase(
@@ -494,6 +535,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         workspaceChangedOutsideStep = false;
         scope.commitStep(step);
         SolverMetricSamples.publishIslandStep(scope.getSolverScope(), step);
+        logStep(step);
         return winner;
       } catch (RuntimeException | Error failure) {
         attemptFailure = failure;
@@ -862,21 +904,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         workspaceChangedOutsideStep = false;
         scope.commitStep(step);
         SolverMetricSamples.publishIslandStep(scope.getSolverScope(), step);
-        logger.debug(
-            "{}    Genetic Algorithm step ({}), generation ({}), score ({}), candidate ({}),"
-                + " parents ({}, {}), mutation ({}, {}), outcome ({}), admitted ({}), changed ({}).",
-            logIndentation,
-            step.getStepIndex(),
-            step.getGeneration(),
-            step.getScore(),
-            step.getCandidateId(),
-            step.getFirstParentId(),
-            step.getSecondParentId(),
-            step.getMutationType(),
-            step.getMutationGroup(),
-            step.getOutcome(),
-            admitted,
-            step.getChangedAssignmentCount());
+        logStep(step);
         return winner;
       } catch (RuntimeException | Error failure) {
         attemptFailure = failure;

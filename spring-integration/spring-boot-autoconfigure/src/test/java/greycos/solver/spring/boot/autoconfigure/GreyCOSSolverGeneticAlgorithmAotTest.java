@@ -10,6 +10,7 @@ import java.util.Map;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmMutationOperatorConfig;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmMutationType;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmStepLoggingMode;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchType;
 import greycos.solver.core.config.solver.EnvironmentMode;
@@ -25,6 +26,13 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
 
   @Test
   void aotConfigurationRestoresExplicitSettingsAndEveryMutationType() {
+    for (var stepLoggingMode : GeneticAlgorithmStepLoggingMode.values()) {
+      assertExplicitSettingsAndEveryMutationTypeRestored(stepLoggingMode);
+    }
+  }
+
+  private static void assertExplicitSettingsAndEveryMutationTypeRestored(
+      GeneticAlgorithmStepLoggingMode stepLoggingMode) {
     var phase =
         new GeneticAlgorithmPhaseConfig()
             .withPopulationSize(37)
@@ -35,6 +43,7 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
             .withMigrationRate(0.2)
             .withNoProgressAttemptLimit(99L)
             .withEvaluatorThreadCount(4)
+            .withStepLoggingMode(stepLoggingMode)
             .withMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_NONE)
             .withMutationOperators(
                 operator(GeneticAlgorithmMutationType.CHANGE, 0.05),
@@ -63,6 +72,7 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
     assertThat(restoredPhase.getMigrationRate()).isEqualTo(0.2);
     assertThat(restoredPhase.getNoProgressAttemptLimit()).isEqualTo(99L);
     assertThat(restoredPhase.getEvaluatorThreadCount()).isEqualTo(4);
+    assertThat(restoredPhase.getStepLoggingMode()).isEqualTo(stepLoggingMode);
     assertThat(restoredPhase.getMoveThreadCount()).isEqualTo(SolverConfig.MOVE_THREAD_COUNT_NONE);
     assertThat(restoredPhase.getMutationOperatorConfigList())
         .extracting(
@@ -86,6 +96,7 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
 
     assertThat(restored.getPhaseConfigList()).hasSize(1);
     var phase = (GeneticAlgorithmPhaseConfig) restored.getPhaseConfigList().getFirst();
+    assertThat(phase.getStepLoggingMode()).isNull();
     assertThat(phase).usingRecursiveComparison().isEqualTo(new GeneticAlgorithmPhaseConfig());
     var resolved = phase.resolve();
     assertThat(resolved.getPopulationSize()).isEqualTo(128);
@@ -96,6 +107,7 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
     assertThat(resolved.getMigrationRate()).isEqualTo(0.00001);
     assertThat(resolved.getNoProgressAttemptLimit()).isEqualTo(1280L);
     assertThat(resolved.getEvaluatorThreadCount()).isZero();
+    assertThat(resolved.getStepLoggingMode()).isEqualTo(GeneticAlgorithmStepLoggingMode.ALL);
     assertThat(resolved.getMoveThreadCount()).isNull();
     assertThat(resolved.getEnvironmentMode()).isNull();
     assertThat(resolved.getTerminationConfig()).isNull();
@@ -167,14 +179,13 @@ class GreyCOSSolverGeneticAlgorithmAotTest {
                     "methods",
                     List.of(Map.of("name", "<init>", "parameterTypes", List.of()))));
       }
-      assertThat(registrations)
-          .filteredOn(
-              registration ->
-                  GeneticAlgorithmMutationType.class.getName().equals(registration.get("name")))
-          .singleElement()
-          .isEqualTo(
-              Map.of(
-                  "name", GeneticAlgorithmMutationType.class.getName(), "allDeclaredFields", true));
+      for (var type :
+          List.of(GeneticAlgorithmMutationType.class, GeneticAlgorithmStepLoggingMode.class)) {
+        assertThat(registrations)
+            .filteredOn(registration -> type.getName().equals(registration.get("name")))
+            .singleElement()
+            .isEqualTo(Map.of("name", type.getName(), "allDeclaredFields", true));
+      }
     }
   }
 

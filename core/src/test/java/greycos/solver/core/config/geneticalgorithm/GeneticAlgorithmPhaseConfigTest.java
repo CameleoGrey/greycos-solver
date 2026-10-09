@@ -34,6 +34,8 @@ import greycos.solver.core.testutil.PlannerTestUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @Timeout(30)
@@ -53,6 +55,7 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThat(original.getLocalImprovementMoveCountLimit()).isNull();
     assertThat(original.getEvaluatorThreadCount()).isNull();
     assertThat(original.getMoveThreadCount()).isNull();
+    assertThat(original.getStepLoggingMode()).isNull();
     assertThat(original.getMutationOperatorConfigList()).isNull();
     assertThat(resolved.getPopulationSize()).isEqualTo(128);
     assertThat(resolved.getCrossoverProbability()).isEqualTo(0.5);
@@ -63,6 +66,7 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThat(resolved.getNoProgressAttemptLimit()).isEqualTo(1280L);
     assertThat(resolved.getLocalImprovementMoveCountLimit()).isZero();
     assertThat(resolved.getEvaluatorThreadCount()).isZero();
+    assertThat(resolved.getStepLoggingMode()).isEqualTo(GeneticAlgorithmStepLoggingMode.ALL);
     assertThat(resolved.getMutationOperatorConfigList())
         .extracting(GeneticAlgorithmMutationOperatorConfig::getType)
         .containsExactly(GeneticAlgorithmMutationType.values());
@@ -96,6 +100,7 @@ class GeneticAlgorithmPhaseConfigTest {
             .withLocalImprovementMoveCountLimit(17L)
             .withEvaluatorThreadCount(0)
             .withMoveThreadCount("NONE")
+            .withStepLoggingMode(GeneticAlgorithmStepLoggingMode.BEST_SCORE_IMPROVED)
             .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
             .withTerminationConfig(new TerminationConfig().withStepCountLimit(7))
             .withMutationOperators(operator(GeneticAlgorithmMutationType.CHANGE, 1.0));
@@ -117,6 +122,8 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThat(inherited.getPopulationSize()).isEqualTo(3);
     assertThat(inherited.getCrossoverProbability()).isEqualTo(0.2);
     assertThat(inherited.getMigrationRate()).isEqualTo(0.4);
+    assertThat(inherited.getStepLoggingMode())
+        .isEqualTo(GeneticAlgorithmStepLoggingMode.BEST_SCORE_IMPROVED);
     assertThat(
             new GeneticAlgorithmPhaseConfig()
                 .withMigrationRate(0.0)
@@ -140,6 +147,83 @@ class GeneticAlgorithmPhaseConfigTest {
                 .inherit(original.getMutationOperatorConfigList().getFirst())
                 .getProbability())
         .isEqualTo(1.0);
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @EnumSource(GeneticAlgorithmStepLoggingMode.class)
+  void stepLoggingModePreservesNullableValueWhenCopiedAndInherited(
+      GeneticAlgorithmStepLoggingMode mode) {
+    var original = new GeneticAlgorithmPhaseConfig();
+    assertThat(original.getStepLoggingMode()).isNull();
+    original.setStepLoggingMode(mode);
+
+    assertThat(original.getStepLoggingMode()).isEqualTo(mode);
+    assertThat(original.copyConfig().getStepLoggingMode()).isEqualTo(mode);
+    assertThat(new GeneticAlgorithmPhaseConfig().inherit(original).getStepLoggingMode())
+        .isEqualTo(mode);
+    assertThat(original.resolve().getStepLoggingMode())
+        .isEqualTo(mode == null ? GeneticAlgorithmStepLoggingMode.ALL : mode);
+    assertThat(original.getStepLoggingMode()).isEqualTo(mode);
+    for (var override : GeneticAlgorithmStepLoggingMode.values()) {
+      assertThat(
+              new GeneticAlgorithmPhaseConfig()
+                  .withStepLoggingMode(override)
+                  .inherit(original)
+                  .resolve()
+                  .getStepLoggingMode())
+          .isEqualTo(override);
+    }
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @EnumSource(GeneticAlgorithmStepLoggingMode.class)
+  void xmlRoundTripPreservesNullableStepLoggingMode(GeneticAlgorithmStepLoggingMode mode) {
+    var modeElement = mode == null ? "" : "<stepLoggingMode>" + mode + "</stepLoggingMode>";
+    var xml =
+        """
+        <solver xmlns="%s">
+          <geneticAlgorithm>
+            <moveThreadCount>NONE</moveThreadCount>
+            %s
+            <mutationOperator><type>CHANGE</type><probability>1.0</probability></mutationOperator>
+          </geneticAlgorithm>
+        </solver>
+        """
+            .formatted(SolverConfig.XML_NAMESPACE, modeElement);
+    var io = new SolverConfigIO();
+    var config = io.read(new StringReader(xml));
+    var phase = (GeneticAlgorithmPhaseConfig) config.getPhaseConfigList().getFirst();
+    assertThat(phase.getMoveThreadCount()).isEqualTo("NONE");
+    assertThat(phase.getStepLoggingMode()).isEqualTo(mode);
+    assertThat(phase.getMutationOperatorConfigList())
+        .extracting(GeneticAlgorithmMutationOperatorConfig::getType)
+        .containsExactly(GeneticAlgorithmMutationType.CHANGE);
+
+    var output = new StringWriter();
+    io.write(config, output);
+    if (mode == null) {
+      assertThat(output.toString()).doesNotContain("stepLoggingMode");
+    } else {
+      assertThat(output.toString()).contains(modeElement);
+    }
+    assertThat(io.read(new StringReader(output.toString())))
+        .usingRecursiveComparison()
+        .isEqualTo(config);
+  }
+
+  @Test
+  void namespacedXmlRejectsUnknownStepLoggingMode() {
+    var xml =
+        """
+        <solver xmlns="%s">
+          <geneticAlgorithm><stepLoggingMode>UNKNOWN</stepLoggingMode></geneticAlgorithm>
+        </solver>
+        """
+            .formatted(SolverConfig.XML_NAMESPACE);
+    assertThatThrownBy(() -> new SolverConfigIO().read(new StringReader(xml)))
+        .isInstanceOf(GreyCOSXmlSerializationException.class);
   }
 
   @ParameterizedTest
@@ -366,6 +450,7 @@ class GeneticAlgorithmPhaseConfigTest {
             <localImprovementMoveCountLimit>21</localImprovementMoveCountLimit>
             <evaluatorThreadCount>0</evaluatorThreadCount>
             <moveThreadCount>NONE</moveThreadCount>
+            <stepLoggingMode>BEST_SCORE_IMPROVED</stepLoggingMode>
             <mutationOperator><type>CHANGE</type><probability>0.3</probability></mutationOperator>
             <mutationOperator><type>INVERSE</type><probability>0.7</probability></mutationOperator>
           </geneticAlgorithm>
@@ -379,6 +464,8 @@ class GeneticAlgorithmPhaseConfigTest {
     assertThat(phase.getLocalImprovementMoveCountLimit()).isEqualTo(21L);
     assertThat(phase.getEvaluatorThreadCount()).isZero();
     assertThat(phase.getMigrationRate()).isEqualTo(0.4);
+    assertThat(phase.getStepLoggingMode())
+        .isEqualTo(GeneticAlgorithmStepLoggingMode.BEST_SCORE_IMPROVED);
     assertThat(phase.getMutationOperatorConfigList())
         .extracting(GeneticAlgorithmMutationOperatorConfig::getType)
         .containsExactly(GeneticAlgorithmMutationType.CHANGE, GeneticAlgorithmMutationType.INVERSE);

@@ -621,6 +621,8 @@
                     
           <xs:element minOccurs="0" name="moveThreadCount" type="xs:string"/>
                     
+          <xs:element minOccurs="0" name="stepLoggingMode" type="tns:geneticAlgorithmStepLoggingMode"/>
+                    
           <xs:element maxOccurs="unbounded" minOccurs="0" name="mutationOperator" type="tns:geneticAlgorithmMutationOperatorConfig"/>
                   
         </xs:sequence>
@@ -2250,6 +2252,18 @@
       <xs:enumeration value="HILL_CLIMBING"/>
             
       <xs:enumeration value="SIMULATED_ANNEALING"/>
+          
+    </xs:restriction>
+      
+  </xs:simpleType>
+    
+  <xs:simpleType name="geneticAlgorithmStepLoggingMode">
+        
+    <xs:restriction base="xs:string">
+            
+      <xs:enumeration value="ALL"/>
+            
+      <xs:enumeration value="BEST_SCORE_IMPROVED"/>
           
     </xs:restriction>
       

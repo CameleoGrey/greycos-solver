@@ -952,5 +952,9 @@
   {
     "name": "greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmMutationType",
     "allDeclaredFields": true
+  },
+  {
+    "name": "greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmStepLoggingMode",
+    "allDeclaredFields": true
   }
 ]

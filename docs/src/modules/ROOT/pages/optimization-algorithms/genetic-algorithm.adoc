@@ -70,6 +70,7 @@ new GeneticAlgorithmPhaseConfig()
 |`noProgressAttemptLimit` |`max(128, 10 * populationSize)` |Positive number of consecutive attempts without fresh valid offspring scoring before the phase exits.
 |`localImprovementMoveCountLimit` |`0` |Nonnegative maximum number of local probes for each freshly scored generation child. Zero disables local improvement.
 |`evaluatorThreadCount` |`0` |Nonnegative number of private evaluator workers. Zero retains serial execution; positive values enable a standalone pool without local improvement.
+|`stepLoggingMode` |`ALL` |Log every completed attempt at `DEBUG`, or use `BEST_SCORE_IMPROVED` to log only attempts that strictly improve the owning solver's historical best score.
 |`moveThreadCount` |Inherited |The effective setting must disable move workers. Set `NONE` on this phase to override a solver-wide setting.
 |`mutationOperator` |All six equally |Optional named probabilities. An explicit list disables omitted operators.
 |===
@@ -97,6 +98,67 @@ For example, enable only change and cyclic swap:
 Each type may occur once. Probabilities must be finite and nonnegative, and their sum must be one.
 At runtime, weights are renormalized over eligible operators; a group that is too small for an
 operator does not make that operator applicable.
+
+[#geneticAlgorithmStepLogging]
+=== Step logging
+
+With `DEBUG` enabled, the default `ALL` mode logs every completed seed or offspring attempt,
+including duplicate, unchanged and invalid proposals. To log only completed attempts that strictly
+improve the solver's historical best score, configure `BEST_SCORE_IMPROVED`:
+
+[source,xml]
+----
+<geneticAlgorithm>
+  <stepLoggingMode>BEST_SCORE_IMPROVED</stepLoggingMode>
+</geneticAlgorithm>
+----
+
+The equivalent Java configuration is:
+
+[source,java]
+----
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
+import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmStepLoggingMode;
+
+var phaseConfig = new GeneticAlgorithmPhaseConfig()
+        .withStepLoggingMode(GeneticAlgorithmStepLoggingMode.BEST_SCORE_IMPROVED);
+----
+
+This setting filters step messages; it does not enable logging. Enable `DEBUG` on the existing
+phase logger or its parent package. For example, in `logback.xml`:
+
+[source,xml]
+----
+<logger name="greycos.solver.core.impl.geneticalgorithm.DefaultGeneticAlgorithmPhase" level="debug"/>
+----
+
+The following illustrative output shows an improving attempt and a later non-improving attempt
+in `ALL` mode:
+
+[source,options="nowrap"]
+----
+DEBUG     Genetic Algorithm step (130), phase (1), generation (1), time spent (85), score (0hard/-40soft), new best score (0hard/-40soft), candidate score (0hard/-40soft), candidate (131), parents (8, 23), mutation (CHANGE, Task.machine), outcome (EVALUATED), admitted (true), changed (1).
+DEBUG     Genetic Algorithm step (131), phase (1), generation (1), time spent (86), score (0hard/-70soft),     best score (0hard/-40soft), candidate score (0hard/-70soft), candidate (132), parents (8, 23), mutation (CHANGE, Task.machine), outcome (EVALUATED), admitted (false), changed (1).
+----
+
+`time spent` is elapsed solver time in milliseconds. `score` is the settled working-solution score;
+`candidate score` is reported separately because a cached duplicate can leave the workspace unchanged,
+and an invalid candidate has no valid candidate score. The `new` marker means that the attempt
+published a strict best-score improvement. Admission to the population alone does not imply improvement.
+
+`BEST_SCORE_IMPROVED` omits the second line, equal scores, and improvements over the previous
+workspace score that do not beat the historical best. Step indices retain their original values and
+may have gaps. Set `ALL` explicitly to override an inherited filter. The filter also applies when
+`TRACE` is enabled and works for serial and pooled evaluation.
+
+Local improvement may publish several best solutions within one attempt. A completed attempt logs
+one line with its final best score. Interrupted attempts and migration do not produce synthetic step
+messages, even if they publish a best solution.
+xref:optimization-algorithms/overview.adoc#SolverEventListener[`BestSolutionChangedEvent`] behavior
+is unchanged; step logging is not a complete best-solution event stream. Inside islands, `best score`
+belongs to the solver running that phase, and the line includes an `island (...)` suffix. It is not
+necessarily the global best score; public solver events report only strict global improvements.
+The filter changes neither search decisions nor events, metrics, or the existing `INFO` phase summary.
 
 [#geneticAlgorithmStrategy]
 == Selection, crossover and mutation
