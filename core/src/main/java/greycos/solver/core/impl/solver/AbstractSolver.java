@@ -19,6 +19,7 @@ import greycos.solver.core.impl.solver.event.SolverEventSupport;
 import greycos.solver.core.impl.solver.random.DefaultRandomSource;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
+import greycos.solver.core.impl.solver.termination.TerminationGraphAccess;
 import greycos.solver.core.impl.solver.termination.UniversalTermination;
 
 import org.jspecify.annotations.NullMarked;
@@ -244,6 +245,15 @@ public abstract class AbstractSolver<Solution_> implements Solver<Solution_> {
   public void removePhaseLifecycleListener(
       PhaseLifecycleListener<Solution_> phaseLifecycleListener) {
     phaseLifecycleSupport.removeEventListener(phaseLifecycleListener);
+  }
+
+  /** Whether a registered lifecycle callback can observe the current working solution. */
+  public boolean hasPhaseLifecycleListeners() {
+    return phaseLifecycleSupport.hasEventListeners();
+  }
+
+  public boolean isTerminationWorkingSolutionIndependent() {
+    return TerminationGraphAccess.isWorkingSolutionIndependent(globalTermination);
   }
 
   public BestSolutionRecaller<Solution_> getBestSolutionRecaller() {

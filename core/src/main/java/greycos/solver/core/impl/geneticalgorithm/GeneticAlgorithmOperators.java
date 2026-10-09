@@ -113,7 +113,8 @@ public final class GeneticAlgorithmOperators<Solution_> {
     if (movableSlots
         && (listOperators == null
             ? operators.isEmpty()
-            : eligibleOperators(listModel.initialLists()).isEmpty())) {
+            : eligibleOperators(listOperators.eligibility(listModel.initialSnapshot()))
+                .isEmpty())) {
       throw new IllegalArgumentException(
           "The geneticAlgorithm mutationOperatorConfigList ("
               + resolvedConfig.getMutationOperatorConfigList()
@@ -184,10 +185,7 @@ public final class GeneticAlgorithmOperators<Solution_> {
     return listOperators == null
         ? new Pair(
             new GeneticAlgorithmGenome(firstValues), new GeneticAlgorithmGenome(secondValues), true)
-        : new Pair(
-            new GeneticAlgorithmGenome(firstValues, second.lists()),
-            new GeneticAlgorithmGenome(secondValues, first.lists()),
-            true);
+        : new Pair(second.withBasicValues(firstValues), first.withBasicValues(secondValues), true);
   }
 
   public Mutation mutate(GeneticAlgorithmGenome parent, RandomGenerator random) {
@@ -202,20 +200,19 @@ public final class GeneticAlgorithmOperators<Solution_> {
       operator = selectOperator(random.nextDouble());
       group = operator.groups().get(random.nextInt(operator.groups().size()));
     } else {
-      var lists = parent.lists();
-      var eligible = eligibleOperators(lists);
+      var eligibility = listOperators.eligibility(parent.listSnapshot());
+      var eligible = eligibleOperators(eligibility);
       if (eligible.isEmpty()) {
         // Crossover may still have changed the candidate; normal evaluation determines its outcome.
         return new Mutation(parent, null, null);
       }
       double weight = eligible.stream().mapToDouble(EligibleOperator::weight).sum();
       operator = selectOperator(eligible, weight, random.nextDouble());
-      boolean listEligible = listOperators.isEligible(operator.type(), lists);
+      boolean listEligible = eligibility.isEligible(operator.type());
       int selectedGroup = random.nextInt(operator.groups().size() + (listEligible ? 1 : 0));
       if (selectedGroup == operator.groups().size()) {
         return new Mutation(
-            new GeneticAlgorithmGenome(
-                parent.toArray(), listOperators.mutate(operator.type(), lists, random)),
+            parent.withLists(listOperators.mutate(operator.type(), parent.lists(), random)),
             operator.type(),
             listOperators.name());
       }
@@ -276,19 +273,13 @@ public final class GeneticAlgorithmOperators<Solution_> {
         }
       }
     }
-    return new Mutation(
-        listOperators == null
-            ? new GeneticAlgorithmGenome(values)
-            : new GeneticAlgorithmGenome(values, parent.lists()),
-        operator.type(),
-        group.name);
+    return new Mutation(parent.withBasicValues(values), operator.type(), group.name);
   }
 
-  private List<EligibleOperator> eligibleOperators(int[][] lists) {
+  private List<EligibleOperator> eligibleOperators(
+      GeneticAlgorithmListOperators<Solution_>.Eligibility eligibility) {
     return operators.stream()
-        .filter(
-            operator ->
-                !operator.groups().isEmpty() || listOperators.isEligible(operator.type(), lists))
+        .filter(operator -> !operator.groups().isEmpty() || eligibility.isEligible(operator.type()))
         .toList();
   }
 

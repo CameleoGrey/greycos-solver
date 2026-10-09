@@ -263,6 +263,11 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
     phaseLifecycleSupport.removeEventListener(phaseLifecycleListener);
   }
 
+  /** Whether a registered lifecycle callback can observe the current working solution. */
+  public boolean hasPhaseLifecycleListeners() {
+    return phaseLifecycleSupport.hasEventListeners();
+  }
+
   // ************************************************************************
   // Assert methods
   // ************************************************************************

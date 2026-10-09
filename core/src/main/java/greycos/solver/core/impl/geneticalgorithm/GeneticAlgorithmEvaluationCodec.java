@@ -1,7 +1,6 @@
 package greycos.solver.core.impl.geneticalgorithm;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -83,7 +82,7 @@ public final class GeneticAlgorithmEvaluationCodec<Solution_> {
         values[i] = new Reference(id);
       }
     }
-    return new EncodedGenome(values, genome.lists());
+    return new EncodedGenome(values, genome.listSnapshot());
   }
 
   /** Called only during the startup barrier, while the coordinator graph is frozen. */
@@ -168,11 +167,11 @@ public final class GeneticAlgorithmEvaluationCodec<Solution_> {
 
   public static final class EncodedGenome {
     private final Object[] values;
-    private final int[][] lists;
+    private final GeneticAlgorithmListSnapshot lists;
 
-    private EncodedGenome(Object[] values, int[][] lists) {
+    private EncodedGenome(Object[] values, GeneticAlgorithmListSnapshot lists) {
       this.values = values.clone();
-      this.lists = Arrays.stream(lists).map(int[]::clone).toArray(int[][]::new);
+      this.lists = lists;
     }
   }
 
@@ -198,10 +197,9 @@ public final class GeneticAlgorithmEvaluationCodec<Solution_> {
       }
       var lists = new int[owners.length][];
       for (int owner = 0; owner < owners.length; owner++) {
-        var source = encoded.lists[owner];
-        var row = new int[source.length];
+        var row = new int[encoded.lists.size(owner)];
         for (int index = 0; index < row.length; index++) {
-          var value = source[index];
+          var value = encoded.lists.get(owner, index);
           // Preserve invalid IDs so the workspace's whole-candidate preflight rejects them.
           row[index] = value < 0 || value >= values.length ? value : values[value];
         }

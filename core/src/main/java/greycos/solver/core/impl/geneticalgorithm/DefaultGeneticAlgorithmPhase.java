@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.geneticalgorithm;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -7,6 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -30,6 +32,7 @@ import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
+import greycos.solver.core.impl.solver.termination.TerminationGraphAccess;
 
 /**
  * Population search with immutable genomes and retained evaluation workspaces. Optional bounded
@@ -56,6 +59,52 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
   private boolean workspaceChangedOutsideStep;
   private GeneticAlgorithmEvaluatorPool.Diagnostics evaluatorDiagnostics;
   private volatile Supplier<GeneticAlgorithmEvaluatorPool.Diagnostics> liveEvaluatorDiagnostics;
+
+  private RunDiagnostics runDiagnostics;
+  private Consumer<LogicalAttempt> logicalAttemptObserver;
+
+  /**
+   * Detached counters for one invocation. Search time includes seeding and evaluator lifecycle;
+   * coordinator materializations count pooled transitions only, excluding serial seeding.
+   */
+  public record RunDiagnostics(
+      long completedAttempts,
+      long evaluatedOffspring,
+      long seedingNanos,
+      long searchNanos,
+      long coordinatorMaterializations,
+      boolean deferredMaterializationUsed,
+      String eagerReason) {}
+
+  public RunDiagnostics getRunDiagnostics() {
+    return runDiagnostics;
+  }
+
+  /** Test observer receives immutable list assignments and scalar logical state only. */
+  record LogicalAttempt(
+      int stepIndex,
+      boolean seeding,
+      long generation,
+      long candidateId,
+      long firstParentId,
+      long secondParentId,
+      long nativeId,
+      boolean crossed,
+      GeneticAlgorithmMutationType mutationType,
+      String mutationGroup,
+      GeneticAlgorithmOutcome outcome,
+      boolean admitted,
+      int changedAssignmentCount,
+      InnerScore<?> beforeScore,
+      InnerScore<?> bestBeforeScore,
+      InnerScore<?> candidateScore,
+      InnerScore<?> score,
+      boolean bestScoreImproved,
+      GeneticAlgorithmListSnapshot assignments) {}
+
+  void setLogicalAttemptObserver(Consumer<LogicalAttempt> observer) {
+    logicalAttemptObserver = observer;
+  }
 
   /** Final pool counters remain available after workers have closed; null means no pool started. */
   public GeneticAlgorithmEvaluatorPool.Diagnostics getEvaluatorDiagnostics() {
@@ -126,6 +175,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     completedGenerations = 0;
     workspaceChangedOutsideStep = false;
     evaluatorDiagnostics = null;
+    runDiagnostics = null;
     liveEvaluatorDiagnostics = null;
     // Backend changes must precede capturing phase-relative counters and the workspace director.
     solverScope.getSolver().prepareForPhase(scope);
@@ -262,8 +312,16 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     private final GeneticAlgorithmOperators<Solution_> operators;
     private final GeneticAlgorithmLocalImprovementMoves<Solution_> localMoves;
     private final GeneticAlgorithmMigrationCodec<Solution_, Score_> migrationCodec;
+    private final int[] logicalOldOwners;
+    private final int[] logicalNewOwners;
+    private final int[] logicalOldIndexes;
+    private final int[] logicalNewIndexes;
     private final List<Individual<Score_>> population = new ArrayList<>();
     private final List<Individual<Score_>> winners = new ArrayList<>();
+    private final GeneticAlgorithmGenomeIndex<Individual<Score_>> populationIndex =
+        new GeneticAlgorithmGenomeIndex<>();
+    private final GeneticAlgorithmGenomeIndex<Individual<Score_>> winnerIndex =
+        new GeneticAlgorithmGenomeIndex<>();
     private final GeneticAlgorithmPopulationDiversity populationDiversity =
         new GeneticAlgorithmPopulationDiversity();
     private final Comparator<Individual<Score_>> ranking =
@@ -278,6 +336,15 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     private GeneticAlgorithmEvaluatorPool<Solution_, Score_> evaluatorPool;
     private boolean coordinatorScoreDirty;
     private long pooledAttemptCount;
+    private GeneticAlgorithmGenome logicalGenome;
+    private InnerScore<Score_> logicalScore;
+    private boolean deferredMaterialization;
+    private boolean deferredMaterializationUsed;
+    private String eagerReason = "serial evaluation";
+    private long coordinatorMaterializations;
+    private long evaluatedOffspring;
+    private long seedingNanos;
+    private long searchStartedNanos;
 
     private Search(
         GeneticAlgorithmPhaseScope<Solution_> scope,
@@ -288,6 +355,14 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       this.workspace = workspace;
       this.operators = operators;
       this.localMoves = localMoves;
+      int valueCount =
+          config.getEvaluatorThreadCount() == 0 || workspace.listModel() == null
+              ? 0
+              : workspace.listModel().valueCount();
+      logicalOldOwners = new int[valueCount];
+      logicalNewOwners = new int[valueCount];
+      logicalOldIndexes = new int[valueCount];
+      logicalNewIndexes = new int[valueCount];
       migrationCodec =
           migration != null && config.getMigrationRate() > 0.0
               ? new GeneticAlgorithmMigrationCodec<>(workspace, scope.getScoreDirector())
@@ -295,6 +370,24 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     }
 
     private void run() {
+      searchStartedNanos = System.nanoTime();
+      try {
+        runSearch();
+      } finally {
+        long elapsed = System.nanoTime() - searchStartedNanos;
+        runDiagnostics =
+            new RunDiagnostics(
+                scope.getNextStepIndex(),
+                evaluatedOffspring,
+                seedingNanos == 0 ? elapsed : seedingNanos,
+                elapsed,
+                coordinatorMaterializations,
+                deferredMaterializationUsed,
+                eagerReason);
+      }
+    }
+
+    private void runSearch() {
       var initial = new Individual<>(workspace.genome(), workspace.score(), 0L);
       addPopulationMember(initial);
       while (population.size() < config.getPopulationSize() && !stopped()) {
@@ -308,24 +401,26 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         if (winner == null) return;
         addPopulationMember(winner);
       }
+      seedingNanos = System.nanoTime() - searchStartedNanos;
       if (config.getEvaluatorThreadCount() > 0) {
         if (!stopped()) runPooled();
         return;
       }
       while (!stopped()) {
-        population.sort(ranking);
-        winners.clear();
+        sortPopulation();
+        clearWinners();
         pendingChild = null;
         long generation = scope.getGeneration() + 1;
         for (int i = 0; i < population.size(); i++) {
           if (stopped()) return;
           var winner = attempt(false, null, () -> nextChild());
           if (winner == null) return;
-          winners.add(winner);
+          addWinner(winner);
         }
         population.clear();
         population.addAll(winners);
-        winners.clear();
+        rebuildPopulationIndex();
+        clearWinners();
         // An unused second child of an odd population is neither mutated nor evaluated.
         pendingChild = null;
         scope.setGeneration(generation);
@@ -340,6 +435,10 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
      * start. Worker count and completion order therefore cannot change genetic decisions.
      */
     private void runPooled() {
+      logicalGenome = workspace.genome();
+      logicalScore = workspace.score();
+      eagerReason = eagerMaterializationReason();
+      deferredMaterialization = eagerReason == null;
       var proposalRandom = ((DefaultRandomSource) scope.getWorkingRandom()).moveRandom().split();
       evaluatorPool =
           evaluatorThreadFactory == null
@@ -360,36 +459,40 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       try {
         if (!evaluatorPool.start(this::stopped)) return;
         while (!stopped()) {
-          population.sort(ranking);
-          winners.clear();
+          sortPopulation();
+          clearWinners();
           pendingChild = null;
           int preparedCount = 0;
-          while (preparedCount < population.size()) {
-            var window = new ArrayList<PreparedAttempt>(config.getEvaluatorThreadCount());
-            while (window.size() < config.getEvaluatorThreadCount()
+          var pending = new ArrayDeque<PreparedAttempt>(config.getEvaluatorThreadCount());
+          PreparedAttempt dependencyBarrier = null;
+          while (preparedCount < population.size() || !pending.isEmpty()) {
+            while (dependencyBarrier == null
+                && pending.size() < config.getEvaluatorThreadCount()
                 && preparedCount < population.size()) {
               if (stopped()) return;
               var prepared = prepareAttempt(proposalRandom);
               preparedCount++;
-              boolean dependency = prepareEvaluation(prepared, window);
-              window.add(prepared);
-              if (dependency) break;
+              boolean dependency = prepareEvaluation(prepared, pending);
+              pending.addLast(prepared);
+              if (dependency) dependencyBarrier = prepared;
             }
-            for (var prepared : window) {
-              if (stopped()) return;
-              var result = awaitEvaluation(prepared);
-              if (stopped()) return;
-              var winner = attemptPooled(prepared, result);
-              if (winner == null) return;
-              winners.add(winner);
-              pooledAttemptCount++;
-              if (pooledAttemptCount % 100 == 0) verifyCoordinatorScore();
-            }
+            if (stopped()) return;
+            var prepared = pending.getFirst();
+            var result = awaitEvaluation(prepared);
+            if (stopped()) return;
+            var winner = attemptPooled(prepared, result);
+            if (winner == null) return;
+            addWinner(winner);
+            pooledAttemptCount++;
+            if (pooledAttemptCount % 100 == 0) verifyCoordinatorScore();
+            pending.removeFirst();
+            if (dependencyBarrier == prepared) dependencyBarrier = null;
           }
           verifyCoordinatorScore();
           population.clear();
           population.addAll(winners);
-          winners.clear();
+          rebuildPopulationIndex();
+          clearWinners();
           pendingChild = null;
           scope.setGeneration(scope.getGeneration() + 1);
           completedGenerations = scope.getGeneration();
@@ -459,7 +562,8 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
      * is a dependency barrier. Admission and validity must resolve before deciding whether this
      * proposal is a cached duplicate. The bounded equality scan also avoids hashing mutable values.
      */
-    private boolean prepareEvaluation(PreparedAttempt prepared, List<PreparedAttempt> preceding) {
+    private boolean prepareEvaluation(
+        PreparedAttempt prepared, Iterable<PreparedAttempt> preceding) {
       if (cached(prepared.genome) != null) return false;
       boolean hasFreshPredecessor = false;
       for (var previous : preceding) {
@@ -467,13 +571,13 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         hasFreshPredecessor = true;
         if (previous.genome.equals(prepared.genome)) return true;
       }
-      if (prepared.genome.equals(workspace.genome())) return hasFreshPredecessor;
+      if (prepared.genome.equals(logicalGenome)) return hasFreshPredecessor;
       prepared.ticket = evaluatorPool.submit(prepared.id, prepared.genome);
       return false;
     }
 
     private GeneticAlgorithmEvaluatorPool.Result<Score_> awaitEvaluation(PreparedAttempt prepared) {
-      if (prepared.genome.equals(workspace.genome()) || cached(prepared.genome) != null) {
+      if (prepared.genome.equals(logicalGenome) || cached(prepared.genome) != null) {
         if (prepared.ticket != null) {
           throw new IllegalStateException(
               "A genetic algorithm evaluator job became a duplicate before ordered commitment.");
@@ -483,7 +587,9 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       if (prepared.ticket == null) {
         prepared.ticket = evaluatorPool.submit(prepared.id, prepared.genome);
       }
-      while (!stopped()) {
+      // The caller checks termination before and after this wait. Repeat the check after each
+      // timed-out poll, without traversing the termination tree twice before the first poll.
+      while (true) {
         try {
           var result = evaluatorPool.poll(prepared.ticket, 10L);
           evaluatorPool.transferCalculationCount();
@@ -492,15 +598,15 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
           Thread.currentThread().interrupt();
           return null;
         }
+        if (stopped()) return null;
       }
-      return null;
     }
 
     private Individual<Score_> attemptPooled(
         PreparedAttempt prepared, GeneticAlgorithmEvaluatorPool.Result<Score_> result) {
       var step = new GeneticAlgorithmStepScope<>(scope);
       step.setGeneration(scope.getGeneration() + 1);
-      step.setBeforeScore(workspace.score());
+      step.setBeforeScore(logicalScore);
       step.setBestBeforeScore(scope.getBestScore());
       step.setCandidateId(prepared.id);
       step.setParentIds(prepared.firstParent, prepared.secondParent);
@@ -515,6 +621,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       boolean typeCredited = false;
       Throwable attemptFailure = null;
       try {
+        ensureObservationCompatibility();
         stepStarted(step);
         if (stopped()) return null;
         var candidate = evaluatePooled(step, prepared, result);
@@ -529,11 +636,14 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
           scope.getSolverScope().addMoveEvaluationCountPerType(step.getMoveTypeDescription(), 1);
           typeCredited = true;
         }
+        ensureObservationCompatibility();
         metrics.record(step);
         stepEnded(step);
-        lifecycleCompleted = true;
         workspaceChangedOutsideStep = false;
-        scope.commitStep(step);
+        ensureObservationCompatibility();
+        lifecycleCompleted = true;
+        commitAttempt(step);
+        observeLogicalAttempt(step, logicalGenome);
         SolverMetricSamples.publishIslandStep(scope.getSolverScope(), step);
         logStep(step);
         return winner;
@@ -568,16 +678,16 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         PreparedAttempt prepared,
         GeneticAlgorithmEvaluatorPool.Result<Score_> result) {
       InnerScore<Score_> candidateScore;
-      if (prepared.genome.equals(workspace.genome())) {
+      if (prepared.genome.equals(logicalGenome)) {
         step.setOutcome(GeneticAlgorithmOutcome.NO_CHANGE);
-        candidateScore = workspace.score();
-        step.setScore(workspace.score());
+        candidateScore = logicalScore;
+        step.setScore(logicalScore);
       } else {
         var duplicate = cached(prepared.genome);
         if (duplicate != null) {
           step.setOutcome(GeneticAlgorithmOutcome.DUPLICATE);
           candidateScore = duplicate.score();
-          step.setScore(workspace.score());
+          step.setScore(logicalScore);
         } else {
           Objects.requireNonNull(
               result, "A fresh genetic algorithm candidate needs an evaluator result.");
@@ -592,24 +702,27 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
                 result.changedAssignmentCount() == 0
                     ? 0
                     : logicalChangedAssignmentCount(prepared.genome));
-            step.setScore(workspace.score());
+            step.setScore(logicalScore);
             return null;
           }
-          var transition = workspace.transition(prepared.genome);
-          if (!transition.valid()) {
-            throw new IllegalStateException(
-                "A worker-valid genetic algorithm candidate was invalid in the coordinator workspace.");
-          }
-          step.setChangedAssignmentCount(transition.changedAssignmentCount());
           candidateScore = Objects.requireNonNull(result.score());
           step.setScore(candidateScore);
-          coordinatorScoreDirty = true;
-          predictWorkingStepScore(step, "Genetic Algorithm evaluator candidate " + prepared.id);
-          workspace.scored(candidateScore);
-          if (assertExpectedStepScore || assertShadowVariablesAreNotStaleAfterStep) {
-            coordinatorScoreDirty = false;
+          if (deferredMaterialization) {
+            deferredMaterializationUsed = true;
+            step.setChangedAssignmentCount(logicalChangedAssignmentCount(prepared.genome));
+            logicalGenome = prepared.genome;
+            logicalScore = candidateScore;
+          } else {
+            var transition = transitionCoordinator(prepared.genome);
+            step.setChangedAssignmentCount(transition.changedAssignmentCount());
+            logicalGenome = prepared.genome;
+            logicalScore = candidateScore;
+            scoreMaterializedCandidate(step);
           }
           step.setOutcome(GeneticAlgorithmOutcome.EVALUATED);
+          if (candidateScore.compareTo(scope.<Score_>getBestScore()) > 0) {
+            materializeLogicalCursor();
+          }
           publishBest(step, () -> bestSolutionRecaller.processWorkingSolutionDuringStep(step));
         }
       }
@@ -620,28 +733,30 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     /** Count logical assignment differences independently of the worker's preceding job. */
     private int logicalChangedAssignmentCount(GeneticAlgorithmGenome candidate) {
       int changed = 0;
-      var baseline = workspace.genome();
+      var baseline = logicalGenome;
       for (int i = 0; i < baseline.size(); i++) {
         if (!Objects.equals(baseline.value(i), candidate.value(i))) changed++;
       }
       if (workspace.listModel() != null) {
         int valueCount = workspace.listModel().valueCount();
-        var oldOwners = new int[valueCount];
-        var newOwners = new int[valueCount];
-        var oldIndexes = new int[valueCount];
-        var newIndexes = new int[valueCount];
+        var oldOwners = logicalOldOwners;
+        var newOwners = logicalNewOwners;
+        var oldIndexes = logicalOldIndexes;
+        var newIndexes = logicalNewIndexes;
         Arrays.fill(oldOwners, -1);
         Arrays.fill(newOwners, -1);
-        var oldLists = baseline.lists();
-        var newLists = candidate.lists();
-        for (int owner = 0; owner < oldLists.length; owner++) {
-          for (int index = 0; index < oldLists[owner].length; index++) {
-            int value = oldLists[owner][index];
+        Arrays.fill(oldIndexes, 0);
+        Arrays.fill(newIndexes, 0);
+        var oldLists = baseline.listSnapshot();
+        var newLists = candidate.listSnapshot();
+        for (int owner = 0; owner < oldLists.ownerCount(); owner++) {
+          for (int index = 0; index < oldLists.size(owner); index++) {
+            int value = oldLists.get(owner, index);
             oldOwners[value] = owner;
             oldIndexes[value] = index;
           }
-          for (int index = 0; index < newLists[owner].length; index++) {
-            int value = newLists[owner][index];
+          for (int index = 0; index < newLists.size(owner); index++) {
+            int value = newLists.get(owner, index);
             newOwners[value] = owner;
             newIndexes[value] = index;
           }
@@ -654,7 +769,77 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
       return changed;
     }
 
+    private String eagerMaterializationReason() {
+      if (!workspace.slots().isEmpty()) return "basic assignments";
+      if (environmentMode != EnvironmentMode.NO_ASSERT
+          || assertPhaseScoreFromScratch
+          || assertStepScoreFromScratch
+          || assertExpectedStepScore
+          || assertShadowVariablesAreNotStaleAfterStep) return "assertions";
+      if (hasStateObservers()) return "lifecycle observers";
+      if (!TerminationGraphAccess.isWorkingSolutionIndependent(phaseTermination)
+          || !scope.getSolverScope().getSolver().isTerminationWorkingSolutionIndependent()) {
+        return "working-solution-dependent termination";
+      }
+      return null;
+    }
+
+    private boolean hasStateObservers() {
+      return hasPhaseLifecycleListeners()
+          || scope.getSolverScope().getSolver().hasPhaseLifecycleListeners()
+          || scope.hasCommittedStepListeners()
+          || scope.getScoreDirector().getWorkingSolutionMutationObserver() != null;
+    }
+
+    /** Once an observer is installed, preserve eager observation for the rest of this run. */
+    private void ensureObservationCompatibility() {
+      if (deferredMaterialization && hasStateObservers()) {
+        materializeLogicalCursor();
+        deferredMaterialization = false;
+        eagerReason = "lifecycle observers";
+      }
+    }
+
+    private GeneticAlgorithmWorkspace.Transition transitionCoordinator(
+        GeneticAlgorithmGenome genome) {
+      var transition = workspace.transition(genome);
+      if (!transition.valid()) {
+        throw new IllegalStateException(
+            "A worker-valid genetic algorithm candidate was invalid in the coordinator workspace.");
+      }
+      coordinatorMaterializations++;
+      return transition;
+    }
+
+    private void scoreMaterializedCandidate(GeneticAlgorithmStepScope<Solution_> step) {
+      coordinatorScoreDirty = true;
+      predictWorkingStepScore(
+          step, "Genetic Algorithm evaluator candidate " + step.getCandidateId());
+      workspace.scored(logicalScore);
+      if (assertExpectedStepScore || assertShadowVariablesAreNotStaleAfterStep) {
+        coordinatorScoreDirty = false;
+      }
+    }
+
+    /** A logical score is never installed on a graph with different genuine assignments. */
+    private void materializeLogicalCursor() {
+      if (logicalGenome == null) return;
+      if (logicalGenome.equals(workspace.genome())) {
+        if (!logicalScore.equals(workspace.score())) {
+          throw new IllegalStateException(
+              "The genetic algorithm evaluator score (%s) differs from its materialized score (%s) for equal assignments."
+                  .formatted(logicalScore, workspace.score()));
+        }
+        return;
+      }
+      transitionCoordinator(logicalGenome);
+      scope.getSolutionDescriptor().setScore(scope.getWorkingSolution(), logicalScore.raw());
+      workspace.scored(logicalScore);
+      coordinatorScoreDirty = true;
+    }
+
     private void verifyCoordinatorScore() {
+      materializeLogicalCursor();
       if (!coordinatorScoreDirty) return;
       var predicted = workspace.score();
       InnerScore<Score_> actual = scope.calculateScore();
@@ -671,7 +856,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     private boolean migrateAtGenerationBoundary() {
       if (migrationCodec == null || scope.getGeneration() % migration.frequency() != 0) return true;
       if (stopped()) return false;
-      population.sort(ranking);
+      sortPopulation();
       int exportCount = Math.max(1, (int) Math.ceil(config.getMigrationRate() * population.size()));
       var leading = population.subList(0, exportCount);
       var emigrants =
@@ -762,7 +947,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         committed = true;
         if (membershipChanged) {
           scope.resetNoProgressAttemptCount();
-          population.sort(ranking);
+          sortPopulation();
           updatePopulationDiagnostics();
         }
         return true;
@@ -902,7 +1087,8 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
         stepEnded(step);
         lifecycleCompleted = true;
         workspaceChangedOutsideStep = false;
-        scope.commitStep(step);
+        commitAttempt(step);
+        observeLogicalAttempt(step, workspace.genome());
         SolverMetricSamples.publishIslandStep(scope.getSolverScope(), step);
         logStep(step);
         return winner;
@@ -1093,9 +1279,71 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
     }
 
     private Individual<Score_> cached(GeneticAlgorithmGenome genome) {
-      for (var individual : population) if (individual.genome().equals(genome)) return individual;
-      for (var individual : winners) if (individual.genome().equals(genome)) return individual;
-      return null;
+      var individual = populationIndex.firstMatch(genome);
+      return individual == null ? winnerIndex.firstMatch(genome) : individual;
+    }
+
+    private void rebuildPopulationIndex() {
+      populationIndex.clear();
+      for (var individual : population) populationIndex.add(individual.genome(), individual);
+    }
+
+    private void sortPopulation() {
+      population.sort(ranking);
+      rebuildPopulationIndex();
+    }
+
+    private void clearWinners() {
+      winners.clear();
+      winnerIndex.clear();
+    }
+
+    private void addWinner(Individual<Score_> winner) {
+      winners.add(winner);
+      winnerIndex.add(winner.genome(), winner);
+    }
+
+    private void observeLogicalAttempt(
+        GeneticAlgorithmStepScope<Solution_> step, GeneticAlgorithmGenome genome) {
+      if (logicalAttemptObserver == null) return;
+      if (genome.size() != 0) {
+        throw new IllegalStateException(
+            "Detached GA attempt observation requires list-only assignments.");
+      }
+      logicalAttemptObserver.accept(
+          new LogicalAttempt(
+              step.getStepIndex(),
+              step.isSeeding(),
+              step.getGeneration(),
+              step.getCandidateId(),
+              step.getFirstParentId(),
+              step.getSecondParentId(),
+              step.getNativeId(),
+              step.isCrossed(),
+              step.getMutationType(),
+              step.getMutationGroup(),
+              step.getOutcome(),
+              step.isAdmitted(),
+              step.getChangedAssignmentCount(),
+              step.getBeforeScore(),
+              step.getBestBeforeScore(),
+              step.getCandidateScore(),
+              step.getScore(),
+              step.getBestScoreImproved(),
+              genome.listSnapshot()));
+    }
+
+    private void commitAttempt(GeneticAlgorithmStepScope<Solution_> step) {
+      try {
+        scope.commitStep(step);
+      } finally {
+        // Committed-step callbacks can fail after the attempt and its work were committed.
+        if (scope.getLastCompletedStepScope() == step
+            && !step.isSeeding()
+            && step.getOutcome() == GeneticAlgorithmOutcome.EVALUATED) {
+          evaluatedOffspring++;
+        }
+      }
     }
 
     private boolean stopped() {
@@ -1118,6 +1366,7 @@ public final class DefaultGeneticAlgorithmPhase<Solution_> extends AbstractPhase
 
     private void addPopulationMember(Individual<Score_> individual) {
       population.add(individual);
+      populationIndex.add(individual.genome(), individual);
       populationDiversity.add(individual.genome());
       scope.setPopulationSize(population.size(), populationDiversity.size());
     }

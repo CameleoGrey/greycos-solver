@@ -89,6 +89,65 @@ class GeneticAlgorithmListWorkspaceTest {
   }
 
   @Test
+  void reusedDiffScratchClearsAbsentIndexesAcrossUnassignmentAndRestore() {
+    var initialLists = new int[][] {{0, 1, 2}, {3, 4}};
+    var solution = solution(5, initialLists);
+    try (var director = factory(new HashMap<>()).createScoreDirectorBuilder().build()) {
+      director.setWorkingSolution(solution);
+      var workspace = new GeneticAlgorithmWorkspace<>(director, director.calculateScore());
+      var initial = workspace.genome();
+      var initialScore = workspace.score();
+      var targets =
+          List.of(
+              new int[][] {{0, 1}, {3, 4}},
+              new int[][] {{0, 1}, {2, 3, 4}},
+              new int[][] {{0, 1}, {2, 3}},
+              new int[][] {{0}, {3}},
+              new int[][] {{}, {}},
+              new int[][] {{4, 3, 2, 1, 0}, {}});
+      for (int repetition = 0; repetition < 3; repetition++) {
+        var previous = initialLists;
+        for (var target : targets) {
+          var candidate = initial.withLists(target);
+          var transition = workspace.transition(candidate);
+          assertThat(transition.valid()).isTrue();
+          assertThat(transition.changedAssignmentCount())
+              .isEqualTo(changedPositions(previous, target, 5));
+          workspace.scored(director.calculateScore());
+          assertReplay(solution, director);
+          // Values absent on both sides have owner -1 and index zero even when earlier uses of
+          // these scratch arrays held different indexes for their assignment/unassignment.
+          assertThat(workspace.transition(candidate))
+              .isEqualTo(new GeneticAlgorithmWorkspace.Transition(true, 0));
+          previous = target;
+        }
+        workspace.restore(initial, initialScore);
+        assertThat(workspace.transition(initial))
+            .isEqualTo(new GeneticAlgorithmWorkspace.Transition(true, 0));
+        assertReplay(solution, director);
+      }
+    }
+  }
+
+  private static int changedPositions(int[][] previous, int[][] target, int valueCount) {
+    var before = new HashMap<Integer, List<Integer>>();
+    var after = new HashMap<Integer, List<Integer>>();
+    for (int owner = 0; owner < previous.length; owner++) {
+      for (int index = 0; index < previous[owner].length; index++) {
+        before.put(previous[owner][index], List.of(owner, index));
+      }
+      for (int index = 0; index < target[owner].length; index++) {
+        after.put(target[owner][index], List.of(owner, index));
+      }
+    }
+    int changed = 0;
+    for (int value = 0; value < valueCount; value++) {
+      if (!java.util.Objects.equals(before.get(value), after.get(value))) changed++;
+    }
+    return changed;
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   void nonIntSizedListUniverseFailsBeforeEnumerationOrAllocation() {
     InnerScoreDirector<Model, SimpleScore> director = mock(InnerScoreDirector.class);

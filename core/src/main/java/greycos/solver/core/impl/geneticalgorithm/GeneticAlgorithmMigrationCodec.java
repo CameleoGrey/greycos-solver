@@ -67,9 +67,11 @@ public final class GeneticAlgorithmMigrationCodec<Solution_, Score_ extends Scor
       var model = workspace.listModel();
       if (model != null) {
         var records = new ArrayList<SolutionAssignments.ListChangeRecord<?>>();
+        var snapshot = genome.listSnapshot();
         for (int owner = 0; owner < genome.listCount(); owner++) {
-          var values = new ArrayList<Object>();
-          for (int id : genome.list(owner)) {
+          var values = new ArrayList<Object>(snapshot.size(owner));
+          for (int index = 0; index < snapshot.size(owner); index++) {
+            int id = snapshot.get(owner, index);
             values.add(lookup.lookUpWorkingObject(model.value(id)));
           }
           records.add(

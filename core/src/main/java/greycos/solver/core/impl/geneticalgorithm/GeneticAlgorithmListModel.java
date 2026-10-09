@@ -25,7 +25,7 @@ public final class GeneticAlgorithmListModel<Solution_> {
   private final List<ValueRange<Object>> ranges;
   private final boolean[] ownerMovable;
   private final int[] firstUnpinnedIndices;
-  private final int[][] initialLists;
+  private final GeneticAlgorithmListSnapshot initialLists;
   private final int[] movableValueIds;
 
   public GeneticAlgorithmListModel(InnerScoreDirector<Solution_, ?> director) {
@@ -102,7 +102,7 @@ public final class GeneticAlgorithmListModel<Solution_> {
       }
       firstUnpinnedIndices[ownerId] = firstUnpinned;
     }
-    initialLists = captureLists();
+    initialLists = new GeneticAlgorithmListSnapshot(captureLists());
     if (!isValid(initialLists)) {
       throw new IllegalArgumentException(
           "The genetic algorithm requires valid initial list assignments for (%s): values must be unique, in their owner's range and assigned when unassignment is disabled."
@@ -111,7 +111,7 @@ public final class GeneticAlgorithmListModel<Solution_> {
     var pinned = new boolean[values.length];
     for (var ownerId = 0; ownerId < owners.size(); ownerId++) {
       for (var index = 0; index < firstUnpinnedIndices[ownerId]; index++) {
-        pinned[initialLists[ownerId][index]] = true;
+        pinned[initialLists.get(ownerId, index)] = true;
       }
     }
     var movableIds = new int[values.length];
@@ -153,11 +153,11 @@ public final class GeneticAlgorithmListModel<Solution_> {
   }
 
   public int[][] initialLists() {
-    var copy = new int[initialLists.length][];
-    for (var i = 0; i < copy.length; i++) {
-      copy[i] = initialLists[i].clone();
-    }
-    return copy;
+    return initialLists.copyLists();
+  }
+
+  GeneticAlgorithmListSnapshot initialSnapshot() {
+    return initialLists;
   }
 
   public String name() {
@@ -197,20 +197,29 @@ public final class GeneticAlgorithmListModel<Solution_> {
     if (lists.length != owners.size()) {
       return false;
     }
+    for (var list : lists) {
+      if (list == null) return false;
+    }
+    return isValid(new GeneticAlgorithmListSnapshot(lists));
+  }
+
+  boolean isValid(GeneticAlgorithmListSnapshot lists) {
+    if (lists.ownerCount() != owners.size()) {
+      return false;
+    }
     var assigned = new boolean[values.length];
     var assignedCount = 0;
     for (var ownerId = 0; ownerId < owners.size(); ownerId++) {
-      var list = lists[ownerId];
-      if (list == null
-          || list.length < firstUnpinnedIndices[ownerId]
-          || !ownerMovable[ownerId] && !Arrays.equals(list, initialLists[ownerId])) {
+      var size = lists.size(ownerId);
+      if (size < firstUnpinnedIndices[ownerId]
+          || !ownerMovable[ownerId] && !isInitialList(lists, ownerId)) {
         return false;
       }
-      for (var index = 0; index < list.length; index++) {
-        var id = list[index];
+      for (var index = 0; index < size; index++) {
+        var id = lists.get(ownerId, index);
         if (!accepts(ownerId, id)
             || assigned[id]
-            || index < firstUnpinnedIndices[ownerId] && id != initialLists[ownerId][index]) {
+            || index < firstUnpinnedIndices[ownerId] && id != initialLists.get(ownerId, index)) {
           return false;
         }
         assigned[id] = true;
@@ -218,6 +227,14 @@ public final class GeneticAlgorithmListModel<Solution_> {
       }
     }
     return allowsUnassignedValues() || assignedCount == values.length;
+  }
+
+  private boolean isInitialList(GeneticAlgorithmListSnapshot lists, int owner) {
+    if (lists.size(owner) != initialLists.size(owner)) return false;
+    for (int index = 0; index < lists.size(owner); index++) {
+      if (lists.get(owner, index) != initialLists.get(owner, index)) return false;
+    }
+    return true;
   }
 
   ListVariableDescriptor<Solution_> variableDescriptor() {

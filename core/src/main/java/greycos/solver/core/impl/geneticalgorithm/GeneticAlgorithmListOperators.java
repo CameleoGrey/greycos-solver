@@ -35,7 +35,7 @@ final class GeneticAlgorithmListOperators<Solution_> {
             ? 0.0
             : Math.min(config.getMutationRateMultiplier() / movableValues.length, 1.0);
     tenure = (int) Math.ceil(config.getTabuEntityRate() * movableValues.length);
-    movable = hasAlternativeDestination(model.initialLists(), true);
+    movable = hasAlternativeDestination(model.initialSnapshot(), true);
   }
 
   String name() {
@@ -50,19 +50,74 @@ final class GeneticAlgorithmListOperators<Solution_> {
     return movable;
   }
 
-  boolean isEligible(GeneticAlgorithmMutationType type, int[][] lists) {
+  Eligibility eligibility(GeneticAlgorithmListSnapshot lists) {
+    return new Eligibility(lists);
+  }
+
+  /** One proposal's lazy eligibility checks; mutation and tabu state are never cached. */
+  final class Eligibility {
+    private final GeneticAlgorithmListSnapshot lists;
+    private int checked;
+    private int eligible;
+
+    private Eligibility(GeneticAlgorithmListSnapshot lists) {
+      this.lists = lists;
+    }
+
+    boolean isEligible(GeneticAlgorithmMutationType type) {
+      int bit = 1 << type.ordinal();
+      if ((checked & bit) == 0) {
+        if (GeneticAlgorithmListOperators.this.isEligible(type, lists)) eligible |= bit;
+        checked |= bit;
+      }
+      return (eligible & bit) != 0;
+    }
+  }
+
+  private boolean isEligible(
+      GeneticAlgorithmMutationType type, GeneticAlgorithmListSnapshot lists) {
     return switch (type) {
       case CHANGE -> hasAlternativeDestination(lists, true);
-      case SWAP -> assignedAnchors(lists, false).size() >= 2;
-      case SWAP_EDGES -> assignedAnchors(lists, true).size() >= 2;
-      case SCRAMBLE -> !eligibleOwners(lists, 3).isEmpty();
+      case SWAP -> hasAssignedAnchors(lists, false);
+      case SWAP_EDGES -> hasAssignedAnchors(lists, true);
+      case SCRAMBLE -> hasEligibleOwner(lists, 3);
       case INSERTION -> hasAlternativeDestination(lists, false);
-      case INVERSE -> !eligibleOwners(lists, 2).isEmpty();
+      case INVERSE -> hasEligibleOwner(lists, 2);
     };
   }
 
+  private boolean hasAssignedAnchors(GeneticAlgorithmListSnapshot lists, boolean edgeStarts) {
+    int count = 0;
+    for (int owner = 0; owner < lists.ownerCount(); owner++) {
+      if (model.ownerMovable(owner)) {
+        count +=
+            Math.max(0, lists.size(owner) - model.firstUnpinnedIndex(owner) - (edgeStarts ? 1 : 0));
+        if (count >= 2) return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean hasEligibleOwner(GeneticAlgorithmListSnapshot lists, int minimumSuffixSize) {
+    for (int owner = 0; owner < lists.ownerCount(); owner++) {
+      if (model.ownerMovable(owner)
+          && lists.size(owner) - model.firstUnpinnedIndex(owner) >= minimumSuffixSize) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   int[][] sampleSeed(RandomGenerator random) {
-    var lists = mutableLists(model.initialLists());
+    var initial = model.initialSnapshot();
+    var lists = new ArrayList<List<Integer>>(initial.ownerCount());
+    for (int owner = 0; owner < initial.ownerCount(); owner++) {
+      var list = new ArrayList<Integer>(initial.size(owner));
+      for (int index = 0; index < initial.size(owner); index++) {
+        list.add(initial.get(owner, index));
+      }
+      lists.add(list);
+    }
     for (int owner = 0; owner < lists.size(); owner++) {
       if (model.ownerMovable(owner)) {
         var list = lists.get(owner);
@@ -104,12 +159,10 @@ final class GeneticAlgorithmListOperators<Solution_> {
           anchors.add(new Anchor(value, -1, -1));
         }
         var selected = selectAnchors(anchors, changeCount(anchors.size(), 1, random), random);
-        var mutable = mutableLists(lists);
         var ownership = ownership(lists);
         for (var anchor : selected) {
-          relocate(mutable, ownership, anchor.value(), model.allowsUnassignedValues(), random);
+          relocate(lists, ownership, anchor.value(), model.allowsUnassignedValues(), random);
         }
-        return toArrays(mutable);
       }
       case SWAP -> {
         var anchors = assignedAnchors(lists, false);
@@ -143,9 +196,7 @@ final class GeneticAlgorithmListOperators<Solution_> {
       }
       case INSERTION -> {
         var selected = selectAnchors(assignedAnchors(lists, false), 1, random).getFirst();
-        var mutable = mutableLists(lists);
-        relocate(mutable, ownership(lists), selected.value(), false, random);
-        return toArrays(mutable);
+        relocate(lists, ownership(lists), selected.value(), false, random);
       }
       case INVERSE -> {
         var owners = eligibleOwners(lists, 2);
@@ -161,7 +212,8 @@ final class GeneticAlgorithmListOperators<Solution_> {
     return lists;
   }
 
-  private boolean hasAlternativeDestination(int[][] lists, boolean allowMembershipChange) {
+  private boolean hasAlternativeDestination(
+      GeneticAlgorithmListSnapshot lists, boolean allowMembershipChange) {
     var ownership = ownership(lists);
     for (int value : movableValues) {
       int current = ownership[value];
@@ -172,7 +224,7 @@ final class GeneticAlgorithmListOperators<Solution_> {
         if (allowMembershipChange && model.allowsUnassignedValues()) {
           return true;
         }
-        if (lists[current].length - model.firstUnpinnedIndex(current) > 1) {
+        if (lists.size(current) - model.firstUnpinnedIndex(current) > 1) {
           return true;
         }
       }
@@ -260,21 +312,30 @@ final class GeneticAlgorithmListOperators<Solution_> {
   }
 
   private void relocate(
-      List<List<Integer>> lists,
-      int[] ownership,
-      int value,
-      boolean allowUnassigned,
-      RandomGenerator random) {
+      int[][] lists, int[] ownership, int value, boolean allowUnassigned, RandomGenerator random) {
     int oldOwner = ownership[value];
     if (oldOwner >= 0) {
-      lists.get(oldOwner).remove(Integer.valueOf(value));
+      var oldList = lists[oldOwner];
+      for (int index = 0; index < oldList.length; index++) {
+        if (oldList[index] == value) {
+          var shortened = new int[oldList.length - 1];
+          System.arraycopy(oldList, 0, shortened, 0, index);
+          System.arraycopy(oldList, index + 1, shortened, index, oldList.length - index - 1);
+          lists[oldOwner] = shortened;
+          break;
+        }
+      }
     }
     var owners = destinations(value, allowUnassigned);
     int owner = owners.get(random.nextInt(owners.size()));
     if (owner >= 0) {
-      var list = lists.get(owner);
-      int index = random.nextInt(model.firstUnpinnedIndex(owner), list.size() + 1);
-      list.add(index, value);
+      var list = lists[owner];
+      int index = random.nextInt(model.firstUnpinnedIndex(owner), list.length + 1);
+      var extended = new int[list.length + 1];
+      System.arraycopy(list, 0, extended, 0, index);
+      extended[index] = value;
+      System.arraycopy(list, index, extended, index + 1, list.length - index);
+      lists[owner] = extended;
     }
     ownership[value] = owner;
   }
@@ -303,16 +364,15 @@ final class GeneticAlgorithmListOperators<Solution_> {
     return ownership;
   }
 
-  private static List<List<Integer>> mutableLists(int[][] lists) {
-    var result = new ArrayList<List<Integer>>(lists.length);
-    for (var list : lists) {
-      var copy = new ArrayList<Integer>(list.length);
-      for (int value : list) {
-        copy.add(value);
+  private int[] ownership(GeneticAlgorithmListSnapshot lists) {
+    var ownership = new int[model.valueCount()];
+    Arrays.fill(ownership, -1);
+    for (int owner = 0; owner < lists.ownerCount(); owner++) {
+      for (int index = 0; index < lists.size(owner); index++) {
+        ownership[lists.get(owner, index)] = owner;
       }
-      result.add(copy);
     }
-    return result;
+    return ownership;
   }
 
   private static int[][] toArrays(List<List<Integer>> lists) {

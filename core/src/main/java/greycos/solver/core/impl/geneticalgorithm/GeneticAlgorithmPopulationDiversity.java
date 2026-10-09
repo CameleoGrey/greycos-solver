@@ -1,25 +1,32 @@
 package greycos.solver.core.impl.geneticalgorithm;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Equality-based representatives of one run's current population, excluding pending winners. */
 final class GeneticAlgorithmPopulationDiversity {
 
-  private final List<GeneticAlgorithmGenome> representatives = new ArrayList<>();
+  private final Map<Integer, List<GeneticAlgorithmGenome>> representatives = new HashMap<>();
+  private int size;
 
   void add(GeneticAlgorithmGenome genome) {
-    // Compare each newly seeded member once instead of recounting the entire growing population.
-    if (!representatives.contains(genome)) {
-      representatives.add(genome);
+    var bucket =
+        representatives.computeIfAbsent(genome.listFingerprint(), ignored -> new ArrayList<>());
+    // contains retains query.equals(representative), including live basic-value equality.
+    if (!bucket.contains(genome)) {
+      bucket.add(genome);
+      size++;
     }
   }
 
   int size() {
-    return representatives.size();
+    return size;
   }
 
   void clear() {
     representatives.clear();
+    size = 0;
   }
 }

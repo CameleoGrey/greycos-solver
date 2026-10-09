@@ -141,8 +141,9 @@ DEBUG     Genetic Algorithm step (130), phase (1), generation (1), time spent (8
 DEBUG     Genetic Algorithm step (131), phase (1), generation (1), time spent (86), score (0hard/-70soft),     best score (0hard/-40soft), candidate score (0hard/-70soft), candidate (132), parents (8, 23), mutation (CHANGE, Task.machine), outcome (EVALUATED), admitted (false), changed (1).
 ----
 
-`time spent` is elapsed solver time in milliseconds. `score` is the settled working-solution score;
-`candidate score` is reported separately because a cached duplicate can leave the workspace unchanged,
+`time spent` is elapsed solver time in milliseconds. `score` describes GA's current logical assignment;
+with deferred pooled materialization, the coordinator graph may still contain an earlier assignment.
+`candidate score` is reported separately because a cached duplicate leaves the logical assignment unchanged,
 and an invalid candidate has no valid candidate score. The `new` marker means that the attempt
 published a strict best-score improvement. Admission to the population alone does not imply improvement.
 
@@ -407,9 +408,12 @@ remain immutable during solving.
 
 The coordinator selects parents, applies crossover and mutation, and consumes results in proposal
 order. The number of outstanding attempts is bounded by the worker count, including completed
-results waiting for earlier attempts. Duplicate decisions still use the current logical workspace,
-population and already selected generation winners. Dependencies between repeated proposals can
-temporarily limit concurrency. Population replacement still waits for a complete generation.
+results waiting for earlier attempts. After committing the oldest attempt, the coordinator fills
+the available pipeline capacity while other evaluations continue. It does not wait for every
+attempt in the previous submission group to finish. Duplicate decisions still use the current
+logical assignment, population and already selected generation winners. A proposal that depends
+on an earlier unresolved proposal stops further preparation until that dependency is committed.
+These barriers can temporarily limit concurrency. Population replacement still waits for a complete generation.
 
 Pooled search uses a dedicated seeded proposal stream. With the same input, seed and deterministic
 step or move limit, changing the evaluator count preserves the logical search decisions and final
@@ -419,8 +423,24 @@ score limits, elapsed-time limits and external cancellation can end at different
 Worker-native scores remain authoritative. Before publishing an improvement, the coordinator
 materializes its genuine assignments and updates shadows through normal notifications, then uses
 the standard predicted-score and best-solution lifecycle. It verifies and settles its retained score
-state before sampling constraint totals, periodically, at generation boundaries and on normal exit.
+state before sampling constraint totals, periodically, at generation boundaries and on normal or cancelled exit.
 Assertion modes retain their additional score and shadow checks.
+
+For list-only models in `NO_ASSERT`, the coordinator can defer materialization between these
+observation points. It retains the genome and native score of the last fresh valid candidate as its
+logical assignment, including a candidate rejected by survivor selection. Invalid, duplicate and
+unchanged attempts leave that assignment intact. Step scores, change counts, duplicate detection
+and survivor selection use this logical state. A predicted score is installed on the coordinator
+solution only after its genuine assignments and shadows match.
+
+Deferred materialization requires recognized framework termination conditions and no callbacks
+that observe the working graph between publications. Basic or mixed models, assertion modes,
+working-graph observers and unrecognized termination implementations retain eager coordinator
+updates. Registering a lifecycle or committed-step observer during a run materializes the current
+logical assignment and keeps subsequent attempts eager for that invocation. Best-solution event
+listeners do not disable deferral: the corresponding assignment is materialized before publication.
+Constraint-total metrics synchronize through their sampling hook. These choices do not change
+the configured genetic operators, population rules or proposal random stream.
 
 All completed worker score calculations count toward solver-wide and phase-local score limits,
 including worker initialization, recovery and results discarded after termination. Coordinator
@@ -430,17 +450,29 @@ cross them. Cancellation stops submissions and joins workers before normal phase
 An unfinished generation does not replace the population; already published best solutions remain
 available. A worker that fails to stop prevents unsafe reuse of the same solver.
 
-Parallel evaluation adds graph cloning, assignment transport, coordinator updates and thread
-coordination. It can cost more than serial evaluation on inexpensive constraints or duplicate-heavy
-populations. Compare complete search quality and resource use on representative models; worker
-count alone does not establish speedup.
+Parallel evaluation adds worker initialization, assignment transport and thread coordination.
+Genetic operators, ordered commitment and population administration remain serial, and eager
+observation requires additional coordinator updates. It can cost more than serial evaluation on
+inexpensive constraints or duplicate-heavy populations. Compare complete search quality and
+resource use on representative models; worker count alone does not establish speedup or linear scaling.
+
+Internal phase diagnostics expose completed attempts, freshly evaluated offspring, seeding time,
+search-invocation time, pooled coordinator materializations, whether deferral was used and the
+eager fallback reason. Search-invocation time includes seeding and evaluator startup and shutdown;
+the materialization counter excludes serial evaluation and seeding. Pool diagnostics separately
+report worker submissions, completed evaluations, consumed results, retained sessions and physical
+score calculations. For timing comparisons, collect these counters after solving: attaching a
+working-graph lifecycle recorder selects eager execution and changes the path being measured.
 
 [#geneticAlgorithmIncrementalScoring]
 == Incremental scoring and lifecycle
 
 Population genomes contain immutable genuine-assignment arrays and exact cached scores. They do
 not contain separately editable shadows or cloned mutable working entities. Basic assignments use
-normal value equality; ordered list snapshots use canonical element identities. The evaluator
+normal value equality; ordered list snapshots use canonical element identities. Immutable list
+snapshots can be shared by genomes and evaluator requests. Duplicate and diversity indexes use
+only their immutable list fingerprint to select a bucket, then perform exact genome equality checks.
+Basic values retain their live equality semantics and are never used as cached hash keys. The evaluator
 validates the complete mixed candidate before any notification, then applies only changed basics
 and differing list intervals. It brackets all affected owners together and emits membership events
 only when values become assigned or unassigned. Transfers between owners remain assigned. Shadows
@@ -450,8 +482,10 @@ With Bavet, this retains the existing working object graph and scoring session a
 Replacing the entire working solution for every child would rebuild that session. Reusing a
 score-director factory alone would not provide the same incremental behavior.
 
-A valid child can remain materialized even when population replacement rejects it. A cached child
-does not need to be materialized or scored; its fitness is separate from the current workspace score.
+A valid child remains the logical assignment even when population replacement rejects it. Serial
+and eager pooled execution also leave it materialized; deferred pooled execution may install it
+later. A cached child does not need to be materialized or scored; its fitness is separate from the
+current logical assignment's score.
 A completed structural-invalidity result restores the previous genuine assignments through
 notifications, updates shadows, recalculates the score and verifies restoration. Setter, listener,
 scoring and callback exceptions abort the phase instead of being counted as rejected offspring.

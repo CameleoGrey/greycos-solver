@@ -10,9 +10,11 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
 
@@ -52,6 +54,8 @@ class GeneticAlgorithmListOperatorsTest {
     assertThat(crossed.second().toArray()).containsExactly(1, 7);
     assertLists(crossed.first().lists(), second.lists());
     assertLists(crossed.second().lists(), first.lists());
+    assertThat(crossed.first().listSnapshot()).isSameAs(second.listSnapshot());
+    assertThat(crossed.second().listSnapshot()).isSameAs(first.listSnapshot());
     assertLists(first.lists(), new int[][] {{0, 1, 2}, {3}});
     assertLists(second.lists(), new int[][] {{0, 3}, {2}});
     random.assertExhausted();
@@ -61,6 +65,143 @@ class GeneticAlgorithmListOperatorsTest {
     assertThat(retained.first()).isSameAs(first);
     assertThat(retained.second()).isSameAs(second);
     retainRandom.assertExhausted();
+  }
+
+  @Test
+  void eligibilityCountsMatchEnumeratedAnchorsAcrossPinsAndEmptySuffixes() {
+    var model = model(7, new int[][] {{0, 1, 2}, {3, 4}}, new int[] {1, 0}, true, true);
+    var listOperators =
+        new GeneticAlgorithmListOperators<>(model, new GeneticAlgorithmPhaseConfig().resolve());
+    for (var lists :
+        List.of(
+            new int[][] {{0, 1, 2}, {3, 4}},
+            new int[][] {{0}, {1, 2, 3, 4, 5, 6}},
+            new int[][] {{0, 1}, {2}},
+            new int[][] {{0}, {}},
+            new int[][] {{0, 1, 2, 3}, {}})) {
+      int anchors = 0;
+      int edges = 0;
+      boolean scramble = false;
+      boolean inverse = false;
+      for (int owner = 0; owner < lists.length; owner++) {
+        if (!model.ownerMovable(owner)) continue;
+        int suffix = lists[owner].length - model.firstUnpinnedIndex(owner);
+        anchors += suffix;
+        edges += Math.max(0, suffix - 1);
+        scramble |= suffix >= 3;
+        inverse |= suffix >= 2;
+      }
+      var eligibility = listOperators.eligibility(new GeneticAlgorithmListSnapshot(lists));
+      assertThat(eligibility.isEligible(GeneticAlgorithmMutationType.SWAP)).isEqualTo(anchors >= 2);
+      assertThat(eligibility.isEligible(GeneticAlgorithmMutationType.SWAP_EDGES))
+          .isEqualTo(edges >= 2);
+      assertThat(eligibility.isEligible(GeneticAlgorithmMutationType.SCRAMBLE)).isEqualTo(scramble);
+      assertThat(eligibility.isEligible(GeneticAlgorithmMutationType.INVERSE)).isEqualTo(inverse);
+      assertThat(eligibility.isEligible(GeneticAlgorithmMutationType.INSERTION))
+          .isEqualTo(anchors > 0);
+      assertThat(eligibility.isEligible(GeneticAlgorithmMutationType.CHANGE)).isTrue();
+    }
+  }
+
+  @Test
+  void repeatedEligibilityDoesNotRecheckRecipientRanges() {
+    var model = model(2, new int[][] {{0}, {1}}, false);
+    var listOperators =
+        new GeneticAlgorithmListOperators<>(model, new GeneticAlgorithmPhaseConfig().resolve());
+    var rangeChecks = new AtomicInteger();
+    when(model.accepts(anyInt(), anyInt()))
+        .thenAnswer(
+            ignored -> {
+              rangeChecks.incrementAndGet();
+              return true;
+            });
+    var eligibility = listOperators.eligibility(model.initialSnapshot());
+    assertThat(eligibility.isEligible(GeneticAlgorithmMutationType.CHANGE)).isTrue();
+    int checked = rangeChecks.get();
+    assertThat(checked).isPositive();
+    assertThat(eligibility.isEligible(GeneticAlgorithmMutationType.CHANGE)).isTrue();
+    assertThat(rangeChecks.get()).isEqualTo(checked);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void primitiveRelocationMatchesBoxedReferenceThroughSequentialMultiChanges(boolean optional) {
+    var initial = new int[][] {{0, 1, 2}, {3, 4}};
+    var prefixes = new int[] {1, 0};
+    var model = model(5, initial, prefixes, optional, true);
+    var operators =
+        new GeneticAlgorithmListOperators<>(
+            model, new GeneticAlgorithmPhaseConfig().withMutationRateMultiplier(4.0).resolve());
+    var actualRandom = new Random(37);
+    var referenceRandom = new Random(37);
+    var actual = model.initialLists();
+    var reference = model.initialLists();
+    for (int iteration = 0; iteration < 100; iteration++) {
+      // Rate one selects all four movable values. A preceding relocation may move or unassign
+      // the values selected later in this same mutation, and pinned value zero must stay put.
+      actual = operators.mutate(GeneticAlgorithmMutationType.CHANGE, actual, actualRandom);
+      reference =
+          boxedRelocationReference(
+              reference, prefixes, new int[] {1, 2, 3, 4}, optional, true, referenceRandom);
+      assertLists(actual, reference);
+      assertValid(actual, model);
+      var assigned = new ArrayList<Integer>();
+      for (int owner = 0; owner < reference.length; owner++) {
+        for (int index = prefixes[owner]; index < reference[owner].length; index++) {
+          assigned.add(reference[owner][index]);
+        }
+      }
+      if (!assigned.isEmpty()) {
+        actual = operators.mutate(GeneticAlgorithmMutationType.INSERTION, actual, actualRandom);
+        reference =
+            boxedRelocationReference(
+                reference,
+                prefixes,
+                assigned.stream().mapToInt(Integer::intValue).toArray(),
+                false,
+                false,
+                referenceRandom);
+        assertLists(actual, reference);
+        assertValid(actual, model);
+      }
+    }
+    assertThat(actualRandom.nextLong()).isEqualTo(referenceRandom.nextLong());
+    assertLists(model.initialLists(), initial);
+  }
+
+  private static int[][] boxedRelocationReference(
+      int[][] input,
+      int[] prefixes,
+      int[] candidates,
+      boolean allowUnassigned,
+      boolean changeAll,
+      Random random) {
+    var lists = new ArrayList<List<Integer>>();
+    for (var row : input) lists.add(new ArrayList<>(Arrays.stream(row).boxed().toList()));
+    var available = new ArrayList<>(Arrays.stream(candidates).boxed().toList());
+    int count = changeAll ? candidates.length : 1;
+    if (changeAll) {
+      // Keep the old Bernoulli sampling draws, including when probability is exactly one.
+      for (int ignored : candidates) random.nextDouble();
+    }
+    var selected = new ArrayList<Integer>();
+    for (int index = 0; index < count; index++) {
+      Collections.swap(available, index, random.nextInt(index, available.size()));
+      selected.add(available.get(index));
+    }
+    for (Integer value : selected) {
+      // The boxed reference locates the value from the current lists, independently of the
+      // primitive implementation's maintained owner array and arraycopy boundaries.
+      for (var row : lists) row.remove(value);
+      int owner = random.nextInt(lists.size() + (allowUnassigned ? 1 : 0));
+      if (owner < lists.size()) {
+        var row = lists.get(owner);
+        row.add(random.nextInt(prefixes[owner], row.size() + 1), value);
+      }
+    }
+    return lists.stream()
+        .map(row -> row.stream().mapToInt(Integer::intValue).toArray())
+        .toArray(int[][]::new);
   }
 
   @Test
@@ -418,6 +559,7 @@ class GeneticAlgorithmListOperatorsTest {
     when(model.name()).thenReturn("Owner.values");
     when(model.initialLists())
         .thenAnswer(ignored -> Arrays.stream(lists).map(int[]::clone).toArray(int[][]::new));
+    when(model.initialSnapshot()).thenReturn(new GeneticAlgorithmListSnapshot(lists));
     when(model.allowsUnassignedValues()).thenReturn(optional);
     when(model.accepts(anyInt(), anyInt())).thenReturn(true);
     when(model.value(anyInt())).thenAnswer(invocation -> "v" + invocation.getArgument(0));

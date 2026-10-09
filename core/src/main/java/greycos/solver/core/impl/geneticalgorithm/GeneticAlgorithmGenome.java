@@ -14,15 +14,42 @@ import org.jspecify.annotations.Nullable;
 public final class GeneticAlgorithmGenome {
 
   private final @Nullable Object[] values;
-  private final int[][] lists;
+  private final GeneticAlgorithmListSnapshot lists;
 
   public GeneticAlgorithmGenome(@Nullable Object[] values) {
-    this(values, new int[0][]);
+    this(values, GeneticAlgorithmListSnapshot.EMPTY);
   }
 
   public GeneticAlgorithmGenome(@Nullable Object[] values, int[][] lists) {
-    this.values = Objects.requireNonNull(values).clone();
-    this.lists = copyLists(lists);
+    this(values, new GeneticAlgorithmListSnapshot(lists));
+  }
+
+  GeneticAlgorithmGenome(@Nullable Object[] values, GeneticAlgorithmListSnapshot lists) {
+    this(values, lists, true);
+  }
+
+  private GeneticAlgorithmGenome(
+      @Nullable Object[] values, GeneticAlgorithmListSnapshot lists, boolean copyValues) {
+    Objects.requireNonNull(values);
+    this.values = copyValues ? values.clone() : values;
+    this.lists = Objects.requireNonNull(lists);
+  }
+
+  GeneticAlgorithmGenome withBasicValues(@Nullable Object[] values) {
+    return new GeneticAlgorithmGenome(values, lists);
+  }
+
+  GeneticAlgorithmGenome withLists(int[][] lists) {
+    // The basic array is already private and immutable; only its referenced values may change.
+    return new GeneticAlgorithmGenome(values, new GeneticAlgorithmListSnapshot(lists), false);
+  }
+
+  GeneticAlgorithmListSnapshot listSnapshot() {
+    return lists;
+  }
+
+  int listFingerprint() {
+    return lists.fingerprint();
   }
 
   public int size() {
@@ -38,46 +65,38 @@ public final class GeneticAlgorithmGenome {
   }
 
   public int listCount() {
-    return lists.length;
+    return lists.ownerCount();
   }
 
   public int[] list(int owner) {
-    return lists[owner].clone();
+    return lists.copyList(owner);
   }
 
   public int[][] lists() {
-    return copyLists(lists);
-  }
-
-  private static int[][] copyLists(int[][] source) {
-    Objects.requireNonNull(source);
-    var copy = new int[source.length][];
-    for (var i = 0; i < source.length; i++) {
-      copy[i] = Objects.requireNonNull(source[i]).clone();
-    }
-    return copy;
+    return lists.copyLists();
   }
 
   @Override
   public boolean equals(@Nullable Object other) {
     return this == other
         || other instanceof GeneticAlgorithmGenome genome
+            && listFingerprint() == genome.listFingerprint()
             && Arrays.equals(values, genome.values)
-            && Arrays.deepEquals(lists, genome.lists);
+            && lists.equals(genome.lists);
   }
 
   @Override
   public int hashCode() {
-    // The phase compares genomes directly: planning values may themselves be mutable entities.
-    return lists.length == 0
+    // Basic values may be mutable entities. Only the primitive list component can be cached.
+    return lists.ownerCount() == 0
         ? Arrays.hashCode(values)
-        : 31 * Arrays.hashCode(values) + Arrays.deepHashCode(lists);
+        : 31 * Arrays.hashCode(values) + lists.fingerprint();
   }
 
   @Override
   public String toString() {
-    return lists.length == 0
+    return lists.ownerCount() == 0
         ? Arrays.toString(values)
-        : Arrays.toString(values) + "; lists=" + Arrays.deepToString(lists);
+        : Arrays.toString(values) + "; lists=" + lists;
   }
 }

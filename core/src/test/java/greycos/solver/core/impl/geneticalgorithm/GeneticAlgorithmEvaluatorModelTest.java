@@ -41,6 +41,38 @@ import org.junit.jupiter.api.Timeout;
 class GeneticAlgorithmEvaluatorModelTest {
 
   @Test
+  void encodedListsStayFrozenWhenCoordinatorAndDecodedCopiesChange() {
+    var factory = mixedFactory();
+    try (var donor = factory.createScoreDirectorBuilder().withLookUpEnabled(true).build();
+        var worker = factory.createScoreDirectorBuilder().withLookUpEnabled(true).build()) {
+      donor.setWorkingSolution(mixedProblem());
+      var source = new GeneticAlgorithmWorkspace<>(donor, donor.calculateScore());
+      var codec = new GeneticAlgorithmEvaluationCodec<>(donor, source);
+      worker.setWorkingSolution(donor.cloneWorkingSolution());
+      var target = new GeneticAlgorithmWorkspace<>(worker, worker.calculateScore());
+      var decoder = codec.createDecoder(worker, target);
+      var original = source.genome();
+      var encoded = codec.encode(original);
+      var changed = original.withLists(new int[][] {{0, 4}, {2, 1}, {3}});
+      assertThat(source.transition(changed).valid()).isTrue();
+      source.scored(donor.calculateScore());
+
+      original.lists()[0][0] = -1;
+      var firstDecoded = decoder.decode(encoded);
+      firstDecoded.list(0)[0] = -2;
+      firstDecoded.lists()[1] = new int[0];
+      firstDecoded.toArray()[0] = null;
+      var secondDecoded = decoder.decode(encoded);
+      assertThat(secondDecoded).isEqualTo(target.genome());
+      assertThat(secondDecoded.listSnapshot()).isEqualTo(original.listSnapshot());
+      assertThat(target.transition(secondDecoded).valid()).isTrue();
+      target.scored(worker.calculateScore());
+      assertMixedReplay(worker.getWorkingSolution(), target.score().raw());
+      assertFreshParity(factory, worker, target);
+    }
+  }
+
+  @Test
   void entityValuedBasicsRebaseAcrossDifferentEntityAndRangeOrders() {
     var input = TestdataMultiEntitySolution.generateUninitializedSolution(3, 3);
     for (int i = 0; i < 3; i++) {

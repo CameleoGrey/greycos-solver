@@ -26,6 +26,11 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
   private final InnerScoreDirector<Solution_, Score_> director;
   private final List<GeneticAlgorithmSlot<Solution_>> slots;
   private final @Nullable GeneticAlgorithmListModel<Solution_> listModel;
+  // Scratch belongs to this serial workspace; prepared changes retain only their final results.
+  private final int[] oldOwners;
+  private final int[] newOwners;
+  private final int[] oldIndexes;
+  private final int[] newIndexes;
   private GeneticAlgorithmGenome genome;
   private InnerScore<Score_> score;
   private boolean awaitingScore;
@@ -79,9 +84,15 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
     slots = List.copyOf(capturedSlots);
     listModel =
         solutionDescriptor.hasListVariable() ? new GeneticAlgorithmListModel<>(director) : null;
+    int listValueCount = listModel == null ? 0 : listModel.valueCount();
+    oldOwners = new int[listValueCount];
+    newOwners = new int[listValueCount];
+    oldIndexes = new int[listValueCount];
+    newIndexes = new int[listValueCount];
     genome =
         new GeneticAlgorithmGenome(
-            values.toArray(), listModel == null ? new int[0][] : listModel.initialLists());
+            values.toArray(),
+            listModel == null ? GeneticAlgorithmListSnapshot.EMPTY : listModel.initialSnapshot());
     score = initialScore;
   }
 
@@ -113,7 +124,10 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
       }
       values[i] = value;
     }
-    var lists = listModel == null ? new int[0][] : listModel.captureLists();
+    var lists =
+        listModel == null
+            ? GeneticAlgorithmListSnapshot.EMPTY
+            : new GeneticAlgorithmListSnapshot(listModel.captureLists());
     if (listModel != null && !listModel.isValid(lists)) {
       throw new IllegalStateException("The local improvement produced invalid list assignments.");
     }
@@ -154,7 +168,7 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
           "The genetic algorithm candidate assignment count (%d) differs from the workspace slot count (%d)."
               .formatted(candidate.size(), slots.size()));
     }
-    var candidateLists = candidate.lists();
+    var candidateLists = candidate.listSnapshot();
     requireListCount(candidateLists);
     // Validate the entire mixed proposal before notifying even its first basic assignment.
     if (listModel != null && !listModel.isValid(candidateLists)) {
@@ -197,7 +211,7 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
       throw new IllegalArgumentException(
           "The restored genetic algorithm genome has an incompatible slot count.");
     }
-    var previousLists = previous.lists();
+    var previousLists = previous.listSnapshot();
     requireListCount(previousLists);
     if (listModel != null && !listModel.isValid(previousLists)) {
       throw new IllegalArgumentException(
@@ -239,55 +253,56 @@ public final class GeneticAlgorithmWorkspace<Solution_, Score_ extends Score<Sco
     awaitingScore = false;
   }
 
-  private void requireListCount(int[][] lists) {
+  private void requireListCount(GeneticAlgorithmListSnapshot lists) {
     var expected = listModel == null ? 0 : listModel.ownerCount();
-    if (lists.length != expected) {
+    if (lists.ownerCount() != expected) {
       throw new IllegalArgumentException(
           "The genetic algorithm candidate list count (%d) differs from the workspace owner count (%d)."
-              .formatted(lists.length, expected));
+              .formatted(lists.ownerCount(), expected));
     }
   }
 
-  private PreparedListChanges prepareListChanges(int[][] targetLists) {
+  private PreparedListChanges prepareListChanges(GeneticAlgorithmListSnapshot targetLists) {
     if (listModel == null) {
       return new PreparedListChanges(List.of(), List.of(), List.of(), 0);
     }
     var currentLists = listModel.captureLists();
-    var oldOwners = new int[listModel.valueCount()];
-    var newOwners = new int[listModel.valueCount()];
-    var oldIndexes = new int[listModel.valueCount()];
-    var newIndexes = new int[listModel.valueCount()];
     Arrays.fill(oldOwners, -1);
     Arrays.fill(newOwners, -1);
+    Arrays.fill(oldIndexes, 0);
+    Arrays.fill(newIndexes, 0);
     var changes = new ArrayList<PreparedListChange>();
     for (var owner = 0; owner < currentLists.length; owner++) {
       var current = currentLists[owner];
-      var target = targetLists[owner];
+      var targetSize = targetLists.size(owner);
       for (var i = 0; i < current.length; i++) {
         oldOwners[current[i]] = owner;
         oldIndexes[current[i]] = i;
       }
-      for (var i = 0; i < target.length; i++) {
-        newOwners[target[i]] = owner;
-        newIndexes[target[i]] = i;
+      for (var i = 0; i < targetSize; i++) {
+        var value = targetLists.get(owner, i);
+        newOwners[value] = owner;
+        newIndexes[value] = i;
       }
       var from = 0;
-      var commonLength = Math.min(current.length, target.length);
-      while (from < commonLength && current[from] == target[from]) {
+      var commonLength = Math.min(current.length, targetSize);
+      while (from < commonLength && current[from] == targetLists.get(owner, from)) {
         from++;
       }
-      if (from == current.length && from == target.length) {
+      if (from == current.length && from == targetSize) {
         continue;
       }
       var oldEnd = current.length;
-      var newEnd = target.length;
-      while (oldEnd > from && newEnd > from && current[oldEnd - 1] == target[newEnd - 1]) {
+      var newEnd = targetSize;
+      while (oldEnd > from
+          && newEnd > from
+          && current[oldEnd - 1] == targetLists.get(owner, newEnd - 1)) {
         oldEnd--;
         newEnd--;
       }
       var replacement = new ArrayList<Object>(newEnd - from);
       for (var i = from; i < newEnd; i++) {
-        replacement.add(listModel.value(target[i]));
+        replacement.add(listModel.value(targetLists.get(owner, i)));
       }
       var entity = listModel.owner(owner);
       changes.add(

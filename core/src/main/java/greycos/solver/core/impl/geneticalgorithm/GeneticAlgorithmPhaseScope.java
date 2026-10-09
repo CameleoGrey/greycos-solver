@@ -41,6 +41,10 @@ public final class GeneticAlgorithmPhaseScope<Solution_> extends AbstractPhaseSc
     committedStepListeners.add(Objects.requireNonNull(listener));
   }
 
+  public boolean hasCommittedStepListeners() {
+    return !committedStepListeners.isEmpty();
+  }
+
   /**
    * Commits a completed attempt before publishing its monotonic work. A listener failure is a
    * postcommit failure: the attempt remains completed and every accounting listener is notified.

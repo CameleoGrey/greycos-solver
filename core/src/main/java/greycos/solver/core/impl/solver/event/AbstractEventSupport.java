@@ -43,6 +43,10 @@ public abstract class AbstractEventSupport<E extends EventListener> {
     }
   }
 
+  public boolean hasEventListeners() {
+    return !eventListenerList.isEmpty();
+  }
+
   protected Collection<E> getEventListeners() {
     return eventListenerList;
   }
