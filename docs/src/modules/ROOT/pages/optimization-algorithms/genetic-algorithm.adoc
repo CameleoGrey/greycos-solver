@@ -45,7 +45,31 @@ enabled, each completed nested probe consumes an additional move evaluation, wit
 GA step. The captured initial member does not consume an attempt. A score calculation is counted
 only when it actually happens, including probe evaluation, accepted-move commit and recovery.
 
-The corresponding Java phase configuration is:
+For a random starting solution, opt in to
+xref:optimization-algorithms/construction-heuristics.adoc#randomAssignment[random assignment construction]:
+
+[source,xml]
+----
+<constructionHeuristic>
+  <moveThreadCount>NONE</moveThreadCount>
+  <constructionHeuristicType>RANDOM_ASSIGNMENT</constructionHeuristicType>
+</constructionHeuristic>
+<geneticAlgorithm>
+  <termination>
+    <moveCountLimit>10000</moveCountLimit>
+  </termination>
+  <populationSize>128</populationSize>
+  <moveThreadCount>NONE</moveThreadCount>
+</geneticAlgorithm>
+----
+
+This construction phase produces one solution, replacing all movable input assignments while
+preserving pins and list prefixes. It can replace an initialized input with a worse-scoring solution.
+GA captures that solution as its first population member and performs its existing seeding for the
+remaining members. Population size, mutation, crossover and evaluator settings keep their existing meanings.
+The default construction heuristic is unchanged.
+
+The corresponding Java GA phase configuration is:
 
 [source,java]
 ----

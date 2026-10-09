@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.heuristic.selector.move.generic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
 import greycos.solver.core.config.score.trend.InitializingScoreTrendLevel;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyMoveSelector;
@@ -26,6 +28,17 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class RuinRecreateConstructionHeuristicPhaseBuilderTest {
+
+  @Test
+  void randomAssignmentCannotBeUsedForFilteredRepair() {
+    var config =
+        new ConstructionHeuristicPhaseConfig()
+            .withConstructionHeuristicType(ConstructionHeuristicType.RANDOM_ASSIGNMENT);
+    assertThatThrownBy(() -> new RuinRecreateConstructionHeuristicPhaseFactory<>(config))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("RANDOM_ASSIGNMENT")
+        .hasMessageContaining("ruin-and-recreate");
+  }
 
   @Test
   void buildSingleThreaded() {

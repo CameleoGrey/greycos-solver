@@ -2312,6 +2312,8 @@
       <xs:enumeration value="CHEAPEST_INSERTION"/>
             
       <xs:enumeration value="ALLOCATE_FROM_POOL"/>
+            
+      <xs:enumeration value="RANDOM_ASSIGNMENT"/>
           
     </xs:restriction>
       

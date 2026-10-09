@@ -86,7 +86,7 @@ public class ConstructionHeuristicDecider<Solution_> {
   }
 
   public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
-    // Overridable by a subclass.
+    forager.solvingError(solverScope, exception);
   }
 
   public void decideNextStep(

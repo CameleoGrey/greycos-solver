@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.constructionheuristic;
 
+import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -13,22 +14,26 @@ import greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlace
 import greycos.solver.core.config.constructionheuristic.placer.QueuedValuePlacerConfig;
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
+import greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner;
 import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.composite.CartesianProductMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
 import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhase.DefaultConstructionHeuristicPhaseBuilder;
 import greycos.solver.core.impl.constructionheuristic.decider.ConstructionHeuristicDecider;
 import greycos.solver.core.impl.constructionheuristic.decider.MultiThreadedConstructionHeuristicDecider;
 import greycos.solver.core.impl.constructionheuristic.decider.forager.ConstructionHeuristicForager;
 import greycos.solver.core.impl.constructionheuristic.decider.forager.ConstructionHeuristicForagerFactory;
+import greycos.solver.core.impl.constructionheuristic.decider.forager.RandomAssignmentConstructionHeuristicForager;
 import greycos.solver.core.impl.constructionheuristic.placer.EntityPlacer;
 import greycos.solver.core.impl.constructionheuristic.placer.EntityPlacerFactory;
 import greycos.solver.core.impl.constructionheuristic.placer.PooledEntityPlacerFactory;
 import greycos.solver.core.impl.constructionheuristic.placer.QueuedEntityPlacerFactory;
 import greycos.solver.core.impl.constructionheuristic.placer.QueuedValuePlacerFactory;
+import greycos.solver.core.impl.constructionheuristic.placer.RandomAssignmentEntityPlacer;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
@@ -92,6 +97,15 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
             // evaluation boundary. Construction uses its independently resolved profiles.
             .withNearbyDistanceMeterClass(null);
     var phaseConfigPolicy = phaseConfigPolicyBuilder.build();
+    if (constructionHeuristicType_ == ConstructionHeuristicType.RANDOM_ASSIGNMENT) {
+      validateRandomAssignmentConfiguration(moveThreadCount);
+      return createBuilder(
+          phaseConfigPolicy,
+          solverTermination,
+          phaseIndex,
+          lastInitializingPhase,
+          new RandomAssignmentEntityPlacer<>());
+    }
     var entityPlacerConfig_ =
         getValidEntityPlacerConfig()
             .orElseGet(
@@ -103,6 +117,45 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
     validateFinitePlacementSelectors(entityPlacer, phaseConfigPolicy);
     return createBuilder(
         phaseConfigPolicy, solverTermination, phaseIndex, lastInitializingPhase, entityPlacer);
+  }
+
+  private void validateRandomAssignmentConfiguration(Integer moveThreadCount) {
+    if (moveThreadCount != null) {
+      throw new IllegalArgumentException(
+          "RANDOM_ASSIGNMENT construction does not support moveThreadCount (%s). Set its moveThreadCount to NONE."
+              .formatted(moveThreadCount));
+    }
+    var conflicts = new LinkedHashMap<String, Object>();
+    if (phaseConfig.getEntityPlacerConfig() != null) {
+      conflicts.put("entityPlacerConfig", phaseConfig.getEntityPlacerConfig());
+    }
+    if (!ConfigUtils.isEmptyCollection(phaseConfig.getMoveSelectorConfigList())) {
+      conflicts.put("moveSelectorConfigList", phaseConfig.getMoveSelectorConfigList());
+    }
+    if (phaseConfig.getForagerConfig() != null) {
+      conflicts.put("foragerConfig", phaseConfig.getForagerConfig());
+    }
+    if (phaseConfig.getEntitySorterManner() != null
+        && phaseConfig.getEntitySorterManner() != EntitySorterManner.NONE) {
+      conflicts.put("entitySorterManner", phaseConfig.getEntitySorterManner());
+    }
+    if (phaseConfig.getValueSorterManner() != null
+        && phaseConfig.getValueSorterManner() != ValueSorterManner.NONE) {
+      conflicts.put("valueSorterManner", phaseConfig.getValueSorterManner());
+    }
+    if (Boolean.TRUE.equals(phaseConfig.getNearbySelectionAutoConfigurationEnabled())) {
+      conflicts.put(
+          "nearbySelectionAutoConfigurationEnabled",
+          phaseConfig.getNearbySelectionAutoConfigurationEnabled());
+    }
+    if (phaseConfig.getNearbySelectionSize() != null) {
+      conflicts.put("nearbySelectionSize", phaseConfig.getNearbySelectionSize());
+    }
+    if (!conflicts.isEmpty()) {
+      throw new IllegalArgumentException(
+          "RANDOM_ASSIGNMENT construction has incompatible settings (%s). Remove these settings; this construction heuristic samples one complete assignment directly."
+              .formatted(conflicts));
+    }
   }
 
   private void validateFinitePlacementSelectors(
@@ -296,6 +349,9 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
 
   protected ConstructionHeuristicForager<Solution_> buildForager(
       HeuristicConfigPolicy<Solution_> configPolicy) {
+    if (phaseConfig.getConstructionHeuristicType() == ConstructionHeuristicType.RANDOM_ASSIGNMENT) {
+      return new RandomAssignmentConstructionHeuristicForager<>();
+    }
     var foragerConfig_ =
         Objects.requireNonNullElseGet(
             phaseConfig.getForagerConfig(), ConstructionHeuristicForagerConfig::new);
@@ -334,6 +390,8 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
         }
         yield new PooledEntityPlacerConfig();
       }
+      case RANDOM_ASSIGNMENT ->
+          throw new IllegalStateException("RANDOM_ASSIGNMENT uses its complete-assignment placer.");
     };
   }
 

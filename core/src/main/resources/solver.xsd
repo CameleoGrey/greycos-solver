@@ -1070,6 +1070,7 @@
       <xs:enumeration value="ALLOCATE_TO_VALUE_FROM_QUEUE"/>
       <xs:enumeration value="CHEAPEST_INSERTION"/>
       <xs:enumeration value="ALLOCATE_FROM_POOL"/>
+      <xs:enumeration value="RANDOM_ASSIGNMENT"/>
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="entitySorterManner">

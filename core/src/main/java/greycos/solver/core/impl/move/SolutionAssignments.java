@@ -134,7 +134,7 @@ public final class SolutionAssignments<Solution_> {
         }
         List<Object> targetList = changeRecord.values();
         List<Object> currentList = variableDescriptor.getValue(entity);
-        if (currentList.equals(targetList)) {
+        if (sameElementsByIdentity(currentList, targetList)) {
           continue;
         }
         int fromIndex = variableDescriptor.getFirstUnpinnedIndex(entity);
@@ -153,7 +153,7 @@ public final class SolutionAssignments<Solution_> {
         if (fromIndex > 0) {
           List<Object> currentPinned = currentList.subList(0, fromIndex);
           List<Object> targetPinned = targetList.subList(0, fromIndex);
-          if (!currentPinned.equals(targetPinned)) {
+          if (!sameElementsByIdentity(currentPinned, targetPinned)) {
             throw new IllegalStateException(
                 "Pinned list segment differs for "
                     + variableDescriptor.getSimpleEntityAndVariableName()
@@ -185,6 +185,18 @@ public final class SolutionAssignments<Solution_> {
       }
     }
     return preparedListChanges;
+  }
+
+  private static boolean sameElementsByIdentity(List<?> first, List<?> second) {
+    if (first.size() != second.size()) {
+      return false;
+    }
+    for (int i = 0; i < first.size(); i++) {
+      if (first.get(i) != second.get(i)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private void applyListChanges(

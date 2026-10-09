@@ -288,6 +288,7 @@ public class DefaultConstructionHeuristicPhase<Solution_>
   @Override
   public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
     super.solvingError(solverScope, exception);
+    moveRepository.getPlacer().solvingError(solverScope, exception);
     decider.solvingError(solverScope, exception);
   }
 

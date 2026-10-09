@@ -19,6 +19,56 @@ This applies when their assignment moves are combined into a composite move.
 Time limits and external termination requests are checked even when the selector keeps returning non-doable moves.
 
 
+[#randomAssignment]
+== Random assignment
+
+`RANDOM_ASSIGNMENT` constructs one random solution in one construction step.
+It supports basic planning variables, a planning list variable, and models combining both.
+It samples assignments without comparing their scores to choose a better candidate.
+The normal score director updates shadow variables and calculates the resulting score.
+A solution that violates hard constraints is accepted; random construction does not establish feasibility.
+
+For each movable basic variable, the phase samples a value from that entity's finite, countable range.
+Null is a possible choice when the variable allows unassigned values.
+For lists, the phase preserves pinned owners and pinned prefixes, shuffles movable values,
+and assigns each value to a compatible movable owner in random order.
+Leaving a value unassigned is also a choice when the list variable allows it.
+Every required list value occurs exactly once.
+
+The phase replaces *all movable assignments*, including assignments in a partially or fully initialized input.
+It preserves pinned assignments and list prefixes.
+The random solution replaces the construction starting solution even when its score is worse.
+Use this type when a new random starting point is desired; use another construction heuristic to retain existing initialized assignments.
+
+[source,xml]
+----
+<constructionHeuristic>
+  <moveThreadCount>NONE</moveThreadCount>
+  <constructionHeuristicType>RANDOM_ASSIGNMENT</constructionHeuristicType>
+</constructionHeuristic>
+----
+
+The equivalent Java configuration is:
+
+[source,java]
+----
+new ConstructionHeuristicPhaseConfig()
+        .withConstructionHeuristicType(ConstructionHeuristicType.RANDOM_ASSIGNMENT)
+        .withMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_NONE);
+----
+
+Move workers must be disabled for this type, including when the solver enables them globally.
+The phase uses the solver's seeded random source; the same input and seed reproduce its assignments.
+This type rejects custom placers, move selectors, foragers, non-`NONE` sorting and nearby selection settings.
+It cannot be used as nested ruin-and-recreate repair because it replaces all movable assignments.
+A structurally invalid sample fails construction without retrying; a hard-constraint violation alone is not a structural failure.
+Normal construction termination and phase-boundary behavior still apply.
+
+To use the result as a GA starting point, follow this phase with
+xref:optimization-algorithms/genetic-algorithm.adoc#geneticAlgorithmConfiguration[a genetic algorithm phase].
+Random assignment constructs only the first solution; GA keeps its existing population-seeding procedure.
+
+
 [#firstFit]
 == First fit
 

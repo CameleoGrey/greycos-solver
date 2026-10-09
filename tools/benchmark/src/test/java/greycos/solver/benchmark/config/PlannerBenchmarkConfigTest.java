@@ -22,6 +22,7 @@ import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.alns.AlnsRepairOperatorConfig;
 import greycos.solver.core.config.alns.AlnsRepairOperatorType;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmPhaseConfig;
 import greycos.solver.core.config.geneticalgorithm.GeneticAlgorithmStepLoggingMode;
 import greycos.solver.core.config.heuristic.selector.move.generic.RuinRecreateMoveSelectorConfig;
@@ -41,6 +42,38 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.xml.sax.SAXParseException;
 
 class PlannerBenchmarkConfigTest {
+
+  @Test
+  void randomAssignmentConstructionValidatesAndRoundTrips() {
+    var xml =
+        """
+        <plannerBenchmark xmlns="%s">
+          <solverBenchmark>
+            <name>Random construction</name>
+            <solver>
+              <constructionHeuristic>
+                <constructionHeuristicType>RANDOM_ASSIGNMENT</constructionHeuristicType>
+              </constructionHeuristic>
+              <geneticAlgorithm><populationSize>4</populationSize></geneticAlgorithm>
+            </solver>
+          </solverBenchmark>
+        </plannerBenchmark>
+        """
+            .formatted(PlannerBenchmarkConfig.XML_NAMESPACE);
+    var io = new PlannerBenchmarkConfigIO();
+    var config = io.read(new StringReader(xml));
+    var phases =
+        config.getSolverBenchmarkConfigList().getFirst().getSolverConfig().getPhaseConfigList();
+    assertThat(
+            ((ConstructionHeuristicPhaseConfig) phases.getFirst()).getConstructionHeuristicType())
+        .isEqualTo(ConstructionHeuristicType.RANDOM_ASSIGNMENT);
+    assertThat(phases.getLast()).isInstanceOf(GeneticAlgorithmPhaseConfig.class);
+    var writer = new StringWriter();
+    io.write(config, writer);
+    assertThat(io.read(new StringReader(writer.toString())))
+        .usingRecursiveComparison()
+        .isEqualTo(config);
+  }
 
   private static final String TEST_PLANNER_BENCHMARK_CONFIG_WITH_NAMESPACE =
       "testBenchmarkConfigWithNamespace.xml";

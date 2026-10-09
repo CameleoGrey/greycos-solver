@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.heuristic.selector.move.generic;
 
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
 import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhaseFactory;
 import greycos.solver.core.impl.constructionheuristic.placer.EntityPlacer;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
@@ -13,6 +14,10 @@ final class RuinRecreateConstructionHeuristicPhaseFactory<Solution_>
 
   RuinRecreateConstructionHeuristicPhaseFactory(ConstructionHeuristicPhaseConfig phaseConfig) {
     super(phaseConfig);
+    if (phaseConfig.getConstructionHeuristicType() == ConstructionHeuristicType.RANDOM_ASSIGNMENT) {
+      throw new IllegalArgumentException(
+          "RANDOM_ASSIGNMENT construction randomizes all movable assignments and cannot be used as ruin-and-recreate repair. Use it as a separate constructionHeuristic phase.");
+    }
   }
 
   @Override
