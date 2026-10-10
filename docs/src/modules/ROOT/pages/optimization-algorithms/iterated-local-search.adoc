@@ -425,9 +425,29 @@ They use the existing solver/island tags and `phase.index`; episodes do not crea
 Island final samples retain the counters even when an adopted migrant's episode commits no move.
 
 Enable `DEBUG` on `greycos.solver.core.impl.iteratedlocalsearch.DefaultIteratedLocalSearchPhase`
-for episode start/end and iteration outcome messages. These include episode/iteration indices,
-strength, completion reason, candidate/incumbent/solver-best scores, attempts, committed inner
-moves, and elapsed phase time as applicable. `INFO` reports phase startup and completion.
+for one `ILS step` message per committed improvement or perturbation move, as well as episode
+start/end and iteration outcome messages. Step messages report the phase-wide step index, solver
+elapsed time, score, solver best score, accepted/selected move counts, and the picked move as it
+appeared before execution. They also identify the phase, move origin (`LOCAL_SEARCH` or
+`PERTURBATION`), current strength, and island when applicable. A `new best score` marker means
+the move strictly improved the owning solver's historical best, including improvements found
+during perturbation. Restoring the incumbent and adopting a migrant do not create step messages.
+
+The nested `localSearch.stepLoggingMode` controls step messages for both move origins.
+Omitted configuration or `ALL` logs every committed step. To log only strict solver-best
+improvements, call
+`ilsConfig.getLocalSearchConfig().withStepLoggingMode(LocalSearchStepLoggingMode.BEST_SCORE_IMPROVED)`
+in Java (`LocalSearchStepLoggingMode` is in `greycos.solver.core.config.localsearch`), or add
+`<stepLoggingMode>BEST_SCORE_IMPROVED</stepLoggingMode>` inside the phase's nested `<localSearch>`
+element. Ties and episode-local improvements below the solver best are omitted. This setting
+requires DEBUG and filters only step messages; episode/iteration summaries and TRACE diagnostics
+remain available.
+
+Episode and iteration messages include their indices, strength, completion reason,
+candidate/incumbent/solver-best scores, attempts, committed inner moves, and elapsed time as
+applicable. `INFO` reports phase startup and completion; the completion summary includes solver
+elapsed time, environment mode, best score, move evaluation speed, committed step total,
+completion reason, iteration count, and episode count.
 
 The implementation's `DefaultIteratedLocalSearchPhase.getDiagnostics()` exposes a final diagnostic
 record for internal tests and benchmark tooling. It is in the `impl` package, not a new public solver

@@ -17,6 +17,7 @@ public final class IteratedLocalSearchStepScope<Solution_> extends AbstractStepS
   private final InnerScore<?> startingScore;
   private final InnerScore<?> startingBestScore;
   private Move<Solution_> move;
+  private String stepString;
   private long selectedMoveCount;
   private long acceptedMoveCount;
 
@@ -62,6 +63,14 @@ public final class IteratedLocalSearchStepScope<Solution_> extends AbstractStepS
 
   public void setMove(Move<Solution_> move) {
     this.move = move;
+  }
+
+  public String getStepString() {
+    return stepString;
+  }
+
+  public void setStepString(String stepString) {
+    this.stepString = stepString;
   }
 
   public long getSelectedMoveCount() {

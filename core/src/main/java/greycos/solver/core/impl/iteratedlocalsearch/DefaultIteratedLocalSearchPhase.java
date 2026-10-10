@@ -8,6 +8,7 @@ import java.util.function.IntFunction;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchStepLoggingMode;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptLedger;
@@ -74,6 +75,7 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
   }
 
   private final IteratedLocalSearchPhaseConfig config;
+  private final LocalSearchStepLoggingMode stepLoggingMode;
   private final LocalSearchEpisodeRunner<Solution_> episodes;
   private final MoveSelector<Solution_> perturbation;
   private final BestSolutionRecaller<Solution_> bestSolutionRecaller;
@@ -86,6 +88,9 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
   private DefaultIteratedLocalSearchPhase(Builder<Solution_> builder) {
     super(builder);
     config = builder.config;
+    var configuredLoggingMode = config.getLocalSearchConfig().getStepLoggingMode();
+    stepLoggingMode =
+        configuredLoggingMode == null ? LocalSearchStepLoggingMode.ALL : configuredLoggingMode;
     episodes = builder.episodes;
     perturbation = builder.perturbation;
     bestSolutionRecaller = builder.bestSolutionRecaller;
@@ -301,13 +306,18 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
           scope.endingNow();
           diagnostics = diagnostics(scope);
           logger.info(
-              "{}Iterated Local Search phase ({}) ended: {}, iterations ({}), episodes ({}), best score ({}).",
+              "{}Iterated Local Search phase ({}) ended: time spent ({}), environment mode ({}), best score ({}),"
+                  + " move evaluation speed ({}/sec), step total ({}), completion reason ({}), iterations ({}), episodes ({}).",
               logIndentation,
               phaseIndex,
+              scope.calculateSolverTimeMillisSpentUpToNow(),
+              environmentMode.name(),
+              logScore(scope.getBestScore()),
+              scope.getPhaseMoveEvaluationSpeed(),
+              scope.getNextStepIndex(),
               scope.completionReason,
               scope.completedIterations,
-              scope.episodes,
-              scope.getBestScore());
+              scope.episodes);
         } catch (RuntimeException | Error thrown) {
           cleanupFailure = append(cleanupFailure, thrown);
         }
@@ -410,7 +420,7 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
         "{}  ILS episode ({}) starts at score ({}), strength ({}).",
         logIndentation,
         scope.episodes,
-        startingScore,
+        startingScore.raw(),
         scope.strength);
     long discardedBefore = episodes.getDiscardedSelectionCount();
     var result =
@@ -444,6 +454,11 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
               }
 
               @Override
+              public void beforeMoveCommitted(LocalSearchStepScope<Solution_> inner) {
+                captureStepString(outerStep, inner.getStep(), inner.getScore());
+              }
+
+              @Override
               public void moveCommitted(LocalSearchStepScope<Solution_> inner) {
                 outerStep.setMove(inner.getStep());
                 outerStep.setScore(inner.getScore());
@@ -470,7 +485,7 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
         scope.episodes,
         result.outcome(),
         result.completionReason(),
-        result.bestScore(),
+        result.bestScore().raw(),
         result.attempts(),
         result.committedSteps(),
         result.elapsedMillis());
@@ -534,6 +549,7 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
                 if (isTerminated(scope)) return ShakeOutcome.INTERRUPTED;
                 if (scope.getSolverScope().hasPendingMove()) return ShakeOutcome.ADOPTION;
                 if (!episodes.cancelAndQuiesce()) return ShakeOutcome.INTERRUPTED;
+                captureStepString(step, step.getMove(), step.getScore());
                 scope.getScoreDirector().executeMove(step.getMove());
                 finishStep(step);
                 committed = true;
@@ -700,6 +716,54 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
     metrics.record(step);
     SolverMetricSamples.publishIslandStep(
         step.getPhaseScope().getSolverScope(), step, episodes.getUncreditedCalculationCount());
+    logStep(step);
+  }
+
+  private void captureStepString(
+      IteratedLocalSearchStepScope<Solution_> step, Move<Solution_> move, InnerScore<?> score) {
+    if (logger.isDebugEnabled()
+        && (stepLoggingMode == LocalSearchStepLoggingMode.ALL
+            || compare(score, step.getPhaseScope().getBestScore()) > 0)) {
+      // Move descriptions can read planning values; capture them before execution.
+      // The recaller confirms strict solver-best improvement before the step is logged.
+      step.setStepString(move.toString());
+    }
+  }
+
+  private void logStep(IteratedLocalSearchStepScope<Solution_> step) {
+    if (!logger.isDebugEnabled()
+        || (stepLoggingMode == LocalSearchStepLoggingMode.BEST_SCORE_IMPROVED
+            && !step.getBestScoreImproved())) {
+      return;
+    }
+    var scope = step.getPhaseScope();
+    var islandSuffix = "";
+    for (var tag : scope.getSolverScope().getMonitoringTags()) {
+      if (tag.getKey().equals("island.id") && !tag.getValue().equals("root")) {
+        islandSuffix = ", island (" + tag.getValue() + ")";
+        break;
+      }
+    }
+    logger.debug(
+        "{}    ILS step ({}), time spent ({}), score ({}), {} best score ({}),"
+            + " accepted/selected move count ({}/{}), picked move ({}), phase ({}), origin ({}), strength ({}){}.",
+        logIndentation,
+        step.getStepIndex(),
+        scope.calculateSolverTimeMillisSpentUpToNow(),
+        step.getScore().raw(),
+        step.getBestScoreImproved() ? "new" : "   ",
+        scope.getBestScore().raw(),
+        step.getAcceptedMoveCount(),
+        step.getSelectedMoveCount(),
+        step.getStepString(),
+        phaseIndex,
+        step.getOrigin(),
+        scope.strength,
+        islandSuffix);
+  }
+
+  private static Object logScore(InnerScore<?> score) {
+    return score == null ? "unavailable" : score.raw();
   }
 
   private void restore(
@@ -834,9 +898,9 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
         scope.completedIterations,
         outcome,
         scope.strength,
-        candidate,
-        incumbent,
-        scope.getBestScore(),
+        logScore(candidate),
+        incumbent.raw(),
+        scope.getBestScore().raw(),
         scope.perturbationAttempts,
         scope.episodeAttempts,
         scope.calculatePhaseTimeMillisSpentUpToNow());

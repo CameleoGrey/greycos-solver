@@ -69,6 +69,9 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
 
     void decisionStarted(LocalSearchStepScope<Solution_> step);
 
+    /** Called after selection, immediately before executing the committed move. */
+    default void beforeMoveCommitted(LocalSearchStepScope<Solution_> step) {}
+
     void moveCommitted(LocalSearchStepScope<Solution_> step);
 
     void decisionAborted(LocalSearchStepScope<Solution_> step);
@@ -224,6 +227,7 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
                 step.getNoStepReason() == null ? "NO_SELECTED_MOVE" : step.getNoStepReason().name();
             break;
           }
+          callbacks.beforeMoveCommitted(step);
           scope.getScoreDirector().executeMove(step.getStep());
           scope.getSolutionDescriptor().setScore(scope.getWorkingSolution(), step.getScore().raw());
           if (!step.getScore().isFullyAssigned() || step.getScore().isStructurallyFlawed()) {

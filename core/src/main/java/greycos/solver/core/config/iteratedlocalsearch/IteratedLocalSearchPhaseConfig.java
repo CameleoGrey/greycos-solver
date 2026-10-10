@@ -62,7 +62,10 @@ public final class IteratedLocalSearchPhaseConfig
     this.moveThreadCount = moveThreadCount;
   }
 
-  /** Required episode configuration; its algorithm defaults are ordinary local search defaults. */
+  /**
+   * Required episode configuration; its algorithm defaults are ordinary local search defaults. Its
+   * step logging mode applies to all committed phase steps, including perturbation moves.
+   */
   public @Nullable LocalSearchPhaseConfig getLocalSearchConfig() {
     return localSearchConfig;
   }

@@ -14,6 +14,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSele
 import greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchStepLoggingMode;
 import greycos.solver.core.config.localsearch.LocalSearchType;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.solver.SolverConfig;
@@ -60,6 +61,7 @@ class IteratedLocalSearchPhaseConfigTest {
             "<iteratedLocalSearch>",
             "<perturbation>",
             "<unionMoveSelector>",
+            "<stepLoggingMode>BEST_SCORE_IMPROVED</stepLoggingMode>",
             "<perturbationStrengths>1 2 4 8</perturbationStrengths>");
     assertThat(io.read(new StringReader(writer.toString())))
         .usingRecursiveComparison()
@@ -72,6 +74,8 @@ class IteratedLocalSearchPhaseConfigTest {
     var phase = (IteratedLocalSearchPhaseConfig) config.getPhaseConfigList().getFirst();
     assertThat(phase.getLocalSearchConfig().getLocalSearchType())
         .isEqualTo(LocalSearchType.LATE_ACCEPTANCE);
+    assertThat(phase.getLocalSearchConfig().getStepLoggingMode())
+        .isEqualTo(LocalSearchStepLoggingMode.BEST_SCORE_IMPROVED);
     assertThat(phase.getLocalSearchConfig().getTerminationConfig().getStepCountLimit())
         .isEqualTo(500);
     assertThat(phase.getTerminationConfig().getSpentLimit()).isEqualTo(Duration.ofSeconds(60));
@@ -100,6 +104,7 @@ class IteratedLocalSearchPhaseConfigTest {
     original.getPerturbationStrengths().set(0, 7);
     original.getLocalSearchConfig().getMoveSelectorConfig().setSelectedCountLimit(999L);
     original.getLocalSearchConfig().getTerminationConfig().setStepCountLimit(999);
+    original.getLocalSearchConfig().setStepLoggingMode(LocalSearchStepLoggingMode.ALL);
     original.getTerminationConfig().setSpentLimit(Duration.ofDays(1));
     var originalUnion = (UnionMoveSelectorConfig) original.getPerturbationMoveSelectorConfig();
     originalUnion.getMoveSelectorList().getFirst().setSelectedCountLimit(999L);
@@ -108,6 +113,8 @@ class IteratedLocalSearchPhaseConfigTest {
         .isNull();
     assertThat(copy.getLocalSearchConfig().getTerminationConfig().getStepCountLimit())
         .isEqualTo(500);
+    assertThat(copy.getLocalSearchConfig().getStepLoggingMode())
+        .isEqualTo(LocalSearchStepLoggingMode.BEST_SCORE_IMPROVED);
     assertThat(copy.getTerminationConfig().getSpentLimit()).isEqualTo(Duration.ofSeconds(60));
     assertThat(
             ((UnionMoveSelectorConfig) copy.getPerturbationMoveSelectorConfig())
@@ -130,6 +137,8 @@ class IteratedLocalSearchPhaseConfigTest {
     assertThat(child.getPerturbationStrengths()).containsExactly(3, 6);
     assertThat(child.getLocalSearchConfig().getLocalSearchType())
         .isEqualTo(LocalSearchType.HILL_CLIMBING);
+    assertThat(child.getLocalSearchConfig().getStepLoggingMode())
+        .isEqualTo(LocalSearchStepLoggingMode.BEST_SCORE_IMPROVED);
     assertThat(child.getEpisodeCandidateAttemptLimit()).isEqualTo(10_000L);
     assertThat(child.getIterationCountLimit()).isEqualTo(12L);
     child.getLocalSearchConfig().getMoveSelectorConfig().setSelectedCountLimit(5L);
@@ -158,6 +167,7 @@ class IteratedLocalSearchPhaseConfigTest {
         .withLocalSearch(
             new LocalSearchPhaseConfig()
                 .withLocalSearchType(LocalSearchType.LATE_ACCEPTANCE)
+                .withStepLoggingMode(LocalSearchStepLoggingMode.BEST_SCORE_IMPROVED)
                 .withMoveSelectorConfig(new ChangeMoveSelectorConfig())
                 .withTerminationConfig(new TerminationConfig().withStepCountLimit(500)))
         .withPerturbationMoveSelectorConfig(
@@ -179,6 +189,7 @@ class IteratedLocalSearchPhaseConfigTest {
             <localSearch>
               <termination><stepCountLimit>500</stepCountLimit></termination>
               <localSearchType>LATE_ACCEPTANCE</localSearchType>
+              <stepLoggingMode>BEST_SCORE_IMPROVED</stepLoggingMode>
             </localSearch>
             <perturbation><unionMoveSelector><changeMoveSelector/><swapMoveSelector/></unionMoveSelector></perturbation>
             <perturbationStrengths>1 2 4 8</perturbationStrengths>
