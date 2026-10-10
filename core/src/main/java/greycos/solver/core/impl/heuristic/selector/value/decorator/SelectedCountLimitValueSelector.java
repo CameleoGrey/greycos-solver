@@ -6,6 +6,7 @@ import java.util.Objects;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
@@ -89,6 +90,12 @@ public final class SelectedCountLimitValueSelector<Solution_>
     public SelectedCountLimitValueIterator(Iterator<Object> childValueIterator) {
       this.childValueIterator = childValueIterator;
       selectedSize = 0L;
+    }
+
+    @Override
+    public boolean isKnownExhausted() {
+      return selectedSize >= selectedCountLimit
+          || KnownExhaustionIterator.isExhausted(childValueIterator);
     }
 
     @Override

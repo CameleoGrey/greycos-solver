@@ -260,6 +260,15 @@ public class SolverScope<Solution_> {
     return pendingMove.getAndSet(null);
   }
 
+  /** Discards assignment snapshots and cached migrant scores from a previous problem revision. */
+  public void clearPendingMove() {
+    pendingMove.set(null);
+  }
+
+  public boolean hasPendingMove() {
+    return pendingMove.get() != null;
+  }
+
   public Tags getMonitoringTags() {
     return monitoringTags;
   }

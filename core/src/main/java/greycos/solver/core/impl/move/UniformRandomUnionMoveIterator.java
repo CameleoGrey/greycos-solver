@@ -8,6 +8,7 @@ import java.util.NoSuchElementException;
 import java.util.function.BiFunction;
 import java.util.random.RandomGenerator;
 
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.NullMarked;
@@ -30,6 +31,9 @@ public final class UniformRandomUnionMoveIterator<Solution_> implements Iterator
       RandomGenerator workingRandom,
       List<Source_> sourceList,
       BiFunction<Source_, RandomGenerator, Iterator<Move<Solution_>>> extractorFunction) {
+    if (SelectionAttemptContext.isActive()) {
+      return new BudgetedUnionMoveIterator<>(workingRandom, sourceList, extractorFunction, null);
+    }
     var result = new ArrayList<Iterator<Move<Solution_>>>(sourceList.size());
     for (var i = 0; i < sourceList.size(); i++) { // No iterator created on hot path.
       var iterator = extractorFunction.apply(sourceList.get(i), workingRandom);

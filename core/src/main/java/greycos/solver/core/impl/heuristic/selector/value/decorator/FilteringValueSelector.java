@@ -8,6 +8,8 @@ import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
@@ -124,6 +126,12 @@ public class FilteringValueSelector<Solution_> extends AbstractDemandEnabledSele
     }
 
     @Override
+    public boolean isKnownExhausted() {
+      return super.isKnownExhausted()
+          || (!upcomingCreated && KnownExhaustionIterator.isExhausted(childValueIterator));
+    }
+
+    @Override
     protected Object createUpcomingSelection() {
       Object next;
       long attemptsBeforeBailOut = bailOutSize;
@@ -143,8 +151,11 @@ public class FilteringValueSelector<Solution_> extends AbstractDemandEnabledSele
           attemptsBeforeBailOut--;
         }
         next = childValueIterator.next();
-      } while (!selectionFilter.accept(scoreDirector, next));
-      return next;
+        if (selectionFilter.accept(scoreDirector, next)) {
+          return next;
+        }
+        SelectionAttemptContext.failedSelection();
+      } while (true);
     }
   }
 

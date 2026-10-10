@@ -3,6 +3,7 @@ package greycos.solver.core.impl.heuristic.selector.move.decorator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
@@ -64,6 +65,12 @@ public class SelectedCountLimitMoveSelector<Solution_> extends AbstractMoveSelec
     public SelectedCountLimitMoveIterator(Iterator<Move<Solution_>> childMoveIterator) {
       this.childMoveIterator = childMoveIterator;
       selectedSize = 0L;
+    }
+
+    @Override
+    public boolean isKnownExhausted() {
+      return selectedSize >= selectedCountLimit
+          || KnownExhaustionIterator.isExhausted(childMoveIterator);
     }
 
     @Override

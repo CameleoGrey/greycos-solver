@@ -5,6 +5,7 @@ import java.util.List;
 import greycos.solver.core.api.solver.change.ProblemChange;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.move.SolutionAssignmentMove;
 import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
@@ -166,11 +167,12 @@ final class IslandSolver<Solution_> extends AbstractSolver<Solution_>
     // A migration queued at the final step still targets the old entity instances.
     // Rebase its captured target assignments onto the replacement working clone.
     if (pending != null
-        && pending.move() instanceof SolutionSyncMove<Solution_> syncMove
+        && (pending.move() instanceof SolutionSyncMove<Solution_>
+            || pending.move() instanceof SolutionAssignmentMove<Solution_>)
         && pending.score() != null
         && improvesBestScore(pending.score(), solverScope.getBestScore())) {
       solverScope.setPendingMoveIfBetter(
-          syncMove.rebase(solverScope.getScoreDirector()),
+          pending.move().rebase(solverScope.getScoreDirector().getMoveDirector()),
           pending.score(),
           pending.requiresReset());
     }

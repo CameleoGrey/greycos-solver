@@ -5,9 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.random.DefaultRandomSource;
@@ -18,6 +20,84 @@ import org.junit.jupiter.api.Timeout;
 
 @Timeout(15)
 class SolverWorkerRegistryTest {
+
+  @Test
+  void noDeferredOwnersDoesNotRequireLegitimateSiblingWorkersToStop() throws Exception {
+    var registry = new SolverWorkerRegistry();
+    var executor = Executors.newSingleThreadExecutor();
+    var entered = new CountDownLatch(1);
+    var release = new CountDownLatch(1);
+    registry.registerExecutor(executor, "active sibling worker");
+    try {
+      executor.execute(
+          () -> {
+            entered.countDown();
+            awaitUninterruptibly(release);
+          });
+      assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+      assertThatCode(registry::runDeferredCleanup).doesNotThrowAnyException();
+      assertThatThrownBy(registry::assertNoActiveWorkers)
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("active sibling worker");
+    } finally {
+      release.countDown();
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+    }
+  }
+
+  @Test
+  void deferredOwnersRunInRegistrationOrderOnceAndNeverWhileAWorkerIsActive() throws Exception {
+    var registry = new SolverWorkerRegistry();
+    var executor = Executors.newSingleThreadExecutor();
+    var entered = new CountDownLatch(1);
+    var release = new CountDownLatch(1);
+    var calls = new ArrayList<String>();
+    var firstOwner = new Object();
+    registry.registerExecutor(executor, "deferred cleanup worker");
+    registry.deferCleanup(firstOwner, () -> calls.add("first"));
+    registry.deferCleanup(firstOwner, () -> calls.add("duplicate"));
+    registry.deferCleanup(new Object(), () -> calls.add("second"));
+    try {
+      executor.execute(
+          () -> {
+            entered.countDown();
+            awaitUninterruptibly(release);
+          });
+      assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+      executor.shutdownNow();
+      assertThatThrownBy(registry::runDeferredCleanup).isInstanceOf(IllegalStateException.class);
+      assertThat(calls).isEmpty();
+    } finally {
+      release.countDown();
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+    }
+    registry.runDeferredCleanup();
+    registry.runDeferredCleanup();
+    assertThat(calls).containsExactly("first", "second");
+  }
+
+  @Test
+  void deferredCleanupFailurePreservesItsCauseAndRetriesOnlyTheUnfinishedOwner() {
+    var registry = new SolverWorkerRegistry();
+    var calls = new ArrayList<String>();
+    var fail = new AtomicBoolean(true);
+    var original = new IllegalStateException("old owner cleanup failed");
+    registry.deferCleanup(
+        new Object(),
+        () -> {
+          calls.add("retryable");
+          if (fail.get()) throw original;
+        });
+    registry.deferCleanup(new Object(), () -> calls.add("complete"));
+    assertThatThrownBy(registry::runDeferredCleanup).isSameAs(original);
+    assertThat(calls).containsExactly("retryable", "complete");
+    fail.set(false);
+    registry.runDeferredCleanup();
+    registry.runDeferredCleanup();
+    assertThat(calls).containsExactly("retryable", "complete", "retryable");
+  }
 
   @Test
   @SuppressWarnings("unchecked")

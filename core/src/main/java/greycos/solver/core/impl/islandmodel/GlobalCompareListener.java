@@ -1,7 +1,10 @@
 package greycos.solver.core.impl.islandmodel;
 
 import greycos.solver.core.impl.alns.AlnsStepScope;
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.move.SolutionAssignmentMove;
+import greycos.solver.core.impl.move.SolutionAssignments;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -40,7 +43,9 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
       return;
     }
 
-    if (!(stepScope instanceof LocalSearchStepScope) && !(stepScope instanceof AlnsStepScope)) {
+    if (!(stepScope instanceof LocalSearchStepScope)
+        && !(stepScope instanceof AlnsStepScope)
+        && !(stepScope instanceof IteratedLocalSearchStepScope)) {
       return;
     }
 
@@ -76,7 +81,13 @@ public class GlobalCompareListener<Solution_> extends PhaseLifecycleListenerAdap
           globalInnerScore.raw(),
           currentInnerScore.raw());
 
-      var syncMove = SolutionSyncMove.createMove(stepScope.getScoreDirector(), globalBest);
+      var director = stepScope.getScoreDirector();
+      var syncMove =
+          stepScope instanceof IteratedLocalSearchStepScope
+              ? new SolutionAssignmentMove<>(
+                  SolutionAssignments.captureComplete(director.getSolutionDescriptor(), globalBest)
+                      .rebase(director))
+              : SolutionSyncMove.createMove(director, globalBest);
       var solverScope = stepScope.getPhaseScope().getSolverScope();
       solverScope.setPendingMoveIfBetter(syncMove, globalInnerScore, true);
     }

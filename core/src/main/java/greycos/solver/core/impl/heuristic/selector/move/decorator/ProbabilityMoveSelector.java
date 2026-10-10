@@ -5,6 +5,8 @@ import java.util.NavigableMap;
 import java.util.TreeMap;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleListener;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
@@ -64,15 +66,24 @@ public class ProbabilityMoveSelector<Solution_> extends AbstractMoveSelector<Sol
 
   @Override
   public void constructCache(SolverScope<Solution_> solverScope) {
-    cachedMoveMap = new TreeMap<>();
+    var completeMoveMap = new TreeMap<Double, Move<Solution_>>();
     ScoreDirector<Solution_> scoreDirector = solverScope.getScoreDirector();
     double probabilityWeightOffset = 0L;
-    for (Move<Solution_> entity : childMoveSelector) {
+    boolean setup = SelectionAttemptContext.isSetup();
+    var iterator = childMoveSelector.iterator();
+    while (setup ? !KnownExhaustionIterator.isExhausted(iterator) : iterator.hasNext()) {
+      if (setup) {
+        SelectionAttemptContext.beforeSelection();
+        if (!iterator.hasNext()) break;
+      }
+      Move<Solution_> entity = iterator.next();
       double probabilityWeight =
           probabilityWeightFactory.createProbabilityWeight(scoreDirector, entity);
-      cachedMoveMap.put(probabilityWeightOffset, entity);
+      completeMoveMap.put(probabilityWeightOffset, entity);
       probabilityWeightOffset += probabilityWeight;
+      if (setup) SelectionAttemptContext.recordSetupProposal();
     }
+    cachedMoveMap = completeMoveMap;
     probabilityWeightTotal = probabilityWeightOffset;
   }
 

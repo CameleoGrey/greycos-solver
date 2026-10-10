@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.localsearch.decider.gls;
 
 import java.math.BigDecimal;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
@@ -8,6 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 
 import greycos.solver.core.api.localsearch.GuidedLocalSearchFeatureProvider;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition;
@@ -16,6 +18,7 @@ import greycos.solver.core.config.localsearch.GuidedLocalSearchLevelScaleConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchSearchMode;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.heuristic.move.AbstractSelectorBasedMove;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttempt;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationPipeline;
 import greycos.solver.core.impl.localsearch.decider.LocalSearchPhaseDecider;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
@@ -104,6 +107,93 @@ public final class GuidedLocalSearchDecider<Solution_>
   private long recoveryMoves;
   private long featureResetVersion;
   private int nextMoveIndex;
+  private boolean externalEvaluationResources;
+  private BooleanSupplier resourceTermination;
+  private LocalSearchPhaseScope<Solution_> resourceScope;
+  private long retiredWorkerStartupCount;
+  private long retiredWorkerCalculationCount;
+
+  @Override
+  public void setExternalEvaluationResources(boolean external) {
+    externalEvaluationResources = external;
+  }
+
+  @Override
+  public void setEvaluationResourceTermination(BooleanSupplier terminated) {
+    resourceTermination = terminated;
+    if (pipeline != null) pipeline.setBarrierTerminationCheck(terminated);
+  }
+
+  @Override
+  public void startEvaluationResources(LocalSearchPhaseScope<Solution_> scope) {
+    // Worker feature collectors require the first episode's initialized feature state.
+    resourceScope = scope;
+    transferredCalculationCount = 0L;
+    retiredWorkerStartupCount = retiredWorkerCalculationCount = 0L;
+  }
+
+  @Override
+  public boolean cancelAndQuiesceEvaluation() {
+    if (pipeline == null) return true;
+    try {
+      if (pipeline.cancelAndAwaitQuiescence()) return true;
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+    }
+    retireEvaluationResources(resourceScope, true);
+    return false;
+  }
+
+  @Override
+  public void beginEpisode(long episodeId) {
+    if (pipeline == null) return;
+    if (!cancelAndQuiesceEvaluation())
+      throw new CancellationException("GLS episode startup terminated.");
+    pipeline.beginEpisode(episodeId);
+  }
+
+  @Override
+  public void replayWorkingState(Move<Solution_> move, InnerScore<?> score) {
+    if (moveThreadCount == 0) return;
+    if (pipeline == null || !pipeline.replayStateAndAwait(move, score)) {
+      retireEvaluationResources(resourceScope, true);
+      throw new CancellationException("GLS state replay terminated.");
+    }
+  }
+
+  @Override
+  public void endEvaluationResources(LocalSearchPhaseScope<Solution_> scope) {
+    retireEvaluationResources(scope, false);
+  }
+
+  private void retireEvaluationResources(LocalSearchPhaseScope<Solution_> scope, boolean abort) {
+    var retiring = pipeline;
+    if (retiring == null) {
+      resourceScope = null;
+      return;
+    }
+    boolean retired = false;
+    try {
+      if (abort || retiring.isTerminated()) retiring.abort();
+      else retiring.close();
+      retired = true;
+    } finally {
+      if (retired || retiring.isTerminated()) {
+        retiredWorkerStartupCount += retiring.getWorkerStartupCount();
+        retiredWorkerCalculationCount += retiring.getCalculationCount();
+        pipeline = null;
+        resourceScope = null;
+        scope.addChildThreadsScoreCalculationCount(
+            Math.max(0L, retiring.getCalculationCount() - transferredCalculationCount));
+        diagnostics = retiring.getDiagnostics();
+      }
+    }
+  }
+
+  @Override
+  public boolean isEvaluationStateSafeToDispose() {
+    return pipeline == null || pipeline.isEvaluationStateSafeToDispose();
+  }
 
   // Observation-only phase totals; guidance resets during adoption do not clear them.
   private long attemptedCandidates;
@@ -181,9 +271,10 @@ public final class GuidedLocalSearchDecider<Solution_>
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
+    retiredWorkerStartupCount = retiredWorkerCalculationCount = 0L;
     resetObservationCounters(0);
-    decisionRounds =
-        penaltyUpdates = emptyRounds = recoveryMoves = transferredCalculationCount = 0L;
+    decisionRounds = penaltyUpdates = emptyRounds = recoveryMoves = 0L;
+    if (!externalEvaluationResources) transferredCalculationCount = 0L;
     diagnostics = null;
     focusLevel = -1;
     focusSwitches = 0;
@@ -209,7 +300,7 @@ public final class GuidedLocalSearchDecider<Solution_>
       startRepositoryPhase(phaseScope);
       initializePhase(phaseScope);
     } catch (RuntimeException | Error failure) {
-      solvingError(phaseScope.getSolverScope(), failure);
+      if (!externalEvaluationResources) solvingError(phaseScope.getSolverScope(), failure);
       throw failure;
     }
   }
@@ -232,6 +323,7 @@ public final class GuidedLocalSearchDecider<Solution_>
   }
 
   private void initializePhase(LocalSearchPhaseScope<Solution_> phaseScope) {
+    if (!externalEvaluationResources) resourceScope = phaseScope;
     penaltyTables.clear();
     int levelCount = phaseScope.getSolverScope().getScoreDefinition().getLevelsSize();
     for (int level = 0; level < levelCount; level++) {
@@ -242,8 +334,8 @@ public final class GuidedLocalSearchDecider<Solution_>
     hardLevelCount = phaseScope.getSolverScope().getScoreDefinition().getFeasibleLevelsSize();
     initializeFocus(phaseScope);
     focusSwitches = 0;
-    decisionRounds =
-        penaltyUpdates = emptyRounds = recoveryMoves = transferredCalculationCount = 0L;
+    decisionRounds = penaltyUpdates = emptyRounds = recoveryMoves = 0L;
+    if (!externalEvaluationResources) transferredCalculationCount = 0L;
     diagnostics = null;
     controllerDiagnostics = null;
     excursionsStarted =
@@ -255,6 +347,11 @@ public final class GuidedLocalSearchDecider<Solution_>
     if (moveThreadCount == 0) {
       return;
     }
+    if (pipeline != null) {
+      pipeline.setTerminationCheck(() -> termination.isPhaseTerminated(phaseScope));
+      return;
+    }
+    if (resourceScope == null) resourceScope = phaseScope;
     ExecutorService executor =
         Executors.newFixedThreadPool(
             moveThreadCount,
@@ -277,6 +374,7 @@ public final class GuidedLocalSearchDecider<Solution_>
               assertExpectedStepScore,
               assertExpectedStepScore);
       pipeline.setTerminationCheck(() -> termination.isPhaseTerminated(phaseScope));
+      if (resourceTermination != null) pipeline.setBarrierTerminationCheck(resourceTermination);
       pipeline.setMetadataCollectorFactory(director -> new WorkerCollector(director));
       pipeline.start(phaseScope.getScoreDirector());
     } catch (RuntimeException | Error failure) {
@@ -479,7 +577,9 @@ public final class GuidedLocalSearchDecider<Solution_>
     boolean previousTemporaryState = scoreDirector.isAllChangesWillBeUndoneBeforeStepEnds();
     scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(true);
     try {
-      if (pipeline != null) pipeline.startNextStep(stepScope.getStepIndex());
+      if (pipeline != null)
+        pipeline.startNextStep(
+            externalEvaluationResources ? pipeline.getCurrentEpoch() : stepScope.getStepIndex());
       if (terminated(stepScope)) {
         stepScope.setNoStepReason(NoStepReason.TERMINATED);
         return;
@@ -488,7 +588,10 @@ public final class GuidedLocalSearchDecider<Solution_>
         stepScope.setNoStepReason(NoStepReason.EXCURSION_REPAIR_EXHAUSTED);
         return;
       }
-      var pending = stepScope.getPhaseScope().getSolverScope().consumePendingMove();
+      var pending =
+          stepScope.getPhaseScope().isEpisode()
+              ? null
+              : stepScope.getPhaseScope().getSolverScope().consumePendingMove();
       if (pending != null) {
         resetOnPendingMove = pending.requiresReset();
         var score = scoreDirector.executeTemporaryMove(pending.move(), assertFromScratch);
@@ -612,6 +715,8 @@ public final class GuidedLocalSearchDecider<Solution_>
       InnerScore<?> currentScore,
       GuidedLocalSearchNumber currentPenalty,
       GuidedLocalSearchCandidateReplay<Solution_> replay) {
+    if (stepScope.getPhaseScope().isEpisode())
+      return runBoundedRound(stepScope, currentScore, currentPenalty, replay);
     decisionRounds++;
     LOGGER.debug(
         "{}GLS round ({}), step ({}), focus level ({}), guidance version ({}), penalty version ({}), state ({}).",
@@ -735,9 +840,7 @@ public final class GuidedLocalSearchDecider<Solution_>
       admissible = true;
       admissibleCandidates++;
       boolean aspiration =
-          compareOriginal(
-                  candidate.score(), stepScope.getPhaseScope().getSolverScope().getBestScore())
-              > 0;
+          compareOriginal(candidate.score(), stepScope.getPhaseScope().getBestScore()) > 0;
       if (aspiration
           || comparator.compare(
                   candidate.score(),
@@ -754,6 +857,172 @@ public final class GuidedLocalSearchDecider<Solution_>
       }
     }
     return new RoundResult<>(null, admissible, valid, prefixAdmissible, false);
+  }
+
+  /** Ordered, bounded consumption. Worker graphs remain private and live across episodes. */
+  private RoundResult<Solution_> runBoundedRound(
+      LocalSearchStepScope<Solution_> stepScope,
+      InnerScore<?> currentScore,
+      GuidedLocalSearchNumber currentPenalty,
+      GuidedLocalSearchCandidateReplay<Solution_> replay) {
+    decisionRounds++;
+    var context =
+        new RoundContext(
+            pipeline == null ? stepScope.getStepIndex() : pipeline.getCurrentEpoch(),
+            decisionRounds,
+            featureResetVersion,
+            guidanceVersion,
+            focusLevel,
+            scale(),
+            snapshots(),
+            learning.snapshot());
+    var ledger = stepScope.getPhaseScope().getSelectionAttemptLedger();
+    long limit = searchMode == GuidedLocalSearchSearchMode.SAMPLED ? sampleSize : Long.MAX_VALUE;
+    long attempted = 0;
+    boolean admissible = false;
+    boolean valid = false;
+    boolean prefixAdmissible = false;
+    var pending =
+        new ArrayDeque<SelectionAttempt<GuidedLocalSearchCandidateReplay.Selection<Solution_>>>();
+    boolean sourceStopped = false;
+    try (var cursor =
+        ledger.openCursor(
+            () ->
+                replay.round(
+                    repository.iterator(),
+                    move ->
+                        selectionContext == null || selectionContext.isOrdinaryCandidate(move)))) {
+      while (!terminated(stepScope)) {
+        while (!sourceStopped
+            && attempted < limit
+            && pending.size() < (pipeline == null ? 1 : bufferSize)) {
+          var generated = cursor.next();
+          if (generated == null) {
+            sourceStopped = true;
+            break;
+          }
+          pending.addLast(generated);
+          if (!generated.isMarker()) {
+            attempted++;
+            attemptedCandidates++;
+            if (pipeline != null) {
+              var selection = generated.selection();
+              pipeline.submit(
+                  nextMoveIndex++,
+                  selection.move(),
+                  new CandidateContext(
+                      context, selection.ordinaryOrigin(), selection.retainResult()));
+            }
+          }
+        }
+        if (pending.isEmpty()) {
+          return new RoundResult<>(
+              null,
+              admissible,
+              valid,
+              prefixAdmissible,
+              terminated(stepScope) || cursor.isBudgetStopped() || cursor.isInterrupted());
+        }
+        var attempt = pending.removeFirst();
+        if (attempt.isMarker()) {
+          ledger.consume(attempt);
+          continue;
+        }
+        boolean consumed = pipeline == null;
+        try {
+          var selection = attempt.selection();
+          Candidate<Solution_> candidate;
+          if (pipeline == null) {
+            candidate = evaluateSequential(stepScope, selection, replay);
+          } else {
+            MoveEvaluationPipeline.Result<Solution_> result;
+            try {
+              result = pipeline.take();
+            } catch (InterruptedException interrupted) {
+              Thread.currentThread().interrupt();
+              return new RoundResult<>(null, admissible, valid, prefixAdmissible, true);
+            }
+            if (result == null)
+              return new RoundResult<>(null, admissible, valid, prefixAdmissible, true);
+            consumed = true;
+            if (result.episodeId() != pipeline.getEpisodeId()
+                || !(result.context() instanceof CandidateContext candidateContext)
+                || !context.equals(candidateContext.round())) {
+              throw new IllegalStateException(
+                  "GLS received a candidate from a stale episode or decision.");
+            }
+            stepScope.getScoreDirector().incrementCalculationCount(result.calculationCount());
+            transferredCalculationCount += result.calculationCount();
+            if (!result.isMoveDoable()) continue;
+            var preparedMove =
+                PreparedMoveFilters.filter(result.move(), stepScope.getScoreDirector());
+            if (preparedMove == null) continue;
+            var metadata = (CandidatePenalty) result.metadata();
+            if (metadata == null
+                && result.score().isFullyAssigned()
+                && !result.score().isStructurallyFlawed()) {
+              throw new IllegalStateException(
+                  "GLS received a valid candidate without feature evaluation.");
+            }
+            if (selection.retainResult()
+                && result.score().isFullyAssigned()
+                && !result.score().isStructurallyFlawed()) {
+              replay.retain(result.move(), selection.ordinaryOrigin());
+            }
+            candidate =
+                new Candidate<>(
+                    preparedMove,
+                    result.score(),
+                    metadata == null ? GuidedLocalSearchNumber.ZERO : metadata.penalty(),
+                    metadata == null
+                        ? GuidedLocalSearchFeatureTracker.AutomaticDelta.EMPTY
+                        : metadata.automaticDelta(),
+                    selection.ordinaryOrigin());
+          }
+          if (candidate == null) continue;
+          doableCandidates++;
+          stepScope.getPhaseScope().addMoveEvaluationCount(candidate.move(), 1L);
+          if (!candidate.score().isStructurallyFlawed())
+            stepScope.setSelectedMoveCount(stepScope.getSelectedMoveCount() + 1L);
+          if (!candidate.score().isFullyAssigned() || candidate.score().isStructurallyFlawed())
+            continue;
+          valid = true;
+          learning.observe(
+              candidate.automaticDelta(),
+              candidate.score().raw().toLevelNumbers(),
+              currentScore.raw().toLevelNumbers(),
+              candidate.ordinaryOrigin());
+          if (comparator.compareProtectedPrefix(candidate.score(), currentScore) < 0) continue;
+          prefixAdmissible = true;
+          if (state != SearchState.EXCURSION
+              && (comparePrefix(candidate.score(), currentScore, hardLevelCount) < 0
+                  || (currentScore.raw().isFeasible() && !candidate.score().raw().isFeasible())))
+            continue;
+          admissible = true;
+          admissibleCandidates++;
+          boolean aspiration =
+              compareOriginal(candidate.score(), stepScope.getPhaseScope().getBestScore()) > 0;
+          if (aspiration
+              || comparator.compare(
+                      candidate.score(),
+                      candidate.penalty(),
+                      currentScore,
+                      currentPenalty,
+                      context.scale().denominator())
+                  > 0) {
+            evaluatedAcceptanceReason =
+                aspiration
+                    ? AcceptanceReason.ORIGINAL_BEST_ASPIRATION
+                    : AcceptanceReason.GUIDED_IMPROVEMENT;
+            return new RoundResult<>(candidate, true, true, true, false);
+          }
+        } finally {
+          // An admitted proposal owns one unit even when it was non-doable or failed preparation.
+          if (consumed) ledger.consume(attempt);
+        }
+      }
+      return new RoundResult<>(null, admissible, valid, prefixAdmissible, terminated(stepScope));
+    }
   }
 
   private Candidate<Solution_> evaluateSequential(
@@ -847,11 +1116,14 @@ public final class GuidedLocalSearchDecider<Solution_>
     scope.setStep(candidate.move());
     scope.setScore(candidate.score());
     scope.setAcceptedMoveCount(scope.getAcceptedMoveCount() + 1L);
-    if (pipeline != null) {
+    if (pipeline != null && !externalEvaluationResources) {
       if (scope.getScoreDirector().requiresFlushing() && scope.getStepIndex() % 100 == 99) {
         scope.getScoreDirector().calculateScore();
       }
-      pipeline.applyStep(scope.getStepIndex() + 1, candidate.move(), candidate.score());
+      pipeline.applyStep(
+          (externalEvaluationResources ? pipeline.getCurrentEpoch() : scope.getStepIndex()) + 1,
+          candidate.move(),
+          candidate.score());
     }
   }
 
@@ -877,6 +1149,9 @@ public final class GuidedLocalSearchDecider<Solution_>
 
   @Override
   public void stepEnded(LocalSearchStepScope<Solution_> scope) {
+    if (pipeline != null && externalEvaluationResources) {
+      pipeline.applyStep(pipeline.getCurrentEpoch() + 1, scope.getStep(), scope.getScore());
+    }
     // Capture at selection; adoption and the following epoch transition may change focus/state.
     if (selectedAcceptanceReason != null) {
       committedMovesByFocusLevel[selectedFocusLevel]++;
@@ -961,6 +1236,12 @@ public final class GuidedLocalSearchDecider<Solution_>
   }
 
   @Override
+  public void stepAborted(LocalSearchStepScope<Solution_> scope) {
+    selectedAcceptanceReason = null;
+    if (pipeline != null) pipeline.cancelStep();
+  }
+
+  @Override
   public void phaseEnded(LocalSearchPhaseScope<Solution_> phaseScope) {
     Throwable failure = null;
     try {
@@ -968,19 +1249,19 @@ public final class GuidedLocalSearchDecider<Solution_>
     } catch (RuntimeException | Error error) {
       failure = error;
     }
-    if (pipeline != null) {
+    if (pipeline != null && !externalEvaluationResources) {
       try {
-        pipeline.close();
-        phaseScope.addChildThreadsScoreCalculationCount(
-            pipeline.getCalculationCount() - transferredCalculationCount);
-        diagnostics = pipeline.getDiagnostics();
+        endEvaluationResources(phaseScope);
         LOGGER.debug("{}GLS move evaluation diagnostics: {}", logIndentation, diagnostics);
       } catch (RuntimeException | Error error) {
         if (failure == null) failure = error;
         else if (failure != error) failure.addSuppressed(error);
-      } finally {
-        pipeline = null;
       }
+    }
+    if (!isEvaluationStateSafeToDispose()) {
+      if (failure instanceof Error error) throw error;
+      if (failure != null) throw (RuntimeException) failure;
+      throw new IllegalStateException("GLS workers still reference episode state.");
     }
     try {
       endRepositoryPhase();
@@ -1014,18 +1295,19 @@ public final class GuidedLocalSearchDecider<Solution_>
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
     repository.solvingEnded(solverScope);
+    resourceScope = null;
   }
 
   @Override
   public void solvingError(SolverScope<Solution_> solverScope, Throwable failure) {
     if (pipeline != null) {
       try {
-        pipeline.abort();
+        retireEvaluationResources(resourceScope, true);
       } catch (RuntimeException | Error cleanup) {
         if (cleanup != failure) failure.addSuppressed(cleanup);
       }
-      pipeline = null;
     }
+    if (!isEvaluationStateSafeToDispose()) return;
     try {
       endRepositoryPhase();
     } catch (RuntimeException | Error cleanup) {
@@ -1047,6 +1329,25 @@ public final class GuidedLocalSearchDecider<Solution_>
     return pipeline == null
         ? 0L
         : Math.max(0L, pipeline.getCalculationCount() - transferredCalculationCount);
+  }
+
+  @Override
+  public long getWorkerStartupCount() {
+    return retiredWorkerStartupCount + (pipeline == null ? 0L : pipeline.getWorkerStartupCount());
+  }
+
+  @Override
+  public long getConsumedWorkerCalculationCount() {
+    return transferredCalculationCount;
+  }
+
+  @Override
+  public long getAdditionalWorkerCalculationCount() {
+    return Math.max(
+        0L,
+        retiredWorkerCalculationCount
+            + (pipeline == null ? 0L : pipeline.getCalculationCount())
+            - transferredCalculationCount);
   }
 
   public MoveEvaluationPipeline.Diagnostics getMoveEvaluationDiagnostics() {

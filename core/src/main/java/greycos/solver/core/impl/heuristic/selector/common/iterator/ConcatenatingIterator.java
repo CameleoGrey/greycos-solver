@@ -5,9 +5,11 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
+
 import org.jspecify.annotations.Nullable;
 
-public final class ConcatenatingIterator<T> implements Iterator<T> {
+public final class ConcatenatingIterator<T> implements KnownExhaustionIterator<T> {
 
   private final Iterator<Iterator<? extends T>> iterators;
   private Iterator<? extends T> current;
@@ -18,6 +20,11 @@ public final class ConcatenatingIterator<T> implements Iterator<T> {
   public ConcatenatingIterator(Iterator<? extends T>... iterators) {
     this.iterators = Arrays.asList(iterators).iterator();
     this.current = Collections.emptyIterator();
+  }
+
+  @Override
+  public boolean isKnownExhausted() {
+    return !hasNext && !iterators.hasNext() && KnownExhaustionIterator.isExhausted(current);
   }
 
   @Override

@@ -58,8 +58,10 @@ import greycos.solver.core.impl.neighborhood.stream.DefaultNeighborhood;
 import greycos.solver.core.impl.neighborhood.stream.DefaultNeighborhoodBuilder;
 import greycos.solver.core.impl.phase.AbstractPhaseFactory;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
+import greycos.solver.core.impl.solver.termination.LocalSearchEpisodeTermination;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
 import greycos.solver.core.impl.solver.termination.SolverTermination;
+import greycos.solver.core.impl.solver.termination.TerminationFactory;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
 import greycos.solver.core.preview.api.neighborhood.NeighborhoodProvider;
 
@@ -70,6 +72,59 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
 
   public DefaultLocalSearchPhaseFactory(LocalSearchPhaseConfig phaseConfig) {
     super(phaseConfig);
+  }
+
+  /** Builds inner behavior only; the caller owns the single enclosing phase and its resources. */
+  public LocalSearchEpisodeRunner<Solution_> buildEpisodeRunner(
+      HeuristicConfigPolicy<Solution_> configPolicy,
+      int outerPhaseIndex,
+      PhaseTermination<Solution_> outerTermination,
+      long attemptLimit) {
+    var policy = createPhaseConfigPolicy(configPolicy);
+    var configured =
+        phaseConfig.getTerminationConfig() == null
+            ? null
+            : TerminationFactory.<Solution_>create(phaseConfig.getTerminationConfig())
+                .buildTermination(policy);
+    var termination = new LocalSearchEpisodeTermination<Solution_>(configured);
+    return new LocalSearchEpisodeRunner<>(
+        buildDecider(policy, termination),
+        outerPhaseIndex,
+        termination,
+        attemptLimit,
+        policy.getEnvironmentMode());
+  }
+
+  /**
+   * Perturbation uses the normal legal model portfolio with random selection, independently of VND.
+   */
+  public MoveSelector<Solution_> buildPerturbationMoveSelector(
+      HeuristicConfigPolicy<Solution_> configPolicy) {
+    var perturbationConfig = phaseConfig.copyConfig();
+    perturbationConfig.setLocalSearchType(null);
+    var factory = new DefaultLocalSearchPhaseFactory<Solution_>(perturbationConfig);
+    return factory.buildMoveSelector(factory.createPhaseConfigPolicy(configPolicy));
+  }
+
+  private HeuristicConfigPolicy<Solution_> createPhaseConfigPolicy(
+      HeuristicConfigPolicy<Solution_> solverConfigPolicy) {
+    return solverConfigPolicy
+        .cloneBuilder()
+        .withEnvironmentMode(resolveEnvironmentMode(solverConfigPolicy))
+        .withMoveThreadCount(
+            resolveMoveThreadCount(
+                phaseConfig.getMoveThreadCount(), solverConfigPolicy.getMoveThreadCount(), true))
+        .withMultistageMoveSelectionEnabled(true)
+        .withNonDoableCandidateRetentionEnabled(
+            phaseConfig.getLocalSearchType() == LocalSearchType.GUIDED_LOCAL_SEARCH)
+        .withGuidedLocalSearchSelectionContext(
+            phaseConfig.getLocalSearchType() == LocalSearchType.GUIDED_LOCAL_SEARCH
+                    && phaseConfig.getGuidedLocalSearchConfig() != null
+                    && Boolean.TRUE.equals(
+                        phaseConfig.getGuidedLocalSearchConfig().getDirectedOriginSelection())
+                ? new GuidedLocalSearchSelectionContext<>()
+                : null)
+        .build();
   }
 
   @Override

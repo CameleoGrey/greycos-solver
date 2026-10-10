@@ -7,6 +7,7 @@ import java.util.Objects;
 
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.SelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 
@@ -92,6 +93,12 @@ public final class SelectedCountLimitEntitySelector<Solution_>
     public SelectedCountLimitEntityIterator(Iterator<Object> childEntityIterator) {
       this.childEntityIterator = childEntityIterator;
       selectedSize = 0L;
+    }
+
+    @Override
+    public boolean isKnownExhausted() {
+      return selectedSize >= selectedCountLimit
+          || KnownExhaustionIterator.isExhausted(childEntityIterator);
     }
 
     @Override

@@ -200,6 +200,7 @@ public abstract class AbstractSolver<Solution_> implements Solver<Solution_> {
     // Restore from the split random
     var delegatingRandom = ((DefaultRandomSource) stepScope.getWorkingRandom());
     delegatingRandom.restoreState(Objects.requireNonNull(savedRandom));
+    savedRandom = null;
     bestSolutionRecaller.stepEnded(stepScope);
     phaseLifecycleSupport.fireStepEnded(stepScope);
     globalTermination.stepEnded(stepScope);
@@ -207,7 +208,16 @@ public abstract class AbstractSolver<Solution_> implements Solver<Solution_> {
     // propagate further.
   }
 
+  /** Closes an abandoned decision's random boundary without reporting a completed search step. */
+  public void stepAborted(AbstractStepScope<Solution_> stepScope) {
+    if (savedRandom != null) {
+      ((DefaultRandomSource) stepScope.getWorkingRandom()).restoreState(savedRandom);
+      savedRandom = null;
+    }
+  }
+
   void prepareForProblemChanges(SolverScope<Solution_> solverScope) {
+    solverScope.clearPendingMove();
     solverContextManager.prepareForProblemChanges(solverScope);
   }
 

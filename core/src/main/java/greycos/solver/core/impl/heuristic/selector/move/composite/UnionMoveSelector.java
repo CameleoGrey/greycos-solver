@@ -5,8 +5,11 @@ import java.util.List;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
+import greycos.solver.core.impl.heuristic.selector.common.iterator.ConcatenatingIterator;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
+import greycos.solver.core.impl.move.BudgetedUnionMoveIterator;
 import greycos.solver.core.impl.move.UniformRandomUnionMoveIterator;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.director.ScoreDirector;
@@ -106,6 +109,14 @@ public final class UnionMoveSelector<Solution_> extends CompositeMoveSelector<So
   @Override
   public @NonNull Iterator<Move<Solution_>> iterator() {
     if (!randomSelection) {
+      if (SelectionAttemptContext.isActive()) {
+        @SuppressWarnings("unchecked")
+        Iterator<Move<Solution_>>[] iterators = new Iterator[childMoveSelectorList.size()];
+        for (int index = 0; index < iterators.length; index++) {
+          iterators[index] = childMoveSelectorList.get(index).iterator();
+        }
+        return new ConcatenatingIterator<>(iterators);
+      }
       var stream = Stream.<Move<Solution_>>empty();
       for (var moveSelector : childMoveSelectorList) {
         stream = Stream.concat(stream, toStream(moveSelector));
@@ -117,6 +128,15 @@ public final class UnionMoveSelector<Solution_> extends CompositeMoveSelector<So
           childMoveSelectorList,
           (moveSelector, workingRandom) -> moveSelector.iterator());
     } else {
+      if (SelectionAttemptContext.isActive()) {
+        return new BudgetedUnionMoveIterator<>(
+            workingRandom,
+            childMoveSelectorList,
+            (moveSelector, random) -> moveSelector.iterator(),
+            moveSelector ->
+                selectorProbabilityWeightFactory.createProbabilityWeight(
+                    scoreDirector, moveSelector));
+      }
       return new BiasedRandomUnionMoveIterator<>(
           childMoveSelectorList,
           moveSelector -> {

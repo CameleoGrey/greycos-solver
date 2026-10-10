@@ -13,6 +13,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
   private final SelectionCacheType cacheType;
   private final SelectionCacheLifecycleListener<Solution_> selectionCacheLifecycleListener;
   private boolean isConstructed = false;
+  private boolean setupConstructionFailed;
   private InnerScoreDirector<Solution_, ?> cachedScoreDirector = null;
   private Long workingEntityListRevision = null;
 
@@ -35,9 +36,27 @@ public final class SelectionCacheLifecycleBridge<Solution_>
   public void solvingStarted(SolverScope<Solution_> solverScope) {
     assertNotConstructed();
     if (cacheType == SelectionCacheType.SOLVER) {
-      selectionCacheLifecycleListener.constructCache(solverScope);
+      constructCache(solverScope);
       isConstructed = true;
       updateCacheContext(solverScope);
+    }
+  }
+
+  private void constructCache(SolverScope<Solution_> solverScope) {
+    setupConstructionFailed = false;
+    try {
+      selectionCacheLifecycleListener.constructCache(solverScope);
+    } catch (RuntimeException | Error failure) {
+      if (SelectionAttemptContext.isSetup()) {
+        setupConstructionFailed = true;
+        try {
+          selectionCacheLifecycleListener.disposeCache(solverScope);
+        } catch (RuntimeException | Error cleanupFailure) {
+          if (cleanupFailure != failure) failure.addSuppressed(cleanupFailure);
+        }
+        clearCacheContext();
+      }
+      throw failure;
     }
   }
 
@@ -56,7 +75,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
     if (cacheType == SelectionCacheType.PHASE) {
       assertNotConstructed();
-      selectionCacheLifecycleListener.constructCache(phaseScope.getSolverScope());
+      constructCache(phaseScope.getSolverScope());
       isConstructed = true;
       updateCacheContext(phaseScope.getSolverScope());
     } else if (cacheType == SelectionCacheType.SOLVER) {
@@ -69,7 +88,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
   public void stepStarted(AbstractStepScope<Solution_> stepScope) {
     if (cacheType == SelectionCacheType.STEP) {
       assertNotConstructed();
-      selectionCacheLifecycleListener.constructCache(stepScope.getPhaseScope().getSolverScope());
+      constructCache(stepScope.getPhaseScope().getSolverScope());
       isConstructed = true;
       updateCacheContext(stepScope.getPhaseScope().getSolverScope());
     } else if (cacheType == SelectionCacheType.PHASE || cacheType == SelectionCacheType.SOLVER) {
@@ -99,6 +118,10 @@ public final class SelectionCacheLifecycleBridge<Solution_>
 
   @Override
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
+    if (setupConstructionFailed && cacheType != SelectionCacheType.SOLVER) {
+      setupConstructionFailed = false;
+      return;
+    }
     if (cacheType != SelectionCacheType.SOLVER) {
       // Dispose of step cache as well, since we aren't guaranteed that stepEnded() was called.
       if (cacheType != SelectionCacheType.STEP) {
@@ -111,6 +134,10 @@ public final class SelectionCacheLifecycleBridge<Solution_>
 
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
+    if (setupConstructionFailed && cacheType == SelectionCacheType.SOLVER) {
+      setupConstructionFailed = false;
+      return;
+    }
     if (cacheType == SelectionCacheType.SOLVER) {
       assertConstructed();
       selectionCacheLifecycleListener.disposeCache(solverScope);
@@ -142,7 +169,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
         || scoreDirector.isWorkingEntityListDirty(workingEntityListRevision)) {
       selectionCacheLifecycleListener.disposeCache(solverScope);
       clearCacheContext();
-      selectionCacheLifecycleListener.constructCache(solverScope);
+      constructCache(solverScope);
       isConstructed = true;
       updateCacheContext(solverScope);
     }

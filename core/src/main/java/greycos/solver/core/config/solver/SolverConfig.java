@@ -37,6 +37,7 @@ import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
+import greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
@@ -256,6 +257,9 @@ public final class SolverConfig extends AbstractConfig<SolverConfig> {
 
   @XmlElements({
     @XmlElement(name = AlnsPhaseConfig.XML_ELEMENT_NAME, type = AlnsPhaseConfig.class),
+    @XmlElement(
+        name = IteratedLocalSearchPhaseConfig.XML_ELEMENT_NAME,
+        type = IteratedLocalSearchPhaseConfig.class),
     @XmlElement(
         name = ConstructionHeuristicPhaseConfig.XML_ELEMENT_NAME,
         type = ConstructionHeuristicPhaseConfig.class),

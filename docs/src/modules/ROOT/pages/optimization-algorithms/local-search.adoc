@@ -19,6 +19,11 @@ Therefore it's pretty natural to implement.
 
 **Local Search needs to start from an initialized solution**, therefore it's usually required to configure a Construction Heuristic phase before it.
 
+To repeat bounded Local Search episodes after explicit perturbations, configure
+xref:optimization-algorithms/iterated-local-search.adoc#iteratedLocalSearch[Iterated Local Search (ILS/VNS)].
+The outer phase manages the incumbent and perturbation schedule while the configured inner Local Search
+algorithm starts with fresh history in each episode.
+
 
 [#localSearchConcepts]
 == Local search concepts

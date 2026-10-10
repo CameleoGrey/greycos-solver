@@ -8,6 +8,7 @@ import java.util.random.RandomGenerator;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -64,6 +65,7 @@ final class RuinRecreateMoveIterator<Solution_> extends UpcomingSelectionIterato
           }
           break;
         } else {
+          SelectionAttemptContext.failedSelection();
           remainingAttempts--;
         }
         if (remainingAttempts == 0) {

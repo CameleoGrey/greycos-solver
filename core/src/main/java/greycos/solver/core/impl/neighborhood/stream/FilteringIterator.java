@@ -5,6 +5,9 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
+
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -27,7 +30,8 @@ import org.slf4j.LoggerFactory;
  * RetiringBiWalk} depends on this property.
  */
 @NullMarked
-public final class FilteringIterator<T extends @Nullable Object> implements Iterator<T> {
+public final class FilteringIterator<T extends @Nullable Object>
+    implements KnownExhaustionIterator<T> {
 
   /**
    * Multiplied by the candidate population's size to size a bail-out budget, wherever this iterator
@@ -38,6 +42,7 @@ public final class FilteringIterator<T extends @Nullable Object> implements Iter
   private static final Logger LOGGER = LoggerFactory.getLogger(FilteringIterator.class);
 
   private final Iterator<T> delegate;
+  private final boolean setupBudgeted = SelectionAttemptContext.isSetup();
   private final Predicate<T> filter;
   private final long bailOutSize;
 
@@ -55,12 +60,18 @@ public final class FilteringIterator<T extends @Nullable Object> implements Iter
   }
 
   @Override
+  public boolean isKnownExhausted() {
+    return !hasNext && KnownExhaustionIterator.isExhausted(delegate);
+  }
+
+  @Override
   public boolean hasNext() {
     if (hasNext) {
       return true;
     }
     var attemptsBeforeBailOut =
         bailOutSize; // Fresh, independent budget every call; see the class javadoc.
+    if (setupBudgeted) SelectionAttemptContext.beforeSelection();
     while (delegate.hasNext()) {
       if (bailOutSize >= 0 && attemptsBeforeBailOut <= 0) {
         LOGGER.trace(
@@ -75,6 +86,7 @@ public final class FilteringIterator<T extends @Nullable Object> implements Iter
         next = candidate;
         return true;
       }
+      SelectionAttemptContext.failedSelection();
       attemptsBeforeBailOut--;
     }
     return false;

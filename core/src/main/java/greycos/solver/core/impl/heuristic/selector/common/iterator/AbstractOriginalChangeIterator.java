@@ -3,6 +3,8 @@ package greycos.solver.core.impl.heuristic.selector.common.iterator;
 import java.util.Collections;
 import java.util.Iterator;
 
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import greycos.solver.core.preview.api.move.Move;
@@ -26,13 +28,26 @@ public abstract class AbstractOriginalChangeIterator<Solution_, Move_ extends Mo
   }
 
   @Override
+  public boolean isKnownExhausted() {
+    return super.isKnownExhausted()
+        || (!upcomingCreated
+            && KnownExhaustionIterator.isExhausted(entityIterator)
+            && KnownExhaustionIterator.isExhausted(valueIterator));
+  }
+
+  @Override
   protected Move_ createUpcomingSelection() {
+    boolean selectedWithoutProposal = false;
     while (!valueIterator.hasNext()) {
+      if (selectedWithoutProposal) {
+        SelectionAttemptContext.failedSelection();
+      }
       if (!entityIterator.hasNext()) {
         return noUpcomingSelection();
       }
       upcomingEntity = entityIterator.next();
       valueIterator = valueSelector.iterator(upcomingEntity);
+      selectedWithoutProposal = true;
     }
     Object toValue = valueIterator.next();
     return newChangeSelection(upcomingEntity, toValue);

@@ -8,6 +8,7 @@ import java.util.Objects;
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleListener;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
@@ -95,7 +96,7 @@ public abstract class AbstractCachingEntitySelector<Solution_>
 
   @Override
   public Iterator<Object> endingIterator() {
-    return cachedEntityList.iterator();
+    return SelectionAttemptContext.iterator(cachedEntityList);
   }
 
   @Override

@@ -214,6 +214,7 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
   }
 
   public void outerSolvingStarted(SolverScope<Solution_> solverScope) {
+    solverScope.clearPendingMove();
     solving.set(true);
     basicPlumbingTermination.resetTerminateEarly();
     solverScope.setStartingSolverCount(0);

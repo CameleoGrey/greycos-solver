@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.Objects;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.CachedListRandomIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.decorator.CachingEntitySelector;
 import greycos.solver.core.impl.heuristic.selector.move.decorator.CachingMoveSelector;
@@ -46,7 +47,7 @@ public final class CachingValueSelector<Solution_> extends AbstractCachingValueS
   @Override
   public Iterator<Object> iterator() {
     if (!randomSelection) {
-      return cachedValueList.iterator();
+      return SelectionAttemptContext.iterator(cachedValueList);
     } else {
       return new CachedListRandomIterator<>(cachedValueList, workingRandom);
     }

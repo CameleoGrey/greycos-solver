@@ -18,6 +18,7 @@ import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescripto
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.ConcatenatingIterator;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
@@ -465,6 +466,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
                 : !listVariableState.isPinned(destination))) {
           return destination;
         }
+        SelectionAttemptContext.failedSelection();
       }
       return noUpcomingSelection();
     }
@@ -586,6 +588,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
       while (nearbyIndex < matrix.getDestinationSize(origin)) {
         var candidate = matrix.getDestination(origin, nearbyIndex++);
         if (!acceptsCandidate(candidate, entityMembership, valueMembership)) {
+          SelectionAttemptContext.failedSelection();
           continue;
         }
         var position = convertToElementPosition(candidate);
@@ -597,6 +600,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
                 position.entity())) {
           return position;
         }
+        SelectionAttemptContext.failedSelection();
       }
       if (!unassignedReturned && listVariableDescriptor.allowsUnassignedValues()) {
         unassignedReturned = true;
@@ -620,6 +624,7 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
     for (int index = 0; index < matrix.getDestinationSize(origin); index++) {
       var candidate = matrix.getDestination(origin, index);
       if (!acceptsCandidate(candidate, entityMembership, valueMembership)) {
+        SelectionAttemptContext.failedSelection();
         continue;
       }
       var position = convertToElementPosition(candidate);
@@ -634,6 +639,8 @@ public class NearbyDestinationSelector<Solution_> extends AbstractDemandEnabledS
             && !listVariableDescriptor.allowsUnassignedValues()) {
           break;
         }
+      } else {
+        SelectionAttemptContext.failedSelection();
       }
     }
     return new DestinationCandidates(positions, populationSize);

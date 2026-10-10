@@ -10,6 +10,7 @@ import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
+import greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
@@ -22,6 +23,7 @@ import org.jspecify.annotations.Nullable;
 
 @XmlSeeAlso({
   AlnsPhaseConfig.class,
+  IteratedLocalSearchPhaseConfig.class,
   ConstructionHeuristicPhaseConfig.class,
   CustomPhaseConfig.class,
   ExhaustiveSearchPhaseConfig.class,

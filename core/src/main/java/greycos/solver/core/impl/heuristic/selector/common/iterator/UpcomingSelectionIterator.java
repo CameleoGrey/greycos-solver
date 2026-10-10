@@ -5,6 +5,7 @@ import java.util.NoSuchElementException;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.Selector;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.entity.mimic.MimicReplayingEntitySelector;
 import greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
@@ -20,6 +21,7 @@ import greycos.solver.core.preview.api.move.Move;
  */
 public abstract class UpcomingSelectionIterator<S> extends SelectionIterator<S> {
 
+  private final boolean setupBudgeted = SelectionAttemptContext.isSetup();
   protected boolean upcomingCreated = false;
   protected boolean hasUpcomingSelection = true;
   private boolean recheckUpcomingSelection = false;
@@ -33,9 +35,15 @@ public abstract class UpcomingSelectionIterator<S> extends SelectionIterator<S> 
         hasUpcomingSelection = true;
         recheckUpcomingSelection = false;
       }
+      if (setupBudgeted) SelectionAttemptContext.beforeSelection();
       upcomingSelection = createUpcomingSelection();
       upcomingCreated = true;
     }
+  }
+
+  @Override
+  public boolean isKnownExhausted() {
+    return upcomingCreated && !hasUpcomingSelection;
   }
 
   @Override
@@ -94,6 +102,7 @@ public abstract class UpcomingSelectionIterator<S> extends SelectionIterator<S> 
       if (!isPinned(destination, listVariableDescriptor)) {
         return destination;
       }
+      SelectionAttemptContext.failedSelection();
     }
     return null;
   }

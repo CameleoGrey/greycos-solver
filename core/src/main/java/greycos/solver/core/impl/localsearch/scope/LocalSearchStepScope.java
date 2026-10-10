@@ -21,6 +21,7 @@ public final class LocalSearchStepScope<Solution_> extends AbstractStepScope<Sol
   /** An intentional end to a decision which did not select a real move. */
   public enum NoStepReason {
     TERMINATED,
+    EPISODE_ATTEMPT_LIMIT,
     NO_ADMISSIBLE_MOVE,
     NO_PENALIZABLE_FEATURES,
     SAMPLE_EXHAUSTED,

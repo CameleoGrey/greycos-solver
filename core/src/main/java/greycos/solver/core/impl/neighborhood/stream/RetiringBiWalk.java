@@ -3,6 +3,7 @@ package greycos.solver.core.impl.neighborhood.stream;
 import java.util.Iterator;
 
 import greycos.solver.core.impl.bavet.common.index.RetiringRandomIterator;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -78,6 +79,7 @@ public interface RetiringBiWalk<L, R> {
     while (leftIterator.hasNext()) {
       var left = leftIterator.next();
       if (!walk.acceptLeft(left)) {
+        SelectionAttemptContext.failedSelection();
         continue;
       }
       if (probeAndAccept(left, walk)) {
@@ -96,6 +98,7 @@ public interface RetiringBiWalk<L, R> {
         walk.accept(left, rightIterator.next());
         return true;
       }
+      SelectionAttemptContext.failedSelection();
     }
     return false;
   }

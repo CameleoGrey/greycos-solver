@@ -7,6 +7,7 @@ import java.util.random.RandomGenerator;
 import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 import greycos.solver.core.preview.api.move.Move;
@@ -125,6 +126,7 @@ final class KOptListMoveIterator<Solution_, Node_>
         && listVariableDescriptor.getUnpinnedSubListSize(
                 listVariableState.getInverseSingleton(pickedValues[1]))
             < 2) {
+      SelectionAttemptContext.failedSelection();
       pickedValues[1] = getNextNodeOrNull(originIterator);
       if (pickedValues[1] == null) {
         return null;
@@ -190,6 +192,7 @@ final class KOptListMoveIterator<Solution_, Node_>
                   nextRemovedEdgePoint,
                   getNodeSuccessor(newEntityOrderInfo, nextRemovedEdgePoint),
                   pickedSoFar - 2))) {
+        SelectionAttemptContext.failedSelection();
         if (remainingAttempts == 0) {
           return null;
         }
@@ -256,6 +259,7 @@ final class KOptListMoveIterator<Solution_, Node_>
           }
         }
       }
+      SelectionAttemptContext.failedSelection();
     }
     return null;
   }
@@ -378,6 +382,7 @@ final class KOptListMoveIterator<Solution_, Node_>
             == currentCycle)
         || (isEdgeAlreadyDeleted(removedEdges, s3, getNodePredecessor(entityOrderInfo, s3), k)
             && isEdgeAlreadyDeleted(removedEdges, s3, getNodeSuccessor(entityOrderInfo, s3), k))) {
+      SelectionAttemptContext.failedSelection();
       if (remainingAttempts == 0) {
         return originalMove;
       }

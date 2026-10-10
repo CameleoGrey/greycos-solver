@@ -7,6 +7,7 @@ import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
+import greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
@@ -20,6 +21,7 @@ import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristi
 import greycos.solver.core.impl.exhaustivesearch.scope.ExhaustiveSearchPhaseScope;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.islandmodel.IslandModelPhaseScope;
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.phase.custom.scope.CustomPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
@@ -94,7 +96,9 @@ public abstract class AbstractPhaseFactory<
 
   @SuppressWarnings({"rawtypes", "unchecked"})
   private Class<? extends AbstractPhaseScope> getPhaseScopeClass() {
-    if (phaseConfig instanceof AlnsPhaseConfig) {
+    if (phaseConfig instanceof IteratedLocalSearchPhaseConfig) {
+      return IteratedLocalSearchPhaseScope.class;
+    } else if (phaseConfig instanceof AlnsPhaseConfig) {
       return AlnsPhaseScope.class;
     } else if (phaseConfig instanceof ConstructionHeuristicPhaseConfig) {
       return ConstructionHeuristicPhaseScope.class;

@@ -8,6 +8,7 @@ import java.util.Objects;
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.CachedListRandomIterator;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
@@ -107,7 +108,7 @@ public final class FromSolutionEntitySelector<Solution_>
   public Iterator<Object> iterator() {
     checkCachedEntityListIsDirty();
     if (!randomSelection) {
-      return cachedEntityList.iterator();
+      return SelectionAttemptContext.iterator(cachedEntityList);
     } else {
       return new CachedListRandomIterator<>(cachedEntityList, workingRandom);
     }
@@ -117,7 +118,7 @@ public final class FromSolutionEntitySelector<Solution_>
   public ListIterator<Object> listIterator() {
     checkCachedEntityListIsDirty();
     if (!randomSelection) {
-      return cachedEntityList.listIterator();
+      return SelectionAttemptContext.listIterator(cachedEntityList, 0);
     } else {
       throw new IllegalStateException(
           "The selector ("
@@ -132,7 +133,7 @@ public final class FromSolutionEntitySelector<Solution_>
   public ListIterator<Object> listIterator(int index) {
     checkCachedEntityListIsDirty();
     if (!randomSelection) {
-      return cachedEntityList.listIterator(index);
+      return SelectionAttemptContext.listIterator(cachedEntityList, index);
     } else {
       throw new IllegalStateException(
           "The selector ("
@@ -146,7 +147,7 @@ public final class FromSolutionEntitySelector<Solution_>
   @Override
   public Iterator<Object> endingIterator() {
     checkCachedEntityListIsDirty();
-    return cachedEntityList.iterator();
+    return SelectionAttemptContext.iterator(cachedEntityList);
   }
 
   private void checkCachedEntityListIsDirty() {

@@ -12,6 +12,7 @@ import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.heuristic.selector.AbstractSelector;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.list.RandomSubListSelector;
@@ -378,6 +379,8 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
             && !Objects.requireNonNull(nearbyRandom).requiresPopulationSize()) {
           break;
         }
+      } else {
+        SelectionAttemptContext.failedSelection();
       }
     }
     return new NearbyCandidates(Arrays.copyOf(indices, size), populationSize);
@@ -505,6 +508,7 @@ public class NearbySubListSelector<Solution_> extends AbstractSelector<Solution_
           upcomingSubList = candidate;
           return true;
         }
+        SelectionAttemptContext.failedSelection();
       }
       return false;
     }

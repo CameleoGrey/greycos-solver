@@ -10,6 +10,7 @@ import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.alns.AlnsTrialResult;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.alns.AlnsStepScope;
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
@@ -86,6 +87,13 @@ public class PickedMoveStepScoreDiffStatistic<Solution_> implements SolverStatis
         var trial = (AlnsTrialResult<Score_>) alnsStepScope.getTrialResult();
         recordDifference(
             stepScope, alnsStepScope.getOperatorPairId(), trial.afterScore(), trial.beforeScore());
+      } else if (stepScope instanceof IteratedLocalSearchStepScope<Solution_> iteratedStepScope
+          && iteratedStepScope.getMove() != null) {
+        recordDifference(
+            stepScope,
+            iteratedStepScope.getMove().describe(),
+            stepScope.<Score_>getScore().raw(),
+            (Score_) iteratedStepScope.getStartingScore().raw());
       }
     }
 

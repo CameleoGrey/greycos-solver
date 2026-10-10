@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.random.RandomGenerator;
 
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.util.ListEntry;
 
 import org.jspecify.annotations.NullMarked;
@@ -51,6 +52,7 @@ public final class FilteredUniqueRandomSequence<T> implements UniqueRandomSequen
     var actualValueIndex = originalRandomIndex;
     var value = nonRemovedElement.value();
     while (!filter.test(value)) {
+      SelectionAttemptContext.failedSelection();
       if (delegate.isEmpty()) {
         throw new NoSuchElementException("No more elements to pick from.");
       }

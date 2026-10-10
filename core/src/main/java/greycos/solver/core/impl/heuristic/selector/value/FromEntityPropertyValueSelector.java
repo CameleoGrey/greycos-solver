@@ -8,6 +8,7 @@ import greycos.solver.core.api.cotwin.valuerange.ValueRange;
 import greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
@@ -91,7 +92,7 @@ public final class FromEntityPropertyValueSelector<Solution_>
             .getValueRangeManager()
             .getFromEntity(valueRangeDescriptor, entity, selectionSorter);
     if (!randomSelection) {
-      return valueRange.createOriginalIterator();
+      return SelectionAttemptContext.originalIterator(valueRange);
     } else {
       return valueRange.createRandomIterator(workingRandom);
     }
@@ -101,13 +102,13 @@ public final class FromEntityPropertyValueSelector<Solution_>
   public Iterator<Object> endingIterator(Object entity) {
     if (entity == null) {
       // When the entity is null, the complete list of values is returned
-      return valueRange.createOriginalIterator();
+      return SelectionAttemptContext.originalIterator(valueRange);
     } else {
       var valueRange =
           scoreDirector
               .getValueRangeManager()
               .getFromEntity(valueRangeDescriptor, entity, selectionSorter);
-      return valueRange.createOriginalIterator();
+      return SelectionAttemptContext.originalIterator(valueRange);
     }
   }
 

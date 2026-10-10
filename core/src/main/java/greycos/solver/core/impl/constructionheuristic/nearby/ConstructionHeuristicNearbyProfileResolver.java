@@ -30,6 +30,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.list.SubListSw
 import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
+import greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
@@ -69,6 +70,14 @@ public final class ConstructionHeuristicNearbyProfileResolver {
     var phaseConfig = phaseConfigList.get(phaseIndex);
     var solutionDescriptor = configPolicy.getSolutionDescriptor();
     var meterClass = configPolicy.getNearbyDistanceMeterClass();
+    if (phaseConfig instanceof IteratedLocalSearchPhaseConfig iteratedLocalSearch
+        && iteratedLocalSearch.getLocalSearchConfig() != null) {
+      return resolveLocalSearch(
+          iteratedLocalSearch.getLocalSearchConfig(),
+          solutionDescriptor,
+          meterClass,
+          "phase[" + phaseIndex + "].iteratedLocalSearch.localSearch");
+    }
     if (phaseConfig instanceof LocalSearchPhaseConfig localSearch) {
       // Nested ruin/recreate uses the profiles of its enclosing search, never a later search.
       return resolveLocalSearch(
@@ -112,7 +121,16 @@ public final class ConstructionHeuristicNearbyProfileResolver {
       Class<? extends NearbyDistanceMeter<?, ?>> meterClass,
       String path,
       List<ConstructionHeuristicNearbyProfiles> stages) {
-    if (phase instanceof LocalSearchPhaseConfig localSearch) {
+    if (phase instanceof IteratedLocalSearchPhaseConfig iteratedLocalSearch) {
+      if (iteratedLocalSearch.getLocalSearchConfig() != null) {
+        stages.add(
+            resolveLocalSearch(
+                iteratedLocalSearch.getLocalSearchConfig(),
+                solutionDescriptor,
+                meterClass,
+                path + ".iteratedLocalSearch.localSearch"));
+      }
+    } else if (phase instanceof LocalSearchPhaseConfig localSearch) {
       stages.add(
           resolveLocalSearch(localSearch, solutionDescriptor, meterClass, path + ".localSearch"));
     } else if (phase instanceof IslandModelPhaseConfig island) {

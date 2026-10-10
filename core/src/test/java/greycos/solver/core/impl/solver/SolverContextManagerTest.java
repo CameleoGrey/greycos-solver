@@ -2,6 +2,7 @@ package greycos.solver.core.impl.solver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -10,6 +11,10 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
@@ -28,6 +33,9 @@ import greycos.solver.core.testconstraint.DummyConstraintProvider;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class SolverContextManagerTest {
 
@@ -212,6 +220,84 @@ class SolverContextManagerTest {
 
     // The solver's normal cleanup does not run on the failure path, so this is the only close.
     assertThat(scoreDirectorInUse.getWorkingSolution()).isNull();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  @Timeout(15)
+  void unfinishedWorkerCloneDefersCleanupAndRejectsReuseBeforeChangingTheParentGraph(
+      boolean contextAdopted) throws Exception {
+    var scope = buildSolverScope();
+    var manager = buildManager(GLOBAL_MODE);
+    var director = scope.getScoreDirector();
+    var working = director.getWorkingSolution();
+    var entered = new CountDownLatch(1);
+    var release = new CountDownLatch(1);
+    var executor = Executors.newSingleThreadExecutor();
+    var ownerCleanupCount = new AtomicInteger();
+    scope.getWorkerRegistry().registerExecutor(executor, "unfinished move worker clone");
+    scope
+        .getWorkerRegistry()
+        .deferCleanup(
+            manager,
+            () -> {
+              assertThat(scope.getScoreDirector()).isSameAs(director);
+              assertThat(director.getWorkingSolution()).isSameAs(working);
+              ownerCleanupCount.incrementAndGet();
+            });
+    if (contextAdopted) manager.solvingStarted(scope);
+    try {
+      var clone =
+          executor.submit(
+              () -> {
+                entered.countDown();
+                boolean interrupted = false;
+                while (release.getCount() != 0L) {
+                  try {
+                    release.await();
+                  } catch (InterruptedException ignored) {
+                    interrupted = true;
+                  }
+                }
+                try {
+                  // The parent working graph must remain alive until this startup reader has
+                  // finished.
+                  return director.cloneWorkingSolution();
+                } finally {
+                  if (interrupted) Thread.currentThread().interrupt();
+                }
+              });
+      assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+      executor.shutdownNow(); // The application callback deliberately ignores this interruption.
+      var original = new IllegalStateException("worker startup timed out");
+      manager.solvingError(scope, original);
+      assertThat(original.getSuppressed()).hasSize(1);
+      assertThat(original.getSuppressed()[0]).hasMessageContaining("worker groups");
+      assertThat(director.getWorkingSolution()).isSameAs(working);
+      assertThat(ownerCleanupCount).hasValue(0);
+      for (int attempt = 0; attempt < 2; attempt++) {
+        assertThatThrownBy(() -> manager.prepareForSolving(scope, GLOBAL_MODE))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("previous solve");
+        assertThat(scope.getScoreDirector()).isSameAs(director);
+        assertThat(director.getWorkingSolution()).isSameAs(working);
+      }
+      assertThatThrownBy(manager::close).isInstanceOf(IllegalStateException.class);
+      assertThat(director.getWorkingSolution()).isSameAs(working);
+
+      release.countDown();
+      assertThat(clone.get(5, TimeUnit.SECONDS)).isNotSameAs(working).isNotNull();
+      assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+      manager.prepareForSolving(scope, GLOBAL_MODE);
+      assertThat(ownerCleanupCount).hasValue(1);
+      assertThat(director.getWorkingSolution()).isNull();
+      assertThat(scope.getScoreDirector()).isNotSameAs(director);
+    } finally {
+      release.countDown();
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+      manager.close();
+    }
   }
 
   @Test

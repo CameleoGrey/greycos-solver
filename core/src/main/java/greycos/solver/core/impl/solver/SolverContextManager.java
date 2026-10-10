@@ -51,7 +51,8 @@ import org.jspecify.annotations.Nullable;
  *       real-time problem changes restart solving, {@link #prepareForProblemChanges(SolverScope)}
  *       recreates a score director before applying them;
  *   <li>{@link #solvingError(SolverScope, Throwable)} closes it when solving fails, because {@code
- *       outerSolvingEnded} never runs on that path.
+ *       outerSolvingEnded} never runs on that path; if worker shutdown timed out, disposal waits
+ *       until a later cleanup or solve preparation can establish that those workers have exited.
  * </ul>
  *
  * Note that no score director is closed at {@code phaseEnded}. The phase which follows reads the
@@ -74,6 +75,7 @@ public class SolverContextManager<Solution_, Score_ extends Score<Score_>>
 
   @Nullable private SolverContext<Solution_, Score_> currentContext;
   @Nullable private InnerScoreDirector<Solution_, ?> lastClosedDirector;
+  @Nullable private SolverScope<Solution_> deferredCleanupScope;
 
   public SolverContextManager(
       ScoreDirectorFactory<Solution_, Score_> scoreDirectorFactory,
@@ -169,10 +171,14 @@ public class SolverContextManager<Solution_, Score_ extends Score<Score_>>
    * <p>Solving can fail before {@link #solvingStarted(SolverScope)} has adopted a context — for
    * instance in {@code DefaultSolver.assertCorrectSolutionState()}, or in any listener notified
    * earlier in solving start. The score director the solver was built with still has to be closed
-   * in that case, or a long-lived {@link SolverManager} would accumulate one per failed job.
+   * in that case, or a long-lived {@link SolverManager} would accumulate one per failed job. A
+   * director still owned by live workers is retained instead of being invalidated beneath them.
    */
   public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
     try {
+      // A worker may still be cloning this director or reading provider state after an unsuccessful
+      // bounded shutdown. Retain the context until the registry proves every owner has exited.
+      deferredCleanupScope = solverScope;
       close(solverScope);
     } catch (RuntimeException | Error releaseException) {
       // The caller is on its way to rethrowing the real failure; this must not take its place.
@@ -189,9 +195,15 @@ public class SolverContextManager<Solution_, Score_ extends Score<Score_>>
   }
 
   private void close(@Nullable SolverScope<Solution_> solverScope) {
+    var cleanupScope = solverScope == null ? deferredCleanupScope : solverScope;
+    if (deferredCleanupScope != null) {
+      deferredCleanupScope.getWorkerRegistry().assertNoActiveWorkers();
+      deferredCleanupScope.getWorkerRegistry().runDeferredCleanup();
+      deferredCleanupScope = null;
+    }
     var director =
         currentContext == null
-            ? (solverScope == null ? null : solverScope.getScoreDirector())
+            ? (cleanupScope == null ? null : cleanupScope.getScoreDirector())
             : currentContext.scoreDirector();
     currentContext = null;
     if (director != null) {
@@ -207,6 +219,11 @@ public class SolverContextManager<Solution_, Score_ extends Score<Score_>>
   }
 
   void prepareForSolving(SolverScope<Solution_> solverScope, EnvironmentMode globalMode) {
+    solverScope.getWorkerRegistry().runDeferredCleanup();
+    if (deferredCleanupScope != null) {
+      // This check precedes any mutation or replacement of the retained working graph.
+      close(deferredCleanupScope);
+    }
     if (solverScope.getScoreDirector() == lastClosedDirector) {
       var context = createContext(solverScope, globalMode);
       solverScope.setScoreDirector(context.scoreDirector());

@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.islandmodel;
 
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 
@@ -17,6 +18,6 @@ class MigrationTrigger<Solution_> extends PhaseLifecycleListenerAdapter<Solution
 
   @Override
   public void stepEnded(AbstractStepScope<Solution_> stepScope) {
-    agent.checkAndPerformMigration();
+    agent.checkAndPerformMigration(stepScope instanceof IteratedLocalSearchStepScope);
   }
 }

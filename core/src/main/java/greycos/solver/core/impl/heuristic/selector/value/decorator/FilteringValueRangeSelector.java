@@ -14,6 +14,7 @@ import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescri
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import greycos.solver.core.impl.heuristic.selector.common.ReachableValues;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import greycos.solver.core.impl.heuristic.selector.list.DestinationSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelector;
@@ -359,6 +360,7 @@ public final class FilteringValueRangeSelector<Solution_>
         if (isReachable(value)) {
           return value;
         }
+        SelectionAttemptContext.failedSelection();
       }
       return null;
     }
@@ -418,6 +420,7 @@ public final class FilteringValueRangeSelector<Solution_>
         if (isReachable(next)) {
           return next;
         }
+        SelectionAttemptContext.failedSelection();
       } while (bailoutSize > 0);
       // if a valid move is not found with the given bailout size,
       // we assign the same value to the left side, which will result in a non-doable move

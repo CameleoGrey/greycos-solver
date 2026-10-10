@@ -3,6 +3,7 @@ package greycos.solver.core.impl.heuristic.selector.move.decorator;
 import java.util.Iterator;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -43,7 +44,7 @@ public class SortingMoveSelector<Solution_> extends AbstractCachingMoveSelector<
 
   @Override
   public Iterator<Move<Solution_>> iterator() {
-    return cachedMoveList.iterator();
+    return SelectionAttemptContext.iterator(cachedMoveList);
   }
 
   @Override

@@ -14,6 +14,7 @@ import greycos.solver.core.impl.constructionheuristic.placer.QueuedValuePlacer;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import greycos.solver.core.impl.heuristic.selector.common.ReachableValues;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionListIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
@@ -350,6 +351,7 @@ public final class FilteringEntityByValueSelector<Solution_>
         if (reachableValues.isEntityReachable(replayedValue, otherEntity)) {
           return otherEntity;
         }
+        SelectionAttemptContext.failedSelection();
       }
       return noUpcomingSelection();
     }
@@ -364,6 +366,7 @@ public final class FilteringEntityByValueSelector<Solution_>
         if (reachableValues.isEntityReachable(replayedValue, otherEntity)) {
           return otherEntity;
         }
+        SelectionAttemptContext.failedSelection();
       }
       return noUpcomingSelection();
     }

@@ -8,6 +8,7 @@ import java.util.Objects;
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleListener;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
@@ -105,7 +106,7 @@ public abstract class AbstractCachingValueSelector<Solution_>
   }
 
   public Iterator<Object> endingIterator() {
-    return cachedValueList.iterator();
+    return SelectionAttemptContext.iterator(cachedValueList);
   }
 
   @Override

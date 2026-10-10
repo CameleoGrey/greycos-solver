@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.Iterator;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import greycos.solver.core.preview.api.move.Move;
 
@@ -30,7 +31,7 @@ public class ShufflingMoveSelector<Solution_> extends AbstractCachingMoveSelecto
         "    Shuffled cachedMoveList with size ({}) in moveSelector({}).",
         cachedMoveList.size(),
         this);
-    return cachedMoveList.iterator();
+    return SelectionAttemptContext.iterator(cachedMoveList);
   }
 
   @Override

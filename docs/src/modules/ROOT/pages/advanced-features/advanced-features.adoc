@@ -493,6 +493,8 @@ Use the same seed, ordered inputs and reproducible termination conditions when c
 
 Construction heuristic and local search phases inherit the solver's `moveThreadCount`.
 A phase can override it, including `NONE` to evaluate moves on the solver thread.
+The xref:optimization-algorithms/iterated-local-search.adoc#iteratedLocalSearchThreads[ILS/VNS phase]
+also inherits this setting and retains its evaluation pool across bounded Local Search episodes.
 The effective phase setting also controls isolation of nested ruin/recreate state;
 disabling workers in the nested construction heuristic does not allow concurrent outer moves to share that state.
 
@@ -836,11 +838,14 @@ on all planning entity and planning value classes to enable solution cloning and
 
 The default `islandCount` is `4`.
 With `compareGlobalEnabled` enabled by default, each island checks the shared global best every
-`receiveGlobalUpdateFrequency` completed local-search steps or ALNS trials; the default is `400`.
+`receiveGlobalUpdateFrequency` completed local-search steps, ALNS trials, or ILS/VNS primitive steps;
+the default is `400`.
 Ring migration is controlled separately by `migrationFrequency`, whose default is `Integer.MAX_VALUE`.
 Choose a smaller value to exchange solutions around the ring more frequently.
 Migration copies planning assignments, respects pinned entities and list prefixes, and updates list assignment shadows.
 Evaluating an adopted solution consumes one local-search move evaluation, including for move-count termination and monitoring.
+In xref:optimization-algorithms/iterated-local-search.adoc#iteratedLocalSearchThreads[ILS/VNS], adoption
+restarts initial improvement from the migrant without manufacturing a primitive step or completed iteration.
 
 Termination configured on `islandModel` spans the inner phase sequence.
 Each island receives its own cumulative step, move-evaluation, and score-calculation quota.
@@ -869,7 +874,7 @@ Completed descendant work stays consumed when the outer island resumes its next 
 The nested phase can impose additional independent limits on each of its islands.
 Search steps in descendants also contribute to the outer island's unimproved-step and diminished-returns history.
 For partitioned descendants, the enclosing improvement history follows merged full-problem scores.
-An enclosing idle clock starts when an actual descendant local-search or ALNS phase starts, not when a nested
+An enclosing idle clock starts when an actual descendant local-search, ALNS, or ILS/VNS phase starts, not when a nested
 island container starts construction.
 
 Termination remains cooperative. Work already in progress can finish beyond a shared quota before the next
@@ -893,7 +898,7 @@ The shared idle clock advances when an improvement is published, independently o
 Cancellation is cooperative. Custom work that does not respond to interruption can outlive the shutdown timeout.
 While any worker from the previous solve remains alive, another `solve()` call on the same solver
 throws `IllegalStateException` naming the outstanding worker groups.
-This includes nested construction, local-search, partition, and ALNS workers.
+This includes nested construction, local-search, partition, ALNS, and ILS/VNS workers.
 Reuse is allowed after all previous workers have exited.
 
 ==== Monitoring and benchmarks

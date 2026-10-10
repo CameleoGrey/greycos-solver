@@ -1,0 +1,487 @@
+[#iteratedLocalSearch]
+= Iterated Local Search and Variable Neighborhood Search
+:doctype: book
+:sectnums:
+:icons: font
+
+Iterated Local Search (ILS) alternates a perturbation of the current plan with a bounded episode of
+xref:optimization-algorithms/local-search.adoc#localSearch[Local Search].
+The episode's best solution replaces the accepted plan only when its native score strictly improves.
+A fixed perturbation strength gives fixed-strength ILS; an increasing schedule of strengths gives
+a Variable Neighborhood Search (VNS) policy in the same `iteratedLocalSearch` phase.
+
+The phase uses the existing planning model, moves, shadows, and score calculation.
+It supports basic variables, list variables, and models combining both, within the existing model
+and move-selector restrictions. Constraint Streams, easy scoring, and custom incremental scoring
+retain their normal contracts. Move workers and islands can be used together.
+This is a classical search algorithm; it requires no alternative objective or score scalarization.
+
+[#iteratedLocalSearchAlgorithm]
+== How the search proceeds
+
+The phase starts from an initialized, structurally valid solution, normally produced by a preceding
+xref:optimization-algorithms/construction-heuristics.adoc#constructionHeuristics[Construction Heuristic].
+All mandatory decisions must be assigned. Optional unassignment remains legal when the model allows it.
+Initialization and structural validity do not imply that every hard constraint is satisfied.
+
+. Run an initial bounded Local Search episode without perturbation, and retain a strict improvement.
+. Starting from the accepted incumbent, apply the configured number of successful perturbation moves.
+. Run a fresh bounded Local Search episode from the perturbed state.
+. Accept the episode's best state if it strictly improves the incumbent; otherwise restore the incumbent.
+. Reset to the smallest strength after acceptance, or advance to the next strength after rejection.
+  After the largest strength, wrap to the smallest and continue while budgets permit.
+
+The initial improvement episode consumes search work but does not count as a completed outer iteration.
+The inner algorithm may accept worse or equal moves; for example, an episode can use Late Acceptance
+or Simulated Annealing. Outer acceptance remains `IMPROVING_ONLY` regardless of that choice.
+Equal-score episode results keep the previous incumbent. Equal-score episode-best ties keep the
+first discovered assignment snapshot.
+
+The following states have different roles:
+
+[cols="1,3", options="header"]
+|===
+|State |Meaning
+|Working solution |The mutable plan used for perturbation, temporary candidate evaluation, and committed moves.
+|Accepted incumbent |The complete plan from which the next perturbation starts.
+|Episode best |The best of the episode's starting state and its committed, complete inner moves.
+|Solver best |The best published complete solution seen during the solve, independently of outer acceptance.
+|===
+
+Temporary probes and unconsumed worker candidates cannot become the episode best or solver best.
+Committed perturbation states can improve the solver best, even if the completed shake or episode
+is subsequently rejected. Restoration never removes a previously published improvement.
+The returned solver result is therefore not necessarily the last accepted incumbent.
+
+All authoritative comparisons use the configured native score, including initialization and
+structural status. Hard/soft levels retain their normal ordering, and custom score types retain
+their comparison contract. No levels are collapsed into a `double` for outer acceptance.
+Restrictions of the chosen inner algorithm still apply to its score type and move configuration.
+A bounded or sampled episode does not establish a local optimum or an optimality proof.
+
+[#iteratedLocalSearchConfiguration]
+== Configuration
+
+ILS/VNS is opt-in: an omitted phase leaves the ordinary inferred phase sequence unchanged.
+The strengths and two attempt limits are explicit configuration, with no numeric defaults.
+The following equivalent snippets configure scheduled VNS for a basic-variable model on an
+existing `solverConfig`. Numbers are illustrative experiment settings, not recommended defaults.
+
+[source,java]
+----
+import java.time.Duration;
+
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
+import greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchAcceptanceType;
+import greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchType;
+import greycos.solver.core.config.solver.termination.TerminationConfig;
+
+solverConfig.withPhases(
+        new ConstructionHeuristicPhaseConfig(),
+        new IteratedLocalSearchPhaseConfig()
+                .withMoveThreadCount("NONE")
+                .withLocalSearch(new LocalSearchPhaseConfig()
+                        .withLocalSearchType(LocalSearchType.LATE_ACCEPTANCE)
+                        .withTerminationConfig(new TerminationConfig().withStepCountLimit(500)))
+                .withPerturbationMoveSelectorConfig(new UnionMoveSelectorConfig()
+                        .withMoveSelectors(new ChangeMoveSelectorConfig(), new SwapMoveSelectorConfig()))
+                .withPerturbationStrengths(1, 2, 4, 8)
+                .withPerturbationAttemptLimit(256L)
+                .withEpisodeCandidateAttemptLimit(10_000L)
+                .withAcceptanceType(IteratedLocalSearchAcceptanceType.IMPROVING_ONLY)
+                .withTerminationConfig(new TerminationConfig()
+                        .withSpentLimit(Duration.ofSeconds(60))));
+----
+
+[source,xml]
+----
+<constructionHeuristic/>
+<iteratedLocalSearch>
+  <termination>
+    <spentLimit>PT60S</spentLimit>
+  </termination>
+  <moveThreadCount>NONE</moveThreadCount>
+  <localSearch>
+    <termination>
+      <stepCountLimit>500</stepCountLimit>
+    </termination>
+    <localSearchType>LATE_ACCEPTANCE</localSearchType>
+  </localSearch>
+  <perturbation>
+    <unionMoveSelector>
+      <changeMoveSelector/>
+      <swapMoveSelector/>
+    </unionMoveSelector>
+  </perturbation>
+  <perturbationStrengths>1 2 4 8</perturbationStrengths>
+  <perturbationAttemptLimit>256</perturbationAttemptLimit>
+  <episodeCandidateAttemptLimit>10000</episodeCandidateAttemptLimit>
+  <acceptanceType>IMPROVING_ONLY</acceptanceType>
+</iteratedLocalSearch>
+----
+
+The 60-second phase limit starts after construction. Add solver-level termination when total solving
+time must also be bounded. A solver-wide deadline alone does not reserve time for later phases.
+An explicit phase sequence replaces generated phases, so include construction when needed.
+Mixed models may require multiple construction phases or explicit placers to initialize all variables.
+
+[cols="1,3", options="header"]
+|===
+|Setting |Contract
+|`localSearch` |Required `LocalSearchPhaseConfig`; its termination is episode-local.
+Omitting its algorithm choice keeps the existing Local Search default.
+|`perturbation` |Optional wrapper around one native move selector, commonly a union.
+The Java method is `withPerturbationMoveSelectorConfig(...)`.
+Omission uses the existing model-derived legal move portfolio.
+|`perturbationStrengths` |Required nonempty, strictly increasing positive integers.
+Use `withPerturbationStrengths(int...)` in Java and whitespace-separated values in XML.
+|`perturbationAttemptLimit` |Required positive `long`, at least the largest strength; resets for each shake.
+|`episodeCandidateAttemptLimit` |Required positive `long`; bounds consumed selection-attempt units across an episode.
+|`iterationCountLimit` |Optional positive `long`, set with `withIterationCountLimit(...)`.
+Counts completed outer iterations, separately from primitive steps.
+|`acceptanceType` |Omitted or `IMPROVING_ONLY`; accepts only strict incumbent improvements.
+|`moveThreadCount` |Outer phase worker count, using normal standalone or island inheritance.
+`NONE` selects serial evaluation.
+|Inherited phase settings |Outer termination and environment mode apply to the whole phase.
+|===
+
+Configure an applicable enclosing termination or `iterationCountLimit`.
+An episode termination is additional to its mandatory attempt cap and cannot replace the outer limit.
+Invalid strengths, nonpositive limits, and contradictory worker or environment settings fail before
+worker acquisition. The nested Local Search worker count and environment override must be absent
+or resolve to the same effective settings as the outer phase.
+
+For fixed-strength ILS, replace the schedule with a single entry:
+
+[source,java]
+----
+ilsConfig.withPerturbationStrengths(4);
+----
+
+[source,xml]
+----
+<perturbationStrengths>4</perturbationStrengths>
+----
+
+[#iteratedLocalSearchMoves]
+== Perturbation and model-specific moves
+
+A strength of `4` means four successfully applied native moves.
+A compound move counts once, even if it changes many assignments.
+Strength does not count distinct entities, list elements, or distance from the incumbent.
+Moves can undo previous moves, so a larger strength does not guarantee a more distant final plan.
+
+Perturbation is score-independent: a legal complete move may worsen hard or soft score.
+Entity pins, pinned list prefixes, value ranges, list membership, and assignment notifications
+remain in force. Shadows are updated through the ordinary score director.
+Compound repair moves may have protected incomplete internal states under their existing contract,
+but must finish structurally valid and complete before contributing one successful perturbation move.
+
+Non-doable, filtered, failed-to-prepare, and zero-change proposals consume attempts without increasing
+the successful-move count. If the shake cannot apply its full strength within the attempt limit,
+it restores the incumbent and ends with `NO_PERTURBATION`. The same outcome applies when its final
+assignments equal the incumbent, even if intermediate moves changed them.
+The phase advances the schedule; it does not silently use a weaker perturbation.
+
+A complete traversal of strengths consisting only of unsuccessful perturbations ends the phase
+with `NO_PROGRESS`. This also handles fully pinned or immovable problems without an endless loop.
+A completed improvement episode breaks that consecutive failure cycle.
+`NO_PROGRESS` is a bounded operational stop, not proof that all legal moves were exhausted.
+
+For a list-only model, a perturbation portfolio can use list relocation and swap:
+
+[source,xml]
+----
+<perturbation>
+  <unionMoveSelector>
+    <listChangeMoveSelector/>
+    <listSwapMoveSelector/>
+  </unionMoveSelector>
+</perturbation>
+----
+
+A mixed model can combine basic changes and swaps with list changes and swaps.
+For example, suppose `org.acme.Vehicle.driver` is a basic variable and `Vehicle.visits` is the
+model's planning list variable. The following selector explicitly targets the basic binding,
+while the list selectors resolve the model's list variable:
+
+[source,xml]
+----
+<unionMoveSelector>
+  <changeMoveSelector>
+    <entitySelector>
+      <entityClass>org.acme.Vehicle</entityClass>
+    </entitySelector>
+    <valueSelector variableName="driver"/>
+  </changeMoveSelector>
+  <swapMoveSelector>
+    <entitySelector>
+      <entityClass>org.acme.Vehicle</entityClass>
+    </entitySelector>
+    <variableNameIncludes>
+      <variableNameInclude>driver</variableNameInclude>
+    </variableNameIncludes>
+  </swapMoveSelector>
+  <listChangeMoveSelector/>
+  <listSwapMoveSelector/>
+</unionMoveSelector>
+----
+
+Place this union inside `perturbation` and, independently, inside `localSearch` when both should
+search the same portfolio. The configurations describe separate selector instances.
+Use the full native score for every complete move: mixed-variable constraints need not separate
+into independent basic and list contributions.
+The xref:optimization-algorithms/neighborhoods.adoc[Neighborhoods API] retains its existing model
+restrictions, including its restrictions with Variable Neighborhood Descent.
+Nesting an inner configuration does not expand that configuration's capabilities.
+
+[#iteratedLocalSearchBudgets]
+== Attempts, steps, and episode boundaries
+
+The solver, the ILS/VNS phase, and the current episode have independent budget origins.
+Starting another episode does not reset enclosing elapsed time, idle time, or work counters.
+An episode stops when its own limits or an enclosing stop condition fires; enclosing AND/OR
+termination expressions retain their meaning.
+
+[cols="1,3", options="header"]
+|===
+|Quantity |What it counts
+|Outer primitive steps |Each successful perturbation move and each committed inner move once.
+Initial-episode moves count normally. An outer iteration is not a step containing other steps.
+|Completed iterations |A normally accepted or rejected episode result, or an unsuccessful perturbation.
+Initial and migrant-started episodes do not increment this counter; interrupted iterations are separate.
+|Episode attempts |Ordered consumed raw move proposals and failed lower-level selection retries
+that produce no raw proposal. Filtered and non-doable work can consume attempts without any scoring.
+|Move evaluations |Candidate evaluations under the existing move-count semantics, including rejected candidates.
+|Score calculations |Actual score work through the existing accounting paths, including preparation probes
+and restoration. Consumed worker calculations are credited once.
+|Additional worker work |Speculative/discarded evaluations and replay work, reported separately from consumed work.
+|Idle progress |Episode-best improvements for episode-local idle limits; authoritative solver/phase best
+for enclosing idle limits; strict shared-global improvements for island-global idle limits.
+|===
+
+An attempt is charged once at its owning selection operation. Passing a proposal through another
+filter wrapper or successfully selecting its entity and value adds no extra charge.
+Framework retry loops cooperate with the budget, so repeatedly rejected filters still make charged
+progress. Preparation and internal scoring probes inside an admitted compound move retain their
+own repair/probe limits; they are not additional top-level attempts.
+
+Configured selection caches also require bounded preparation work.
+If filling a cache needs more than the remaining attempt budget, its incomplete contents are
+discarded and the episode can end before producing any candidate.
+Cache preparation performed speculatively remains visible as speculative selection work.
+Choose a cap that permits the configured cache to fill, or use an applicable less eager cache mode;
+the budget does not turn a partially built cache into a smaller neighborhood.
+
+The last permitted candidate receives its ordinary evaluation, acceptance, and forager bookkeeping.
+If that candidate naturally completes the decision, the selected move can commit, provided no
+other termination intervenes. Otherwise the temporary mutation is undone, the unfinished selection
+is discarded, and the episode returns its already materialized best state.
+The cap never forces a partial forager decision to commit or requests an extra candidate to fill it.
+Finite selector exhaustion can complete the decision only when exhaustion is established within
+the budget; interruption at the cap is not natural exhaustion.
+
+Move workers may reserve selection quota in advance. Ordered consumed results count against the
+episode limit; unused reservations are released when a decision ends early.
+Their already performed speculative work remains visible separately and does not reduce a later
+decision's logical attempt allowance. Consequently, logical attempts and physical work are different
+measurements, and physical-work termination can produce different traces across worker counts.
+
+Rejected search work consumes budgets. Incumbent restoration is an administrative transition,
+not a search step or improvement, but its actual scoring cost remains counted.
+Snapshotting and restoration can take time proportional to model size and trigger broad shadow
+updates. Preserving incremental scoring does not guarantee that those transitions are cheap.
+Easy scoring still evaluates the whole solution according to its calculator's contract.
+
+For inner Simulated Annealing, cooling restarts with each episode.
+With `a` consumed attempts and cap `A`, the attempt gradient is `min(1, a / A)` using a nontruncating ratio.
+If the configured episode termination supplies a gradient, the episode uses the maximum of that
+gradient and the attempt gradient, preserving the termination tree's internal AND/OR rules.
+If the configured gradient is unavailable, it uses the attempt gradient alone.
+Invalid or non-finite gradients are errors. Cooling is sampled at step start, as in ordinary Local Search.
+Enclosing deadlines can stop the episode but do not contribute to its cooling progress.
+
+[#iteratedLocalSearchThreads]
+== Move workers and islands
+
+The outer phase owns one Local Search evaluation pool and reuses its worker scoring graphs across
+episodes. The coordinator generates perturbations and makes outer acceptance decisions.
+Each episode starts with fresh selector, acceptor, forager, and algorithm-specific history, including
+GLS penalties when GLS is used. The working identities and active incremental scoring session are
+retained during ordinary perturbation, improvement, and restoration.
+
+At a transition, old evaluations finish or are cancelled before shared state changes.
+The complete notified assignment change is replayed to workers, and the next episode waits for
+acknowledgement. Results from earlier episodes cannot enter later decisions.
+Problem changes and repeated solves create fresh runtime state under the normal solver restart boundary.
+
+Standalone `moveThreadCount` inherits the solver setting unless the phase overrides it.
+Inside islands, the explicit ILS/VNS setting wins, followed by the enclosing island setting;
+when both are absent it resolves to `NONE`, independently of the root solver's worker setting.
+Configure the outer ILS/VNS count rather than creating a second pool through `localSearch`.
+Move workers and island migration require the normal
+xref:using-greycos-solver/modeling-planning-problems.adoc#planningId[`@PlanningId` annotations]
+on planning entity and planning value classes for rebasing across working graphs.
+
+The following fragment runs two islands with two move workers each:
+
+[source,xml]
+----
+<constructionHeuristic/>
+<islandModel>
+  <termination>
+    <spentLimit>PT60S</spentLimit>
+  </termination>
+  <islandCount>2</islandCount>
+  <moveThreadCount>2</moveThreadCount>
+  <migrationFrequency>100</migrationFrequency>
+  <iteratedLocalSearch>
+    <localSearch>
+      <termination>
+        <stepCountLimit>500</stepCountLimit>
+      </termination>
+      <localSearchType>LATE_ACCEPTANCE</localSearchType>
+    </localSearch>
+    <perturbationStrengths>1 2 4</perturbationStrengths>
+    <perturbationAttemptLimit>128</perturbationAttemptLimit>
+    <episodeCandidateAttemptLimit>10000</episodeCandidateAttemptLimit>
+  </iteratedLocalSearch>
+</islandModel>
+----
+
+This configuration has two island coordinators plus four move workers, in addition to the enclosing
+solve's coordination resources. Add any separately configured nested repair workers to the estimate.
+Built-in ruin-and-recreate uses serial nested repair and adds no separate move-worker pool.
+For unequal counts, sum each island's resolved worker count; the root count is not an extra worker
+pool for each island. More threads or the combination of both forms of parallelism need not improve
+time to solution. Compare configurations at matched total CPU and memory allocations.
+
+Each island owns its incumbent, strength position, episode histories, random streams, and workers.
+Outer trials remain sequential within an island. Migration and global comparison use completed
+primitive-step frequencies, so a long episode does not delay every exchange until its end.
+
+An eligible better migrant is adopted at a balanced action or decision boundary.
+The controller stops the old episode, rechecks the migrant against the latest island best, applies
+and scores the complete rebased snapshot, and publishes a strict improvement normally.
+It replaces the incumbent, resets to the first strength, and runs a fresh unperturbed episode.
+An active outer iteration is recorded as superseded; its old incumbent cannot later overwrite the
+migrant. Adoption itself consumes neither a primitive step nor a completed outer iteration, and
+the adopted best remains published even if the new episode commits no moves.
+
+Island termination retains its existing scope: elapsed time is shared from island-phase entry,
+global idle progress follows the shared best, and each island has its own cumulative work quota
+across its phase sequence. Episode starts reset none of these budgets.
+See xref:advanced-features/advanced-features.adoc#islandModel[the island model] for event delivery,
+resource settings, and termination composition.
+
+[#iteratedLocalSearchCancellation]
+== Cancellation and custom callbacks
+
+Termination is checked during selection, preparation, evaluation, worker waits, and state transitions.
+Cancellation stops submissions and cooperatively stops and joins registered workers while preserving
+the valid published best. It does not run another improvement episode or an expensive incumbent
+restoration merely to complete an interrupted outer iteration.
+Mutation or scoring failures propagate as failures after cleanup; they are not ordinary rejections.
+
+Attempt caps bound cooperative framework selection work. They cannot preempt arbitrary Java code
+inside an application callback, or alone bound the internal cost of one compound move.
+Custom move factories, filters, scoring code, and repair callbacks must retain their existing
+termination, interruption, thread-confinement, and deterministic behavior contracts.
+A slow non-cooperative callback can therefore exceed a configured wall-clock deadline.
+
+For repeatable comparisons, fix the input order, seed, configuration, and logical attempt/step limits.
+Episode random streams are allocated in logical order; worker identity and result arrival order do
+not select search randomness. Time limits, external state in callbacks, and asynchronous migration
+can change trajectories even with the same seed.
+
+[#iteratedLocalSearchMonitoring]
+== Monitoring and comparison
+
+The phase has one outer lifecycle and stable phase identity across episodes.
+Best-solution events report actual solver-best improvements; accepting an episode or restoring an
+incumbent does not fabricate a best event.
+Read outer primitive-step counts together with episode and iteration counts, since they measure
+different units of work.
+
+The standard `BEST_SCORE`, `STEP_SCORE`, `SCORE_CALCULATION_COUNT`, `MOVE_EVALUATION_COUNT`,
+`MOVE_COUNT_PER_STEP`, picked-move score-difference, and constraint-match metrics include ILS/VNS.
+Step and picked-move differences use the starting scores of each primitive move, so restoration
+and adoption are not attributed to a move.
+Constraint-match sampling uses the outer primitive-step index and takes a final phase sample.
+Enable metrics through the ordinary solver-level
+xref:using-greycos-solver/running-the-solver.adoc#monitoring[monitoring configuration].
+
+Add `ITERATED_LOCAL_SEARCH_STATISTICS` to that configuration to enable cumulative ILS/VNS gauges
+under `greycos.solver.iterated.local.search`.
+The fixed suffixes are `iterations.completed`, `iterations.accepted`, `iterations.rejected`,
+`iterations.interrupted`, `perturbations.failed`, `perturbations.no.change`, `migrants`, `episodes`,
+`episodes.initial`, `attempts.perturbation`, `attempts.episode`, and `attempts.speculative`.
+They use the existing solver/island tags and `phase.index`; episodes do not create new meter labels.
+Island final samples retain the counters even when an adopted migrant's episode commits no move.
+
+Enable `DEBUG` on `greycos.solver.core.impl.iteratedlocalsearch.DefaultIteratedLocalSearchPhase`
+for episode start/end and iteration outcome messages. These include episode/iteration indices,
+strength, completion reason, candidate/incumbent/solver-best scores, attempts, committed inner
+moves, and elapsed phase time as applicable. `INFO` reports phase startup and completion.
+
+The implementation's `DefaultIteratedLocalSearchPhase.getDiagnostics()` exposes a final diagnostic
+record for internal tests and benchmark tooling. It is in the `impl` package, not a new public solver
+SPI or a stable application reporting API. Its counters distinguish the following:
+
+[cols="1,3", options="header"]
+|===
+|Fields |Meaning
+|`episodes`, `initialEpisodes` |All improvement episodes, and the subset started without perturbation
+at phase initialization or after migration.
+|`completedIterations`, `acceptedIterations`, `rejectedIterations`, `failedPerturbations`
+|Completed outer outcomes. The three outcome counters sum to the completed count.
+|`noChangeCount`, `interruptedIterations`, `migrantRestarts`
+|No-change shakes are a subset of failed perturbations. Interrupted work and migrant restarts
+are reported separately from normally completed outcomes.
+|`perturbationAttempts`, `episodeAttempts`, `speculativeSelectionAttempts`, `primitiveSteps`
+|Consumed selection work by origin, additional speculative selection work, and completed primitive moves.
+|`scoreCalculations`, `consumedWorkerCalculations`, `additionalWorkerCalculations`
+|Phase-wide score calculations and separate consumed/additional worker contributions.
+Do not add the worker contributions to the already reconciled phase total a second time.
+|`workerStartups`, `moveWorkers` |Actual worker startups and the configured resolved move-worker count.
+These need not match when startup is interrupted.
+|`snapshotNanos`, `restorationNanos`, `resourceSetupNanos`, `episodeSetupNanos`, `completionReason`
+|Opt-in transition/setup timings and the phase's completion reason.
+Episode setup includes history initialization and any deferred worker startup, such as GLS startup.
+|===
+
+Enable snapshot, restoration, and setup timing with the JVM property
+`-Dgreycos.solver.iteratedLocalSearchDiagnostics=true`.
+Without it, timing fields are disabled; zero values are not measured zero-cost transitions.
+The separate `-Dgreycos.solver.moveThreadDiagnostics=true` property enables pipeline timing,
+including worker and coordinator-wait measurements.
+Use these settings in separate diagnostic runs and leave them disabled for primary timing comparisons.
+Always record the settings used; detailed logging and timing can change time-limited trajectories.
+
+Compare one long Local Search run with fixed-strength ILS and scheduled VNS using the same inner
+algorithm, initial solution, native score, and total work or wall-clock budget.
+Where appropriate, also compare tuned ALNS and existing island configurations.
+Include construction, cloning, rejected-episode restoration, worker startup/replay, and migration
+costs when measuring application time to result.
+
+Report feasibility, time to a fixed native-score target, final score, consumed attempts/evaluations,
+physical scoring work, elapsed time, and resource allocation separately.
+Record seeds, instance sizes, JVM, assertion/diagnostic settings, and any unsuccessful or timed-out runs.
+A small comparison over one or two seeds and small or medium instances gives evidence only for those
+runs; report measured gains and regressions without turning them into general performance claims.
+Neither a higher evaluation rate nor more accepted iterations proves better solution quality,
+parallel scalability, feasibility, or optimality.
+
+The repository's
+https://github.com/CameleoGrey/greycos-solver/tree/main/tools/benchmark/scripts/ils-vns[bounded ILS/VNS comparison harness]
+provides replay-checked assignment, routing, and interacting basic/list examples, with exact Java
+configuration and exported solver XML. Its primary comparison uses one or two seeds and two
+small/medium instances per family, matched resource settings, and at most two minutes per solve.
+It reports measured gains, regressions, failures, and censored runs without a numerical performance
+promotion gate. Consult its README for preparation, bounded screening, held-out selection, and
+separate diagnostic runs. The harness and example settings do not establish a performance result.

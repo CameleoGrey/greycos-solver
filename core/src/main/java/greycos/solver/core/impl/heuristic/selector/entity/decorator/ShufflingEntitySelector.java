@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.ListIterator;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 
 public final class ShufflingEntitySelector<Solution_>
@@ -31,7 +32,7 @@ public final class ShufflingEntitySelector<Solution_>
         "    Shuffled cachedEntityList with size ({}) in entitySelector({}).",
         cachedEntityList.size(),
         this);
-    return cachedEntityList.iterator();
+    return SelectionAttemptContext.iterator(cachedEntityList);
   }
 
   @Override
@@ -41,13 +42,13 @@ public final class ShufflingEntitySelector<Solution_>
         "    Shuffled cachedEntityList with size ({}) in entitySelector({}).",
         cachedEntityList.size(),
         this);
-    return cachedEntityList.listIterator();
+    return SelectionAttemptContext.listIterator(cachedEntityList, 0);
   }
 
   @Override
   public ListIterator<Object> listIterator(int index) {
     // Presumes that listIterator() has already been called and shuffling would be bad
-    return cachedEntityList.listIterator(index);
+    return SelectionAttemptContext.listIterator(cachedEntityList, index);
   }
 
   @Override

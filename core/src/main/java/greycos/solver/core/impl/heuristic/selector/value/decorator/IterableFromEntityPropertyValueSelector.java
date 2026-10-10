@@ -6,6 +6,7 @@ import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import greycos.solver.core.impl.heuristic.selector.value.FromEntityPropertyValueSelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
@@ -142,7 +143,7 @@ public final class IterableFromEntityPropertyValueSelector<Solution_>
     if (randomSelection) {
       return valueRange.createRandomIterator(workingRandom);
     } else {
-      return valueRange.createOriginalIterator();
+      return SelectionAttemptContext.originalIterator(valueRange);
     }
   }
 

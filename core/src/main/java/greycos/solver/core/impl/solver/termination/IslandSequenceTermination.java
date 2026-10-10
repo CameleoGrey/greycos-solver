@@ -2,6 +2,7 @@ package greycos.solver.core.impl.solver.termination;
 
 import greycos.solver.core.impl.alns.AlnsPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.phase.custom.scope.CustomPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
@@ -96,7 +97,9 @@ public final class IslandSequenceTermination<Solution_>
     }
     currentPhase = phaseScope;
     searchActive = isSearchPhase(phaseScope);
-    if (phaseScope instanceof LocalSearchPhaseScope || phaseScope instanceof AlnsPhaseScope) {
+    if (phaseScope instanceof LocalSearchPhaseScope
+        || phaseScope instanceof AlnsPhaseScope
+        || phaseScope instanceof IteratedLocalSearchPhaseScope) {
       budget.searchStarted();
     }
     if (member != null) {

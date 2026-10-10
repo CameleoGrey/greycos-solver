@@ -112,6 +112,7 @@ Each of these algorithm families have multiple optimization algorithms:
 |    xref:optimization-algorithms/local-search.adoc#stepCountingHillClimbing[Step Counting Hill Climbing] |5/5 |4/5 |3/5 |5/5 |Yes
 |    xref:optimization-algorithms/local-search.adoc#variableNeighborhoodDescent[Variable Neighborhood Descent] |3/5 |3/5 |2/5 |5/5 |Yes
 6+|  xref:optimization-algorithms/alns.adoc#alns[Adaptive Large Neighborhood Search] (ALNS): adaptive destroy/repair search from an initialized solution.
+6+|  xref:optimization-algorithms/iterated-local-search.adoc#iteratedLocalSearch[Iterated Local Search and Variable Neighborhood Search] (ILS/VNS): perturbation followed by bounded Local Search episodes, with strict incumbent improvement.
 |===
 
 To learn more about metaheuristics, see http://www.cs.gmu.edu/~sean/book/metaheuristics/[Essentials of Metaheuristics] or http://www.cleveralgorithms.com/[Clever Algorithms].
@@ -154,6 +155,12 @@ ALNS is a separate phase that learns which destroy/repair operators earn rewards
 it can follow construction heuristics and be combined with Local Search in a phase sequence.
 Compare solution quality and resource use on representative inputs under the same budget.
 
+Use xref:optimization-algorithms/iterated-local-search.adoc#iteratedLocalSearch[ILS/VNS]
+to alternate explicit perturbations with bounded episodes of an existing Local Search algorithm.
+A single perturbation strength gives fixed-strength ILS; an ordered schedule changes strength
+after unsuccessful iterations and resets after a strict incumbent improvement.
+Compare both policies with an ordinary Local Search run under the same total budget.
+
 Other experiments can also be run.
 For example, the following multiple algorithms can be combined together:
 
@@ -183,8 +190,10 @@ image::optimization-algorithms/overview/architectureOverview.png[align="center"]
 === Power tweaking or default parameter values
 
 Many optimization algorithms have parameters that affect results and scalability.
-GreyCOS Solver applies __configuration by exception__, so all optimization algorithms have default parameter values.
+GreyCOS Solver generally applies __configuration by exception__, with default parameter values for many algorithms.
 This is very similar to the Garbage Collection parameters in a JVM: most users have no need to tweak them, but power users often do.
+The opt-in xref:optimization-algorithms/iterated-local-search.adoc#iteratedLocalSearchConfiguration[ILS/VNS phase]
+requires explicit perturbation strengths and attempt limits.
 
 The default parameter values are sufficient for many cases (and especially for prototypes), but if development time allows, it may be beneficial to power tweak them with the xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarker[benchmarker] for better results and scalability on a specific use case.
 The documentation for each optimization algorithm also declares the advanced configuration for power tweaking.

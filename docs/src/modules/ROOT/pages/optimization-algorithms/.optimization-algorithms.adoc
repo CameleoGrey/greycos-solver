@@ -7,6 +7,7 @@
 include::overview.adoc[leveloffset=+1]
 include::construction-heuristics.adoc[leveloffset=+1]
 include::local-search.adoc[leveloffset=+1]
+include::iterated-local-search.adoc[leveloffset=+1]
 include::guided-local-search.adoc[leveloffset=+1]
 include::alns.adoc[leveloffset=+1]
 include::multistage.adoc[leveloffset=+1]

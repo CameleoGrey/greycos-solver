@@ -12,6 +12,7 @@ import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import greycos.solver.core.impl.heuristic.selector.common.ReachableValues;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionListIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
@@ -352,6 +353,7 @@ public final class FilteringEntityByEntitySelector<Solution_>
         if (isReachable(entity)) {
           return entity;
         }
+        SelectionAttemptContext.failedSelection();
       }
       return null;
     }
@@ -420,6 +422,7 @@ public final class FilteringEntityByEntitySelector<Solution_>
         if (isReachable(replayedEntity, otherEntity)) {
           return otherEntity;
         }
+        SelectionAttemptContext.failedSelection();
       }
       return noUpcomingSelection();
     }
@@ -434,6 +437,7 @@ public final class FilteringEntityByEntitySelector<Solution_>
         if (isReachable(replayedEntity, otherEntity)) {
           return otherEntity;
         }
+        SelectionAttemptContext.failedSelection();
       }
       return noUpcomingSelection();
     }
@@ -541,6 +545,7 @@ public final class FilteringEntityByEntitySelector<Solution_>
         if (isReachable(currentReplayedEntity, next, oneSideValidation)) {
           return next;
         }
+        SelectionAttemptContext.failedSelection();
       } while (bailoutSize > 0);
       // If no reachable entity is found, we return the currently selected entity,
       // which will result in a non-doable move
@@ -604,6 +609,7 @@ public final class FilteringEntityByEntitySelector<Solution_>
         if (isReachable(currentReplayedEntity, next)) {
           return next;
         }
+        SelectionAttemptContext.failedSelection();
       } while (bailoutSize > 0);
       // If no reachable entity is found, we return the currently selected entity,
       // which will result in a non-doable move

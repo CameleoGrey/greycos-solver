@@ -3,6 +3,7 @@ package greycos.solver.core.impl.heuristic.selector.common.iterator;
 import java.util.Iterator;
 import java.util.function.BooleanSupplier;
 
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.value.ValueSelector;
 import greycos.solver.core.preview.api.move.Move;
@@ -57,6 +58,7 @@ public abstract class AbstractRandomChangeIterator<Solution_, Move_ extends Move
     // This loop is mostly only relevant when the entityIterator or valueIterator is non-random or
     // shuffled
     while (!valueIterator.hasNext()) {
+      SelectionAttemptContext.failedSelection();
       if (terminated.getAsBoolean()) {
         return noUpcomingSelection();
       }

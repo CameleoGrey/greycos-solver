@@ -8,6 +8,7 @@ import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.impl.cotwin.valuerange.descriptor.ValueRangeDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
@@ -136,7 +137,7 @@ public final class IterableFromSolutionPropertyValueSelector<Solution_>
     if (randomSelection) {
       return cachedValueRange.createRandomIterator(workingRandom);
     }
-    return cachedValueRange.createOriginalIterator();
+    return SelectionAttemptContext.originalIterator(cachedValueRange);
   }
 
   @Override
@@ -145,7 +146,7 @@ public final class IterableFromSolutionPropertyValueSelector<Solution_>
   }
 
   public Iterator<Object> endingIterator() {
-    return cachedValueRange.createOriginalIterator();
+    return SelectionAttemptContext.originalIterator(cachedValueRange);
   }
 
   private void checkCachedEntityListIsDirty() {

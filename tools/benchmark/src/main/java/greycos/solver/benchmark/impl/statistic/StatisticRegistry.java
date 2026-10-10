@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.alns.AlnsStepScope;
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListener;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
@@ -228,6 +229,10 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
     if (stepScope instanceof LocalSearchStepScope<Solution_> localSearchStepScope) {
       return localSearchStepScope.getStep().describe();
     }
+    if (stepScope instanceof IteratedLocalSearchStepScope<Solution_> iteratedStepScope
+        && iteratedStepScope.getMove() != null) {
+      return iteratedStepScope.getMove().describe();
+    }
     return null;
   }
 
@@ -259,6 +264,7 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
           notifyMetric(SolverMetric.BEST_SOLUTION_MUTATION, sample.timeMillisSpent());
         }
         case FINAL -> {
+          notifyMetric(SolverMetric.ITERATED_LOCAL_SEARCH_STATISTICS, sample.timeMillisSpent());
           notifyMetric(SolverMetric.SCORE_CALCULATION_COUNT, sample.timeMillisSpent());
           notifyMetric(SolverMetric.MOVE_EVALUATION_COUNT, sample.timeMillisSpent());
           notifyMetric(SolverMetric.MEMORY_USE, sample.timeMillisSpent());

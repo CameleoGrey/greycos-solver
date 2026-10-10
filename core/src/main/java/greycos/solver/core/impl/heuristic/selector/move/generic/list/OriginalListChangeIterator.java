@@ -6,6 +6,8 @@ import java.util.Iterator;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.list.DestinationSelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
@@ -37,13 +39,26 @@ public class OriginalListChangeIterator<Solution_>
   }
 
   @Override
+  public boolean isKnownExhausted() {
+    return super.isKnownExhausted()
+        || (!upcomingCreated
+            && KnownExhaustionIterator.isExhausted(valueIterator)
+            && KnownExhaustionIterator.isExhausted(destinationIterator));
+  }
+
+  @Override
   protected Move<Solution_> createUpcomingSelection() {
+    boolean selectedWithoutProposal = false;
     while (!destinationIterator.hasNext()) {
+      if (selectedWithoutProposal) {
+        SelectionAttemptContext.failedSelection();
+      }
       if (!valueIterator.hasNext()) {
         return noUpcomingSelection();
       }
       upcomingValue = valueIterator.next();
       destinationIterator = destinationSelector.iterator();
+      selectedWithoutProposal = true;
     }
     var move = buildChangeMove(listVariableState, upcomingValue, destinationIterator);
     if (move == null) {

@@ -27,6 +27,27 @@ public class GlobalBestUpdater<Solution_> extends PhaseLifecycleListenerAdapter<
     this.previousBestScore = null;
   }
 
+  /**
+   * Publishes an administrative adoption before termination observes its best-score improvement.
+   */
+  public static <Solution_> void publishCurrentBestToGlobal(SolverScope<Solution_> solverScope) {
+    if (solverScope.getSolver() instanceof IslandSolver<Solution_> islandSolver) {
+      var globalState = islandSolver.getEnclosingGlobalState();
+      var solution = solverScope.getBestSolution();
+      var score = solverScope.getBestScore();
+      if (globalState != null
+          && solution != null
+          && score != null
+          && !score.isStructurallyFlawed()) {
+        globalState.tryUpdate(
+            solution == solverScope.getWorkingSolution()
+                ? solverScope.getScoreDirector().cloneSolution(solution)
+                : solution,
+            score);
+      }
+    }
+  }
+
   @Override
   public void stepEnded(AbstractStepScope<Solution_> stepScope) {
     publishCurrentBest(stepScope.getPhaseScope().getSolverScope());

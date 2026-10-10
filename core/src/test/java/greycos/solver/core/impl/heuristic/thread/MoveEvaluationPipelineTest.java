@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -48,6 +49,187 @@ class MoveEvaluationPipelineTest {
 
   private static final Duration TIMEOUT = Duration.ofSeconds(10);
   private static final InnerScore<SimpleScore> ZERO = InnerScore.fullyAssigned(SimpleScore.ZERO);
+
+  @Test
+  void cancelledEpisodeWaitsForEvaluationBeforeRebindingAndKeepsWorkerDirectors() throws Exception {
+    var started = new CountDownLatch(1);
+    var release = new CountDownLatch(1);
+    var obsolete = move();
+    try (var fixture = new Fixture(2, 2)) {
+      fixture.evaluate(
+          obsolete,
+          () -> {
+            started.countDown();
+            awaitLatch(release);
+            return ZERO;
+          });
+      fixture.start();
+      fixture.pipeline.submit(0, obsolete);
+      fixture.pipeline.flush();
+      awaitLatch(started);
+      fixture.pipeline.cancelStep();
+      try (var releasing = releaseWhenParked(Thread.currentThread(), release)) {
+        assertThat(fixture.pipeline.cancelAndAwaitQuiescence()).isTrue();
+        releasing.get();
+      }
+      fixture.pipeline.beginEpisode(0);
+      assertThat(fixture.pipeline.getCurrentEpoch()).isEqualTo(1);
+      fixture.pipeline.submit(0, move());
+      var first = fixture.pipeline.take();
+      assertThat(first.episodeId()).isZero();
+      assertThat(first.stepIndex()).isEqualTo(1);
+
+      assertThat(fixture.pipeline.cancelAndAwaitQuiescence()).isTrue();
+      var restoration = move();
+      assertThat(fixture.pipeline.replayStateAndAwait(restoration, ZERO)).isTrue();
+      assertThat(fixture.pipeline.cancelAndAwaitQuiescence()).isTrue();
+      fixture.pipeline.beginEpisode(1);
+      fixture.pipeline.submit(0, move());
+      var second = fixture.pipeline.take();
+      assertThat(second.episodeId()).isEqualTo(1);
+      assertThat(second.stepIndex()).isEqualTo(3);
+      assertThat(fixture.workerThreads).hasSize(2);
+      verify(fixture.parent, times(2)).createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
+      verify(restoration, times(2)).execute(any());
+      for (var child : fixture.children) verify(child, never()).close();
+    } finally {
+      release.countDown();
+    }
+  }
+
+  @Test
+  void episodeLimitDoesNotInterruptAnEnclosingResourceBarrier() throws Exception {
+    try (var fixture = new Fixture(1, 1)) {
+      fixture.start();
+      fixture.pipeline.setTerminationCheck(() -> true);
+      fixture.pipeline.setBarrierTerminationCheck(() -> false);
+      assertThat(fixture.pipeline.cancelAndAwaitQuiescence()).isTrue();
+      fixture.pipeline.beginEpisode(0);
+      assertThat(fixture.pipeline.awaitCurrentReplay()).isTrue();
+    }
+  }
+
+  @Test
+  void quiescenceClosesEpisodeMetadataBeforeAcknowledgementAndReusesDirectors() throws Exception {
+    var opened = new AtomicInteger();
+    var closed = new AtomicInteger();
+    try (var fixture = new Fixture(2, 1)) {
+      fixture.pipeline.setMetadataCollectorFactory(
+          director -> {
+            opened.incrementAndGet();
+            return new MoveEvaluationPipeline.CandidateMetadataCollector<>() {
+              @Override
+              public MoveEvaluationPipeline.EvaluationMetadata collect(
+                  greycos.solver.core.preview.api.move.SolutionView<Object> view,
+                  Move<Object> move,
+                  MoveEvaluationPipeline.EvaluationContext context) {
+                return null;
+              }
+
+              @Override
+              public void close() {
+                closed.incrementAndGet();
+              }
+            };
+          });
+      fixture.start();
+      assertThat(opened).hasValue(2);
+      assertThat(fixture.pipeline.cancelAndAwaitQuiescence()).isTrue();
+      assertThat(closed).hasValue(2);
+      fixture.pipeline.beginEpisode(0);
+      assertThat(opened).hasValue(4);
+      assertThat(fixture.pipeline.cancelAndAwaitQuiescence()).isTrue();
+      assertThat(closed).hasValue(4);
+      fixture.pipeline.close();
+      assertThat(closed).hasValue(4);
+      verify(fixture.parent, times(2)).createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD);
+    }
+  }
+
+  @Test
+  void replayAcknowledgementWaitObservesTerminationAndDoesNotAuthorizeMutation() throws Exception {
+    var replayStarted = new CountDownLatch(1);
+    var terminate = new CountDownLatch(1);
+    var replay = move();
+    doAnswer(
+            invocation -> {
+              replayStarted.countDown();
+              new CountDownLatch(1).await();
+              return null;
+            })
+        .when(replay)
+        .execute(any());
+    try (var fixture = new Fixture(1, 1)) {
+      fixture.start();
+      fixture.pipeline.setBarrierTerminationCheck(() -> terminate.getCount() == 0);
+      fixture.pipeline.applyStep(1, replay, ZERO);
+      awaitLatch(replayStarted);
+      try (var terminating = releaseWhenParked(Thread.currentThread(), terminate)) {
+        assertThat(fixture.pipeline.awaitCurrentReplay()).isFalse();
+        terminating.get();
+      }
+      fixture.pipeline.abort();
+      fixture.assertDirectorsClosed();
+    }
+  }
+
+  @Test
+  void quiescenceTerminationLeavesEvaluationOwnedByWorkersUntilTheyAreJoined() throws Exception {
+    var started = new CountDownLatch(1);
+    var terminate = new CountDownLatch(1);
+    var candidate = move();
+    try (var fixture = new Fixture(1, 1)) {
+      fixture.evaluate(
+          candidate,
+          () -> {
+            started.countDown();
+            new CountDownLatch(1).await();
+            return ZERO;
+          });
+      fixture.start();
+      fixture.pipeline.setBarrierTerminationCheck(() -> terminate.getCount() == 0);
+      fixture.pipeline.submit(0, candidate);
+      fixture.pipeline.flush();
+      awaitLatch(started);
+      try (var terminating = releaseWhenParked(Thread.currentThread(), terminate)) {
+        assertThat(fixture.pipeline.cancelAndAwaitQuiescence()).isFalse();
+        terminating.get();
+      }
+      assertThatThrownBy(() -> fixture.pipeline.beginEpisode(0))
+          .isInstanceOf(IllegalStateException.class);
+      fixture.pipeline.abort();
+      fixture.assertDirectorsClosed();
+    }
+  }
+
+  @Test
+  void enclosingCancellationDuringStartupJoinsWorkersBeforeReturning() throws Exception {
+    var cloneStarted = new CountDownLatch(1);
+    var terminate = new CountDownLatch(1);
+    try (var fixture = new Fixture(1, 1)) {
+      when(fixture.parent.createChildThreadScoreDirector(ChildThreadType.MOVE_THREAD))
+          .thenAnswer(
+              invocation -> {
+                cloneStarted.countDown();
+                new CountDownLatch(1).await();
+                throw new AssertionError("Cancellation must interrupt unfinished worker setup.");
+              });
+      fixture.pipeline.setBarrierTerminationCheck(() -> terminate.getCount() == 0);
+      var coordinator = Thread.currentThread();
+      try (var cancelling =
+          async(
+              () -> {
+                awaitLatch(cloneStarted);
+                awaitParked(coordinator);
+                terminate.countDown();
+                return null;
+              })) {
+        assertThatThrownBy(fixture::start).isInstanceOf(CancellationException.class);
+        cancelling.get();
+      }
+      assertThat(fixture.executor.isTerminated()).isTrue();
+    }
+  }
 
   @Test
   void calculationCountsAreVisibleBeforeWorkerShutdown() throws Exception {

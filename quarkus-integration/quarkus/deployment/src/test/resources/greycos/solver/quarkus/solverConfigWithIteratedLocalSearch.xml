@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver xmlns="https://github.com/CameleoGrey/greycos-solver/xsd/solver">
+  <constructionHeuristic/>
+  <iteratedLocalSearch>
+    <moveThreadCount>NONE</moveThreadCount>
+    <localSearch>
+      <termination><stepCountLimit>3</stepCountLimit></termination>
+      <changeMoveSelector>
+        <filterClass>greycos.solver.quarkus.testcotwin.iteratedlocalsearch.TestdataQuarkusIteratedLocalSearchFilters$Inner</filterClass>
+      </changeMoveSelector>
+    </localSearch>
+    <perturbation>
+      <swapMoveSelector>
+        <filterClass>greycos.solver.quarkus.testcotwin.iteratedlocalsearch.TestdataQuarkusIteratedLocalSearchFilters$Perturbation</filterClass>
+      </swapMoveSelector>
+    </perturbation>
+    <perturbationStrengths>1 3 7</perturbationStrengths>
+    <perturbationAttemptLimit>32</perturbationAttemptLimit>
+    <episodeCandidateAttemptLimit>100</episodeCandidateAttemptLimit>
+    <iterationCountLimit>4</iterationCountLimit>
+    <acceptanceType>IMPROVING_ONLY</acceptanceType>
+  </iteratedLocalSearch>
+  <islandModel>
+    <iteratedLocalSearch>
+      <localSearch>
+        <changeMoveSelector>
+          <filterClass>greycos.solver.quarkus.testcotwin.iteratedlocalsearch.TestdataQuarkusIteratedLocalSearchFilters$Inner</filterClass>
+        </changeMoveSelector>
+      </localSearch>
+      <perturbation>
+        <swapMoveSelector>
+          <filterClass>greycos.solver.quarkus.testcotwin.iteratedlocalsearch.TestdataQuarkusIteratedLocalSearchFilters$Perturbation</filterClass>
+        </swapMoveSelector>
+      </perturbation>
+      <perturbationStrengths>2</perturbationStrengths>
+      <perturbationAttemptLimit>8</perturbationAttemptLimit>
+      <episodeCandidateAttemptLimit>16</episodeCandidateAttemptLimit>
+      <iterationCountLimit>2</iterationCountLimit>
+    </iteratedLocalSearch>
+  </islandModel>
+</solver>

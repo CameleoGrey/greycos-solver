@@ -1,8 +1,13 @@
 package greycos.solver.core.impl.heuristic.selector.common.iterator;
 
-import java.util.Iterator;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
 
-public abstract class SelectionIterator<S> implements Iterator<S> {
+public abstract class SelectionIterator<S> implements KnownExhaustionIterator<S> {
+
+  @Override
+  public boolean isKnownExhausted() {
+    return false;
+  }
 
   @Override
   public void remove() {

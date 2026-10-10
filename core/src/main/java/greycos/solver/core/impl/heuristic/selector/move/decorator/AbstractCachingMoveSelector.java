@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleListener;
 import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
@@ -67,8 +69,21 @@ public abstract class AbstractCachingMoveSelector<Solution_> extends AbstractMov
               + childSize
               + ") which is higher than Integer.MAX_VALUE.");
     }
-    cachedMoveList = new ArrayList<>((int) childSize);
-    childMoveSelector.iterator().forEachRemaining(cachedMoveList::add);
+    boolean setup = SelectionAttemptContext.isSetup();
+    var completeMoveList = new ArrayList<Move<Solution_>>(setup ? 0 : (int) childSize);
+    if (!setup) {
+      childMoveSelector.iterator().forEachRemaining(completeMoveList::add);
+    } else {
+      var iterator = childMoveSelector.iterator();
+      while (!KnownExhaustionIterator.isExhausted(iterator)) {
+        SelectionAttemptContext.beforeSelection();
+        if (!iterator.hasNext()) break;
+        var move = iterator.next();
+        SelectionAttemptContext.recordSetupProposal();
+        completeMoveList.add(move);
+      }
+    }
+    cachedMoveList = completeMoveList;
     logger.trace(
         "    Created cachedMoveList: size ({}), moveSelector ({}).", cachedMoveList.size(), this);
   }

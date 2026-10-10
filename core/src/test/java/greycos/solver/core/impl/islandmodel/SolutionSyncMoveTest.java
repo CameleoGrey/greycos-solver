@@ -364,6 +364,44 @@ class SolutionSyncMoveTest {
   }
 
   @Test
+  void strictUpgradeRetainsPinnedTargetAcrossPhaseRebasingAndSourceMutation() {
+    var scope =
+        SolutionSyncMoveTest.<TestdataPinnedWithIndexListSolution>scope(
+            PlannerTestUtils.buildSolverConfig(
+                    TestdataPinnedWithIndexListSolution.class,
+                    TestdataPinnedWithIndexListEntity.class,
+                    TestdataPinnedWithIndexListValue.class)
+                .withEasyScoreCalculatorClass(
+                    TestdataPinnedWithIndexListEasyScoreCalculator.class));
+    var initial = TestdataPinnedWithIndexListSolution.generateInitializedSolution(4, 2);
+    initial.getEntityList().getFirst().setPinned(true);
+    scope.setInitialSolution(initial);
+    try (var director = scope.<SimpleScore>getScoreDirector()) {
+      var before = director.calculateScore();
+      var source = director.cloneWorkingSolution();
+      var sourcePinnedValues = new ArrayList<>(source.getEntityList().getFirst().getValueList());
+      java.util.Collections.reverse(sourcePinnedValues);
+      source.getEntityList().getFirst().setValueList(sourcePinnedValues);
+      var pending = SolutionSyncMove.createMove(director, source);
+      // Mutation after capture must not silently repair the stale pinned target.
+      java.util.Collections.reverse(sourcePinnedValues);
+      director.setWorkingSolution(director.cloneWorkingSolution());
+      var rebased = pending.rebase(director);
+      // The legacy phase behavior still omits pinned entities.
+      director.executeMove(rebased);
+      var strict = rebased.toStrictMove(director);
+      assertThatThrownBy(() -> director.executeMove(strict))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("Pinned");
+      assertThat(director.calculateScore()).isEqualTo(before);
+      assertThat(director.getWorkingSolution().getEntityList().getFirst().getValueList())
+          .containsExactly(
+              director.getWorkingSolution().getValueList().get(0),
+              director.getWorkingSolution().getValueList().get(2));
+    }
+  }
+
+  @Test
   void optionalAssignmentsUpdateDeclarativeDependenciesAndUndo() {
     var scope =
         SolutionSyncMoveTest.<TestdataListElementSolution>scope(

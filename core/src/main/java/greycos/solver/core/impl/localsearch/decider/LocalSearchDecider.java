@@ -114,6 +114,10 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
   }
 
   public void decideNextStep(LocalSearchStepScope<Solution_> stepScope) {
+    if (stepScope.getPhaseScope().isEpisode()) {
+      decideEpisodeStep(stepScope);
+      return;
+    }
     var scoreDirector = stepScope.getScoreDirector();
     boolean previousTemporaryState = scoreDirector.isAllChangesWillBeUndoneBeforeStepEnds();
     scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(true);
@@ -143,6 +147,72 @@ public class LocalSearchDecider<Solution_> implements LocalSearchPhaseDecider<So
           }
         }
         pickMove(stepScope);
+      }
+    } finally {
+      scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(previousTemporaryState);
+    }
+  }
+
+  /** Bounded episodes never use an unfinished forager selection as a completed decision. */
+  private void decideEpisodeStep(LocalSearchStepScope<Solution_> stepScope) {
+    var phaseScope = stepScope.getPhaseScope();
+    var ledger = phaseScope.getSelectionAttemptLedger();
+    var scoreDirector = stepScope.getScoreDirector();
+    boolean previousTemporaryState = scoreDirector.isAllChangesWillBeUndoneBeforeStepEnds();
+    scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(true);
+    stepScope.setSelectedMoveCount(0L);
+    stepScope.setAcceptedMoveCount(0L);
+    try (var cursor = ledger.openCursor(moveRepository::iterator)) {
+      int moveIndex = 0;
+      boolean complete = false;
+      while (!termination.isPhaseTerminated(phaseScope)) {
+        var attempt = cursor.next();
+        if (attempt == null) {
+          complete = cursor.isSourceExhausted() && !moveRepository.isNeverEnding();
+          break;
+        }
+        if (attempt.isMarker()) {
+          ledger.consume(attempt);
+          if (cursor.isSourceExhausted() && !moveRepository.isNeverEnding()) {
+            complete = true;
+            break;
+          }
+          continue;
+        }
+        var moveScope = new LocalSearchMoveScope<>(stepScope, moveIndex++, attempt.selection());
+        boolean accepted = doMove(moveScope);
+        // Settle after all ordinary acceptor and forager feedback for the admitted move.
+        boolean samplingFinished = recordCandidate(stepScope, accepted);
+        boolean foragerFinished = forager.isQuitEarly();
+        ledger.consume(attempt);
+        phaseScope.getSolverScope().checkYielding();
+        if (termination
+                instanceof
+                greycos.solver.core.impl.solver.termination.LocalSearchEpisodeTermination<Solution_>
+                    episode
+            && episode.isNonAttemptTerminated(phaseScope)) break;
+        if (foragerFinished
+            || (samplingFinished && !ledger.isExhausted())
+            || (cursor.isSourceExhausted() && !moveRepository.isNeverEnding())) {
+          complete = true;
+          break;
+        }
+      }
+      if (complete) pickMove(stepScope);
+      else {
+        boolean externallyStopped =
+            termination
+                    instanceof
+                    greycos.solver.core.impl.solver.termination.LocalSearchEpisodeTermination<
+                            Solution_>
+                        episode
+                && episode.isNonAttemptTerminated(phaseScope);
+        stepScope.setNoStepReason(
+            externallyStopped
+                ? LocalSearchStepScope.NoStepReason.TERMINATED
+                : ledger.isExhausted() || cursor.isBudgetStopped()
+                    ? LocalSearchStepScope.NoStepReason.EPISODE_ATTEMPT_LIMIT
+                    : LocalSearchStepScope.NoStepReason.NO_ADMISSIBLE_MOVE);
       }
     } finally {
       scoreDirector.setAllChangesWillBeUndoneBeforeStepEnds(previousTemporaryState);

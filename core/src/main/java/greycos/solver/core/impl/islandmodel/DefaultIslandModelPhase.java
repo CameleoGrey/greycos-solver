@@ -17,6 +17,7 @@ import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
+import greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
@@ -502,21 +503,58 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
       } else if (phaseConfig instanceof AlnsPhaseConfig alnsPhaseConfig
           && alnsPhaseConfig.getMoveThreadCount() == null) {
         alnsPhaseConfig.setMoveThreadCount(defaultMoveThreadCount);
+      } else if (phaseConfig instanceof IteratedLocalSearchPhaseConfig iteratedPhaseConfig
+          && iteratedPhaseConfig.getMoveThreadCount() == null) {
+        iteratedPhaseConfig.setMoveThreadCount(defaultMoveThreadCount);
       }
     }
   }
 
   private void warnAboutPotentialThreadOversubscription() {
-    if (islandCount <= 1) {
-      return;
+    var configuredPhases = islandModelConfig.getPhaseConfigList();
+    var phases =
+        configuredPhases == null || configuredPhases.isEmpty()
+            ? List.<PhaseConfig>of(buildDefaultLocalSearchPhaseConfig())
+            : copyPhaseConfigList(configuredPhases);
+    normalizeInnerPhaseMoveThreadCount(phases);
+    var resolver = new DefaultIslandModelPhaseFactory<Solution_>(islandModelConfig);
+    int maximumMoveWorkers = 0;
+    for (int index = 0; index < phases.size(); index++) {
+      var phase = phases.get(index);
+      String configuredCount;
+      if (phase instanceof LocalSearchPhaseConfig localSearch) {
+        configuredCount = localSearch.getMoveThreadCount();
+      } else if (phase instanceof AlnsPhaseConfig alns) {
+        configuredCount = alns.getMoveThreadCount();
+      } else if (phase instanceof IteratedLocalSearchPhaseConfig iterated) {
+        configuredCount = iterated.getMoveThreadCount();
+      } else {
+        continue;
+      }
+      int resolvedCount = resolver.resolveMoveThreadCountForDiagnostics(configuredCount);
+      maximumMoveWorkers = Math.max(maximumMoveWorkers, resolvedCount);
+      LOGGER.info(
+          "Island phase ({}) inner phase ({}, {}) resolves {} move workers per island; "
+              + "built-in nested repair uses 0 additional workers.",
+          phaseIndex,
+          index,
+          phase.getClass().getSimpleName(),
+          resolvedCount);
     }
-    var moveThreadCount = islandModelConfig.getMoveThreadCount();
-    if (moveThreadCount != null && !SolverConfig.MOVE_THREAD_COUNT_NONE.equals(moveThreadCount)) {
+    long configuredSearchThreads = (long) islandCount * (1L + maximumMoveWorkers);
+    LOGGER.info(
+        "Island phase ({}) search resource estimate: {} island coordinators + up to {} move "
+            + "workers = {} threads, excluding the enclosing coordinator and custom operator workers.",
+        phaseIndex,
+        islandCount,
+        (long) islandCount * maximumMoveWorkers,
+        configuredSearchThreads);
+    if (islandCount > 1 && maximumMoveWorkers > 0) {
       LOGGER.warn(
-          "Island model is configured with islandCount={} and moveThreadCount='{}'. "
+          "Island model is configured with islandCount={} and up to {} move workers per island. "
               + "This can oversubscribe CPUs; consider using moveThreadCount='{}' for islands.",
           islandCount,
-          moveThreadCount,
+          maximumMoveWorkers,
           SolverConfig.MOVE_THREAD_COUNT_NONE);
     }
   }

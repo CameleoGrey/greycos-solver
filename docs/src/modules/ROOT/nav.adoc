@@ -22,6 +22,7 @@
 ** xref:optimization-algorithms/overview.adoc[leveloffset=+1]
 ** xref:optimization-algorithms/construction-heuristics.adoc[leveloffset=+1]
 ** xref:optimization-algorithms/local-search.adoc[leveloffset=+1]
+** xref:optimization-algorithms/iterated-local-search.adoc[leveloffset=+1]
 ** xref:optimization-algorithms/guided-local-search.adoc[leveloffset=+1]
 ** xref:optimization-algorithms/alns.adoc[leveloffset=+1]
 ** xref:optimization-algorithms/multistage.adoc[leveloffset=+1]

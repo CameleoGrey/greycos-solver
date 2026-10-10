@@ -3,6 +3,8 @@ package greycos.solver.core.impl.heuristic.selector;
 import java.util.random.RandomGenerator;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchPhaseScope;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleSupport;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
@@ -32,6 +34,12 @@ public abstract class AbstractSelector<Solution_> implements Selector<Solution_>
 
   @Override
   public void phaseStarted(AbstractPhaseScope<Solution_> phaseScope) {
+    // Only ILS scopes own a separate stream. Keep ordinary selectors bound at solvingStarted.
+    if (phaseScope instanceof IteratedLocalSearchPhaseScope<?>
+        || (phaseScope instanceof LocalSearchPhaseScope<?> localSearch
+            && localSearch.isEpisode())) {
+      workingRandom = phaseScope.getWorkingRandom().moveIteratorUsage();
+    }
     phaseLifecycleSupport.firePhaseStarted(phaseScope);
   }
 

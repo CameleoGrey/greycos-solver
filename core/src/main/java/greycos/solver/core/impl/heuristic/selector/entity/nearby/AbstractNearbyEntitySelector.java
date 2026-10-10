@@ -11,6 +11,7 @@ import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMatrix;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMatrixDemand;
@@ -266,6 +267,8 @@ public abstract class AbstractNearbyEntitySelector<Solution_>
           if (candidate != origin) {
             next = candidate;
             ready = true;
+          } else {
+            SelectionAttemptContext.failedSelection();
           }
         }
         return ready;
@@ -340,6 +343,8 @@ public abstract class AbstractNearbyEntitySelector<Solution_>
                     && !Objects.requireNonNull(nearbyRandom).requiresPopulationSize()) {
                   break;
                 }
+              } else {
+                SelectionAttemptContext.failedSelection();
               }
             }
             nearbySize = eligibleDestinations.size();
@@ -359,6 +364,7 @@ public abstract class AbstractNearbyEntitySelector<Solution_>
           while (index < nearbySize
               && !isEligible(rangeOrigin, getNearbyDestination(origin, index))) {
             index++;
+            SelectionAttemptContext.failedSelection();
           }
         }
         return randomSelection ? nearbySize > 0 : index < nearbySize;

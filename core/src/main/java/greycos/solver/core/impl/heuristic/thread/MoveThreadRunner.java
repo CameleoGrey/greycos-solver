@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.heuristic.thread;
 
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.locks.LockSupport;
@@ -22,6 +23,7 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
   private final InnerScoreDirector<Solution_, Score_> parent;
   volatile MoveEvaluationPipeline.Epoch<Solution_> mailbox;
   volatile int appliedStepIndex = -1;
+  volatile long quiescenceAcknowledged;
   volatile Thread thread;
   volatile boolean waiting;
   volatile long calculationCount;
@@ -76,28 +78,40 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
             throw new IllegalStateException("Move worker received a nonconsecutive step update.");
           }
           long start = pipeline.diagnosticsEnabled ? System.nanoTime() : 0;
-          Move<Solution_> step = next.step.rebase(director.getMoveDirector());
+          Move<Solution_> step =
+              next.step == null ? null : next.step.rebase(director.getMoveDirector());
           // A replay delta may be an ALNS intermediate state with inconsistent shadows.
           // Preserve its structural score so the coordinator can reject invalid candidates.
-          director.getMoveDirector().executeAllowingStructurallyFlawedSolutions(step);
+          if (step != null) {
+            director.getMoveDirector().executeAllowingStructurallyFlawedSolutions(step);
+          }
           @SuppressWarnings("unchecked")
           var expected = (InnerScore<Score_>) next.stepScore;
-          workingScore = expected == null ? director.calculateScore() : expected;
+          if (step != null) {
+            workingScore = expected == null ? director.calculateScore() : expected;
+          }
           director
               .getSolutionDescriptor()
               .setScore(director.getWorkingSolution(), workingScore.raw());
-          if (pipeline.assertStepScoreFromScratch) {
+          if (step != null && pipeline.assertStepScoreFromScratch) {
             director.assertPredictedScoreFromScratch(workingScore, step);
           }
-          if (pipeline.assertExpectedStepScore) {
+          if (step != null && pipeline.assertExpectedStepScore) {
             director.assertExpectedWorkingScore(workingScore, step);
           }
-          if (pipeline.assertShadowVariablesAreNotStaleAfterStep) {
+          if (step != null && pipeline.assertShadowVariablesAreNotStaleAfterStep) {
             director.assertShadowVariablesAreNotStale(workingScore, step);
           }
           if (pipeline.diagnosticsEnabled) {
             replayNanos += System.nanoTime() - start;
           }
+          if (next.episodeId != epoch.episodeId && metadataCollector != null) {
+            var previousCollector = metadataCollector;
+            metadataCollector = null;
+            previousCollector.close();
+          }
+          if (metadataCollector == null)
+            metadataCollector = pipeline.createMetadataCollector(director);
           epoch = next;
           source = null;
           rebasedSource = null;
@@ -112,6 +126,41 @@ final class MoveThreadRunner<Solution_, Score_ extends Score<Score_>> implements
             continue;
           }
           break;
+        }
+        var quiescence = pipeline.quiescenceRequest();
+        if (quiescence != null
+            && quiescence.epoch() == epoch.stepIndex
+            && quiescence.sequence() > quiescenceAcknowledged) {
+          source = null;
+          rebasedSource = null;
+          // Provider lifecycle may dispose these sessions once the coordinator sees this ack.
+          // Remove before invoking cleanup so exceptional teardown cannot close a session twice.
+          var contexts = new ArrayList<>(evaluationContexts.values());
+          evaluationContexts.clear();
+          Throwable cleanupFailure = null;
+          for (var context : contexts) {
+            try {
+              context.closeEvaluationContext(director);
+            } catch (RuntimeException | Error failure) {
+              if (cleanupFailure == null) cleanupFailure = failure;
+              else if (cleanupFailure != failure) cleanupFailure.addSuppressed(failure);
+            }
+          }
+          if (metadataCollector != null) {
+            var previousCollector = metadataCollector;
+            metadataCollector = null;
+            try {
+              previousCollector.close();
+            } catch (RuntimeException | Error failure) {
+              if (cleanupFailure == null) cleanupFailure = failure;
+              else if (cleanupFailure != failure) cleanupFailure.addSuppressed(failure);
+            }
+          }
+          if (cleanupFailure instanceof Error error) throw error;
+          if (cleanupFailure != null) throw (RuntimeException) cleanupFailure;
+          calculationCount = director.getCalculationCount();
+          quiescenceAcknowledged = quiescence.sequence();
+          pipeline.acknowledge();
         }
         long claim = epoch.claim(pipeline.claimChunkSize());
         if (claim >= 0) {

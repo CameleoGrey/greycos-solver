@@ -108,51 +108,51 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
               }
             });
 
-    while (!phaseTermination.isPhaseTerminated(phaseScope)) {
-      var stepScope = new LocalSearchStepScope<>(phaseScope);
-      stepScope.setTimeGradient(phaseTermination.calculatePhaseTimeGradient(phaseScope));
-      stepStarted(stepScope);
-      decider.decideNextStep(stepScope);
-      if (stepScope.getStep() == null) {
-        if (stepScope.getNoStepReason() != null) {
-          logger.debug(
-              "{}    Local Search decision at step index ({}) ended without a move: {}.",
-              logIndentation,
-              stepScope.getStepIndex(),
-              stepScope.getNoStepReason());
-        } else if (phaseTermination.isPhaseTerminated(phaseScope)) {
-          logger.trace(
-              "{}    Step index ({}), time spent ({}) terminated without picking a nextStep.",
-              logIndentation,
-              stepScope.getStepIndex(),
-              stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
-        } else if (stepScope.getSelectedMoveCount() == 0L) {
-          logger.warn(
-              "{}    No doable selected move at step index ({}), time spent ({})."
-                  + " Terminating phase early.",
-              logIndentation,
-              stepScope.getStepIndex(),
-              stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
-        } else {
-          throw new IllegalStateException(
-              "The step index ("
-                  + stepScope.getStepIndex()
-                  + ") has accepted/selected move count ("
-                  + stepScope.getAcceptedMoveCount()
-                  + "/"
-                  + stepScope.getSelectedMoveCount()
-                  + ") but failed to pick a nextStep ("
-                  + stepScope.getStep()
-                  + ").");
-        }
-        // Although stepStarted has been called, stepEnded is not called for this step
-        break;
-      }
-      doStep(stepScope);
-      stepEnded(stepScope);
-      phaseScope.setLastCompletedStepScope(stepScope);
-    }
+    LocalSearchEpisodeRunner.runOrdinary(
+        phaseScope,
+        phaseTermination,
+        decider,
+        this::stepStarted,
+        this::doStep,
+        this::stepEnded,
+        this::explainNoMove);
     phaseEnded(phaseScope);
+  }
+
+  private void explainNoMove(LocalSearchStepScope<Solution_> stepScope) {
+    var phaseScope = stepScope.getPhaseScope();
+    if (stepScope.getNoStepReason() != null) {
+      logger.debug(
+          "{}    Local Search decision at step index ({}) ended without a move: {}.",
+          logIndentation,
+          stepScope.getStepIndex(),
+          stepScope.getNoStepReason());
+    } else if (phaseTermination.isPhaseTerminated(phaseScope)) {
+      logger.trace(
+          "{}    Step index ({}), time spent ({}) terminated without picking a nextStep.",
+          logIndentation,
+          stepScope.getStepIndex(),
+          stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
+    } else if (stepScope.getSelectedMoveCount() == 0L) {
+      logger.warn(
+          "{}    No doable selected move at step index ({}), time spent ({})."
+              + " Terminating phase early.",
+          logIndentation,
+          stepScope.getStepIndex(),
+          stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
+    } else {
+      throw new IllegalStateException(
+          "The step index ("
+              + stepScope.getStepIndex()
+              + ") has accepted/selected move count ("
+              + stepScope.getAcceptedMoveCount()
+              + "/"
+              + stepScope.getSelectedMoveCount()
+              + ") but failed to pick a nextStep ("
+              + stepScope.getStep()
+              + ").");
+    }
+    // Preserve ordinary local search's no-commit lifecycle; an episode has an explicit abort.
   }
 
   protected void doStep(LocalSearchStepScope<Solution_> stepScope) {

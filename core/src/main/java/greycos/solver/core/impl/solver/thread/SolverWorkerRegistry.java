@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.solver.thread;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -11,6 +13,80 @@ public final class SolverWorkerRegistry {
 
   private final Map<ExecutorService, String> executors = new IdentityHashMap<>();
   private final Map<Thread, String> threads = new IdentityHashMap<>();
+  private final Map<Object, DeferredCleanup> cleanupOwners = new IdentityHashMap<>();
+  private final ArrayDeque<DeferredCleanup> deferredCleanups = new ArrayDeque<>();
+  private boolean cleanupRunning;
+
+  /**
+   * Retains an idempotent owner cleanup after worker shutdown failed. The action must retain its
+   * old scopes and run before a later solve replaces their director or resets accounting. Repeated
+   * registration by the same owner does not duplicate lifecycle or calculation credits.
+   */
+  public synchronized void deferCleanup(Object owner, Runnable action) {
+    Objects.requireNonNull(owner);
+    Objects.requireNonNull(action);
+    if (!cleanupOwners.containsKey(owner)) {
+      var cleanup = new DeferredCleanup(owner, action);
+      cleanupOwners.put(owner, cleanup);
+      deferredCleanups.addLast(cleanup);
+    }
+  }
+
+  /**
+   * Runs retained cleanup only after all shared workers have exited, before a new solve mutates
+   * state.
+   */
+  public void runDeferredCleanup() {
+    synchronized (this) {
+      // Shared child registries may legitimately contain sibling workers during normal startup.
+      // No deferred owner means there is no cleanup boundary to establish.
+      if (cleanupOwners.isEmpty()) return;
+      if (cleanupRunning) {
+        throw new IllegalStateException(
+            "Deferred worker cleanup is already running; retained state cannot be reused yet.");
+      }
+      cleanupRunning = true;
+    }
+    try {
+      drainDeferredCleanup();
+    } finally {
+      synchronized (this) {
+        cleanupRunning = false;
+      }
+    }
+  }
+
+  private void drainDeferredCleanup() {
+    Throwable failure = null;
+    while (true) {
+      ArrayList<DeferredCleanup> batch;
+      synchronized (this) {
+        if (deferredCleanups.isEmpty()) break;
+        assertNoActiveWorkers();
+        batch = new ArrayList<>(deferredCleanups);
+        deferredCleanups.clear();
+      }
+      for (var cleanup : batch) {
+        try {
+          cleanup.action().run();
+          synchronized (this) {
+            cleanupOwners.remove(cleanup.owner());
+          }
+        } catch (RuntimeException | Error exception) {
+          synchronized (this) {
+            deferredCleanups.addLast(cleanup);
+          }
+          if (failure == null) failure = exception;
+          else if (failure != exception) failure.addSuppressed(exception);
+        }
+      }
+      if (failure != null) break; // Failed actions remain owned for a later explicit retry.
+    }
+    if (failure instanceof Error error) throw error;
+    if (failure != null) throw (RuntimeException) failure;
+  }
+
+  private record DeferredCleanup(Object owner, Runnable action) {}
 
   public synchronized void registerExecutor(ExecutorService executor, String label) {
     pruneTerminated();

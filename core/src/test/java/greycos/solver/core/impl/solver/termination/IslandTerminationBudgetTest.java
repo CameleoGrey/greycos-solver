@@ -21,6 +21,7 @@ import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.alns.AlnsPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.custom.scope.CustomPhaseScope;
@@ -259,6 +260,25 @@ class IslandTerminationBudgetTest {
     fixture.clock.now = 5_160;
     assertThat(first.termination.isSolverTerminated(first.scope)).isTrue();
     assertThat(second.termination.isSolverTerminated(second.scope)).isTrue();
+  }
+
+  @Test
+  void iteratedSearchStartsSharedIdleBeforeItsFirstPrimitiveStep() {
+    var fixture =
+        new Fixture(new TerminationConfig().withUnimprovedSpentLimit(Duration.ofMillis(100)));
+    var island = fixture.island();
+    fixture.clock.now = 5_000;
+    var phase = new IteratedLocalSearchPhaseScope<>(island.scope, 0);
+    phase.startingNow();
+    island.termination.phaseStarted(phase);
+    fixture.clock.now = 5_060;
+    assertThat(island.termination.calculatePhaseTimeGradient(phase)).isEqualTo(0.6);
+    // A later island or inner episode must not extend the sequence-wide idle interval.
+    var other = fixture.island();
+    other.termination.phaseStarted(new IteratedLocalSearchPhaseScope<>(other.scope, 0));
+    fixture.clock.now = 5_100;
+    assertThat(island.termination.isPhaseTerminated(phase)).isTrue();
+    assertThat(phase.getLastCompletedStepScope().getStepIndex()).isEqualTo(-1);
   }
 
   @Test

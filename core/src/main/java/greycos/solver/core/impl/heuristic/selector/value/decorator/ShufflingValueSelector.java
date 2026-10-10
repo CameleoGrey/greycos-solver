@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.Iterator;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
 
 public final class ShufflingValueSelector<Solution_> extends AbstractCachingValueSelector<Solution_>
@@ -35,7 +36,7 @@ public final class ShufflingValueSelector<Solution_> extends AbstractCachingValu
         "    Shuffled cachedValueList with size ({}) in valueSelector({}).",
         cachedValueList.size(),
         this);
-    return cachedValueList.iterator();
+    return SelectionAttemptContext.iterator(cachedValueList);
   }
 
   @Override

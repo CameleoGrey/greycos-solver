@@ -9,7 +9,9 @@ import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
+import greycos.solver.core.impl.neighborhood.stream.FilteringIterator;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 
 /**
@@ -97,6 +99,9 @@ abstract class AbstractInverseEntityFilteringValueSelector<Solution_>
 
   @Override
   public Iterator<Object> iterator() {
+    if (SelectionAttemptContext.isActive()) {
+      return new FilteringIterator<>(childValueSelector.iterator(), this::valueFilter);
+    }
     return streamUnassignedValues().iterator();
   }
 

@@ -9,6 +9,7 @@ import org.jspecify.annotations.NullMarked;
 abstract sealed class AbstractPhaseTermination<Solution_> extends AbstractTermination<Solution_>
     implements PhaseTermination<Solution_>
     permits DiminishedReturnsTermination,
+        LocalSearchEpisodeTermination,
         SolverBridgePhaseTermination,
         StepCountTermination,
         UnimprovedStepCountTermination {

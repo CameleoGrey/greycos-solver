@@ -926,5 +926,43 @@
   {
     "name": "greycos.solver.core.config.alns.AlnsSelectionPolicyType",
     "allDeclaredFields": true
+  },
+  {
+    "name": "greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchPhaseConfig",
+    "allDeclaredFields": true,
+    "queryAllDeclaredMethods": true,
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "greycos.solver.core.impl.io.jaxb.JaxbMoveSelectorConfigAdapter",
+    "allDeclaredFields": true,
+    "queryAllDeclaredMethods": true,
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "greycos.solver.core.impl.io.jaxb.JaxbMoveSelectorConfigAdapter$AdaptedMoveSelectorConfig",
+    "allDeclaredFields": true,
+    "queryAllDeclaredMethods": true,
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchAcceptanceType",
+    "allDeclaredFields": true,
+    "queryAllDeclaredMethods": true
   }
 ]

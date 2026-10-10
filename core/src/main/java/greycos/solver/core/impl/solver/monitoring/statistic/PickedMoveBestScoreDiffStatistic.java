@@ -10,6 +10,7 @@ import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.alns.AlnsTrialResult;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.impl.alns.AlnsStepScope;
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchStepScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
@@ -91,6 +92,14 @@ public class PickedMoveBestScoreDiffStatistic<Solution_, Score_ extends Score<Sc
               trial.bestAfterScore(),
               trial.bestBeforeScore());
         }
+      } else if (stepScope instanceof IteratedLocalSearchStepScope<Solution_> iteratedStepScope
+          && iteratedStepScope.getMove() != null
+          && Boolean.TRUE.equals(stepScope.getBestScoreImproved())) {
+        recordDifference(
+            stepScope,
+            iteratedStepScope.getMove().describe(),
+            stepScope.<Score_>getScore().raw(),
+            (Score_) iteratedStepScope.getStartingBestScore().raw());
       }
     }
 

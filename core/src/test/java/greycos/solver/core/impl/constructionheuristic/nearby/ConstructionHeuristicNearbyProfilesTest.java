@@ -41,6 +41,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOpt
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSorterManner;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
+import greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
@@ -153,6 +154,42 @@ class ConstructionHeuristicNearbyProfilesTest {
         .containsExactly(SecondMeter.class);
     assertThat(profiles.getProfiles(tertiary)).isEmpty();
     assertThat(profiles.getProfiles(primary).getFirst().provenance()).contains("phase[3]");
+  }
+
+  @Test
+  void iteratedSearchSuppliesItsEpisodeNearbyProfilesToConstructionAndNestedRepair() {
+    var descriptor = TestdataSolution.buildSolutionDescriptor();
+    var variable =
+        descriptor
+            .getEntityDescriptorStrict(TestdataEntity.class)
+            .getGenuineVariableDescriptor("value");
+    var iterated =
+        new IteratedLocalSearchPhaseConfig()
+            .withLocalSearch(search(change("value", FirstMeter.class)))
+            .withPerturbationMoveSelectorConfig(change("value", SecondMeter.class));
+    var policy = buildHeuristicConfigPolicy(descriptor);
+    for (var phases :
+        List.of(
+            List.<PhaseConfig>of(new ConstructionHeuristicPhaseConfig(), iterated),
+            List.<PhaseConfig>of(
+                new ConstructionHeuristicPhaseConfig(),
+                new IslandModelPhaseConfig().withPhaseConfigList(List.of(iterated))),
+            List.<PhaseConfig>of(
+                new ConstructionHeuristicPhaseConfig(),
+                new PartitionedSearchPhaseConfig().withPhaseConfigs(iterated)))) {
+      var profiles = ConstructionHeuristicNearbyProfileResolver.resolveForPhase(phases, 0, policy);
+      assertThat(profiles.getProfiles(variable))
+          .extracting(ConstructionHeuristicNearbyProfile::distanceMeterClass)
+          .containsExactly(FirstMeter.class);
+      assertThat(profiles.getProfiles(variable).getFirst().provenance())
+          .contains("iteratedLocalSearch.localSearch");
+    }
+    var ownProfiles =
+        ConstructionHeuristicNearbyProfileResolver.resolveForPhase(
+            List.of(iterated, search(change("value", SecondMeter.class))), 0, policy);
+    assertThat(ownProfiles.getProfiles(variable))
+        .extracting(ConstructionHeuristicNearbyProfile::distanceMeterClass)
+        .containsExactly(FirstMeter.class);
   }
 
   @Test

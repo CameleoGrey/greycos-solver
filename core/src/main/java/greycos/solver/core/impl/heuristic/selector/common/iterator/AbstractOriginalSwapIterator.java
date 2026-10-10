@@ -4,6 +4,8 @@ import java.util.Collections;
 import java.util.ListIterator;
 
 import greycos.solver.core.impl.heuristic.selector.ListIterableSelector;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.preview.api.move.Move;
 
 public abstract class AbstractOriginalSwapIterator<
@@ -41,8 +43,20 @@ public abstract class AbstractOriginalSwapIterator<
   }
 
   @Override
+  public boolean isKnownExhausted() {
+    return super.isKnownExhausted()
+        || (!upcomingCreated
+            && KnownExhaustionIterator.isExhausted(leftSubSelectionIterator)
+            && KnownExhaustionIterator.isExhausted(rightSubSelectionIterator));
+  }
+
+  @Override
   protected Move_ createUpcomingSelection() {
+    boolean selectedWithoutProposal = false;
     while (!rightSubSelectionIterator.hasNext()) {
+      if (selectedWithoutProposal) {
+        SelectionAttemptContext.failedSelection();
+      }
       if (!leftSubSelectionIterator.hasNext()) {
         return noUpcomingSelection();
       }
@@ -50,6 +64,7 @@ public abstract class AbstractOriginalSwapIterator<
 
       if (!leftEqualsRight) {
         rightSubSelectionIterator = rightSubSelector.listIterator();
+        selectedWithoutProposal = true;
       } else {
         // Select A-B, A-C, B-C. Do not select B-A, C-A, C-B. Do not select A-A, B-B, C-C.
         if (!leftSubSelectionIterator.hasNext()) {

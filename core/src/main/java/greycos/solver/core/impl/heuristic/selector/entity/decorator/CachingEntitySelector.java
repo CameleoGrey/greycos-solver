@@ -5,6 +5,7 @@ import java.util.ListIterator;
 import java.util.Objects;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.CachedListRandomIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.move.decorator.CachingMoveSelector;
@@ -41,7 +42,7 @@ public final class CachingEntitySelector<Solution_>
   @Override
   public Iterator<Object> iterator() {
     if (!randomSelection) {
-      return cachedEntityList.iterator();
+      return SelectionAttemptContext.iterator(cachedEntityList);
     } else {
       return new CachedListRandomIterator<>(cachedEntityList, workingRandom);
     }
@@ -50,7 +51,7 @@ public final class CachingEntitySelector<Solution_>
   @Override
   public ListIterator<Object> listIterator() {
     if (!randomSelection) {
-      return cachedEntityList.listIterator();
+      return SelectionAttemptContext.listIterator(cachedEntityList, 0);
     } else {
       throw new IllegalStateException(
           "The selector ("
@@ -64,7 +65,7 @@ public final class CachingEntitySelector<Solution_>
   @Override
   public ListIterator<Object> listIterator(int index) {
     if (!randomSelection) {
-      return cachedEntityList.listIterator(index);
+      return SelectionAttemptContext.listIterator(cachedEntityList, index);
     } else {
       throw new IllegalStateException(
           "The selector ("

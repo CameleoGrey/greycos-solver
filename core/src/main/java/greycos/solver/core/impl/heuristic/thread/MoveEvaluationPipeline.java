@@ -3,6 +3,7 @@ package greycos.solver.core.impl.heuristic.thread;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -54,6 +55,7 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   private InnerScoreDirector<Solution_, ?> coordinatorDirector;
   private boolean started;
   private boolean joined;
+  private boolean joinTimedOut;
   private Epoch<Solution_> current;
   private long generated;
   private long consumed;
@@ -63,6 +65,10 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   private long stepCount;
   private volatile boolean waitingForReplay;
   private BooleanSupplier terminationCheck = () -> false;
+  private BooleanSupplier barrierTerminationCheck;
+  private volatile QuiescenceRequest quiescenceRequest;
+  private long quiescenceSequence;
+  private int quiescentEpoch = -1;
   private int claimChunkSize = 1;
   private @Nullable
       Function<InnerScoreDirector<Solution_, ?>, CandidateMetadataCollector<Solution_>>
@@ -70,6 +76,19 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
 
   public void setTerminationCheck(BooleanSupplier terminationCheck) {
     this.terminationCheck = Objects.requireNonNull(terminationCheck);
+  }
+
+  /** Episode limits stop decisions; only enclosing termination interrupts resource transitions. */
+  public void setBarrierTerminationCheck(BooleanSupplier terminationCheck) {
+    barrierTerminationCheck = Objects.requireNonNull(terminationCheck);
+  }
+
+  public int getCurrentEpoch() {
+    return current.stepIndex;
+  }
+
+  public long getEpisodeId() {
+    return current.episodeId;
   }
 
   /** Configures private worker collectors before startup; ordinary scoring needs no collector. */
@@ -148,7 +167,7 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       for (var worker : workers) {
         executor.execute(worker);
       }
-      awaitApplied(0); // Parent mutation is unsafe until all initial clones exist.
+      requireApplied(0); // Parent mutation is unsafe until all initial clones exist.
     } catch (RuntimeException | Error e) {
       try {
         abort();
@@ -290,7 +309,8 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
             slot.context,
             slot.metadata,
             slot.status,
-            slot.calculationCount);
+            slot.calculationCount,
+            epoch.episodeId);
     consume(epoch, slot);
     return result;
   }
@@ -424,6 +444,84 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
   }
 
   /**
+   * Cancels unconsumed candidates and acknowledges the end of every balanced evaluation. Unlike
+   * {@link #awaitEvaluationQuiescence()}, this operation also supports an unfinished decision. A
+   * false return never grants permission to mutate provider state: close or abort and join first.
+   */
+  public boolean cancelAndAwaitQuiescence() throws InterruptedException {
+    checkFailure();
+    if (!started || stopping) {
+      throw new IllegalStateException("Evaluation quiescence requires running workers.");
+    }
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException("Interrupted while quiescing move evaluations.");
+    }
+    cancelStep();
+    if (quiescentEpoch == current.stepIndex) {
+      return !barrierTerminated();
+    }
+    var request = new QuiescenceRequest(current.stepIndex, ++quiescenceSequence);
+    quiescenceRequest = request;
+    for (var worker : workers) LockSupport.unpark(worker.thread);
+    long waitStart = diagnosticsEnabled ? System.nanoTime() : 0;
+    try {
+      for (var worker : workers) {
+        while (worker.quiescenceAcknowledged < request.sequence()) {
+          checkFailure();
+          if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedException("Interrupted while quiescing move evaluations.");
+          }
+          if (barrierTerminated()) return false;
+          waitingForReplay = true;
+          if (worker.quiescenceAcknowledged < request.sequence() && failure.get() == null) {
+            LockSupport.parkNanos(this, TimeUnit.MILLISECONDS.toNanos(50));
+          }
+          waitingForReplay = false;
+        }
+      }
+      checkFailure();
+      quiescentEpoch = current.stepIndex;
+      return !barrierTerminated();
+    } finally {
+      waitingForReplay = false;
+      if (diagnosticsEnabled) replayWaitNanos += System.nanoTime() - waitStart;
+    }
+  }
+
+  QuiescenceRequest quiescenceRequest() {
+    return quiescenceRequest;
+  }
+
+  record QuiescenceRequest(int epoch, long sequence) {}
+
+  /** Resets worker episode caches without replacing their private working solutions. */
+  public void beginEpisode(long episodeId) {
+    checkFailure();
+    if (!started
+        || stopping
+        || episodeId <= current.episodeId
+        || quiescentEpoch != current.stepIndex) {
+      throw new IllegalStateException(
+          "A fresh episode requires acknowledged evaluation quiescence.");
+    }
+    publishState(Math.incrementExact(current.stepIndex), null, null, episodeId);
+    requireApplied(current.stepIndex);
+  }
+
+  /** Waits for the newly published state, not merely the preceding replay. */
+  public boolean awaitCurrentReplay() {
+    return awaitApplied(current.stepIndex);
+  }
+
+  public boolean replayStateAndAwait(Move<Solution_> move, InnerScore<?> score) {
+    if (quiescentEpoch != current.stepIndex) {
+      throw new IllegalStateException("External state replay requires acknowledged quiescence.");
+    }
+    applyState(Math.incrementExact(current.stepIndex), move, score);
+    return awaitApplied(current.stepIndex);
+  }
+
+  /**
    * Waits for a safe boundary at which coordinator-owned evaluation state may change. All current
    * results must first be consumed. Acknowledging the current step additionally proves that no
    * cancelled evaluation from an older step is still reading that state.
@@ -479,14 +577,24 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
    * This does not add score calculations to the coordinator's logical termination budget.
    */
   public void applyState(int nextStepIndex, Move<Solution_> move, @Nullable InnerScore<?> score) {
+    Objects.requireNonNull(move);
     if (nextStepIndex != current.stepIndex + 1) {
       throw new IllegalStateException("Step updates must be consecutive.");
     }
     cancelStep();
     // All workers must have processed the previous mailbox before it can be overwritten.
-    awaitApplied(current.stepIndex);
+    requireApplied(current.stepIndex);
+    publishState(nextStepIndex, move, score, current.episodeId);
+  }
+
+  private void publishState(
+      int nextStepIndex,
+      @Nullable Move<Solution_> move,
+      @Nullable InnerScore<?> score,
+      long episodeId) {
     var next = epochs[nextStepIndex & 1];
-    next.reset(nextStepIndex, Objects.requireNonNull(move), score);
+    next.reset(nextStepIndex, move, score);
+    next.episodeId = episodeId;
     current = next;
     stepCount++;
     for (var worker : workers) {
@@ -498,25 +606,40 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     }
   }
 
-  private void awaitApplied(int stepIndex) {
+  private void requireApplied(int stepIndex) {
+    if (!awaitApplied(stepIndex)) {
+      throw new CancellationException("Move worker setup/replay terminated.");
+    }
+  }
+
+  private boolean barrierTerminated() {
+    // Existing phases commit their selected final candidate under their established budget
+    // semantics. Episode resource owners explicitly opt in to enclosing cancellation here.
+    return barrierTerminationCheck != null && barrierTerminationCheck.getAsBoolean();
+  }
+
+  private boolean awaitApplied(int stepIndex) {
     long waitStart = diagnosticsEnabled ? System.nanoTime() : 0;
     try {
       for (var worker : workers) {
         while (worker.appliedStepIndex < stepIndex) {
           checkFailure();
           if (Thread.currentThread().isInterrupted()) {
+            if (barrierTerminationCheck != null) return false;
             throw new IllegalStateException(
                 "Interrupted while waiting for move worker setup/replay.",
                 new InterruptedException("Move worker setup/replay interrupted."));
           }
+          if (barrierTerminated()) return false;
           waitingForReplay = true;
           if (worker.appliedStepIndex < stepIndex && failure.get() == null) {
-            LockSupport.park(this);
+            LockSupport.parkNanos(this, TimeUnit.MILLISECONDS.toNanos(50));
           }
           waitingForReplay = false;
         }
       }
       checkFailure();
+      return true;
     } finally {
       waitingForReplay = false;
       if (diagnosticsEnabled) {
@@ -597,6 +720,7 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       LockSupport.unpark(worker.thread);
     }
     join(false);
+    requireJoined();
     checkFailure();
   }
 
@@ -613,10 +737,26 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       }
     }
     join(true);
+    // A caller may dispose provider state after abort returns. Never report that boundary while
+    // an uncooperative worker can still read it; ordinary worker failures remain caller-owned.
+    requireJoined();
+  }
+
+  private void requireJoined() {
+    if (!joined) {
+      checkFailure();
+      throw new IllegalStateException("Move workers did not terminate after cancellation.");
+    }
   }
 
   private void join(boolean force) {
     if (joined) {
+      return;
+    }
+    if (joinTimedOut) {
+      // Cleanup can be attempted by several enclosing owners. Once the bounded wait has failed,
+      // retain ownership without multiplying that timeout; a later actual exit permits retirement.
+      joined = executor.isTerminated();
       return;
     }
     boolean interrupted = Thread.interrupted();
@@ -662,6 +802,7 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       }
     } finally {
       joined = terminated;
+      joinTimedOut = !terminated;
       if (interrupted) {
         Thread.currentThread().interrupt();
       }
@@ -670,6 +811,21 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
 
   public long getCalculationCount() {
     return workers.stream().mapToLong(worker -> worker.calculationCount).sum();
+  }
+
+  /** A timeout is not termination. This becomes true only once every executor task has exited. */
+  public boolean isTerminated() {
+    return joined || executor.isTerminated();
+  }
+
+  /** Whether coordinator-owned evaluation state can be disposed or reset without a worker race. */
+  public boolean isEvaluationStateSafeToDispose() {
+    return isTerminated() || (!stopping && current.closed && quiescentEpoch == current.stepIndex);
+  }
+
+  /** Actual runner startups, including partial startup; exact after workers have been joined. */
+  public long getWorkerStartupCount() {
+    return workers.stream().filter(worker -> worker.thread != null).count();
   }
 
   /**
@@ -733,7 +889,20 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
       @Nullable EvaluationContext context,
       @Nullable EvaluationMetadata metadata,
       PreparedMoveEvaluation.Status status,
-      long calculationCount) {
+      long calculationCount,
+      long episodeId) {
+    public Result(
+        int stepIndex,
+        int moveIndex,
+        Move<Solution_> move,
+        InnerScore<?> score,
+        @Nullable EvaluationContext context,
+        @Nullable EvaluationMetadata metadata,
+        PreparedMoveEvaluation.Status status,
+        long calculationCount) {
+      this(stepIndex, moveIndex, move, score, context, metadata, status, calculationCount, -1L);
+    }
+
     public Result(
         int stepIndex,
         int moveIndex,
@@ -807,6 +976,7 @@ public final class MoveEvaluationPipeline<Solution_> implements AutoCloseable {
     final Slot<Solution_>[] slots;
     final AtomicInteger claimed = new AtomicInteger();
     int stepIndex;
+    long episodeId = -1L;
     Move<Solution_> step;
     InnerScore<?> stepScore;
     int consumed;

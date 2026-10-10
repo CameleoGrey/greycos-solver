@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
 import greycos.solver.core.impl.move.PreparableMove;
 import greycos.solver.core.preview.api.move.Move;
 
@@ -27,9 +28,14 @@ final class GuidedLocalSearchCandidateReplay<Solution_> {
     int retainedSize = retained.size();
     boolean startWithRetained = retainedFirst;
     if (retainedSize > 0) retainedFirst = !retainedFirst;
-    return new Iterator<>() {
+    return new KnownExhaustionIterator<>() {
       private int remaining = retainedSize;
       private boolean preferRetained = startWithRetained;
+
+      @Override
+      public boolean isKnownExhausted() {
+        return remaining == 0 && KnownExhaustionIterator.isExhausted(fresh);
+      }
 
       @Override
       public boolean hasNext() {

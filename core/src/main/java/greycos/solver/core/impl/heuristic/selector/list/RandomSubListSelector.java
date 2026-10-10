@@ -5,6 +5,7 @@ import static greycos.solver.core.impl.heuristic.selector.move.generic.list.List
 import java.util.Iterator;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
@@ -145,10 +146,14 @@ public final class RandomSubListSelector<Solution_> extends AbstractListMoveSele
         var value = valueIterator.next();
         sourceEntity = listVariableState.getInverseSingleton(value);
         if (sourceEntity == null) { // Ignore values which are unassigned.
+          SelectionAttemptContext.failedSelection();
           continue;
         }
         firstUnpinnedIndex = listVariableDescriptor.getFirstUnpinnedIndex(sourceEntity);
         listSize = listVariableDescriptor.getListSize(sourceEntity) - firstUnpinnedIndex;
+        if (listSize < minimumSubListSize) {
+          SelectionAttemptContext.failedSelection();
+        }
       }
 
       var triangleElement = triangleElementFactory.nextElement(listSize);

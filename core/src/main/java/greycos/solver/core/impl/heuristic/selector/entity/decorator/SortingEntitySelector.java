@@ -5,6 +5,7 @@ import java.util.ListIterator;
 import java.util.Objects;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionSorter;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
@@ -83,19 +84,19 @@ public final class SortingEntitySelector<Solution_>
   @Override
   public Iterator<Object> iterator() {
     ensureStepCacheIsLoaded();
-    return cachedEntityList.iterator();
+    return SelectionAttemptContext.iterator(cachedEntityList);
   }
 
   @Override
   public ListIterator<Object> listIterator() {
     ensureStepCacheIsLoaded();
-    return cachedEntityList.listIterator();
+    return SelectionAttemptContext.listIterator(cachedEntityList, 0);
   }
 
   @Override
   public ListIterator<Object> listIterator(int index) {
     ensureStepCacheIsLoaded();
-    return cachedEntityList.listIterator(index);
+    return SelectionAttemptContext.listIterator(cachedEntityList, index);
   }
 
   @Override

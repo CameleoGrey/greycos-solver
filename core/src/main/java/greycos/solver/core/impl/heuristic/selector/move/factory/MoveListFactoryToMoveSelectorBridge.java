@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleListener;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.CachedListRandomIterator;
@@ -52,9 +53,16 @@ public class MoveListFactoryToMoveSelectorBridge<Solution_> extends AbstractMove
 
   @Override
   public void constructCache(SolverScope<Solution_> solverScope) {
-    cachedMoveList =
+    var completeMoveList =
         (List<Move<Solution_>>)
             moveListFactory.createMoveList(solverScope.getScoreDirector().getWorkingSolution());
+    if (SelectionAttemptContext.isSetup()) {
+      for (var move : completeMoveList) {
+        SelectionAttemptContext.beforeSelection();
+        SelectionAttemptContext.recordSetupProposal();
+      }
+    }
+    cachedMoveList = completeMoveList;
     logger.trace(
         "    Created cachedMoveList: size ({}), moveSelector ({}).", cachedMoveList.size(), this);
   }
@@ -78,7 +86,7 @@ public class MoveListFactoryToMoveSelectorBridge<Solution_> extends AbstractMove
   @Override
   public Iterator<Move<Solution_>> iterator() {
     if (!randomSelection) {
-      return cachedMoveList.iterator();
+      return SelectionAttemptContext.iterator(cachedMoveList);
     } else {
       return new CachedListRandomIterator<>(cachedMoveList, workingRandom);
     }

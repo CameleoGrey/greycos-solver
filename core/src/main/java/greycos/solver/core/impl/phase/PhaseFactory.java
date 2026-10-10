@@ -7,6 +7,7 @@ import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
+import greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
@@ -18,6 +19,7 @@ import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeurist
 import greycos.solver.core.impl.exhaustivesearch.DefaultExhaustiveSearchPhaseFactory;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.islandmodel.DefaultIslandModelPhaseFactory;
+import greycos.solver.core.impl.iteratedlocalsearch.DefaultIteratedLocalSearchPhaseFactory;
 import greycos.solver.core.impl.localsearch.DefaultLocalSearchPhaseFactory;
 import greycos.solver.core.impl.partitionedsearch.DefaultPartitionedSearchPhaseFactory;
 import greycos.solver.core.impl.phase.custom.DefaultCustomPhaseFactory;
@@ -27,7 +29,9 @@ import greycos.solver.core.impl.solver.termination.SolverTermination;
 public interface PhaseFactory<Solution_> {
 
   static <Solution_> PhaseFactory<Solution_> create(PhaseConfig<?> phaseConfig) {
-    if (phaseConfig instanceof AlnsPhaseConfig alnsPhaseConfig) {
+    if (phaseConfig instanceof IteratedLocalSearchPhaseConfig iteratedLocalSearchPhaseConfig) {
+      return new DefaultIteratedLocalSearchPhaseFactory<>(iteratedLocalSearchPhaseConfig);
+    } else if (phaseConfig instanceof AlnsPhaseConfig alnsPhaseConfig) {
       return new DefaultAlnsPhaseFactory<>(alnsPhaseConfig);
     } else if (IslandModelPhaseConfig.class.isAssignableFrom(phaseConfig.getClass())) {
       return new DefaultIslandModelPhaseFactory<>((IslandModelPhaseConfig) phaseConfig);
@@ -119,6 +123,11 @@ public interface PhaseFactory<Solution_> {
         || phaseConfig instanceof IslandModelPhaseConfig) { // Termination guaranteed.
       return true;
     }
+    if (phaseConfig instanceof IteratedLocalSearchPhaseConfig iteratedLocalSearch
+        && iteratedLocalSearch.getIterationCountLimit() != null
+        && iteratedLocalSearch.getIterationCountLimit() > 0) {
+      return true;
+    }
     TerminationConfig terminationConfig = phaseConfig.getTerminationConfig();
     if (terminationConfig != null && terminationConfig.isConfigured()) {
       return true;
@@ -135,7 +144,8 @@ public interface PhaseFactory<Solution_> {
   }
 
   static boolean requiresInitializedSolution(PhaseConfig<?> phaseConfig) {
-    return phaseConfig instanceof LocalSearchPhaseConfig
+    return phaseConfig instanceof IteratedLocalSearchPhaseConfig
+        || phaseConfig instanceof LocalSearchPhaseConfig
         || phaseConfig instanceof AlnsPhaseConfig
         || phaseConfig instanceof IslandModelPhaseConfig;
   }

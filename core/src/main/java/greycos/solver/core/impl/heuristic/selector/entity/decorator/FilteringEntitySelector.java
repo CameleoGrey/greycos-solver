@@ -6,6 +6,8 @@ import java.util.Objects;
 
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionListIterator;
@@ -95,6 +97,12 @@ public final class FilteringEntitySelector<Solution_>
     }
 
     @Override
+    public boolean isKnownExhausted() {
+      return super.isKnownExhausted()
+          || (!upcomingCreated && KnownExhaustionIterator.isExhausted(childEntityIterator));
+    }
+
+    @Override
     protected Object createUpcomingSelection() {
       Object next;
       long attemptsBeforeBailOut = bailOutSize;
@@ -114,8 +122,11 @@ public final class FilteringEntitySelector<Solution_>
           attemptsBeforeBailOut--;
         }
         next = childEntityIterator.next();
-      } while (!selectionFilter.accept(scoreDirector, next));
-      return next;
+        if (selectionFilter.accept(scoreDirector, next)) {
+          return next;
+        }
+        SelectionAttemptContext.failedSelection();
+      } while (true);
     }
   }
 
@@ -128,6 +139,12 @@ public final class FilteringEntitySelector<Solution_>
     }
 
     @Override
+    public boolean isKnownExhausted() {
+      return super.isKnownExhausted()
+          || (!upcomingCreated && KnownExhaustionIterator.isExhausted(childEntityListIterator));
+    }
+
+    @Override
     protected Object createUpcomingSelection() {
       Object next;
       do {
@@ -135,8 +152,11 @@ public final class FilteringEntitySelector<Solution_>
           return noUpcomingSelection();
         }
         next = childEntityListIterator.next();
-      } while (!selectionFilter.accept(scoreDirector, next));
-      return next;
+        if (selectionFilter.accept(scoreDirector, next)) {
+          return next;
+        }
+        SelectionAttemptContext.failedSelection();
+      } while (true);
     }
 
     @Override
@@ -147,8 +167,11 @@ public final class FilteringEntitySelector<Solution_>
           return noPreviousSelection();
         }
         previous = childEntityListIterator.previous();
-      } while (!selectionFilter.accept(scoreDirector, previous));
-      return previous;
+        if (selectionFilter.accept(scoreDirector, previous)) {
+          return previous;
+        }
+        SelectionAttemptContext.failedSelection();
+      } while (true);
     }
   }
 

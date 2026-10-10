@@ -9,6 +9,7 @@ import java.util.Objects;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.ConcatenatingIterator;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
@@ -156,7 +157,8 @@ public final class ElementDestinationSelector<Solution_> extends AbstractListMov
           return new ConcatenatingIterator<>(
               entityIterator,
               valueIterator,
-              Collections.singletonList(ElementPosition.unassigned()).iterator());
+              SelectionAttemptContext.iterator(
+                  Collections.singletonList(ElementPosition.unassigned())));
         } else {
           return new ConcatenatingIterator<>(entityIterator, valueIterator);
         }

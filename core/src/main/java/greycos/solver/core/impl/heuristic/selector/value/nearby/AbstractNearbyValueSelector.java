@@ -13,6 +13,7 @@ import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescripto
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import greycos.solver.core.impl.heuristic.selector.common.ReachableValues;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMatrix;
 import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceMatrixDemand;
@@ -301,6 +302,8 @@ public abstract class AbstractNearbyValueSelector<
               && (listVariableState == null || !listVariableState.isPinned(candidate))) {
             next = candidate;
             ready = true;
+          } else {
+            SelectionAttemptContext.failedSelection();
           }
         }
         return ready;
@@ -451,6 +454,8 @@ public abstract class AbstractNearbyValueSelector<
                   && !unassignedDestination) {
                 break;
               }
+            } else {
+              SelectionAttemptContext.failedSelection();
             }
           }
           nearbySize = eligibleDestinations.size();
@@ -474,6 +479,7 @@ public abstract class AbstractNearbyValueSelector<
         while (index < nearbySize
             && !isEligible(valueRangeOrigin, getDistanceMatrix().getDestination(origin, index))) {
           index++;
+          SelectionAttemptContext.failedSelection();
         }
       }
       return randomSelection

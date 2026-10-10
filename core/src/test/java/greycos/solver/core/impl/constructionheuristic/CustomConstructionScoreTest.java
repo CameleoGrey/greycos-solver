@@ -16,6 +16,9 @@ import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicForagerConfig;
 import greycos.solver.core.config.constructionheuristic.decider.forager.ConstructionHeuristicPickEarlyType;
+import greycos.solver.core.config.iteratedlocalsearch.IteratedLocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchType;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.impl.score.definition.AbstractScoreDefinition;
@@ -25,8 +28,46 @@ import greycos.solver.core.testcotwin.TestdataEntity;
 import greycos.solver.core.testcotwin.TestdataValue;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class CustomConstructionScoreTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {"NONE", "1", "2", "4"})
+  void iteratedSearchPreservesCustomScoreOrderingAndFeasibilityAfterConstruction(String threads) {
+    var config =
+        new SolverConfig()
+            .withSolutionClass(CustomSolution.class)
+            .withEntityClasses(TestdataEntity.class)
+            .withEasyScoreCalculatorClass(CustomCalculator.class)
+            .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
+            .withMoveThreadCount(threads)
+            .withRandomSeed(0L)
+            .withPhases(
+                new ConstructionHeuristicPhaseConfig()
+                    .withForagerConfig(
+                        new ConstructionHeuristicForagerConfig()
+                            .withPickEarlyType(
+                                ConstructionHeuristicPickEarlyType
+                                    .FIRST_FEASIBLE_SCORE_OR_NON_DETERIORATING_HARD)),
+                new IteratedLocalSearchPhaseConfig()
+                    .withLocalSearch(
+                        new LocalSearchPhaseConfig()
+                            .withLocalSearchType(LocalSearchType.HILL_CLIMBING))
+                    .withPerturbationStrengths(1, 2)
+                    .withPerturbationAttemptLimit(8)
+                    .withEpisodeCandidateAttemptLimit(16)
+                    .withIterationCountLimit(4));
+    var input = new CustomSolution();
+    input.entityList = List.of(new TestdataEntity("entity"));
+    input.valueList = List.of(new TestdataValue("first"), new TestdataValue("second"));
+    var result = SolverFactory.<CustomSolution>create(config).buildSolver().solve(input);
+    assertThat(result.getEntityList().getFirst().getValue()).isSameAs(result.getValueList().get(1));
+    assertThat(result.getScore()).isEqualTo(new CustomScore(SimpleScore.ONE));
+    assertThat(result.getScore().isFeasible()).isTrue();
+    assertThat(result.getScore()).isEqualTo(new CustomCalculator().calculateScore(result));
+  }
 
   @Test
   void customScoreRetainsItsOwnFeasibilityContractDuringEarlyPick() {

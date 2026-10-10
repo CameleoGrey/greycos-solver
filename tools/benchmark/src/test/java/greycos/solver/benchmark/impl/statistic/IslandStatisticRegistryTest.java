@@ -22,6 +22,8 @@ import greycos.solver.benchmark.impl.statistic.subsingle.pickedmovetypebestscore
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchPhaseScope;
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchStepScope;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.event.SolverEventSupport;
@@ -31,6 +33,7 @@ import greycos.solver.core.impl.solver.monitoring.SolverWorkSnapshot;
 import greycos.solver.core.impl.solver.random.DefaultRandomSource;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
+import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
 import org.junit.jupiter.api.Test;
@@ -41,6 +44,52 @@ import io.micrometer.core.instrument.Tags;
 class IslandStatisticRegistryTest {
 
   private static final Tags ROOT_TAGS = SolverTags.withProblemId("benchmark").asTags();
+
+  @Test
+  void finalIslandSampleDeliversCumulativeIteratedSearchStatisticsWithoutSteps() {
+    var registry = newRegistry();
+    try {
+      var metric = SolverMetric.ITERATED_LOCAL_SEARCH_STATISTICS;
+      var name = metric.getMeterId() + ".migrants";
+      var childTags = ROOT_TAGS.and("island.id", "1");
+      var phaseTags = childTags.and("phase.index", "2");
+      var values = new java.util.ArrayList<Number>();
+      registry.addListener(
+          metric,
+          ignored -> values.add(registry.getGaugeValue(name, ROOT_TAGS.and("phase.index", "2"))));
+      registry.accept(
+          sample(
+              SolverMetricSample.Kind.FINAL,
+              25L,
+              "phase-0/island-1",
+              childTags,
+              0,
+              Map.of(meter(name, phaseTags), 1.0)));
+      assertThat(values).containsExactly(1.0);
+    } finally {
+      registry.close();
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void iteratedSearchPrimitiveMoveTypeIsAvailableToStatistics() {
+    var registry = newRegistry();
+    try {
+      var scope = new SolverScope<TestdataSolution>();
+      var phase = new IteratedLocalSearchPhaseScope<>(scope, 0);
+      var step =
+          new IteratedLocalSearchStepScope<>(
+              phase, IteratedLocalSearchStepScope.Origin.PERTURBATION);
+      assertThat(registry.getMoveType(step)).isNull();
+      var move = (Move<TestdataSolution>) mock(Move.class);
+      when(move.describe()).thenReturn("ChangeMove");
+      step.setMove(move);
+      assertThat(registry.getMoveType(step)).isEqualTo("ChangeMove");
+    } finally {
+      registry.close();
+    }
+  }
 
   @Test
   void recordsImmutableIslandStepsAndGlobalBestWithoutSyntheticSteps() {

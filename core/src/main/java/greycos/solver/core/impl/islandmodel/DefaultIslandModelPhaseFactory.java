@@ -28,6 +28,11 @@ public class DefaultIslandModelPhaseFactory<Solution_>
     super(phaseConfig);
   }
 
+  int resolveMoveThreadCountForDiagnostics(String moveThreadCount) {
+    var resolved = resolveMoveThreadCount(moveThreadCount, true);
+    return resolved == null ? 0 : resolved;
+  }
+
   @Override
   public DefaultIslandModelPhase<Solution_> buildPhase(
       int phaseIndex,

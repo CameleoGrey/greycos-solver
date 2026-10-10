@@ -8,7 +8,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import greycos.solver.core.impl.alns.AlnsPhase;
+import greycos.solver.core.impl.iteratedlocalsearch.IteratedLocalSearchPhase;
 import greycos.solver.core.impl.localsearch.LocalSearchPhase;
+import greycos.solver.core.impl.move.SolutionAssignmentMove;
+import greycos.solver.core.impl.move.SolutionAssignments;
 import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.solver.random.RandomSource;
@@ -85,15 +88,14 @@ public class IslandAgent<Solution_> implements Runnable {
 
       var globalBestUpdater = new GlobalBestUpdater<Solution_>(globalState, agentId);
       for (Phase<Solution_> phase : phases) {
-        if (phase instanceof LocalSearchPhase || phase instanceof AlnsPhase) {
+        if (isMigratingSearchPhase(phase)) {
           MigrationTrigger<Solution_> migrationTrigger = new MigrationTrigger<>(this);
           phase.addPhaseLifecycleListener(migrationTrigger);
         }
 
         phase.addPhaseLifecycleListener(globalBestUpdater);
 
-        if (config.isCompareGlobalEnabled()
-            && (phase instanceof LocalSearchPhase || phase instanceof AlnsPhase)) {
+        if (config.isCompareGlobalEnabled() && isMigratingSearchPhase(phase)) {
           GlobalCompareListener<Solution_> globalCompareListener =
               new GlobalCompareListener<>(globalState, config, agentId);
           phase.addPhaseLifecycleListener(globalCompareListener);
@@ -152,23 +154,29 @@ public class IslandAgent<Solution_> implements Runnable {
     CLOSED
   }
 
-  void checkAndPerformMigration() {
+  private static boolean isMigratingSearchPhase(Phase<?> phase) {
+    return phase instanceof LocalSearchPhase
+        || phase instanceof AlnsPhase
+        || phase instanceof IteratedLocalSearchPhase;
+  }
+
+  void checkAndPerformMigration(boolean completeAssignments) {
     stepsUntilNextMigration--;
 
     if (stepsUntilNextMigration <= 0) {
       LOGGER.debug("Agent {} triggering migration", agentId);
-      performMigration();
+      performMigration(completeAssignments);
     }
   }
 
-  private AgentUpdate<Solution_> performMigration() {
+  private AgentUpdate<Solution_> performMigration(boolean completeAssignments) {
     sendMigrationNonBlocking();
-    var receivedMessage = receiveMigrationNonBlocking();
+    var receivedMessage = receiveMigrationNonBlocking(completeAssignments);
     stepsUntilNextMigration = config.getMigrationFrequency();
     return receivedMessage;
   }
 
-  private AgentUpdate<Solution_> receiveMigrationNonBlocking() {
+  private AgentUpdate<Solution_> receiveMigrationNonBlocking(boolean completeAssignments) {
     AgentUpdate<Solution_> update;
 
     if (status == AgentStatus.DEAD) {
@@ -209,7 +217,7 @@ public class IslandAgent<Solution_> implements Runnable {
           update.getAgentId(),
           migrantInnerScore.raw(),
           currentInnerScore.raw());
-      scheduleAdoption(migrant, migrantInnerScore);
+      scheduleAdoption(migrant, migrantInnerScore, completeAssignments);
     } else {
       LOGGER.debug(
           "Agent {} received migrant from agent {} but kept current (score: {} vs {})",
@@ -259,9 +267,16 @@ public class IslandAgent<Solution_> implements Runnable {
     return score;
   }
 
-  private void scheduleAdoption(Solution_ migrant, InnerScore<?> migrantScore) {
-    var syncMove = SolutionSyncMove.createMove(islandScope.getScoreDirector(), migrant);
-    islandScope.setPendingMoveIfBetter(syncMove, migrantScore, true);
+  private void scheduleAdoption(
+      Solution_ migrant, InnerScore<?> migrantScore, boolean completeAssignments) {
+    var director = islandScope.getScoreDirector();
+    var move =
+        completeAssignments
+            ? new SolutionAssignmentMove<>(
+                SolutionAssignments.captureComplete(director.getSolutionDescriptor(), migrant)
+                    .rebase(director))
+            : SolutionSyncMove.createMove(director, migrant);
+    islandScope.setPendingMoveIfBetter(move, migrantScore, true);
   }
 
   private BitSet snapshotAliveBits() {

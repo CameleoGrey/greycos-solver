@@ -12,6 +12,8 @@ import greycos.solver.core.impl.phase.custom.CustomPhase;
 public enum PhaseType {
   /** Adaptive large neighborhood search. */
   ALNS("Adaptive Large Neighborhood Search"),
+  /** Iterated local search with fixed or scheduled perturbation strengths. */
+  ITERATED_LOCAL_SEARCH("Iterated Local Search"),
   /** The type of phase associated with {@link ConstructionHeuristicPhase}. */
   CONSTRUCTION_HEURISTIC("Construction Heuristic"),
 

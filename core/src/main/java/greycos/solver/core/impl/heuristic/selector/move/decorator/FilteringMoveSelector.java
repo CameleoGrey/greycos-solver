@@ -2,6 +2,8 @@ package greycos.solver.core.impl.heuristic.selector.move.decorator;
 
 import java.util.Iterator;
 
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
 import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelector;
@@ -95,6 +97,7 @@ public final class FilteringMoveSelector<Solution_> extends AbstractMoveSelector
           ? Long.MAX_VALUE
           : size * BAIL_OUT_MULTIPLIER;
     } catch (Exception ex) {
+      SelectionAttemptContext.checkActive();
       // Some move selectors throw an exception when getSize() is called.
       // In this case, we choose to disregard it and pick a large-enough bail-out size anyway.
       // The ${bailOutSize+1}th move could in theory show up where previous ${bailOutSize} moves did
@@ -128,6 +131,12 @@ public final class FilteringMoveSelector<Solution_> extends AbstractMoveSelector
       this.bailOutSize = bailOutSize;
       this.phaseScope = phaseScope;
       this.termination = phaseScope != null ? phaseScope.getTermination() : null;
+    }
+
+    @Override
+    public boolean isKnownExhausted() {
+      return super.isKnownExhausted()
+          || (!upcomingCreated && KnownExhaustionIterator.isExhausted(childMoveIterator));
     }
 
     @Override
@@ -169,8 +178,11 @@ public final class FilteringMoveSelector<Solution_> extends AbstractMoveSelector
         if (next instanceof PreparableMove<Solution_> request) {
           return filter == null ? request : PreparedMoveFilters.defer(request, filter);
         }
-      } while (!accept(scoreDirector, next));
-      return next;
+        if (accept(scoreDirector, next)) {
+          return next;
+        }
+        SelectionAttemptContext.failedSelection();
+      } while (true);
     }
   }
 
