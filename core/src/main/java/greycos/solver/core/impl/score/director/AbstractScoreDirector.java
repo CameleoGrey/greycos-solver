@@ -28,6 +28,7 @@ import greycos.solver.core.impl.cotwin.variable.BasicVariableState;
 import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.VariableSupport;
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.supply.SupplyManager;
@@ -85,6 +86,8 @@ public abstract class AbstractScoreDirector<
   private final NeighborhoodNotifier<Solution_> neighborhoodsElementUpdateNotifier;
 
   private @Nullable WorkingSolutionMutationObserver<Solution_> workingSolutionMutationObserver;
+
+  private @Nullable GenuineAssignmentChangeObserver<Solution_> genuineAssignmentChangeObserver;
 
   private final boolean lookUpEnabled;
   private final LookUpManager lookUpManager;
@@ -333,9 +336,36 @@ public abstract class AbstractScoreDirector<
   }
 
   private void invalidateWorkingSolutionObserver() {
+    if (genuineAssignmentChangeObserver != null) {
+      genuineAssignmentChangeObserver.workingSolutionChanged();
+    }
     if (workingSolutionMutationObserver != null) {
       workingSolutionMutationObserver.workingSolutionChanged();
     }
+  }
+
+  @Override
+  public GenuineAssignmentChangeObserver.Scope observeGenuineAssignmentChanges(
+      GenuineAssignmentChangeObserver<Solution_> observer) {
+    requireNonNull(observer);
+    if (genuineAssignmentChangeObserver != null) {
+      throw new IllegalStateException("A genuine assignment observer is already attached.");
+    }
+    genuineAssignmentChangeObserver = observer;
+    return new GenuineAssignmentChangeObserver.Scope() {
+      private boolean closed;
+
+      @Override
+      public void close() {
+        if (closed) return;
+        if (genuineAssignmentChangeObserver != observer) {
+          throw new IllegalStateException(
+              "The genuine assignment observer changed before its scope closed.");
+        }
+        genuineAssignmentChangeObserver = null;
+        closed = true;
+      }
+    };
   }
 
   // ************************************************************************
@@ -918,6 +948,10 @@ public abstract class AbstractScoreDirector<
   public void beforeVariableChanged(
       VariableDescriptor<Solution_> variableDescriptor, Object entity) {
     ensureWorkingSolutionStateFresh();
+    if (genuineAssignmentChangeObserver != null
+        && variableDescriptor instanceof GenuineVariableDescriptor<Solution_> genuineVariable) {
+      genuineAssignmentChangeObserver.beforeAssignmentChanged(genuineVariable, entity);
+    }
     if (workingSolutionMutationObserver != null) {
       workingSolutionMutationObserver.beforeVariableChanged(
           entity, variableDescriptor.getVariableName());
@@ -1003,6 +1037,9 @@ public abstract class AbstractScoreDirector<
       int fromIndex,
       int toIndex) {
     ensureWorkingSolutionStateFresh();
+    if (genuineAssignmentChangeObserver != null) {
+      genuineAssignmentChangeObserver.beforeAssignmentChanged(variableDescriptor, entity);
+    }
     // Pinning is implemented in generic moves, but custom moves need to take it into account as
     // well.
     // This fail-fast exists to detect situations where pinned things are being moved, in case of

@@ -473,15 +473,31 @@ These need not match when startup is interrupted.
 |`snapshotNanos`, `restorationNanos`, `resourceSetupNanos`, `episodeSetupNanos`, `completionReason`
 |Opt-in transition/setup timings and the phase's completion reason.
 Episode setup includes history initialization and any deferred worker startup, such as GLS startup.
+|`fullAssignmentCaptures`, `copiedAssignmentBindings`, `copiedListElements`, `episodeBestUpdates`
+|Opt-in coordinator assignment-work counters. Copied bindings and list elements include complete
+captures and updates to the retained episode best. Sharing immutable snapshot records adds no copy.
+|`assignmentCaptureNanos`, `assignmentComparisons`, `assignmentComparisonNanos`,
+`assignmentValidations`, `assignmentValidationNanos`
+|Opt-in coordinator capture, comparison, and validation measurements. Comparison and validation
+inspect current assignments without creating complete snapshots. These measurements overlap the
+transition timings above and must not be added to them as independent elapsed time.
 |===
 
 Enable snapshot, restoration, and setup timing with the JVM property
 `-Dgreycos.solver.iteratedLocalSearchDiagnostics=true`.
-Without it, timing fields are disabled; zero values are not measured zero-cost transitions.
+Without it, timing fields and assignment-work counters are disabled; zero values are not measured
+zero-cost transitions. These assignment measurements are local to each ILS coordinator and exclude
+its move workers' replay work and ordinary solver-best cloning.
 The separate `-Dgreycos.solver.moveThreadDiagnostics=true` property enables pipeline timing,
 including worker and coordinator-wait measurements.
 Use these settings in separate diagnostic runs and leave them disabled for primary timing comparisons.
 Always record the settings used; detailed logging and timing can change time-limited trajectories.
+
+Episode-best tracking copies the starting assignments once, then updates only genuine bindings
+changed by committed moves since the previous strict improvement. It copies each affected list in
+full and freezes the retained state when the episode ends. Perturbation still captures a complete
+candidate, and restoration and structural validation still inspect complete assignments; these
+operations remain dependent on model size.
 
 Compare one long Local Search run with fixed-strength ILS and scheduled VNS using the same inner
 algorithm, initial solution, native score, and total work or wall-clock budget.
@@ -496,12 +512,3 @@ A small comparison over one or two seeds and small or medium instances gives evi
 runs; report measured gains and regressions without turning them into general performance claims.
 Neither a higher evaluation rate nor more accepted iterations proves better solution quality,
 parallel scalability, feasibility, or optimality.
-
-The repository's
-https://github.com/CameleoGrey/greycos-solver/tree/main/tools/benchmark/scripts/ils-vns[bounded ILS/VNS comparison harness]
-provides replay-checked assignment, routing, and interacting basic/list examples, with exact Java
-configuration and exported solver XML. Its primary comparison uses one or two seeds and two
-small/medium instances per family, matched resource settings, and at most two minutes per solve.
-It reports measured gains, regressions, failures, and censored runs without a numerical performance
-promotion gate. Consult its README for preparation, bounded screening, held-out selection, and
-separate diagnostic runs. The harness and example settings do not establish a performance result.

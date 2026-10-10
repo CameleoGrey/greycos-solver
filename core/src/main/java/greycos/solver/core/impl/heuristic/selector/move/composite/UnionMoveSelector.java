@@ -68,8 +68,20 @@ public final class UnionMoveSelector<Solution_> extends CompositeMoveSelector<So
 
   @Override
   public void stepEnded(AbstractStepScope<Solution_> stepScope) {
-    super.stepEnded(stepScope);
-    scoreDirector = null;
+    try {
+      super.stepEnded(stepScope);
+    } finally {
+      scoreDirector = null;
+    }
+  }
+
+  @Override
+  public void stepAborted(AbstractStepScope<Solution_> stepScope) {
+    try {
+      super.stepAborted(stepScope);
+    } finally {
+      scoreDirector = null;
+    }
   }
 
   // ************************************************************************

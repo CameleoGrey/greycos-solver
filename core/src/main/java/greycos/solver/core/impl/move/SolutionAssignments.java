@@ -35,7 +35,7 @@ public final class SolutionAssignments<Solution_> {
       basicChangeMap;
   private final Map<ListVariableDescriptor<Solution_>, List<ListChangeRecord<?>>> listChangeMap;
 
-  private SolutionAssignments(
+  SolutionAssignments(
       Map<GenuineVariableDescriptor<Solution_>, List<BasicChangeRecord<?>>> basicChangeMap,
       Map<ListVariableDescriptor<Solution_>, List<ListChangeRecord<?>>> listChangeMap) {
     basicChangeMap.replaceAll((descriptor, records) -> List.copyOf(records));
@@ -63,6 +63,8 @@ public final class SolutionAssignments<Solution_> {
       SolutionDescriptor<Solution_> solutionDescriptor,
       Solution_ sourceSolution,
       boolean includePinned) {
+    var diagnostics = SolutionAssignmentDiagnostics.current();
+    long start = diagnostics == null ? 0L : System.nanoTime();
     Map<GenuineVariableDescriptor<Solution_>, List<BasicChangeRecord<?>>> basicChangeMap =
         new LinkedHashMap<>();
     Map<ListVariableDescriptor<Solution_>, List<ListChangeRecord<?>>> listChangeMap =
@@ -93,10 +95,9 @@ public final class SolutionAssignments<Solution_> {
               entityDescriptor.getGenuineVariableDescriptorList()) {
             if (variableDescriptor
                 instanceof ListVariableDescriptor<Solution_> listVariableDescriptor) {
-              List<Object> values = new ArrayList<>(listVariableDescriptor.getValue(entity));
               listChangeMap
                   .computeIfAbsent(listVariableDescriptor, k -> new ArrayList<>())
-                  .add(new ListChangeRecord<>(entity, values));
+                  .add(new ListChangeRecord<>(entity, listVariableDescriptor.getValue(entity)));
             } else {
               Object value = variableDescriptor.getValue(entity);
               basicChangeMap
@@ -106,7 +107,17 @@ public final class SolutionAssignments<Solution_> {
           }
         });
 
-    return new SolutionAssignments<>(basicChangeMap, listChangeMap);
+    var snapshot = new SolutionAssignments<>(basicChangeMap, listChangeMap);
+    if (diagnostics != null) {
+      long bindings = basicChangeMap.values().stream().mapToLong(List::size).sum();
+      long listElements = 0;
+      for (var records : listChangeMap.values()) {
+        bindings += records.size();
+        for (var record : records) listElements += record.values().size();
+      }
+      diagnostics.captured(bindings, listElements, System.nanoTime() - start);
+    }
+    return snapshot;
   }
 
   /** Compares assignments on the same working graph; entity collection ordering is immaterial. */
@@ -149,8 +160,58 @@ public final class SolutionAssignments<Solution_> {
   }
 
   public boolean matchesCurrent(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
-    return sameAssignments(
-        captureComplete(scoreDirector.getSolutionDescriptor(), scoreDirector.getWorkingSolution()));
+    var diagnostics = SolutionAssignmentDiagnostics.current();
+    long start = diagnostics == null ? 0L : System.nanoTime();
+    try {
+      var currentEntities = currentEntitiesByVariable(scoreDirector);
+      if (!coversVariables(currentEntities)) return false;
+      for (var entry : basicChangeMap.entrySet()) {
+        var remaining = currentEntities.get(entry.getKey());
+        for (var record : entry.getValue()) {
+          if (!remaining.remove(record.entity())
+              || !sameValue(record.value(), entry.getKey().getValue(record.entity()))) return false;
+        }
+        if (!remaining.isEmpty()) return false;
+      }
+      for (var entry : listChangeMap.entrySet()) {
+        var remaining = currentEntities.get(entry.getKey());
+        for (var record : entry.getValue()) {
+          if (!remaining.remove(record.entity())
+              || !sameList(record.values(), entry.getKey().getValue(record.entity()))) return false;
+        }
+        if (!remaining.isEmpty()) return false;
+      }
+      return true;
+    } finally {
+      if (diagnostics != null) diagnostics.compared(System.nanoTime() - start);
+    }
+  }
+
+  private boolean coversVariables(Map<GenuineVariableDescriptor<Solution_>, Set<Object>> current) {
+    return current.size() == basicChangeMap.size() + listChangeMap.size()
+        && current.keySet().containsAll(basicChangeMap.keySet())
+        && current.keySet().containsAll(listChangeMap.keySet());
+  }
+
+  private static <Solution_>
+      Map<GenuineVariableDescriptor<Solution_>, Set<Object>> currentEntitiesByVariable(
+          VariableDescriptorAwareScoreDirector<Solution_> director) {
+    var descriptor = director.getSolutionDescriptor();
+    var entities = new LinkedHashMap<GenuineVariableDescriptor<Solution_>, Set<Object>>();
+    for (var entityDescriptor : descriptor.getEntityDescriptors()) {
+      for (var variable : entityDescriptor.getGenuineVariableDescriptorList()) {
+        entities.put(variable, Collections.newSetFromMap(new IdentityHashMap<>()));
+      }
+    }
+    descriptor.visitAllEntities(
+        director.getWorkingSolution(),
+        entity -> {
+          var entityDescriptor = descriptor.findEntityDescriptorOrFail(entity.getClass());
+          for (var variable : entityDescriptor.getGenuineVariableDescriptorList()) {
+            entities.get(variable).add(entity);
+          }
+        });
+    return entities;
   }
 
   /**
@@ -158,18 +219,26 @@ public final class SolutionAssignments<Solution_> {
    * Unlike {@link #apply}, this rejects stale or incomplete targets and changes to pinned entities.
    */
   public void validateComplete(VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
-    var current =
-        captureComplete(scoreDirector.getSolutionDescriptor(), scoreDirector.getWorkingSolution());
-    if (!basicChangeMap.keySet().equals(current.basicChangeMap.keySet())
-        || !listChangeMap.keySet().equals(current.listChangeMap.keySet())) {
+    var diagnostics = SolutionAssignmentDiagnostics.current();
+    long start = diagnostics == null ? 0L : System.nanoTime();
+    try {
+      validateCurrentAssignments(scoreDirector);
+    } finally {
+      if (diagnostics != null) diagnostics.validated(System.nanoTime() - start);
+    }
+  }
+
+  private void validateCurrentAssignments(
+      VariableDescriptorAwareScoreDirector<Solution_> scoreDirector) {
+    var current = currentEntitiesByVariable(scoreDirector);
+    if (!coversVariables(current)) {
       throw new IllegalStateException(
           "The assignment snapshot does not cover the working solution's genuine variables.");
     }
     var rangeMembers = new IdentityHashMap<ValueRange<Object>, Set<Object>>();
     for (var entry : basicChangeMap.entrySet()) {
       var variable = (BasicVariableDescriptor<Solution_>) entry.getKey();
-      var currentEntities = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
-      current.basicChangeMap.get(variable).forEach(record -> currentEntities.add(record.entity()));
+      var currentEntities = current.get(variable);
       for (var record : entry.getValue()) {
         requireWorkingEntity(currentEntities, record.entity(), variable);
         if (!isMovable(scoreDirector, record.entity())
@@ -212,8 +281,7 @@ public final class SolutionAssignments<Solution_> {
     }
     for (var entry : listChangeMap.entrySet()) {
       var variable = entry.getKey();
-      var currentEntities = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
-      current.listChangeMap.get(variable).forEach(record -> currentEntities.add(record.entity()));
+      var currentEntities = current.get(variable);
       var assigned = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
       // List state and notifications use canonical range identities, including immutable values.
       var range =
@@ -615,7 +683,7 @@ public final class SolutionAssignments<Solution_> {
     private final E entity;
     private final @Nullable Object value;
 
-    private BasicChangeRecord(E entity, @Nullable Object value) {
+    BasicChangeRecord(E entity, @Nullable Object value) {
       this.entity = Objects.requireNonNull(entity);
       this.value = value;
     }
@@ -633,7 +701,7 @@ public final class SolutionAssignments<Solution_> {
     private final E entity;
     private final List<Object> values;
 
-    private ListChangeRecord(E entity, List<Object> values) {
+    ListChangeRecord(E entity, List<Object> values) {
       this.entity = Objects.requireNonNull(entity);
       this.values = List.copyOf(values);
     }

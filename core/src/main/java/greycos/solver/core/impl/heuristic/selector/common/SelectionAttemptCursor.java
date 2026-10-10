@@ -11,8 +11,6 @@ import java.util.function.Supplier;
  */
 public final class SelectionAttemptCursor<T> implements AutoCloseable {
 
-  private static final BudgetStoppedException BUDGET_STOPPED = new BudgetStoppedException();
-
   private final SelectionAttemptLedger ledger;
   private final boolean setup;
   private final Supplier<Iterator<T>> sourceSupplier;
@@ -24,6 +22,7 @@ public final class SelectionAttemptCursor<T> implements AutoCloseable {
   private boolean closed;
   private boolean currentReserved;
   private long markerCount;
+  private BudgetStoppedException budgetStoppedException;
 
   SelectionAttemptCursor(SelectionAttemptLedger ledger, Supplier<Iterator<T>> sourceSupplier) {
     this(ledger, sourceSupplier, false);
@@ -78,11 +77,22 @@ public final class SelectionAttemptCursor<T> implements AutoCloseable {
         if (currentReserved) ledger.releaseUnperformedReservation();
         currentReserved = false;
       }
-    } catch (BudgetStoppedException ignored) {
+    } catch (BudgetStoppedException stopped) {
       registerFailures();
       if (currentReserved) {
         ledger.releaseUnperformedReservation();
         currentReserved = false;
+      }
+      var cleanupFailures = stopped.getSuppressed();
+      if (cleanupFailures.length != 0) {
+        close();
+        var failure = cleanupFailures[0];
+        for (int i = 1; i < cleanupFailures.length; i++) {
+          if (failure != cleanupFailures[i]) failure.addSuppressed(cleanupFailures[i]);
+        }
+        if (failure instanceof RuntimeException runtime) throw runtime;
+        if (failure instanceof Error error) throw error;
+        throw new IllegalStateException("Selection setup cleanup failed.", failure);
       }
     } catch (RuntimeException | Error failure) {
       registerFailures();
@@ -114,13 +124,13 @@ public final class SelectionAttemptCursor<T> implements AutoCloseable {
     checkActive();
     if (ledger.isInterrupted()) {
       interrupted = true;
-      throw BUDGET_STOPPED;
+      throw budgetStoppedException();
     }
     if (!currentReserved) {
       currentReserved = ledger.reserve();
       if (!currentReserved) {
         budgetStopped = true;
-        throw BUDGET_STOPPED;
+        throw budgetStoppedException();
       }
     }
   }
@@ -136,7 +146,7 @@ public final class SelectionAttemptCursor<T> implements AutoCloseable {
 
   void checkActive() {
     if (budgetStopped || interrupted) {
-      throw BUDGET_STOPPED;
+      throw budgetStoppedException();
     }
   }
 
@@ -145,12 +155,12 @@ public final class SelectionAttemptCursor<T> implements AutoCloseable {
     currentReserved = false;
     if (ledger.isInterrupted()) {
       interrupted = true;
-      throw BUDGET_STOPPED;
+      throw budgetStoppedException();
     }
     currentReserved = ledger.reserve();
     if (!currentReserved) {
       budgetStopped = true;
-      throw BUDGET_STOPPED;
+      throw budgetStoppedException();
     }
   }
 
@@ -159,6 +169,11 @@ public final class SelectionAttemptCursor<T> implements AutoCloseable {
       ready.addLast(ledger.register(this, markerCount, null));
       markerCount = 0L;
     }
+  }
+
+  private BudgetStoppedException budgetStoppedException() {
+    if (budgetStoppedException == null) budgetStoppedException = new BudgetStoppedException();
+    return budgetStoppedException;
   }
 
   public boolean isSourceExhausted() {
@@ -185,7 +200,7 @@ public final class SelectionAttemptCursor<T> implements AutoCloseable {
 
   private static final class BudgetStoppedException extends RuntimeException {
     private BudgetStoppedException() {
-      super(null, null, false, false);
+      super(null, null, true, false);
     }
   }
 }

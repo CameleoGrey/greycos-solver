@@ -9,6 +9,8 @@ import java.util.TreeMap;
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
+import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleListener;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionProbabilityWeightFactory;
@@ -64,20 +66,30 @@ public final class ProbabilityEntitySelector<Solution_>
 
   @Override
   public void constructCache(SolverScope<Solution_> solverScope) {
-    cachedEntityMap = new TreeMap<>();
+    var completeMap = new TreeMap<Double, Object>();
     ScoreDirector<Solution_> scoreDirector = solverScope.getScoreDirector();
     double probabilityWeightOffset = 0L;
-    for (Object entity : childEntitySelector) {
+    boolean setup = SelectionAttemptContext.isSetup();
+    var iterator = childEntitySelector.iterator();
+    while (setup ? !KnownExhaustionIterator.isExhausted(iterator) : iterator.hasNext()) {
+      if (setup) {
+        SelectionAttemptContext.beforeSelection();
+        if (!iterator.hasNext()) break;
+      }
+      Object entity = iterator.next();
       double probabilityWeight =
           probabilityWeightFactory.createProbabilityWeight(scoreDirector, entity);
-      cachedEntityMap.put(probabilityWeightOffset, entity);
+      completeMap.put(probabilityWeightOffset, entity);
       probabilityWeightOffset += probabilityWeight;
+      if (setup) SelectionAttemptContext.recordSetupProposal();
     }
+    cachedEntityMap = completeMap;
     probabilityWeightTotal = probabilityWeightOffset;
   }
 
   @Override
   public void disposeCache(SolverScope<Solution_> solverScope) {
+    cachedEntityMap = null;
     probabilityWeightTotal = -1.0;
   }
 

@@ -54,14 +54,22 @@ public abstract class AbstractSelector<Solution_> implements Selector<Solution_>
   }
 
   @Override
+  public void stepAborted(AbstractStepScope<Solution_> stepScope) {
+    phaseLifecycleSupport.fireStepAborted(stepScope);
+  }
+
+  @Override
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
     phaseLifecycleSupport.firePhaseEnded(phaseScope);
   }
 
   @Override
   public void solvingEnded(SolverScope<Solution_> solverScope) {
-    phaseLifecycleSupport.fireSolvingEnded(solverScope);
-    workingRandom = null;
+    try {
+      phaseLifecycleSupport.fireSolvingEnded(solverScope);
+    } finally {
+      workingRandom = null;
+    }
   }
 
   @Override

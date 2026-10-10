@@ -147,6 +147,11 @@ final class IslandWorkQuota<Solution_> {
       }
 
       @Override
+      public boolean hasApplicableLimit(boolean search) {
+        return search;
+      }
+
+      @Override
       public boolean isTerminated() {
         synchronized (IslandWorkQuota.this) {
           return termination.isPhaseTerminated(searchScope);

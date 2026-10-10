@@ -262,12 +262,22 @@ public final class IslandTerminationBudget<Solution_> {
       return true;
     }
 
+    /** Structural support only; unlike applicability, this must not change evaluator state. */
+    default boolean hasApplicableLimit(boolean search) {
+      return true;
+    }
+
     default boolean supportsRepairAttempts() {
       return true;
     }
   }
 
   private static final class NeverNode<Solution_> implements Node<Solution_> {
+    @Override
+    public boolean hasApplicableLimit(boolean search) {
+      return false;
+    }
+
     @Override
     public boolean isTerminated() {
       return false;
@@ -287,6 +297,16 @@ public final class IslandTerminationBudget<Solution_> {
     private CompositeNode(boolean or, List<Node<Solution_>> children) {
       this.or = or;
       this.children = children;
+    }
+
+    @Override
+    public boolean hasApplicableLimit(boolean search) {
+      if (children.isEmpty()) {
+        return false;
+      }
+      return or
+          ? children.stream().anyMatch(child -> child.hasApplicableLimit(search))
+          : children.stream().allMatch(child -> child.hasApplicableLimit(search));
     }
 
     @Override
@@ -347,6 +367,11 @@ public final class IslandTerminationBudget<Solution_> {
 
     @Override
     public boolean applicable(boolean search) {
+      return !searchOnly || search;
+    }
+
+    @Override
+    public boolean hasApplicableLimit(boolean search) {
       return !searchOnly || search;
     }
 

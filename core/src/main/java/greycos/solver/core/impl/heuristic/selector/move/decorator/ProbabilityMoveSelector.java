@@ -89,6 +89,7 @@ public class ProbabilityMoveSelector<Solution_> extends AbstractMoveSelector<Sol
 
   @Override
   public void disposeCache(SolverScope<Solution_> solverScope) {
+    cachedMoveMap = null;
     probabilityWeightTotal = -1.0;
   }
 

@@ -8,6 +8,7 @@ import java.util.Objects;
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleListener;
@@ -71,8 +72,21 @@ public abstract class AbstractCachingEntitySelector<Solution_>
               + childSize
               + ") which is higher than Integer.MAX_VALUE.");
     }
-    cachedEntityList = new ArrayList<>((int) childSize);
-    childEntitySelector.iterator().forEachRemaining(cachedEntityList::add);
+    boolean setup = SelectionAttemptContext.isSetup();
+    var completeEntityList = new ArrayList<Object>(setup ? 0 : (int) childSize);
+    if (!setup) {
+      childEntitySelector.iterator().forEachRemaining(completeEntityList::add);
+    } else {
+      var iterator = childEntitySelector.iterator();
+      while (!KnownExhaustionIterator.isExhausted(iterator)) {
+        SelectionAttemptContext.beforeSelection();
+        if (!iterator.hasNext()) break;
+        var selection = iterator.next();
+        SelectionAttemptContext.recordSetupProposal();
+        completeEntityList.add(selection);
+      }
+    }
+    cachedEntityList = completeEntityList;
     logger.trace(
         "    Created cachedEntityList: size ({}), entitySelector ({}).",
         cachedEntityList.size(),

@@ -17,5 +17,8 @@ public interface PhaseLifecycleListener<Solution_> extends SolverLifecycleListen
 
   void stepEnded(AbstractStepScope<Solution_> stepScope);
 
+  /** Releases resources of an entered step that did not commit, without publishing a step end. */
+  default void stepAborted(AbstractStepScope<Solution_> stepScope) {}
+
   void phaseEnded(AbstractPhaseScope<Solution_> phaseScope);
 }

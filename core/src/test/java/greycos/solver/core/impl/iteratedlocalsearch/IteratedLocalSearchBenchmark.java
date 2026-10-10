@@ -42,6 +42,7 @@ import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.alns.AlnsMoveThreadingWorkload;
 import greycos.solver.core.impl.alns.AlnsMoveThreadingWorkload.MixedSolution;
+import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.heuristic.thread.MoveThreadingWorkload;
 import greycos.solver.core.impl.io.jaxb.SolverConfigIO;
@@ -54,8 +55,8 @@ import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 /**
- * One fresh-JVM run with independent assignment replay. Invoked by the tracked ils-vns runner;
- * deliberately has no JUnit entry point and does not run in the normal test suite.
+ * One standalone fresh-JVM run with independent assignment replay. Deliberately has no JUnit entry
+ * point and does not run in the normal test suite.
  */
 public final class IteratedLocalSearchBenchmark {
   private IteratedLocalSearchBenchmark() {}
@@ -173,6 +174,7 @@ public final class IteratedLocalSearchBenchmark {
       firstFeasible.set(0);
     }
     var phaseTimes = new ArrayList<String>();
+    var constructionEvaluations = new AtomicLong();
     solver.addPhaseLifecycleListener(
         new PhaseLifecycleListenerAdapter<>() {
           private long started;
@@ -185,6 +187,10 @@ public final class IteratedLocalSearchBenchmark {
           @Override
           public void phaseEnded(AbstractPhaseScope<S> scope) {
             phaseTimes.add(scope.getClass().getSimpleName() + "\t" + (System.nanoTime() - started));
+            if (scope instanceof ConstructionHeuristicPhaseScope<?>
+                && scope.getSolverScope() == solver.getSolverScope()) {
+              constructionEvaluations.addAndGet(scope.getPhaseMoveEvaluationCount());
+            }
           }
         });
     long setupNanos = System.nanoTime() - setupStarted;
@@ -271,6 +277,12 @@ public final class IteratedLocalSearchBenchmark {
     metrics.put("independent_replay", "passed");
     metrics.put("persistence_replay", "passed");
     metrics.put("move_evaluations", Long.toString(solver.getMoveEvaluationCount()));
+    metrics.put("construction_move_evaluations", Long.toString(constructionEvaluations.get()));
+    if (options.islands == 1) {
+      metrics.put(
+          "search_move_evaluations",
+          Long.toString(solver.getMoveEvaluationCount() - constructionEvaluations.get()));
+    }
     metrics.put("reported_score_calculations", Long.toString(solver.getScoreCalculationCount()));
     metrics.put(
         "coordinator_and_consumed_score_calculations",

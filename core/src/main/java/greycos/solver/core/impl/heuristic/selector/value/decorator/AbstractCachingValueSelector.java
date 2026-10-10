@@ -8,6 +8,7 @@ import java.util.Objects;
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
+import greycos.solver.core.impl.heuristic.selector.common.KnownExhaustionIterator;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptContext;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleBridge;
 import greycos.solver.core.impl.heuristic.selector.common.SelectionCacheLifecycleListener;
@@ -72,9 +73,21 @@ public abstract class AbstractCachingValueSelector<Solution_>
               + childSize
               + ") which is higher than Integer.MAX_VALUE.");
     }
-    cachedValueList = new ArrayList<>((int) childSize);
-    // TODO Fail-faster if a non FromSolutionPropertyValueSelector is used
-    childValueSelector.iterator().forEachRemaining(cachedValueList::add);
+    boolean setup = SelectionAttemptContext.isSetup();
+    var completeValueList = new ArrayList<Object>(setup ? 0 : (int) childSize);
+    if (!setup) {
+      childValueSelector.iterator().forEachRemaining(completeValueList::add);
+    } else {
+      var iterator = childValueSelector.iterator();
+      while (!KnownExhaustionIterator.isExhausted(iterator)) {
+        SelectionAttemptContext.beforeSelection();
+        if (!iterator.hasNext()) break;
+        var selection = iterator.next();
+        SelectionAttemptContext.recordSetupProposal();
+        completeValueList.add(selection);
+      }
+    }
+    cachedValueList = completeValueList;
     logger.trace(
         "    Created cachedValueList: size ({}), valueSelector ({}).",
         cachedValueList.size(),

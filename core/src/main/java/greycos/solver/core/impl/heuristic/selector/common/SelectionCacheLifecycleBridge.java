@@ -53,8 +53,9 @@ public final class SelectionCacheLifecycleBridge<Solution_>
           selectionCacheLifecycleListener.disposeCache(solverScope);
         } catch (RuntimeException | Error cleanupFailure) {
           if (cleanupFailure != failure) failure.addSuppressed(cleanupFailure);
+        } finally {
+          clearCacheContext();
         }
-        clearCacheContext();
       }
       throw failure;
     }
@@ -100,7 +101,21 @@ public final class SelectionCacheLifecycleBridge<Solution_>
   public void stepEnded(AbstractStepScope<Solution_> stepScope) {
     if (cacheType == SelectionCacheType.STEP) {
       assertConstructed();
-      selectionCacheLifecycleListener.disposeCache(stepScope.getPhaseScope().getSolverScope());
+      disposeCache(stepScope.getPhaseScope().getSolverScope());
+    }
+  }
+
+  @Override
+  public void stepAborted(AbstractStepScope<Solution_> stepScope) {
+    if (cacheType == SelectionCacheType.STEP && isConstructed) {
+      disposeCache(stepScope.getPhaseScope().getSolverScope());
+    }
+  }
+
+  private void disposeCache(SolverScope<Solution_> solverScope) {
+    try {
+      selectionCacheLifecycleListener.disposeCache(solverScope);
+    } finally {
       clearCacheContext();
     }
   }
@@ -127,8 +142,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
       if (cacheType != SelectionCacheType.STEP) {
         assertConstructed(); // The step cache may have already been disposed of during stepEnded().
       }
-      selectionCacheLifecycleListener.disposeCache(phaseScope.getSolverScope());
-      clearCacheContext();
+      if (isConstructed) disposeCache(phaseScope.getSolverScope());
     }
   }
 
@@ -140,8 +154,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
     }
     if (cacheType == SelectionCacheType.SOLVER) {
       assertConstructed();
-      selectionCacheLifecycleListener.disposeCache(solverScope);
-      clearCacheContext();
+      disposeCache(solverScope);
     } else {
       assertNotConstructed(); // Fail fast if we have a disposal problem, which is effectively a
       // memory leak.
@@ -167,8 +180,7 @@ public final class SelectionCacheLifecycleBridge<Solution_>
     // Entity revisions are local to each director and can coincide after an environment-mode swap.
     if (scoreDirector != cachedScoreDirector
         || scoreDirector.isWorkingEntityListDirty(workingEntityListRevision)) {
-      selectionCacheLifecycleListener.disposeCache(solverScope);
-      clearCacheContext();
+      disposeCache(solverScope);
       constructCache(solverScope);
       isConstructed = true;
       updateCacheContext(solverScope);

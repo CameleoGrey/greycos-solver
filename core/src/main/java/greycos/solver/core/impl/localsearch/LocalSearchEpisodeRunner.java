@@ -11,6 +11,7 @@ import greycos.solver.core.impl.heuristic.selector.common.SelectionAttemptLedger
 import greycos.solver.core.impl.localsearch.decider.LocalSearchPhaseDecider;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.move.EpisodeBestAssignments;
 import greycos.solver.core.impl.move.SolutionAssignments;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -88,6 +89,7 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
   private EpisodeCallbacks<Solution_> callbacks;
   private long episodeSequence;
   private boolean open;
+  private long consumedSelectionCount;
   private long discardedSelectionCount;
   private long snapshotNanos;
   private long episodeSetupNanos;
@@ -119,7 +121,8 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
 
   public void open(SolverScope<Solution_> solverScope, InnerScore<?> actualScore) {
     if (open) throw new IllegalStateException("The local-search episode runner is already open.");
-    episodeSequence = discardedSelectionCount = snapshotNanos = episodeSetupNanos = 0L;
+    episodeSequence =
+        consumedSelectionCount = discardedSelectionCount = snapshotNanos = episodeSetupNanos = 0L;
     solvingHistoryStarted = solvingHistoryComplete = false;
     diagnosticsEnabled = Boolean.getBoolean("greycos.solver.iteratedLocalSearchDiagnostics");
     this.solverScope = Objects.requireNonNull(solverScope);
@@ -176,13 +179,14 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
     var scope = createScope(actualScore);
     scope.startingNow();
     scope.reset();
-    var best = captureBest(scope);
+    EpisodeBestAssignments<Solution_> best = null;
     boolean started = false;
     boolean[] historyStarted = {false};
     int committedSteps = 0;
     String completionReason = null;
     Throwable failure = null;
     try {
+      best = initializeBest(scope);
       if (!decider.cancelAndQuiesceEvaluation()) {
         return result(
             Outcome.ENCLOSING_TERMINATED, best, actualScore, scope, 0, "ENCLOSING_TERMINATED");
@@ -228,14 +232,23 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
             break;
           }
           callbacks.beforeMoveCommitted(step);
-          scope.getScoreDirector().executeMove(step.getStep());
+          try (var observation = scope.getScoreDirector().observeGenuineAssignmentChanges(best)) {
+            scope.getScoreDirector().executeMove(step.getStep());
+          }
           scope.getSolutionDescriptor().setScore(scope.getWorkingSolution(), step.getScore().raw());
           if (!step.getScore().isFullyAssigned() || step.getScore().isStructurallyFlawed()) {
             throw new IllegalStateException(
                 "The episode committed an invalid or incomplete move (" + step.getStep() + ").");
           }
           assertWorkingStep(step);
-          if (scope.recordEpisodeBest(step)) best = captureBest(scope);
+          if (scope.recordEpisodeBest(step)) {
+            long snapshotStart = diagnosticsEnabled ? System.nanoTime() : 0L;
+            try {
+              best.updateBest();
+            } finally {
+              if (diagnosticsEnabled) snapshotNanos += System.nanoTime() - snapshotStart;
+            }
+          }
           callbacks.moveCommitted(step);
           completed = true;
           committedSteps++;
@@ -260,7 +273,9 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
               : termination.isAdoptionPending() ? Outcome.ADOPTION : Outcome.NORMAL;
       return result(outcome, best, scope.getBestScore(), scope, committedSteps, completionReason);
     } catch (CancellationException cancellation) {
-      if (cancellation.getSuppressed().length == 0 && termination.isNonAttemptTerminated(scope)) {
+      if (best != null
+          && cancellation.getSuppressed().length == 0
+          && termination.isNonAttemptTerminated(scope)) {
         var outcome =
             termination.isEnclosingTerminated()
                 ? Outcome.ENCLOSING_TERMINATED
@@ -274,9 +289,13 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
       failure = exception;
       throw exception;
     } finally {
-      finishEpisode(scope, started, historyStarted[0], failure);
-      discardedSelectionCount += scope.getSelectionAttemptLedger().getDiscardedCount();
-      this.callbacks = null;
+      try {
+        finishEpisode(scope, started, historyStarted[0], failure);
+      } finally {
+        consumedSelectionCount += scope.getSelectionAttemptLedger().getConsumedCount();
+        discardedSelectionCount += scope.getSelectionAttemptLedger().getDiscardedCount();
+        this.callbacks = null;
+      }
     }
   }
 
@@ -300,6 +319,10 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
     return discardedSelectionCount;
   }
 
+  public long getConsumedSelectionCount() {
+    return consumedSelectionCount;
+  }
+
   public long getSnapshotNanos() {
     return snapshotNanos;
   }
@@ -308,10 +331,10 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
     return episodeSetupNanos;
   }
 
-  private SolutionAssignments<Solution_> captureBest(LocalSearchPhaseScope<Solution_> scope) {
+  private EpisodeBestAssignments<Solution_> initializeBest(LocalSearchPhaseScope<Solution_> scope) {
     long start = diagnosticsEnabled ? System.nanoTime() : 0L;
     try {
-      return SolutionAssignments.captureComplete(
+      return new EpisodeBestAssignments<>(
           scope.getSolutionDescriptor(), scope.getWorkingSolution());
     } finally {
       if (diagnosticsEnabled) snapshotNanos += System.nanoTime() - start;
@@ -332,7 +355,7 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
 
   private EpisodeResult<Solution_> result(
       Outcome outcome,
-      SolutionAssignments<Solution_> best,
+      EpisodeBestAssignments<Solution_> best,
       InnerScore<?> score,
       LocalSearchPhaseScope<Solution_> scope,
       int committedSteps,
@@ -344,9 +367,16 @@ public final class LocalSearchEpisodeRunner<Solution_> implements AutoCloseable 
           scope.getSelectionAttemptLedger().isExhausted()
               ? "EPISODE_ATTEMPT_LIMIT"
               : "NO_SELECTED_MOVE";
+    long snapshotStart = diagnosticsEnabled ? System.nanoTime() : 0L;
+    SolutionAssignments<Solution_> bestAssignments;
+    try {
+      bestAssignments = best.freeze();
+    } finally {
+      if (diagnosticsEnabled) snapshotNanos += System.nanoTime() - snapshotStart;
+    }
     return new EpisodeResult<>(
         outcome,
-        best,
+        bestAssignments,
         score,
         scope.getSelectionAttemptLedger().getConsumedCount(),
         committedSteps,

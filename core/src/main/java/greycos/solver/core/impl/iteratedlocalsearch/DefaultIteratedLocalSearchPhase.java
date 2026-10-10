@@ -20,6 +20,7 @@ import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.move.PreparableMove;
 import greycos.solver.core.impl.move.PreparedMoveEvaluation;
 import greycos.solver.core.impl.move.PreparedMoveFilters;
+import greycos.solver.core.impl.move.SolutionAssignmentDiagnostics;
 import greycos.solver.core.impl.move.SolutionAssignmentMove;
 import greycos.solver.core.impl.move.SolutionAssignments;
 import greycos.solver.core.impl.phase.AbstractPhase;
@@ -61,6 +62,15 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
       long restorationNanos,
       long resourceSetupNanos,
       long episodeSetupNanos,
+      long fullAssignmentCaptures,
+      long copiedAssignmentBindings,
+      long copiedListElements,
+      long assignmentCaptureNanos,
+      long assignmentComparisons,
+      long assignmentComparisonNanos,
+      long assignmentValidations,
+      long assignmentValidationNanos,
+      long episodeBestUpdates,
       String completionReason) {}
 
   private record Incumbent<Solution_>(
@@ -117,6 +127,7 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
     metrics = new IteratedLocalSearchMetrics<>();
     diagnostics = null;
     var contexts = new IdentityHashMap<Object, PreparableMove<Solution_>>();
+    scope.assignmentDiagnostics = timingDiagnostics ? SolutionAssignmentDiagnostics.open() : null;
     boolean phaseActive = false;
     boolean activeIteration = false;
     Throwable failure = null;
@@ -268,77 +279,81 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
       scope.completionReason = "FAILURE";
       throw thrown;
     } finally {
-      Throwable cleanupFailure = null;
       try {
-        episodes.close();
-      } catch (RuntimeException | Error thrown) {
-        cleanupFailure = thrown;
-      }
-      // Closing resources joins workers before any context or provider state is disposed.
-      boolean safeToDispose = episodes.isEvaluationStateSafeToDispose();
-      if (!safeToDispose) deferCleanup(scope, contexts, phaseActive);
-      if (safeToDispose) {
-        for (var context : contexts.values()) {
-          try {
-            context.closeEvaluationContext(scope.getScoreDirector());
-          } catch (RuntimeException | Error thrown) {
-            cleanupFailure = append(cleanupFailure, thrown);
-          }
-        }
-      }
-      if (safeToDispose && scope.perturbationPhaseStarted) {
+        Throwable cleanupFailure = null;
         try {
-          perturbation.phaseEnded(scope);
+          episodes.close();
         } catch (RuntimeException | Error thrown) {
-          cleanupFailure = append(cleanupFailure, thrown);
+          cleanupFailure = thrown;
         }
-      }
-      if (safeToDispose && scope.perturbationSolvingStarted) {
-        try {
-          perturbation.solvingEnded(solverScope);
-        } catch (RuntimeException | Error thrown) {
-          cleanupFailure = append(cleanupFailure, thrown);
-        }
-      }
-      if (phaseActive) {
-        if (cleanupFailure != null) scope.completionReason = "FAILURE";
-        try {
-          scope.endingNow();
-          diagnostics = diagnostics(scope);
-          logger.info(
-              "{}Iterated Local Search phase ({}) ended: time spent ({}), environment mode ({}), best score ({}),"
-                  + " move evaluation speed ({}/sec), step total ({}), completion reason ({}), iterations ({}), episodes ({}).",
-              logIndentation,
-              phaseIndex,
-              scope.calculateSolverTimeMillisSpentUpToNow(),
-              environmentMode.name(),
-              logScore(scope.getBestScore()),
-              scope.getPhaseMoveEvaluationSpeed(),
-              scope.getNextStepIndex(),
-              scope.completionReason,
-              scope.completedIterations,
-              scope.episodes);
-        } catch (RuntimeException | Error thrown) {
-          cleanupFailure = append(cleanupFailure, thrown);
-        }
+        // Closing resources joins workers before any context or provider state is disposed.
+        boolean safeToDispose = episodes.isEvaluationStateSafeToDispose();
+        if (!safeToDispose) deferCleanup(scope, contexts, phaseActive);
         if (safeToDispose) {
-          try {
-            metrics.phaseEnded(scope);
-          } catch (RuntimeException | Error thrown) {
-            cleanupFailure = append(cleanupFailure, thrown);
+          for (var context : contexts.values()) {
+            try {
+              context.closeEvaluationContext(scope.getScoreDirector());
+            } catch (RuntimeException | Error thrown) {
+              cleanupFailure = append(cleanupFailure, thrown);
+            }
           }
+        }
+        if (safeToDispose && scope.perturbationPhaseStarted) {
           try {
-            phaseEnded(scope);
+            perturbation.phaseEnded(scope);
           } catch (RuntimeException | Error thrown) {
             cleanupFailure = append(cleanupFailure, thrown);
           }
         }
-      }
-      if (cleanupFailure != null) {
-        if (failure != null) {
-          if (failure != cleanupFailure) failure.addSuppressed(cleanupFailure);
-        } else if (cleanupFailure instanceof RuntimeException runtime) throw runtime;
-        else throw (Error) cleanupFailure;
+        if (safeToDispose && scope.perturbationSolvingStarted) {
+          try {
+            perturbation.solvingEnded(solverScope);
+          } catch (RuntimeException | Error thrown) {
+            cleanupFailure = append(cleanupFailure, thrown);
+          }
+        }
+        if (phaseActive) {
+          if (cleanupFailure != null) scope.completionReason = "FAILURE";
+          try {
+            scope.endingNow();
+            diagnostics = diagnostics(scope);
+            logger.info(
+                "{}Iterated Local Search phase ({}) ended: time spent ({}), environment mode ({}), best score ({}),"
+                    + " move evaluation speed ({}/sec), step total ({}), completion reason ({}), iterations ({}), episodes ({}).",
+                logIndentation,
+                phaseIndex,
+                scope.calculateSolverTimeMillisSpentUpToNow(),
+                environmentMode.name(),
+                logScore(scope.getBestScore()),
+                scope.getPhaseMoveEvaluationSpeed(),
+                scope.getNextStepIndex(),
+                scope.completionReason,
+                scope.completedIterations,
+                scope.episodes);
+          } catch (RuntimeException | Error thrown) {
+            cleanupFailure = append(cleanupFailure, thrown);
+          }
+          if (safeToDispose) {
+            try {
+              metrics.phaseEnded(scope);
+            } catch (RuntimeException | Error thrown) {
+              cleanupFailure = append(cleanupFailure, thrown);
+            }
+            try {
+              phaseEnded(scope);
+            } catch (RuntimeException | Error thrown) {
+              cleanupFailure = append(cleanupFailure, thrown);
+            }
+          }
+        }
+        if (cleanupFailure != null) {
+          if (failure != null) {
+            if (failure != cleanupFailure) failure.addSuppressed(cleanupFailure);
+          } else if (cleanupFailure instanceof RuntimeException runtime) throw runtime;
+          else throw (Error) cleanupFailure;
+        }
+      } finally {
+        if (scope.assignmentDiagnostics != null) scope.assignmentDiagnostics.close();
       }
     }
   }
@@ -422,63 +437,77 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
         scope.episodes,
         startingScore.raw(),
         scope.strength);
+    long consumedBefore = episodes.getConsumedSelectionCount();
     long discardedBefore = episodes.getDiscardedSelectionCount();
-    var result =
-        episodes.runEpisode(
-            startingScore,
-            new LocalSearchEpisodeRunner.EpisodeCallbacks<>() {
-              private IteratedLocalSearchStepScope<Solution_> outerStep;
+    LocalSearchEpisodeRunner.EpisodeResult<Solution_> result;
+    Throwable failure = null;
+    try {
+      result =
+          episodes.runEpisode(
+              startingScore,
+              new LocalSearchEpisodeRunner.EpisodeCallbacks<>() {
+                private IteratedLocalSearchStepScope<Solution_> outerStep;
 
-              @Override
-              public boolean isEnclosingTerminated() {
-                return isTerminated(scope);
-              }
-
-              @Override
-              public boolean isAdoptionPending() {
-                return scope.getSolverScope().hasPendingMove();
-              }
-
-              @Override
-              public void decisionStarted(LocalSearchStepScope<Solution_> inner) {
-                outerStep =
-                    new IteratedLocalSearchStepScope<>(
-                        scope, IteratedLocalSearchStepScope.Origin.LOCAL_SEARCH);
-                try {
-                  stepStarted(outerStep);
-                } catch (RuntimeException | Error failure) {
-                  scope.getSolverScope().getSolver().stepAborted(outerStep);
-                  outerStep = null;
-                  throw failure;
+                @Override
+                public boolean isEnclosingTerminated() {
+                  return isTerminated(scope);
                 }
-              }
 
-              @Override
-              public void beforeMoveCommitted(LocalSearchStepScope<Solution_> inner) {
-                captureStepString(outerStep, inner.getStep(), inner.getScore());
-              }
+                @Override
+                public boolean isAdoptionPending() {
+                  return scope.getSolverScope().hasPendingMove();
+                }
 
-              @Override
-              public void moveCommitted(LocalSearchStepScope<Solution_> inner) {
-                outerStep.setMove(inner.getStep());
-                outerStep.setScore(inner.getScore());
-                outerStep.setSelectedMoveCount(inner.getSelectedMoveCount());
-                outerStep.setAcceptedMoveCount(inner.getAcceptedMoveCount());
-                finishStep(outerStep);
-                outerStep = null;
-              }
+                @Override
+                public void decisionStarted(LocalSearchStepScope<Solution_> inner) {
+                  outerStep =
+                      new IteratedLocalSearchStepScope<>(
+                          scope, IteratedLocalSearchStepScope.Origin.LOCAL_SEARCH);
+                  try {
+                    stepStarted(outerStep);
+                  } catch (RuntimeException | Error failure) {
+                    scope.getSolverScope().getSolver().stepAborted(outerStep);
+                    outerStep = null;
+                    throw failure;
+                  }
+                }
 
-              @Override
-              public void decisionAborted(LocalSearchStepScope<Solution_> inner) {
-                if (outerStep != null) {
-                  scope.getSolverScope().getSolver().stepAborted(outerStep);
+                @Override
+                public void beforeMoveCommitted(LocalSearchStepScope<Solution_> inner) {
+                  captureStepString(outerStep, inner.getStep(), inner.getScore());
+                }
+
+                @Override
+                public void moveCommitted(LocalSearchStepScope<Solution_> inner) {
+                  outerStep.setMove(inner.getStep());
+                  outerStep.setScore(inner.getScore());
+                  outerStep.setSelectedMoveCount(inner.getSelectedMoveCount());
+                  outerStep.setAcceptedMoveCount(inner.getAcceptedMoveCount());
+                  finishStep(outerStep);
                   outerStep = null;
                 }
-              }
-            });
-    scope.episodeAttempts += result.attempts();
-    scope.speculativeSelectionAttempts += episodes.getDiscardedSelectionCount() - discardedBefore;
-    metrics.update(scope);
+
+                @Override
+                public void decisionAborted(LocalSearchStepScope<Solution_> inner) {
+                  if (outerStep != null) {
+                    scope.getSolverScope().getSolver().stepAborted(outerStep);
+                    outerStep = null;
+                  }
+                }
+              });
+    } catch (RuntimeException | Error thrown) {
+      failure = thrown;
+      throw thrown;
+    } finally {
+      scope.episodeAttempts += episodes.getConsumedSelectionCount() - consumedBefore;
+      scope.speculativeSelectionAttempts += episodes.getDiscardedSelectionCount() - discardedBefore;
+      try {
+        metrics.update(scope);
+      } catch (RuntimeException | Error thrown) {
+        if (failure == null) throw thrown;
+        if (failure != thrown) failure.addSuppressed(thrown);
+      }
+    }
     logger.debug(
         "{}  ILS episode ({}) ended ({}/{}), best ({}), attempts ({}), committed moves ({}), elapsed ({} ms).",
         logIndentation,
@@ -510,6 +539,9 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
             new IteratedLocalSearchStepScope<>(
                 scope, IteratedLocalSearchStepScope.Origin.PERTURBATION);
         boolean committed = false;
+        boolean[] selectorStepEntered = {false};
+        boolean discardSetup = false;
+        Throwable stepFailure = null;
         try {
           stepStarted(step);
           if (!ledger.runSetup(
@@ -522,9 +554,10 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
                   scope.perturbationPhaseStarted = true;
                   perturbation.phaseStarted(scope);
                 }
+                selectorStepEntered[0] = true;
                 perturbation.stepStarted(step);
               })) {
-            discardPerturbationSetup(scope);
+            discardSetup = true;
             if (isTerminated(scope)) return ShakeOutcome.INTERRUPTED;
             if (scope.getSolverScope().hasPendingMove()) return ShakeOutcome.ADOPTION;
             return ShakeOutcome.FAILED;
@@ -562,8 +595,38 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
               if (scope.getSolverScope().hasPendingMove()) return ShakeOutcome.ADOPTION;
             }
           }
+        } catch (RuntimeException | Error thrown) {
+          stepFailure = thrown;
+          throw thrown;
         } finally {
-          if (!committed) scope.getSolverScope().getSolver().stepAborted(step);
+          if (!committed) {
+            Throwable abortFailure = null;
+            if (selectorStepEntered[0]) {
+              try {
+                perturbation.stepAborted(step);
+              } catch (RuntimeException | Error thrown) {
+                abortFailure = thrown;
+              }
+            }
+            if (discardSetup) {
+              try {
+                discardPerturbationSetup(scope);
+              } catch (RuntimeException | Error thrown) {
+                abortFailure = append(abortFailure, thrown);
+              }
+            }
+            try {
+              scope.getSolverScope().getSolver().stepAborted(step);
+            } catch (RuntimeException | Error thrown) {
+              abortFailure = append(abortFailure, thrown);
+            }
+            if (abortFailure != null) {
+              if (stepFailure != null) {
+                if (stepFailure != abortFailure) stepFailure.addSuppressed(abortFailure);
+              } else if (abortFailure instanceof RuntimeException runtime) throw runtime;
+              else throw (Error) abortFailure;
+            }
+          }
         }
         if (!committed) break;
       }
@@ -907,6 +970,7 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
   }
 
   private Diagnostics diagnostics(IteratedLocalSearchPhaseScope<Solution_> scope) {
+    var assignments = scope.assignmentDiagnostics;
     return new Diagnostics(
         scope.episodes,
         scope.initialEpisodes,
@@ -930,6 +994,20 @@ public final class DefaultIteratedLocalSearchPhase<Solution_> extends AbstractPh
         scope.restorationNanos,
         scope.resourceSetupNanos,
         scope.evaluationResourcesStarted ? episodes.getEpisodeSetupNanos() : 0L,
+        assignments == null ? 0L : assignments.getCaptureCount(),
+        assignments == null
+            ? 0L
+            : assignments.getCapturedBindingCount() + assignments.getAccumulatorBindingCount(),
+        assignments == null
+            ? 0L
+            : assignments.getCopiedListElementCount()
+                + assignments.getAccumulatorListElementCount(),
+        assignments == null ? 0L : assignments.getCaptureNanos(),
+        assignments == null ? 0L : assignments.getComparisonCount(),
+        assignments == null ? 0L : assignments.getComparisonNanos(),
+        assignments == null ? 0L : assignments.getValidationCount(),
+        assignments == null ? 0L : assignments.getValidationNanos(),
+        assignments == null ? 0L : assignments.getAccumulatorUpdateCount(),
         scope.completionReason);
   }
 

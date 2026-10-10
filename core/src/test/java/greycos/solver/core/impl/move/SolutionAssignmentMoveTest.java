@@ -9,7 +9,9 @@ import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import greycos.solver.core.api.score.SimpleScore;
@@ -23,9 +25,11 @@ import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.score.director.WorkingSolutionMutationObserver;
 import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirector;
 import greycos.solver.core.impl.solver.DefaultSolver;
 import greycos.solver.core.impl.solver.scope.SolverScope;
+import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListEasyScoreCalculator;
 import greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListEntity;
 import greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListSolution;
@@ -56,6 +60,159 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @Timeout(30)
 class SolutionAssignmentMoveTest {
+
+  @Test
+  void comparisonAndValidationReadTheCurrentGraphWithoutCapturingAssignments() {
+    var scope = mixedScope();
+    scope.setInitialSolution(mixedProblem());
+    try (var director = scope.<SimpleScore>getScoreDirector()) {
+      var snapshot = capture(director);
+      var working = director.getWorkingSolution();
+      try (var diagnostics = SolutionAssignmentDiagnostics.open()) {
+        Collections.reverse(working.getEntityList());
+        assertThat(snapshot.matchesCurrent(director)).isTrue();
+        snapshot.validateComplete(director);
+        var removed = working.getEntityList().removeLast();
+        assertThat(snapshot.matchesCurrent(director)).isFalse();
+        assertThatThrownBy(() -> snapshot.validateComplete(director))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("not a working entity");
+        working.getEntityList().add(removed);
+        removed.setBasicValue(working.getOtherValueList().getLast());
+        assertThat(snapshot.matchesCurrent(director)).isFalse();
+        removed.setPinned(true);
+        assertThatThrownBy(() -> snapshot.validateComplete(director))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("Pinned assignment differs");
+        assertThat(diagnostics.getCaptureCount()).isZero();
+        assertThat(diagnostics.getComparisonCount()).isEqualTo(3);
+        assertThat(diagnostics.getValidationCount()).isEqualTo(3);
+      }
+    }
+  }
+
+  @Test
+  void episodeBestCopiesDirtyBasicBindingsAndListsAndCoexistsWithWorkingStateObserver() {
+    var scope = mixedScope();
+    scope.setInitialSolution(mixedProblem());
+    try (var director = scope.<SimpleScore>getScoreDirector();
+        var diagnostics = SolutionAssignmentDiagnostics.open()) {
+      var working = director.getWorkingSolution();
+      var entity = working.getEntityList().getFirst();
+      var variable =
+          director
+              .getSolutionDescriptor()
+              .findEntityDescriptorOrFail(entity.getClass())
+              .getGenuineVariableDescriptor("basicValue");
+      var listVariable = director.getSolutionDescriptor().getListVariableDescriptor();
+      var notifications = new AtomicInteger();
+      var otherObserver =
+          new WorkingSolutionMutationObserver<TestdataUnassignedMixedSolution>() {
+            @Override
+            public void workingSolutionChanged() {}
+
+            @Override
+            public void beforeVariableChanged(Object changed, String name) {
+              notifications.incrementAndGet();
+            }
+
+            @Override
+            public void beforeListVariableChanged(Object changed, String name, int from, int to) {
+              notifications.incrementAndGet();
+            }
+          };
+      director.setWorkingSolutionMutationObserver(otherObserver);
+      var best = new EpisodeBestAssignments<>(director.getSolutionDescriptor(), working);
+      Move<TestdataUnassignedMixedSolution> change =
+          view -> {
+            var changedDirector =
+                ((InnerMutableSolutionView<TestdataUnassignedMixedSolution>) view)
+                    .getScoreDirector();
+            changedDirector.changeVariableFacade(
+                variable, entity, working.getOtherValueList().getLast());
+            changedDirector.beforeListVariableElementAssigned(
+                listVariable, working.getValueList().getLast());
+            changedDirector.beforeListVariableChanged(listVariable, entity, 1, 1);
+            entity.getValueList().add(working.getValueList().getLast());
+            changedDirector.afterListVariableChanged(listVariable, entity, 1, 2);
+            changedDirector.afterListVariableElementAssigned(
+                listVariable, working.getValueList().getLast());
+          };
+      // The custom move deliberately supplies no optional tabu metadata.
+      try (var observation = director.observeGenuineAssignmentChanges(best)) {
+        director.executeMove(change);
+      }
+      best.updateBest();
+      try (var observation = director.observeGenuineAssignmentChanges(best)) {
+        director.executeMove(
+            view ->
+                ((InnerMutableSolutionView<TestdataUnassignedMixedSolution>) view)
+                    .getScoreDirector()
+                    .changeVariableFacade(
+                        variable, entity, working.getOtherValueList().getFirst()));
+      }
+      var retained = best.freeze();
+      assertThat(retained.matchesCurrent(director)).isFalse();
+      assertThat(retained.getBasicChanges().get(variable).getFirst().value())
+          .isSameAs(working.getOtherValueList().getLast());
+      assertThat(retained.getListChanges().get(listVariable).getFirst().values())
+          .containsExactly(working.getValueList().getFirst(), working.getValueList().getLast());
+      assertThat(director.getWorkingSolutionMutationObserver()).isSameAs(otherObserver);
+      assertThat(notifications.get()).isGreaterThanOrEqualTo(3);
+      assertThat(diagnostics.getCaptureCount()).isEqualTo(1);
+      assertThat(diagnostics.getAccumulatorUpdateCount()).isEqualTo(1);
+      assertThat(diagnostics.getAccumulatorBindingCount()).isEqualTo(2);
+      assertThat(diagnostics.getAccumulatorListElementCount()).isEqualTo(2);
+      assertThatThrownBy(best::updateBest).isInstanceOf(IllegalStateException.class);
+      director.setWorkingSolutionMutationObserver(null);
+    }
+  }
+
+  @Test
+  void genuineObserverDetachesOnFailureAndDoesNotReplaceOtherObservers() {
+    var scope = mixedScope();
+    scope.setInitialSolution(mixedProblem());
+    try (var director = scope.<SimpleScore>getScoreDirector()) {
+      var failure = new java.util.concurrent.CancellationException("Committed move cancelled.");
+      assertThatThrownBy(
+              () -> {
+                try (var observation =
+                    director.observeGenuineAssignmentChanges((variable, entity) -> {})) {
+                  director.executeMove(
+                      view -> {
+                        throw failure;
+                      });
+                }
+              })
+          .isSameAs(failure);
+      try (var observation = director.observeGenuineAssignmentChanges((variable, entity) -> {})) {
+        assertThatThrownBy(() -> director.observeGenuineAssignmentChanges((variable, entity) -> {}))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("already attached");
+      }
+      try (var observation = director.observeGenuineAssignmentChanges((variable, entity) -> {})) {
+        assertThatThrownBy(() -> director.setWorkingSolution(director.cloneWorkingSolution()))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("structure changed");
+      }
+    }
+  }
+
+  @Test
+  void diagnosticScopesRestoreTheirPredecessor() {
+    var scope = mixedScope();
+    scope.setInitialSolution(mixedProblem());
+    try (var director = scope.<SimpleScore>getScoreDirector();
+        var outer = SolutionAssignmentDiagnostics.open()) {
+      capture(director);
+      try (var inner = SolutionAssignmentDiagnostics.open()) {
+        capture(director);
+        assertThat(inner.getCaptureCount()).isEqualTo(1);
+      }
+      capture(director);
+      assertThat(outer.getCaptureCount()).isEqualTo(2);
+    }
+  }
 
   @ParameterizedTest
   @MethodSource("listAssignments")

@@ -263,4 +263,8 @@ public final class IslandSequenceTermination<Solution_>
   boolean supportedForRepairAttempts() {
     return root.supportsRepairAttempts();
   }
+
+  boolean hasApplicableIteratedLocalSearchLimit() {
+    return root.hasApplicableLimit(true);
+  }
 }

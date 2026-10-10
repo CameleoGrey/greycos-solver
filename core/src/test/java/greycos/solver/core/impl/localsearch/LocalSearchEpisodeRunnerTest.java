@@ -10,25 +10,182 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.score.calculator.EasyScoreCalculator;
+import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.localsearch.decider.LocalSearchPhaseDecider;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.move.InnerMutableSolutionView;
+import greycos.solver.core.impl.move.SolutionAssignmentDiagnostics;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.solver.DefaultSolver;
 import greycos.solver.core.impl.solver.random.DefaultRandomSource;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.BasicPlumbingTermination;
 import greycos.solver.core.impl.solver.termination.LocalSearchEpisodeTermination;
+import greycos.solver.core.preview.api.move.Move;
+import greycos.solver.core.testcotwin.TestdataEntity;
+import greycos.solver.core.testcotwin.TestdataSolution;
+import greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.Test;
 
 class LocalSearchEpisodeRunnerTest {
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void strictEpisodeImprovementsCopyOnlyCommittedDirtyBindings() {
+    var config =
+        PlannerTestUtils.buildSolverConfig(TestdataSolution.class, TestdataEntity.class)
+            .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
+            .withEasyScoreCalculatorClass(FirstEntityScoreCalculator.class)
+            .withPhases(new CustomPhaseConfig().withCustomPhaseCommands(context -> {}));
+    var solver =
+        ((DefaultSolver<TestdataSolution>)
+                SolverFactory.<TestdataSolution>create(config).buildSolver())
+            .getSolverScope();
+    var problem = TestdataSolution.generateSolution(5, 100);
+    problem.getEntityList().forEach(entity -> entity.setValue(problem.getValueList().getFirst()));
+    solver.setInitialSolution(problem);
+    solver.setWorkingRandom(DefaultRandomSource.seeded(3));
+    var decider = (LocalSearchPhaseDecider<TestdataSolution>) mock(LocalSearchPhaseDecider.class);
+    when(decider.cancelAndQuiesceEvaluation()).thenReturn(true);
+    when(decider.isEvaluationStateSafeToDispose()).thenReturn(true);
+    var next = new AtomicInteger();
+    int[][] assignments = {{0, 2}, {0, 1}, {0, 3}, {1, 4}, {0, 4}, {0, 0}};
+    doAnswer(
+            invocation -> {
+              LocalSearchStepScope<TestdataSolution> step = invocation.getArgument(0);
+              int index = next.getAndIncrement();
+              if (index >= assignments.length) return null;
+              var director = step.<SimpleScore>getScoreDirector();
+              var working = director.getWorkingSolution();
+              var entity = working.getEntityList().get(assignments[index][0]);
+              var value = working.getValueList().get(assignments[index][1]);
+              var variable =
+                  director
+                      .getSolutionDescriptor()
+                      .findEntityDescriptorOrFail(TestdataEntity.class)
+                      .getGenuineVariableDescriptor("value");
+              Move<TestdataSolution> move =
+                  view ->
+                      ((InnerMutableSolutionView<TestdataSolution>) view)
+                          .getScoreDirector()
+                          .changeVariableFacade(variable, entity, value);
+              var ledger = step.getPhaseScope().getSelectionAttemptLedger();
+              try (var cursor = ledger.openCursor(List.of(move).iterator())) {
+                var attempt = cursor.next();
+                step.setScore(director.executeTemporaryMove(move, true));
+                ledger.consume(attempt);
+              }
+              step.setStep(move);
+              return null;
+            })
+        .when(decider)
+        .decideNextStep(any());
+    try (var director = solver.<SimpleScore>getScoreDirector();
+        var runner =
+            new LocalSearchEpisodeRunner<>(
+                decider,
+                0,
+                new LocalSearchEpisodeTermination<>(
+                    new BasicPlumbingTermination<TestdataSolution>(false)),
+                10,
+                EnvironmentMode.FULL_ASSERT);
+        var diagnostics = SolutionAssignmentDiagnostics.open()) {
+      var score = director.calculateScore();
+      runner.open(solver, score);
+      var result =
+          runner.runEpisode(
+              score,
+              new LocalSearchEpisodeRunner.EpisodeCallbacks<>() {
+                @Override
+                public boolean isEnclosingTerminated() {
+                  return false;
+                }
+
+                @Override
+                public boolean isAdoptionPending() {
+                  return false;
+                }
+
+                @Override
+                public void decisionStarted(LocalSearchStepScope<TestdataSolution> step) {}
+
+                @Override
+                public void moveCommitted(LocalSearchStepScope<TestdataSolution> step) {}
+
+                @Override
+                public void decisionAborted(LocalSearchStepScope<TestdataSolution> step) {}
+              });
+      assertThat(result.bestScore()).isEqualTo(InnerScore.fullyAssigned(SimpleScore.of(4)));
+      assertThat(result.committedSteps()).isEqualTo(6);
+      assertThat(result.attempts()).isEqualTo(6);
+      assertThat(runner.getConsumedSelectionCount()).isEqualTo(6);
+      assertThat(diagnostics.getCaptureCount()).isEqualTo(1);
+      assertThat(diagnostics.getCapturedBindingCount()).isEqualTo(100);
+      assertThat(diagnostics.getAccumulatorUpdateCount()).isEqualTo(3);
+      assertThat(diagnostics.getAccumulatorBindingCount()).isEqualTo(4);
+      var records = result.bestAssignments().getBasicChanges().values().iterator().next();
+      assertThat(records.get(0).value()).isSameAs(problem.getValueList().get(4));
+      assertThat(records.get(1).value()).isSameAs(problem.getValueList().get(4));
+      assertThat(director.calculateScore()).isEqualTo(InnerScore.fullyAssigned(SimpleScore.ZERO));
+      // The scoped commit observer is gone after the episode.
+      try (var observation = director.observeGenuineAssignmentChanges((variable, entity) -> {})) {}
+    }
+  }
+
+  public static final class FirstEntityScoreCalculator
+      implements EasyScoreCalculator<TestdataSolution, SimpleScore> {
+    @Override
+    public SimpleScore calculateScore(TestdataSolution solution) {
+      return SimpleScore.of(
+          solution.getValueList().indexOf(solution.getEntityList().getFirst().getValue()));
+    }
+  }
+
+  @Test
+  void attemptedWorkSettlesEvenWhenEpisodeCleanupThrowsAndResetsOnOpen() {
+    var fixture = new Fixture();
+    var failure = new IllegalStateException("Episode history cleanup failed.");
+    doAnswer(
+            ignored -> {
+              LocalSearchStepScope<Object> step = ignored.getArgument(0);
+              var ledger = step.getPhaseScope().getSelectionAttemptLedger();
+              try (var cursor = ledger.openCursor(List.of("consumed", "discarded").iterator())) {
+                ledger.consume(cursor.next());
+                cursor.next();
+              }
+              return null;
+            })
+        .when(fixture.decider)
+        .decideNextStep(any());
+    doAnswer(
+            ignored -> {
+              throw failure;
+            })
+        .when(fixture.decider)
+        .phaseEnded(any());
+    fixture.runner.open(fixture.solver, fixture.score);
+    assertThatThrownBy(() -> fixture.runner.runEpisode(fixture.score, fixture.callbacks))
+        .isSameAs(failure);
+    assertThat(fixture.runner.getConsumedSelectionCount()).isEqualTo(1);
+    assertThat(fixture.runner.getDiscardedSelectionCount()).isEqualTo(1);
+    fixture.runner.close();
+    fixture.runner.open(fixture.solver, fixture.score);
+    assertThat(fixture.runner.getConsumedSelectionCount()).isZero();
+    assertThat(fixture.runner.getDiscardedSelectionCount()).isZero();
+    fixture.runner.close();
+  }
 
   @Test
   void preparationInterruptedByAnEpisodeLimitEndsNormallyAndAbortsDecision() {

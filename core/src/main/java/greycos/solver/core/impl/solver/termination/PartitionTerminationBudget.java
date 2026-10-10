@@ -126,7 +126,10 @@ public final class PartitionTerminationBudget<Solution_> {
         @Override
         public Node<Solution_> bind(
             SolverScope<Solution_> scope, List<Termination<Solution_>> leaves) {
-          return (snapshot, childScope, phaseScope, gradientOnly) -> snapshot.get(index);
+          return new SharedNode<>(
+              index,
+              !(termination instanceof BasicPlumbingTermination<?>
+                  || termination instanceof ChildThreadPlumbingTermination<?>));
         }
       };
     }
@@ -204,6 +207,8 @@ public final class PartitionTerminationBudget<Solution_> {
   }
 
   interface Node<Solution_> {
+    boolean hasApplicableIteratedLocalSearchLimit(boolean phaseAvailable);
+
     Progress evaluate(
         List<Progress> snapshot,
         SolverScope<Solution_> solverScope,
@@ -211,8 +216,36 @@ public final class PartitionTerminationBudget<Solution_> {
         boolean gradientOnly);
   }
 
+  private record SharedNode<Solution_>(int index, boolean hasLimit) implements Node<Solution_> {
+    @Override
+    public boolean hasApplicableIteratedLocalSearchLimit(boolean phaseAvailable) {
+      return hasLimit;
+    }
+
+    @Override
+    public Progress evaluate(
+        List<Progress> snapshot,
+        SolverScope<Solution_> solverScope,
+        @Nullable AbstractPhaseScope<Solution_> phaseScope,
+        boolean gradientOnly) {
+      return snapshot.get(index);
+    }
+  }
+
   private record CompositeNode<Solution_>(boolean and, List<Node<Solution_>> children)
       implements Node<Solution_> {
+    @Override
+    public boolean hasApplicableIteratedLocalSearchLimit(boolean phaseAvailable) {
+      if (children.isEmpty()) {
+        return false;
+      }
+      return and
+          ? children.stream()
+              .allMatch(child -> child.hasApplicableIteratedLocalSearchLimit(phaseAvailable))
+          : children.stream()
+              .anyMatch(child -> child.hasApplicableIteratedLocalSearchLimit(phaseAvailable));
+    }
+
     @Override
     public Progress evaluate(
         List<Progress> snapshot,
@@ -241,6 +274,13 @@ public final class PartitionTerminationBudget<Solution_> {
 
   private record LocalNode<Solution_>(Termination<Solution_> termination, boolean solverOrigin)
       implements Node<Solution_> {
+    @Override
+    public boolean hasApplicableIteratedLocalSearchLimit(boolean phaseAvailable) {
+      return phaseAvailable
+          ? IteratedLocalSearchTerminationSupport.hasApplicableLimit(termination, solverOrigin)
+          : IteratedLocalSearchTerminationSupport.hasApplicableSolverLimit(termination);
+    }
+
     @Override
     public Progress evaluate(
         List<Progress> snapshot,

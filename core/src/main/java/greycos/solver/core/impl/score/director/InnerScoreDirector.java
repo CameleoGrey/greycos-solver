@@ -158,6 +158,10 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
 
   @Nullable WorkingSolutionMutationObserver<Solution_> getWorkingSolutionMutationObserver();
 
+  /** Observes notified genuine changes until the returned scope closes, including nested moves. */
+  GenuineAssignmentChangeObserver.Scope observeGenuineAssignmentChanges(
+      GenuineAssignmentChangeObserver<Solution_> observer);
+
   /**
    * Calculates the {@link Score} and updates the {@link PlanningSolution working solution}
    * accordingly.

@@ -98,6 +98,12 @@ public final class MultistageMoveSelector<Solution_> extends AbstractMoveSelecto
   }
 
   @Override
+  public void stepAborted(AbstractStepScope<Solution_> stepScope) {
+    stepActive = false;
+    super.stepAborted(stepScope);
+  }
+
+  @Override
   public void phaseEnded(AbstractPhaseScope<Solution_> phaseScope) {
     closeCoordinator();
     super.phaseEnded(phaseScope);

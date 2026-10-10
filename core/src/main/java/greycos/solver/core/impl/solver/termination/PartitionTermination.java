@@ -107,4 +107,8 @@ final class PartitionTermination<Solution_> extends AbstractUniversalTermination
   boolean supportedForRepairAttempts() {
     return supportsRepairAttempts;
   }
+
+  boolean hasApplicableIteratedLocalSearchLimit(boolean phaseAvailable) {
+    return root.hasApplicableIteratedLocalSearchLimit(phaseAvailable);
+  }
 }

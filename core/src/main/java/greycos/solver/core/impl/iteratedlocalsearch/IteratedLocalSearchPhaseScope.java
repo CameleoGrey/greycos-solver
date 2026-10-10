@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.iteratedlocalsearch;
 
+import greycos.solver.core.impl.move.SolutionAssignmentDiagnostics;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -23,6 +24,7 @@ public final class IteratedLocalSearchPhaseScope<Solution_> extends AbstractPhas
   long snapshotNanos;
   long restorationNanos;
   long resourceSetupNanos;
+  SolutionAssignmentDiagnostics assignmentDiagnostics;
   boolean evaluationResourcesStarted;
   boolean perturbationSolvingStarted;
   boolean perturbationPhaseStarted;
