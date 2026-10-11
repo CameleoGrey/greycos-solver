@@ -1,0 +1,272 @@
+= Mathematical modeling qualification
+
+The qualification tools are opt-in main classes on the math module's test classpath.
+Ordinary tests check numerical parity and lifecycle behavior; they contain no timing thresholds.
+The tools produce CSV for preserving every repetition, including unfavorable results.
+No throughput, scalability, or general-purpose mathematical optimization claim follows from compilation or parity alone.
+
+== Build and capture the environment
+
+Run from the repository root after the normal project build has installed its dependencies:
+
+[source,shell]
+----
+./mvnw -pl math -am test-compile dependency:build-classpath -Dmdep.outputFile=target/qualification-classpath.txt -Dmdep.includeScope=test
+python3 - <<'PY'
+import os
+from pathlib import Path
+classpath = Path('math/target/qualification-classpath.txt')
+core = Path('core/target/greycos-solver-core-999-SNAPSHOT.jar').resolve()
+if not core.is_file():
+    raise SystemExit('Run the normal project package/install build first.')
+entries = classpath.read_text().strip().split(os.pathsep)
+for i, entry in enumerate(entries):
+    if Path(entry).name == core.name or Path(entry).resolve() == core.parent / 'classes':
+        entries[i] = str(core)
+classpath.write_text(os.pathsep.join(entries))
+PY
+mkdir -p math/target/qualification
+MATH_CP="math/target/test-classes:math/target/classes:$(cat math/target/qualification-classpath.txt)"
+java -version 2> math/target/qualification/java.txt
+git rev-parse HEAD > math/target/qualification/revision.txt
+git status --short > math/target/qualification/worktree.txt
+uname -a > math/target/qualification/system.txt
+lscpu > math/target/qualification/cpu.txt
+----
+
+Keep the worktree status because an uncommitted module is not identified by the parent commit alone.
+Record the complete command, JVM heap/GC flags, CPU, available memory, operating system,
+and whether other processes were running.
+Do not measure while compiling, testing, or running another benchmark.
+Use the same JVM flags and machine for every paired comparison.
+The classpath commands use Maven only for compilation and dependency resolution; benchmark execution uses separate Java processes.
+The workspace core JAR is pinned explicitly because another checkout can replace the same SNAPSHOT in the shared Maven cache.
+
+To keep CSV stdout separate from solver logging, supply a Logback configuration that writes to stderr:
+
+[source,shell]
+----
+cat > math/target/qualification/logback.xml <<'XML'
+<configuration>
+  <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <encoder><pattern>%date %-5level %logger - %msg%n</pattern></encoder>
+  </appender>
+  <root level="WARN"><appender-ref ref="STDERR"/></root>
+</configuration>
+XML
+----
+
+== Matched scoring traces
+
+`greycos.solver.math.benchmark.MathScoringBenchmark` compares:
+
+* `generic`: the shipped `MathConstraintProvider`, mathematical compiler and mutable mathematical cotwin.
+* `handwritten`: a separate resource/incidence cotwin and ConstraintProvider.
+  Its stream starts at each mutable decision, expands that decision's immutable incidences,
+  and groups resource usage. It does not use compiler rows, compiler arithmetic, term facts, or the generic provider's ID join.
+  Original expressions are independently expanded into resource coefficients at initialization.
+* `full`: complete BigInteger evaluation of every original expression, constraint and objective after each update,
+  including assignment bounds/fixed-value validation.
+  This is a transparent exact reference implementation, not a claim about the fastest possible full linear evaluator.
+
+All variants consume the same integral model and pre-generated assignment trace.
+Variables range from -5 through 5. Hard rows cycle through `LE`, `GE`, and `EQ`, have nonzero positive and negative coefficients,
+and have constants and signed bounds. A single update changes exactly one value; unchanged assignments are excluded.
+Each hard row contains exactly `degree` distinct variable terms.
+The optional objective contains every variable, so reported incidence and nonzero counts include that objective.
+The `none` objective option retains the module's implicit zero objective.
+
+A BigInteger oracle traverses the original expression tree before measurement and stores the exact expected hard/soft score
+for the initial state and every trace update.
+Every timed variant checks each calculated score against those values and folds both score levels into the same checksum.
+The checksum intentionally wraps as a hash; score comparisons remain exact and cannot pass merely through a hash collision.
+The retained Bavet directors receive before/after variable notifications and variable-listener flushes on every update.
+Constraint matches and assertions are disabled for both provider variants.
+Both scoring variants use reflection-based solution descriptors; the full-solve panel uses normal solver-factory accessors.
+
+Initialization timing starts after common input/oracle generation and includes variant preparation, factory/director creation,
+working-solution insertion, and first score verification.
+Steady-state timing includes mutations, notifications where applicable, scoring, exact comparison, and checksum updates.
+Director disposal, CSV printing, model construction and oracle precomputation are outside update timing.
+Initializations are repeated for every warmup and measured repetition; no state carries between traces.
+Warmups are discarded. `all` rotates variant order by repetition, while isolated processes are preferred for memory measurements.
+
+Defaults are 64 variables, 64 hard rows, degree 4, 3000 updates, two warmups and three measured repetitions.
+Options use `--name=value`; supported options are `variables`, `rows`, `degree`, `updates`, `warmups`, `repetitions`,
+`variant` (`all`, `generic`, `handwritten`, `full`), `objective` (`none`, `min`, `max`), and `seed` (default 0).
+Use degree equal to variable count for dense models. Preserve sparse and dense results separately.
+
+[source,shell]
+----
+for degree in 4 64; do
+  for variant in generic handwritten full; do
+    /usr/bin/time -v -o "math/target/qualification/scoring-${degree}-${variant}.rss.txt" \
+      java -Xms256m -Xmx256m \
+      -Dlogback.configurationFile=math/target/qualification/logback.xml \
+      -cp "$MATH_CP" greycos.solver.math.benchmark.MathScoringBenchmark \
+      --variables=64 --rows=64 --degree="$degree" --updates=3000 \
+      --warmups=2 --repetitions=3 --variant="$variant" --objective=max --seed=0 \
+      > "math/target/qualification/scoring-${degree}-${variant}.csv"
+  done
+done
+----
+
+Repeat the panel with `--objective=none` and `--objective=min` when assessing objective-dependent behavior.
+A larger bounded panel may use 256 variables and rows, degree 4 or 256, and the same update budget;
+report its measurements separately rather than extrapolating from the 64-variable panel.
+
+CSV records dimensions, coefficient nonzeros, minimum/maximum variable incidence, seed, warmup-excluded repetition,
+initialization and update nanoseconds, initialization/update allocated bytes, update rate, bytes/update,
+GC collection/time deltas, exact parity, and checksum.
+Allocation uses the current thread's supported JVM allocation MXBean and reports `-1` if unavailable.
+GC counters cover the process. Neither value is an operating-system memory measurement.
+GNU `time -v` supplies peak resident set size for each isolated JVM; on Linux its maximum RSS is reported in KiB.
+RSS includes JVM startup, model/oracle generation, all warmups, every repetition and heap reservation effects.
+It is not peak incremental-session memory and cannot be attributed solely to update handling.
+For JVM heap attribution, separately record a JFR/allocation profile with the same workload and disclose profiler overhead.
+
+Compare all repetitions and distribution/spread rather than selecting the fastest run.
+Initialization cost, allocation, GC, peak RSS, and update throughput describe different effects.
+A dense model can legitimately touch every hard row on every update; sparse locality does not imply dense speedups.
+
+== Paired-seed complete solves
+
+`greycos.solver.math.benchmark.MathSolveQualification` runs the shipped knapsack, resource allocation and assignment model factories
+against the same three scoring alternatives in ordinary GreyCOS solvers.
+It reproduces the mathematical solver's lazy scalar RANDOM change neighborhood, serial execution,
+late acceptance size 400 and accepted-count limit 1, with an explicit move-evaluation budget.
+The generic variant uses the module's move factory; a separate test-only factory applies the same sampling to the handwritten cotwin.
+Both select uniformly from declaration-ordered mutable entities, then uniformly from that entity's different in-domain values,
+without retries, no-op moves, or enumeration of a union of value domains.
+`--acceptor=hill` selects ordinary hill climbing instead.
+The runner uses `NO_ASSERT` consistently for measurement; production API defaults and assertion coverage are documented separately.
+It builds the generic backend directly so that a solver event listener can observe the first feasible incumbent;
+its timing is not the total latency of the public `MathSolver.solve` wrapper and result construction.
+
+Each seed, example and repetition is paired across scoring variants.
+All variants receive the same declaration-ordered initial values and fixed assignments.
+`--start=declared` honors example initial hints, which are already feasible and therefore have first-feasible time zero.
+`--start=upper` sets each mutable decision to its upper bound in every variant, retaining fixed values;
+this deliberately changes the initial hint assignment to exercise recovery from infeasibility.
+The CSV records the chosen start policy. It does not claim the same candidate trajectory across different cotwins;
+paired seed and common move budget are the comparison controls.
+
+First-feasible time uses the solver's millisecond event clock and independently replays the reported feasible event.
+`-1` means no feasible initial assignment or feasible event was observed, not proven infeasibility.
+Millisecond zero may also mean a feasible event occurred within the clock's resolution.
+Final assignments are independently checked for completeness, bounds, fixed values, every original row, objective, and backend score.
+The `assignment` column preserves semicolon-separated values in declaration order for independent replay of the saved result.
+Tiny fixture domains are exhaustively enumerated before timing to supply exact reference objectives.
+The CSV's objective gap is meaningful only for feasible results; infeasible results use `NA`.
+Only that separate finite enumeration proves the listed reference optimum; the heuristic result API does not produce a certificate.
+
+Supported options are `moves` (default 1000), `seeds` (comma separated, default `0,1,2`),
+`warmups` (1), `repetitions` (3), `variant` (`all`, `generic`, `handwritten`, `full`),
+`example` (`all`, `knapsack`, `resource`, `assignment`), `acceptor` (`late`, `hill`), and `start` (`declared`, `upper`).
+Observed move evaluations and score calculations are recorded separately from the requested budget.
+Solver initialization is outside `solve_ns`; final independent replay and CSV printing are also outside it.
+First-feasible listener replay remains inside solving and its overhead is included consistently.
+
+[source,shell]
+----
+java -Xms256m -Xmx256m \
+  -Dlogback.configurationFile=math/target/qualification/logback.xml \
+  -cp "$MATH_CP" greycos.solver.math.benchmark.MathSolveQualification \
+  --moves=1000 --seeds=0,1,2 --warmups=1 --repetitions=3 \
+  --variant=all --example=all --acceptor=late --start=upper \
+  > math/target/qualification/solves-upper.csv
+java -Xms256m -Xmx256m \
+  -Dlogback.configurationFile=math/target/qualification/logback.xml \
+  -cp "$MATH_CP" greycos.solver.math.benchmark.MathSolveQualification \
+  --moves=1 --seeds=0,1,2 --warmups=1 --repetitions=3 \
+  --variant=all --example=assignment --acceptor=hill --start=declared \
+  > math/target/qualification/assignment-one-move.csv
+----
+
+The assignment example starts at the diagonal assignment with cost 17; complete enumeration finds the off-diagonal cost 3.
+The two feasible assignments differ in four binary decisions. Every nontrivial scalar change from either feasible assignment
+violates two equality rows. A single evaluated scalar move therefore cannot reach the other feasible assignment.
+A permanently feasible scalar-only walk cannot connect them.
+This structural limitation does not prove permanent stagnation under a particular acceptor:
+GreyCOS's forager can select a rejected candidate after candidate exhaustion, and other acceptance policies may cross hard deterioration.
+Report the measured feasible incumbent, budget and objective gap at larger budgets instead of assuming a trap.
+Coordinated equality-preserving moves are outside Stage 1 and this benchmark.
+
+== Recorded measurements
+
+=== 2026-10-12 Stage 1 qualification
+
+The link:qualification-results/2026-10-12/environment.json[environment record] identifies the base revision,
+source fingerprints, resolved dependencies, commands and JVM settings.
+The core dependency was pinned to the workspace JAR and its SHA-256 was checked before and after the panel.
+An earlier link:qualification-results/2026-10-12-shared-cache/environment.json[unpinned shared-cache run]
+is retained separately: the cache was subsequently observed to contain a different core SNAPSHOT.
+All tables below use the pinned repeat, whose core JAR hash is recorded in the environment file.
+Measurements ran sequentially after builds finished, on a shared Linux host exposing 12 CPUs
+(AMD Ryzen 9 5900X), with Temurin 25.0.2, G1, and a fixed 256 MiB initial/maximum heap.
+The sampled one-minute host load average was 8.36; there was no exclusive CPU reservation.
+Short runs and host contention limit conclusions about stable performance rankings.
+
+All 36 measured scoring traces agreed with their original-expression oracle at every update.
+Checksums also matched across the three variants and all repetitions within each cell.
+There were two discarded warmups and three recorded repetitions per variant and cell.
+Variables and hard rows have the same count in this panel; every model has a maximization objective.
+The table reports median updates per second. Every repetition, allocation counter and GC counter is retained
+in the adjacent `scoring-*.csv` files; `*.rss.txt` records process peak RSS using GNU `time -v`.
+
+[cols="1,1,1,1,1,1,1",options="header"]
+|===
+|Variables / hard rows |Terms per hard row |Total nonzeros |Updates per trace |Generic |Handwritten |Full BigInteger replay
+|64 |4 |320 |3,000 |370,419 |410,345 |86,082
+|64 |64 |4,160 |3,000 |104,408 |128,681 |9,043
+|256 |4 |1,280 |1,000 |253,535 |327,785 |24,519
+|256 |256 |65,792 |1,000 |20,680 |20,649 |472
+|===
+
+The handwritten provider's median was higher in three cells; the 256-variable dense medians were nearly equal.
+Several repetition ranges overlap substantially: for the 64-variable sparse cell, the generic rate ranged
+from 248,341 to 499,258 updates/second and the handwritten rate from 364,336 to 425,673 updates/second.
+The full evaluator is the explicit BigInteger reference described above, so its timings do not establish an advantage
+over every possible handwritten complete linear evaluator.
+
+The 256-variable dense cell also shows the cost of the generic fact representation:
+
+[cols="1,1,1,1",options="header"]
+|Variant |Median initialization (ms) |Median allocated bytes/update |Process peak RSS (MiB)
+|Generic |125.350 |13,061 |368.7
+|Handwritten |35.271 |9,661 |252.6
+|Full BigInteger replay |1.016 |6,309,157 |224.4
+|===
+
+RSS covers the whole isolated process, including model/oracle preparation and warmups; it is not retained stream-state size.
+Initialization timing excludes the common input-model construction and oracle generation.
+
+The link:qualification-results/2026-10-12/solves-late-upper.csv[full-solve panel] used Late Acceptance,
+1,000 evaluated moves, upper-bound initial assignments, seeds 0 through 4, one warmup and three repetitions.
+All variants reached feasibility in all runs and returned the same final assignment for each seed and repetition.
+All 225 saved assignments across the solve and equality panels were additionally replayed outside Java using
+the explicit business formulas for the three examples.
+Run `python3 math/qualification-results/verify.py` from the repository root to repeat that independent replay
+and check the recorded scoring checksum, repetition, seed and budget inventories.
+
+[cols="1,2,1,1,1,1",options="header"]
+|Example |Objectives for seeds 0,1,2,3,4 |Enumerated reference optimum |Generic median solve (ms) |Handwritten median solve (ms) |Full median solve (ms)
+|Knapsack (maximize) |10, 12, 10, 10, 12 |12 |7.092 |5.807 |5.187
+|Resource allocation (maximize) |26, 26, 26, 25, 26 |26 |5.258 |4.517 |2.982
+|Assignment (minimize) |3, 17, 3, 17, 3 |3 |5.100 |4.611 |2.265
+|===
+
+Observed first-feasible times ranged from 0 to 3 ms for knapsack, 0 to 1 ms for resource allocation,
+and 0 to 2 ms for assignment, across all variants. Complete reevaluation had the lowest median solve time on these tiny fixtures.
+Several seeds missed the independently enumerated reference objective despite finding feasible assignments.
+Scoring throughput alone therefore establishes neither better solution quality nor faster complete solves.
+
+In both link:qualification-results/2026-10-12/equality-hill-1.csv[one-move] and
+link:qualification-results/2026-10-12/equality-hill-1000.csv[1,000-move] hill-climbing panels,
+all five seeds retained the initial feasible assignment of cost 17, while enumeration found cost 3.
+This is a measured scalar-neighborhood limitation for these settings, not a claim that every acceptance policy must stagnate.
+
+The link:qualification-results/2026-10-12/validation.json[validation record] reports the successful normal reactor build
+(10,981 passed cases and one existing skip, including 82 math tests), documentation build, Javadoc packaging and explicit style checks.
+The reactor used `-Dquarkus.http.port=18080 -Dquarkus.http.test-port=18081` because port 8080 was occupied.

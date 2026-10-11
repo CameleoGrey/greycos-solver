@@ -65,6 +65,7 @@
     <module>build/ide-config</module>
     <module>build/build-parent</module>
     <module>core</module>
+    <module>math</module>
     <module>persistence</module>
     <module>spring-integration</module>
     <module>quarkus-integration</module>

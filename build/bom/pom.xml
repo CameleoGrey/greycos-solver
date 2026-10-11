@@ -50,6 +50,17 @@
       </dependency>
       <dependency>
         <groupId>io.github.cameleogrey</groupId>
+        <artifactId>greycos-solver-math</artifactId>
+        <version>${version.greycos.solver}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.cameleogrey</groupId>
+        <artifactId>greycos-solver-math</artifactId>
+        <version>${version.greycos.solver}</version>
+        <classifier>sources</classifier>
+      </dependency>
+      <dependency>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-jaxb</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>

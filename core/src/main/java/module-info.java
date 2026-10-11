@@ -93,6 +93,8 @@ module greycos.solver.core {
   exports greycos.solver.core.impl.cotwin.variable.declarative;
   exports greycos.solver.core.impl.cotwin.variable.descriptor;
   exports greycos.solver.core.impl.heuristic.move;
+  exports greycos.solver.core.impl.heuristic.selector.move.factory to
+      greycos.solver.math;
   exports greycos.solver.core.impl.heuristic.selector.common.nearby;
   exports greycos.solver.core.impl.io.jaxb;
   exports greycos.solver.core.impl.localsearch.scope;

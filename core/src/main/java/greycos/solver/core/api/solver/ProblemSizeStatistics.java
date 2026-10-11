@@ -18,10 +18,12 @@ import org.jspecify.annotations.NullMarked;
  *     including pinned entities and classes with zero instances
  * @param variableCount The number of genuine variables defined by the problem.
  * @param approximateValueCount The estimated number of values defined by the problem. Can be larger
- *     than the actual value count.
+ *     than the actual value count. Sums exceeding {@link Long#MAX_VALUE} are reported as {@link
+ *     Long#MAX_VALUE}.
  * @param genuineEntityClassToVariableToValueCount value-range sizes for each effective variable;
  *     solution-provided ranges are counted once per variable and entity-provided ranges are summed.
  *     Inherited solution ranges appear in each class breakdown, but only once in the aggregate.
+ *     Each sum exceeding {@link Long#MAX_VALUE} is reported as {@link Long#MAX_VALUE}.
  * @param approximateProblemSizeLog The estimated log_10 of the problem's search space size.
  */
 @NullMarked

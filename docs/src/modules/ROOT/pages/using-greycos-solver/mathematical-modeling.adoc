@@ -1,0 +1,310 @@
+[#mathematicalModeling]
+= Mathematical modeling
+:math-examples-src: ../../../../../../math/src/test/java/greycos/solver/math/examples
+:math-examples-url: https://github.com/CameleoGrey/greycos-solver/tree/main/math/src/test/java/greycos/solver/math/examples
+
+The optional `greycos-solver-math` module lets you declare bounded integer and binary variables,
+integral linear constraints and one objective without writing planning annotations or a ConstraintProvider.
+It compiles the model to an internal cotwin and uses incremental Bavet scoring with serial local search.
+Every returned assignment is checked independently against the original expressions.
+
+This is heuristic optimization over an explicit mathematical model.
+The backend does not supply LP relaxations, propagation, cuts, dual bounds, optimality gaps or proof statuses.
+The supported result statuses describe the returned incumbent's feasibility.
+
+[#mathematicalModelingDependency]
+== Add the module
+
+[source,xml,subs="attributes+"]
+----
+<dependency>
+  <groupId>io.github.cameleogrey</groupId>
+  <artifactId>greycos-solver-math</artifactId>
+  <version>{greycos-solver-version}</version>
+</dependency>
+----
+
+Use `greycos.solver.math.api` for models, expressions, variables, solving and results,
+and `greycos.solver.math.config.SolveOptions` for search options.
+The executable examples linked below use only these public mathematical APIs and public GreyCOS configuration types.
+
+[#mathematicalModelingKnapsack]
+== Binary knapsack
+
+The link:{math-examples-url}/KnapsackExample.java[compiled knapsack example]
+selects items with total weight at most seven and maximizes their value.
+A `BinaryVar` is an `IntVar` with values zero and one.
+Both can be used directly as linear expressions.
+
+ifndef::env-site[]
+[source,java]
+----
+include::{math-examples-src}/KnapsackExample.java[tag=model,indent=0]
+----
+endif::[]
+
+`times(long)` multiplies by a scalar; `plus` and `minus` accept an expression or integral constant.
+`LinearExpression.constant(long)` and `LinearExpression.sum(Collection)` construct constants and sums;
+an empty sum is zero.
+`le`, `ge` and `eq` compare an expression with a constant bound.
+To compare two expressions, subtract the right expression and compare with zero.
+Only non-strict comparisons are supported.
+
+Variable names and constraint names are unique within their respective namespaces.
+Variable handles belong to the builder that declared them: equal names in another model do not identify the same variable.
+References to another model are rejected even if their coefficients cancel to zero.
+`$objective` is reserved as an internal row name.
+
+`build()` validates the model and closes the builder after a successful build.
+The resulting model and its expressions are immutable.
+Repeated or concurrent solves share these definitions, while each solve owns independent mutable assignments and scoring state.
+To change a model, construct a new one.
+
+You may specify either `minimize` or `maximize` once.
+An omitted objective means minimizing constant zero, which makes the model a feasibility search.
+A contradictory but numerically supported constraint system is a valid model:
+for example, an empty expression constrained to be at most negative one is retained as a violated constant row.
+
+[#mathematicalModelingInitialFixed]
+== Bounded integers, initial values and fixed values
+
+The link:{math-examples-url}/ResourceAllocationExample.java[compiled resource-allocation example]
+chooses numbers of tables and chairs subject to wood and labor capacities.
+One resource unit is reserved through a fixed variable.
+
+ifndef::env-site[]
+[source,java]
+----
+include::{math-examples-src}/ResourceAllocationExample.java[tag=model,indent=0]
+----
+endif::[]
+
+`intVar(name, lower, upper)` includes both endpoints.
+Initial and fixed values must belong to the declared domain.
+`initialValue` sets the starting value and permits later changes; `fix` pins the value throughout solving.
+If both are supplied for the same variable they must agree.
+A singleton domain is also pinned.
+Initial and fixed values may be replaced before `build()`.
+
+Before scoring starts, the adapter assigns every variable.
+It honors fixed and initial values, then samples remaining domains in declaration order using a separate random stream
+with the configured seed.
+There is no missing-value interpretation of zero.
+With only fixed or singleton variables, the adapter evaluates the complete assignment without running local search.
+
+[#mathematicalModelingLimits]
+== Configure bounded search
+
+Every solve requires a finite time limit, a move evaluation limit, or both.
+The following code is part of the compiled knapsack example:
+
+ifndef::env-site[]
+[source,java]
+----
+include::{math-examples-src}/KnapsackExample.java[tag=solve,indent=0]
+----
+endif::[]
+
+Use `SolveOptions.timeLimit(Duration)` or `SolveOptions.moveEvaluationLimit(long)` to create options.
+Add or replace a limit with `withTimeLimit` or `withMoveEvaluationLimit`.
+The link:{math-examples-url}/ResourceAllocationExample.java[resource-allocation launcher] combines both limits:
+
+ifndef::env-site[]
+[source,java]
+----
+include::{math-examples-src}/ResourceAllocationExample.java[tag=limits,indent=0]
+----
+endif::[]
+
+Limits are combined with OR: either can end search.
+Negative limits are rejected.
+Time limits require whole milliseconds, with a millisecond count representable as a signed `long`.
+Either zero limit bypasses search and evaluates the complete initialized assignment.
+The time limit applies to solver search; compilation, initialization and result replay add to the total elapsed time.
+It is not a deadline for the entire `solve` call.
+Move evaluation counts are distinct from committed steps, accepted candidates and score calculations.
+
+The default options use seed zero, `PHASE_ASSERT`, Late Acceptance with a history size of 400,
+and a forager accepting one candidate per step.
+The phase runs serially and changes one variable at a time.
+It chooses a mutable variable uniformly, then chooses uniformly among that variable's in-domain values other than its current value.
+Fixed and singleton variables are excluded from candidate generation.
+Use `withSeed(long)` and `withEnvironmentMode(EnvironmentMode)` to replace those settings.
+For reproducible work-limited runs, keep the model declaration order, seed, configuration and software version identical.
+Wall-clock limits and interruption can change where search stops.
+
+[#mathematicalModelingExpert]
+=== Expert acceptor and forager settings
+
+`withAcceptorConfig(LocalSearchAcceptorConfig)` and `withForagerConfig(LocalSearchForagerConfig)`
+replace the respective configuration with defensive copies.
+Mutating a supplied configuration, or a configuration returned by an options accessor, cannot change existing options.
+The link:{math-examples-url}/AssignmentExample.java[compiled assignment example] chooses hill climbing explicitly:
+
+ifndef::env-site[]
+[source,java]
+----
+include::{math-examples-src}/AssignmentExample.java[tag=expert,indent=0]
+----
+endif::[]
+
+Supported acceptors are hill climbing, entity/value/move tabu, simulated annealing,
+Late Acceptance, Great Deluge and step-counting hill climbing, including their supported combinations.
+Preview Diversified Late Acceptance, unavailable undo-move tabu, custom forager classes and custom forager properties are rejected.
+The forager's accepted-count limit defaults to one when omitted and must be in `[1, Integer.MAX_VALUE - 1]` when specified.
+Other acceptor and forager settings follow the public GreyCOS configuration contracts.
+Invalid settings are rejected even for a zero-budget solve.
+There is no full `SolverConfig` override, move-thread, island or partition configuration in this API.
+
+[#mathematicalModelingEquality]
+=== Equality constraints and scalar moves
+
+The assignment example declares four binaries: Ada and Ben can each perform task A or task B.
+Each worker must perform exactly one task, and each task must have exactly one worker.
+Its objective minimizes assignment costs.
+
+ifndef::env-site[]
+[source,java]
+----
+include::{math-examples-src}/AssignmentExample.java[tag=model,indent=0]
+----
+endif::[]
+
+The initial diagonal assignment has cost 17; the other feasible assignment has cost 3.
+Every single binary flip violates two equality rows, and the cheaper assignment differs in all four variables.
+The oracle test enumerates those neighbors and confirms that one move evaluation with seed 7 retains cost 17.
+Its exhaustive enumeration establishes the tiny instance's optimum independently of the solver.
+The executable example uses 1,000 evaluations and reports the incumbent actually found.
+
+Reaching the cheaper assignment requires temporary hard deterioration or a coordinated exchange.
+The core forager can select a rejected move when no accepted candidate exists after candidate sampling,
+so the hill-climbing acceptor alone does not imply that this fixture must remain at cost 17 for larger budgets.
+The qualification record reports observed search outcomes separately from the structural neighborhood limitation.
+
+This limitation also occurs in equations such as `x + y = 10`:
+changing one variable while holding the other fixed leaves the feasible set.
+Acceptor configuration alone does not add coordinated moves.
+Stage 1 supplies scalar changes; paired changes, equality-preserving exchanges and mathematical repair neighborhoods
+require separate support and qualification.
+Larger budgets and faster scoring do not by themselves guarantee useful search on such formulations.
+
+[#mathematicalModelingScoring]
+== Retained incremental scoring
+
+The compiler combines repeated coefficients for each row and variable using exact arithmetic,
+removes zero coefficients and preserves the original immutable expression graph for independent replay.
+Immutable row and term facts are joined by variable ID to the mutable decision entities.
+Bavet aggregates contributions by row and restores rows with no remaining terms, including constant contradictions.
+
+During ordinary variable changes and undo, the solver retains the working graph and scoring session.
+Notifications update the changed variable's incident terms and affected rows.
+This is incremental scoring inside a solve; constructing another solve starts another session.
+It does not mean each change has constant cost: variable incidence, affected rows, explanations and framework overhead matter.
+
+The adapter supplies a module-owned lazy move iterator through the existing move-iterator factory integration.
+It creates ordinary scalar change moves and uses the solver's notification, scoring, acceptance and undo lifecycle.
+Candidate values are sampled directly from each variable's inclusive domain, without materializing a union of all domains.
+
+[cols="1,2",options="header"]
+|===
+|Mathematical row or objective |Backend score contribution
+|`activity <= bound` |Hard penalty `max(0, activity - bound)`
+|`activity >= bound` |Hard penalty `max(0, bound - activity)`
+|`activity == bound` |Hard penalty `abs(activity - bound)`
+|Minimize `objective` |Soft impact `-objective`
+|Maximize `objective` |Soft impact `objective`
+|===
+
+Hard penalties are nonnegative before score subtraction and cannot cancel each other.
+Hard-score improvement takes priority over objective improvement.
+Multiplying a row by a positive constant preserves its feasible set but changes violation magnitudes and therefore search behavior.
+The compiler does not silently rescale rows.
+Named mathematical rows are reported individually; they are not separate Bavet constraint-weight override keys.
+
+[#mathematicalModelingNumbers]
+== Exact numeric limits
+
+Values, bounds, normalized coefficients, normalized constants, row activities, residuals and objective values
+use signed 64-bit integers, from `-2^63` through `2^63 - 1`.
+Arithmetic is exact: there is no rounding, floating-point tolerance, automatic scaling or implicit decimal grid.
+`build()` uses `BigInteger` arithmetic to validate backend operations before accepting the model.
+Checked runtime arithmetic remains a backstop.
+
+The supported range depends on the whole model, not only its final objective:
+
+* Each inclusive variable domain must have between one and `Long.MAX_VALUE` values.
+  An endpoint may equal `Long.MAX_VALUE`; no overflowing `upper + 1` conversion is required.
+* Each normalized coefficient product must fit a `long` at both effective domain endpoints.
+  Fixed values narrow arithmetic bounds to the fixed value; other constraints and initial values do not narrow them.
+* A changing term's largest possible contribution minus its smallest possible contribution must be at most `Long.MAX_VALUE`.
+  This protects the collector's replacement delta.
+* Arbitrary partial aggregates must fit: the sum of each term's negative contribution bound must be at least `Long.MIN_VALUE`,
+  and the sum of its positive contribution bound must be at most `Long.MAX_VALUE`.
+  The completed activity after adding the row constant must also fit.
+* Residual subtraction and relation-specific violation calculation must be safe over the effective domains.
+  Each nonnegative row violation is at most `Long.MAX_VALUE`; equality cannot require `abs(Long.MIN_VALUE)`.
+* The sum of conservative maximum hard-row violations must be at most `2^63`,
+  permitting a total signed hard score as low as `Long.MIN_VALUE`.
+* Objective activity must fit, and minimization must also permit its negation.
+  A minimized objective therefore cannot attain `Long.MIN_VALUE`.
+  There is no separate requirement that the entire objective span fit in a positive `long` when its individual term updates are safe.
+
+These are backend representability checks over the declared domains and fixed values.
+A mathematically valid formulation can fail them, even when its feasible assignments would use small numbers.
+Errors identify the relevant row or variable; the solver does not silently wrap or change numeric modes.
+
+[#mathematicalModelingResults]
+== Interpret results and termination
+
+Every successful `MathResult` contains a complete immutable map from the original variable handles to values,
+the original objective value, immutable named row reports, effective options and total adapter elapsed time.
+Use `value(variable)` for one variable; handles from another model are rejected.
+Minimization results expose the original objective, before the backend's sign conversion.
+
+Before returning, the adapter evaluates the original expression graph with `BigInteger` arithmetic,
+checks domain membership and fixed values, reconstructs every row and the objective,
+and compares the reconstructed score with the backend score.
+This replay is independent of normalized compiler rows and their scoring helpers.
+
+[cols="1,3",options="header"]
+|===
+|Status |Meaning
+|`FEASIBLE` |Every modeled constraint is satisfied by the returned assignment.
+|`NO_FEASIBLE_SOLUTION_FOUND` |The returned complete assignment violates at least one constraint. This does not prove the model infeasible.
+|===
+
+Each `ConstraintReport` contains `name`, `relation`, `activity`, `bound`, signed `residual` and nonnegative `violation`.
+The residual is always `activity - bound`, regardless of the relation.
+A negative residual can be satisfied for `le` and violated for `ge`.
+Reports preserve constraint declaration order, and the values map preserves variable declaration order.
+
+[cols="1,3",options="header"]
+|===
+|Termination |Observation
+|`NORMAL_RETURN` |The solver returned normally. This does not identify which limit fired or assert that assignments were exhausted.
+|`EARLY_TERMINATION_OBSERVED` |The adapter observed an early-stop request or interruption.
+|`ZERO_LIMIT` |At least one configured limit was zero, so the initialized assignment was evaluated directly.
+|`NO_MUTABLE_DECISIONS` |All variables were fixed or singleton, so the assignment was evaluated directly.
+|===
+
+Interruption preserves the calling thread's interrupt flag and returns a checked usable incumbent when available.
+Cancellation without a complete usable assignment raises `CancellationException`.
+Invalid models, invalid configuration and evaluation failures raise exceptions rather than mathematical infeasibility statuses.
+Neither feasible nor violating incumbents provide an optimality or infeasibility certificate.
+
+[#mathematicalModelingQualification]
+== Examples and qualification
+
+The link:{math-examples-url}/MathExamplesTest.java[compiled example tests] enumerate all assignments of the tiny fixtures
+and compare the original model expressions with independently written business arithmetic.
+They also replay solver results, check the fixed resource reservation and demonstrate the equality limitation.
+These tests establish correctness for those cases, without promising that heuristic search reaches the enumerated optimum.
+
+The link:https://github.com/CameleoGrey/greycos-solver/blob/main/math/README.adoc[module README]
+contains commands for running all three executable examples.
+The link:https://github.com/CameleoGrey/greycos-solver/blob/main/math/qualification.adoc[qualification record]
+separates scoring correctness and update locality from search feasibility, solution quality and measured throughput.
+Neither the modeling syntax nor incremental scoring establishes general MIP competitiveness.
+
+Stage 1 excludes continuous variables, decimal grids, nonlinear expressions, arbitrary callbacks,
+multiple objectives, live model edits, model import/export and proof-producing exact backends.

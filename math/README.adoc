@@ -1,0 +1,105 @@
+= GreyCOS mathematical modeling
+:math-examples-src: src/test/java/greycos/solver/math/examples
+
+`greycos-solver-math` is an optional module for annotation-free, bounded integer and binary linear models.
+It supplies the internal cotwin, ConstraintProvider, retained Bavet scoring session and serial local search.
+The result is an independently checked best incumbent; the API does not provide optimality or infeasibility proofs.
+
+Add `io.github.cameleogrey:greycos-solver-math` at the same version as your other GreyCOS dependencies.
+The public packages are `greycos.solver.math.api` and `greycos.solver.math.config`.
+No application planning annotations or implementation-package imports are needed.
+
+== Build a model and solve it
+
+This source is compiled and tested as link:{math-examples-src}/KnapsackExample.java[KnapsackExample]:
+
+[source,java]
+----
+include::{math-examples-src}/KnapsackExample.java[tag=model,indent=0]
+----
+
+A limit is required for every solve:
+
+[source,java]
+----
+include::{math-examples-src}/KnapsackExample.java[tag=solve,indent=0]
+----
+
+Bounds are inclusive.
+`initialValue` supplies a starting assignment that search may change; `fix` preserves a value throughout the solve.
+Omitted initial values are filled from a separate seeded random stream before search begins.
+The model, variable handles, expressions, solve options and result snapshots are immutable after construction.
+Each solve has independent mutable assignments and scoring state.
+
+== Run the examples
+
+From the repository root, build the module and its dependencies with the required JDK:
+
+[source,shell]
+----
+./mvnw -pl math -am install -DskipTests
+./mvnw -pl math test -Dtest=MathExamplesTest
+./mvnw -pl math test-compile exec:java -Dexec.classpathScope=test -Dexec.mainClass=greycos.solver.math.examples.KnapsackExample
+./mvnw -pl math test-compile exec:java -Dexec.classpathScope=test -Dexec.mainClass=greycos.solver.math.examples.ResourceAllocationExample
+./mvnw -pl math test-compile exec:java -Dexec.classpathScope=test -Dexec.mainClass=greycos.solver.math.examples.AssignmentExample
+----
+
+[cols="1,3",options="header"]
+|===
+|Example |Purpose
+|link:{math-examples-src}/KnapsackExample.java[Knapsack]
+|Binary selection under a weight limit, maximizing value.
+|link:{math-examples-src}/ResourceAllocationExample.java[Resource allocation]
+|Integer production under wood and labor limits, with an initial assignment and a fixed reservation.
+|link:{math-examples-src}/AssignmentExample.java[Assignment]
+|Binary assignment equalities, minimization and explicit acceptor/forager configuration; deliberately demonstrates a scalar-move limitation.
+|===
+
+The link:{math-examples-src}/MathExamplesTest.java[example tests] enumerate all 16 knapsack assignments,
+20 resource-allocation assignments allowed by the fixed reservation, and 16 binary assignment matrices.
+They compare the original public expression trees with independent business arithmetic and replay returned values.
+The exact optima of these tiny instances are 12, 26 and 3 respectively.
+These are enumeration results, not proof statuses from `MathSolver`.
+
+In the assignment example, each binary flip violates two equalities,
+while the cheaper feasible assignment differs from the initial cost-17 assignment in all four variables.
+The test retains cost 17 with one move evaluation; the executable uses 1,000 evaluations.
+The core forager can fall back to a rejected move when no accepted candidate exists,
+so a larger budget can cross the violated intermediate assignments even with the hill-climbing acceptor.
+This does not supply an equality-preserving exchange or guarantee effective search on larger assignment models.
+
+== Search and numeric contract
+
+The default is seed 0, `PHASE_ASSERT`, Late Acceptance with history size 400, and one accepted candidate per step.
+Serial search chooses a mutable variable uniformly, then chooses uniformly among that variable's different in-domain values.
+The module's lazy move iterator generates ordinary scalar change moves without materializing a union of variable domains.
+These moves use the existing solver notification, scoring, acceptance and undo lifecycle.
+`SolveOptions.timeLimit(Duration)` and `moveEvaluationLimit(long)` require nonnegative limits;
+combined limits use OR, and either zero limit evaluates the initialized assignment without search.
+Durations use whole milliseconds and must fit a signed `long` millisecond count.
+The time limit covers solver search; compilation, initialization and final replay add elapsed time.
+Move evaluation counts are distinct from accepted steps and score calculations.
+
+All coefficients, bounds, values, row activities and returned objectives use exact integral `long` arithmetic.
+Build-time `BigInteger` validation also checks domain cardinality, intermediate aggregates, contribution replacement deltas,
+residuals, absolute values, objective sign conversion and total hard penalties.
+A mathematically valid model may be rejected when these backend operations cannot be represented safely.
+There is no rounding, hidden scaling or feasibility tolerance.
+See the link:../docs/src/modules/ROOT/pages/using-greycos-solver/mathematical-modeling.adoc[user guide]
+for the exact limits, expert configuration and result contract.
+
+`FEASIBLE` means every returned constraint is satisfied.
+`NO_FEASIBLE_SOLUTION_FOUND` carries a complete assignment with violations; it does not establish that the model is infeasible.
+`NORMAL_RETURN` records an ordinary solver return without identifying a particular limit or claiming exhaustive search.
+Per-row reports use residual `activity - bound` and a nonnegative relation-specific violation.
+
+== Qualification
+
+See link:qualification.adoc[qualification evidence and reproducible experiments] for scoring, lifecycle,
+update-locality and bounded search evidence.
+Sparse-update correctness, search quality and throughput are separate claims.
+No general MIP competitiveness or performance advantage follows from the mathematical API or these tiny examples.
+
+Stage 1 supports one integral linear objective and hard `le`, `ge` and `eq` rows.
+Continuous variables, decimal grids, nonlinear expressions, user callbacks, coordinated mathematical moves,
+multiple objectives, model import/export, live model edits and exact proof-producing backends are outside this stage.

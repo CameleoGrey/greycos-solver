@@ -95,7 +95,8 @@ final class ValueRangeStatistics<Solution_> {
       notInAnyListValueCount.add(countOnSolution);
       maxValueRangeSize.setValue(countOnSolution);
       if (listVariableDescriptor.canExtractValueRangeFromSolution()) {
-        approximateValueCount.add(countOnSolution);
+        approximateValueCount.setValue(
+            addApproximateValueCounts(approximateValueCount.longValue(), countOnSolution));
       }
       if (!listVariableDescriptor.allowsUnassignedValues()) {
         // We count every possibly unassigned element in every list variable.
@@ -108,7 +109,8 @@ final class ValueRangeStatistics<Solution_> {
       if (basicVariable.canExtractValueRangeFromSolution()) {
         var countOnSolution =
             valueRangeManager.countOnSolution(basicVariable.getValueRangeDescriptor(), solution);
-        approximateValueCount.add(countOnSolution);
+        approximateValueCount.setValue(
+            addApproximateValueCounts(approximateValueCount.longValue(), countOnSolution));
         if (maxValueRangeSize.longValue() < countOnSolution) {
           maxValueRangeSize.setValue(countOnSolution);
         }
@@ -165,10 +167,12 @@ final class ValueRangeStatistics<Solution_> {
               var rangeValueCount =
                   valueRangeManager.countOnEntity(
                       basicVariableDescriptor.getValueRangeDescriptor(), entity);
-              approximateValueCount.add(rangeValueCount);
-              cachedValueCountByEntityAndEffectiveVariableIndex[entityDescriptor.getOrdinal()][
-                      variableIndex] +=
-                  rangeValueCount;
+              approximateValueCount.setValue(
+                  addApproximateValueCounts(approximateValueCount.longValue(), rangeValueCount));
+              var counts =
+                  cachedValueCountByEntityAndEffectiveVariableIndex[entityDescriptor.getOrdinal()];
+              counts[variableIndex] =
+                  addApproximateValueCounts(counts[variableIndex], rangeValueCount);
             }
           }
           if (!entityDescriptor.hasAnyListVariables()) {
@@ -186,10 +190,13 @@ final class ValueRangeStatistics<Solution_> {
             var listValueCount =
                 valueRangeManager.countOnEntity(
                     listVariableDescriptor.getValueRangeDescriptor(), entity);
-            approximateValueCount.add(listValueCount);
-            cachedValueCountByEntityAndEffectiveVariableIndex[entityDescriptor.getOrdinal()][
-                    genuineVariables.indexOf(listVariableDescriptor)] +=
-                listValueCount;
+            approximateValueCount.setValue(
+                addApproximateValueCounts(approximateValueCount.longValue(), listValueCount));
+            var counts =
+                cachedValueCountByEntityAndEffectiveVariableIndex[entityDescriptor.getOrdinal()];
+            var variableIndex = genuineVariables.indexOf(listVariableDescriptor);
+            counts[variableIndex] =
+                addApproximateValueCounts(counts[variableIndex], listValueCount);
           }
           // TODO maybe detect duplicates and elements that are outside the value range
         });
@@ -215,6 +222,12 @@ final class ValueRangeStatistics<Solution_> {
       cachedProblemScale = scale;
     }
     return statistics;
+  }
+
+  private static long addApproximateValueCounts(long current, long additional) {
+    // Value-range sizes are nonnegative. Saturate these diagnostic sums only; a collection of
+    // individually representable ranges must not fail initialization because its total is larger.
+    return current > Long.MAX_VALUE - additional ? Long.MAX_VALUE : current + additional;
   }
 
   public ProblemSizeStatistics getProblemSizeStatistics() {
